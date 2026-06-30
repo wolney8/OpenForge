@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openforge-api"
+version = "0.1.0"
+description = "OpenForge local-first API scaffold"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi==0.122.0",
+  "pydantic==2.12.0",
+  "pydantic-settings==2.11.0",
+  "uvicorn==0.38.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "mypy==1.18.2",
+  "pytest==8.4.2",
+  "ruff==0.14.1"
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["openforge_api"]

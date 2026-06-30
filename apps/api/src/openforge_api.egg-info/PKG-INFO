@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: openforge-api
+Version: 0.1.0
+Summary: OpenForge local-first API scaffold
+Requires-Python: >=3.13
+Requires-Dist: fastapi==0.122.0
+Requires-Dist: pydantic==2.12.0
+Requires-Dist: pydantic-settings==2.11.0
+Requires-Dist: uvicorn==0.38.0
+Provides-Extra: dev
+Requires-Dist: httpx==0.28.1; extra == "dev"
+Requires-Dist: mypy==1.18.2; extra == "dev"
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: ruff==0.14.1; extra == "dev"

@@ -1,0 +1,23 @@
+{
+  "name": "openforge",
+  "private": true,
+  "packageManager": "pnpm@11.2.2",
+  "scripts": {
+    "build:web": "pnpm --filter @openforge/web build",
+    "dev:api": "./scripts/run-python.sh -m uvicorn openforge_api.main:app --app-dir apps/api/src --reload --host 127.0.0.1 --port 8010",
+    "dev:web": "pnpm --filter @openforge/web exec next dev --port 3010",
+    "lint:web": "pnpm --filter @openforge/web lint",
+    "typecheck:web": "pnpm --filter @openforge/web typecheck",
+    "test:web": "pnpm --filter @openforge/web test",
+    "test:api": "./scripts/run-python.sh -m pytest apps/api/tests",
+    "lint:api": "./scripts/run-python.sh -m ruff check apps/api",
+    "typecheck:api": "./scripts/run-python.sh -m mypy apps/api/src",
+    "test": "pnpm test:web && pnpm test:api",
+    "lint": "pnpm lint:web && pnpm lint:api",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:api",
+    "playwright": "pnpm exec playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
