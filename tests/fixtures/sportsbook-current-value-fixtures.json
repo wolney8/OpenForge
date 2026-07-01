@@ -1,0 +1,176 @@
+{
+  "cases": [
+    {
+      "case_id": "SB-001",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-001",
+        "status": "Placed",
+        "result": "Pending",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "10.00",
+        "back_odds": "2.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.10",
+        "lay_commission_1": "0.02",
+        "lay_actual": "",
+        "date_settled": "2026-07-03"
+      },
+      "expected": {
+        "reference_lay_stake_standard": "9.62",
+        "calculated_liability_1": "10.58",
+        "scenario_pnl_if_back_wins": "-0.58",
+        "scenario_pnl_if_lay_wins": "-0.57",
+        "projected_current_pnl": "-0.58",
+        "counts_as_open": true,
+        "is_overdue": false
+      }
+    },
+    {
+      "case_id": "SB-002",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-002",
+        "status": "Settled",
+        "result": "Back Won",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "10.00",
+        "back_odds": "2.20",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.30",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-04"
+      },
+      "expected": {
+        "uses_back_win_branch": true,
+        "counts_as_open": false
+      }
+    },
+    {
+      "case_id": "SB-003",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-003",
+        "status": "Settled",
+        "result": "Lay Won",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "10.00",
+        "back_odds": "2.40",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.50",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-05"
+      },
+      "expected": {
+        "uses_lay_win_branch": true,
+        "counts_as_open": false
+      }
+    },
+    {
+      "case_id": "SB-004",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-004",
+        "status": "Settled",
+        "result": "Void",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "12.00",
+        "back_odds": "2.10",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.20",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-06"
+      },
+      "expected": {
+        "final_net_pnl": "0.00"
+      }
+    },
+    {
+      "case_id": "SB-005",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-005",
+        "status": "Settled",
+        "result": "Back Won",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "10.00",
+        "back_odds": "2.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.10",
+        "lay_commission_1": "0.02",
+        "manual_override_value": "-0.75",
+        "manual_override_reason": "Manual correction after settlement review",
+        "date_settled": "2026-07-07"
+      },
+      "expected": {
+        "final_net_pnl": "-0.75",
+        "override_note": "Manual override replaced the formula-resolved value."
+      }
+    },
+    {
+      "case_id": "SB-006",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-006",
+        "status": "Settled",
+        "result": "Back Won",
+        "offer_type": "Mug Bet",
+        "back_stake": "10.00",
+        "back_odds": "3.00",
+        "match_strategy": "No Lay",
+        "date_settled": "2026-07-08"
+      },
+      "expected": {
+        "calculation_state": "review_required"
+      }
+    },
+    {
+      "case_id": "SB-007",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-007",
+        "status": "Placed",
+        "result": "Pending",
+        "offer_type": "Multi Outcome",
+        "back_stake": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Multilay",
+        "lay_odds_1": "5.20",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-09"
+      },
+      "expected": {
+        "calculation_state": "review_required"
+      }
+    }
+  ],
+  "profile_isolation_case": {
+    "as_of_date": "2026-07-01",
+    "rows": [
+      {
+        "profile_id": "PROFILE-001",
+        "record_id": "SB-008-A",
+        "status": "Placed",
+        "result": "Pending",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "10.00",
+        "back_odds": "2.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.10",
+        "lay_commission_1": "0.02"
+      },
+      {
+        "profile_id": "PROFILE-002",
+        "record_id": "SB-008-B",
+        "status": "Placed",
+        "result": "Pending",
+        "offer_type": "Sign up / Welcome",
+        "back_stake": "20.00",
+        "back_odds": "2.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.10",
+        "lay_commission_1": "0.02"
+      }
+    ]
+  }
+}
