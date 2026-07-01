@@ -190,6 +190,12 @@ textarea {
   transform: translateY(-1px);
 }
 
+.nav-pill.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -321,6 +327,10 @@ textarea {
   padding: 0.25rem 0;
 }
 
+.module-nav {
+  align-items: center;
+}
+
 .split-hero {
   display: grid;
   gap: 1rem;
@@ -351,6 +361,53 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+}
+
+.table-controls,
+.table-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.field-control {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 220px;
+}
+
+.field-control span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.field-control input,
+.field-control select,
+.field-control textarea {
+  min-height: 2.75rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.95rem;
+  border: 1px solid var(--outline);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.field-control input::placeholder {
+  color: var(--muted);
+}
+
+.field-control textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.table-status {
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .table-scroll {
@@ -388,10 +445,43 @@ textarea {
   font-size: 0.95rem;
 }
 
+.align-end {
+  text-align: right !important;
+}
+
 .empty-cell {
   color: var(--muted);
   text-align: center;
   padding: 1.4rem;
+}
+
+.is-selected-row {
+  background: var(--primary-soft);
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.button-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-span-2 {
+  grid-column: 1 / -1;
+}
+
+.error-text {
+  color: #b3261e;
+  font-weight: 600;
 }
 
 @media (max-width: 880px) {
@@ -410,6 +500,19 @@ textarea {
 
   .table-toolbar {
     flex-direction: column;
+  }
+
+  .table-controls,
+  .table-pagination {
+    align-items: stretch;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-span-2 {
+    grid-column: auto;
   }
 }
 

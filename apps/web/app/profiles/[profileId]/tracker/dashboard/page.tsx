@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TrackerModuleNav } from "@/components/tracker-module-nav";
 import { getModuleRows, getProfile } from "@/lib/tracker-data";
 
 type DashboardPageProps = {
@@ -31,6 +32,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           This surface will later combine dashboard tooling, settings-driven controls,
           and profit metrics without losing workbook reporting semantics.
         </p>
+        <TrackerModuleNav activeHref="dashboard" profileId={profile.profileId} />
       </section>
       <section className="stat-strip" aria-label="Tracker summary">
         <article className="stat-card">
