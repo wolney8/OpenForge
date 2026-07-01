@@ -77,6 +77,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           back_odds TEXT NOT NULL,
           match_strategy TEXT NOT NULL,
           lay_odds_1 TEXT NOT NULL,
+          lay_commission_1 TEXT NOT NULL DEFAULT '',
           exchange_name TEXT NOT NULL,
           date_settled TEXT NOT NULL,
           user_notes TEXT NOT NULL,
@@ -101,7 +102,24 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         );
         """
     )
+    ensure_column(connection, "sportsbook_bets", "lay_commission_1", "TEXT NOT NULL DEFAULT ''")
     seed_database(connection)
+
+
+def ensure_column(
+    connection: sqlite3.Connection,
+    table_name: str,
+    column_name: str,
+    column_definition: str,
+) -> None:
+    existing = {
+        row["name"]
+        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in existing:
+        connection.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
 
 
 def seed_database(connection: sqlite3.Connection) -> None:
@@ -163,6 +181,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                         row.get("matchStrategy"), "Standard"
                     ),
                     "lay_odds_1": normalize_seed_text(row.get("layOdds1")),
+                    "lay_commission_1": normalize_seed_text(row.get("layCommission1")),
                     "exchange_name": normalize_seed_text(row.get("exchange"), "Exchange A"),
                     "date_settled": normalize_seed_text(row.get("dateSettling")),
                     "user_notes": "",
@@ -186,6 +205,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                       back_odds,
                       match_strategy,
                       lay_odds_1,
+                      lay_commission_1,
                       exchange_name,
                       date_settled,
                       user_notes,
@@ -193,7 +213,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                       manual_override_reason,
                       created_at,
                       updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     tuple(payload.values()),
                 )
@@ -249,6 +269,7 @@ class SportsbookBetRecord:
     back_odds: str
     match_strategy: str
     lay_odds_1: str
+    lay_commission_1: str
     exchange_name: str
     date_settled: str
     user_notes: str
@@ -303,6 +324,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
         "back_odds": payload["back_odds"],
         "match_strategy": payload["match_strategy"],
         "lay_odds_1": payload["lay_odds_1"],
+        "lay_commission_1": payload["lay_commission_1"],
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
         "user_notes": payload["user_notes"],
@@ -327,6 +349,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
               back_odds,
               match_strategy,
               lay_odds_1,
+              lay_commission_1,
               exchange_name,
               date_settled,
               user_notes,
@@ -334,7 +357,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
               manual_override_reason,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -370,6 +393,7 @@ def update_sportsbook_bet(
         "back_odds": payload["back_odds"],
         "match_strategy": payload["match_strategy"],
         "lay_odds_1": payload["lay_odds_1"],
+        "lay_commission_1": payload["lay_commission_1"],
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
         "user_notes": payload["user_notes"],
@@ -392,6 +416,7 @@ def update_sportsbook_bet(
               back_odds = ?,
               match_strategy = ?,
               lay_odds_1 = ?,
+              lay_commission_1 = ?,
               exchange_name = ?,
               date_settled = ?,
               user_notes = ?,
@@ -411,6 +436,7 @@ def update_sportsbook_bet(
                 updated["back_odds"],
                 updated["match_strategy"],
                 updated["lay_odds_1"],
+                updated["lay_commission_1"],
                 updated["exchange_name"],
                 updated["date_settled"],
                 updated["user_notes"],

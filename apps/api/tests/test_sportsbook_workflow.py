@@ -30,6 +30,7 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
         "back_odds": "2.10",
         "match_strategy": "Standard",
         "lay_odds_1": "2.20",
+        "lay_commission_1": "0.02",
         "exchange_name": "Exchange A",
         "date_settled": "2026-07-10",
         "user_notes": "Initial sportsbook workflow entry",
@@ -42,6 +43,8 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
     created = create_response.json()
     assert created["profile_id"] == "profile-demo-001"
     assert created["sportsbook_bet_id"]
+    assert created["calculation_state"] == "resolved"
+    assert created["projected_current_pnl"] is not None
 
     list_profile_one = client.get("/profiles/profile-demo-001/sportsbook-bets")
     assert list_profile_one.status_code == 200
@@ -72,6 +75,7 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
     updated = update_response.json()
     assert updated["manual_override_value"] == "-0.75"
     assert updated["manual_override_reason"] == "Manual correction after settlement review"
+    assert updated["final_net_pnl"] == "-0.75"
 
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/sportsbook-bets/{created['sportsbook_bet_id']}"
@@ -96,6 +100,7 @@ def test_override_reason_is_required(tmp_path: Path) -> None:
         "back_odds": "2.20",
         "match_strategy": "Standard",
         "lay_odds_1": "2.30",
+        "lay_commission_1": "0.02",
         "exchange_name": "Exchange A",
         "date_settled": "2026-07-12",
         "user_notes": "",
@@ -119,3 +124,33 @@ def test_seed_rows_load_into_dedicated_sportsbook_table(tmp_path: Path) -> None:
     count = connection.execute("SELECT COUNT(*) FROM sportsbook_bets").fetchone()[0]
     connection.close()
     assert count > 0
+
+
+def test_missing_commission_keeps_money_values_incomplete(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    payload = {
+        "event_name": "Missing Commission Match",
+        "offer_text": "",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Sign up / Welcome",
+        "status": "Placed",
+        "result": "Pending",
+        "back_stake": "10.00",
+        "back_odds": "2.10",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.20",
+        "lay_commission_1": "",
+        "exchange_name": "Exchange A",
+        "date_settled": "2026-07-10",
+        "user_notes": "",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+    }
+
+    response = client.post("/profiles/profile-demo-001/sportsbook-bets", json=payload)
+    assert response.status_code == 201
+    body = response.json()
+    assert body["calculation_state"] == "incomplete"
+    assert body["projected_current_pnl"] is None
