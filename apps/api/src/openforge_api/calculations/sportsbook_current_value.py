@@ -197,14 +197,17 @@ def calculate_sportsbook_current_value(
     back_stake = parse_decimal(calculation_input.back_stake)
     back_odds = parse_decimal(calculation_input.back_odds)
     lay_odds_1 = parse_decimal(calculation_input.lay_odds_1)
-    commission_1 = parse_decimal(calculation_input.lay_commission_1) or Decimal("0")
+    commission_1 = parse_decimal(calculation_input.lay_commission_1)
 
-    if back_stake is None or back_odds is None or lay_odds_1 is None:
+    if back_stake is None or back_odds is None or lay_odds_1 is None or commission_1 is None:
         return SportsbookCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
             calculation_state="incomplete",
-            calculation_notes=("Required numeric inputs are missing.",),
+            calculation_notes=(
+                "Required numeric inputs are missing, including exchange commission "
+                "when contract-backed money values depend on it.",
+            ),
             match_rating=None,
             reference_lay_stake_standard=None,
             reference_lay_stake_underlay=None,

@@ -227,7 +227,8 @@ textarea {
 
 .hero-panel,
 .content-panel,
-.route-card {
+.route-card,
+.content-subpanel {
   background: var(--surface);
   border: 1px solid var(--outline);
   border-radius: 1.75rem;
@@ -238,6 +239,12 @@ textarea {
 .hero-panel,
 .content-panel {
   padding: 1.5rem 1.5rem 1.65rem;
+}
+
+.content-subpanel {
+  padding: 1rem 1.1rem;
+  border-radius: 1.15rem;
+  background: var(--surface-container);
 }
 
 .route-grid {

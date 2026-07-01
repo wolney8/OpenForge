@@ -23,6 +23,7 @@ type SportsbookRecord = {
   back_odds: string;
   match_strategy: string;
   lay_odds_1: string;
+  lay_commission_1: string;
   exchange_name: string;
   date_settled: string;
   user_notes: string;
@@ -30,6 +31,17 @@ type SportsbookRecord = {
   manual_override_reason: string;
   created_at: string;
   updated_at: string;
+  calculation_state: string;
+  calculation_notes: string[];
+  match_rating: string | null;
+  calculated_liability_1: string | null;
+  projected_current_pnl: string | null;
+  actual_net_pnl: string | null;
+  final_net_pnl: string | null;
+  reporting_value: string | null;
+  lay_status: string;
+  counts_as_open: boolean;
+  is_overdue: boolean;
 };
 
 type SportsbookFormState = {
@@ -44,6 +56,7 @@ type SportsbookFormState = {
   back_odds: string;
   match_strategy: string;
   lay_odds_1: string;
+  lay_commission_1: string;
   exchange_name: string;
   date_settled: string;
   user_notes: string;
@@ -61,6 +74,10 @@ const tableColumns: TableColumn[] = [
   { key: "back_odds", label: "Back odds", align: "end" },
   { key: "match_strategy", label: "Strategy" },
   { key: "lay_odds_1", label: "Lay odds", align: "end" },
+  { key: "lay_commission_1", label: "Commission", align: "end" },
+  { key: "projected_current_pnl", label: "Current value", align: "end" },
+  { key: "calculated_liability_1", label: "Liability", align: "end" },
+  { key: "calculation_state", label: "Calc state" },
   { key: "exchange_name", label: "Exchange" },
   { key: "event_name", label: "Event" },
 ];
@@ -99,6 +116,7 @@ function createBlankForm(): SportsbookFormState {
     back_odds: "",
     match_strategy: "Standard",
     lay_odds_1: "",
+    lay_commission_1: "",
     exchange_name: "",
     date_settled: "",
     user_notes: "",
@@ -120,6 +138,7 @@ function recordToForm(record: SportsbookRecord): SportsbookFormState {
     back_odds: record.back_odds,
     match_strategy: record.match_strategy,
     lay_odds_1: record.lay_odds_1,
+    lay_commission_1: record.lay_commission_1,
     exchange_name: record.exchange_name,
     date_settled: record.date_settled,
     user_notes: record.user_notes,
@@ -190,6 +209,10 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       back_odds: row.back_odds,
       match_strategy: row.match_strategy,
       lay_odds_1: row.lay_odds_1,
+      lay_commission_1: row.lay_commission_1,
+      projected_current_pnl: row.projected_current_pnl ?? "",
+      calculated_liability_1: row.calculated_liability_1 ?? "",
+      calculation_state: row.calculation_state,
       exchange_name: row.exchange_name,
       event_name: row.event_name,
     }));
@@ -262,8 +285,9 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
             <span className="eyebrow">Sportsbook workflow</span>
             <p className="lede">
               This is the first route, API, and storage-backed tracker workflow. It
-              preserves profile isolation and stores manual override notes without yet
-              rendering contract-backed current-value outputs.
+              now renders contract-backed sportsbook values when required inputs are
+              present. Missing or unresolved workbook inputs are flagged instead of
+              guessed.
             </p>
           </div>
           <button className="button-link" onClick={startNewRow} type="button">
@@ -370,11 +394,47 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
             {selectedId ? `Editing ${selectedId}` : "New sportsbook row"}
           </span>
           <p className="lede">
-            Current-value, liability, and resolved P&amp;L fields remain intentionally
-            withheld here until the contract-backed calculation engine and fixtures are
-            implemented.
+            Contract-backed calculation outputs are shown below when the sportsbook row
+            has enough approved inputs, including exchange commission.
           </p>
         </div>
+        {selectedId ? (
+          <section className="stat-strip" aria-label="Sportsbook calculation summary">
+            <article className="stat-card">
+              <span className="eyebrow">Calculation state</span>
+              <strong>{rows.find((row) => row.sportsbook_bet_id === selectedId)?.calculation_state ?? "—"}</strong>
+              <p className="lede">
+                Lay status: {rows.find((row) => row.sportsbook_bet_id === selectedId)?.lay_status ?? "—"}
+              </p>
+            </article>
+            <article className="stat-card">
+              <span className="eyebrow">Current value</span>
+              <strong>{rows.find((row) => row.sportsbook_bet_id === selectedId)?.projected_current_pnl ?? "—"}</strong>
+              <p className="lede">
+                Final value: {rows.find((row) => row.sportsbook_bet_id === selectedId)?.final_net_pnl ?? "—"}
+              </p>
+            </article>
+            <article className="stat-card">
+              <span className="eyebrow">Liability</span>
+              <strong>{rows.find((row) => row.sportsbook_bet_id === selectedId)?.calculated_liability_1 ?? "—"}</strong>
+              <p className="lede">
+                Match rating: {rows.find((row) => row.sportsbook_bet_id === selectedId)?.match_rating ?? "—"}
+              </p>
+            </article>
+          </section>
+        ) : null}
+        {selectedId && rows.find((row) => row.sportsbook_bet_id === selectedId)?.calculation_notes.length ? (
+          <section className="content-subpanel stack">
+            <span className="eyebrow">Calculation notes</span>
+            {rows
+              .find((row) => row.sportsbook_bet_id === selectedId)
+              ?.calculation_notes.map((note) => (
+                <p className="lede" key={note}>
+                  {note}
+                </p>
+              ))}
+          </section>
+        ) : null}
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field-control">
             <span>Event name</span>
@@ -484,6 +544,16 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
                 setFormState((current) => ({ ...current, lay_odds_1: event.target.value }))
               }
               value={formState.lay_odds_1}
+            />
+          </label>
+          <label className="field-control">
+            <span>Exchange commission</span>
+            <input
+              onChange={(event) =>
+                setFormState((current) => ({ ...current, lay_commission_1: event.target.value }))
+              }
+              placeholder="0.02"
+              value={formState.lay_commission_1}
             />
           </label>
           <label className="field-control">
