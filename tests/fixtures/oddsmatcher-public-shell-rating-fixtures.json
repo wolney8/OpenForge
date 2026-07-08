@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "controlSurface": {
+    "route": "/oddsmatcher/",
+    "publicShell": true,
+    "defaultBetMode": "Normal/Qualifying Bet",
+    "filterDrawers": ["Selection", "Start time", "Back", "Lay", "Rating"],
+    "arbVisibility": {
+      "default": false,
+      "label": "Show arbs"
+    },
+    "modals": {
+      "betSummary": true,
+      "calculatorSettings": true,
+      "advancedControls": ["Underlay", "Standard", "Overlay"]
+    }
+  },
+  "fixtures": [
+    {
+      "fixtureId": "oddsmatcher-rating-001",
+      "backOdds": 5.5,
+      "layOdds": 5.6,
+      "showArbs": false,
+      "expected": {
+        "displayRatingPct": 98.21,
+        "ratingBucket": "GREEN",
+        "isArb": false,
+        "arbVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-rating-002",
+      "backOdds": 1.67,
+      "layOdds": 1.73,
+      "showArbs": false,
+      "expected": {
+        "displayRatingPct": 96.53,
+        "ratingBucket": "PALE_GREEN",
+        "isArb": false,
+        "arbVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-rating-003",
+      "backOdds": 2,
+      "layOdds": 2,
+      "showArbs": false,
+      "expected": {
+        "displayRatingPct": 100,
+        "ratingBucket": "ARB_OR_STRONG_GREEN",
+        "isArb": false,
+        "arbVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-rating-004",
+      "backOdds": 2.1,
+      "layOdds": 2,
+      "showArbs": false,
+      "expected": {
+        "displayRatingPct": 105,
+        "ratingBucket": "ARB_OR_STRONG_GREEN",
+        "isArb": true,
+        "arbVisible": false
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-rating-005",
+      "backOdds": 2.1,
+      "layOdds": 2,
+      "showArbs": true,
+      "expected": {
+        "displayRatingPct": 105,
+        "ratingBucket": "ARB_OR_STRONG_GREEN",
+        "isArb": true,
+        "arbVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-rating-006",
+      "backOdds": 9,
+      "layOdds": 9.4,
+      "showArbs": false,
+      "expected": {
+        "displayRatingPct": 95.74,
+        "ratingBucket": "PALE_GREEN",
+        "isArb": false,
+        "arbVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-modal-007",
+      "betMode": "Qualifying Bet",
+      "advancedEnabled": false,
+      "backStake": 10,
+      "backOdds": 6.5,
+      "backCommissionPct": 0,
+      "layOdds": 7,
+      "layCommissionPct": 0,
+      "expected": {
+        "layStake": 9.29,
+        "liability": 55.74,
+        "scenarioBackWinsTotal": -0.74,
+        "scenarioLayWinsTotal": -0.71,
+        "totalProfit": -0.74
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-advanced-008",
+      "betMode": "Qualifying Bet",
+      "advancedEnabled": true,
+      "matchStrategy": "Standard",
+      "currentLayStake": 9.29,
+      "rangeMinStake": 8.9,
+      "rangeMaxStake": 11.42,
+      "expected": {
+        "strategyButtons": ["Underlay", "Standard", "Overlay"],
+        "sliderVisible": true,
+        "rangeMinVisible": true,
+        "rangeMaxVisible": true,
+        "placeLayBetVisible": true
+      }
+    },
+    {
+      "fixtureId": "oddsmatcher-modal-links-009",
+      "bookmakerLabel": "Bookmaker A",
+      "bookmakerUrl": "https://bookmaker-a.example.invalid",
+      "exchangeLabel": "Exchange A",
+      "exchangeUrl": "https://exchange-a.example.invalid/market/123",
+      "expected": {
+        "goToBookmakerVisible": true,
+        "goToExchangeVisible": true,
+        "copyLayStakeVisible": true
+      }
+    }
+  ]
+}
