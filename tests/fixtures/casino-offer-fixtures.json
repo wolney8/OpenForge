@@ -1,0 +1,62 @@
+[
+  {
+    "name": "final_value_overrides_calc_value",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CO-001",
+      "date_started": "2026-07-10 00:00:00",
+      "date_settling": "2026-07-10 00:00:00",
+      "expiry_datetime": "",
+      "status": "Settled",
+      "calc_net_pnl": "1.50",
+      "final_net_pnl": "2.00"
+    },
+    "expected": {
+      "resolved_net_pnl": "2.00",
+      "week_label": "W/C 06/07/2026",
+      "calculation_state": "resolved",
+      "counts_as_open": false,
+      "is_overdue": false
+    }
+  },
+  {
+    "name": "calc_value_used_when_final_missing",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CO-002",
+      "date_started": "2026-07-11 00:00:00",
+      "date_settling": "2026-07-11 00:00:00",
+      "expiry_datetime": "2026-07-12 12:00:00",
+      "status": "Started",
+      "calc_net_pnl": "-5.00",
+      "final_net_pnl": ""
+    },
+    "expected": {
+      "resolved_net_pnl": "-5.00",
+      "week_label": "W/C 06/07/2026",
+      "calculation_state": "resolved",
+      "counts_as_open": true,
+      "is_overdue": true
+    }
+  },
+  {
+    "name": "prospecting_rows_resolve_as_zero_value_placeholders",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CO-003",
+      "date_started": "2026-07-13 00:00:00",
+      "date_settling": "",
+      "expiry_datetime": "",
+      "status": "Prospecting",
+      "calc_net_pnl": "",
+      "final_net_pnl": ""
+    },
+    "expected": {
+      "resolved_net_pnl": "0.00",
+      "week_label": "W/C 13/07/2026",
+      "calculation_state": "resolved",
+      "counts_as_open": true,
+      "is_overdue": false
+    }
+  }
+]

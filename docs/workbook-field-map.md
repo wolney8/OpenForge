@@ -125,9 +125,9 @@ OpenForge implication:
 | `Market` | User-entered | Market descriptor |
 | `Offer` | User-entered | Offer text/source |
 | `Bookmaker` | User-entered | Account/bookmaker name |
-| `OfferType` | User-entered | Includes mug/no-bonus style behaviour |
-| `BetType` | User-entered | Single, acca, builder, etc. |
-| `OfferName` | User-entered | Offer category or label |
+| `OfferType` | User-entered | Promotion mechanic / offer family; workbook values currently need rationalisation because some entries overlap with wager shape |
+| `BetType` | User-entered | Wager shape such as single, builder, or multiple |
+| `OfferName` | User-entered | Named campaign tag / recurring offer label; should not be treated as the primary mechanic field |
 | `FixtureType` | User-entered | Sport/fixture type |
 | `Status` | User-entered | Prospecting/not placed/placed/settled style state |
 | `Result` | User-entered | Outcome selector |
@@ -185,9 +185,9 @@ OpenForge implication:
 | `EventName` | User-entered | Event descriptor |
 | `Offer` | User-entered | Offer text |
 | `Bookmaker` | User-entered | Bookmaker name |
-| `OfferType` | User-entered | Offer type |
-| `BetType` | User-entered | Single/builder/etc. |
-| `OfferName` | User-entered | Offer label |
+| `OfferType` | User-entered | Promotion mechanic / offer family |
+| `BetType` | User-entered | Wager shape |
+| `OfferName` | User-entered | Named campaign tag / recurring offer label |
 | `FixtureType` | User-entered | Sport type |
 | `Status` | User-entered | `Prospecting`, `Available`, `Placed`, `Settled` style states |
 | `Result` | User-entered | Outcome selector |

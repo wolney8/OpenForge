@@ -121,7 +121,7 @@
         "date_settled": "2026-07-08"
       },
       "expected": {
-        "calculation_state": "review_required"
+        "calculation_state": "resolved"
       }
     },
     {

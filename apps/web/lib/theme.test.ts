@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTheme } from "./theme";
+import { resolveBackLayTheme, resolveTheme } from "./theme";
 
 describe("resolveTheme", () => {
   it("uses an allowed stored theme when present", () => {
@@ -14,5 +14,18 @@ describe("resolveTheme", () => {
 
   it("ignores unknown stored values", () => {
     expect(resolveTheme("sepia", true)).toBe("dark");
+  });
+});
+
+describe("resolveBackLayTheme", () => {
+  it("uses an allowed stored back/lay theme when present", () => {
+    expect(resolveBackLayTheme("smarkets")).toBe("smarkets");
+    expect(resolveBackLayTheme("betfair")).toBe("betfair");
+  });
+
+  it("defaults to smarkets when storage is empty or unknown", () => {
+    expect(resolveBackLayTheme(null)).toBe("smarkets");
+    expect(resolveBackLayTheme(undefined)).toBe("smarkets");
+    expect(resolveBackLayTheme("custom")).toBe("smarkets");
   });
 });

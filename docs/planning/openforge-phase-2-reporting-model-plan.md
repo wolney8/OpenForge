@@ -171,6 +171,15 @@ Profile and combined reports should distinguish:
 
 The UI and planning model should never collapse these into one unlabeled number.
 
+Future operating rule:
+
+- a derived fee amount is not the same as a withdrawn fee event
+- if management fee or investment fee is actually extracted from the bankroll,
+  that movement must remain visible as an explicit operational record rather
+  than disappearing into reporting-only maths
+- the fee calculation period, fee amount, and the eventual cash movement must
+  stay auditable as separate concepts
+
 ## Route responsibilities
 
 - `/profiles`
