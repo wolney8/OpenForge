@@ -18,7 +18,7 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
   dashboard: {
     href: "dashboard",
     title: "Dashboard",
-    summary: "Combined operational summary and profit metrics shell.",
+    summary: "Live profile dashboard for cash snapshot, open positions, alerts, and current profit visibility.",
   },
   accounts: {
     href: "accounts",
@@ -105,19 +105,42 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
       { key: "description", label: "Description" },
     ],
   },
+  settings: {
+    href: "settings",
+    title: "Settings",
+    summary:
+      "Profile-scoped tracker settings, list authorities, and workbook-derived defaults.",
+  },
   reports: {
     href: "reports",
     title: "Reports",
-    summary: "Per-profile reporting and date-range views placeholder.",
+    summary: "Formal weekly, monthly, and yearly workbook-style reporting from profile-scoped tracker rows.",
   },
   "profit-tracker": {
     href: "profit-tracker",
     title: "Profit Tracker",
-    summary: "Workbook-style profit drilldown placeholder.",
+    summary: "Selected-range profit view with current versus settled value split, account health, and activity drilldown.",
   },
 };
 
 export const trackerModuleCards = Object.values(trackerModuleDefinitions);
+
+export const trackerLandingCards = trackerModuleCards.filter(
+  (module) => module.href !== "profit-tracker"
+);
+
+export const primaryProfileModules = trackerModuleCards.filter((module) =>
+  [
+    "sportsbook-bets",
+    "free-bets",
+    "casino-offers",
+    "cash-adjustments",
+  ].includes(module.href)
+);
+
+export const profileOverflowModules = trackerModuleCards.filter((module) =>
+  ["dashboard", "accounts", "settings", "reports"].includes(module.href)
+);
 
 export const trackerTableModules = new Set<TrackerModuleKey>([
   "accounts",

@@ -1,0 +1,215 @@
+{
+  "cases": [
+    {
+      "case_id": "FB-001",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-001",
+        "status": "Placed",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "5.20",
+        "lay_commission_1": "0.02",
+        "expiry_datetime": "2026-07-10T18:00:00",
+        "date_settled": "2026-07-10"
+      },
+      "expected": {
+        "base_reference_lay_stake": "7.72",
+        "projected_current_pnl": "7.57",
+        "counts_as_open": true
+      }
+    },
+    {
+      "case_id": "FB-002",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-002",
+        "status": "Placed",
+        "result": "Pending",
+        "retention_mode": "SR",
+        "free_bet_value": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "5.20",
+        "lay_commission_1": "0.02",
+        "expiry_datetime": "2026-07-11T18:00:00",
+        "date_settled": "2026-07-11"
+      },
+      "expected": {
+        "base_reference_lay_stake": "9.65",
+        "projected_current_pnl": "9.46"
+      }
+    },
+    {
+      "case_id": "FB-003",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-003",
+        "status": "Settled",
+        "result": "Back Won",
+        "retention_mode": "SNR",
+        "free_bet_value": "5.00",
+        "back_odds": "6.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "6.20",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-12"
+      },
+      "expected": {
+        "uses_back_win_branch": true
+      }
+    },
+    {
+      "case_id": "FB-004",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-004",
+        "status": "Settled",
+        "result": "Lay Won",
+        "retention_mode": "SR",
+        "free_bet_value": "5.00",
+        "back_odds": "4.50",
+        "match_strategy": "Standard",
+        "lay_odds_1": "4.70",
+        "lay_commission_1": "0.02",
+        "date_settled": "2026-07-13"
+      },
+      "expected": {
+        "uses_lay_win_branch": true
+      }
+    },
+    {
+      "case_id": "FB-005",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-005",
+        "status": "Available",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "5.00",
+        "back_odds": "4.00",
+        "match_strategy": "No Lay",
+        "expiry_datetime": "2026-07-01T09:00:00",
+        "date_settled": "2026-07-02"
+      },
+      "expected": {
+        "counts_as_open": true,
+        "is_overdue": true,
+        "projected_current_pnl": "0.00"
+      }
+    },
+    {
+      "case_id": "FB-006",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-006",
+        "status": "Settled",
+        "result": "Back Won",
+        "retention_mode": "SR",
+        "free_bet_value": "10.00",
+        "back_odds": "3.50",
+        "match_strategy": "Standard",
+        "lay_odds_1": "3.70",
+        "lay_commission_1": "0.02",
+        "manual_override_value": "4.20",
+        "manual_override_reason": "Final settlement correction",
+        "date_settled": "2026-07-14"
+      },
+      "expected": {
+        "final_net_pnl": "4.20"
+      }
+    },
+    {
+      "case_id": "FB-007",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-007",
+        "status": "Placed",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Custom",
+        "lay_odds_1": "5.20",
+        "lay_commission_1": "0.02"
+      },
+      "expected": {
+        "calculation_state": "incomplete"
+      }
+    },
+    {
+      "case_id": "FB-008",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-008",
+        "status": "Not Yet Awarded",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "",
+        "back_odds": "",
+        "match_strategy": "Standard",
+        "lay_odds_1": "",
+        "lay_commission_1": ""
+      },
+      "expected": {
+        "calculation_state": "resolved",
+        "projected_current_pnl": "0.00",
+        "reporting_value": "0.00",
+        "counts_as_open": true
+      }
+    },
+    {
+      "case_id": "FB-009",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-009",
+        "status": "Available",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "",
+        "back_odds": "",
+        "match_strategy": "Standard",
+        "lay_odds_1": "",
+        "lay_commission_1": ""
+      },
+      "expected": {
+        "calculation_state": "resolved",
+        "projected_current_pnl": "0.00",
+        "reporting_value": "0.00",
+        "counts_as_open": true
+      }
+    }
+  ],
+  "profile_isolation_case": {
+    "as_of_datetime": "2026-07-01T12:00:00",
+    "rows": [
+      {
+        "profile_id": "PROFILE-001",
+        "record_id": "FB-007-A",
+        "status": "Placed",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "5.20",
+        "lay_commission_1": "0.02"
+      },
+      {
+        "profile_id": "PROFILE-002",
+        "record_id": "FB-007-B",
+        "status": "Placed",
+        "result": "Pending",
+        "retention_mode": "SR",
+        "free_bet_value": "8.00",
+        "back_odds": "4.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "4.10",
+        "lay_commission_1": "0.02"
+      }
+    ]
+  }
+}

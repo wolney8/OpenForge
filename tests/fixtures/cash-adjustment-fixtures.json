@@ -1,0 +1,50 @@
+[
+  {
+    "name": "incoming_top_up",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CA-001",
+      "adjustment_date": "2026-07-15 11:30:00",
+      "direction": "In",
+      "amount": "25.00",
+      "adjustment_type": "TopUp"
+    },
+    "expected": {
+      "signed_amount": "25.00",
+      "week_label": "W/C 13/07/2026",
+      "calculation_state": "resolved"
+    }
+  },
+  {
+    "name": "outgoing_withdrawal",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CA-002",
+      "adjustment_date": "2026-07-16 09:15:00",
+      "direction": "Out",
+      "amount": "50.00",
+      "adjustment_type": "Withdrawal"
+    },
+    "expected": {
+      "signed_amount": "-50.00",
+      "week_label": "W/C 13/07/2026",
+      "calculation_state": "resolved"
+    }
+  },
+  {
+    "name": "invalid_amount_is_incomplete",
+    "input": {
+      "profile_id": "profile-demo-001",
+      "record_id": "CA-003",
+      "adjustment_date": "2026-07-17 08:00:00",
+      "direction": "Out",
+      "amount": "",
+      "adjustment_type": "Deduction"
+    },
+    "expected": {
+      "signed_amount": null,
+      "week_label": "W/C 13/07/2026",
+      "calculation_state": "incomplete"
+    }
+  }
+]
