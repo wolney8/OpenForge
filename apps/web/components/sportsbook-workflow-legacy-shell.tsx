@@ -1641,7 +1641,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setWorkflowVisible(true);
     setTableCollapsed(Boolean(options?.collapseTable));
-    setStatusMessage(`Loaded ${rowId} for review and editing.`);
+    setStatusMessage(`Opened sportsbook bet ${rowId} for editing.`);
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
@@ -1659,7 +1659,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
-    setStatusMessage("Creating a new sportsbook row for this profile.");
+    setStatusMessage("New sportsbook bet ready. Complete the required fields, then save.");
     revealEditor({ expandLedger: false });
   }
 
@@ -1722,8 +1722,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       options?.autosaveLabel
         ? `${options.autosaveLabel} autosaved for ${saved.sportsbook_bet_id}.`
         : isEditing
-          ? `Updated ${saved.sportsbook_bet_id} inside this profile tracker.`
-          : `Created ${saved.sportsbook_bet_id} inside this profile tracker.`
+          ? `Updated sportsbook bet ${saved.sportsbook_bet_id}.`
+          : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
     );
   }
 
@@ -1769,7 +1769,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
 
     await loadRows(null);
     setWorkflowVisible(false);
-    setStatusMessage(`Deleted ${selectedId} from this profile tracker.`);
+    setStatusMessage(`Deleted sportsbook bet ${selectedId}.`);
   }
 
   async function applySuggestedLayValue() {
@@ -1838,7 +1838,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} />
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack">
         <div className="table-toolbar">
           <div className="stack">

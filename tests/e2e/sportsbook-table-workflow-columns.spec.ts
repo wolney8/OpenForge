@@ -22,6 +22,12 @@ test("Sportsbook table uses workflow-first columns and action buttons", async ({
   const firstRow = page.locator(".data-table tbody tr").first();
   await expect(firstRow.getByRole("button").first()).toBeVisible();
 
+  const settlesValues = await page
+    .locator(".data-table tbody tr td:first-child")
+    .allTextContents();
+  expect(settlesValues.some((value) => /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/.test(value.trim()))).toBeTruthy();
+  expect(settlesValues.every((value) => !/^\d{4}-\d{2}-\d{2}/.test(value.trim()))).toBeTruthy();
+
   await page.getByRole("button", { name: "Open sportsbook filter and column controls" }).click();
   await expect(page.getByRole("dialog", { name: "Sportsbook filter controls" })).toBeVisible();
 });

@@ -164,6 +164,10 @@ test("Legacy sportsbook rows keep deprecated offer-type values re-openable witho
   await page.getByRole("button", { name: "Add sportsbook row" }).click();
   const newRowOfferTypeSelect = page.getByLabel("Offer type (promotion mechanism)");
   await expect(newRowOfferTypeSelect.locator('option[value="None"]')).toHaveCount(0);
+  await page
+    .getByRole("dialog", { name: "Create sportsbook row" })
+    .locator(".workflow-panel-header .button-link", { hasText: "Close" })
+    .click();
 
   const row = page.locator(".data-table tbody tr", { hasText: "Legacy None Offer Type Match" }).first();
   await expect(row).toBeVisible();

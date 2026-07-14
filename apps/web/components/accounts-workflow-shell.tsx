@@ -143,6 +143,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
+  const isCreatingDraftRef = useRef(false);
   const pageSize = 10;
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
@@ -188,6 +189,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             : null;
         setSelectedId(selected);
         if (selected) {
+          isCreatingDraftRef.current = false;
           const activeRecord = nextRows.find((row) => row.account_id === selected);
           if (activeRecord) {
             const nextFormState = recordToForm(activeRecord);
@@ -196,6 +198,10 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           }
           setWorkflowVisible(true);
         } else {
+          if (isCreatingDraftRef.current) {
+            setWorkflowVisible(true);
+            return;
+          }
           const blankForm = createBlankForm();
           setFormState(blankForm);
           setPristineFormState(blankForm);
@@ -337,6 +343,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       return;
     }
     setSelectedId(rowId);
+    isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
     const nextFormState = recordToForm(record);
     setFormState(nextFormState);
@@ -345,7 +352,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setEditorExpanded(true);
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
-    setStatusMessage(`Loaded ${rowId}.`);
+    setStatusMessage(`Opened account ${rowId} for editing.`);
   }
 
   function startNewRow() {
@@ -353,6 +360,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       return;
     }
     setSelectedId(null);
+    isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
     const blankForm = createBlankForm();
     setFormState(blankForm);
@@ -360,7 +368,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setEditorExpanded(true);
     revealEditor({ expandLedger: true });
-    setStatusMessage("Creating a new account row for this profile.");
+    setStatusMessage("New account ready. Complete the required fields, then save.");
   }
 
   function handleResetForm() {
@@ -369,7 +377,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       setFormState(nextFormState);
       setPristineFormState(nextFormState);
       setErrorMessage("");
-      setStatusMessage(`Reverted unsaved changes for ${selectedRow.account_id}.`);
+      setStatusMessage(`Reverted unsaved changes for account ${selectedRow.account_id}.`);
       return;
     }
 
@@ -379,6 +387,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setWorkflowVisible(false);
     setTableCollapsed(false);
+    isCreatingDraftRef.current = false;
     setStatusMessage("Cleared the unsaved account draft.");
   }
 
@@ -406,19 +415,20 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     }
 
     const saved = (await response.json()) as AccountRecord;
+    isCreatingDraftRef.current = false;
     await loadRows(null);
     setWorkflowVisible(false);
     setTableCollapsed(false);
     setStatusMessage(
       isEditing
-        ? `Updated ${saved.account_id} inside this profile tracker.`
-        : `Created ${saved.account_id} inside this profile tracker.`
+        ? `Updated account ${saved.account_id}.`
+        : `Created account ${saved.account_id}.`
     );
   }
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} />
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Accounts</h1>

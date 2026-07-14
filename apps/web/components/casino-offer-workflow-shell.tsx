@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { EditorSection } from "@/components/editor-section";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -19,6 +20,7 @@ import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } fro
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   casinoOfferTypeOptions,
   casinoOfferResultOptions,
@@ -1626,7 +1628,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage(`Loaded ${rowId}.`);
+    setStatusMessage(`Opened casino offer ${rowId} for editing.`);
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
   }
@@ -1645,7 +1647,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage("Creating a new casino row.");
+    setStatusMessage("New casino offer ready. Complete the required fields, then save.");
     revealEditor({ expandLedger: true });
   }
 
@@ -1656,7 +1658,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
-    setStatusMessage("Closed casino editor.");
+    setStatusMessage("");
   }
 
   function buildPersistForm(nextFormState: CasinoOfferFormState): CasinoOfferFormState {
@@ -1692,7 +1694,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
           ...getMissingCampaignFields(resolvedFormState),
           ...getMissingRewardFields(resolvedFormState),
         ];
-        setStatusMessage(`Complete the required casino workflow fields before saving. Missing: ${missingFields.join(", ")}.`);
+        setStatusMessage(`Complete required casino-offer fields before saving: ${missingFields.join(", ")}.`);
       }
       return false;
     }
@@ -1732,8 +1734,8 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
       options?.autosaveLabel
         ? `${options.autosaveLabel} autosaved for ${saved.casino_offer_id}.`
         : isEditing
-          ? `Updated ${saved.casino_offer_id} inside this profile tracker.`
-          : `Created ${saved.casino_offer_id} inside this profile tracker.`
+          ? `Updated casino offer ${saved.casino_offer_id}.`
+          : `Created casino offer ${saved.casino_offer_id}.`
     );
     return true;
   }
@@ -1797,7 +1799,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
       setErrorMessage("");
       setShowOfferIdentityValidation(false);
       setSettledEditEnabled(false);
-      setStatusMessage(`Reverted unsaved changes for ${selectedRow.casino_offer_id}.`);
+      setStatusMessage(`Reverted unsaved changes for casino offer ${selectedRow.casino_offer_id}.`);
       return;
     }
 
@@ -1807,7 +1809,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage("Cleared the unsaved casino draft.");
+    setStatusMessage("Cleared the unsaved casino-offer draft.");
   }
 
   async function handleDeleteSelectedRow() {
@@ -1834,7 +1836,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
 
     await loadRows(null);
     setWorkflowVisible(false);
-    setStatusMessage(`Deleted ${selectedId} from this profile tracker.`);
+    setStatusMessage(`Deleted casino offer ${selectedId}.`);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -1917,7 +1919,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} />
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Casino Offers</h1>
@@ -2115,7 +2117,9 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
                       const rowId = String(row.casino_offer_id);
                       const sourceRow = casinoRowsById.get(rowId);
                       const issueTone = sourceRow ? getCasinoIssueTone(sourceRow) : null;
-                      const rowIssueBadges = sourceRow ? getCasinoIssueBadges(sourceRow) : [];
+                      const rowIssueBadges = sourceRow
+                        ? sortIssueBadgesByPriority(getCasinoIssueBadges(sourceRow))
+                        : [];
                       return (
                         <tr
                           className={[
@@ -2550,11 +2554,13 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
           </section>
         )}
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Offer setup</span>
-              {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-            </div>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+            }
+            invalid={offerIdentityValidationActive && missingOfferIdentityFields.length > 0}
+            title="Offer setup"
+          >
             {offerIdentityValidationActive && missingOfferIdentityFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required Offer identity fields: {missingOfferIdentityFields.join(", ")}.
@@ -2677,16 +2683,20 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </section>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">{getCasinoCampaignHeading(formState.offer_type)}</span>
-              {isSettledReadOnly ? (
+          </EditorSection>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? (
                 <span className="section-lock-chip">Settled row locked</span>
               ) : !campaignUnlocked ? (
                 <span className="section-lock-chip">{getCasinoCampaignLockReason(formState)}</span>
-              ) : null}
-            </div>
+              ) : null
+            }
+            invalid={
+              offerIdentityValidationActive && campaignUnlocked && missingCampaignFields.length > 0
+            }
+            title={getCasinoCampaignHeading(formState.offer_type)}
+          >
             {offerIdentityValidationActive && campaignUnlocked && missingCampaignFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required campaign fields: {missingCampaignFields.join(", ")}.
@@ -2827,17 +2837,21 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
           ) : null}
             </div>
             </fieldset>
-          </section>
+          </EditorSection>
           {showsRewardSection ? (
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">{getCasinoRewardHeading(formState.offer_type)}</span>
-              {isSettledReadOnly ? (
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? (
                 <span className="section-lock-chip">Settled row locked</span>
               ) : !rewardUnlocked ? (
                 <span className="section-lock-chip">{getCasinoRewardLockReason(formState)}</span>
-              ) : null}
-            </div>
+              ) : null
+            }
+            invalid={
+              offerIdentityValidationActive && rewardUnlocked && missingRewardFields.length > 0
+            }
+            title={getCasinoRewardHeading(formState.offer_type)}
+          >
             {offerIdentityValidationActive && rewardUnlocked && missingRewardFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required reward fields: {missingRewardFields.join(", ")}.
@@ -2941,13 +2955,14 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
           ) : null}
             </div>
             </fieldset>
-          </section>
+          </EditorSection>
           ) : null}
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Status and settlement</span>
-              {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-            </div>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+            }
+            title="Status and settlement"
+          >
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
           <label className="field-control">
@@ -2988,9 +3003,8 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
           </label>
             </div>
             </fieldset>
-          </section>
-          <details className="content-subpanel stack field-span-2">
-            <summary className="eyebrow">Advanced controls</summary>
+          </EditorSection>
+          <EditorSection defaultOpen={false} title="Advanced controls">
             {selectedRow?.calculation_notes.length ? (
               <section className="stack">
                 <span className="eyebrow">Calculation notes</span>
@@ -3035,7 +3049,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </details>
+          </EditorSection>
           <div className="tracker-nav field-span-2">
             <button className="review-chip review-chip-copy" disabled={isPending || isSettledReadOnly} type="submit">
               Save

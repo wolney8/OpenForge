@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test("Sportsbook review filter is modal-driven and hidden columns do not break search", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.removeItem(
+      "openforge-ledger-table-mode:profile-demo-001:sportsbook-bets"
+    );
+    window.localStorage.removeItem(
+      "openforge-ledger-table-filters:profile-demo-001:sportsbook-bets"
+    );
+  });
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
   await page.waitForLoadState("networkidle");
 
@@ -21,8 +29,10 @@ test("Sportsbook review filter is modal-driven and hidden columns do not break s
   await filterDialog.getByRole("button", { name: "Hide Campaign Tag" }).click();
   await filterDialog.getByRole("button", { name: "Done" }).click();
 
-  await expect(page.getByRole("button", { name: "Open sportsbook filter and column controls" }))
-    .toContainText("2");
+  await expect(
+    page.getByRole("button", { name: "Open sportsbook filter and column controls" })
+  ).toContainText("3");
+  await expect(page.getByLabel("3 active table controls")).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Recent" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Settling soon" })).toHaveCount(0);
