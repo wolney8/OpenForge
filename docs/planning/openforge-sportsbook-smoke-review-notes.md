@@ -931,6 +931,11 @@ Implemented targeted refinements from review feedback:
 - Removed duplicate free-bet helper copy (status-like pill + repeated paragraph).
 - Added tooltip-only helper for `Create Free Bet` with hover + keyboard focus behavior (`role="tooltip"`, `aria-describedby`, `title`).
 - Corrected Match Rating display semantics to use percentage output from ratio source (`round(match_rating * 100)`) while preserving backend parity storage as ratio.
+- Issue 47 closure hardening (2026-07-14):
+  - deterministic sportsbook fixture now asserts the contract ratio (`0.9524` for `2.00 / 2.10`)
+  - calculator pill now includes an explicit `Poor`, `Review`, `Good`, or `ARP risk` interpretation
+  - incomplete live previews no longer fall back to a stale persisted Match Rating
+  - focused Playwright covers live updates, incomplete-input hiding, accessible interpretation, and light/dark contrast
 
 Validation after refinement:
 

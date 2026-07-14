@@ -25,7 +25,7 @@ import {
   betTypeOptions,
   dedupeOptions,
   fixtureTypeOptions,
-  sportsbookOfferTypeOptions,
+  getOfferTypeOptions,
   sportsbookResultOptions,
   sportsbookStatusOptions,
   sportsbookStrategyOptions,
@@ -1399,13 +1399,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   );
 
   const offerTypeOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...sportsbookOfferTypeOptions,
-        ...rows.map((row) => row.offer_type),
-        formState.offer_type,
-      ]),
-    [formState.offer_type, rows]
+    () => getOfferTypeOptions(formState.offer_type),
+    [formState.offer_type]
   );
 
   const offerNameOptions = useMemo(() => {

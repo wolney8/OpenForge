@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
@@ -9,6 +9,7 @@ import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format"
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
+  usePersistedState,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
@@ -46,8 +47,9 @@ import {
   freeBetRetentionModeOptions,
   getAllowedBetTypesForOfferType,
   getDefaultBetTypeForOfferType,
+  getOfferTypeDescriptor,
+  getOfferTypeOptions,
   normalizeSportsbookBetType,
-  sportsbookOfferTypeOptions,
   sportsbookResultOptions,
   sportsbookStatusOptions,
   sportsbookStrategyOptions,
@@ -762,6 +764,25 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
     return value;
   }
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
+}
+
+function parseDateValue(value: string): Date | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDateWithinResolvedRange(value: Date | null, range: { start: Date; end: Date }): boolean {
+  if (!value) {
+    return false;
+  }
+  return value >= range.start && value <= range.end;
+}
+
+function getSportsbookRangeAnchor(row: Pick<SportsbookRecord, "date_settled" | "created_at">): Date | null {
+  return parseDateValue(row.date_settled) ?? parseDateValue(row.created_at);
 }
 
 function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState {
@@ -1997,6 +2018,19 @@ function getMatchRatingPillTone(value: number): "low" | "mid" | "good" | "arp" {
   return "low";
 }
 
+function getMatchRatingInterpretation(value: number) {
+  if (value >= 100) {
+    return "ARP risk";
+  }
+  if (value >= 70) {
+    return "Good";
+  }
+  if (value >= 40) {
+    return "Review";
+  }
+  return "Poor";
+}
+
 function getMultiLayPlannerSummary(
   formState: SportsbookFormState,
   resolvedCommission: string,
@@ -2334,10 +2368,16 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   const [pristineFormState, setPristineFormState] = useState<SportsbookFormState>(() =>
     createBlankForm()
   );
-  const [tableMode, setTableMode] = useState<SportsbookTableMode>("recent");
+  const [tableMode, setTableMode] = usePersistedState<SportsbookTableMode>(
+    `openforge-ledger-table-mode:${profileId}:sportsbook-bets`,
+    "recent"
+  );
   const [tableSort, setTableSort] = useState<SportsbookTableSort | null>(null);
   const [query, setQuery] = useState("");
-  const [tableFilters, setTableFilters] = useState<SportsbookTableFilterState>(emptyTableFilters);
+  const [tableFilters, setTableFilters] = usePersistedState<SportsbookTableFilterState>(
+    `openforge-ledger-table-filters:${profileId}:sportsbook-bets`,
+    emptyTableFilters
+  );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<SportsbookColumnKey>>(
     () => new Set(defaultVisibleSportsbookColumns)
@@ -2427,14 +2467,6 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
         visibleColumnKeys.has(column.key as SportsbookColumnKey)
       ),
     [visibleColumnKeys]
-  );
-  const visibleTableWidth = useMemo(
-    () =>
-      tableColumns.reduce(
-        (sum, column) => sum + (columnWidths[column.key as SportsbookColumnKey] ?? defaultSportsbookColumnWidths[column.key as SportsbookColumnKey]),
-        0
-      ),
-    [columnWidths, tableColumns]
   );
 
   useToastDismiss(statusMessage, clearStatusMessage);
@@ -2622,13 +2654,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   );
 
   const offerTypeOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...sportsbookOfferTypeOptions,
-        ...rows.map((row) => row.offer_type),
-        formState.offer_type,
-      ]),
-    [formState.offer_type, rows]
+    () => getOfferTypeOptions(formState.offer_type),
+    [formState.offer_type]
   );
 
   const betTypeOptionsResolved = useMemo(
@@ -2679,6 +2706,10 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       currentValue: formState.offer_name,
     });
   }, [formState.bookmaker, formState.offer_name, formState.offer_type, lookupValues, rows]);
+  const offerTypeDescriptor = useMemo(
+    () => getOfferTypeDescriptor(formState.offer_type),
+    [formState.offer_type]
+  );
 
   const freeBetBridgeBetTypeOptions = useMemo(
     () =>
@@ -2891,7 +2922,9 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     (note) => note !== "Pending row uses projected current value until settlement."
   );
   const activeMatchRating =
-    activePreviewCalculation?.match_rating ?? selectedSportsbookRow?.match_rating ?? null;
+    activePreviewCalculation !== null
+      ? activePreviewCalculation.match_rating
+      : selectedSportsbookRow?.match_rating ?? null;
   const activeMatchRatingRatio = parseNumericInput(activeMatchRating ?? "");
   const activeMatchRatingPercentValue =
     activeMatchRatingRatio === null ? null : activeMatchRatingRatio * 100;
@@ -2906,6 +2939,10 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     activeMatchRatingPercentValue === null
       ? null
       : getMatchRatingPillTone(activeMatchRatingPercentValue);
+  const activeMatchRatingInterpretation =
+    activeMatchRatingPercentValue === null
+      ? null
+      : getMatchRatingInterpretation(activeMatchRatingPercentValue);
   const isCalculatedState = activeCalculationState === "resolved";
   const workflowRule = useMemo(
     () =>
@@ -3277,7 +3314,10 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   }, [placedRange, query, sportsbookFilteredReviewRows]);
 
   const quickView = useMemo(() => {
-    const totalReportingValue = rows.reduce((sum, row) => {
+    const rangeRows = rows.filter((row) =>
+      isDateWithinResolvedRange(getSportsbookRangeAnchor(row), placedRange)
+    );
+    const totalReportingValue = rangeRows.reduce((sum, row) => {
       const value = parseNumericInput(
         row.reporting_value ?? row.final_net_pnl ?? row.projected_current_pnl ?? ""
       );
@@ -3285,16 +3325,16 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     }, 0);
 
     return {
-      openCount: rows.filter((row) => row.counts_as_open).length,
-      overdueCount: rows.filter((row) => row.is_overdue).length,
-      placedCount: rows.filter((row) => row.status === "Placed").length,
-      placeholderCount: rows.filter((row) => sportsbookPlaceholderStatuses.has(row.status)).length,
-      underlayCount: rows.filter((row) => row.match_strategy === "Underlay").length,
-      noLayCount: rows.filter((row) => row.match_strategy === "No Lay").length,
-      settlingCount: rows.filter((row) => row.date_settled.trim()).length,
+      openCount: rangeRows.filter((row) => row.counts_as_open).length,
+      overdueCount: rangeRows.filter((row) => row.is_overdue).length,
+      placedCount: rangeRows.filter((row) => row.status === "Placed").length,
+      placeholderCount: rangeRows.filter((row) => sportsbookPlaceholderStatuses.has(row.status)).length,
+      underlayCount: rangeRows.filter((row) => row.match_strategy === "Underlay").length,
+      noLayCount: rangeRows.filter((row) => row.match_strategy === "No Lay").length,
+      settlingCount: rangeRows.filter((row) => row.date_settled.trim()).length,
       totalReportingValue,
     };
-  }, [rows]);
+  }, [placedRange, rows]);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
@@ -3322,7 +3362,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       Array.from(columnHideableKeys).filter((columnKey) => !visibleColumnKeys.has(columnKey)).length,
     [visibleColumnKeys]
   );
-  const activeTableControlCount = activeFilterCount + hiddenColumnCount;
+  const activeTableControlCount =
+    activeFilterCount + hiddenColumnCount + (tableMode !== "recent" ? 1 : 0);
   const hasActiveTableControls = activeTableControlCount > 0;
 
   const updateTableFilter = useCallback(
@@ -3333,7 +3374,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       }));
       setCurrentPage(1);
     },
-    []
+    [setTableFilters]
   );
 
   const toggleColumnVisibility = useCallback(
@@ -3375,13 +3416,14 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
         return current;
       });
     },
-    [visibleColumnKeys]
+    [setTableFilters, visibleColumnKeys]
   );
 
   const clearTableFilters = useCallback(() => {
+    setTableMode("recent");
     setTableFilters(emptyTableFilters);
     setCurrentPage(1);
-  }, []);
+  }, [setTableFilters, setTableMode]);
 
   const strategyColumnVisible = visibleColumnKeys.has("match_strategy");
   const offerDetailsColumnVisible = visibleColumnKeys.has("offer_details");
@@ -3611,7 +3653,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     await loadRows(saved.sportsbook_bet_id);
     setSettledEditEnabled(false);
     if (!isEditing && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel)) {
-      setQuery(saved.sportsbook_bet_id);
+      setQuery("");
       setCurrentPage(1);
     }
     if (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel) {
@@ -3761,7 +3803,10 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   async function updateRowFromTable(
     record: SportsbookRecord,
     overrides: Partial<SportsbookFormState>,
-    successMessage: string
+    successMessage: string,
+    options?: {
+      preserveTableView?: boolean;
+    }
   ) {
     setErrorMessage("");
     const response = await fetch(
@@ -3781,7 +3826,11 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       return false;
     }
 
-    await loadRows(record.sportsbook_bet_id);
+    await loadRows(options?.preserveTableView ? null : record.sportsbook_bet_id);
+    if (options?.preserveTableView) {
+      setWorkflowVisible(false);
+      setTableCollapsed(false);
+    }
     setStatusMessage(successMessage);
     return true;
   }
@@ -3830,7 +3879,8 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         result: outcomeModalState.result,
         date_settled: outcomeModalState.date_settled,
       },
-      `Updated outcome details for ${sourceRow.sportsbook_bet_id}.`
+      `Updated outcome details for ${sourceRow.sportsbook_bet_id}.`,
+      { preserveTableView: true }
     );
     setOutcomeModalState(null);
   }
@@ -3846,45 +3896,78 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       return;
     }
 
-  const prefill = {
-    bookmaker: freeBetBridgeModalState.bookmaker,
-    offer_type: freeBetBridgeModalState.offer_type,
-    bet_type: freeBetBridgeModalState.bet_type,
-      fixture_type: freeBetBridgeModalState.fixture_type,
-      event_name: freeBetBridgeModalState.event_name,
-      offer_name: freeBetBridgeModalState.offer_name,
-    free_bet_value: freeBetBridgeModalState.free_bet_value,
-    expiry_datetime: freeBetBridgeModalState.expiry_datetime,
-    retention_mode: freeBetBridgeModalState.retention_mode,
-    status: freeBetBridgeModalState.award_timing === "placement" ? "Available" : "Not Yet Awarded",
-    from_sportsbook_bet_id: freeBetBridgeModalState.sourceRowId,
-  };
+    setErrorMessage("");
+    const freeBetStatus =
+      freeBetBridgeModalState.award_timing === "placement" ? "Available" : "Not Yet Awarded";
 
-    try {
-      sessionStorage.setItem(`openforge:free-bet-prefill:${profileId}`, JSON.stringify(prefill));
-    } catch {
-      // sessionStorage unavailable — continue without prefill
+    const freeBetCreateResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        event_name: freeBetBridgeModalState.event_name,
+        offer_text: sourceRow.offer_text || sourceRow.offer_name || "Free bet from sportsbook",
+        bookmaker: freeBetBridgeModalState.bookmaker,
+        offer_type: freeBetBridgeModalState.offer_type,
+        bet_type: freeBetBridgeModalState.bet_type,
+        offer_name: freeBetBridgeModalState.offer_name,
+        fixture_type: freeBetBridgeModalState.fixture_type,
+        status: freeBetStatus,
+        result: "Pending",
+        retention_mode: freeBetBridgeModalState.retention_mode,
+        free_bet_value: freeBetBridgeModalState.free_bet_value,
+        back_odds: "",
+        match_strategy: "Standard",
+        lay_odds_1: "",
+        lay_actual: "",
+        lay_matched_stake_1: "",
+        lay_commission_1: "",
+        exchange_name: "",
+        expiry_datetime: fromDateTimeLocalValue(freeBetBridgeModalState.expiry_datetime),
+        date_settled: "",
+        origin_qual_bet_id: freeBetBridgeModalState.sourceRowId,
+        offer_group_id: "",
+        user_notes: "",
+        manual_override_value: "",
+        manual_override_reason: "",
+      }),
+    });
+
+    if (!freeBetCreateResponse.ok) {
+      const detail = await freeBetCreateResponse.text();
+      setErrorMessage(detail || "Unable to create free bet from sportsbook row");
+      return;
     }
 
-  if (
-    freeBetBridgeModalState.award_timing === "placement" &&
-    sourceRow.status !== "Free Bet Awarded"
-  ) {
-    const updated = await updateRowFromTable(
-      sourceRow,
-      {
-        status: "Free Bet Awarded",
-        result: sourceRow.result,
+    const createdFreeBet = (await freeBetCreateResponse.json()) as { free_bet_id: string };
+
+    if (
+      freeBetBridgeModalState.award_timing === "placement" &&
+      sourceRow.status !== "Free Bet Awarded"
+    ) {
+      const updated = await updateRowFromTable(
+        sourceRow,
+        {
+          status: "Free Bet Awarded",
+          result: sourceRow.result,
         },
-        `Marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`
+        `Created free bet ${createdFreeBet.free_bet_id} and marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`,
+        { preserveTableView: true }
       );
       if (!updated) {
         return;
       }
+    } else {
+      await loadRows(null);
+      setWorkflowVisible(false);
+      setTableCollapsed(false);
+      setStatusMessage(
+        `Created free bet ${createdFreeBet.free_bet_id} from ${sourceRow.sportsbook_bet_id} and kept the sportsbook row unchanged.`
+      );
     }
 
     setFreeBetBridgeModalState(null);
-    window.location.assign(`/profiles/${profileId}/tracker/free-bets`);
   }
 
   async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
@@ -4502,7 +4585,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </svg>
               {hasActiveTableControls ? (
                 <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">
-                  {activeTableControlCount}
+                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
                 </span>
               ) : null}
             </button>
@@ -4661,12 +4744,6 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                         ? getSportsbookRowStateClassName(sourceRow)
                         : "";
                       const rowIssueBadges = sourceRow ? getSportsbookIssueBadges(sourceRow) : [];
-                      const rowStyle =
-                        rowIssueBadges.length > 0
-                          ? ({
-                              ["--issue-overlay-width" as string]: `${Math.max(visibleTableWidth - 24, 180)}px`,
-                            } as CSSProperties)
-                          : undefined;
                       return (
                         <tr
                           className={[isSelected ? "is-selected-row" : "", rowStateClassName]
@@ -4675,7 +4752,6 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                           key={`${rowId}-${index}`}
                           onClick={() => selectRow(rowId)}
                           onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
-                          style={rowStyle}
                         >
                           {tableColumns.map((column) => (
                             <td
@@ -4794,7 +4870,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 </select>
               </label>
               <label className="field-control">
-                <span>Offer type</span>
+                <span>Offer type (promotion mechanism)</span>
                 <select
                   disabled={!offerDetailsColumnVisible}
                   onChange={(event) => updateTableFilter("offer_type", event.target.value)}
@@ -5227,7 +5303,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 Close
               </button>
               <button className="modal-primary-button" onClick={submitFreeBetBridgeModal} type="button">
-                Continue to free bets
+                Create free bet
               </button>
             </div>
           </section>
@@ -5235,29 +5311,36 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       ) : null}
 
       {workflowVisible ? (
-        <section className="content-panel stack workflow-editor-panel" ref={editorRef}>
-          <div className="workflow-panel-header">
-            <div className="stack">
-              <span className="eyebrow">
-                {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
-              </span>
-              <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
-            </div>
-            <div className="tracker-nav">
-              {isSettledReadOnly ? (
-                <button
-                  className="button-link"
-                  onClick={() => setSettledEditEnabled(true)}
-                  type="button"
-                >
-                  Edit settled row
+        <div className="modal-backdrop" onClick={closeEditor}>
+          <section
+            aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
+            className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+            onClick={(event) => event.stopPropagation()}
+            ref={editorRef}
+            role="dialog"
+          >
+            <div className="workflow-panel-header">
+              <div className="stack">
+                <span className="eyebrow">
+                  {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
+                </span>
+                <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
+              </div>
+              <div className="tracker-nav">
+                {isSettledReadOnly ? (
+                  <button
+                    className="button-link"
+                    onClick={() => setSettledEditEnabled(true)}
+                    type="button"
+                  >
+                    Edit settled row
+                  </button>
+                ) : null}
+                <button className="button-link" onClick={closeEditor} type="button">
+                  Close
                 </button>
-              ) : null}
-              <button className="button-link" onClick={closeEditor} type="button">
-                Close
-              </button>
+              </div>
             </div>
-          </div>
           {showCalculationSummary ? (
             <section className="stat-strip" aria-label="Sportsbook editor overview">
               <article className="stat-card">
@@ -5286,7 +5369,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 <span className="eyebrow">Offer path</span>
                 <strong>{formState.offer_type || "Offer type pending"}</strong>
                 <span>
-                  {[formState.bookmaker, formState.fixture_type].filter(Boolean).join(" • ") || "—"}
+                  {offerTypeDescriptor
+                    ? `${offerTypeDescriptor.calculatorFamily} • ${offerTypeDescriptor.summary}`
+                    : [formState.bookmaker, formState.fixture_type].filter(Boolean).join(" • ") || "—"}
                 </span>
               </article>
             </section>
@@ -5685,13 +5770,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                         {showMatchRatingPill ? (
                           <span
                             className={`table-chip calculator-match-rating-pill calculator-match-rating-pill-${activeMatchRatingTone}`}
+                            aria-label={`Match rating ${activeMatchRatingDisplay} percent. ${activeMatchRatingInterpretation}.`}
                             title={
                               activeMatchRatingTone === "arp"
                                 ? "100%+ can indicate ARP profile risk on some bookmakers."
-                                : "Qualifying-loss match rating"
+                                : "Back odds divided by lay odds; higher is a closer qualifying match."
                             }
                           >
-                            Match Rating {activeMatchRatingDisplay}%
+                            Match Rating {activeMatchRatingDisplay}% · {activeMatchRatingInterpretation}
                           </span>
                         ) : null}
                       </div>
@@ -6906,7 +6992,8 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </button>
             </div>
           </form>
-        </section>
+          </section>
+        </div>
       ) : null}
     </section>
   );

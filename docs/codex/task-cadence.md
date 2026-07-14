@@ -3,15 +3,17 @@
 Use this sequence for normal Codex work in this repository:
 
 1. Restate the objective in OpenForge terms.
-2. Identify the exact files and source-pack inputs involved.
-3. Identify financial, data-safety, and profile-isolation risks.
-4. Propose a short plan.
-5. Wait for approval when the task touches architecture, schema, calculations, auth, imports, reporting, or other money-sensitive behaviour.
-6. Implement only the approved scope.
-7. Run the narrowest relevant tests or checks.
-8. Report changed files.
-9. Report test results and anything not run.
-10. Stop for review before expanding scope.
+2. Update from `origin/main` and confirm the next branch starts from the latest merged baseline.
+3. Identify the exact files and source-pack inputs involved.
+4. Identify financial, data-safety, and profile-isolation risks.
+5. Propose a short plan.
+6. Wait for approval when the task touches architecture, schema, calculations, auth, imports, reporting, or other money-sensitive behaviour.
+7. Implement only the approved scope.
+8. Run the narrowest relevant tests or checks.
+9. Report changed files.
+10. Report test results and anything not run.
+11. Merge approved work back to `main` before starting the next issue branch.
+12. Stop for review before expanding scope.
 
 Extra guardrails:
 

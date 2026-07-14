@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("Sportsbook free-bet bridge carries modal values into the free-bet editor and leaves settlement-awarded rows unchanged by default", async ({
+test("Sportsbook free-bet bridge creates a free-bet row in place and leaves settlement-awarded rows unchanged by default", async ({
   page,
   request,
 }) => {
@@ -67,24 +67,24 @@ test("Sportsbook free-bet bridge carries modal values into the free-bet editor a
   const expiryInput = modal.getByLabel("Expiry");
   await expect(expiryInput).toHaveValue(/2026-07-25T18:00/);
 
-  await modal.getByRole("button", { name: "Continue to free bets" }).click();
+  await modal.getByRole("button", { name: "Create free bet" }).click();
 
-  await page.waitForURL(`**/profiles/${profileId}/tracker/free-bets`);
-  await page.waitForLoadState("networkidle");
-
-  const editor = page.locator(".workflow-editor-panel");
-  await expect(editor).toBeVisible();
-  await expect(editor).toContainText("Create free-bet row");
+  await expect(page).toHaveURL(new RegExp(`/profiles/${profileId}/tracker/sportsbook-bets$`));
+  await expect(page.locator('.modal-panel[aria-label="Copy sportsbook row to free bets"]')).toHaveCount(0);
   await expect(page.locator(".status-toast")).toContainText(createdRow.sportsbook_bet_id);
 
-  await expect(editor.getByLabel("Bookmaker")).toHaveValue("Bookmaker A");
-  await expect(editor.getByLabel("Offer type")).toHaveValue("Bet & Get");
-  await expect(editor.getByLabel("Bet type")).toHaveValue("Single");
-  await expect(editor.getByLabel("Campaign tag (optional)")).toHaveValue("Bridge Offer Name");
-  await expect(editor.getByLabel("Event name")).toHaveValue("Bridge Source Match");
-  await expect(editor.getByLabel("Free-bet value")).toHaveValue("7");
-  await expect(editor.getByLabel("Retention mode")).toHaveValue("SR");
-  await expect(editor.getByLabel("Status")).toHaveValue("Not Yet Awarded");
+  const freeBetsResponse = await request.get(`http://127.0.0.1:8010/profiles/${profileId}/free-bets`);
+  expect(freeBetsResponse.ok()).toBeTruthy();
+  const freeBets = await freeBetsResponse.json();
+  const createdFreeBet = freeBets.find((row: Record<string, string>) => row.event_name === "Bridge Source Match");
+  expect(createdFreeBet).toBeTruthy();
+  expect(createdFreeBet.bookmaker).toBe("Bookmaker A");
+  expect(createdFreeBet.offer_type).toBe("Bet & Get");
+  expect(createdFreeBet.bet_type).toBe("Single");
+  expect(createdFreeBet.offer_name).toBe("Bridge Offer Name");
+  expect(createdFreeBet.free_bet_value).toBe("7");
+  expect(createdFreeBet.retention_mode).toBe("SR");
+  expect(createdFreeBet.status).toBe("Not Yet Awarded");
 
   const sourceRowResponse = await request.get(
     `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
@@ -94,7 +94,7 @@ test("Sportsbook free-bet bridge carries modal values into the free-bet editor a
   expect(updatedRow.status).toBe("Placed");
 });
 
-test("Sportsbook free-bet bridge can award on placement and promote the source row immediately", async ({
+test("Sportsbook free-bet bridge can award on placement, create the free bet, and promote the source row immediately", async ({
   page,
   request,
 }) => {
@@ -154,13 +154,10 @@ test("Sportsbook free-bet bridge can award on placement and promote the source r
   const modal = page.locator('.modal-panel[aria-label="Copy sportsbook row to free bets"]');
   await expect(modal).toBeVisible();
   await modal.getByLabel("Free-bet award timing").selectOption("placement");
-  await modal.getByRole("button", { name: "Continue to free bets" }).click();
+  await modal.getByRole("button", { name: "Create free bet" }).click();
 
-  await page.waitForURL(`**/profiles/${profileId}/tracker/free-bets`);
-  await page.waitForLoadState("networkidle");
-
-  const editor = page.locator(".workflow-editor-panel");
-  await expect(editor.getByLabel("Status")).toHaveValue("Available");
+  await expect(page).toHaveURL(new RegExp(`/profiles/${profileId}/tracker/sportsbook-bets$`));
+  await expect(page.locator(".status-toast")).toContainText("free bet awarded");
 
   const sourceRowResponse = await request.get(
     `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
@@ -168,6 +165,15 @@ test("Sportsbook free-bet bridge can award on placement and promote the source r
   expect(sourceRowResponse.ok()).toBeTruthy();
   const updatedRow = await sourceRowResponse.json();
   expect(updatedRow.status).toBe("Free Bet Awarded");
+
+  const freeBetsResponse = await request.get(`http://127.0.0.1:8010/profiles/${profileId}/free-bets`);
+  expect(freeBetsResponse.ok()).toBeTruthy();
+  const freeBets = await freeBetsResponse.json();
+  const createdFreeBet = freeBets.find(
+    (row: Record<string, string>) => row.event_name === "Bridge Placement Award Match"
+  );
+  expect(createdFreeBet).toBeTruthy();
+  expect(createdFreeBet.status).toBe("Available");
 });
 
 test("Sportsbook free-bet bridge modal follows offer-type taxonomy for campaign tag and bet type", async ({

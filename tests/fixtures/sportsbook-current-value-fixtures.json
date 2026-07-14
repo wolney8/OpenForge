@@ -17,6 +17,7 @@
         "date_settled": "2026-07-03"
       },
       "expected": {
+        "match_rating": "0.9524",
         "reference_lay_stake_standard": "9.62",
         "calculated_liability_1": "10.58",
         "scenario_pnl_if_back_wins": "-0.58",

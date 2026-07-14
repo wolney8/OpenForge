@@ -58,6 +58,8 @@ test("Sportsbook outcome modal follows the same status and result lifecycle rule
 
   await modal.getByRole("button", { name: "Save" }).click();
   await expect(modal).toHaveCount(0);
+  await expect(page.locator(".workflow-editor-panel")).toHaveCount(0);
+  await expect(row).toBeVisible();
 
   const savedRowResponse = await request.get(
     `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`

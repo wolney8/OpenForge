@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -8,10 +8,12 @@ import { StatusToast } from "@/components/status-toast";
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
+  usePersistedState,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -50,6 +52,24 @@ type CashAdjustmentFormState = {
   affects_cash_snapshot: boolean;
   linked_account: string;
   description: string;
+};
+
+type TrackerSettingsRecord = {
+  profile_id: string;
+  active_date_preset: string;
+  custom_start_date: string;
+  custom_end_date: string;
+  range_back_days: number;
+  range_forward_days: number;
+  mug_bet_frequency_days: number;
+  free_bet_expiry_alert_window_days: number;
+  use_global_date_range_toggle: boolean;
+  this_month_mode: string;
+  default_free_bet_underlay_factor: string;
+  default_free_bet_overlay_factor: string;
+  default_bonus_retention_percent: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type CashAdjustmentTableMode =
@@ -266,6 +286,27 @@ function formatMoneyValue(value: string | null | undefined): string {
   return currencyFormatter.format(numeric);
 }
 
+function parseDateValue(value: string | null | undefined): Date | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDateWithinResolvedRange(
+  candidate: Date | null,
+  resolvedRange: ReturnType<typeof resolveDateRange>
+): boolean {
+  if (!candidate) {
+    return false;
+  }
+
+  return candidate >= resolvedRange.start && candidate <= resolvedRange.end;
+}
+
 function parseCurrencyLikeValue(value: string): number | null {
   const normalized = value.trim();
   if (!normalized) {
@@ -436,6 +477,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
 export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
+  const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -449,12 +491,18 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const [columnWidths, setColumnWidths] = useState<
     Partial<Record<CashAdjustmentColumnKey, number>>
   >(defaultCashAdjustmentColumnWidths);
-  const [tableFilters, setTableFilters] = useState<CashAdjustmentTableFilterState>(emptyTableFilters);
+  const [tableFilters, setTableFilters] = usePersistedState<CashAdjustmentTableFilterState>(
+    `openforge-ledger-table-filters:${profileId}:cash-adjustments`,
+    emptyTableFilters
+  );
   const [tableSort, setTableSort] = useState<CashAdjustmentTableSort | null>(null);
   const [formState, setFormState] = useState<CashAdjustmentFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] =
     useState<CashAdjustmentFormState>(createBlankForm);
-  const [tableMode, setTableMode] = useState<CashAdjustmentTableMode>("recent");
+  const [tableMode, setTableMode] = usePersistedState<CashAdjustmentTableMode>(
+    `openforge-ledger-table-mode:${profileId}:cash-adjustments`,
+    "recent"
+  );
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
@@ -477,17 +525,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         visibleColumnKeys.has(column.key as CashAdjustmentColumnKey)
       ),
     [visibleColumnKeys]
-  );
-  const visibleTableWidth = useMemo(
-    () =>
-      tableColumns.reduce(
-        (sum, column) =>
-          sum +
-          (columnWidths[column.key as CashAdjustmentColumnKey] ??
-            defaultCashAdjustmentColumnWidths[column.key as CashAdjustmentColumnKey]),
-        0
-      ),
-    [columnWidths, tableColumns]
   );
   const hiddenColumnCount = useMemo(
     () =>
@@ -589,15 +626,26 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setAccountAuthorities(nextRows);
   }, [profileId]);
 
+  const loadTrackerSettings = useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Unable to load tracker settings");
+    }
+    const nextSettings = (await response.json()) as TrackerSettingsRecord;
+    setTrackerSettings(nextSettings);
+  }, [profileId]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(), loadAccountAuthorities()]).catch((error: Error) => {
+      void Promise.all([loadRows(), loadAccountAuthorities(), loadTrackerSettings()]).catch((error: Error) => {
         setErrorMessage(error.message);
       });
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadAccountAuthorities, loadRows]);
+  }, [loadAccountAuthorities, loadRows, loadTrackerSettings]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.cash_adjustment_id === selectedId) ?? null,
@@ -729,14 +777,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       }));
       setCurrentPage(1);
     },
-    []
+    [setTableFilters]
   );
 
   const clearTableFilters = useCallback(() => {
     setTableMode("recent");
     setTableFilters(emptyTableFilters);
     setCurrentPage(1);
-  }, []);
+  }, [setTableFilters, setTableMode]);
 
   const toggleTableSort = useCallback((key: CashAdjustmentSortKey) => {
     setTableSort((current) => {
@@ -876,13 +924,27 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
     return items;
   }, [hasInvalidAdjustmentCombination]);
+  const resolvedDateRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
+        customStart: trackerSettings?.custom_start_date,
+        customEnd: trackerSettings?.custom_end_date,
+        rangeBackDays: trackerSettings?.range_back_days,
+        rangeForwardDays: trackerSettings?.range_forward_days,
+      }),
+    [trackerSettings]
+  );
   const quickView = useMemo(() => {
-    const withdrawals = rows.filter((row) => row.adjustment_type === "Withdrawal");
-    const costs = rows.filter((row) => costAdjustmentTypes.has(row.adjustment_type));
-    const investmentRows = rows.filter((row) => row.affects_investment);
-    const cashSnapshotRows = rows.filter((row) => row.affects_cash_snapshot);
+    const rangeRows = rows.filter((row) =>
+      isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)
+    );
+    const withdrawals = rangeRows.filter((row) => row.adjustment_type === "Withdrawal");
+    const costs = rangeRows.filter((row) => costAdjustmentTypes.has(row.adjustment_type));
+    const investmentRows = rangeRows.filter((row) => row.affects_investment);
+    const cashSnapshotRows = rangeRows.filter((row) => row.affects_cash_snapshot);
 
-    const signedTotal = rows.reduce((sum, row) => {
+    const signedTotal = rangeRows.reduce((sum, row) => {
       const parsed = Number((row.signed_amount ?? "").replace(/,/g, "").trim());
       return sum + (Number.isFinite(parsed) ? parsed : 0);
     }, 0);
@@ -902,7 +964,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       cashSnapshotCount: cashSnapshotRows.length,
       signedTotal,
     };
-  }, [rows]);
+  }, [resolvedDateRange, rows]);
 
   function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
     if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
@@ -1185,7 +1247,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   aria-label={`${activeTableControlCount} active table controls`}
                   className="table-filter-badge"
                 >
-                  {activeTableControlCount}
+                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
                 </span>
               ) : null}
             </button>
@@ -1325,12 +1387,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                       const rowId = String(row.cash_adjustment_id);
                       const sourceRow = cashAdjustmentRowsById.get(rowId);
                       const rowIssueBadges = sourceRow ? getCashAdjustmentIssueBadges(sourceRow) : [];
-                      const rowStyle =
-                        rowIssueBadges.length > 0
-                          ? ({
-                              ["--issue-overlay-width" as string]: `${Math.max(visibleTableWidth - 24, 180)}px`,
-                            } as CSSProperties)
-                          : undefined;
                       return (
                         <tr
                           className={[
@@ -1342,7 +1398,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                           key={`${rowId}-${index}`}
                           onClick={() => selectRow(rowId)}
                           onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
-                          style={rowStyle}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -1575,7 +1630,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       ) : null}
 
       {workflowVisible ? (
-      <section className="content-panel stack workflow-editor-panel" ref={editorRef}>
+        <div className="modal-backdrop" onClick={closeEditor}>
+      <section
+        aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
+        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        onClick={(event) => event.stopPropagation()}
+        ref={editorRef}
+        role="dialog"
+      >
           <div className="workflow-panel-header">
             <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit cash adjustment" : "Create cash adjustment"}</span>
@@ -1834,6 +1896,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             </form>
           </div>
       </section>
+      </div>
       ) : null}
     </section>
   );
