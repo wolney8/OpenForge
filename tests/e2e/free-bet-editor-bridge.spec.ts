@@ -62,14 +62,19 @@ test("Sportsbook editor Create Free Bet action reuses the bridge modal and defau
   await expect(modal).toBeVisible();
   await expect(modal.getByLabel("Free-bet award timing")).toHaveValue("settlement");
 
-  await modal.getByRole("button", { name: "Continue to free bets" }).click();
+  await modal.getByRole("button", { name: "Create free bet" }).click();
 
-  await page.waitForURL(`**/profiles/${profileId}/tracker/free-bets`);
+  await expect(page).toHaveURL(new RegExp(`/profiles/${profileId}/tracker/sportsbook-bets$`));
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator(".status-toast")).toContainText(createdRow.sportsbook_bet_id);
 
-  const freeBetEditor = page.locator(".workflow-editor-panel");
-  await expect(freeBetEditor).toBeVisible();
-  await expect(freeBetEditor).toContainText("Create free-bet row");
-  await expect(freeBetEditor.getByLabel("Status")).toHaveValue("Not Yet Awarded");
+  const freeBetsResponse = await request.get(
+    `http://127.0.0.1:8010/profiles/${profileId}/free-bets`
+  );
+  expect(freeBetsResponse.ok()).toBeTruthy();
+  const freeBets = (await freeBetsResponse.json()) as Array<Record<string, string>>;
+  const createdFreeBet = freeBets.find((row) => row.event_name === "Editor Bridge Match");
+  expect(createdFreeBet?.status).toBe("Not Yet Awarded");
 
   const sourceRowResponse = await request.get(
     `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`

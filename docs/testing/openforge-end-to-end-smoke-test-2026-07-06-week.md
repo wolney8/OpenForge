@@ -137,6 +137,10 @@ Notes:
 1. There are many similar named offer names, such as 'Bet 10 Get 5 In Play 1783849883944' and 'Bet 10 Get 5 In Play 1783889301460' we need this list to not repeat, and allow the Fund Manager to add to this list if he/she adds them to a Sportsbook row (and that row is not deleted). This is the same for "Casino offer names"
 - Groups, Platforms and Bookmakers:
 1. We need a single extensive table that has (like the workbook and similar to accounts) the Bookmaker, the linked platform and linked group and linked Riskteam (cannot mix and match, this needs to be set definitely here in Settings). You can provide me with a prompt to give to an internet-able LLM to generate this list and you can work from what is already available in the Workbook>Accounts, as this list is uptodate. But any missing values in Group,	Platform,	RiskTeam will need to be filled
+2. Deferred bookmaker-authority design for approval: replace independent bookmaker, group, and platform lists with a shared bookmaker brand catalogue. A catalogue entry should link the brand name and short display name to its legal operator, operator group, platform, risk-team/risk-cluster knowledge, licence reference/status, canonical domain, display theme, and optional approved local logo asset. Profile-owned accounts must reference this catalogue while retaining profile-specific status, balance, channel, and account-health data.
+3. Public regulatory data may seed legal operator, trading-name, domain, licence-reference, and licence-status fields. Platform and risk-team relationships are not authoritative regulatory fields and must be Fund Manager-maintained, carry a source/confidence/last-verified marker, and never be silently inferred.
+4. Recommended first-release ledger identity is an accessible themed text badge, for example a short bookmaker name with a controlled foreground/background pair. This avoids scraping, hotlinking, and logo licensing risks while reducing table noise. Approved local logo assets can be added later with a text fallback and accessible name.
+5. Add a Fund Manager display preference for bookmaker identity: `Name`, `Brand badge`, or `Logo` when an approved logo exists. The fallback order should be logo -> themed badge -> text. Whether this preference is Fund Manager-global or profile-overridable remains an explicit product decision before schema work.
 - General UX/UI of this page:
 1. needs refactoring and reorganising, long lists need to be collapsable and also need to be searchable. We will need a modal for editing items from any table much like how we intend to implement modals for editing in all other ledgers.
 2. "Add value" can be a smaller action button and should open a modal that asks for relivant details.
@@ -456,3 +460,130 @@ Recommended user smoke continuation:
 3. Change the tracker range and compare ledger cards with Dashboard open positions, overdue count, and liability.
 4. Check warning/info pills in both themes, especially `No Expiry`, `Not Laid`, `Part Laid`, and lifecycle states.
 5. Re-test sportsbook `Copy to free bets` for both settlement and placement award timing.
+
+## Codex regression close-out tranche 2026-07-14
+
+Completed in this tranche:
+
+- Free Bet calculator parity coverage now creates and removes its own synthetic row instead of depending on whichever shared ledger row happens to sort first
+- calculator assertions now verify the contract-backed Standard, Underlay, and Overlay suggestions without coupling the UI test to unrelated profile commission configuration
+- Free Bet, Casino Offer, and Cash Adjustment shell tests now reflect the approved modal editor contract rather than the retired inline/double-click-collapse workflow
+- create and edit modal tests verify that closing returns to the visible ledger and that opening an existing row without editing it does not mutate its displayed data
+- the sportsbook editor's nested `Create Free Bet` bridge now renders above the editor modal and remains fully interactive
+- filter and taxonomy browser tests now isolate persisted controls and close modal workflows explicitly, preventing execution-order failures
+
+Validation evidence:
+
+- focused Free Bet, Casino Offer, Cash Adjustment, and sportsbook-to-free-bet lifecycle group (`9 passed`)
+- settings propagation, tracker defaults, summary-card parity, and ledger modal-shell group (`11 passed`)
+- ledger modal create/edit transition regression (`6 passed`)
+- complete serial Playwright suite (`56 passed`, `1 intentionally skipped`)
+- `pnpm --filter @openforge/web lint` (passed)
+- `pnpm --filter @openforge/web typecheck` (passed; non-blocking stale browser-mapping metadata warning)
+- `pnpm --filter @openforge/web test` (`63 passed`)
+
+Handover status:
+
+- no financial formula or application behaviour changed in this close-out tranche
+- issue #10 product blockers identified in the July smoke notes have automated regression coverage where deterministic browser validation is practical
+- user confirmation is still required for the unchecked Free Bet, Casino Offer, Cash Adjustment, Accounts, Dashboard, Reports, and cross-module checklist items
+- the Settings authority-table and page-organisation refactor remains a separate, larger product tranche and should not be hidden inside issue #10 test maintenance
+- the only skipped Playwright path is the original scaffold-only login/profile placeholder test; current login and profile routes remain part of the manual checklist until that placeholder is replaced with a real route-flow test
+
+### Visual smoke correction: issue strips and editor sections
+
+- issue pills now use an unconstrained row overlay rather than inheriting the first column width
+- the overlay itself has no visible tint or shadow; a near-transparent backdrop layer applies blur only behind the combined pill width
+- issue pills remain side by side and highest-severity issues sort first
+- the row accent continues to use the highest issue severity while lower-severity pills remain visible in the same strip
+- Sportsbook, Free Bet, Casino Offer, and Cash Adjustment editor sections now use the same accessible collapsible section component
+- required sections gain a red heading, red outline, and gentle pulse after validation identifies missing or invalid required data
+- the validation pulse is disabled when the operating system requests reduced motion
+- section titles remain left aligned while the requested Material `collapse_content` / `expand_content` control remains right aligned
+- the editor loads the official Material Symbols Outlined font and applies its ligature/font-feature CSS explicitly, preventing the icon names from rendering as visible control text
+- section content remains mounted during the open/close transition so both directions animate smoothly rather than snapping shut
+- Sportsbook `Odds and matching` now remains visibly invalid while collapsed whenever Bet setup has unlocked the calculator but required calculator inputs are still missing
+
+Focused validation:
+
+- issue-priority unit regression (`1 passed`)
+- editor section collapse and invalid-state coverage across all four ledgers (`4 passed`)
+- right-aligned Material icon, smooth-transition, and collapsed sportsbook calculator validation coverage (`5 passed` total in the shared editor-section specification)
+- editor modal and close-action regression (`8 passed`)
+- sportsbook issue overlay geometry and lifecycle-chip regression (`1 passed`)
+- complete serial Playwright regression after the shared editor refactor (`60 passed`, `1 intentionally skipped`)
+
+Visual confirmation requested:
+
+1. Hover a row with two or more issues and confirm every pill is fully visible across later columns.
+2. Confirm the strip has no dark panel/drop shadow and only the text directly beneath the pill strip is blurred.
+3. Trigger a save with required fields missing, collapse the red section, and confirm its header and outline remain clearly actionable in both themes.
+
+### Toast notification consistency
+
+- ledger notifications now render above standard and nested modal backdrops, so modal blur cannot obscure them
+- the shared toast classifies messages as information, success, warning, or error and applies matching light/dark styling and announcement urgency
+- every toast provides a keyboard-accessible dismiss action while retaining a five-second timed dismissal
+- repeated create, open, update, delete, reset, and validation wording is standardised across Sportsbook Bets, Free Bets, Casino Offers, Cash Adjustments, Accounts, and the sportsbook fallback shell
+- redundant editor-closed notifications were removed; workflow-specific calculator, placement, and bridge messages remain detailed where the operator needs confirmation
+
+Focused validation:
+
+- toast tone classifier (`8 passed`)
+- toast modal-layer, dismiss-action, and validation-state browser regression (`1 passed`)
+- toast light/dark WCAG AA contrast regression (`1 passed`)
+
+### Platform route readiness evidence
+
+- Accounts now protects a newly opened draft from the initial asynchronous row-load race, matching the first-click safeguard already used by the operational ledgers
+- browser coverage verifies an existing Profile A account ID is visible only in Profile A and absent from Profile B
+- the account editor is checked for prohibited password, card-number, bank-login, and MFA-secret fields
+- Settings browser coverage verifies tracker date controls, bookmaker/exchange authorities, sportsbook/free-bet and casino offer-name authorities, exchange commission, and underlay/overlay defaults are present
+- Dashboard coverage verifies the resolved-range P&L, open-current versus settled-final separation, and current cash snapshot
+- Reports coverage verifies formal weekly, monthly, and yearly outputs remain visibly distinct from selected-range reporting
+- automated evidence does not replace the unchecked visual/manual review boxes above
+
+Focused validation:
+
+- Accounts profile isolation and sensitive-field browser regression (`1 passed`)
+- Settings authority readiness browser regression (`1 passed`)
+- Dashboard and Reports boundary browser regression (`1 passed`)
+
+### Remaining operational lifecycle evidence
+
+- Free Bet award gating, calculator suggestions, outcome lifecycle, save-return behaviour, settled-row lock, and modal create/edit behaviour pass as one consolidated lifecycle gate
+- Casino offer-type branching, settle-date mirroring, outcome lifecycle, and modal create/edit behaviour pass in the same gate
+- Cash Adjustment direction/type selectors prevent incompatible combinations before save
+- a synthetic `Out / Withdrawal / £10.00` browser transaction resolves to `-£10.00`, returns to the unchanged ledger view after save, and is deleted after verification
+- no calculation formula changed in this tranche; the Cash Adjustment test exercises the existing contract-backed signed-value behaviour
+
+Focused validation:
+
+- consolidated Free Bet, Casino Offer, and shared ledger lifecycle group (`13 passed`)
+- Cash Adjustment direction, signed-value, save-return, and cleanup regression (`1 passed`)
+- complete serial browser regression after all issue #10 smoke corrections (`67 passed`, `1 intentionally skipped` scaffold login test)
+
+### Final shell and interaction readiness tranche
+
+- replaced the obsolete skipped scaffold test with a real keyboard-accessible
+  `Login -> Profiles -> selected Profile Tracker` route test
+- the shell test discovers the selected profile from the rendered roster, verifies the
+  tracker redirect to Sportsbook Bets, and confirms browser-history return to Profiles
+- added direct regression evidence that opening an existing ledger editor without making
+  changes does not raise an unsaved-change warning during route navigation
+- added the paired dirty-draft case: an actual edit raises the warning, cancellation keeps
+  the operator on the sportsbook route, and the edited modal remains open
+- added a computed focus-style check for the ledger filter control and an operable
+  light/dark theme-toggle check
+- sportsbook settlement cells now have browser assertions for human-readable weekday
+  presentation and against raw ISO date leakage
+
+Focused validation:
+
+- Login -> Profiles -> Tracker shell (`1 passed`)
+- unchanged-versus-dirty navigation guard and focus/theme readiness (`2 passed`)
+- sportsbook UK date presentation and workflow columns (`1 passed`)
+- complete serial Playwright regression (`70 passed`; no skipped tests)
+- `pnpm --filter @openforge/web lint` (passed)
+- `pnpm --filter @openforge/web typecheck` (passed; non-blocking stale browser-mapping metadata warning)
+- `pnpm --filter @openforge/web test` (`72 passed`)

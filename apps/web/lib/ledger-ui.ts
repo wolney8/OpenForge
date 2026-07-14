@@ -105,7 +105,7 @@ export function scrollToElementTopAfterRender(getElement: () => HTMLElement | nu
 export function useToastDismiss(
   message: string,
   clearMessage: () => void,
-  timeoutMs = 2600
+  timeoutMs = 5000
 ) {
   useEffect(() => {
     if (!message || message.startsWith("Loading ")) {

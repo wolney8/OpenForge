@@ -5,6 +5,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { EditorSection } from "@/components/editor-section";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
   filterCampaignTagOptions,
@@ -3531,7 +3533,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setWorkflowVisible(true);
     setTableCollapsed(Boolean(options?.collapseTable));
-    setStatusMessage(`Loaded ${rowId}.`);
+    setStatusMessage(`Opened sportsbook bet ${rowId} for editing.`);
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
@@ -3556,7 +3558,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
-    setStatusMessage("Creating a new sportsbook row.");
+    setStatusMessage("New sportsbook bet ready. Complete the required fields, then save.");
     revealEditor({ expandLedger: true });
   }
 
@@ -3567,7 +3569,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
-    setStatusMessage("Closed sportsbook editor.");
+    setStatusMessage("");
   }
 
   function canPersistForm(nextFormState: SportsbookFormState): boolean {
@@ -3613,7 +3615,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
           ),
         ];
         setStatusMessage(
-          `Complete the required sportsbook workflow fields before saving. Missing: ${missingFields.join(", ")}.`
+          `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
         );
       }
       return;
@@ -3665,8 +3667,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       options?.autosaveLabel
         ? `${options.autosaveLabel} autosaved for ${saved.sportsbook_bet_id}.`
         : isEditing
-          ? `Updated ${saved.sportsbook_bet_id} inside this profile tracker.`
-          : `Created ${saved.sportsbook_bet_id} inside this profile tracker.`
+          ? `Updated sportsbook bet ${saved.sportsbook_bet_id}.`
+          : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
     );
   }
 
@@ -3716,7 +3718,9 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       setFootballSettlesAssistUsed(false);
       setFootballSettlesOriginalValue(null);
       setErrorMessage("");
-      setStatusMessage(`Reverted unsaved changes for ${selectedSportsbookRow.sportsbook_bet_id}.`);
+      setStatusMessage(
+        `Reverted unsaved changes for sportsbook bet ${selectedSportsbookRow.sportsbook_bet_id}.`
+      );
       return;
     }
 
@@ -3733,7 +3737,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
-    setStatusMessage("Cleared the unsaved sportsbook draft.");
+    setStatusMessage("Cleared the unsaved sportsbook bet draft.");
   }
 
   function applyFootballSettlesAssist() {
@@ -3797,7 +3801,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     await loadRows(null);
     setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
-    setStatusMessage(`Deleted ${selectedId} from this profile tracker.`);
+    setStatusMessage(`Deleted sportsbook bet ${selectedId}.`);
   }
 
   async function updateRowFromTable(
@@ -4529,7 +4533,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} />
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Sportsbook Bets</h1>
@@ -4743,7 +4747,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                       const rowStateClassName = sourceRow
                         ? getSportsbookRowStateClassName(sourceRow)
                         : "";
-                      const rowIssueBadges = sourceRow ? getSportsbookIssueBadges(sourceRow) : [];
+                      const rowIssueBadges = sourceRow
+                        ? sortIssueBadgesByPriority(getSportsbookIssueBadges(sourceRow))
+                        : [];
                       return (
                         <tr
                           className={[isSelected ? "is-selected-row" : "", rowStateClassName]
@@ -5136,7 +5142,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       ) : null}
 
       {freeBetBridgeModalState ? (
-        <div className="modal-backdrop" onClick={() => setFreeBetBridgeModalState(null)}>
+        <div
+          className="modal-backdrop modal-backdrop-elevated"
+          onClick={() => setFreeBetBridgeModalState(null)}
+        >
           <section
             aria-label="Copy sportsbook row to free bets"
             className="modal-panel stack"
@@ -5377,11 +5386,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             </section>
           ) : null}
           <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-            <section className="content-subpanel stack field-span-2">
-              <div className="section-heading-row">
-                <span className="eyebrow">Bet setup</span>
-                {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-              </div>
+            <EditorSection
+              headerAside={
+                isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+              }
+              invalid={betSetupValidationActive && missingBetSetupFields.length > 0}
+              title="Bet setup"
+            >
               {betSetupValidationActive && missingBetSetupFields.length > 0 ? (
                 <p className="field-validation-text" role="alert">
                   Complete the required Bet setup fields before saving this sportsbook row:{" "}
@@ -5737,17 +5748,24 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   Save this row first to enable the &ldquo;Create Free Bet&rdquo; action.
                 </p>
               ) : null}
-            </section>
+            </EditorSection>
 
-            <section className="content-subpanel stack field-span-2">
-              <div className="section-heading-row">
-                <span className="eyebrow">Odds and matching</span>
-                {isSettledReadOnly ? (
+            <EditorSection
+              headerAside={
+                isSettledReadOnly ? (
                   <span className="section-lock-chip">Settled row locked</span>
                 ) : !calculatorUnlocked ? (
                   <span className="section-lock-chip">Complete bet setup</span>
-                ) : null}
-              </div>
+                ) : null
+              }
+              invalid={
+                (calculatorUnlocked && missingCalculatorFields.length > 0) ||
+                (betSetupValidationActive &&
+                  placementPlanRequired &&
+                  missingPlacementFields.length > 0)
+              }
+              title="Odds and matching"
+            >
               {placementPlanRequired && missingPlacementFields.length > 0 ? (
                 <p className="field-validation-text" role={betSetupValidationActive ? "alert" : "status"}>
                   {betSetupValidationActive
@@ -6729,14 +6747,20 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   </div>
                 </div>
               </fieldset>
-            </section>
+            </EditorSection>
 
             {showsPlacementSection ? (
-              <section className="content-subpanel stack field-span-2">
-                <div className="section-heading-row">
-                  <span className="eyebrow">Placement</span>
-                  {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-                </div>
+              <EditorSection
+                headerAside={
+                  isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+                }
+                invalid={
+                  betSetupValidationActive &&
+                  placementPlanRequired &&
+                  missingPlacementFields.length > 0
+                }
+                title="Placement"
+              >
                 <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                   {usesMultiLayStrategy ? (
                     <div className="multi-lay-grid-wrap">
@@ -6832,15 +6856,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     </div>
                   )}
                 </fieldset>
-              </section>
+              </EditorSection>
             ) : null}
 
-            <details
-              className="content-subpanel stack field-span-2"
+            <EditorSection
+              defaultOpen={Boolean(selectedId)}
               key={selectedId ?? "sportsbook-settlement-new"}
-              open={Boolean(selectedId)}
+              title="Settlement"
             >
-              <summary className="eyebrow">Settlement</summary>
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                 <div className="form-grid">
                   <label className="field-control">
@@ -6869,10 +6892,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   ) : null}
                 </div>
               </fieldset>
-            </details>
+            </EditorSection>
 
-            <details className="content-subpanel stack field-span-2">
-              <summary className="eyebrow">Advanced controls</summary>
+            <EditorSection defaultOpen={false} title="Advanced controls">
               {(
                 selectedSportsbookRow?.calculation_notes.length ||
                 (showCalculationSummary && activePreviewCalculation?.calculation_notes.length)
@@ -6966,7 +6988,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 </label>
               </div>
               </fieldset>
-            </details>
+            </EditorSection>
             <div className="tracker-nav field-span-2">
               <button
                 className="review-chip review-chip-copy"

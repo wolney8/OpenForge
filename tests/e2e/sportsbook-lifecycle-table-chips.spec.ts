@@ -113,8 +113,28 @@ test("Sportsbook table separates lay status, back status, and raw status while i
   await expect(draftRow).toContainText("Not Placed");
   await expect(draftRow).toHaveClass(/row-state-issue-warning/);
   await draftRow.hover();
-  await expect(draftRow.locator(".row-issue-overlay")).toContainText("Back Unplaced");
-  await expect(draftRow.locator(".row-issue-overlay")).toContainText("No Settle Date");
+  const issueOverlay = draftRow.locator(".row-issue-overlay");
+  await expect(issueOverlay).toContainText("Back Unplaced");
+  await expect(issueOverlay).toContainText("No Settle Date");
+  const overlayPresentation = await issueOverlay.evaluate((element) => {
+    const styles = window.getComputedStyle(element);
+    const backdropStyles = window.getComputedStyle(element, "::before");
+    const pills = Array.from(element.querySelectorAll<HTMLElement>(".table-chip"));
+    const overlayBox = element.getBoundingClientRect();
+    const lastPillBox = pills.at(-1)?.getBoundingClientRect();
+
+    return {
+      backgroundColor: styles.backgroundColor,
+      backdropColor: backdropStyles.backgroundColor,
+      lastPillFits:
+        lastPillBox !== undefined && lastPillBox.right <= overlayBox.right + 1,
+      maxWidth: styles.maxWidth,
+    };
+  });
+  expect(overlayPresentation.maxWidth).toBe("none");
+  expect(overlayPresentation.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+  expect(overlayPresentation.backdropColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(overlayPresentation.lastPillFits).toBe(true);
 
   const backOnlyRow = table.locator("tbody tr", { hasText: "Lifecycle Back Only Match" }).first();
   await expect(backOnlyRow).toContainText("Not Laid");

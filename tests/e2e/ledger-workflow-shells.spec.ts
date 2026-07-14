@@ -34,7 +34,9 @@ const ledgerScenarios: LedgerScenario[] = [
 
 test.describe("Ledger workflow shells", () => {
   for (const scenario of ledgerScenarios) {
-    test(`${scenario.title} keeps the table visible when creating a new row`, async ({ page }) => {
+    test(`${scenario.title} opens create mode in a modal and returns to the table`, async ({
+      page,
+    }) => {
       await page.goto(scenario.route);
       await page.waitForLoadState("networkidle");
 
@@ -43,12 +45,19 @@ test.describe("Ledger workflow shells", () => {
 
       await page.getByRole("button", { name: scenario.addButton }).click();
 
-      await expect(page.locator(".workflow-editor-panel")).toBeVisible();
-      await expect(page.locator(".workflow-editor-panel")).toContainText(scenario.createLabel);
+      const editor = page.getByRole("dialog", { name: scenario.createLabel });
+      await expect(editor).toBeVisible();
+      await expect(page.locator(".data-table")).toBeVisible();
+
+      await editor
+        .locator(".workflow-panel-header .button-link", { hasText: "Close" })
+        .click();
+
+      await expect(editor).not.toBeVisible();
       await expect(page.locator(".data-table")).toBeVisible();
     });
 
-    test(`${scenario.title} opens edit mode on single click and collapses on double click`, async ({
+    test(`${scenario.title} opens edit mode on single click without changing the row`, async ({
       page,
     }) => {
       await page.goto(scenario.route);
@@ -56,14 +65,20 @@ test.describe("Ledger workflow shells", () => {
 
       const firstDataRow = page.locator(".data-table tbody tr").first();
       await expect(firstDataRow).toBeVisible();
+      const originalRowText = await firstDataRow.textContent();
 
       await firstDataRow.click();
-      await expect(page.locator(".workflow-editor-panel")).toContainText(scenario.editLabel);
+      const editor = page.getByRole("dialog", { name: scenario.editLabel });
+      await expect(editor).toBeVisible();
       await expect(page.locator(".data-table")).toBeVisible();
 
-      await firstDataRow.dblclick();
-      await expect(page.locator(".workflow-editor-panel")).toContainText(scenario.editLabel);
-      await expect(page.locator(".data-table")).not.toBeVisible();
+      await editor
+        .locator(".workflow-panel-header .button-link", { hasText: "Close" })
+        .click();
+
+      await expect(editor).not.toBeVisible();
+      await expect(firstDataRow).toBeVisible();
+      await expect.poll(() => firstDataRow.textContent()).toBe(originalRowText);
     });
   }
 });

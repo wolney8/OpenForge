@@ -13,7 +13,7 @@ test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
   const dialog = page.getByRole("dialog", { name: "Free-bet filter controls" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("Bookmaker", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("Offer type", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Offer type (promotion mechanism)", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Issue type", { exact: true })).toBeVisible();
   await expect(dialog.locator('option[value="expiry-watch"]')).toHaveCount(1);
 });

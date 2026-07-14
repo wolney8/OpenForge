@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { apiBaseUrl } from "@/lib/api";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { EditorSection } from "@/components/editor-section";
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
@@ -17,6 +18,7 @@ import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   cashAdjustmentDirectionOptions,
   cashAdjustmentTypeOptions,
@@ -984,7 +986,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setShowAdjustmentValidation(false);
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
-    setStatusMessage(`Loaded ${rowId}.`);
+    setStatusMessage(`Opened cash adjustment ${rowId} for editing.`);
   }
 
   function startNewRow() {
@@ -1001,7 +1003,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setErrorMessage("");
     setShowAdjustmentValidation(false);
     revealEditor({ expandLedger: true });
-    setStatusMessage("Creating a new cash adjustment.");
+    setStatusMessage("New cash adjustment ready. Complete the required fields, then save.");
   }
 
   function closeEditor() {
@@ -1011,7 +1013,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
-    setStatusMessage("Closed cash-adjustment editor.");
+    setStatusMessage("");
   }
 
   function canPersistForm(nextFormState: CashAdjustmentFormState): boolean {
@@ -1036,7 +1038,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         const missing = getMissingRequiredFields(nextFormState);
         if (missing.length > 0) {
           setStatusMessage(
-            `Complete Adjustment details before saving this cash adjustment. Missing: ${missing.join(", ")}.`
+            `Complete required cash-adjustment fields before saving: ${missing.join(", ")}.`
           );
         } else {
           setStatusMessage(
@@ -1076,8 +1078,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       options?.autosaveLabel
         ? `${options.autosaveLabel} autosaved for ${saved.cash_adjustment_id}.`
         : isEditing
-          ? `Updated ${saved.cash_adjustment_id} inside this profile tracker.`
-          : `Created ${saved.cash_adjustment_id} inside this profile tracker.`
+          ? `Updated cash adjustment ${saved.cash_adjustment_id}.`
+          : `Created cash adjustment ${saved.cash_adjustment_id}.`
     );
   }
 
@@ -1111,7 +1113,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       setPristineFormState(nextFormState);
       setErrorMessage("");
       setShowAdjustmentValidation(false);
-      setStatusMessage(`Reverted unsaved changes for ${selectedRow.cash_adjustment_id}.`);
+      setStatusMessage(
+        `Reverted unsaved changes for cash adjustment ${selectedRow.cash_adjustment_id}.`
+      );
       return;
     }
 
@@ -1150,7 +1154,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
     await loadRows(null);
     setWorkflowVisible(false);
-    setStatusMessage(`Deleted ${selectedId} from this profile tracker.`);
+    setStatusMessage(`Deleted cash adjustment ${selectedId}.`);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -1193,7 +1197,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} />
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Cash Adjustments</h1>
@@ -1386,7 +1390,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                     pagedRows.map((row, index) => {
                       const rowId = String(row.cash_adjustment_id);
                       const sourceRow = cashAdjustmentRowsById.get(rowId);
-                      const rowIssueBadges = sourceRow ? getCashAdjustmentIssueBadges(sourceRow) : [];
+                      const rowIssueBadges = sourceRow
+                        ? sortIssueBadgesByPriority(getCashAdjustmentIssueBadges(sourceRow))
+                        : [];
                       return (
                         <tr
                           className={[
@@ -1673,10 +1679,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               </article>
             </section>
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Adjustment setup</span>
-            </div>
+          <EditorSection
+            invalid={
+              adjustmentValidationActive &&
+              (missingAdjustmentFields.length > 0 || hasInvalidAdjustmentCombination)
+            }
+            title="Adjustment setup"
+          >
             {adjustmentValidationActive && missingAdjustmentFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required Adjustment details fields: {missingAdjustmentFields.join(", ")}.
@@ -1778,11 +1787,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 ))}
               </div>
             </div>
-          </section>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Reporting scope</span>
-            </div>
+          </EditorSection>
+          <EditorSection title="Reporting scope">
             <div className="form-grid">
               <label className="field-control">
                 <span>Linked account</span>
@@ -1844,11 +1850,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 <input readOnly value={signedAmountPreview} />
               </label>
             </div>
-          </section>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Audit note</span>
-            </div>
+          </EditorSection>
+          <EditorSection title="Audit note">
             <label className="field-control">
               <span>Description</span>
               <textarea
@@ -1859,9 +1862,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 value={formState.description}
               />
             </label>
-          </section>
-          <details className="content-subpanel stack field-span-2">
-            <summary className="eyebrow">Advanced controls</summary>
+          </EditorSection>
+          <EditorSection defaultOpen={false} title="Advanced controls">
             {selectedRow?.calculation_notes.length ? (
               <section className="stack">
                 <span className="eyebrow">Calculation notes</span>
@@ -1872,7 +1874,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 ))}
               </section>
             ) : null}
-          </details>
+          </EditorSection>
               <div className="tracker-nav field-span-2">
                 <button className="review-chip review-chip-copy" disabled={isPending} type="submit">
                   Save

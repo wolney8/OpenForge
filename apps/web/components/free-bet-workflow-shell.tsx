@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { EditorSection } from "@/components/editor-section";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -19,6 +20,7 @@ import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } fro
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
   filterCampaignTagOptions,
@@ -1955,7 +1957,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     setSettledEditEnabled(false);
     setWorkflowVisible(true);
     setTableCollapsed(Boolean(options?.collapseTable));
-    setStatusMessage(`Loaded ${rowId}.`);
+    setStatusMessage(`Opened free bet ${rowId} for editing.`);
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
@@ -1974,7 +1976,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage("Creating a new free-bet row.");
+    setStatusMessage("New free bet ready. Complete the required fields, then save.");
     revealEditor({ expandLedger: true });
   }
 
@@ -1985,7 +1987,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
-    setStatusMessage("Closed free-bet editor.");
+    setStatusMessage("");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -2025,7 +2027,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
           ...getMissingPlacementFields(nextFormState, nextResolvedCommission),
         ];
         setStatusMessage(
-          `Complete the required free-bet workflow fields before saving. Missing: ${missingFields.join(", ")}.`
+          `Complete required free-bet fields before saving: ${missingFields.join(", ")}.`
         );
       }
       return false;
@@ -2066,8 +2068,8 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
       options?.autosaveLabel
         ? `${options.autosaveLabel} autosaved for ${saved.free_bet_id}.`
         : isEditing
-          ? `Updated ${saved.free_bet_id} inside this profile tracker.`
-          : `Created ${saved.free_bet_id} inside this profile tracker.`
+          ? `Updated free bet ${saved.free_bet_id}.`
+          : `Created free bet ${saved.free_bet_id}.`
     );
     return true;
   }
@@ -2099,7 +2101,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
       setErrorMessage("");
       setShowOfferIdentityValidation(false);
       setSettledEditEnabled(false);
-      setStatusMessage(`Reverted unsaved changes for ${selectedRow.free_bet_id}.`);
+      setStatusMessage(`Reverted unsaved changes for free bet ${selectedRow.free_bet_id}.`);
       return;
     }
 
@@ -2139,7 +2141,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     await loadRows(null);
     setWorkflowVisible(false);
     setPreviewCalculation(null);
-    setStatusMessage(`Deleted ${selectedId} from this profile tracker.`);
+    setStatusMessage(`Deleted free bet ${selectedId}.`);
   }
 
   async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
@@ -2333,7 +2335,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
 
   return (
     <section className="stack">
-        <StatusToast message={statusMessage} />
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Free Bets</h1>
@@ -2537,7 +2539,9 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
                       const rowId = String(row.free_bet_id);
                       const sourceRow = freeBetRowsById.get(rowId);
                       const issueTone = sourceRow ? getFreeBetIssueTone(sourceRow) : null;
-                      const rowIssueBadges = sourceRow ? getFreeBetIssueBadges(sourceRow) : [];
+                      const rowIssueBadges = sourceRow
+                        ? sortIssueBadgesByPriority(getFreeBetIssueBadges(sourceRow))
+                        : [];
                       return (
                         <tr
                           className={[
@@ -3039,11 +3043,13 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
           </section>
         ) : null}
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Offer setup</span>
-              {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-            </div>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+            }
+            invalid={offerIdentityValidationActive && missingOfferIdentityFields.length > 0}
+            title="Offer setup"
+          >
             {offerIdentityValidationActive && missingOfferIdentityFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required Offer setup fields: {missingOfferIdentityFields.join(", ")}.
@@ -3178,13 +3184,17 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </section>
+          </EditorSection>
 
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Award and settlement</span>
-              {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-            </div>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+            }
+            invalid={
+              offerIdentityValidationActive && missingPlacementFields.includes("Settles")
+            }
+            title="Award and settlement"
+          >
             {offerIdentityValidationActive && missingPlacementFields.includes("Settles") ? (
               <p className="field-validation-text" role="alert">
                 Settled or resolved free-bet rows need a settle date.
@@ -3252,16 +3262,18 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </section>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Calculator panel</span>
-              {isSettledReadOnly ? (
+          </EditorSection>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? (
                 <span className="section-lock-chip">Settled row locked</span>
               ) : !calculatorUnlocked ? (
                 <span className="section-lock-chip">{calculatorLockReason}</span>
-              ) : null}
-            </div>
+              ) : null
+            }
+            invalid={offerIdentityValidationActive && missingPlacementFields.length > 0}
+            title="Calculator panel"
+          >
             {offerIdentityValidationActive && missingPlacementFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required placed/settled free-bet fields: {missingPlacementFields.join(", ")}.
@@ -3495,12 +3507,13 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               </div>
             </div>
             </fieldset>
-          </section>
-          <section className="content-subpanel stack field-span-2">
-            <div className="section-heading-row">
-              <span className="eyebrow">Result</span>
-              {isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null}
-            </div>
+          </EditorSection>
+          <EditorSection
+            headerAside={
+              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+            }
+            title="Result"
+          >
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
               <label className="field-control">
@@ -3523,9 +3536,8 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </section>
-          <details className="content-subpanel stack field-span-2">
-            <summary className="eyebrow">Advanced controls</summary>
+          </EditorSection>
+          <EditorSection defaultOpen={false} title="Advanced controls">
             {(activePreviewCalculation?.calculation_notes.length || selectedRow?.calculation_notes.length) ? (
               <section className="stack">
                 <span className="eyebrow">Calculation notes</span>
@@ -3613,7 +3625,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               </label>
             </div>
             </fieldset>
-          </details>
+          </EditorSection>
           <div className="tracker-nav field-span-2">
             <button className="review-chip review-chip-copy" disabled={isPending || isSettledReadOnly} type="submit">
               Save
