@@ -1,18 +1,19 @@
-# OpenForge Agent Instructions
+# OpenForge Repository Agent Instructions
 
 Last updated: 2026-06-30
 
 ## Project purpose
 
-OpenForge is a local-first reconstruction of the user's matched betting tracker workbook.
+Plum Duff is the user-facing platform developed in the OpenForge repository. It is a
+local-first reconstruction of the user's matched betting tracker workbook.
 
 The workbook is the architectural blueprint. The first goal is to mirror and improve the current tracker workflow, calculations, documentation, and reporting without drifting into a generic betting app.
 
 ## Product direction
 
-- Build OpenForge Tracker first.
-- Treat OddsForge as a later, explicitly deferred module for odds matching or opportunity finding.
-- Do not plan, design in detail, or implement OddsForge unless a later task explicitly approves that scope.
+- Build the Plum Duff Tracker first.
+- Treat `Oddsmatcher` as a later, explicitly deferred module for odds matching or opportunity finding.
+- Do not plan, design in detail, or implement Oddsmatcher unless a later task explicitly approves that scope.
 
 ## Route priority
 
@@ -52,14 +53,14 @@ Required initial route model to preserve in planning:
 
 ## Profile-scoped tracker rule
 
-- OpenForge is a profile-based platform with a Fund Manager overview and isolated subscriber/profile trackers.
+- Plum Duff is a profile-based platform with a Fund Manager overview and isolated subscriber/profile trackers.
 - The Fund Manager overview is an aggregate control screen, not a replacement for the detailed tracker.
 - Every profile-owned tracker record must be isolated, usually by `profile_id`.
 - No profile may see another profile's accounts, bets, balances, reports, notes, or derived metrics.
 
 ## Cash-first tracker calculation rule
 
-OpenForge must preserve the workbook's cash-first principle:
+Plum Duff must preserve the workbook's cash-first principle:
 
 `What is this row worth to the bankroll right now?`
 

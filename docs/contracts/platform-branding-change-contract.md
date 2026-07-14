@@ -4,12 +4,12 @@ _Last updated: 2026-07-08_
 
 ## 0. Contract status
 
-- Status: Draft
+- Status: Approved for implementation; visual review pending
 - Owner: Codex planning draft
-- Human approval required before implementation: Yes
+- Human approval required before implementation: Received 2026-07-14
 - Related workflow contract: Platform shell / branding / navigation
 - Related source assets: Included logo files
-- Related issue/task: `Update platform branding from OpenForge to Plum Duff`
+- Related issue/task: GitHub issue `#65 Rename OpenForge Platform to Plum Duff and Apply Supplied Branding`
 - Financial-calculation impact: None expected
 - Human visual approval required before merge: Yes
 
@@ -412,9 +412,9 @@ Implementation report must include:
 
 ## 20. Human approval
 
-- reviewer: To confirm
-- review date: To confirm
-- approval outcome: Pending
+- reviewer: Project owner
+- review date: 2026-07-14
+- approval outcome: Implementation approved; final visual placement pending
 - follow-up required before implementation:
   - confirm exact logo files to use
   - confirm whether repository/package names should remain unchanged

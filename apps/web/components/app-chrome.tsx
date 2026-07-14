@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
+import { platformBrand } from "@/lib/brand";
 import {
   formatMoney,
   resolveDateRange,
@@ -225,7 +227,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [appMenuOpen, trackerMenuOpen]);
 
   const profileName = !isInsideProfile
-    ? "OpenForge"
+    ? platformBrand.name
     : headerSummary?.profileId === activeProfileId
       ? headerSummary.profileName
       : "Loading profile...";
@@ -271,11 +273,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
             </div>
-            <Link className="brand-mark" href="/">
-              OF
+            <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href="/">
+              <BrandLogo priority variant="mark" />
             </Link>
             <div>
-              <div className="brand-title">OpenForge</div>
+              <div className="brand-title">{platformBrand.name}</div>
               <div className="brand-subtitle">{brandSubtitle}</div>
             </div>
           </div>
