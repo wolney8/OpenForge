@@ -1,0 +1,38 @@
+{
+  "research_id": "M14-TP-NORMAL-20260714",
+  "calculator": {
+    "provider": "TeamProfit",
+    "page_title": "Matched Betting Calculator | Free with Team Profit",
+    "url": "https://www.teamprofit.com/calculator",
+    "mode": "Normal",
+    "accessed_at": "2026-07-14",
+    "interaction_capability": "interactive",
+    "limitations": [
+      "Partially matched toggle not reliably visible/reachable in this session",
+      "Advanced panel visible and captured"
+    ]
+  },
+  "controls": [
+    {"label": "Back Stake", "field_key": "back_stake", "input_type": "number", "unit": "GBP", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Back Odds", "field_key": "back_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Odds", "field_key": "lay_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Commission", "field_key": "lay_commission_pct", "input_type": "number", "unit": "percent", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Advanced display", "field_key": "advanced_display", "input_type": "toggle", "unit": null, "default": false, "required": false, "evidence_state": "observed"}
+  ],
+  "outputs": [
+    {"label": "Lay Amount", "field_key": "lay_amount", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Liability", "field_key": "liability", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Overall profit", "field_key": "overall_profit", "display_precision": 2, "evidence_state": "observed"}
+  ],
+  "observations": [
+    {"case_id": "TP-N-001", "purpose": "ordinary zero commission", "inputs": {"back_stake": "10.00", "back_odds": "3.5", "lay_odds": "3.6", "lay_commission_pct": "0"}, "displayed_outputs": {"lay_amount": "9.72", "liability": "25.27", "overall_profit": "-0.27"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-N-002", "purpose": "ordinary non-zero commission", "inputs": {"back_stake": "10.00", "back_odds": "3.5", "lay_odds": "3.6", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "9.78", "liability": "25.43", "overall_profit": "-0.43"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-N-003", "purpose": "changed lay odds", "inputs": {"back_stake": "10.00", "back_odds": "3.5", "lay_odds": "3.7", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "9.51", "liability": "25.68", "overall_profit": "-0.68"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-N-004", "purpose": "changed stake", "inputs": {"back_stake": "25.00", "back_odds": "3.5", "lay_odds": "3.6", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "24.44", "liability": "63.54", "overall_profit": "-1.04"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-N-005", "purpose": "rounding-sensitive with advanced on", "inputs": {"back_stake": "12.34", "back_odds": "2.87", "lay_odds": "2.9", "lay_commission_pct": "1.5", "advanced_display": true}, "displayed_outputs": {"lay_amount": "12.28", "liability": "23.33", "overall_profit": "-0.26", "advanced_underlay_lay": "12.15"}, "validation_state": "pass", "conditional_changes": ["advanced_display=true"], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-N-006", "purpose": "invalid boundary blank back odds", "inputs": {"back_stake": "12.34", "back_odds": null, "lay_odds": "2.9", "lay_commission_pct": "1.5"}, "displayed_outputs": {"lay_amount": "0.00", "liability": "0.00", "overall_profit": "-12.34"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Negative underlay shown in advanced panel when invalid input present"]}
+  ],
+  "candidate_formulas": [
+    {"output_field": "lay_amount", "formula": "(back_stake * back_odds) / (lay_odds - lay_commission_decimal)", "supporting_case_ids": ["TP-N-001", "TP-N-002", "TP-N-003", "TP-N-004"], "rounding_order": "lay amount displayed at 2dp; downstream headline uses provider-specific mixed precision with differences up to 0.02 observed", "confidence": "medium", "alternatives": ["slightly different internal rounding before display"], "unresolved": ["invalid-input branch behavior is non-conservative", "exact downstream headline rounding order"]}
+  ]
+}

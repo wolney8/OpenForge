@@ -1,0 +1,201 @@
+{
+  "cases": [
+    {
+      "case_id": "FEE-001",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": "100.00", "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00", "linked_received_withdrawals": []},
+      "expected": {"management_fee_amount": "10.00", "investment_fee_amount": "40.00", "total_fee_due": "50.00", "fee_withdrawn_amount": "0.00", "fee_outstanding_amount": "50.00"}
+    },
+    {
+      "case_id": "FEE-002",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": "-12.00", "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00"},
+      "expected": {"fee_base": "0.00", "closing_loss_carryforward": "12.00", "total_fee_due": "0.00"}
+    },
+    {
+      "case_id": "FEE-003",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": "80.00", "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00", "withdrawal_state": "not_created"},
+      "expected": {"total_fee_due": "40.00", "cash_snapshot_delta": "0.00"}
+    },
+    {
+      "case_id": "FEE-004",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": "100.00", "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00", "linked_received_withdrawals": [{"adjustment_id": "DEMO-ADJ-001", "amount": "20.00"}]},
+      "expected": {"total_fee_due": "50.00", "fee_withdrawn_amount": "20.00", "fee_outstanding_amount": "30.00"}
+    },
+    {
+      "case_id": "FEE-005",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": "100.00", "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00", "linked_received_withdrawals": [{"adjustment_id": "DEMO-ADJ-002", "amount": "50.00"}]},
+      "expected": {"fee_outstanding_amount": "0.00"}
+    },
+    {
+      "case_id": "FEE-006",
+      "inputs": {"profile_id": "PROFILE-001", "withdrawal_profile_id": "PROFILE-002", "adjustment_id": "DEMO-ADJ-003"},
+      "expected": {"link_allowed": false, "error_code": "profile_mismatch"}
+    },
+    {
+      "case_id": "FEE-007",
+      "inputs": {"profile_id": "PROFILE-001", "eligible_period_profit": null, "opening_loss_carryforward": "0.00", "management_fee_percent": "10.00", "investment_fee_percent": "40.00"},
+      "expected": {"calculation_state": "blocked", "error_code": "approved_fee_base_required"}
+    },
+    {
+      "case_id": "FEE-008",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "gross_cash_before_withdrawal": "1100.00",
+        "crystallised_fee_outstanding_before_withdrawal": "50.00",
+        "subscriber_net_entitlement_before_withdrawal": "1050.00",
+        "fee_withdrawal": {"subtype": "Management Fee Withdrawal", "amount": "50.00", "state": "received"}
+      },
+      "expected": {
+        "gross_cash_after_withdrawal": "1050.00",
+        "crystallised_fee_outstanding_after_withdrawal": "0.00",
+        "subscriber_net_entitlement_after_withdrawal": "1050.00",
+        "subscriber_net_reduced_twice": false
+      }
+    },
+    {
+      "case_id": "FEE-009",
+      "inputs": {
+        "viewer_role": "managed_subscriber_read_only",
+        "profile_id": "PROFILE-001",
+        "settled_period_profit": "100.00",
+        "management_fee_amount": "10.00",
+        "investment_fee_amount": "40.00",
+        "linked_withdrawal_id": "DEMO-ADJ-009",
+        "linked_withdrawal_date": "2026-07-14"
+      },
+      "expected": {
+        "visible_fields": ["settled_period_profit", "management_fee_amount", "investment_fee_amount", "total_fee_due", "subscriber_net_entitlement"],
+        "hidden_fields": ["linked_withdrawal_id", "linked_withdrawal_date", "withdrawal_state"]
+      }
+    },
+    {
+      "case_id": "FEE-010",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "locked_period": {"package_id": "DEMO-PACKAGE-001", "package_version": 1, "management_fee_percent": "10.00", "investment_fee_percent": "40.00"},
+        "current_package": {"package_id": "DEMO-PACKAGE-001", "package_version": 2, "management_fee_percent": "12.00", "investment_fee_percent": "35.00"}
+      },
+      "expected": {
+        "locked_period_package_version": 1,
+        "locked_period_percentages_rewritten": false,
+        "new_period_uses_package_version": 2
+      }
+    },
+    {
+      "case_id": "FEE-011",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "eligible_period_profit": "50.00",
+        "opening_loss_carryforward": "30.00",
+        "management_fee_percent": "10.00",
+        "investment_fee_percent": "40.00"
+      },
+      "expected": {
+        "profit_after_loss_recovery": "20.00",
+        "fee_base": "20.00",
+        "closing_loss_carryforward": "0.00",
+        "management_fee_amount": "2.00",
+        "investment_fee_amount": "8.00",
+        "total_fee_due": "10.00"
+      }
+    },
+    {
+      "case_id": "FEE-012",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "eligible_period_profit": "-20.00",
+        "opening_loss_carryforward": "10.00",
+        "management_fee_percent": "10.00",
+        "investment_fee_percent": "40.00"
+      },
+      "expected": {
+        "profit_after_loss_recovery": "-30.00",
+        "fee_base": "0.00",
+        "closing_loss_carryforward": "30.00",
+        "total_fee_due": "0.00"
+      }
+    },
+    {
+      "case_id": "FEE-013",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "eligible_period_profit": "20.00",
+        "opening_loss_carryforward": "30.00",
+        "management_fee_percent": "10.00",
+        "investment_fee_percent": "40.00"
+      },
+      "expected": {
+        "profit_after_loss_recovery": "-10.00",
+        "fee_base": "0.00",
+        "closing_loss_carryforward": "10.00",
+        "total_fee_due": "0.00"
+      }
+    },
+    {
+      "case_id": "FEE-014",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "management_fee_percent": "60.00",
+        "investment_fee_percent": "41.00"
+      },
+      "expected": {
+        "package_state": "blocked",
+        "calculation_state": "blocked",
+        "error_code": "combined_fee_percent_exceeds_100"
+      }
+    },
+    {
+      "case_id": "FEE-015",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "eligible_period_profit": "10.00",
+        "opening_loss_carryforward": "0.00",
+        "management_fee_percent": "60.00",
+        "investment_fee_percent": "40.00"
+      },
+      "expected": {
+        "package_state": "valid",
+        "management_fee_amount": "6.00",
+        "investment_fee_amount": "4.00",
+        "total_fee_due": "10.00"
+      }
+    },
+    {
+      "case_id": "FEE-016",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "month_to_date_settled_profit": "20.00",
+        "opening_loss_carryforward": "0.00",
+        "management_fee_percent": "10.00",
+        "investment_fee_percent": "40.00",
+        "withdrawal_eligible_cash_before_fee_reserve": "80.00",
+        "crystallised_fee_outstanding": "5.00"
+      },
+      "expected": {
+        "provisional_management_fee": "2.00",
+        "provisional_investment_fee": "8.00",
+        "provisional_fee_reserve": "10.00",
+        "subscriber_withdrawal_available": "65.00",
+        "fee_crystallised_by_request": false
+      }
+    },
+    {
+      "case_id": "FEE-017",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "week_label": "W/C 06/07/2026",
+        "calendar_month": "2026-07",
+        "month_to_date_settled_profit": "25.00",
+        "opening_loss_carryforward": "5.00",
+        "management_fee_percent": "10.00",
+        "investment_fee_percent": "40.00"
+      },
+      "expected": {
+        "provisional_fee_base": "20.00",
+        "provisional_management_fee": "2.00",
+        "provisional_investment_fee": "8.00",
+        "weekly_breakdown_state": "provisional",
+        "fee_crystallised": false
+      }
+    }
+  ]
+}

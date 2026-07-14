@@ -1,0 +1,58 @@
+{
+  "research_id": "M14-DEMO-CALCULATOR-MODE-001",
+  "calculator": {
+    "provider": "TO_CONFIRM",
+    "page_title": "TO_CONFIRM",
+    "url": "https://example.invalid/calculator",
+    "mode": "TO_CONFIRM",
+    "accessed_at": "2026-07-14",
+    "interaction_capability": "interactive_or_manual_capture",
+    "limitations": []
+  },
+  "controls": [
+    {
+      "label": "Back stake",
+      "field_key": "back_stake",
+      "input_type": "number",
+      "unit": "GBP",
+      "default": null,
+      "required": true,
+      "evidence_state": "observed"
+    }
+  ],
+  "outputs": [
+    {
+      "label": "Suggested lay stake",
+      "field_key": "suggested_lay_stake",
+      "display_precision": 2,
+      "evidence_state": "observed"
+    }
+  ],
+  "observations": [
+    {
+      "case_id": "OBS-001",
+      "purpose": "ordinary zero-commission case",
+      "inputs": {
+        "back_stake": "10.00"
+      },
+      "displayed_outputs": {
+        "suggested_lay_stake": null
+      },
+      "validation_state": "not_run",
+      "conditional_changes": [],
+      "capture_method": "interactive_or_manual",
+      "notes": []
+    }
+  ],
+  "candidate_formulas": [
+    {
+      "output_field": "suggested_lay_stake",
+      "formula": "TO_CONFIRM",
+      "supporting_case_ids": [],
+      "rounding_order": "TO_CONFIRM",
+      "confidence": "low",
+      "alternatives": [],
+      "unresolved": []
+    }
+  ]
+}

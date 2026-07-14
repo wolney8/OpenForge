@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {"case_id": "UX-001", "inputs": {"entry_method": "keyboard", "surface": "sportsbook_editor"}, "expected": {"dialog_role_present": true, "focus_inside_dialog": true, "focus_trap_active": true}},
+    {"case_id": "UX-002", "inputs": {"surface": "free_bet_editor", "action": "close", "invoker_id": "DEMO-ROW-ACTION-001"}, "expected": {"focus_return_id": "DEMO-ROW-ACTION-001"}},
+    {"case_id": "UX-003", "inputs": {"prefers_reduced_motion": true, "interaction": "open_modal"}, "expected": {"nonessential_transform_animation": false}},
+    {"case_id": "UX-004", "inputs": {"theme": "dark", "issue_severity": "warning", "colour_perception": "unavailable"}, "expected": {"issue_text_visible": true, "severity_label_available": true, "colour_only": false}},
+    {"case_id": "UX-005", "inputs": {"zoom_percent": 200, "viewport_width": 1280}, "expected": {"primary_action_reachable": true, "focused_control_obscured": false}},
+    {"case_id": "UX-006", "inputs": {"action": "save", "result": "success"}, "expected": {"status_role": "status", "announcement_count": 1, "focus_moved": false}},
+    {"case_id": "UX-007", "inputs": {"ledger_row_count": 8, "visible_after_filter": 0}, "expected": {"state_label": "No rows match the current filters", "reset_action_visible": true}}
+  ]
+}
+

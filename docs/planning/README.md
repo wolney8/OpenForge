@@ -27,3 +27,4 @@ Current living planning notes worth checking during implementation:
 
 - `openforge-code-prep-and-scaffold-plan.md`
 - `openforge-ui-ux-working-notes.md`
+- `openforge-milestone-contract-fixture-readiness.md`

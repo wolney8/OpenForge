@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"case_id": "GUIDE-001", "inputs": {"ledger": "sportsbook", "completed_fields": []}, "expected": {"next_required_field": "offer", "auto_focus": false}},
+    {"case_id": "GUIDE-002", "inputs": {"ledger": "sportsbook", "strategy": "No Lay"}, "expected": {"hidden_fields": ["exchange", "lay_odds_1", "lay_actual"], "required_hidden_fields": []}},
+    {"case_id": "GUIDE-003", "inputs": {"ledger": "sportsbook", "strategy": "Multilay"}, "expected": {"required_group": "multi_lay_outcomes", "hidden_fields": ["lay_odds_1"], "generic_partial_lay_controls_visible": false}},
+    {"case_id": "GUIDE-004", "inputs": {"action": "save", "required_fields": ["offer", "bookmaker"], "completed_fields": ["offer"]}, "expected": {"first_invalid_field": "bookmaker", "text_error_present": true, "colour_only": false}},
+    {"case_id": "GUIDE-005", "inputs": {"active_field": "back_odds", "interaction": "typing", "newly_resolved_next_field": "lay_odds_1"}, "expected": {"focus_remains": "back_odds"}},
+    {"case_id": "GUIDE-006", "inputs": {"offer_type": "Mug Bet", "strategy": "Multilay"}, "expected": {"guidance_state": "review_required", "auto_correction": false}},
+    {"case_id": "GUIDE-007", "inputs": {"prefers_reduced_motion": true, "next_required_field": "back_stake"}, "expected": {"pulsing_animation": false, "text_cue_present": true}}
+  ]
+}

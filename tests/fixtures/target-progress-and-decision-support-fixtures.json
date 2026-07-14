@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "case_id": "TARGET-001",
+      "inputs": {"profile_id": "PROFILE-001", "period_elapsed_fraction": "0.50", "target_profit": "50.00", "actual_profit": "35.00", "on_track_tolerance_percent": "5.00", "reporting_basis": "current_value"},
+      "expected": {"remaining_profit": "15.00", "progress_percent": "70.0", "pace_target": "25.00", "pace_variance": "10.00", "status": "ahead"}
+    },
+    {
+      "case_id": "TARGET-002",
+      "inputs": {"profile_id": "PROFILE-001", "period_elapsed_fraction": "0.50", "target_profit": "50.00", "actual_profit": "26.00", "on_track_tolerance_percent": "5.00", "reporting_basis": "settled_final"},
+      "expected": {"pace_variance": "1.00", "pace_variance_percent_of_target": "2.0", "status": "on_track"}
+    },
+    {
+      "case_id": "TARGET-003",
+      "inputs": {"profile_id": "PROFILE-001", "period_elapsed_fraction": "0.80", "target_profit": "50.00", "actual_profit": "25.00", "on_track_tolerance_percent": "5.00", "reporting_basis": "settled_final"},
+      "expected": {"pace_target": "40.00", "pace_variance": "-15.00", "status": "behind"}
+    },
+    {
+      "case_id": "TARGET-004",
+      "inputs": {"profile_id": "PROFILE-001", "period_elapsed_fraction": "0.70", "target_profit": "50.00", "actual_profit": "52.00", "on_track_tolerance_percent": "5.00"},
+      "expected": {"remaining_profit": "-2.00", "progress_percent": "104.0", "status": "complete"}
+    },
+    {
+      "case_id": "TARGET-005",
+      "inputs": {"profile_id": "PROFILE-001", "target_profit": "0.00", "actual_profit": "10.00"},
+      "expected": {"calculation_state": "blocked", "error_code": "positive_target_required"}
+    },
+    {
+      "case_id": "TARGET-006",
+      "inputs": {"profile_id": "PROFILE-001", "target_profit": "50.00", "current_value_profit": "30.00", "settled_final_profit": "18.00"},
+      "expected": {"current_value_output": "30.00", "settled_final_output": "18.00", "mixed_unlabelled_output": false}
+    },
+    {
+      "case_id": "TARGET-007",
+      "inputs": {"profile_id": "PROFILE-001", "target_status": "behind", "scenario_current_value": "-1.20", "recommendation_scoring_contract": "not_approved"},
+      "expected": {"recommendation_state": "human_review_required", "bet_action_created": false}
+    },
+    {
+      "case_id": "TARGET-008",
+      "inputs": {"profile_id": "PROFILE-001", "proposed_liability": "45.00", "remaining_exposure_limit": "20.00"},
+      "expected": {"recommendation_state": "avoid_or_defer", "reason": "exposure_limit_breached"}
+    },
+    {
+      "case_id": "TARGET-009",
+      "inputs": {"profile_id": "PROFILE-001", "target_profit": "50.00", "actual_profit": "20.00", "period_elapsed_fraction": "0.50", "on_track_tolerance_percent": "5.00", "ai_evidence_state": "unavailable"},
+      "expected": {"target_progress_available": true, "ai_evidence_used": false, "autonomous_action": false}
+    }
+  ]
+}
+

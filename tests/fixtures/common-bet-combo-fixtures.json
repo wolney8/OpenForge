@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "case_id": "COMBO-001",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-COMBO-001", "ledger": "sportsbook", "offer": "Demo Weekly Offer", "offer_type": "Bet and Get", "bet_type": "Bet Builder", "bookmaker": "Bookmaker A"},
+      "expected": {"draft_prefilled": true, "row_saved": false, "bet_placed": false, "requires_market_inputs": true}
+    },
+    {
+      "case_id": "COMBO-002",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-COMBO-001", "bookmaker": "Bookmaker A", "account_state": "Gubbed"},
+      "expected": {"available": false, "reason": "bookmaker_unavailable"}
+    },
+    {
+      "case_id": "COMBO-003",
+      "inputs": {"profile_id": "PROFILE-001", "offer_type": "DDHH", "known_bookmakers": [{"name": "Bookmaker A", "state": "Gubbed"}, {"name": "Bookmaker B", "state": "Inactive"}]},
+      "expected": {"available_bookmaker_count": 0, "warning": "all_known_bookmakers_unavailable"}
+    },
+    {
+      "case_id": "COMBO-004",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-COMBO-002", "offer_type_authority_state": "deleted"},
+      "expected": {"apply_allowed": false, "error_code": "preset_mapping_stale"}
+    },
+    {
+      "case_id": "COMBO-005",
+      "inputs": {"existing_row_preset_version": 1, "current_preset_version": 2},
+      "expected": {"existing_row_rewritten": false}
+    },
+    {
+      "case_id": "COMBO-006",
+      "inputs": {"profile_id": "PROFILE-002", "preset_exchange": null, "profile_exchange": "Exchange B", "profile_commission": "0.03"},
+      "expected": {"resolved_exchange": "Exchange B", "resolved_commission": "0.03"}
+    }
+  ]
+}
+

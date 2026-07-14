@@ -1,6 +1,6 @@
 # OpenForge Fee Withdrawal Planning Note
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-14_
 
 ## Purpose
 
@@ -43,13 +43,30 @@ record.
 Future fee withdrawals should remain auditable through the tracker rather than
 being hidden in a derived summary.
 
-Open questions for the later contract:
+Confirmed direction:
 
-- whether fee withdrawals should use the existing `Cash Adjustments` workflow
-  with structured metadata and description
-- whether a dedicated fee-withdrawal classification is needed later
-- whether fee withdrawals should affect both investment and cash snapshot by
-  default or require explicit operator choice
+- use the existing `Cash Adjustments` workflow with dedicated `Management Fee
+  Withdrawal` and `Investment Fee Withdrawal` subtypes
+- calculate management and investment fees independently from the same positive
+  settled/final fee base, then combine them
+- physical fee withdrawals reduce gross/current cash and the outstanding fee
+  liability together
+- do not reduce subscriber net entitlement a second time when the physical cash
+  movement occurs
+- snapshot fee-package id/version and percentages for each locked period so
+  later package changes do not rewrite history
+- show Monday-based weekly provisional fee breakdowns and crystallise once at
+  the end of each calendar month
+- carry monthly losses forward; later settled profit must recover those losses
+  before a new fee is eligible
+- block a fee package when management and investment percentages combine to
+  more than `100%`
+- reserve the current provisional fee estimate when calculating a subscriber's
+  mid-period withdrawal availability
+
+Still to confirm:
+
+- amendment/reopening policy for a previously locked fee period
 
 ## Profile and reporting expectations
 
@@ -59,7 +76,11 @@ Later profile surfaces should show:
 - pre-fee profit
 - fee amount for the selected period
 - post-fee earnings
-- whether that fee has already been withdrawn as cash movement
+
+The Fund Manager may additionally see whether the fee has been physically
+withdrawn and the linked Cash Adjustment. A later subscriber-facing view should
+show the disclosed fee and post-fee entitlement, but does not need the Fund
+Manager's operational withdrawal metadata.
 
 The Fund Manager view should be able to compare these outputs across profiles
 without losing profile isolation.

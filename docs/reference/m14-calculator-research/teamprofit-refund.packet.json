@@ -1,0 +1,36 @@
+{
+  "research_id": "M14-TP-REFUND-20260714",
+  "calculator": {
+    "provider": "TeamProfit",
+    "page_title": "Matched Betting Calculator | Free with Team Profit",
+    "url": "https://www.teamprofit.com/calculator",
+    "mode": "Refund",
+    "accessed_at": "2026-07-14",
+    "interaction_capability": "interactive",
+    "limitations": []
+  },
+  "controls": [
+    {"label": "Back Stake", "field_key": "back_stake", "input_type": "number", "unit": "GBP", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Back Odds", "field_key": "back_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Odds", "field_key": "lay_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Commission", "field_key": "lay_commission_pct", "input_type": "number", "unit": "percent", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Free Bet Award", "field_key": "free_bet_award", "input_type": "number", "unit": "GBP", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Free Bet Retention", "field_key": "free_bet_retention_pct", "input_type": "number", "unit": "percent", "default": null, "required": true, "evidence_state": "observed"}
+  ],
+  "outputs": [
+    {"label": "Lay Amount", "field_key": "lay_amount", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Liability", "field_key": "liability", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Overall profit", "field_key": "overall_profit", "display_precision": 2, "evidence_state": "observed"}
+  ],
+  "observations": [
+    {"case_id": "TP-RF-001", "purpose": "ordinary zero commission", "inputs": {"back_stake": "10.00", "back_odds": "2.5", "lay_odds": "2.6", "lay_commission_pct": "0", "free_bet_award": "10", "free_bet_retention_pct": "80"}, "displayed_outputs": {"lay_amount": "6.54", "liability": "10.46", "overall_profit": "4.54"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-RF-002", "purpose": "ordinary non-zero commission", "inputs": {"back_stake": "10.00", "back_odds": "2.5", "lay_odds": "2.6", "lay_commission_pct": "2", "free_bet_award": "10", "free_bet_retention_pct": "80"}, "displayed_outputs": {"lay_amount": "6.59", "liability": "10.54", "overall_profit": "4.46"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-RF-003", "purpose": "changed lay odds", "inputs": {"back_stake": "10.00", "back_odds": "2.5", "lay_odds": "2.7", "lay_commission_pct": "2", "free_bet_award": "10", "free_bet_retention_pct": "80"}, "displayed_outputs": {"lay_amount": "6.34", "liability": "10.78", "overall_profit": "4.22"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-RF-004", "purpose": "changed stake", "inputs": {"back_stake": "25.00", "back_odds": "2.5", "lay_odds": "2.6", "lay_commission_pct": "2", "free_bet_award": "10", "free_bet_retention_pct": "80"}, "displayed_outputs": {"lay_amount": "21.12", "liability": "33.79", "overall_profit": "3.71"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-RF-005", "purpose": "rounding-sensitive", "inputs": {"back_stake": "12.34", "back_odds": "3.15", "lay_odds": "3.2", "lay_commission_pct": "1.5", "free_bet_award": "12.34", "free_bet_retention_pct": "74.5"}, "displayed_outputs": {"lay_amount": "9.32", "liability": "20.50", "overall_profit": "6.03"}, "validation_state": "pass", "conditional_changes": ["advanced_display=true"], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-RF-006", "purpose": "invalid boundary blank retention", "inputs": {"back_stake": "12.34", "back_odds": "3.15", "lay_odds": "3.2", "lay_commission_pct": "1.5", "free_bet_award": "12.34", "free_bet_retention_pct": null}, "displayed_outputs": {"lay_amount": "12.20", "liability": "26.84", "overall_profit": "-0.31"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Blank retention appears treated as zero contribution"]}
+  ],
+  "candidate_formulas": [
+    {"output_field": "overall_profit", "formula": "lay_amount = (back_stake * back_odds - free_bet_award * free_bet_retention_ratio) / (lay_odds - lay_commission_ratio)", "supporting_case_ids": ["TP-RF-001", "TP-RF-002", "TP-RF-003", "TP-RF-004", "TP-RF-005"], "rounding_order": "lay amount and money outputs displayed at 2dp; exact downstream penny rounding remains unresolved", "confidence": "medium", "alternatives": [], "unresolved": ["exact downstream penny rounding order"]}
+  ]
+}
