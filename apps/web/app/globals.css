@@ -217,16 +217,49 @@ textarea {
 }
 
 .brand-mark {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 1rem;
-  background: linear-gradient(160deg, var(--primary) 0%, var(--primary-strong) 100%);
-  color: white;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  box-shadow: var(--shadow);
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.brand-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.brand-mark .brand-logo {
+  flex: 0 0 auto;
+  width: 4.75rem;
+  max-width: none;
+}
+
+.brand-mark .brand-logo-mark {
+  clip-path: inset(0 0 30% 0);
+  transform: translateY(0.45rem);
+}
+
+.brand-logo-hero,
+.brand-logo-login {
+  width: min(24rem, 78vw);
+  max-height: 14rem;
+  object-position: left center;
+}
+
+.brand-logo-login {
+  width: min(21rem, 72vw);
+}
+
+.brand-logo-hero {
+  width: min(36rem, 92vw);
+  max-height: 25rem;
 }
 
 .brand-title {
@@ -540,6 +573,10 @@ textarea {
   display: grid;
   gap: 1rem;
   grid-template-columns: 1.4fr 1fr;
+}
+
+.split-hero > .stack {
+  align-content: start;
 }
 
 .tracker-hero {

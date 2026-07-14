@@ -26,7 +26,7 @@ Map the live GitHub roadmap to durable local contracts and deterministic fixture
 | M12 Target Decision Engine | Target progress and advisory offer decisions | Open: issues #25-#31 | Target maths/safety fixtures drafted; recommendation scoring remains unapproved |
 | M13 Common Bet Combos | Settings-owned quick-entry templates | Open: issue #32 | Draft workflow/fixtures added |
 | M14 Calculator Workspace | Standalone calculators and ledger bridge | Open: issues #35-#40 | Bridge and evidence governance drafted; advanced families are classified by readiness |
-| M15 Platform Experience | Financial motion, accessibility, density and guided entry | Open: issues #58-#61 | Financial presentation, UX and guidance contracts/fixtures drafted |
+| M15 Platform Experience | Financial motion, accessibility, density, guided entry and approved platform branding | Open: issues #58-#61, #64-#65 | Financial presentation, UX, guidance and Plum Duff branding contracts drafted |
 
 ## New M5 scope
 
@@ -146,8 +146,15 @@ financial approval.
 - `docs/workflows/guided-entry-focus-workflow-contract.md`
 - `docs/fixture-specs/guided-entry-focus-fixture-spec.md`
 - `tests/fixtures/guided-entry-focus-fixtures.json`
+- `docs/contracts/platform-branding-change-contract.md`
+- `docs/reference/plum-duff-brand-audit.md`
 
 Readiness: ready for contract review. Currency defaults to Fund Manager/application GBP; per-profile currency override is `To confirm`. Shared animated value implementation must wait for contract approval.
+
+Branding issue #65 is approved for implementation. Supplied source assets are held in
+`assets/source-logo/`; the current implementation intentionally defers favicon/compact
+mark work until a genuinely transparent supplied mark or explicit derivation approval
+exists. Bookmaker catalogue issue #64 remains separate from platform branding.
 
 ## Remaining smoke-test gate
 

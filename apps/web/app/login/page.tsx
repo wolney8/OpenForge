@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function LoginPage() {
   return (
     <main className="page-shell">
       <section className="hero-panel stack">
+        <BrandLogo className="brand-logo-login" priority />
         <span className="eyebrow">/login</span>
         <h1>Fund Manager login</h1>
         <p className="lede">

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
+import { platformBrand } from "@/lib/brand";
 
 const routes = [
   {
@@ -23,7 +25,8 @@ export default function HomePage() {
     <main className="page-shell stack">
       <section className="hero-panel split-hero">
         <div className="stack">
-          <span className="eyebrow">OpenForge</span>
+          <BrandLogo className="brand-logo-hero" priority />
+          <span className="eyebrow">{platformBrand.name}</span>
           <h1>Profile-scoped tracker platform for workbook-first matched betting operations.</h1>
           <p className="lede">
             Use the local-first login, move into profiles, then open the selected tracker.

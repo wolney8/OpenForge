@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { AppChrome } from "@/components/app-chrome";
 import { ThemeProvider } from "@/components/theme-provider";
+import { platformBrand } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OpenForge",
-  description: "Local-first profile-scoped matched betting tracker scaffold.",
+  title: platformBrand.name,
+  description: platformBrand.description,
 };
 
 export default function RootLayout({
