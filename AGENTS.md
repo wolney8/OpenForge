@@ -148,6 +148,14 @@ Short version:
 8. Report changed files and results.
 9. Stop for review.
 
+## Branch baseline rule
+
+- Treat `origin/main` as the cumulative source of truth for all completed work.
+- Before starting a new issue branch, first update from `origin/main` and branch from that exact tip.
+- Every new branch must be a clean layer on top of the previously merged work.
+- After a branch is approved, validate it, merge it back to `main`, and push `main` before starting the next issue branch.
+- Do not start the next issue from an older feature branch baseline when the same work already exists in `main`.
+
 ## Approval gates
 
 Stop for explicit approval before:

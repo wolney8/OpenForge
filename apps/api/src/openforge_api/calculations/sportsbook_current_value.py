@@ -136,7 +136,9 @@ def _parse_multi_lay_entries(serialized: str) -> list[dict[str, str]]:
             continue
         raw_id = entry.get("id")
         resolved_id = (
-            str(raw_id).strip() if isinstance(raw_id, str) and str(raw_id).strip() else f"outcome{index + 1}"
+            str(raw_id).strip()
+            if isinstance(raw_id, str) and str(raw_id).strip()
+            else f"outcome{index + 1}"
         )
         entries.append(
             {
@@ -184,7 +186,10 @@ def _resolve_multilay_lay_status(
         matched_stake = parse_decimal(entry["placedMatchedStake"])
         has_explicit_state = entry["placementState"] in {"placed", "pending"}
         has_placement_fields = bool(
-            entry["placedMatchedStake"] or entry["placedLayOdds"] or entry["placedExchange"] or has_explicit_state
+            entry["placedMatchedStake"]
+            or entry["placedLayOdds"]
+            or entry["placedExchange"]
+            or has_explicit_state
         )
         if has_placement_fields:
             enriched_branch_found = True
@@ -398,9 +403,12 @@ def calculate_sportsbook_current_value(
                 )
         else:
             denominator = sum(
-                (Decimal("1") - commission_1) / (outcome_lay_odds - commission_1)
-                for _, outcome_lay_odds in active_outcomes
-                if (outcome_lay_odds - commission_1) != 0
+                (
+                    (Decimal("1") - commission_1) / (outcome_lay_odds - commission_1)
+                    for _, outcome_lay_odds in active_outcomes
+                    if (outcome_lay_odds - commission_1) != 0
+                ),
+                Decimal("0"),
             )
             if denominator == 0 or len(active_outcomes) != len(
                 [
@@ -479,19 +487,19 @@ def calculate_sportsbook_current_value(
             expected_branch_count=len(active_outcomes),
         )
 
-        actual_net_pnl: MoneyOrNone = None
+        multi_actual_net_pnl: MoneyOrNone = None
         if calculation_input.result in {"Back Won", "Win", "Outcome 1 Won"}:
-            actual_net_pnl = scenario_values[0]
+            multi_actual_net_pnl = scenario_values[0]
         elif calculation_input.result in {"Lay Won", "Lose", "No Selection Won"}:
-            actual_net_pnl = no_selection_pnl
+            multi_actual_net_pnl = no_selection_pnl
         elif calculation_input.result == "Outcome 2 Won" and len(scenario_values) > 1:
-            actual_net_pnl = scenario_values[1]
+            multi_actual_net_pnl = scenario_values[1]
         elif calculation_input.result == "Outcome 3 Won" and len(scenario_values) > 2:
-            actual_net_pnl = scenario_values[2]
+            multi_actual_net_pnl = scenario_values[2]
         elif calculation_input.result == "Pending" and uses_current_value:
             notes.append("Pending row uses projected current value until settlement.")
         elif calculation_input.result == "Void":
-            actual_net_pnl = Decimal("0.00")
+            multi_actual_net_pnl = Decimal("0.00")
         elif calculation_input.result == "Mixed":
             notes.append("Mixed multilay settlement still requires manual review.")
             return SportsbookCalculationResult(
@@ -522,17 +530,19 @@ def calculate_sportsbook_current_value(
                 ),
             )
 
-        final_net_pnl: MoneyOrNone = actual_net_pnl
-        calculation_state: CalculationState = "resolved"
+        multi_final_net_pnl: MoneyOrNone = multi_actual_net_pnl
+        multi_calculation_state: CalculationState = "resolved"
         manual_override_value = parse_decimal(calculation_input.manual_override_value)
         if manual_override_value is not None:
-            final_net_pnl = quantize_money(manual_override_value)
+            multi_final_net_pnl = quantize_money(manual_override_value)
             notes.append("Manual override replaced the formula-resolved value.")
             if not calculation_input.manual_override_reason.strip():
                 notes.append("Manual override requires a reason for auditability.")
-                calculation_state = "review_required"
+                multi_calculation_state = "review_required"
 
-        resolved_value = final_net_pnl if final_net_pnl is not None else projected_current
+        resolved_value = (
+            multi_final_net_pnl if multi_final_net_pnl is not None else projected_current
+        )
         if len(scenario_values) > 3:
             notes.append(
                 "Additional multilay outcomes are used in current value, but only "
@@ -544,7 +554,7 @@ def calculate_sportsbook_current_value(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
             calculation_state=(
-                "incomplete" if resolved_value is None else calculation_state
+                "incomplete" if resolved_value is None else multi_calculation_state
             ),
             calculation_notes=tuple(notes),
             match_rating=match_rating,
@@ -556,8 +566,8 @@ def calculate_sportsbook_current_value(
             scenario_pnl_if_back_wins=scenario_values[0],
             scenario_pnl_if_lay_wins=no_selection_pnl,
             projected_current_pnl=projected_current,
-            actual_net_pnl=actual_net_pnl,
-            final_net_pnl=final_net_pnl,
+            actual_net_pnl=multi_actual_net_pnl,
+            final_net_pnl=multi_final_net_pnl,
             reporting_value=resolved_value,
             lay_status=multi_lay_status,
             counts_as_open=counts_as_open,

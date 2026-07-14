@@ -36,7 +36,6 @@ export const sportsbookStrategyOptions = [
 ] as const;
 
 export const sportsbookOfferTypeOptions = [
-  "None",
   "Sign up / Welcome",
   "Bet & Get",
   "Double Delight / Hat-trick Heaven",
@@ -47,6 +46,64 @@ export const sportsbookOfferTypeOptions = [
   "Refund",
   "Reload",
 ] as const;
+
+export const legacySportsbookOfferTypeOptions = ["None", "Bet Builder", "Acca"] as const;
+
+type OfferTypeDescriptor = {
+  calculatorFamily: string;
+  summary: string;
+};
+
+const offerTypeDescriptors: Record<string, OfferTypeDescriptor> = {
+  "Sign up / Welcome": {
+    calculatorFamily: "standard qualifying",
+    summary: "Welcome or sign-up qualifying mechanic.",
+  },
+  "Bet & Get": {
+    calculatorFamily: "standard qualifying",
+    summary: "Qualifying bet that can later bridge into a free-bet workflow.",
+  },
+  "Double Delight / Hat-trick Heaven": {
+    calculatorFamily: "DDHH",
+    summary: "First-goalscorer offer family with named multi-outcome settlement branches.",
+  },
+  "Mug Bet": {
+    calculatorFamily: "no-lay",
+    summary: "Operational no-lay workflow where exchange matching stays out of scope.",
+  },
+  "Enhanced Price": {
+    calculatorFamily: "standard qualifying",
+    summary: "Boosted-price qualifying mechanic using ordinary win/lose settlement paths.",
+  },
+  "Price Boost": {
+    calculatorFamily: "standard qualifying",
+    summary: "Boost mechanic that may later pair with named outcome workflows.",
+  },
+  Cashback: {
+    calculatorFamily: "cashback / bonus-lock-in",
+    summary: "Trigger-based refund or cashback family with explicit branch wording.",
+  },
+  Refund: {
+    calculatorFamily: "cashback / bonus-lock-in",
+    summary: "Refund-style trigger family using retained-bonus assumptions.",
+  },
+  Reload: {
+    calculatorFamily: "reload / recurring promo",
+    summary: "Broad recurring-promo placeholder; actual mechanic should be clarified where possible.",
+  },
+  None: {
+    calculatorFamily: "placeholder / legacy",
+    summary: "Legacy placeholder only; prefer a concrete offer family on new rows.",
+  },
+  "Bet Builder": {
+    calculatorFamily: "legacy offer-type",
+    summary: "Legacy value retained for older rows; preferred long-term home is Bet Type.",
+  },
+  Acca: {
+    calculatorFamily: "legacy offer-type",
+    summary: "Legacy value retained for older rows; preferred long-term home is Bet Type.",
+  },
+};
 
 export const betTypeOptions = [
   "Single",
@@ -243,6 +300,17 @@ export function getAllowedBetTypesForOfferType(
   const mappedBetTypes = offerTypeBetTypeMap[offerType.trim()];
   const baseOptions = mappedBetTypes ? [...mappedBetTypes] : [...betTypeOptions];
   return dedupeOptions([...baseOptions, normalizedCurrentBetType]);
+}
+
+export function getOfferTypeOptions(currentOfferType = ""): string[] {
+  return dedupeOptions([
+    ...sportsbookOfferTypeOptions,
+    currentOfferType,
+  ]);
+}
+
+export function getOfferTypeDescriptor(offerType: string): OfferTypeDescriptor | null {
+  return offerTypeDescriptors[offerType.trim()] ?? null;
 }
 
 export function filterCampaignTagOptions(

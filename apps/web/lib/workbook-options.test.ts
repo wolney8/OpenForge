@@ -4,6 +4,9 @@ import {
   filterCampaignTagOptions,
   getDefaultBetTypeForOfferType,
   getAllowedBetTypesForOfferType,
+  getOfferTypeDescriptor,
+  getOfferTypeOptions,
+  legacySportsbookOfferTypeOptions,
   normalizeSportsbookBetType,
   sportsbookOfferTypeOptions,
 } from "./workbook-options";
@@ -12,6 +15,8 @@ describe("workbook-options sportsbook taxonomy helpers", () => {
   it("keeps wager-shape legacy values out of the base sportsbook offer-type list", () => {
     expect(sportsbookOfferTypeOptions).not.toContain("Bet Builder");
     expect(sportsbookOfferTypeOptions).not.toContain("Acca");
+    expect(sportsbookOfferTypeOptions).not.toContain("None");
+    expect(legacySportsbookOfferTypeOptions).toContain("None");
   });
 
   it("includes workbook-compatible in-play composite bet types", () => {
@@ -70,5 +75,19 @@ describe("workbook-options sportsbook taxonomy helpers", () => {
         offerType: "Cashback",
       })
     ).toEqual(["Friday Bet Club"]);
+  });
+
+  it("keeps legacy offer-type values loadable without showing them in the default new-row list", () => {
+    expect(getOfferTypeOptions()).not.toContain("None");
+    expect(getOfferTypeOptions("None")).toContain("None");
+  });
+
+  it("exposes offer-family descriptors for UI guidance without changing calculation logic", () => {
+    expect(getOfferTypeDescriptor("Bet & Get")).toEqual({
+      calculatorFamily: "standard qualifying",
+      summary: "Qualifying bet that can later bridge into a free-bet workflow.",
+    });
+    expect(getOfferTypeDescriptor("Reload")?.calculatorFamily).toBe("reload / recurring promo");
+    expect(getOfferTypeDescriptor("")).toBeNull();
   });
 });

@@ -592,14 +592,16 @@ export function summarizeTrackerData(
     .filter((row) => cashAdjustmentTypesForDashboard.has(row.adjustment_type))
     .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
 
-  const openSportsbook = dataset.sportsbookBets.filter((row) => row.counts_as_open);
-  const openFreeBets = dataset.freeBets.filter((row) => row.counts_as_open);
-  const openCasino = dataset.casinoOffers.filter((row) => row.counts_as_open);
+  // Dashboard operational metrics follow the same resolved range as its P&L.
+  // Account balances remain current-state values and are intentionally handled above.
+  const openSportsbook = sportsbookInRange.filter((row) => row.counts_as_open);
+  const openFreeBets = freeBetsInRange.filter((row) => row.counts_as_open);
+  const openCasino = casinoInRange.filter((row) => row.counts_as_open);
 
   const overdueBets =
-    dataset.sportsbookBets.filter((row) => row.is_overdue).length +
-    dataset.freeBets.filter((row) => row.is_overdue).length +
-    dataset.casinoOffers.filter((row) => row.is_overdue).length;
+    sportsbookInRange.filter((row) => row.is_overdue).length +
+    freeBetsInRange.filter((row) => row.is_overdue).length +
+    casinoInRange.filter((row) => row.is_overdue).length;
 
   const partLaidBets =
     dataset.sportsbookBets.filter(
@@ -630,8 +632,13 @@ export function summarizeTrackerData(
     .filter((row) => costAdjustmentTypes.has(row.adjustment_type))
     .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
 
-  const expiringFreeBets = dataset.freeBets
-    .filter((row) => row.status !== "Settled" && !!parseDateInput(row.expiry_datetime))
+  const expiringFreeBets = freeBetsInRange
+    .filter(
+      (row) =>
+        ["Prospecting", "Available", "Not Yet Awarded"].includes(row.status) &&
+        row.result === "Pending" &&
+        !!parseDateInput(row.expiry_datetime)
+    )
     .sort((left, right) => left.expiry_datetime.localeCompare(right.expiry_datetime))
     .filter((row) => {
       const expiryDate = parseDateInput(row.expiry_datetime);

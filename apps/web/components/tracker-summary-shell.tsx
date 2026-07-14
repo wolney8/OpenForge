@@ -44,6 +44,11 @@ function buildRangeLabel(start: Date, end: Date) {
   return `${formatDisplayDate(start.toISOString())} to ${formatDisplayDate(end.toISOString())}`;
 }
 
+function isWithinResolvedRange(value: string, start: Date, end: Date) {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp >= start.getTime() && timestamp <= end.getTime();
+}
+
 function getActivityModuleLabel(module: string) {
   switch (module) {
     case "sportsbook":
@@ -289,7 +294,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
     return [
       ...data.sportsbookBets
-        .filter((row) => row.counts_as_open && !row.is_overdue)
+        .filter(
+          (row) =>
+            row.counts_as_open &&
+            !row.is_overdue &&
+            isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `sportsbook-${row.sportsbook_bet_id}`,
           module: "sportsbook",
@@ -300,7 +310,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           value: row.reporting_value,
         })),
       ...data.freeBets
-        .filter((row) => row.counts_as_open && !row.is_overdue)
+        .filter(
+          (row) =>
+            row.counts_as_open &&
+            !row.is_overdue &&
+            isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `free-bet-${row.free_bet_id}`,
           module: "free-bet",
@@ -311,7 +326,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           value: row.reporting_value,
         })),
       ...data.casinoOffers
-        .filter((row) => row.counts_as_open && !row.is_overdue)
+        .filter(
+          (row) =>
+            row.counts_as_open &&
+            !row.is_overdue &&
+            isWithinResolvedRange(row.date_settling, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `casino-${row.casino_offer_id}`,
           module: "casino",
@@ -325,7 +345,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       .filter((row) => row.dueDate.trim())
       .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
       .slice(0, 12);
-  }, [data]);
+  }, [data, resolvedRange.end, resolvedRange.start]);
 
   const overdueAttentionRows = useMemo(() => {
     if (!data) {
@@ -334,7 +354,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
     return [
       ...data.sportsbookBets
-        .filter((row) => row.is_overdue)
+        .filter(
+          (row) =>
+            row.is_overdue &&
+            isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `sportsbook-${row.sportsbook_bet_id}`,
           module: "sportsbook",
@@ -345,7 +369,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           value: row.reporting_value,
         })),
       ...data.freeBets
-        .filter((row) => row.is_overdue)
+        .filter(
+          (row) =>
+            row.is_overdue &&
+            isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `free-bet-${row.free_bet_id}`,
           module: "free-bet",
@@ -356,7 +384,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           value: row.reporting_value,
         })),
       ...data.casinoOffers
-        .filter((row) => row.is_overdue)
+        .filter(
+          (row) =>
+            row.is_overdue &&
+            isWithinResolvedRange(row.date_settling, resolvedRange.start, resolvedRange.end)
+        )
         .map((row) => ({
           key: `casino-${row.casino_offer_id}`,
           module: "casino",
@@ -369,7 +401,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     ]
       .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
       .slice(0, 12);
-  }, [data]);
+  }, [data, resolvedRange.end, resolvedRange.start]);
 
   const isDashboardLike = variant === "dashboard" || variant === "profit-tracker";
   const isReports = variant === "reports";

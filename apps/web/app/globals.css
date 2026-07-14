@@ -1272,7 +1272,7 @@ textarea {
   position: absolute;
   right: -0.34rem;
   bottom: -0.34rem;
-  z-index: 3;
+  z-index: 4;
   min-width: 1.15rem;
   height: 1.15rem;
   padding: 0 0.2rem;
@@ -1474,6 +1474,163 @@ html[data-theme="dark"] .table-chip-strategy-standard {
   border-color: color-mix(in srgb, #5b3094 74%, var(--outline));
   background: color-mix(in srgb, #5b3094 32%, var(--surface-container));
   color: #f1e5ff;
+}
+
+/* Explicit theme pairs keep compact ledger states readable at WCAG AA contrast. */
+html:not([data-theme="dark"]) .table-chip-warning,
+html:not([data-theme="dark"]) .table-chip-lay-open,
+html:not([data-theme="dark"]) .table-chip-strategy-no-lay {
+  border-color: #b42318;
+  background: #fde8e7;
+  color: #7d1914;
+}
+
+html:not([data-theme="dark"]) .table-chip-lay-partial {
+  border-color: #9a7100;
+  background: #fff2bf;
+  color: #5f4600;
+}
+
+html:not([data-theme="dark"]) .table-chip-expiry-watch {
+  border-color: #b45a00;
+  background: #ffe7cc;
+  color: #713b00;
+}
+
+html:not([data-theme="dark"]) .table-chip-info,
+html:not([data-theme="dark"]) .table-chip-status-settled,
+html:not([data-theme="dark"]) .table-chip-strategy-custom {
+  border-color: #667d96;
+  background: #e6eef7;
+  color: #29405c;
+}
+
+html:not([data-theme="dark"]) .table-chip-lay-full,
+html:not([data-theme="dark"]) .table-chip-back-placed,
+html:not([data-theme="dark"]) .table-chip-status-placed {
+  border-color: #0e7c42;
+  background: #d8f3e4;
+  color: #075c30;
+}
+
+html:not([data-theme="dark"]) .table-chip-status-awarded {
+  border-color: #075c30;
+  background: #c5ead6;
+  color: #064626;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-overlay {
+  border-color: #3978ad;
+  background: #d8ecff;
+  color: #0e4d86;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-underlay {
+  border-color: #185fa8;
+  background: #dcecff;
+  color: #123f73;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-standard {
+  border-color: #9e70c8;
+  background: #f0e3ff;
+  color: #5a2c87;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-partial-lay {
+  border-color: #78622f;
+  background: #eee5c9;
+  color: #4e3e17;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-multilay {
+  border-color: #2c7180;
+  background: #d8f0f4;
+  color: #174e59;
+}
+
+html:not([data-theme="dark"]) .table-chip-strategy-multilay-underlay {
+  border-color: #7444a7;
+  background: #eee2fa;
+  color: #51247d;
+}
+
+html[data-theme="dark"] .table-chip-warning,
+html[data-theme="dark"] .table-chip-lay-open,
+html[data-theme="dark"] .table-chip-strategy-no-lay {
+  border-color: #ff9c98;
+  background: #5a2528;
+  color: #ffd7d4;
+}
+
+html[data-theme="dark"] .table-chip-lay-partial {
+  border-color: #e2c75f;
+  background: #4d421c;
+  color: #ffea9c;
+}
+
+html[data-theme="dark"] .table-chip-expiry-watch {
+  border-color: #e6a358;
+  background: #50351f;
+  color: #ffd6a3;
+}
+
+html[data-theme="dark"] .table-chip-info,
+html[data-theme="dark"] .table-chip-status-settled,
+html[data-theme="dark"] .table-chip-strategy-custom {
+  border-color: #91a9c2;
+  background: #293d52;
+  color: #e2efff;
+}
+
+html[data-theme="dark"] .table-chip-lay-full,
+html[data-theme="dark"] .table-chip-back-placed,
+html[data-theme="dark"] .table-chip-status-placed {
+  border-color: #6bdaa4;
+  background: #173e2d;
+  color: #baf3d3;
+}
+
+html[data-theme="dark"] .table-chip-status-awarded {
+  border-color: #7be1ac;
+  background: #0d4a2d;
+  color: #c7f7dc;
+}
+
+html[data-theme="dark"] .table-chip-strategy-overlay {
+  border-color: #8bc8ff;
+  background: #173f63;
+  color: #d9edff;
+}
+
+html[data-theme="dark"] .table-chip-strategy-standard {
+  border-color: #d1acf2;
+  background: #4a315f;
+  color: #f5eaff;
+}
+
+html[data-theme="dark"] .table-chip-strategy-underlay {
+  border-color: #75b4f0;
+  background: #173d68;
+  color: #e5f2ff;
+}
+
+html[data-theme="dark"] .table-chip-strategy-partial-lay {
+  border-color: #bea75d;
+  background: #4b4022;
+  color: #fff0b0;
+}
+
+html[data-theme="dark"] .table-chip-strategy-multilay {
+  border-color: #72c3d2;
+  background: #1b4c57;
+  color: #e4faff;
+}
+
+html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
+  border-color: #c29be8;
+  background: #4c2e6c;
+  color: #f5f9ff;
 }
 
 .table-value-cell {
@@ -1715,12 +1872,13 @@ html[data-theme="dark"] .table-chip-strategy-standard {
   position: absolute;
   left: 0.6rem;
   top: 50%;
-  width: var(--issue-overlay-width, 100%);
   transform: translate(-0.6rem, -50%);
   display: inline-flex;
   gap: 0.45rem;
+  flex-wrap: nowrap;
   align-items: center;
-  max-width: none;
+  width: max-content;
+  max-width: calc(100% - 1.2rem);
   padding: 0.45rem 0.65rem;
   border-radius: 0.9rem;
   opacity: 0;
@@ -1728,12 +1886,28 @@ html[data-theme="dark"] .table-chip-strategy-standard {
   background: transparent;
   transition: opacity 150ms ease, transform 150ms ease;
   z-index: 4;
+  isolation: isolate;
+}
+
+.row-issue-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--surface-strong) 14%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: -1;
 }
 
 .data-table tbody tr:hover .row-issue-overlay,
 .data-table tbody tr:focus-within .row-issue-overlay {
   opacity: 1;
   transform: translate(0, -50%);
+}
+
+html[data-theme="dark"] .row-issue-overlay::before {
+  background: color-mix(in srgb, var(--surface-strong) 24%, transparent);
 }
 
 
@@ -1891,6 +2065,54 @@ html[data-theme="dark"] .table-chip-strategy-standard {
   border-color: color-mix(in srgb, var(--focus) 60%, var(--outline));
   background: color-mix(in srgb, var(--focus) 24%, var(--surface-container));
   color: color-mix(in srgb, var(--focus) 90%, var(--text));
+}
+
+html:not([data-theme="dark"]) .calculator-match-rating-pill-low {
+  border-color: #b42318;
+  background: #fde8e7;
+  color: #7d1914;
+}
+
+html:not([data-theme="dark"]) .calculator-match-rating-pill-mid {
+  border-color: #9a7100;
+  background: #fff2bf;
+  color: #5f4600;
+}
+
+html:not([data-theme="dark"]) .calculator-match-rating-pill-good {
+  border-color: #0e7c42;
+  background: #d8f3e4;
+  color: #075c30;
+}
+
+html:not([data-theme="dark"]) .calculator-match-rating-pill-arp {
+  border-color: #276ca8;
+  background: #dcecff;
+  color: #123f73;
+}
+
+html[data-theme="dark"] .calculator-match-rating-pill-low {
+  border-color: #ff9c98;
+  background: #5a2528;
+  color: #ffd7d4;
+}
+
+html[data-theme="dark"] .calculator-match-rating-pill-mid {
+  border-color: #e2c75f;
+  background: #4d421c;
+  color: #ffea9c;
+}
+
+html[data-theme="dark"] .calculator-match-rating-pill-good {
+  border-color: #6bdaa4;
+  background: #173e2d;
+  color: #baf3d3;
+}
+
+html[data-theme="dark"] .calculator-match-rating-pill-arp {
+  border-color: #75b4f0;
+  background: #173d68;
+  color: #e5f2ff;
 }
 
 .calculator-input-grid {
@@ -2102,6 +2324,13 @@ html[data-theme="dark"] .table-chip-strategy-standard {
   border: 1px solid var(--outline);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.modal-panel.workflow-editor-modal {
+  width: min(1240px, calc(100vw - 2.5rem));
+  max-height: calc(100vh - 2.5rem);
+  padding: 1.35rem;
+  overflow: auto;
 }
 
 .modal-close-button {

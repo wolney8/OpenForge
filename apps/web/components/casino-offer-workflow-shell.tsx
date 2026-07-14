@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -9,12 +9,13 @@ import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format"
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
+  usePersistedState,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
-import { formatDisplayDate, formatMoney } from "@/lib/tracker-summary";
+import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -91,6 +92,24 @@ type CasinoOutcomeModalState = {
   status: string;
   result: string;
   date_settling: string;
+};
+
+type TrackerSettingsRecord = {
+  profile_id: string;
+  active_date_preset: string;
+  custom_start_date: string;
+  custom_end_date: string;
+  range_back_days: number;
+  range_forward_days: number;
+  mug_bet_frequency_days: number;
+  free_bet_expiry_alert_window_days: number;
+  use_global_date_range_toggle: boolean;
+  this_month_mode: string;
+  default_free_bet_underlay_factor: string;
+  default_free_bet_overlay_factor: string;
+  default_bonus_retention_percent: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type CasinoOfferTableMode =
@@ -570,6 +589,35 @@ function getComparableDate(value: string): number | null {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
+function parseDateValue(value: string | null | undefined): Date | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDateWithinResolvedRange(
+  candidate: Date | null,
+  resolvedRange: ReturnType<typeof resolveDateRange>
+): boolean {
+  if (!candidate) {
+    return false;
+  }
+
+  return candidate >= resolvedRange.start && candidate <= resolvedRange.end;
+}
+
+function getCasinoRangeAnchor(row: CasinoOfferRecord): Date | null {
+  return (
+    parseDateValue(row.date_settling) ??
+    parseDateValue(row.date_started) ??
+    parseDateValue(row.expiry_datetime)
+  );
+}
+
 function getCasinoCampaignHeading(offerType: string): string {
   if (wageringCampaignTypes.has(offerType)) {
     return "Qualifying and wagering";
@@ -902,6 +950,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
+  const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -915,13 +964,19 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
   const [columnWidths, setColumnWidths] = useState<Partial<Record<CasinoColumnKey, number>>>(
     defaultCasinoColumnWidths
   );
-  const [tableFilters, setTableFilters] = useState<CasinoTableFilterState>(emptyTableFilters);
+  const [tableFilters, setTableFilters] = usePersistedState<CasinoTableFilterState>(
+    `openforge-ledger-table-filters:${profileId}:casino-offers`,
+    emptyTableFilters
+  );
   const [tableSort, setTableSort] = useState<CasinoTableSort | null>(null);
   const [formState, setFormState] = useState<CasinoOfferFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] =
     useState<CasinoOfferFormState>(createBlankForm);
   const [outcomeModalState, setOutcomeModalState] = useState<CasinoOutcomeModalState | null>(null);
-  const [tableMode, setTableMode] = useState<CasinoOfferTableMode>("recent");
+  const [tableMode, setTableMode] = usePersistedState<CasinoOfferTableMode>(
+    `openforge-ledger-table-mode:${profileId}:casino-offers`,
+    "recent"
+  );
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
@@ -945,17 +1000,6 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
         visibleColumnKeys.has(column.key as CasinoColumnKey)
       ),
     [visibleColumnKeys]
-  );
-  const visibleTableWidth = useMemo(
-    () =>
-      tableColumns.reduce(
-        (sum, column) =>
-          sum +
-          (columnWidths[column.key as CasinoColumnKey] ??
-            defaultCasinoColumnWidths[column.key as CasinoColumnKey]),
-        0
-      ),
-    [columnWidths, tableColumns]
   );
   const hiddenColumnCount = useMemo(
     () =>
@@ -1069,9 +1113,20 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     setLookupValues(nextRows);
   }, [profileId]);
 
+  const loadTrackerSettings = useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Unable to load tracker settings");
+    }
+    const nextSettings = (await response.json()) as TrackerSettingsRecord;
+    setTrackerSettings(nextSettings);
+  }, [profileId]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(), loadAccountAuthorities(), loadLookupValues()]).catch(
+      void Promise.all([loadRows(), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings()]).catch(
         (error: Error) => {
           setErrorMessage(error.message);
           setStatusMessage("Casino-offer workflow could not be loaded.");
@@ -1080,7 +1135,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadRows, loadAccountAuthorities, loadLookupValues]);
+  }, [loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.casino_offer_id === selectedId) ?? null,
@@ -1120,13 +1175,27 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
   const displayedValue = getDisplayedCasinoValueForForm(formState);
   const displayedValueLabel = getDisplayedCasinoValueLabelForForm(formState);
   const hasResolvedCasinoValue = Boolean(formState.calc_net_pnl.trim() || formState.final_net_pnl.trim());
+  const resolvedDateRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
+        customStart: trackerSettings?.custom_start_date,
+        customEnd: trackerSettings?.custom_end_date,
+        rangeBackDays: trackerSettings?.range_back_days,
+        rangeForwardDays: trackerSettings?.range_forward_days,
+      }),
+    [trackerSettings]
+  );
   const quickView = useMemo(() => {
-    const rewardLedRows = rows.filter((row) => freeSpinCampaignTypes.has(row.offer_type));
-    const wageringRows = rows.filter((row) => wageringCampaignTypes.has(row.offer_type));
-    const cashbackRows = rows.filter((row) => row.offer_type === "Cashback");
-    const prospectingRows = rows.filter((row) => casinoPlaceholderStatuses.has(row.status));
-    const settlingRows = rows.filter((row) => row.date_settling.trim());
-    const totalResolvedValue = rows.reduce(
+    const rangeRows = rows.filter((row) =>
+      isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
+    );
+    const rewardLedRows = rangeRows.filter((row) => freeSpinCampaignTypes.has(row.offer_type));
+    const wageringRows = rangeRows.filter((row) => wageringCampaignTypes.has(row.offer_type));
+    const cashbackRows = rangeRows.filter((row) => row.offer_type === "Cashback");
+    const prospectingRows = rangeRows.filter((row) => casinoPlaceholderStatuses.has(row.status));
+    const settlingRows = rangeRows.filter((row) => row.date_settling.trim());
+    const totalResolvedValue = rangeRows.reduce(
       (sum, row) =>
         sum +
         parseCasinoAmount(row.resolved_net_pnl ?? row.final_net_pnl ?? row.calc_net_pnl),
@@ -1134,8 +1203,8 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     );
 
     return {
-      openCount: rows.filter((row) => row.counts_as_open).length,
-      overdueCount: rows.filter((row) => row.is_overdue).length,
+      openCount: rangeRows.filter((row) => row.counts_as_open).length,
+      overdueCount: rangeRows.filter((row) => row.is_overdue).length,
       prospectingCount: prospectingRows.length,
       settlingCount: settlingRows.length,
       rewardLedCount: rewardLedRows.length,
@@ -1143,7 +1212,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
       cashbackCount: cashbackRows.length,
       totalResolvedValue,
     };
-  }, [rows]);
+  }, [resolvedDateRange, rows]);
 
   const bookmakerOptions = useMemo(
     () =>
@@ -1400,14 +1469,14 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
       }));
       setCurrentPage(1);
     },
-    []
+    [setTableFilters]
   );
 
   const clearTableFilters = useCallback(() => {
     setTableMode("recent");
     setTableFilters(emptyTableFilters);
     setCurrentPage(1);
-  }, []);
+  }, [setTableFilters, setTableMode]);
 
   const toggleTableSort = useCallback((key: CasinoSortKey) => {
     setTableSort((current) => {
@@ -1713,7 +1782,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     const saved = await persistForm(nextFormState, {
       autosaveLabel: "Outcome update",
       suppressMissingRequiredMessage: true,
-      returnToLedgerOnSuccess: false,
+      returnToLedgerOnSuccess: true,
     });
     if (saved) {
       setOutcomeModalState(null);
@@ -1902,7 +1971,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
                   aria-label={`${activeTableControlCount} active table controls`}
                   className="table-filter-badge"
                 >
-                  {activeTableControlCount}
+                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
                 </span>
               ) : null}
             </button>
@@ -2047,13 +2116,6 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
                       const sourceRow = casinoRowsById.get(rowId);
                       const issueTone = sourceRow ? getCasinoIssueTone(sourceRow) : null;
                       const rowIssueBadges = sourceRow ? getCasinoIssueBadges(sourceRow) : [];
-                      const rowStyle =
-                        rowIssueBadges.length > 0
-                          ? ({
-                              ["--issue-overlay-width" as string]: `${Math.max(visibleTableWidth - 24, 180)}px`,
-                            } as CSSProperties)
-                          : undefined;
-
                       return (
                         <tr
                           className={[
@@ -2069,7 +2131,6 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
                           key={`${rowId}-${index}`}
                           onClick={() => selectRow(rowId)}
                           onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
-                          style={rowStyle}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -2388,7 +2449,14 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
       ) : null}
 
       {workflowVisible ? (
-      <section className="content-panel stack workflow-editor-panel" ref={editorRef}>
+        <div className="modal-backdrop" onClick={closeEditor}>
+      <section
+        aria-label={selectedId ? "Edit casino row" : "Create casino row"}
+        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        onClick={(event) => event.stopPropagation()}
+        ref={editorRef}
+        role="dialog"
+      >
         <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit casino row" : "Create casino row"}</span>
@@ -2987,6 +3055,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
         </form>
         </div>
       </section>
+      </div>
       ) : null}
     </section>
   );

@@ -42,6 +42,7 @@ def test_supported_fixture_cases_match_expected_contract_outputs() -> None:
         expected = case["expected"]
 
         if case["case_id"] == "SB-001":
+            assert result.match_rating == as_decimal(expected["match_rating"])
             assert result.reference_lay_stake_standard == as_decimal(
                 expected["reference_lay_stake_standard"]
             )
@@ -400,8 +401,11 @@ def test_multilay_rows_mark_fully_laid_when_all_branches_are_placed() -> None:
             multi_lay_outcome_1_name="Score 1-0",
             multi_lay_outcomes_json=(
                 '[{"id":"outcome1","label":"Score 1-0","layOdds":"5.20",'
-                '"placedExchange":"Matchbook","placedLayOdds":"5.20","placedMatchedStake":"9.65","placementState":"placed"},'
-                '{"id":"outcome2","label":"Score 2-0","layOdds":"6.30","placedExchange":"Matchbook","placedLayOdds":"6.30","placedMatchedStake":"7.96","placementState":"placed"}]'
+                '"placedExchange":"Matchbook","placedLayOdds":"5.20",'
+                '"placedMatchedStake":"9.65","placementState":"placed"},'
+                '{"id":"outcome2","label":"Score 2-0","layOdds":"6.30",'
+                '"placedExchange":"Matchbook","placedLayOdds":"6.30",'
+                '"placedMatchedStake":"7.96","placementState":"placed"}]'
             ),
             lay_actual="9.65",
             lay_commission_1="0.02",

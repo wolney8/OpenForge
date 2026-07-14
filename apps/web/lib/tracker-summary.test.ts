@@ -222,6 +222,92 @@ describe("summarizeTrackerData", () => {
     expect(summary.moduleBreakdown[0]?.label).toBe("Sportsbook");
   });
 
+  it("keeps selected-range operational counts and liability inside the resolved range", () => {
+    const range = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-01T10:00:00Z"),
+    });
+    const outsideRange: TrackerSummaryDataset = {
+      ...dataset,
+      sportsbookBets: [
+        ...dataset.sportsbookBets,
+        {
+          ...dataset.sportsbookBets[1]!,
+          sportsbook_bet_id: "SB-OUTSIDE",
+          date_settled: "2026-07-15T12:00:00",
+          calculated_liability_1: "99.00",
+        },
+      ],
+      freeBets: [
+        ...dataset.freeBets,
+        {
+          ...dataset.freeBets[0]!,
+          free_bet_id: "FB-OUTSIDE",
+          date_settled: "2026-07-15T20:00:00",
+          expiry_datetime: "2026-07-16T20:00:00",
+          calculated_liability_1: "88.00",
+          is_overdue: true,
+        },
+      ],
+    };
+
+    const summary = summarizeTrackerData(
+      outsideRange,
+      range,
+      new Date("2026-07-01T10:00:00Z"),
+      { freeBetExpiryAlertWindowDays: 30 }
+    );
+
+    expect(summary.betsQuickView.openBets).toBe(2);
+    expect(summary.betsQuickView.overdueBets).toBe(1);
+    expect(summary.betsQuickView.currentLiability).toBeCloseTo(10.5, 6);
+    expect(summary.betsQuickView.expiringFreeBetCount).toBe(0);
+  });
+
+  it("excludes placed and settled free bets from expiry alerts", () => {
+    const range = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-01T10:00:00Z"),
+    });
+    const expiryRows: TrackerSummaryDataset = {
+      ...dataset,
+      freeBets: [
+        {
+          ...dataset.freeBets[0]!,
+          free_bet_id: "FB-AVAILABLE",
+          status: "Available",
+          date_settled: "2026-07-02T20:00:00",
+          expiry_datetime: "2026-07-02T12:00:00",
+        },
+        {
+          ...dataset.freeBets[0]!,
+          free_bet_id: "FB-PLACED",
+          status: "Placed",
+          date_settled: "2026-07-02T20:00:00",
+          expiry_datetime: "2026-07-02T12:00:00",
+        },
+        {
+          ...dataset.freeBets[0]!,
+          free_bet_id: "FB-SETTLED",
+          status: "Settled",
+          result: "Lay Won",
+          counts_as_open: false,
+          date_settled: "2026-07-02T20:00:00",
+          expiry_datetime: "2026-07-02T12:00:00",
+        },
+      ],
+    };
+
+    const summary = summarizeTrackerData(
+      expiryRows,
+      range,
+      new Date("2026-07-01T10:00:00Z"),
+      { freeBetExpiryAlertWindowDays: 4 }
+    );
+
+    expect(summary.expiringFreeBets.map((row) => row.free_bet_id)).toEqual(["FB-AVAILABLE"]);
+  });
+
   it("keeps free-bet expiry alerts and recent activity ordered", () => {
     const range = resolveDateRange({
       preset: "Week (Mon-Sun)",
@@ -290,7 +376,7 @@ describe("summarizeTrackerData", () => {
       { freeBetExpiryAlertWindowDays: 4 }
     );
 
-    expect(summary.expiringFreeBets.map((row) => row.free_bet_id)).toEqual(["FB-2", "FB-1"]);
+    expect(summary.expiringFreeBets.map((row) => row.free_bet_id)).toEqual(["FB-2"]);
   });
 
   it("derives workbook-style account-health cues from sportsbook activity", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -9,12 +9,13 @@ import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format"
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
+  usePersistedState,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
-import { formatDisplayDate, formatMoney } from "@/lib/tracker-summary";
+import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -28,8 +29,9 @@ import {
   freeBetStrategyOptions,
   getAllowedBetTypesForOfferType,
   getDefaultBetTypeForOfferType,
+  getOfferTypeDescriptor,
+  getOfferTypeOptions,
   normalizeSportsbookBetType,
-  sportsbookOfferTypeOptions,
 } from "@/lib/workbook-options";
 
 type FreeBetOutcomeCardState = "possible" | "hit" | "missed" | "void";
@@ -327,6 +329,31 @@ function getPlaceholderGuidance(status: string): string {
     return "Row is prospecting only; no bankroll value is carried yet.";
   }
   return "Add a matching plan when the free bet is ready to convert.";
+}
+
+function parseDateValue(value: string): Date | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDateWithinResolvedRange(value: Date | null, range: { start: Date; end: Date }): boolean {
+  if (!value) {
+    return false;
+  }
+  return value >= range.start && value <= range.end;
+}
+
+function getFreeBetRangeAnchor(
+  row: Pick<FreeBetRecord, "date_settled" | "expiry_datetime" | "created_at">
+): Date | null {
+  return (
+    parseDateValue(row.date_settled) ??
+    parseDateValue(row.expiry_datetime) ??
+    parseDateValue(row.created_at)
+  );
 }
 
 function getOutcomeCardState(
@@ -1010,12 +1037,18 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   const [columnWidths, setColumnWidths] = useState<Partial<Record<FreeBetColumnKey, number>>>(
     defaultFreeBetColumnWidths
   );
-  const [tableFilters, setTableFilters] = useState<FreeBetTableFilterState>(emptyTableFilters);
+  const [tableFilters, setTableFilters] = usePersistedState<FreeBetTableFilterState>(
+    `openforge-ledger-table-filters:${profileId}:free-bets`,
+    emptyTableFilters
+  );
   const [tableSort, setTableSort] = useState<FreeBetTableSort | null>(null);
   const [formState, setFormState] = useState<FreeBetFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<FreeBetFormState>(createBlankForm);
   const [outcomeModalState, setOutcomeModalState] = useState<FreeBetOutcomeModalState | null>(null);
-  const [tableMode, setTableMode] = useState<FreeBetTableMode>("recent");
+  const [tableMode, setTableMode] = usePersistedState<FreeBetTableMode>(
+    `openforge-ledger-table-mode:${profileId}:free-bets`,
+    "recent"
+  );
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
@@ -1040,17 +1073,6 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
         visibleColumnKeys.has(column.key as FreeBetColumnKey)
       ),
     [visibleColumnKeys]
-  );
-  const visibleTableWidth = useMemo(
-    () =>
-      tableColumns.reduce(
-        (sum, column) =>
-          sum +
-          (columnWidths[column.key as FreeBetColumnKey] ??
-            defaultFreeBetColumnWidths[column.key as FreeBetColumnKey]),
-        0
-      ),
-    [columnWidths, tableColumns]
   );
   const hiddenColumnCount = useMemo(
     () =>
@@ -1279,13 +1301,8 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   );
 
   const offerTypeOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...sportsbookOfferTypeOptions,
-        ...rows.map((row) => row.offer_type),
-        formState.offer_type,
-      ]),
-    [formState.offer_type, rows]
+    () => getOfferTypeOptions(formState.offer_type),
+    [formState.offer_type]
   );
 
   const offerNameOptions = useMemo(() => {
@@ -1318,6 +1335,10 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
       currentValue: formState.offer_name,
     });
   }, [formState.bookmaker, formState.offer_name, formState.offer_type, lookupValues, rows]);
+  const offerTypeDescriptor = useMemo(
+    () => getOfferTypeDescriptor(formState.offer_type),
+    [formState.offer_type]
+  );
 
   const betTypeOptionsResolved = useMemo(
     () =>
@@ -1351,6 +1372,17 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   const resolvedCommission = useMemo(
     () => getResolvedExchangeCommission(exchangeSettings, formState.exchange_name),
     [exchangeSettings, formState.exchange_name]
+  );
+  const resolvedDateRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
+        customStart: trackerSettings?.custom_start_date,
+        customEnd: trackerSettings?.custom_end_date,
+        rangeBackDays: trackerSettings?.range_back_days,
+        rangeForwardDays: trackerSettings?.range_forward_days,
+      }),
+    [trackerSettings]
   );
 
   const isNoLayStrategy = formState.match_strategy === "No Lay";
@@ -1703,14 +1735,14 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
       }));
       setCurrentPage(1);
     },
-    []
+    [setTableFilters]
   );
 
   const clearTableFilters = useCallback(() => {
     setTableMode("recent");
     setTableFilters(emptyTableFilters);
     setCurrentPage(1);
-  }, []);
+  }, [setTableFilters, setTableMode]);
 
   const toggleTableSort = useCallback((key: FreeBetSortKey) => {
     setTableSort((current) => {
@@ -1856,26 +1888,29 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   }, [filteredSourceRows, query]);
 
   const quickView = useMemo(() => {
-    const totalReportingValue = rows.reduce(
+    const rangeRows = rows.filter((row) =>
+      isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
+    );
+    const totalReportingValue = rangeRows.reduce(
       (sum, row) => sum + parseFreeBetAmount(row.reporting_value ?? row.final_net_pnl ?? row.projected_current_pnl),
       0
     );
-    const expiryWatchRows = rows.filter(
+    const expiryWatchRows = rangeRows.filter(
       (row) => freeBetPlaceholderStatuses.has(row.status) && row.result === "Pending"
     );
 
     return {
-      openCount: rows.filter((row) => row.counts_as_open).length,
-      overdueCount: rows.filter((row) => row.is_overdue).length,
-      placedCount: rows.filter((row) => row.status === "Placed").length,
-      availableCount: rows.filter((row) => freeBetPlaceholderStatuses.has(row.status)).length,
-      underlayCount: rows.filter((row) => row.match_strategy === "Underlay").length,
-      noLayCount: rows.filter((row) => row.match_strategy === "No Lay").length,
+      openCount: rangeRows.filter((row) => row.counts_as_open).length,
+      overdueCount: rangeRows.filter((row) => row.is_overdue).length,
+      placedCount: rangeRows.filter((row) => row.status === "Placed").length,
+      availableCount: rangeRows.filter((row) => freeBetPlaceholderStatuses.has(row.status)).length,
+      underlayCount: rangeRows.filter((row) => row.match_strategy === "Underlay").length,
+      noLayCount: rangeRows.filter((row) => row.match_strategy === "No Lay").length,
       missingExpiryCount: expiryWatchRows.filter((row) => !row.expiry_datetime.trim()).length,
       upcomingExpiryCount: expiryWatchRows.filter((row) => row.expiry_datetime.trim()).length,
       totalReportingValue,
     };
-  }, [rows]);
+  }, [resolvedDateRange, rows]);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
@@ -2157,7 +2192,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     const saved = await persistForm(nextFormState, {
       autosaveLabel: "Outcome update",
       suppressMissingRequiredMessage: true,
-      returnToLedgerOnSuccess: false,
+      returnToLedgerOnSuccess: true,
     });
     if (saved) {
       setOutcomeModalState(null);
@@ -2357,7 +2392,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
                   aria-label={`${activeTableControlCount} active table controls`}
                   className="table-filter-badge"
                 >
-                  {activeTableControlCount}
+                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
                 </span>
               ) : null}
             </button>
@@ -2503,13 +2538,6 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
                       const sourceRow = freeBetRowsById.get(rowId);
                       const issueTone = sourceRow ? getFreeBetIssueTone(sourceRow) : null;
                       const rowIssueBadges = sourceRow ? getFreeBetIssueBadges(sourceRow) : [];
-                      const rowStyle =
-                        rowIssueBadges.length > 0
-                          ? ({
-                              ["--issue-overlay-width" as string]: `${Math.max(visibleTableWidth - 24, 180)}px`,
-                            } as CSSProperties)
-                          : undefined;
-
                       return (
                         <tr
                           className={[
@@ -2529,7 +2557,6 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
                           key={`${rowId}-${index}`}
                           onClick={() => selectRow(rowId)}
                           onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
-                          style={rowStyle}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -2642,7 +2669,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
                 </select>
               </label>
               <label className="field-control">
-                <span>Offer type</span>
+                <span>Offer type (promotion mechanism)</span>
                 <select
                   onChange={(event) => updateTableFilter("offer_type", event.target.value)}
                   value={tableFilters.offer_type}
@@ -2930,7 +2957,14 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
       ) : null}
 
       {workflowVisible ? (
-      <section className="content-panel stack workflow-editor-panel" ref={editorRef}>
+        <div className="modal-backdrop" onClick={closeEditor}>
+      <section
+        aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
+        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        onClick={(event) => event.stopPropagation()}
+        ref={editorRef}
+        role="dialog"
+      >
         <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit free-bet row" : "Create free-bet row"}</span>
@@ -2978,7 +3012,12 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
             <article className="stat-card">
               <span className="eyebrow">Offer path</span>
               <strong>{formState.offer_type || "Offer type pending"}</strong>
-              <span>{[formState.bookmaker, formState.retention_mode].filter(Boolean).join(" • ") || "Bookmaker and mode pending"}</span>
+              <span>
+                {offerTypeDescriptor
+                  ? `${offerTypeDescriptor.calculatorFamily} • ${offerTypeDescriptor.summary}`
+                  : [formState.bookmaker, formState.retention_mode].filter(Boolean).join(" • ") ||
+                    "Bookmaker and mode pending"}
+              </span>
             </article>
           </section>
         ) : null}
@@ -3047,7 +3086,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
               <label className={`field-control${
                 offerIdentityValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
               }`}>
-                <span>Offer type</span>
+                <span>Offer type (promotion mechanism)</span>
                 <select
                   aria-invalid={offerIdentityValidationActive && !formState.offer_type.trim()}
                   onChange={(event) =>
@@ -3594,6 +3633,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
         </form>
         </div>
       </section>
+      </div>
       ) : null}
     </section>
   );

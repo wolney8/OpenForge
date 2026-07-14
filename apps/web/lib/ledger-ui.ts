@@ -36,6 +36,31 @@ export function usePersistedBoolean(storageKey: string, defaultValue: boolean) {
   return [value, setValue] as const;
 }
 
+export function usePersistedState<T>(storageKey: string, defaultValue: T) {
+  const [value, setValue] = useState<T>(() => {
+    if (typeof window === "undefined") {
+      return defaultValue;
+    }
+
+    const storedValue = window.localStorage.getItem(storageKey);
+    if (!storedValue) {
+      return defaultValue;
+    }
+
+    try {
+      return JSON.parse(storedValue) as T;
+    } catch {
+      return defaultValue;
+    }
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(value));
+  }, [storageKey, value]);
+
+  return [value, setValue] as const;
+}
+
 export function useTrackerRouteReselect(onReselect: () => void) {
   const pathname = usePathname();
 
