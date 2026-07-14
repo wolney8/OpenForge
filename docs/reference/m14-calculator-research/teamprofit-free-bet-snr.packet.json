@@ -1,0 +1,34 @@
+{
+  "research_id": "M14-TP-SNR-20260714",
+  "calculator": {
+    "provider": "TeamProfit",
+    "page_title": "Matched Betting Calculator | Free with Team Profit",
+    "url": "https://www.teamprofit.com/calculator",
+    "mode": "Free Bet SNR",
+    "accessed_at": "2026-07-14",
+    "interaction_capability": "interactive",
+    "limitations": []
+  },
+  "controls": [
+    {"label": "Back Stake", "field_key": "back_stake", "input_type": "number", "unit": "GBP", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Back Odds", "field_key": "back_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Odds", "field_key": "lay_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay Commission", "field_key": "lay_commission_pct", "input_type": "number", "unit": "percent", "default": null, "required": true, "evidence_state": "observed"}
+  ],
+  "outputs": [
+    {"label": "Lay Amount", "field_key": "lay_amount", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Liability", "field_key": "liability", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Overall profit", "field_key": "overall_profit", "display_precision": 2, "evidence_state": "observed"}
+  ],
+  "observations": [
+    {"case_id": "TP-SNR-001", "purpose": "ordinary zero commission", "inputs": {"back_stake": "10.00", "back_odds": "5.0", "lay_odds": "5.2", "lay_commission_pct": "0"}, "displayed_outputs": {"lay_amount": "7.69", "liability": "32.30", "overall_profit": "7.70"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-SNR-002", "purpose": "ordinary non-zero commission", "inputs": {"back_stake": "10.00", "back_odds": "5.0", "lay_odds": "5.2", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "7.72", "liability": "32.42", "overall_profit": "7.58"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-SNR-003", "purpose": "changed lay odds", "inputs": {"back_stake": "10.00", "back_odds": "5.0", "lay_odds": "5.3", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "7.58", "liability": "32.59", "overall_profit": "7.41"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-SNR-004", "purpose": "changed stake", "inputs": {"back_stake": "25.00", "back_odds": "5.0", "lay_odds": "5.2", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_amount": "19.31", "liability": "81.10", "overall_profit": "18.90"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-SNR-005", "purpose": "rounding-sensitive", "inputs": {"back_stake": "12.34", "back_odds": "3.33", "lay_odds": "3.4", "lay_commission_pct": "1.5"}, "displayed_outputs": {"lay_amount": "8.49", "liability": "20.38", "overall_profit": "8.38"}, "validation_state": "pass", "conditional_changes": ["advanced_display=true"], "capture_method": "interactive_or_manual", "notes": []},
+    {"case_id": "TP-SNR-006", "purpose": "invalid boundary blank back odds", "inputs": {"back_stake": "12.34", "back_odds": null, "lay_odds": "3.4", "lay_commission_pct": "1.5"}, "displayed_outputs": {"lay_amount": "-3.65", "liability": "-8.76", "overall_profit": "-3.58"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Invalid branch produces negative lay/liability instead of hard validation block"]}
+  ],
+  "candidate_formulas": [
+    {"output_field": "lay_amount", "formula": "(back_stake * (back_odds - 1)) / (lay_odds - lay_commission_decimal)", "supporting_case_ids": ["TP-SNR-001", "TP-SNR-002", "TP-SNR-003", "TP-SNR-004"], "rounding_order": "lay amount displayed at 2dp; downstream headline uses provider-specific mixed precision with differences up to 0.02 observed", "confidence": "medium", "alternatives": [], "unresolved": ["invalid branch sign handling", "exact downstream headline rounding order"]}
+  ]
+}

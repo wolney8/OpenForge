@@ -1,0 +1,33 @@
+{
+  "research_id": "M14-MBB-COMPARISON-20260714",
+  "calculator": {
+    "provider": "MatchedBettingBlog",
+    "page_title": "Matched Betting Calculator [FREE] | Matched Betting Blog",
+    "url": "https://matchedbettingblog.com/matched-betting-calculator/",
+    "mode": "Comparison for TeamProfit equivalent inputs",
+    "accessed_at": "2026-07-14",
+    "interaction_capability": "interactive",
+    "limitations": [
+      "Risk-free mode returned zeros for tested synthetic values in this session"
+    ]
+  },
+  "controls": [
+    {"label": "Bet type", "field_key": "bet_type", "input_type": "radio", "unit": null, "default": "qualifying", "required": true, "evidence_state": "observed"},
+    {"label": "Back stake", "field_key": "back_stake", "input_type": "number", "unit": "GBP", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Back odds", "field_key": "back_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay odds", "field_key": "lay_odds", "input_type": "number", "unit": "decimal", "default": null, "required": true, "evidence_state": "observed"},
+    {"label": "Lay commission", "field_key": "lay_commission_pct", "input_type": "number", "unit": "percent", "default": null, "required": true, "evidence_state": "observed"}
+  ],
+  "outputs": [
+    {"label": "Lay stake required", "field_key": "lay_stake_required", "display_precision": 2, "evidence_state": "observed"},
+    {"label": "Total profit", "field_key": "total_profit", "display_precision": 2, "evidence_state": "observed"}
+  ],
+  "observations": [
+    {"case_id": "MBB-MB-001", "purpose": "equivalent to TP-N-002", "inputs": {"bet_type": "qualifying", "back_stake": "10.00", "back_odds": "3.5", "lay_odds": "3.6", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_stake_required": "9.78", "total_profit": "-0.42"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Near-equivalent to TeamProfit Normal TP-N-002 (TeamProfit overall profit -0.43)"]},
+    {"case_id": "MBB-MB-002", "purpose": "equivalent to TP-SNR-002", "inputs": {"bet_type": "free", "back_stake": "10.00", "back_odds": "5.0", "lay_odds": "5.2", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_stake_required": "7.72", "total_profit": "7.56"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Close to TeamProfit TP-SNR-002 (7.58 overall profit)"]},
+    {"case_id": "MBB-MB-003", "purpose": "risk-free mode anomaly", "inputs": {"bet_type": "riskfree", "back_stake": "10.00", "back_odds": "2.5", "lay_odds": "2.6", "lay_commission_pct": "2"}, "displayed_outputs": {"lay_stake_required": "0.00", "total_profit": "0.00"}, "validation_state": "pass", "conditional_changes": [], "capture_method": "interactive_or_manual", "notes": ["Observed all-zero outputs; requires manual follow-up to verify mode behavior"]}
+  ],
+  "candidate_formulas": [
+    {"output_field": "comparison", "formula": "No single formula; this packet is used as cross-site parity evidence for TeamProfit modes", "supporting_case_ids": ["MBB-MB-001", "MBB-MB-002", "MBB-MB-003"], "rounding_order": "2dp display", "confidence": "low", "alternatives": [], "unresolved": ["risk-free mode parity unresolved"]}
+  ]
+}

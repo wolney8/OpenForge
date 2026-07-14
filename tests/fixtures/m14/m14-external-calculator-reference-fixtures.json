@@ -1,0 +1,130 @@
+{
+  "fixtureSetId": "M14-EXTERNAL-CALC-REF-20260714",
+  "schemaVersion": 2,
+  "status": "research-evidence-human-approval-required",
+  "authority": "OpenForge workbook and owning calculation contracts",
+  "executionPolicy": {
+    "accepted_reference": "external regression comparison only",
+    "contract_draft": "contract review only",
+    "research_only": "documentation only",
+    "blocked": "must not execute as expected-money fixture"
+  },
+  "accepted_reference": [
+    {
+      "fixture_id": "M14-FX-TP-NORMAL",
+      "provider": "TeamProfit",
+      "mode": "Normal",
+      "packet": "docs/reference/m14-calculator-research/teamprofit-normal.packet.json",
+      "case_ids": ["TP-N-001", "TP-N-002", "TP-N-003", "TP-N-004", "TP-N-005"],
+      "owning_contract": "docs/contracts/sportsbook-current-value-contract.md",
+      "display_tolerance": "0.02 GBP external reconciliation band",
+      "allowed_use": "compare external equal-profit reference values only"
+    },
+    {
+      "fixture_id": "M14-FX-TP-SNR",
+      "provider": "TeamProfit",
+      "mode": "Free Bet SNR",
+      "packet": "docs/reference/m14-calculator-research/teamprofit-free-bet-snr.packet.json",
+      "case_ids": ["TP-SNR-001", "TP-SNR-002", "TP-SNR-003", "TP-SNR-004", "TP-SNR-005"],
+      "owning_contract": "docs/contracts/free-bet-current-value-contract.md",
+      "display_tolerance": "0.02 GBP external reconciliation band",
+      "allowed_use": "compare external SNR reference values only"
+    },
+    {
+      "fixture_id": "M14-FX-MBB-ODDS-CONV",
+      "provider": "MatchedBettingBlog",
+      "mode": "Odds Converter",
+      "packet": "docs/reference/m14-calculator-research/mbb-odds-converter.packet.json",
+      "case_ids": ["MBB-OC-001", "MBB-OC-002", "MBB-OC-003", "MBB-OC-004", "MBB-OC-005"],
+      "owning_contract": "docs/contracts/m14-odds-converter-reference-contract.md",
+      "display_tolerance": "0.01 in displayed numeric unit",
+      "allowed_use": "odds conversion regression comparison"
+    }
+  ],
+  "contract_draft": [
+    {
+      "fixture_id": "M14-FX-TP-REFUND",
+      "provider": "TeamProfit",
+      "mode": "Refund",
+      "packet": "docs/reference/m14-calculator-research/teamprofit-refund.packet.json",
+      "case_ids": ["TP-RF-001", "TP-RF-002", "TP-RF-003", "TP-RF-004", "TP-RF-005"],
+      "owning_contract": "docs/contracts/m14-refund-bonus-lock-in-reference-contract.md",
+      "display_tolerance": "0.01 GBP with documented provider penny discrepancy",
+      "promotion_gate": "human approval of award meaning, retention default, and rounding"
+    }
+  ],
+  "research_only": [
+    {
+      "fixture_id": "M14-FX-MBB-COMPARISON",
+      "packet": "docs/reference/m14-calculator-research/mbb-matched-betting-comparison.packet.json",
+      "case_ids": ["MBB-MB-001", "MBB-MB-002"],
+      "reason": "cross-provider rounding evidence only"
+    },
+    {
+      "fixture_id": "M14-FX-MBB-EACH-WAY",
+      "packet": "docs/reference/m14-calculator-research/mbb-each-way.packet.json",
+      "case_ids": ["MBB-EW-001", "MBB-EW-002", "MBB-EW-003", "MBB-EW-004", "MBB-EW-005"],
+      "reason": "reactive outputs observed but exact dual-leg equation and rounding order unresolved"
+    },
+    {
+      "fixture_id": "M14-FX-INVALID-PROVIDER-BEHAVIOUR",
+      "case_references": [
+        "teamprofit-normal.packet.json#TP-N-006",
+        "teamprofit-free-bet-snr.packet.json#TP-SNR-006",
+        "teamprofit-refund.packet.json#TP-RF-006",
+        "mbb-each-way.packet.json#MBB-EW-006",
+        "mbb-odds-converter.packet.json#MBB-OC-006"
+      ],
+      "reason": "third-party invalid-input output must not define OpenForge validation"
+    }
+  ],
+  "blocked": [
+    {
+      "fixture_id": "M14-BLOCK-MBB-RISK-FREE",
+      "packet": "docs/reference/m14-calculator-research/mbb-matched-betting-comparison.packet.json",
+      "case_ids": ["MBB-MB-003"],
+      "reason": "all-zero anomalous output",
+      "follow_up": "reproduce correct control state and non-zero cases"
+    },
+    {
+      "fixture_id": "M14-BLOCK-MBB-EXTRA-PLACE",
+      "packet": "docs/reference/m14-calculator-research/mbb-extra-place.packet.json",
+      "case_ids": ["MBB-EP-001", "MBB-EP-002", "MBB-EP-003", "MBB-EP-004", "MBB-EP-005", "MBB-EP-006"],
+      "reason": "captured outputs did not distinguish the extra-place branch",
+      "follow_up": "capture contrasting ordinary-place and extra-place-only scenarios"
+    },
+    {
+      "fixture_id": "M14-BLOCK-MBB-SEQUENTIAL-LAY",
+      "packets": [
+        "docs/reference/m14-calculator-research/mbb-sequential-lay-standard.packet.json",
+        "docs/reference/m14-calculator-research/mbb-sequential-lay-lock-in.packet.json"
+      ],
+      "reason": "exact leg model and branch equations unresolved",
+      "follow_up": "verify input-to-leg mapping and derive every outcome branch"
+    },
+    {
+      "fixture_id": "M14-BLOCK-MBB-EARLY-PAYOUT",
+      "packet": "docs/reference/m14-calculator-research/mbb-early-payout-2way-dutch.packet.json",
+      "case_ids": ["MBB-EPY-001", "MBB-EPY-002", "MBB-EPY-003", "MBB-EPY-004", "MBB-EPY-005", "MBB-EPY-006"],
+      "reason": "captures ordinary equal-profit outputs, not 2UP trigger or 2-way dutch branches",
+      "follow_up": "capture advanced trigger/dutch controls and auxiliary outputs"
+    },
+    {
+      "fixture_id": "M14-BLOCK-MBB-ACCUMULATOR",
+      "packets": [
+        "docs/reference/m14-calculator-research/mbb-accumulator-standard.packet.json",
+        "docs/reference/m14-calculator-research/mbb-accumulator-each-way.packet.json",
+        "docs/reference/m14-calculator-research/mbb-accumulator-rule4.packet.json",
+        "docs/reference/m14-calculator-research/mbb-accumulator-selection-notes.packet.json"
+      ],
+      "reason": "outputs remained at the default baseline after changed inputs",
+      "follow_up": "repeat with verified reactive controls and independently calculated totals"
+    },
+    {
+      "fixture_id": "M14-BLOCK-TEAMPROFIT-PARTIAL-MATCH",
+      "packet": "docs/reference/m14-calculator-research/teamprofit-normal.packet.json",
+      "reason": "no partial-match observations were captured",
+      "follow_up": "advanced display exposes part_lays_toggle; capture one-leg and two-leg cases"
+    }
+  ]
+}

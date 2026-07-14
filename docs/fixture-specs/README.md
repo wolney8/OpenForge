@@ -1,6 +1,6 @@
 # OpenForge Fixture Specs
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-14_
 
 ## Purpose
 
@@ -49,3 +49,20 @@ Each fixture spec should include:
 - `liability-exposure-fixture-spec.md`
 - `cash-adjustment-fixture-spec.md`
 - `dashboard-selected-range-pnl-fixture-spec.md`
+- `fund-manager-authentication-fixture-spec.md`
+- `local-database-cloud-backup-fixture-spec.md`
+- `spreadsheet-import-export-roundtrip-fixture-spec.md`
+- `fund-manager-fee-calculation-and-withdrawal-fixture-spec.md`
+- `multi-profile-ledger-entry-fixture-spec.md`
+- `target-progress-and-decision-support-fixture-spec.md`
+- `common-bet-combo-fixture-spec.md`
+- `calculator-workspace-ledger-bridge-fixture-spec.md`
+- `m14-external-calculator-reference-fixture-spec.md`
+- `financial-value-presentation-fixture-spec.md`
+- `material-accessible-ledger-editor-fixture-spec.md`
+- `guided-entry-focus-fixture-spec.md`
+
+External calculator observation packets are classified by
+`tests/fixtures/m14/m14-external-calculator-reference-fixtures.json`. Only its
+`accepted_reference` entries may be used for external regression comparisons;
+blocked and research-only cases are not approved expected-money fixtures.

@@ -1,0 +1,45 @@
+{
+  "cases": [
+    {
+      "case_id": "AUTH-001",
+      "inputs": {"mode": "local", "fund_manager_id": "FUND-MANAGER-001", "credential_result": "valid"},
+      "expected": {"session_created": true, "redirect": "/profiles"}
+    },
+    {
+      "case_id": "AUTH-002",
+      "inputs": {"mode": "local", "identifier": "operator@example.invalid", "credential_result": "invalid"},
+      "expected": {"session_created": false, "error_code": "invalid_credentials", "reveals_account_state": false}
+    },
+    {
+      "case_id": "AUTH-003",
+      "inputs": {"mode": "oidc_stub", "issuer": "https://accounts.example.invalid", "subject": "SYNTHETIC-SUB-001", "audience_valid": true, "assertion_state": "valid", "identity_linked": true},
+      "expected": {"session_created": true, "fund_manager_id": "FUND-MANAGER-001", "redirect": "/profiles"}
+    },
+    {
+      "case_id": "AUTH-004",
+      "inputs": {"mode": "oidc_stub", "subject": "SYNTHETIC-SUB-999", "assertion_state": "valid", "identity_linked": false},
+      "expected": {"session_created": false, "account_created": false, "error_code": "identity_not_linked"}
+    },
+    {
+      "case_id": "AUTH-005",
+      "inputs": {"mode": "oidc_stub", "assertion_state": "valid", "audience_valid": false},
+      "expected": {"session_created": false, "error_code": "invalid_provider_assertion"}
+    },
+    {
+      "case_id": "AUTH-006",
+      "inputs": {"mode": "oidc_stub", "assertion_state": "expired"},
+      "expected": {"session_created": false, "error_code": "invalid_provider_assertion"}
+    },
+    {
+      "case_id": "AUTH-007",
+      "inputs": {"mode": "oidc_stub", "provider_state": "unavailable"},
+      "expected": {"session_created": false, "local_login_available": true, "error_code": "provider_unavailable"}
+    },
+    {
+      "case_id": "AUTH-008",
+      "inputs": {"mode": "local", "action": "logout", "session_state": "active"},
+      "expected": {"session_state": "revoked", "protected_route_redirect": "/login"}
+    }
+  ]
+}
+

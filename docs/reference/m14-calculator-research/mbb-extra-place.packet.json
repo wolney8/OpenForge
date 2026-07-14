@@ -1,0 +1,15 @@
+{
+  "research_id": "M14-MBB-EXTRA-PLACE-20260714",
+  "calculator": {"provider": "MatchedBettingBlog", "page_title": "Each Way Calculator | Matched Betting Blog", "url": "https://matchedbettingblog.com/each-way-calculator/", "mode": "Extra Place", "accessed_at": "2026-07-14", "interaction_capability": "interactive", "limitations": ["For tested cases, core outputs matched Each Way mode; extra-place branch requires additional targeted cases"]},
+  "controls": [{"label":"Extra Place mode radio","field_key":"mode_extra_place","input_type":"radio","unit":null,"default":false,"required":true,"evidence_state":"observed"}],
+  "outputs": [{"label":"Extra-place total","field_key":"total_profit_extra","display_precision":2,"evidence_state":"observed"}],
+  "observations": [
+    {"case_id":"MBB-EP-001","purpose":"ordinary zero commission","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"25.78"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]},
+    {"case_id":"MBB-EP-002","purpose":"ordinary non-zero commission","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"25.47"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]},
+    {"case_id":"MBB-EP-003","purpose":"changed input odds","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"24.89"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]},
+    {"case_id":"MBB-EP-004","purpose":"changed stake","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"63.69"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]},
+    {"case_id":"MBB-EP-005","purpose":"rounding-sensitive","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"31.83"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]},
+    {"case_id":"MBB-EP-006","purpose":"invalid boundary","inputs":{"mode":"extra_place"},"displayed_outputs":{"total_profit_extra":"0.00"},"validation_state":"pass","conditional_changes":["type-extraplace checked"],"capture_method":"interactive_or_manual","notes":[]}
+  ],
+  "candidate_formulas": [{"output_field":"total_profit_extra","formula":"TO_CONFIRM extra-place branch calculation", "supporting_case_ids":["MBB-EP-001","MBB-EP-002","MBB-EP-003","MBB-EP-004","MBB-EP-005"],"rounding_order":"2dp","confidence":"low","alternatives":[],"unresolved":["need mode-specific contrasting cases"]}]
+}

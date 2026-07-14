@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "case_id": "BACKUP-001",
+      "inputs": {"snapshot_consistent": true, "integrity_check": "ok", "schema_version": "SYNTHETIC-001", "checksum_valid": true},
+      "expected": {"local_backup_state": "verified", "eligible_for_upload": true}
+    },
+    {
+      "case_id": "BACKUP-002",
+      "inputs": {"snapshot_consistent": true, "integrity_check": "failed"},
+      "expected": {"local_backup_state": "invalid", "eligible_for_upload": false}
+    },
+    {
+      "case_id": "BACKUP-003",
+      "inputs": {"local_backup_state": "verified", "cloud_upload_state": "failed"},
+      "expected": {"retain_local_backup": true, "cloud_backup_state": "failed", "operator_notice_required": true}
+    },
+    {
+      "case_id": "BACKUP-004",
+      "inputs": {"restore_checksum_valid": false},
+      "expected": {"restore_allowed": false, "live_database_replaced": false}
+    },
+    {
+      "case_id": "BACKUP-005",
+      "inputs": {"backup_schema_version": "SYNTHETIC-999", "maximum_supported_schema_version": "SYNTHETIC-010"},
+      "expected": {"restore_allowed": false, "error_code": "incompatible_schema"}
+    },
+    {
+      "case_id": "BACKUP-006",
+      "inputs": {
+        "integrity_check": "ok",
+        "checksum_valid": true,
+        "before": {
+          "PROFILE-001": {"sportsbook_rows": 4, "reporting_total": "12.40"},
+          "PROFILE-002": {"sportsbook_rows": 3, "reporting_total": "8.25"}
+        },
+        "after": {
+          "PROFILE-001": {"sportsbook_rows": 4, "reporting_total": "12.40"},
+          "PROFILE-002": {"sportsbook_rows": 3, "reporting_total": "8.25"}
+        }
+      },
+      "expected": {"restore_allowed": true, "profile_isolation_preserved": true, "control_totals_match": true}
+    },
+    {
+      "case_id": "BACKUP-007",
+      "inputs": {"verified_backup_count": 1, "requested_delete_count": 1},
+      "expected": {"deletion_allowed": false, "verified_backup_count_after": 1}
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "case_id": "MP-001",
+      "inputs": {"source_profile_id": "PROFILE-001", "targets": [{"profile_id": "PROFILE-001", "back_odds": "4.00"}, {"profile_id": "PROFILE-002", "back_odds": "4.20"}], "bookmaker": "Bookmaker A", "account_states": {"PROFILE-001": "Active", "PROFILE-002": "Active"}},
+      "expected": {"eligible_profiles": ["PROFILE-001", "PROFILE-002"], "created_row_count_after_two_confirmations": 2, "shared_row_id": false, "calculations_run_per_profile": true}
+    },
+    {
+      "case_id": "MP-002",
+      "inputs": {"source_profile_id": "PROFILE-001", "target_profile_id": "PROFILE-002", "bookmaker": "Bookmaker A", "target_account_state": "Inactive"},
+      "expected": {"target_state": "blocked", "reason": "bookmaker_unavailable", "source_row_changed": false}
+    },
+    {
+      "case_id": "MP-003",
+      "inputs": {"target_profile_id": "PROFILE-002", "offer_type": "Bet and Get", "target_account_state": "Bonus Restricted"},
+      "expected": {"target_state": "blocked", "reason": "offer_not_eligible"}
+    },
+    {
+      "case_id": "MP-004",
+      "inputs": {"source_profile_id": "PROFILE-001", "source_exchange": "Exchange A", "source_commission": "0.02", "target_profile_id": "PROFILE-002", "target_exchange": "Exchange B", "target_commission": "0.03"},
+      "expected": {"resolved_exchange": "Exchange B", "resolved_commission": "0.03", "calculation_recomputed": true}
+    },
+    {
+      "case_id": "MP-005",
+      "inputs": {"review_sequence": [{"profile_id": "PROFILE-001", "action": "confirm"}, {"profile_id": "PROFILE-002", "action": "cancel"}]},
+      "expected": {"created_profiles": ["PROFILE-001"], "not_created_profiles": ["PROFILE-002"]}
+    },
+    {
+      "case_id": "MP-006",
+      "inputs": {"target_profile_ids": ["PROFILE-001", "PROFILE-002"], "action": "bulk_confirm"},
+      "expected": {"allowed": false, "error_code": "sequential_confirmation_required"}
+    }
+  ]
+}

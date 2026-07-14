@@ -1,0 +1,45 @@
+{
+  "cases": [
+    {
+      "case_id": "IO-001",
+      "inputs": {"target_profile_id": "PROFILE-001", "sheet": "Sportsbook Bets", "source_record_id": "DEMO-SB-001", "status": "Placed", "result": "Pending", "week_label": "W/C 06/07/2026"},
+      "expected": {"staged_action": "insert", "profile_id": "PROFILE-001", "recompute_fields": ["week_label", "date_range_tag", "reporting_value"]}
+    },
+    {
+      "case_id": "IO-002",
+      "inputs": {"target_profile_id": "PROFILE-001", "source_record_id": "DEMO-SB-001", "source_hash": "SYNTHETIC-HASH-001", "existing_source_hash": "SYNTHETIC-HASH-001"},
+      "expected": {"staged_action": "no_op", "duplicate_state": "unchanged"}
+    },
+    {
+      "case_id": "IO-003",
+      "inputs": {"target_profile_id": "PROFILE-002", "source_record_id": "DEMO-SB-001", "existing_profile_id": "PROFILE-001"},
+      "expected": {"staged_action": "blocked", "error_code": "cross_profile_source_collision"}
+    },
+    {
+      "case_id": "IO-004",
+      "inputs": {"target_profile_id": "PROFILE-001", "sheet": "Free Bets", "source_row": 4, "status": "Unknown Synthetic Status"},
+      "expected": {"staged_action": "blocked", "error_code": "invalid_status", "source_row_reported": true}
+    },
+    {
+      "case_id": "IO-005",
+      "inputs": {"target_profile_id": "PROFILE-001", "manual_override_value": "5.00", "manual_override_reason": ""},
+      "expected": {"staged_action": "blocked", "error_code": "override_reason_required"}
+    },
+    {
+      "case_id": "IO-006",
+      "inputs": {"target_profile_id": "PROFILE-001", "source_current_value": "4.00", "recomputed_current_value": "3.50", "tolerance": "0.01"},
+      "expected": {"reconciliation_state": "warning", "difference": "0.50", "silent_normalisation": false}
+    },
+    {
+      "case_id": "IO-007",
+      "inputs": {"profile_id": "PROFILE-001", "source_record_id": "DEMO-FB-001", "status": "Settled", "result": "Lay Won", "entered_value": "10.00", "manual_override_value": "7.25", "manual_override_reason": "Synthetic correction"},
+      "expected": {"roundtrip_preserves": ["profile_id", "source_record_id", "status", "result", "entered_value", "manual_override_value", "manual_override_reason"]}
+    },
+    {
+      "case_id": "IO-008",
+      "inputs": {"target_profile_id": "PROFILE-001", "sheet": "SignupUsers"},
+      "expected": {"staged_action": "ignored", "reason": "excluded_source_sheet"}
+    }
+  ]
+}
+
