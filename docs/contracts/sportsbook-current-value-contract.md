@@ -299,6 +299,12 @@ Error/blank handling:
 - projected/current and final/settled values must not be silently conflated
 - overrides must be visibly marked
 - lay status, liability, and current value should be inspectable in row detail
+- sportsbook strategy selection exposes one `Multi Lay` option; an explicit planner switch
+  selects the persisted `Multilay` or `Multilay-Underlay` calculation state
+- switching multi-lay underlay on or off must not alter the underlying formulas, commission
+  source, branch placement data, or cash-first minimum-scenario selection
+- existing rows persisted as `Multilay-Underlay` must reopen as `Multi Lay` with the underlay
+  switch selected
 
 ## 20. Audit trail requirements
 

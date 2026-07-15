@@ -587,3 +587,52 @@ Focused validation:
 - `pnpm --filter @openforge/web lint` (passed)
 - `pnpm --filter @openforge/web typecheck` (passed; non-blocking stale browser-mapping metadata warning)
 - `pnpm --filter @openforge/web test` (`72 passed`)
+
+### Sportsbook multi-lay smoke follow-up
+
+- the visible strategy selector now exposes one `Multi Lay` option; the planner owns an
+  accessible underlay switch while preserving legacy persisted calculation states
+- existing `Multilay-Underlay` rows reopen as `Multi Lay` with underlay selected
+- outcome names accept up to 20 characters and start blank rather than suggesting scorelines
+  or generic names in the input
+- the outcome column is wider, the odds column is narrower, and planner actions remain in a
+  fixed final column without requiring horizontal scrolling at the default desktop modal width
+- copy-and-place uses the Material `copy_all` icon with an accessible name
+- only third-or-later added outcomes expose the destructive remove action; the two required
+  outcomes cannot be removed
+- the sportsbook editor defaults wider and can be resized horizontally on desktop
+- nested editor/calculator outlines are reduced while invalid required sections retain their
+  red outline and pulse
+- initial sportsbook data loading now uses a Material-style linear progress indicator rather
+  than briefly presenting an empty ledger
+- no stake, commission, liability, scenario P&L, or cash-first current-value formula changed
+
+Focused validation:
+
+- multi-lay planner strategy, toggle, label length, protected outcomes, placement progression,
+  and resizable-modal browser regression (`1 passed`)
+- delayed sportsbook row-load indicator browser regression (`1 passed`)
+
+Manual confirmation requested:
+
+1. Open a multi-lay row in the internal browser and confirm the default editor width is useful.
+2. Drag the lower-right editor edge horizontally and confirm the width can be reduced/increased.
+3. Confirm calculator input groups remain clear without the removed nested outlines in both themes.
+
+### Cross-ledger editor and loading parity
+
+- Free Bets, Casino Offers, and Cash Adjustments now use the same shared loading indicator
+  as Sportsbook Bets and keep `aria-busy` active until their row render commits
+- all four operational ledger editors inherit the same wide, horizontally resizable desktop
+  modal and the same reduced nested-section outline treatment
+- required invalid sections retain their explicit red validation outline and pulse
+- Free Bet multi-lay remains gated because the workbook, contract, API, calculation engine,
+  persistence model, and fixtures do not yet define safe SNR/SR multi-outcome behaviour
+
+Focused validation:
+
+- cross-ledger loading, modal sizing, editor-section noise/validation, and sportsbook
+  multi-lay browser regression (`14 passed`)
+- `pnpm --filter @openforge/web lint` (passed)
+- `pnpm --filter @openforge/web typecheck` (passed; non-blocking stale browser-mapping metadata warning)
+- `pnpm --filter @openforge/web test` (`72 passed`)
