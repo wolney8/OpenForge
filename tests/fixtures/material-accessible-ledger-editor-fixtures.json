@@ -6,7 +6,12 @@
     {"case_id": "UX-004", "inputs": {"theme": "dark", "issue_severity": "warning", "colour_perception": "unavailable"}, "expected": {"issue_text_visible": true, "severity_label_available": true, "colour_only": false}},
     {"case_id": "UX-005", "inputs": {"zoom_percent": 200, "viewport_width": 1280}, "expected": {"primary_action_reachable": true, "focused_control_obscured": false}},
     {"case_id": "UX-006", "inputs": {"action": "save", "result": "success"}, "expected": {"status_role": "status", "announcement_count": 1, "focus_moved": false}},
-    {"case_id": "UX-007", "inputs": {"ledger_row_count": 8, "visible_after_filter": 0}, "expected": {"state_label": "No rows match the current filters", "reset_action_visible": true}}
+    {"case_id": "UX-007", "inputs": {"ledger_row_count": 8, "visible_after_filter": 0}, "expected": {"state_label": "No rows match the current filters", "reset_action_visible": true}},
+    {"case_id": "UX-008", "inputs": {"surface": "sportsbook_ledger", "initial_rows_pending": true}, "expected": {"status_role": "status", "state_label": "Loading sportsbook ledger", "empty_state_hidden_by_overlay": true}},
+    {"case_id": "UX-009", "inputs": {"surface": "sportsbook_editor", "viewport": "desktop"}, "expected": {"horizontal_resize_enabled": true, "default_width_px_min": 1240, "mobile_resize_enabled": false}},
+    {"case_id": "UX-010", "inputs": {"stored_strategy": "Multilay-Underlay"}, "expected": {"visible_strategy": "Multi Lay", "underlay_switch_checked": true, "persisted_strategy_changed": false}},
+    {"case_id": "UX-011", "inputs": {"strategy": "Multi Lay", "outcome_count": 3}, "expected": {"minimum_outcomes": 2, "removable_outcome_indexes": [3], "outcome_label_max_length": 20, "copy_action_accessible_name_present": true}},
+    {"case_id": "UX-012", "inputs": {"surfaces": ["sportsbook", "free_bets", "casino_offers", "cash_adjustments"], "initial_rows_pending": true}, "expected": {"shared_loading_indicator": true, "aria_busy_until_rows_render": true}},
+    {"case_id": "UX-013", "inputs": {"surfaces": ["sportsbook", "free_bets", "casino_offers", "cash_adjustments"], "viewport": "desktop"}, "expected": {"shared_wide_resizable_modal": true, "nested_editor_section_border_transparent": true, "invalid_section_border_preserved": true}}
   ]
 }
-

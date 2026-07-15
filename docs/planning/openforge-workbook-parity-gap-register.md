@@ -87,6 +87,26 @@ Open gaps:
   - Extra Places fixture/contract draft now exists; still not approved or implemented
   - explicit horse-racing refund subtypes such as money back if 2nd/3rd
 
+### 3a) Free-Bet Multi-Lay Expansion
+
+Status: **explicitly gated; not workbook parity**
+
+Current boundary:
+
+- The workbook and current Free Bet contract support single-lay strategies through
+  `Partial Lay`; multi-lay calculations are defined only for Sportsbook Bets.
+- The Free Bet API, calculation engine, fixtures, and storage model do not currently
+  support multiple named lay branches.
+- The shared wide/resizable editor, reduced nested visual noise, and accessible loading
+  state apply to Free Bets now, but no unsupported `Multi Lay` option is exposed.
+
+Required before implementation:
+
+- approved Free Bet multi-lay cash-first contract covering both `SNR` and `SR`
+- deterministic multi-outcome scenario, liability, placement, and settlement fixtures
+- version-tolerant profile-scoped branch persistence and API/schema design
+- unit, API, profile-isolation, and Playwright coverage
+
 ### 4) Reporting Parity
 
 Status: **foundation present, parity closure pending**

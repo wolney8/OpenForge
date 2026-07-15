@@ -6,6 +6,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   scrollToElementTopAfterRender,
   usePersistedBoolean,
@@ -478,6 +479,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
 
 export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -583,6 +585,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       const nextRows = (await response.json()) as CashAdjustmentRecord[];
       startTransition(() => {
         setRows(nextRows);
+        setIsInitialLoading(false);
         const nextSelectedCandidate =
           preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
         const selected =
@@ -642,6 +645,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([loadRows(), loadAccountAuthorities(), loadTrackerSettings()]).catch((error: Error) => {
+        setIsInitialLoading(false);
         setErrorMessage(error.message);
       });
     }, 0);
@@ -1198,7 +1202,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   return (
     <section className="stack">
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      <section className="content-panel stack sportsbook-page-shell">
+      <section
+        aria-busy={isInitialLoading}
+        className="content-panel stack sportsbook-page-shell"
+      >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Cash Adjustments</h1>
           <div className="tracker-nav">
@@ -1216,6 +1223,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             </button>
           </div>
         </div>
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
+        ) : null}
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment review controls">
           <label className="field-control table-search-field">
             <span>Search</span>

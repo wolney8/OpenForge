@@ -33,6 +33,15 @@ test.describe("Ledger editor modal parity", () => {
       await expect(dialog).toBeVisible();
       await expect(dialog).toHaveClass(/workflow-editor-panel/);
       await expect(dialog).toHaveClass(/workflow-editor-modal/);
+      await expect(dialog).toHaveCSS("resize", "horizontal");
+
+      const dialogBounds = await dialog.boundingBox();
+      expect(dialogBounds).not.toBeNull();
+      expect(dialogBounds!.width).toBeGreaterThan(1200);
+
+      const firstSection = dialog.locator("section.editor-section").first();
+      await expect(firstSection).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+      await expect(firstSection).toHaveCSS("box-shadow", "none");
     });
   }
 });

@@ -6,6 +6,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -56,6 +57,10 @@ import {
   sportsbookStatusOptions,
   sportsbookStrategyOptions,
 } from "@/lib/workbook-options";
+
+const visibleSportsbookStrategyOptions = sportsbookStrategyOptions.filter(
+  (option) => option !== "Multilay-Underlay"
+);
 
 type ResultOption = {
   value: string;
@@ -948,7 +953,7 @@ function createDefaultMultiLayOutcomes(): MultiLayOutcomeInput[] {
   return [
     {
       id: "outcome2",
-      label: "Outcome 2",
+      label: "",
       layOdds: "",
       standardLayStake: "",
       underlayStake: "",
@@ -971,7 +976,7 @@ function createDefaultMultiLayPrimaryPlacementState(): MultiLayPrimaryPlacementS
 }
 
 function sanitizeMultiLayOutcomeLabel(value: string): string {
-  return value.slice(0, 10);
+  return value.slice(0, 20);
 }
 
 function createPartialLayLegId(index: number): string {
@@ -2355,6 +2360,7 @@ function getPersistableSportsbookForm(
 
 export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -2407,9 +2413,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     leg: PartialLayLegInput;
     index: number;
   } | null>(null);
-  const [multiLayOutcome1Label, setMultiLayOutcome1Label] = useState(
-    createDefaultMultiLayOutcomeLabel
-  );
+  const [multiLayOutcome1Label, setMultiLayOutcome1Label] = useState("");
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
   const [outcomeModalState, setOutcomeModalState] = useState<OutcomeModalState | null>(null);
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
@@ -2507,6 +2511,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       const nextRows = (await response.json()) as SportsbookRecord[];
       startTransition(() => {
         setRows(nextRows);
+        setIsInitialLoading(false);
         const nextSelectedCandidate =
           preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
         const selected =
@@ -2547,7 +2552,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
           setMultiLayOutcomes(createDefaultMultiLayOutcomes());
           setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
           setPartialLayLegs([]);
-          setMultiLayOutcome1Label(createDefaultMultiLayOutcomeLabel());
+          setMultiLayOutcome1Label("");
           setFormState(blankForm);
           setPristineFormState(blankForm);
           setShowBetSetupValidation(false);
@@ -2620,6 +2625,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
         loadLookupValues(),
         loadTrackerSettings(),
       ]).catch((error: Error) => {
+        setIsInitialLoading(false);
         setErrorMessage(error.message);
         setStatusMessage("Sportsbook workflow could not be loaded.");
       });
@@ -3549,7 +3555,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setMultiLayOutcomes(createDefaultMultiLayOutcomes());
     setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
     setPartialLayLegs([]);
-    setMultiLayOutcome1Label(createDefaultMultiLayOutcomeLabel());
+    setMultiLayOutcome1Label("");
     const blankForm = createBlankForm(defaultBonusRetentionRate);
     setFormState(blankForm);
     setPristineFormState(blankForm);
@@ -3729,7 +3735,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     setMultiLayOutcomes(createDefaultMultiLayOutcomes());
     setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
     setPartialLayLegs([]);
-    setMultiLayOutcome1Label(createDefaultMultiLayOutcomeLabel());
+    setMultiLayOutcome1Label("");
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setShowBetSetupValidation(false);
@@ -4362,13 +4368,6 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
     });
   }
 
-  function removeMultiLayMode() {
-    setMultiLayOutcome1Label("Outcome 1");
-    setMultiLayOutcomes(createDefaultMultiLayOutcomes());
-    setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
-    setFormState((current) => applyStrategyDefaults(current, "Standard"));
-  }
-
   function addMultiLayOutcome() {
     setMultiLayOutcomes((current) => {
       const nextIndex = current.length + 2;
@@ -4376,7 +4375,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         ...current,
         {
           id: createMultiLayOutcomeId(nextIndex),
-          label: `Outcome ${nextIndex}`,
+          label: "",
           layOdds: "",
         },
       ];
@@ -4534,7 +4533,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
   return (
     <section className="stack">
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      <section className="content-panel stack sportsbook-page-shell">
+      <section
+        aria-busy={isInitialLoading}
+        className="content-panel stack sportsbook-page-shell"
+      >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Sportsbook Bets</h1>
           <div className="tracker-nav">
@@ -4552,6 +4554,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             </button>
           </div>
         </div>
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator label="Loading sportsbook ledger" />
+        ) : null}
         <div className="sportsbook-review-bar" aria-label="Sportsbook review filters">
           <label className="field-control table-search-field">
             <span>Search</span>
@@ -5369,7 +5374,11 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Lay and matching</span>
-                <strong>{formState.match_strategy || "—"}</strong>
+                <strong>
+                  {usesMultiLayStrategy
+                    ? `Multi Lay • ${formState.match_strategy === "Multilay-Underlay" ? "Underlay on" : "Underlay off"}`
+                    : formState.match_strategy || "—"}
+                </strong>
                 <span>
                   Lay status: {activePreviewCalculation?.lay_status ?? selectedSportsbookRow?.lay_status ?? "—"}
                 </span>
@@ -5882,11 +5891,11 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                     "Strategy change"
                                   )
                                 }
-                                value={formState.match_strategy}
+                                value={usesMultiLayStrategy ? "Multilay" : formState.match_strategy}
                               >
-                                {sportsbookStrategyOptions.map((option) => (
+                                {visibleSportsbookStrategyOptions.map((option) => (
                                   <option key={option} value={option}>
-                                    {option}
+                                    {option === "Multilay" ? "Multi Lay" : option}
                                   </option>
                                 ))}
                               </select>
@@ -6508,9 +6517,31 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               <span className="table-chip">
                                 {getCalculationStateLabel(activeCalculationState)}
                               </span>
-                              {formState.match_strategy === "Multilay-Underlay" ? (
-                                <span className="table-chip table-chip-strategy-underlay">Underlay enabled</span>
-                              ) : null}
+                              <button
+                                aria-checked={formState.match_strategy === "Multilay-Underlay"}
+                                className={`material-switch${
+                                  formState.match_strategy === "Multilay-Underlay" ? " is-selected" : ""
+                                }`}
+                                onClick={() =>
+                                  void applyDropdownChange(
+                                    (current) =>
+                                      applyStrategyDefaults(
+                                        current,
+                                        current.match_strategy === "Multilay-Underlay"
+                                          ? "Multilay"
+                                          : "Multilay-Underlay"
+                                      ),
+                                    "Multi-lay underlay change"
+                                  )
+                                }
+                                role="switch"
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="material-switch-track">
+                                  <span className="material-switch-thumb" />
+                                </span>
+                                <span>Underlay</span>
+                              </button>
                               <span className="table-chip">{multiLayPlacementStatus}</span>
                             </div>
                             <div className="multi-lay-grid-wrap">
@@ -6540,7 +6571,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                               sanitizeMultiLayOutcomeLabel(event.target.value)
                                             )
                                           }
-                                          maxLength={10}
+                                          maxLength={20}
                                           value={multiLayOutcome1Label}
                                         />
                                       </label>
@@ -6578,19 +6609,26 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       {multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")?.liability ?? "—"}
                                     </td>
                                     <td>
-                                      <button
-                                        className="review-chip review-chip-copy"
-                                        disabled={!multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")}
-                                        onClick={() => {
-                                          const leg = multiLayPlannerSummary?.legs.find((entry) => entry.key === "outcome1");
-                                          if (leg) {
-                                            void copyMultiLayStake(leg);
-                                          }
-                                        }}
-                                        type="button"
-                                      >
-                                        Copy lay + place
-                                      </button>
+                                      <div className="multi-lay-row-actions">
+                                        <button
+                                          aria-label="Copy lay for outcome 1 and mark placed"
+                                          className="icon-button multi-lay-action-button"
+                                          disabled={!multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")}
+                                          onClick={() => {
+                                            const leg = multiLayPlannerSummary?.legs.find((entry) => entry.key === "outcome1");
+                                            if (leg) {
+                                              void copyMultiLayStake(leg);
+                                            }
+                                          }}
+                                          title="Copy lay and mark placed"
+                                          type="button"
+                                        >
+                                          <span aria-hidden="true" className="material-symbols-outlined">
+                                            copy_all
+                                          </span>
+                                        </button>
+                                        <span aria-hidden="true" className="multi-lay-action-placeholder" />
+                                      </div>
                                     </td>
                                   </tr>
                                   {multiLayOutcomes.map((outcome, index) => {
@@ -6615,7 +6653,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                                   )
                                                 )
                                               }
-                                              maxLength={10}
+                                              maxLength={20}
                                               value={outcome.label}
                                             />
                                           </label>
@@ -6651,28 +6689,38 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                         ) : null}
                                         <td>{leg?.liability ?? "—"}</td>
                                         <td>
-                                          <div className="tracker-nav">
+                                          <div className="multi-lay-row-actions">
                                             <button
-                                              className="review-chip review-chip-copy"
+                                              aria-label={`Copy lay for ${outcome.label || `outcome ${index + 2}`} and mark placed`}
+                                              className="icon-button multi-lay-action-button"
                                               disabled={!leg}
                                               onClick={() => {
                                                 if (leg) {
                                                   void copyMultiLayStake(leg);
                                                 }
                                               }}
+                                              title="Copy lay and mark placed"
                                               type="button"
                                             >
-                                              Copy lay + place
+                                              <span aria-hidden="true" className="material-symbols-outlined">
+                                                copy_all
+                                              </span>
                                             </button>
-                                            {multiLayOutcomes.length > 1 ? (
+                                            {index >= 1 ? (
                                               <button
-                                                className="button-link"
+                                                aria-label={`Remove ${outcome.label || `outcome ${index + 2}`}`}
+                                                className="icon-button icon-button-destructive multi-lay-action-button"
                                                 onClick={() => removeMultiLayOutcome(outcome.id)}
+                                                title="Remove outcome"
                                                 type="button"
                                               >
-                                                Remove
+                                                <span aria-hidden="true" className="material-symbols-outlined">
+                                                  delete
+                                                </span>
                                               </button>
-                                            ) : null}
+                                            ) : (
+                                              <span aria-hidden="true" className="multi-lay-action-placeholder" />
+                                            )}
                                           </div>
                                         </td>
                                       </tr>
@@ -6684,9 +6732,6 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             <div className="tracker-nav">
                               <button className="button-link" onClick={addMultiLayOutcome} type="button">
                                 Add outcome
-                              </button>
-                              <button className="button-link" onClick={removeMultiLayMode} type="button">
-                                Remove outcome
                               </button>
                             </div>
                           </div>

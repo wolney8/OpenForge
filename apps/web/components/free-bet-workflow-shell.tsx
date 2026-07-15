@@ -6,6 +6,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -1022,6 +1023,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
 
 export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<FreeBetRecord[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -1127,6 +1129,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     const nextRows = (await response.json()) as FreeBetRecord[];
     startTransition(() => {
       setRows(nextRows);
+      setIsInitialLoading(false);
       const nextSelectedCandidate =
         preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
       const selected =
@@ -1276,6 +1279,7 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
           applySportsbookPrefill();
         })
         .catch((error: Error) => {
+          setIsInitialLoading(false);
           setErrorMessage(error.message);
           setStatusMessage("Free-bet workflow could not be loaded.");
         });
@@ -2336,7 +2340,10 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   return (
     <section className="stack">
         <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      <section className="content-panel stack sportsbook-page-shell">
+      <section
+        aria-busy={isInitialLoading}
+        className="content-panel stack sportsbook-page-shell"
+      >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Free Bets</h1>
           <div className="tracker-nav">
@@ -2354,6 +2361,9 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
             </button>
           </div>
         </div>
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator label="Loading free-bet ledger" />
+        ) : null}
         <div className="sportsbook-review-bar" aria-label="Free-bet review filters">
           <label className="field-control table-search-field">
             <span>Search</span>
