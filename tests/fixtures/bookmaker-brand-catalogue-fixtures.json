@@ -1,0 +1,56 @@
+{
+  "fixture_set": "BOOKMAKER-BRAND-CATALOGUE-001",
+  "synthetic_only": true,
+  "cases": [
+    {
+      "case_id": "BMC-001",
+      "catalogue": {
+        "bookmaker_id": "BM-DEMO-001",
+        "brand_name": "Bookmaker A",
+        "short_display_name": "Book A",
+        "legal_operator": "Demo Operator Limited",
+        "operator_group": "Demo Group",
+        "platform": "Demo Platform",
+        "risk_team": "Demo Risk Cluster",
+        "licence_reference": "DEMO-LICENCE-001",
+        "licence_status": "Demo only",
+        "canonical_domain": "bookmaker-a.example.invalid",
+        "status": "Active",
+        "foreground_colour": "#FFFFFF",
+        "background_colour": "#1B5E20",
+        "logo_asset_path": "",
+        "source": "Synthetic fixture",
+        "confidence": "Verified",
+        "last_verified_date": "2026-07-15"
+      },
+      "expected": {
+        "wcag_aa": true,
+        "new_account_group": "Demo Group",
+        "new_account_platform": "Demo Platform"
+      }
+    },
+    {
+      "case_id": "BMC-002",
+      "global_mode": "Brand badge",
+      "profile_override": "Name",
+      "expected_resolved_mode": "Name"
+    },
+    {
+      "case_id": "BMC-003",
+      "global_mode": "Logo",
+      "profile_override": "Inherit",
+      "logo_asset_path": "",
+      "expected_resolved_mode": "Logo",
+      "expected_render_fallback": "Brand badge"
+    },
+    {
+      "case_id": "BMC-004",
+      "legacy_bookmaker_name": "Bookmaker Legacy",
+      "expected": {
+        "catalogue_confidence": "Unverified",
+        "historical_text_preserved": true,
+        "profile_data_copied_to_catalogue": false
+      }
+    }
+  ]
+}

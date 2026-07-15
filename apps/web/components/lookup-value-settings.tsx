@@ -17,12 +17,6 @@ const sections: Array<{
   description: string;
 }> = [
   {
-    lookupType: "bookmaker",
-    title: "Bookmakers",
-    singularLabel: "bookmaker",
-    description: "Named-range style bookmaker values for sportsbook, free-bet, and casino forms.",
-  },
-  {
     lookupType: "exchange",
     title: "Exchanges",
     singularLabel: "exchange",
@@ -41,18 +35,6 @@ const sections: Array<{
     singularLabel: "casino offer name",
     description:
       "Profile-owned casino offer authorities for casino campaigns, free spins, free play, and risk-free rows.",
-  },
-  {
-    lookupType: "group",
-    title: "Groups",
-    singularLabel: "group",
-    description: "Profile-owned grouping values for account organisation and later reporting.",
-  },
-  {
-    lookupType: "platform",
-    title: "Platforms",
-    singularLabel: "platform",
-    description: "Profile-owned platform values aligned with the workbook Settings role.",
   },
 ];
 

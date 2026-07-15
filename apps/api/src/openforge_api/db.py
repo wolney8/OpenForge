@@ -265,6 +265,43 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           current_cash_snapshot TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS bookmaker_catalogue (
+          bookmaker_id TEXT PRIMARY KEY,
+          brand_name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+          short_display_name TEXT NOT NULL,
+          legal_operator TEXT NOT NULL,
+          operator_group TEXT NOT NULL,
+          platform TEXT NOT NULL,
+          risk_team TEXT NOT NULL,
+          licence_reference TEXT NOT NULL,
+          licence_status TEXT NOT NULL,
+          canonical_domain TEXT NOT NULL,
+          status TEXT NOT NULL,
+          foreground_colour TEXT NOT NULL,
+          background_colour TEXT NOT NULL,
+          logo_asset_path TEXT NOT NULL,
+          source TEXT NOT NULL,
+          confidence TEXT NOT NULL,
+          last_verified_date TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS fund_manager_settings (
+          fund_manager_id TEXT PRIMARY KEY,
+          bookmaker_display_mode TEXT NOT NULL DEFAULT 'Name',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_bookmaker_display_settings (
+          profile_id TEXT PRIMARY KEY,
+          bookmaker_display_mode_override TEXT NOT NULL DEFAULT 'Inherit',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS profile_exchange_commissions (
           profile_id TEXT NOT NULL,
           exchange_name TEXT NOT NULL,
@@ -307,6 +344,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS accounts (
           account_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
+          bookmaker_id TEXT,
           account TEXT NOT NULL,
           type TEXT NOT NULL,
           counts_in_cash_total INTEGER NOT NULL DEFAULT 1,
@@ -319,7 +357,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           platform TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
-          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (bookmaker_id) REFERENCES bookmaker_catalogue(bookmaker_id)
         );
 
         CREATE TABLE IF NOT EXISTS account_audit (
@@ -499,6 +538,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         """
     )
     ensure_column(connection, "sportsbook_bets", "lay_commission_1", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "accounts", "bookmaker_id", "TEXT")
     ensure_column(connection, "sportsbook_bets", "bet_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "offer_name", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
@@ -569,6 +609,102 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "TEXT NOT NULL DEFAULT '0.7'",
     )
     seed_database(connection)
+    seed_bookmaker_catalogue_from_existing(connection)
+
+
+def seed_bookmaker_catalogue_from_existing(connection: sqlite3.Connection) -> None:
+    timestamp = utc_now()
+    connection.execute(
+        """
+        INSERT INTO fund_manager_settings (
+          fund_manager_id,
+          bookmaker_display_mode,
+          created_at,
+          updated_at
+        ) VALUES ('fund-manager-local', 'Name', ?, ?)
+        ON CONFLICT(fund_manager_id) DO NOTHING
+        """,
+        (timestamp, timestamp),
+    )
+
+    rows = connection.execute(
+        """
+        SELECT account AS brand_name
+        FROM accounts
+        WHERE type = 'Bookie' AND TRIM(account) <> ''
+        UNION
+        SELECT bookmaker AS brand_name
+        FROM sportsbook_bets
+        WHERE TRIM(bookmaker) <> ''
+        UNION
+        SELECT bookmaker AS brand_name
+        FROM free_bets
+        WHERE TRIM(bookmaker) <> ''
+        UNION
+        SELECT bookmaker AS brand_name
+        FROM casino_offers
+        WHERE TRIM(bookmaker) <> ''
+        UNION
+        SELECT option_value AS brand_name
+        FROM profile_lookup_values
+        WHERE lookup_type = 'bookmaker' AND TRIM(option_value) <> ''
+        ORDER BY brand_name COLLATE NOCASE
+        """
+    ).fetchall()
+
+    for row in rows:
+        brand_name = str(row["brand_name"]).strip()
+        existing = connection.execute(
+            """
+            SELECT bookmaker_id
+            FROM bookmaker_catalogue
+            WHERE brand_name = ? COLLATE NOCASE
+            """,
+            (brand_name,),
+        ).fetchone()
+        if existing is None:
+            bookmaker_id = f"BM-{uuid4().hex[:10].upper()}"
+            connection.execute(
+                """
+                INSERT INTO bookmaker_catalogue (
+                  bookmaker_id,
+                  brand_name,
+                  short_display_name,
+                  legal_operator,
+                  operator_group,
+                  platform,
+                  risk_team,
+                  licence_reference,
+                  licence_status,
+                  canonical_domain,
+                  status,
+                  foreground_colour,
+                  background_colour,
+                  logo_asset_path,
+                  source,
+                  confidence,
+                  last_verified_date,
+                  created_at,
+                  updated_at
+                ) VALUES (?, ?, ?, '', '', '', '', '', '', '', 'Active',
+                          '#FFFFFF', '#455A64', '', 'Local historical authority',
+                          'Unverified', '', ?, ?)
+                """,
+                (bookmaker_id, brand_name, brand_name[:32], timestamp, timestamp),
+            )
+        else:
+            bookmaker_id = str(existing["bookmaker_id"])
+
+        connection.execute(
+            """
+            UPDATE accounts
+            SET bookmaker_id = ?
+            WHERE type = 'Bookie'
+              AND bookmaker_id IS NULL
+              AND account = ? COLLATE NOCASE
+            """,
+            (bookmaker_id, brand_name),
+        )
 
 
 def ensure_column(
@@ -2476,6 +2612,36 @@ class ProfileRecord:
 
 
 @dataclass(frozen=True)
+class BookmakerCatalogueRecord:
+    bookmaker_id: str
+    brand_name: str
+    short_display_name: str
+    legal_operator: str
+    operator_group: str
+    platform: str
+    risk_team: str
+    licence_reference: str
+    licence_status: str
+    canonical_domain: str
+    status: str
+    foreground_colour: str
+    background_colour: str
+    logo_asset_path: str
+    source: str
+    confidence: str
+    last_verified_date: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
+class BookmakerDisplaySettingsRecord:
+    global_mode: str
+    profile_override: str
+    resolved_mode: str
+
+
+@dataclass(frozen=True)
 class ProfileExchangeCommissionRecord:
     profile_id: str
     exchange_name: str
@@ -2517,6 +2683,7 @@ class ProfileLookupValueRecord:
 class AccountRecord:
     account_id: str
     profile_id: str
+    bookmaker_id: str | None
     account: str
     type: str
     counts_in_cash_total: bool
@@ -2539,6 +2706,10 @@ def map_profile_row(row: sqlite3.Row) -> ProfileRecord:
     return ProfileRecord(**dict(row))
 
 
+def map_bookmaker_catalogue_row(row: sqlite3.Row) -> BookmakerCatalogueRecord:
+    return BookmakerCatalogueRecord(**dict(row))
+
+
 def map_tracker_settings_row(row: sqlite3.Row) -> ProfileTrackerSettingsRecord:
     record = dict(row)
     record["use_global_date_range_toggle"] = bool(record["use_global_date_range_toggle"])
@@ -2553,6 +2724,185 @@ def map_account_row(row: sqlite3.Row) -> AccountRecord:
     record = dict(row)
     record["counts_in_cash_total"] = bool(record["counts_in_cash_total"])
     return AccountRecord(**record)
+
+
+def list_bookmaker_catalogue(*, include_archived: bool = True) -> list[BookmakerCatalogueRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM bookmaker_catalogue
+            WHERE ? = 1 OR status <> 'Archived'
+            ORDER BY brand_name COLLATE NOCASE, bookmaker_id
+            """,
+            (int(include_archived),),
+        ).fetchall()
+    return [map_bookmaker_catalogue_row(row) for row in rows]
+
+
+def get_bookmaker_catalogue_entry(bookmaker_id: str) -> BookmakerCatalogueRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT *
+            FROM bookmaker_catalogue
+            WHERE bookmaker_id = ?
+            """,
+            (bookmaker_id,),
+        ).fetchone()
+    return None if row is None else map_bookmaker_catalogue_row(row)
+
+
+def create_bookmaker_catalogue_entry(payload: dict[str, Any]) -> BookmakerCatalogueRecord:
+    timestamp = utc_now()
+    bookmaker_id = payload.get("bookmaker_id") or f"BM-{uuid4().hex[:10].upper()}"
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO bookmaker_catalogue (
+              bookmaker_id, brand_name, short_display_name, legal_operator,
+              operator_group, platform, risk_team, licence_reference, licence_status,
+              canonical_domain, status, foreground_colour, background_colour,
+              logo_asset_path, source, confidence, last_verified_date, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                bookmaker_id,
+                payload["brand_name"],
+                payload["short_display_name"],
+                payload["legal_operator"],
+                payload["operator_group"],
+                payload["platform"],
+                payload["risk_team"],
+                payload["licence_reference"],
+                payload["licence_status"],
+                payload["canonical_domain"],
+                payload["status"],
+                payload["foreground_colour"],
+                payload["background_colour"],
+                payload["logo_asset_path"],
+                payload["source"],
+                payload["confidence"],
+                payload["last_verified_date"],
+                timestamp,
+                timestamp,
+            ),
+        )
+    created = get_bookmaker_catalogue_entry(bookmaker_id)
+    assert created is not None
+    return created
+
+
+def update_bookmaker_catalogue_entry(
+    bookmaker_id: str, payload: dict[str, Any]
+) -> BookmakerCatalogueRecord | None:
+    if get_bookmaker_catalogue_entry(bookmaker_id) is None:
+        return None
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE bookmaker_catalogue
+            SET brand_name = ?, short_display_name = ?, legal_operator = ?,
+                operator_group = ?, platform = ?, risk_team = ?, licence_reference = ?,
+                licence_status = ?, canonical_domain = ?, status = ?,
+                foreground_colour = ?, background_colour = ?, logo_asset_path = ?,
+                source = ?, confidence = ?, last_verified_date = ?, updated_at = ?
+            WHERE bookmaker_id = ?
+            """,
+            (
+                payload["brand_name"],
+                payload["short_display_name"],
+                payload["legal_operator"],
+                payload["operator_group"],
+                payload["platform"],
+                payload["risk_team"],
+                payload["licence_reference"],
+                payload["licence_status"],
+                payload["canonical_domain"],
+                payload["status"],
+                payload["foreground_colour"],
+                payload["background_colour"],
+                payload["logo_asset_path"],
+                payload["source"],
+                payload["confidence"],
+                payload["last_verified_date"],
+                timestamp,
+                bookmaker_id,
+            ),
+        )
+        connection.execute(
+            """
+            UPDATE accounts
+            SET account = ?, group_name = ?, platform = ?, updated_at = ?
+            WHERE bookmaker_id = ?
+            """,
+            (
+                payload["brand_name"],
+                payload["operator_group"],
+                payload["platform"],
+                timestamp,
+                bookmaker_id,
+            ),
+        )
+    return get_bookmaker_catalogue_entry(bookmaker_id)
+
+
+def get_bookmaker_display_settings(profile_id: str) -> BookmakerDisplaySettingsRecord:
+    with connect() as connection:
+        global_row = connection.execute(
+            """
+            SELECT bookmaker_display_mode
+            FROM fund_manager_settings
+            WHERE fund_manager_id = 'fund-manager-local'
+            """
+        ).fetchone()
+        profile_row = connection.execute(
+            """
+            SELECT bookmaker_display_mode_override
+            FROM profile_bookmaker_display_settings
+            WHERE profile_id = ?
+            """,
+            (profile_id,),
+        ).fetchone()
+    global_mode = str(global_row["bookmaker_display_mode"]) if global_row else "Name"
+    profile_override = (
+        str(profile_row["bookmaker_display_mode_override"]) if profile_row else "Inherit"
+    )
+    resolved_mode = global_mode if profile_override == "Inherit" else profile_override
+    return BookmakerDisplaySettingsRecord(global_mode, profile_override, resolved_mode)
+
+
+def update_global_bookmaker_display_mode(mode: str) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_settings (
+              fund_manager_id, bookmaker_display_mode, created_at, updated_at
+            ) VALUES ('fund-manager-local', ?, ?, ?)
+            ON CONFLICT(fund_manager_id) DO UPDATE SET
+              bookmaker_display_mode = excluded.bookmaker_display_mode,
+              updated_at = excluded.updated_at
+            """,
+            (mode, timestamp, timestamp),
+        )
+
+
+def update_profile_bookmaker_display_mode(profile_id: str, mode: str) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_bookmaker_display_settings (
+              profile_id, bookmaker_display_mode_override, created_at, updated_at
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(profile_id) DO UPDATE SET
+              bookmaker_display_mode_override = excluded.bookmaker_display_mode_override,
+              updated_at = excluded.updated_at
+            """,
+            (profile_id, mode, timestamp, timestamp),
+        )
 
 
 def list_profile_exchange_commissions(
@@ -2904,6 +3254,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
     record = {
         "account_id": payload.get("account_id") or f"AC-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
+        "bookmaker_id": payload.get("bookmaker_id"),
         "account": payload["account"],
         "type": payload["type"],
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
@@ -2923,6 +3274,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
             INSERT INTO accounts (
               account_id,
               profile_id,
+              bookmaker_id,
               account,
               type,
               counts_in_cash_total,
@@ -2935,7 +3287,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
               platform,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -2961,6 +3313,7 @@ def update_account(
         return None
 
     updated = {
+        "bookmaker_id": payload.get("bookmaker_id"),
         "account": payload["account"],
         "type": payload["type"],
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
@@ -2978,6 +3331,7 @@ def update_account(
             """
             UPDATE accounts
             SET
+              bookmaker_id = ?,
               account = ?,
               type = ?,
               counts_in_cash_total = ?,
@@ -2992,6 +3346,7 @@ def update_account(
             WHERE profile_id = ? AND account_id = ?
             """,
             (
+                updated["bookmaker_id"],
                 updated["account"],
                 updated["type"],
                 updated["counts_in_cash_total"],

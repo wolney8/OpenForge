@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from openforge_api.db import (
     create_account,
     get_account,
+    get_bookmaker_catalogue_entry,
     list_accounts,
     update_account,
 )
@@ -31,6 +32,7 @@ StatusValue = Literal[
 
 class AccountPayload(BaseModel):
     account_id: str | None = Field(default=None, max_length=64)
+    bookmaker_id: str | None = Field(default=None, max_length=64)
     account: str = Field(min_length=1, max_length=120)
     type: AccountTypeValue
     counts_in_cash_total: bool = True
@@ -50,6 +52,25 @@ class AccountResponse(AccountPayload):
     updated_at: str
 
 
+def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
+    values = payload.model_dump()
+    if payload.type != "Bookie":
+        values["bookmaker_id"] = None
+        return values
+    if not payload.bookmaker_id:
+        return values
+
+    catalogue = get_bookmaker_catalogue_entry(payload.bookmaker_id)
+    if catalogue is None:
+        raise HTTPException(status_code=422, detail="Bookmaker catalogue entry not found")
+    values.update(
+        account=catalogue.brand_name,
+        group_name=catalogue.operator_group,
+        platform=catalogue.platform,
+    )
+    return values
+
+
 @router.get("", response_model=list[AccountResponse])
 def list_profile_accounts(profile_id: str) -> list[AccountResponse]:
     return [AccountResponse.model_validate(row.__dict__) for row in list_accounts(profile_id)]
@@ -65,7 +86,7 @@ def get_profile_account(profile_id: str, account_id: str) -> AccountResponse:
 
 @router.post("", response_model=AccountResponse, status_code=201)
 def create_profile_account(profile_id: str, payload: AccountPayload) -> AccountResponse:
-    created = create_account(profile_id, payload.model_dump())
+    created = create_account(profile_id, resolve_catalogue_fields(payload))
     return AccountResponse.model_validate(created.__dict__)
 
 
@@ -75,7 +96,7 @@ def update_profile_account(
     account_id: str,
     payload: AccountPayload,
 ) -> AccountResponse:
-    updated = update_account(profile_id, account_id, payload.model_dump())
+    updated = update_account(profile_id, account_id, resolve_catalogue_fields(payload))
     if updated is None:
         raise HTTPException(status_code=404, detail="Account not found for this profile")
     return AccountResponse.model_validate(updated.__dict__)
