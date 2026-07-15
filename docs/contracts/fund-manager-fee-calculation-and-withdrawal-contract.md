@@ -42,6 +42,10 @@ Keep these values separate:
 | `withdrawal_eligible_cash_before_fee_reserve` | money | Withdrawal only | upstream cash/exposure workflow |
 | linked fee withdrawals | money rows | No | Cash Adjustments/audit ledger |
 
+Current profile fee percentages may be edited by the Fund Manager through the approved profile
+metadata workflow. Each update must be audited. Changing the current setting must not rewrite a
+locked period's snapshotted percentages or historical fee calculations.
+
 ## Formula
 
 Package validation:

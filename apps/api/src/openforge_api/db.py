@@ -265,6 +265,15 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           current_cash_snapshot TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS profile_audit (
+          audit_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          changed_at TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS bookmaker_catalogue (
           bookmaker_id TEXT PRIMARY KEY,
           brand_name TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -359,6 +368,19 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
           FOREIGN KEY (bookmaker_id) REFERENCES bookmaker_catalogue(bookmaker_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS balance_snapshots (
+          balance_snapshot_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          snapshot_at TEXT NOT NULL,
+          snapshot_type TEXT NOT NULL,
+          account_id TEXT,
+          balance_amount TEXT NOT NULL,
+          notes TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE SET NULL
         );
 
         CREATE TABLE IF NOT EXISTS account_audit (
@@ -2698,6 +2720,18 @@ class AccountRecord:
     updated_at: str
 
 
+@dataclass(frozen=True)
+class BalanceSnapshotRecord:
+    balance_snapshot_id: str
+    profile_id: str
+    snapshot_at: str
+    snapshot_type: str
+    account_id: str | None
+    balance_amount: str
+    notes: str
+    created_at: str
+
+
 def map_exchange_commission_row(row: sqlite3.Row) -> ProfileExchangeCommissionRecord:
     return ProfileExchangeCommissionRecord(**dict(row))
 
@@ -2724,6 +2758,10 @@ def map_account_row(row: sqlite3.Row) -> AccountRecord:
     record = dict(row)
     record["counts_in_cash_total"] = bool(record["counts_in_cash_total"])
     return AccountRecord(**record)
+
+
+def map_balance_snapshot_row(row: sqlite3.Row) -> BalanceSnapshotRecord:
+    return BalanceSnapshotRecord(**dict(row))
 
 
 def list_bookmaker_catalogue(*, include_archived: bool = True) -> list[BookmakerCatalogueRecord]:
@@ -2960,6 +2998,86 @@ def get_profile(profile_id: str) -> ProfileRecord | None:
             (profile_id,),
         ).fetchone()
     return map_profile_row(row) if row else None
+
+
+def update_profile_metadata(
+    profile_id: str,
+    *,
+    display_name: str | None = None,
+    status: str | None = None,
+    management_fee_percent: str | None = None,
+    investment_fee_percent: str | None = None,
+) -> ProfileRecord | None:
+    current = get_profile(profile_id)
+    if current is None:
+        return None
+
+    next_display_name = display_name if display_name is not None else current.display_name
+    next_status = status if status is not None else current.status
+    next_management_fee = (
+        management_fee_percent
+        if management_fee_percent is not None
+        else current.management_fee_percent
+    )
+    next_investment_fee = (
+        investment_fee_percent
+        if investment_fee_percent is not None
+        else current.investment_fee_percent
+    )
+    if float(next_management_fee) + float(next_investment_fee) > 100:
+        raise ValueError("Combined management and investment fees cannot exceed 100%")
+
+    changes = {
+        key: {"from": old_value, "to": new_value}
+        for key, old_value, new_value in (
+            ("display_name", current.display_name, next_display_name),
+            ("status", current.status, next_status),
+            ("management_fee_percent", current.management_fee_percent, next_management_fee),
+            ("investment_fee_percent", current.investment_fee_percent, next_investment_fee),
+        )
+        if old_value != new_value
+    }
+    if not changes:
+        return current
+
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE profiles
+            SET display_name = ?, status = ?, management_fee_percent = ?, investment_fee_percent = ?
+            WHERE profile_id = ?
+            """,
+            (
+                next_display_name,
+                next_status,
+                next_management_fee,
+                next_investment_fee,
+                profile_id,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_audit (audit_id, profile_id, action, changed_at, payload_json)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                f"audit-{uuid4().hex}",
+                profile_id,
+                "metadata_updated",
+                utc_now(),
+                json.dumps({"changes": changes}, sort_keys=True),
+            ),
+        )
+    return get_profile(profile_id)
+
+
+def count_profile_audit_rows(profile_id: str) -> int:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) AS count FROM profile_audit WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+    return int(row["count"])
 
 
 def get_profile_exchange_commission(profile_id: str, exchange_name: str) -> str:
@@ -3221,6 +3339,53 @@ def delete_profile_lookup_value(profile_id: str, lookup_value_id: str) -> bool:
             (profile_id, lookup_value_id),
         )
     return cursor.rowcount > 0
+
+
+def list_balance_snapshots(profile_id: str) -> list[BalanceSnapshotRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM balance_snapshots
+            WHERE profile_id = ?
+            ORDER BY snapshot_at DESC, created_at DESC, balance_snapshot_id ASC
+            """,
+            (profile_id,),
+        ).fetchall()
+    return [map_balance_snapshot_row(row) for row in rows]
+
+
+def create_balance_snapshot(
+    profile_id: str, payload: dict[str, Any]
+) -> BalanceSnapshotRecord:
+    record = {
+        "balance_snapshot_id": payload.get("balance_snapshot_id")
+        or f"BS-{uuid4().hex[:8].upper()}",
+        "profile_id": profile_id,
+        "snapshot_at": payload["snapshot_at"],
+        "snapshot_type": payload["snapshot_type"],
+        "account_id": payload.get("account_id"),
+        "balance_amount": payload["balance_amount"],
+        "notes": payload["notes"],
+        "created_at": utc_now(),
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO balance_snapshots (
+              balance_snapshot_id,
+              profile_id,
+              snapshot_at,
+              snapshot_type,
+              account_id,
+              balance_amount,
+              notes,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+    return BalanceSnapshotRecord(**record)
 
 
 def list_accounts(profile_id: str) -> list[AccountRecord]:

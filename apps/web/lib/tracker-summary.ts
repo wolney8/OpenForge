@@ -90,12 +90,24 @@ export type CashAdjustmentSummaryRecord = {
   week_label: string;
 };
 
+export type BalanceSnapshotSummaryRecord = {
+  balance_snapshot_id: string;
+  profile_id: string;
+  snapshot_at: string;
+  snapshot_type: string;
+  account_id: string | null;
+  balance_amount: string;
+  notes: string;
+  created_at: string;
+};
+
 export type TrackerSummaryDataset = {
   accounts: AccountSummaryRecord[];
   sportsbookBets: SportsbookSummaryRecord[];
   freeBets: FreeBetSummaryRecord[];
   casinoOffers: CasinoSummaryRecord[];
   cashAdjustments: CashAdjustmentSummaryRecord[];
+  balanceSnapshots?: BalanceSnapshotSummaryRecord[];
 };
 
 export type TrackerSummarySettings = {
@@ -143,7 +155,7 @@ type AccountHealthItem = {
   lastOfferResult: string;
 };
 
-type ReportRow = {
+export type ReportRow = {
   periodKey: string;
   periodLabel: string;
   sportsbookPnl: number;
@@ -155,14 +167,14 @@ type ReportRow = {
   retainedProfit: number;
 };
 
-type ModuleBreakdownRow = {
+export type ModuleBreakdownRow = {
   moduleKey: "sportsbook" | "free-bets" | "casino" | "cash-adjustments";
   label: string;
   rowCount: number;
   reportingValue: number;
 };
 
-type BookmakerBreakdownRow = {
+export type BookmakerBreakdownRow = {
   bookmaker: string;
   sportsbookPnl: number;
   freeBetPnl: number;
@@ -239,6 +251,7 @@ export type TrackerSummaryResult = {
   accountHealth: AccountHealthItem[];
   expiringFreeBets: FreeBetSummaryRecord[];
   recentActivity: ActivityItem[];
+  recentBalanceSnapshots: BalanceSnapshotSummaryRecord[];
   moduleBreakdown: ModuleBreakdownRow[];
   bookmakerBreakdown: BookmakerBreakdownRow[];
   weeklyReports: ReportRow[];
@@ -269,9 +282,41 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 const monthFormatter = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
+  month: "long",
   year: "numeric",
 });
+
+function ordinalSuffix(day: number): string {
+  const remainder = day % 100;
+  if (remainder >= 11 && remainder <= 13) {
+    return "th";
+  }
+  switch (day % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
+function formatHumanDate(value: Date, includeTime: boolean): string {
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(value);
+  const month = new Intl.DateTimeFormat("en-GB", { month: "long" }).format(value);
+  const date = `${weekday} ${value.getDate()}${ordinalSuffix(value.getDate())} ${month} ${value.getFullYear()}`;
+  if (!includeTime || (value.getHours() === 0 && value.getMinutes() === 0)) {
+    return date;
+  }
+  const time = new Intl.DateTimeFormat("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(value);
+  return `${date}, ${time}`;
+}
 
 function parseMoney(value: string | null | undefined): number {
   if (!value) {
@@ -348,6 +393,14 @@ export function formatDisplayDate(value: string): string {
     return "Unscheduled";
   }
   return dateFormatter.format(parsed);
+}
+
+export function formatHumanDisplayDate(value: string, includeTime = false): string {
+  const parsed = parseDateInput(value);
+  if (!parsed) {
+    return "Unscheduled";
+  }
+  return formatHumanDate(parsed, includeTime);
 }
 
 export function getDatePresetOptions(): DatePreset[] {
@@ -463,7 +516,7 @@ function getWeekKey(value: Date): string {
 }
 
 function getWeekLabel(value: Date): string {
-  return `Week commencing ${dateFormatter.format(startOfWeekMonday(value))}`;
+  return `Week commencing; ${formatHumanDate(startOfWeekMonday(value), false)}`;
 }
 
 function getMonthKey(value: Date): string {
@@ -560,6 +613,10 @@ export function summarizeTrackerData(
   const cashAdjustmentsInRange = dataset.cashAdjustments.filter((row) =>
     dateWithinRange(parseDateInput(row.adjustment_date), resolvedDateRange)
   );
+  const recentBalanceSnapshots = (dataset.balanceSnapshots ?? [])
+    .filter((row) => dateWithinRange(parseDateInput(row.snapshot_at), resolvedDateRange))
+    .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at))
+    .slice(0, 20);
 
   const sportsbookReportingValue = sportsbookInRange.reduce(
     (sum, row) => sum + parseMoney(row.reporting_value),
@@ -985,6 +1042,7 @@ export function summarizeTrackerData(
     accountHealth,
     expiringFreeBets,
     recentActivity,
+    recentBalanceSnapshots,
     moduleBreakdown,
     bookmakerBreakdown,
     weeklyReports,

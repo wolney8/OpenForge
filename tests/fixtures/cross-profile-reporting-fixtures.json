@@ -1,0 +1,87 @@
+{
+  "case_id": "CPR-001-003",
+  "description": "Synthetic cross-profile selected-range and formal-report aggregation",
+  "profiles": [
+    {
+      "profileId": "PROFILE-001",
+      "displayName": "Subscriber Alpha",
+      "profileCode": "ALPHA-001",
+      "status": "active",
+      "selectedRange": {
+        "grossBettingPnl": 14.5,
+        "cashAdjustments": -3,
+        "retainedProfit": 11.5,
+        "openCurrentValue": 4.5,
+        "settledFinalValue": 10
+      },
+      "cashSnapshot": 250,
+      "openBets": 2,
+      "overdueBets": 1,
+      "expiringFreeBetCount": 1,
+      "currentLiability": 18,
+      "moduleBreakdown": [
+        { "moduleKey": "sportsbook", "label": "Sportsbook", "rowCount": 2, "reportingValue": -1.5 },
+        { "moduleKey": "free-bets", "label": "Free Bets", "rowCount": 1, "reportingValue": 12 },
+        { "moduleKey": "casino", "label": "Casino", "rowCount": 1, "reportingValue": 4 },
+        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -3 }
+      ],
+      "bookmakerBreakdown": [
+        { "bookmaker": "Bookmaker A", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 0, "totalPnl": 10.5, "openRowCount": 1 }
+      ],
+      "weeklyReports": [
+        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
+      ],
+      "monthlyReports": [
+        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
+      ]
+    },
+    {
+      "profileId": "PROFILE-002",
+      "displayName": "Subscriber Bravo",
+      "profileCode": "BRAVO-002",
+      "status": "paused",
+      "selectedRange": {
+        "grossBettingPnl": -2.5,
+        "cashAdjustments": -1,
+        "retainedProfit": -3.5,
+        "openCurrentValue": -1,
+        "settledFinalValue": -1.5
+      },
+      "cashSnapshot": 100,
+      "openBets": 1,
+      "overdueBets": 0,
+      "expiringFreeBetCount": 2,
+      "currentLiability": 7,
+      "moduleBreakdown": [
+        { "moduleKey": "sportsbook", "label": "Sportsbook", "rowCount": 1, "reportingValue": -3 },
+        { "moduleKey": "free-bets", "label": "Free Bets", "rowCount": 1, "reportingValue": 0.5 },
+        { "moduleKey": "casino", "label": "Casino", "rowCount": 0, "reportingValue": 0 },
+        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -1 }
+      ],
+      "bookmakerBreakdown": [
+        { "bookmaker": "Bookmaker A", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "openRowCount": 1 }
+      ],
+      "weeklyReports": [
+        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
+      ],
+      "monthlyReports": [
+        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
+      ]
+    }
+  ],
+  "expected": {
+    "grossBettingPnl": 12,
+    "cashAdjustments": -4,
+    "retainedProfit": 8,
+    "openCurrentValue": 3.5,
+    "settledFinalValue": 8.5,
+    "cashSnapshot": 350,
+    "openBets": 3,
+    "overdueBets": 1,
+    "expiringFreeBetCount": 3,
+    "currentLiability": 25,
+    "bookmakerA": { "totalPnl": 8, "openRowCount": 2 },
+    "week": { "periodKey": "2026-07-06", "totalPnl": 12, "withdrawals": -3, "costs": -1, "retainedProfit": 8 },
+    "month": { "periodKey": "2026-07", "totalPnl": 12, "withdrawals": -3, "costs": -1, "retainedProfit": 8 }
+  }
+}

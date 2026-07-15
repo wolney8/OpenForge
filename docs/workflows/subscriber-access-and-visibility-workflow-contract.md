@@ -79,6 +79,11 @@ Profile context required:
 Managed subscriber restriction:
 
 - no combined cross-profile control surface outside explicitly linked scope
+- current Fund Manager Dashboard, Reports, and combined `/profiles` analytics are tagged
+  `internal_operational`
+- subscriber routes must use explicit allowlisted report components rather than CSS-hiding or
+  client-side filtering of Fund Manager data
+- access-tier UI labels are descriptive metadata only; server-side authorization remains required
 
 ## 9. Edge cases
 

@@ -707,6 +707,569 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.compact-report-controls {
+  display: grid;
+  gap: 0.75rem;
+  align-items: end;
+  grid-template-columns: repeat(3, minmax(150px, 210px));
+}
+
+.reporting-breakdown-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.reporting-breakdown-grid > .content-subpanel {
+  align-self: start;
+}
+
+.m3-picker-field {
+  position: relative;
+  display: grid;
+  min-width: 190px;
+}
+
+.m3-picker-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 3.5rem;
+  padding: 1rem 0.9rem 0.25rem;
+  border: 0;
+  border-bottom: 2px solid var(--outline-strong);
+  border-radius: 0.9rem 0.9rem 0 0;
+  background: var(--surface-container);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.m3-picker-control:focus-within {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--surface-container) 88%, var(--primary-soft));
+}
+
+.m3-picker-label {
+  position: absolute;
+  z-index: 1;
+  margin: 0.35rem 0 0 3rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+.m3-picker-control .material-symbols-outlined {
+  flex: 0 0 auto;
+  margin-right: 0.55rem;
+  color: var(--primary);
+}
+
+.m3-picker-control select,
+.m3-picker-control input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.profile-report-picker {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.profile-report-picker summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-container);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.profile-report-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.profile-report-picker summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 3px;
+}
+
+.profile-picker-count {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 0.8rem;
+}
+
+.profile-report-picker fieldset {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(28rem, calc(100vw - 3rem));
+  max-height: 24rem;
+  margin: 0;
+  padding: 1rem;
+  overflow-y: auto;
+  border: 1px solid var(--outline);
+  border-radius: 1.25rem;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.profile-report-picker legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.profile-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.profile-picker-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.profile-filter-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.05rem 0.65rem;
+  align-items: center;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--outline);
+  border-radius: 1rem;
+  background: var(--surface-container);
+  cursor: pointer;
+}
+
+.profile-filter-chip.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.profile-filter-chip input {
+  grid-row: 1 / span 2;
+  accent-color: var(--primary);
+}
+
+.profile-filter-chip small {
+  color: var(--muted);
+}
+
+.report-action-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.65rem;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid color-mix(in srgb, #d04b4b 68%, var(--outline));
+  border-radius: 999px;
+  background: color-mix(in srgb, #d04b4b 14%, var(--surface-container));
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stat-card.is-actionable {
+  border-color: color-mix(in srgb, #dca93a 62%, var(--outline));
+  background: color-mix(in srgb, #dca93a 8%, var(--surface-container));
+}
+
+.report-action-link,
+.report-value-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
+.report-action-link .material-symbols-outlined,
+.report-value-link .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+.report-value-link-urgent > span:first-child {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+
+.report-action-link:focus-visible,
+.report-value-link:focus-visible,
+.profile-field-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 0.35rem;
+}
+
+.cross-profile-analytics {
+  position: relative;
+  min-height: 20rem;
+}
+
+.fund-manager-control-bar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) minmax(180px, 0.65fr) auto;
+  gap: 0.85rem;
+  align-items: end;
+  padding: 0.85rem;
+  border-radius: 1.25rem;
+  background: var(--surface-container);
+}
+
+.fund-manager-control-bar .profile-report-picker {
+  align-self: center;
+}
+
+.fund-manager-control-bar .compact-report-controls {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.analytics-tab-list {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: var(--surface-container);
+}
+
+.analytics-tab {
+  flex: 1 0 max-content;
+  min-height: 3rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.analytics-tab:hover {
+  background: color-mix(in srgb, var(--primary-soft) 55%, transparent);
+  color: var(--text);
+}
+
+.analytics-tab.is-active {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.analytics-tab:focus-visible,
+.directory-icon-button:focus-visible,
+.text-button:focus-visible,
+.dialog-close-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.analytics-tab-panel {
+  min-width: 0;
+}
+
+.profile-directory .table-shell table {
+  min-width: 980px;
+}
+
+.profile-directory small {
+  color: var(--muted);
+}
+
+.directory-icon-button,
+.dialog-close-button {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.directory-icon-button:hover,
+.directory-icon-button.is-active,
+.dialog-close-button:hover {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.directory-icon-button.is-active .material-symbols-outlined {
+  font-variation-settings: "FILL" 1;
+}
+
+.directory-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.directory-pagination {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.profile-details-drawer {
+  width: min(34rem, calc(100vw - 2rem));
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.profile-details-drawer[open] {
+  animation: profile-drawer-in 180ms ease-out;
+}
+
+.profile-details-drawer::backdrop {
+  background: color-mix(in srgb, #000 46%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.profile-details-drawer-content {
+  position: relative;
+  min-height: 100%;
+  padding: 1.5rem;
+  align-content: start;
+}
+
+.profile-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.profile-detail-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--outline);
+}
+
+.profile-detail-list dt {
+  color: var(--muted);
+}
+
+.profile-detail-list dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.profile-field-action {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+
+.profile-inline-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.profile-drawer-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.profile-inline-editor {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.profile-inline-control {
+  width: min(12rem, 42vw);
+  min-height: 2rem;
+  padding: 0.1rem 0.2rem;
+  border: 0;
+  border-bottom: 2px solid var(--primary);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: right;
+}
+
+.profile-inline-control.is-fee {
+  width: 5.5rem;
+}
+
+.profile-inline-control:focus {
+  background: color-mix(in srgb, var(--primary-soft) 45%, transparent);
+}
+
+.profile-inline-saving {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--outline);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: profile-drawer-spin 700ms linear infinite;
+}
+
+.profile-field-action:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.profile-field-action .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+.profile-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-self: start;
+}
+
+.profile-drawer-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-container);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.profile-drawer-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+  backdrop-filter: blur(3px);
+  font-weight: 700;
+}
+
+.profile-drawer-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 4px solid var(--outline);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: profile-drawer-spin 700ms linear infinite;
+}
+
+@keyframes profile-drawer-spin {
+  to { transform: rotate(360deg); }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes profile-drawer-in {
+  from { transform: translateX(1.5rem); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.reporting-breakdown-grid .table-shell table {
+  min-width: 0;
+}
+
+@media (max-width: 840px) {
+  .compact-report-controls,
+  .reporting-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fund-manager-control-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .fund-manager-control-bar .compact-report-controls,
+  .fund-manager-control-bar .m3-picker-field,
+  .profile-report-picker,
+  .profile-report-picker summary {
+    width: 100%;
+  }
+
+  .directory-pagination {
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-details-drawer[open] {
+    animation: none;
+  }
+}
+
 .stat-card strong {
   display: block;
   font-size: 1.2rem;
@@ -2171,6 +2734,26 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.access-scope-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--warning, #a15c00) 55%, var(--outline));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning, #a15c00) 12%, var(--surface-container));
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.access-scope-badge .material-symbols-outlined {
+  font-size: 1.05rem;
 }
 
 .section-lock-chip {

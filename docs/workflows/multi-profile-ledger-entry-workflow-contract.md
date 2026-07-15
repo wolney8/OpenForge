@@ -23,6 +23,10 @@ Use one offer as the starting point for sequentially creating similar profile-sc
 6. Submit Profile 1 explicitly, then Profile 2 explicitly, continuing in order.
 7. Show a final per-profile result list: created, skipped, blocked or failed.
 
+The Fund Manager profile directory may provide the candidate-selection entry point, but it must
+hand control to this sequential workflow. Directory selection is not row creation and must never
+become an implicit bulk-submit action.
+
 ## Eligibility rules
 
 - The selected bookmaker/account must exist for the target profile.
@@ -30,6 +34,10 @@ Use one offer as the starting point for sequentially creating similar profile-sc
 - Exchange and commission resolve from the target profile settings, not the source row.
 - Missing required target-profile authority values block that target only.
 - A blocked profile is never silently skipped or written.
+- Candidate selection should identify unavailable profiles before review where account data is
+  already known, while preserving the blocked reason in the final result.
+- Profile-directory search, reporting inclusion, status filters and pinning do not define offer
+  eligibility. Eligibility is resolved from the target profile's current account authorities.
 
 ## Copy rules
 
@@ -61,4 +69,3 @@ Record source draft id, batch/copy group id, target profile, copied fields, chan
 - cancel before target submit creates no target row
 - partial batch result is explicit and auditable
 - UI: source draft -> select profiles -> review Profile 1 -> submit -> review Profile 2 -> submit -> result summary
-

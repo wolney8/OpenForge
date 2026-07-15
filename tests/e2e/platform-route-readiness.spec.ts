@@ -10,6 +10,7 @@ const summarySourcePaths = [
   "free-bets",
   "casino-offers",
   "cash-adjustments",
+  "balance-snapshots",
   "tracker-settings",
 ];
 
@@ -71,17 +72,29 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   await page.goto(`/profiles/${primaryProfileId}/tracker/dashboard`);
   await dashboardSources;
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(
+    page.locator('[data-access-tier="internal_operational"]', {
+      hasText: "Fund Manager only",
+    })
+  ).toBeVisible();
   await expect(page.getByText("Resolved range", { exact: true })).toBeVisible();
   await expect(page.getByText("Selected-range P&L", { exact: true }).first()).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText("Open current / settled final", { exact: true })).toBeVisible();
   await expect(page.getByText("Cash snapshot", { exact: true }).first()).toBeVisible();
+  const ledgerAction = page.getByRole("link", { name: /^Open .+ in (Sportsbook|Free Bet|Casino)$/ }).first();
+  await expect(ledgerAction).toHaveAttribute("href", /\/tracker\/(sportsbook-bets|free-bets|casino-offers)\?search=.+/);
 
   const reportSources = waitForSummarySources(page, primaryProfileId);
   await page.goto(`/profiles/${primaryProfileId}/tracker/reports`);
   await reportSources;
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
+  await expect(
+    page.locator('[data-access-tier="internal_operational"]', {
+      hasText: "Fund Manager only",
+    })
+  ).toBeVisible();
   await expect(page.getByText("Formal report periods", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Selected range vs formal reports", exact: true })
@@ -89,4 +102,5 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   await expect(page.getByRole("heading", { name: "Weekly reports", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Monthly reports", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Yearly reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Balance snapshots", exact: true })).toBeVisible();
 });

@@ -1022,7 +1022,15 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
-export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
+export function FreeBetWorkflowShell({
+  profileId,
+  initialTableMode,
+  initialQuery = "",
+}: {
+  profileId: string;
+  initialTableMode?: string;
+  initialQuery?: string;
+}) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<FreeBetRecord[]>([]);
@@ -1054,9 +1062,12 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
   const [outcomeModalState, setOutcomeModalState] = useState<FreeBetOutcomeModalState | null>(null);
   const [tableMode, setTableMode] = usePersistedState<FreeBetTableMode>(
     `openforge-ledger-table-mode:${profileId}:free-bets`,
-    "recent"
+    freeBetTableModes.some((mode) => mode.value === initialTableMode)
+      ? (initialTableMode as FreeBetTableMode)
+      : "recent",
+    Boolean(initialTableMode)
   );
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");

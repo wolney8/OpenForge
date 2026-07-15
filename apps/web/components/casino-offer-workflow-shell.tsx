@@ -950,7 +950,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
-export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
+export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { profileId: string; initialQuery?: string }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
@@ -984,7 +984,7 @@ export function CasinoOfferWorkflowShell({ profileId }: { profileId: string }) {
     `openforge-ledger-table-mode:${profileId}:casino-offers`,
     "recent"
   );
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");

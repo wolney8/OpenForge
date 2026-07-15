@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatHumanDisplayDate,
   resolveDateRange,
   summarizeTrackerData,
   type TrackerSummaryDataset,
@@ -184,6 +185,17 @@ describe("resolveDateRange", () => {
 
     expect(localDateKey(resolved.start)).toBe("2026-06-29");
     expect(localDateKey(resolved.end)).toBe("2026-07-05");
+  });
+});
+
+describe("formatHumanDisplayDate", () => {
+  it("formats report dates with British ordinals and optional time", () => {
+    expect(formatHumanDisplayDate("2026-07-20T00:00:00")).toBe(
+      "Monday 20th July 2026"
+    );
+    expect(formatHumanDisplayDate("2026-07-20T16:30:00", true)).toBe(
+      "Monday 20th July 2026, 4:30 pm"
+    );
   });
 });
 
@@ -437,8 +449,10 @@ describe("summarizeTrackerData", () => {
     expect(summary.reportingModel.formalReports.weeklyPeriods).toBe(1);
     expect(summary.reportingModel.formalReports.monthlyPeriods).toBe(1);
     expect(summary.reportingModel.formalReports.yearlyPeriods).toBe(1);
-    expect(summary.reportingModel.formalReports.latestWeeklyLabel).toBe("Week commencing 29/06/2026");
-    expect(summary.reportingModel.formalReports.latestMonthlyLabel).toBe("Jul 2026");
+    expect(summary.reportingModel.formalReports.latestWeeklyLabel).toBe(
+      "Week commencing; Monday 29th June 2026"
+    );
+    expect(summary.reportingModel.formalReports.latestMonthlyLabel).toBe("July 2026");
     expect(summary.reportingModel.formalReports.latestYearlyLabel).toBe("2026");
     expect(summary.reportingModel.formalReports.latestWeeklyRetainedProfit).toBeCloseTo(-6.6, 6);
     expect(summary.reportingModel.formalReports.latestMonthlyRetainedProfit).toBeCloseTo(-6.6, 6);

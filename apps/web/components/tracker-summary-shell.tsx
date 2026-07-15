@@ -1,14 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { AccessScopeBadge } from "@/components/access-scope-badge";
 import {
-  formatDisplayDate,
+  formatHumanDisplayDate,
   formatMoney,
   resolveDateRange,
   summarizeTrackerData,
   type AccountSummaryRecord,
+  type BalanceSnapshotSummaryRecord,
   type CashAdjustmentSummaryRecord,
   type CasinoSummaryRecord,
   type FreeBetSummaryRecord,
@@ -41,7 +44,7 @@ function readErrorMessage(error: unknown, fallback: string) {
 }
 
 function buildRangeLabel(start: Date, end: Date) {
-  return `${formatDisplayDate(start.toISOString())} to ${formatDisplayDate(end.toISOString())}`;
+  return `${formatHumanDisplayDate(start.toISOString())} to ${formatHumanDisplayDate(end.toISOString())}`;
 }
 
 function isWithinResolvedRange(value: string, start: Date, end: Date) {
@@ -62,6 +65,18 @@ function getActivityModuleLabel(module: string) {
     default:
       return module;
   }
+}
+
+function getActivityLedgerHref(profileId: string, module: string, reference: string) {
+  const route =
+    module === "sportsbook"
+      ? "sportsbook-bets"
+      : module === "free-bet"
+        ? "free-bets"
+        : module === "casino"
+          ? "casino-offers"
+          : "cash-adjustments";
+  return `/profiles/${profileId}/tracker/${route}?search=${encodeURIComponent(reference)}`;
 }
 
 function getVariantTitle(variant: SummaryVariant) {
@@ -141,13 +156,15 @@ function renderBreakdownTable({
   title,
   headers,
   rows,
+  sectionId,
 }: {
   title: string;
   headers: string[];
   rows: ReactNode;
+  sectionId?: string;
 }) {
   return (
-    <section className="content-panel stack">
+    <section className="content-panel stack" id={sectionId}>
       <div className="panel-header">
         <h2>{title}</h2>
       </div>
@@ -180,16 +197,19 @@ function renderAttentionTable({
   emptyText,
   emptyColSpan,
   rows,
+  sectionId,
 }: {
   title: string;
   headers: string[];
   emptyText: string;
   emptyColSpan: number;
   rows: ReactNode;
+  sectionId?: string;
 }) {
   return renderBreakdownTable({
     title,
     headers,
+    sectionId,
     rows: rows ?? (
       <tr>
         <td colSpan={emptyColSpan}>{emptyText}</td>
@@ -205,13 +225,22 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadData = useCallback(async () => {
-    const [accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, trackerSettings] =
+    const [
+      accounts,
+      sportsbookBets,
+      freeBets,
+      casinoOffers,
+      cashAdjustments,
+      balanceSnapshots,
+      trackerSettings,
+    ] =
       await Promise.all([
         fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`, { cache: "no-store" }),
+        fetch(`${apiBaseUrl}/profiles/${profileId}/balance-snapshots`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, { cache: "no-store" }),
       ]);
 
@@ -221,6 +250,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       !freeBets.ok ||
       !casinoOffers.ok ||
       !cashAdjustments.ok ||
+      !balanceSnapshots.ok ||
       !trackerSettings.ok
     ) {
       throw new Error("Unable to load one or more tracker summary sources");
@@ -233,6 +263,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       freeBets: (await freeBets.json()) as FreeBetSummaryRecord[],
       casinoOffers: (await casinoOffers.json()) as CasinoSummaryRecord[],
       cashAdjustments: (await cashAdjustments.json()) as CashAdjustmentSummaryRecord[],
+      balanceSnapshots: (await balanceSnapshots.json()) as BalanceSnapshotSummaryRecord[],
     });
   }, [profileId]);
 
@@ -410,7 +441,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     <section className="stack">
       <section className="content-panel stack">
         <div className="panel-header">
-          <h2>{getVariantTitle(variant)}</h2>
+          <div className="section-heading-row">
+            <h2>{getVariantTitle(variant)}</h2>
+            <AccessScopeBadge />
+          </div>
         </div>
         <section className="stat-strip" aria-label="Resolved range and workbook reporting">
           <article className="stat-card">
@@ -539,6 +573,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   Overdue {summary.betsQuickView.overdueBets} • Part laid{" "}
                   {summary.betsQuickView.partLaidBets}
                 </span>
+                {summary.betsQuickView.overdueBets > 0 ? (
+                  <span className="report-action-badge">
+                    Action needed: {summary.betsQuickView.overdueBets} overdue
+                  </span>
+                ) : null}
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Open current value</span>
@@ -558,6 +597,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span>
                   Expiring free bets • Mug review {summary.betsQuickView.accountsNeedingMugReview}
                 </span>
+                {summary.betsQuickView.expiringFreeBetCount > 0 ? (
+                  <span className="report-action-badge">Action needed</span>
+                ) : null}
               </article>
             </section>
           )}
@@ -593,7 +635,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span className="eyebrow">Latest activity</span>
                 <strong>
                   {summary.activityQuickView.latestActivityDate
-                      ? formatDisplayDate(summary.activityQuickView.latestActivityDate)
+                      ? formatHumanDisplayDate(summary.activityQuickView.latestActivityDate, true)
                       : "Unscheduled"}
                 </strong>
                 <span>Latest dated row inside the range</span>
@@ -655,9 +697,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {isDashboardLike &&
             renderAttentionTable({
               title: "Open positions due soon",
-              headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value"],
+              sectionId: "open-watchlist",
+              headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value", "Action"],
               emptyText: "No open positions currently have a due date in the live profile rows.",
-              emptyColSpan: 6,
+              emptyColSpan: 7,
               rows:
                 openAttentionRows.length === 0 ? null : (
                   openAttentionRows.map((row) => (
@@ -666,8 +709,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.reference}</td>
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
-                      <td>{formatDisplayDate(row.dueDate)}</td>
+                      <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </tr>
                   ))
                 ),
@@ -676,9 +720,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {isDashboardLike &&
             renderAttentionTable({
               title: "Overdue items",
-              headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value"],
+              sectionId: "overdue-watchlist",
+              headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value", "Action"],
               emptyText: "No overdue sportsbook, free-bet, or casino rows are currently flagged.",
-              emptyColSpan: 6,
+              emptyColSpan: 7,
               rows:
                 overdueAttentionRows.length === 0 ? null : (
                   overdueAttentionRows.map((row) => (
@@ -687,8 +732,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.reference}</td>
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
-                      <td>{formatDisplayDate(row.dueDate)}</td>
+                      <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </tr>
                   ))
                 ),
@@ -727,7 +773,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             </section>
 
               <section className="content-panel stack">
-                <div className="panel-header">
+                <div className="panel-header" id="expiring-free-bets">
                   <h2>Expiring free bets</h2>
                 </div>
                 <div className="table-shell">
@@ -752,7 +798,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                             <td>{row.free_bet_id}</td>
                             <td>{row.bookmaker}</td>
                             <td>{row.status}</td>
-                            <td>{formatDisplayDate(row.expiry_datetime)}</td>
+                            <td>{formatHumanDisplayDate(row.expiry_datetime, true)}</td>
                             <td className="align-end">{formatMoney(Number(row.reporting_value ?? 0))}</td>
                           </tr>
                         ))
@@ -818,8 +864,8 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <tr key={row.accountName}>
                           <td>{row.accountName}</td>
                           <td>{row.accountStatus}</td>
-                          <td>{row.lastOfferActivityAt ? formatDisplayDate(row.lastOfferActivityAt) : "—"}</td>
-                          <td>{row.lastMugBetAt ? formatDisplayDate(row.lastMugBetAt) : "—"}</td>
+                          <td>{row.lastOfferActivityAt ? formatHumanDisplayDate(row.lastOfferActivityAt, true) : "—"}</td>
+                          <td>{row.lastMugBetAt ? formatHumanDisplayDate(row.lastMugBetAt, true) : "—"}</td>
                           <td>{row.daysSinceMugBet}</td>
                           <td>{row.suggestedAction}</td>
                           <td>{row.lastOfferType || "—"}</td>
@@ -862,7 +908,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                           <td>{row.label}</td>
                           <td>{row.bookmakerOrAccount}</td>
                           <td>{row.status}</td>
-                          <td>{formatDisplayDate(row.date)}</td>
+                          <td>{formatHumanDisplayDate(row.date, true)}</td>
                           <td className="align-end">{formatMoney(row.value)}</td>
                         </tr>
                       ))
@@ -907,6 +953,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                     Open positions {summary.betsQuickView.openBets} • Overdue{" "}
                     {summary.betsQuickView.overdueBets}
                   </span>
+                  {summary.betsQuickView.overdueBets > 0 ? (
+                    <span className="report-action-badge">
+                      Action needed: {summary.betsQuickView.overdueBets} overdue
+                    </span>
+                  ) : null}
                 </article>
               </section>
               <section className="content-panel stack">
@@ -952,9 +1003,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
               {renderAttentionTable({
                 title: "Open watchlist",
-                headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value"],
+                sectionId: "open-watchlist",
+                headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value", "Action"],
                 emptyText: "No open positions currently have a due date in the live profile rows.",
-                emptyColSpan: 6,
+                emptyColSpan: 7,
                 rows:
                   openAttentionRows.length === 0 ? null : (
                     openAttentionRows.map((row) => (
@@ -963,8 +1015,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.reference}</td>
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
-                        <td>{formatDisplayDate(row.dueDate)}</td>
-                        <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                        <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
+                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </tr>
                     ))
                   ),
@@ -972,9 +1025,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
               {renderAttentionTable({
                 title: "Overdue watchlist",
-                headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value"],
+                sectionId: "overdue-watchlist",
+                headers: ["Module", "Reference", "Bookmaker", "Status", "Due", "Reporting value", "Action"],
                 emptyText: "No overdue sportsbook, free-bet, or casino rows are currently flagged.",
-                emptyColSpan: 6,
+                emptyColSpan: 7,
                 rows:
                   overdueAttentionRows.length === 0 ? null : (
                     overdueAttentionRows.map((row) => (
@@ -983,11 +1037,31 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.reference}</td>
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
-                        <td>{formatDisplayDate(row.dueDate)}</td>
-                        <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                        <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
+                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </tr>
                     ))
                   ),
+              })}
+
+              {renderAttentionTable({
+                title: "Balance snapshots",
+                headers: ["Captured", "Type", "Account", "Balance", "Notes"],
+                emptyText: "No balance snapshots fall inside the selected range.",
+                emptyColSpan: 5,
+                rows:
+                  summary.recentBalanceSnapshots.length === 0
+                    ? null
+                    : summary.recentBalanceSnapshots.map((row) => (
+                        <tr key={row.balance_snapshot_id}>
+                          <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
+                          <td>{row.snapshot_type}</td>
+                          <td>{row.account_id ?? "Profile total"}</td>
+                          <td className="align-end">{formatMoney(Number(row.balance_amount))}</td>
+                          <td>{row.notes || "—"}</td>
+                        </tr>
+                      )),
               })}
 
               {renderReportTable({ title: "Weekly reports", rows: summary.weeklyReports })}
