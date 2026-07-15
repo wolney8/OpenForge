@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { BookmakerIdentity } from "@/components/bookmaker-identity";
 import { StatusToast } from "@/components/status-toast";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
@@ -23,10 +24,12 @@ import {
   dedupeOptions,
 } from "@/lib/workbook-options";
 import { formatMoney } from "@/lib/tracker-summary";
+import type { BookmakerCatalogueRecord, BookmakerDisplaySettings } from "@/lib/bookmaker-catalogue";
 
 type AccountRecord = {
   account_id: string;
   profile_id: string;
+  bookmaker_id: string | null;
   account: string;
   type: string;
   counts_in_cash_total: boolean;
@@ -43,6 +46,7 @@ type AccountRecord = {
 
 type AccountFormState = {
   account_id?: string;
+  bookmaker_id: string;
   account: string;
   type: string;
   counts_in_cash_total: boolean;
@@ -90,6 +94,7 @@ const tableColumns: TableColumn[] = [
 
 function createBlankForm(): AccountFormState {
   return {
+    bookmaker_id: "",
     account: "",
     type: "Bookie",
     counts_in_cash_total: true,
@@ -106,6 +111,7 @@ function createBlankForm(): AccountFormState {
 function recordToForm(record: AccountRecord): AccountFormState {
   return {
     account_id: record.account_id,
+    bookmaker_id: record.bookmaker_id ?? "",
     account: record.account,
     type: record.type,
     counts_in_cash_total: record.counts_in_cash_total,
@@ -126,6 +132,9 @@ function parseAmount(value: string) {
 
 export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<AccountRecord[]>([]);
+  const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
+  const [bookmakerDisplaySettings, setBookmakerDisplaySettings] =
+    useState<BookmakerDisplaySettings | null>(null);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
@@ -216,6 +225,22 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
         loadRows(),
+        fetch(`${apiBaseUrl}/bookmaker-catalogue`, { cache: "no-store" }).then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error("Unable to load bookmaker catalogue");
+            }
+            setBookmakerCatalogue((await response.json()) as BookmakerCatalogueRecord[]);
+          }
+        ),
+        fetch(`${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`, {
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error("Unable to load bookmaker display settings");
+          }
+          setBookmakerDisplaySettings((await response.json()) as BookmakerDisplaySettings);
+        }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, { cache: "no-store" }).then(
           async (response) => {
             if (!response.ok) {
@@ -240,6 +265,14 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const accountOptions = useMemo(
     () => dedupeOptions([...rows.map((row) => row.account), formState.account]),
     [formState.account, rows]
+  );
+
+  const selectableBookmakers = useMemo(
+    () =>
+      bookmakerCatalogue.filter(
+        (row) => row.status === "Active" || row.bookmaker_id === formState.bookmaker_id
+      ),
+    [bookmakerCatalogue, formState.bookmaker_id]
   );
 
   const groupOptions = useMemo(
@@ -546,7 +579,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                               className={column.align === "end" ? "align-end" : undefined}
                               key={column.key}
                             >
-                              {row[column.key] || "—"}
+                              {column.key === "account" && String(row.type) === "Bookie" ? (
+                                <BookmakerIdentity
+                                  bookmaker={String(row.account ?? "")}
+                                  catalogue={bookmakerCatalogue}
+                                  mode={bookmakerDisplaySettings?.resolved_mode}
+                                />
+                              ) : (row[column.key] || "—")}
                             </td>
                           ))}
                         </tr>
@@ -632,26 +671,54 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field-control">
             <span>Account</span>
-            <select
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, account: event.target.value }))
-              }
-              required
-              value={formState.account}
-            >
-              <option value="">Select account</option>
-              {accountOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            {formState.type === "Bookie" ? (
+              <select
+                onChange={(event) => {
+                  const entry = bookmakerCatalogue.find(
+                    (row) => row.bookmaker_id === event.target.value
+                  );
+                  setFormState((current) => ({
+                    ...current,
+                    bookmaker_id: entry?.bookmaker_id ?? "",
+                    account: entry?.brand_name ?? "",
+                    group_name: entry?.operator_group ?? "",
+                    platform: entry?.platform ?? "",
+                  }));
+                }}
+                required
+                value={formState.bookmaker_id}
+              >
+                <option value="">Select bookmaker</option>
+                {selectableBookmakers.map((option) => (
+                  <option key={option.bookmaker_id} value={option.bookmaker_id}>
+                    {option.brand_name}{option.status === "Archived" ? " (Archived)" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, account: event.target.value }))
+                }
+                required
+                value={formState.account}
+              >
+                <option value="">Select account</option>
+                {accountOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            )}
           </label>
           <label className="field-control">
             <span>Type</span>
             <select
               onChange={(event) =>
-                setFormState((current) => ({ ...current, type: event.target.value }))
+                setFormState((current) => ({
+                  ...current,
+                  type: event.target.value,
+                  bookmaker_id: event.target.value === "Bookie" ? current.bookmaker_id : "",
+                }))
               }
               value={formState.type}
             >
@@ -746,6 +813,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           <label className="field-control">
             <span>Group</span>
             <select
+              disabled={formState.type === "Bookie"}
               onChange={(event) =>
                 setFormState((current) => ({ ...current, group_name: event.target.value }))
               }
@@ -762,6 +830,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           <label className="field-control">
             <span>Platform</span>
             <select
+              disabled={formState.type === "Bookie"}
               onChange={(event) =>
                 setFormState((current) => ({ ...current, platform: event.target.value }))
               }

@@ -55,7 +55,7 @@ test("Settings exposes the workbook-owned profile authorities", async ({ page })
   await page.goto(`/profiles/${primaryProfileId}/tracker/settings`);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByLabel("Tracker date settings")).toBeVisible();
-  await expect(page.getByText("Bookmakers", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bookmaker catalogue" })).toBeVisible();
   await expect(page.getByText("Exchanges", { exact: true })).toBeVisible();
   await expect(page.getByText("Sportsbook and free-bet offer names", { exact: true })).toBeVisible();
   await expect(page.getByText("Casino offer names", { exact: true })).toBeVisible();

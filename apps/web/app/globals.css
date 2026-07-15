@@ -2884,3 +2884,52 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
     border-radius: 1.35rem;
   }
 }
+.bookmaker-identity {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.bookmaker-identity-badge {
+  border-radius: 0.65rem;
+  font-weight: 750;
+  line-height: 1.2;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
+}
+
+.bookmaker-identity-logo img {
+  display: block;
+  height: 2rem;
+  max-width: 7rem;
+  object-fit: contain;
+  width: auto;
+}
+
+.bookmaker-catalogue-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bookmaker-catalogue-row {
+  align-items: center;
+  border-block-end: 1px solid var(--outline);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(7rem, 0.8fr) minmax(12rem, 2fr) auto auto;
+  padding: 0.8rem 0;
+}
+
+.bookmaker-catalogue-form {
+  border-block-start: 1px solid var(--outline);
+  padding-block-start: 1rem;
+}
+
+@media (max-width: 760px) {
+  .bookmaker-catalogue-row {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+}

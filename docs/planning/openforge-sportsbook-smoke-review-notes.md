@@ -1389,3 +1389,29 @@ Validation:
 - `pnpm --filter @openforge/web typecheck` passed.
 - `pnpm --filter @openforge/web test` passed.
 - `pnpm exec playwright test tests/e2e/sportsbook-free-bet-bridge.spec.ts tests/e2e/free-bet-award-gating.spec.ts` passed.
+
+### Shared bookmaker catalogue and ledger identity (2026-07-15)
+
+Implemented issue #64 as a Fund Manager-owned authority shared by isolated profile trackers:
+
+- Added an archive-first bookmaker catalogue with brand, operator, group, platform, risk-team,
+  licence, domain, accessible colour, optional local logo, source, confidence, and verification
+  metadata.
+- Added a Fund Manager display default plus an optional per-profile override for `Name`,
+  `Brand badge`, or `Logo` presentation.
+- Linked Bookie account rows to catalogue identities while leaving profile-owned balance, status,
+  channel, and account-health fields isolated.
+- Added tolerant backfill and case-insensitive historical text matching so existing tracker rows do
+  not require destructive migration.
+- Applied one shared identity renderer to Accounts, Sportsbook Bets, Free Bets, and Casino Offers.
+- Kept missing-logo and unmatched historical-name fallbacks explicit and readable.
+
+Validation:
+
+- `scripts/run-python.sh -m pytest apps/api/tests/test_bookmaker_catalogue.py apps/api/tests/test_accounts_workflow.py -q` passed: 5 tests.
+- `pnpm lint:api` passed.
+- `pnpm --filter @openforge/web lint` passed.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm --filter @openforge/web test` passed: 76 tests.
+- `pnpm playwright tests/e2e/bookmaker-brand-catalogue.spec.ts --reporter=line` passed,
+  including sportsbook Name/Brand badge switching and Logo-mode badge fallback.

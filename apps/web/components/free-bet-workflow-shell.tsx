@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
@@ -1022,6 +1023,8 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
 }
 
 export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
+  const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
+    useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<FreeBetRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
@@ -2209,6 +2212,16 @@ export function FreeBetWorkflowShell({ profileId }: { profileId: string }) {
     const rowId = String(row.free_bet_id ?? "");
     const sourceRow = freeBetRowsById.get(rowId);
     const value = String(row[column.key] ?? "").trim() || "—";
+
+    if (column.key === "bookmaker") {
+      return (
+        <BookmakerIdentity
+          bookmaker={value}
+          catalogue={bookmakerCatalogue}
+          mode={bookmakerDisplaySettings?.resolved_mode}
+        />
+      );
+    }
 
     if (
       column.key === "offer_details" ||
