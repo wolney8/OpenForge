@@ -36,9 +36,17 @@ export function usePersistedBoolean(storageKey: string, defaultValue: boolean) {
   return [value, setValue] as const;
 }
 
-export function usePersistedState<T>(storageKey: string, defaultValue: T) {
+export function usePersistedState<T>(
+  storageKey: string,
+  defaultValue: T,
+  preferDefaultValue = false
+) {
   const [value, setValue] = useState<T>(() => {
     if (typeof window === "undefined") {
+      return defaultValue;
+    }
+
+    if (preferDefaultValue) {
       return defaultValue;
     }
 

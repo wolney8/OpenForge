@@ -29,6 +29,27 @@
       "case_id": "MP-006",
       "inputs": {"target_profile_ids": ["PROFILE-001", "PROFILE-002"], "action": "bulk_confirm"},
       "expected": {"allowed": false, "error_code": "sequential_confirmation_required"}
+    },
+    {
+      "case_id": "MP-007",
+      "inputs": {
+        "entry_point": "fund_manager_profile_directory",
+        "reporting_profile_ids": ["PROFILE-001"],
+        "pinned_profile_ids": ["PROFILE-003"],
+        "candidate_profile_ids": ["PROFILE-001", "PROFILE-002", "PROFILE-003"],
+        "account_states": {
+          "PROFILE-001": "Active",
+          "PROFILE-002": "Gubbed",
+          "PROFILE-003": "Active"
+        }
+      },
+      "expected": {
+        "review_profile_ids": ["PROFILE-001", "PROFILE-003"],
+        "blocked_profiles": [{"profile_id": "PROFILE-002", "reason": "bookmaker_unavailable"}],
+        "reporting_selection_affects_eligibility": false,
+        "pin_state_affects_eligibility": false,
+        "bulk_submit_available": false
+      }
     }
   ]
 }

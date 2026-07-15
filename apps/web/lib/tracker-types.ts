@@ -2,7 +2,7 @@ export type ProfileSummary = {
   profileId: string;
   displayName: string;
   profileCode: string;
-  status: "active" | "paused";
+  status: "Active" | "Pending" | "Inactive" | "Paused" | "Archived" | "active" | "paused";
   trackingStartDate: string;
   managementFeePercent: string;
   investmentFeePercent: string;

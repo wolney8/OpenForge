@@ -1,6 +1,6 @@
 # OpenForge Fixture Specs
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-07-15_
 
 ## Purpose
 
@@ -54,6 +54,7 @@ Each fixture spec should include:
 - `spreadsheet-import-export-roundtrip-fixture-spec.md`
 - `fund-manager-fee-calculation-and-withdrawal-fixture-spec.md`
 - `multi-profile-ledger-entry-fixture-spec.md`
+- `profile-metadata-management-fixture-spec.md`
 - `target-progress-and-decision-support-fixture-spec.md`
 - `common-bet-combo-fixture-spec.md`
 - `calculator-workspace-ledger-bridge-fixture-spec.md`

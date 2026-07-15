@@ -14,4 +14,4 @@ _Last updated: 2026-07-14_
 | MP-004 | Target exchange differs | Target exchange/commission used |
 | MP-005 | User cancels second review | First remains created; second absent |
 | MP-006 | Attempted one-click bulk confirmation | Rejected by sequential-confirmation rule |
-
+| MP-007 | Candidate selection launched from Fund Manager directory | Reporting selection and pin state ignored; target account eligibility controls the review list |

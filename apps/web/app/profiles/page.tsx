@@ -1,8 +1,18 @@
 import Link from "next/link";
+import { CrossProfileAnalytics } from "@/components/cross-profile-analytics";
 import { getProfiles } from "@/lib/tracker-data";
 
 export default async function ProfilesPage() {
   const profiles = await getProfiles();
+  const analyticsProfiles = profiles.map((profile) => ({
+    profileId: profile.profileId,
+    displayName: profile.displayName,
+    profileCode: profile.profileCode,
+    status: profile.status,
+    trackingStartDate: profile.trackingStartDate,
+    managementFeePercent: profile.managementFeePercent,
+    investmentFeePercent: profile.investmentFeePercent,
+  }));
 
   return (
     <main className="page-shell stack">
@@ -29,35 +39,7 @@ export default async function ProfilesPage() {
           </p>
         </aside>
       </section>
-      <section className="route-grid">
-        {profiles.map((profile) => (
-          <article className="route-card stack" key={profile.profileId}>
-            <strong>{profile.displayName}</strong>
-            <div className="badge">{profile.status}</div>
-            <dl>
-              <dt>Profile code</dt>
-              <dd>{profile.profileCode}</dd>
-            </dl>
-            <dl>
-              <dt>Tracking start</dt>
-              <dd>{profile.trackingStartDate}</dd>
-            </dl>
-            <dl>
-              <dt>Fees</dt>
-              <dd>
-                Management {profile.managementFeePercent}% / Investment{" "}
-                {profile.investmentFeePercent}%
-              </dd>
-            </dl>
-            <div className="tracker-nav">
-              <Link href={`/profiles/${profile.profileId}`}>View profile</Link>
-              <Link href={`/profiles/${profile.profileId}/tracker`}>
-                Open tracker
-              </Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      <CrossProfileAnalytics profiles={analyticsProfiles} />
     </main>
   );
 }

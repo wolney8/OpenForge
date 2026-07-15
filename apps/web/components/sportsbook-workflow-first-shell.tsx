@@ -2359,7 +2359,7 @@ function getPersistableSportsbookForm(
   };
 }
 
-export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
+export function SportsbookWorkflowShell({ profileId, initialQuery = "" }: { profileId: string; initialQuery?: string }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
@@ -2384,7 +2384,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     "recent"
   );
   const [tableSort, setTableSort] = useState<SportsbookTableSort | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [tableFilters, setTableFilters] = usePersistedState<SportsbookTableFilterState>(
     `openforge-ledger-table-filters:${profileId}:sportsbook-bets`,
     emptyTableFilters

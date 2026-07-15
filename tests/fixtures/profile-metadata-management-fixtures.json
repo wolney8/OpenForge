@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "case_id": "PM-001",
+      "inputs": {"profile_id": "PROFILE-001", "status": "Pending"},
+      "expected": {"status": "Pending", "audit_rows_added": 1}
+    },
+    {
+      "case_id": "PM-002",
+      "inputs": {"profile_id": "PROFILE-001", "display_name": "Synthetic Subscriber One"},
+      "expected": {"display_name": "Synthetic Subscriber One", "other_profiles_changed": false}
+    },
+    {
+      "case_id": "PM-003",
+      "inputs": {"profile_id": "PROFILE-001", "management_fee_percent": "35.00", "investment_fee_percent": "10.00"},
+      "expected": {"management_fee_percent": "35.00", "investment_fee_percent": "10.00", "allowed": true}
+    },
+    {
+      "case_id": "PM-004",
+      "inputs": {"profile_id": "PROFILE-001", "management_fee_percent": "80.00", "investment_fee_percent": "30.00"},
+      "expected": {"allowed": false, "error_code": "combined_fee_limit_exceeded"}
+    },
+    {
+      "case_id": "PM-005",
+      "inputs": {"profile_id": "PROFILE-001", "action": "cancel", "pending_status": "Inactive"},
+      "expected": {"profile_changed": false, "audit_rows_added": 0}
+    },
+    {
+      "case_id": "PM-006",
+      "inputs": {"profile_id": "PROFILE-001", "status": "Unknown State"},
+      "expected": {"allowed": false, "error_code": "invalid_profile_status"}
+    }
+  ]
+}
