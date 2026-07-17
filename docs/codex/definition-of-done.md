@@ -1,4 +1,4 @@
-# OpenForge Definition of Done
+# Plum Duff Definition of Done
 
 ## Documentation tasks
 
@@ -43,6 +43,18 @@ Done means:
 - profile context is clear where relevant
 - empty, error, and edge states are identified
 - Playwright path is defined if the UI is part of scope
+- `docs/agent-contracts/plum-duff-ui-accessibility-contract.md` was followed
+- the UI implementation checklist was completed
+- existing Plum Duff primitives and semantic tokens were used or an exception was justified
+- Material 3 states and WCAG 2.2 AA were checked in light and dark modes
+- keyboard order, focus visibility, accessible names and form labels were checked
+- important controls/regions have stable `data-pd-id` identifiers
+- no unintended page horizontal overflow was introduced
+- wide content and tables use intentional scroll viewports with shrinking grid/flex ancestors
+- dialog geometry, body scroll and visible action footer were checked where relevant
+- enabled, disabled, loading, success and error conditions match actual process preconditions
+- equivalent controls in current and related routes were searched and updated or documented
+- known repeated mistakes were added to the pitfalls register with a regression test
 
 ## Data import tasks
 

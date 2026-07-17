@@ -4,7 +4,7 @@ Use this prompt for the next Codex session after Bootstrap 1 is complete.
 
 ---
 
-You are Codex working inside the OpenForge workspace.
+You are Codex working inside the Plum Duff repository workspace.
 
 Your task is to produce a comprehensive build plan only.
 
@@ -21,7 +21,7 @@ Do not start OddsForge planning beyond clearly deferred notes.
 2. Read the current docs in `docs/codex/`, `docs/planning/`, and `docs/templates/`.
 3. Inspect the current tracker-only source pack in `_input/`.
 4. Inspect the uploaded workbook if it is available locally, but treat it as sensitive and do not copy raw data into outputs.
-5. Prefer the current profile-scoped OpenForge source pack over older archived material if there is any conflict.
+5. Prefer the current profile-scoped Plum Duff source pack over older archived material if there is any conflict.
 
 ## Build-plan output requirements
 
@@ -58,7 +58,7 @@ Cover at least:
 
 ## Constraints
 
-- OpenForge is tracker-first.
+- Plum Duff is tracker-first.
 - OddsForge is deferred.
 - Local-first MVP only.
 - Preserve spreadsheet-as-blueprint behaviour.

@@ -49,6 +49,12 @@ _Last updated: 2026-07-15_
 - The final selected profile cannot be deselected.
 - Restoring all profiles restores the original deterministic totals.
 
+### `CPR-007` True current open positions
+
+- Count only committed pending sportsbook/free-bet/casino rows with settlement time in the future.
+- Exclude overdue, missing-date, prospecting/available and settled rows from Open positions.
+- Keep those excluded problem rows available through their ledger-specific action count.
+
 ## Acceptance
 
 - Money tolerance: `0.01`.

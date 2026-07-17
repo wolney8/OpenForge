@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  countTrueOpenPositions,
   formatHumanDisplayDate,
+  formatTrackingTenure,
   resolveDateRange,
   summarizeTrackerData,
   type TrackerSummaryDataset,
@@ -196,6 +198,37 @@ describe("formatHumanDisplayDate", () => {
     expect(formatHumanDisplayDate("2026-07-20T16:30:00", true)).toBe(
       "Monday 20th July 2026, 4:30 pm"
     );
+  });
+});
+
+describe("profile directory operational helpers", () => {
+  it("formats tracking tenure without replacing the exact display date", () => {
+    const asOf = new Date("2026-07-16T12:00:00Z");
+    expect(formatTrackingTenure("2026-07-01", asOf)).toBe("< 1 month");
+    expect(formatTrackingTenure("2026-06-01", asOf)).toBe("+1 month");
+    expect(formatTrackingTenure("2025-07-01", asOf)).toBe("+12 months");
+    expect(formatTrackingTenure("2024-01-01", asOf)).toBe("+2 years");
+  });
+
+  it("counts only committed pending rows whose settlement is still in the future", () => {
+    const asOf = new Date("2026-07-16T12:00:00Z");
+    const futureRows: TrackerSummaryDataset = {
+      ...dataset,
+      sportsbookBets: [
+        { ...dataset.sportsbookBets[1]!, date_settled: "2026-07-16T18:00:00Z", is_overdue: false },
+        { ...dataset.sportsbookBets[1]!, sportsbook_bet_id: "SB-OVERDUE", date_settled: "2026-07-16T10:00:00Z" },
+        { ...dataset.sportsbookBets[1]!, sportsbook_bet_id: "SB-MISSING", date_settled: "" },
+      ],
+      freeBets: [
+        { ...dataset.freeBets[0]!, date_settled: "2026-07-17T12:00:00Z" },
+        { ...dataset.freeBets[0]!, free_bet_id: "FB-AVAILABLE", status: "Available", date_settled: "2026-07-18T12:00:00Z" },
+      ],
+      casinoOffers: [
+        { ...dataset.casinoOffers[0]!, status: "Started", result: "Pending", date_settling: "2026-07-17T12:00:00Z", counts_as_open: true },
+      ],
+    };
+
+    expect(countTrueOpenPositions(futureRows, asOf)).toBe(3);
   });
 });
 

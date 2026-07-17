@@ -29,6 +29,26 @@
       "case_id": "PM-006",
       "inputs": {"profile_id": "PROFILE-001", "status": "Unknown State"},
       "expected": {"allowed": false, "error_code": "invalid_profile_status"}
+    },
+    {
+      "case_id": "PM-007",
+      "inputs": {"profile_id": "PROFILE-001", "profile_code": "SYNTH-001"},
+      "expected": {"profile_code": "SYNTH-001", "profile_id_changed": false, "audit_rows_added": 1}
+    },
+    {
+      "case_id": "PM-008",
+      "inputs": {"profile_id": "PROFILE-001", "profile_code": "BRAVO-002"},
+      "expected": {"allowed": false, "error_code": "duplicate_profile_code"}
+    },
+    {
+      "case_id": "PM-009",
+      "inputs": {"profile_id": "PROFILE-001", "tracking_start_date": "2026-04-01"},
+      "expected": {"tracking_start_date": "2026-04-01", "historical_rows_changed": false, "audit_rows_added": 1}
+    },
+    {
+      "case_id": "PM-010",
+      "inputs": {"profile_id": "PROFILE-001", "tracking_start_date": "2999-01-01"},
+      "expected": {"allowed": false, "error_code": "future_tracking_start"}
     }
   ]
 }

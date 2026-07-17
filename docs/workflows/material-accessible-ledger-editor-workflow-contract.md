@@ -23,7 +23,7 @@ Review dense financial ledgers and complete editor workflows without excessive v
 
 ## Component and interaction rules
 
-- Follow Material 3 component semantics and state layers while preserving OpenForge's approved palette.
+- Follow Material 3 component semantics and state layers while preserving Plum Duff's approved palette.
 - Controls have visible hover, focus, pressed, disabled and error states in light and dark mode.
 - Pointer targets should normally meet a `44–48px` practical target; exceptions require spacing and accessibility review.
 - Dialog focus moves to the dialog, remains trapped while open, returns to the invoking control and supports Escape unless destructive confirmation is required.
@@ -57,4 +57,3 @@ Review dense financial ledgers and complete editor workflows without excessive v
 - reduced motion removes non-essential transforms
 - status toast is announced once
 - ledger filtering/hidden-column state remains understandable without colour
-

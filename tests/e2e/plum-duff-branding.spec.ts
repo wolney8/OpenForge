@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 const trackerRoute = "/profiles/profile-demo-001/tracker/sportsbook-bets";
 
 test("Plum Duff branding is consistent across the public shell", async ({ page, request }) => {
+  const apiSchema = await request.get("http://127.0.0.1:8010/openapi.json");
+  expect(apiSchema.ok()).toBeTruthy();
+  expect((await apiSchema.json()).info.title).toBe("Plum Duff API");
   const logoResponse = await request.get(
     "http://127.0.0.1:3010/brand/plum-duff-wordmark-cropped-v2.png",
   );

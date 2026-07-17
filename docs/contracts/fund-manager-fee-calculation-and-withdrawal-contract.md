@@ -27,6 +27,19 @@ Keep these values separate:
 - `opening_loss_carryforward` / `closing_loss_carryforward`: unrecovered settled losses carried between months
 - `provisional_fee_reserve`: current-month fee estimate reserved from a subscriber withdrawal request
 
+## Required product terminology
+
+Fund Manager interfaces must use these labels consistently:
+
+- **Estimated Fees**: the current open-month provisional estimate. This is forecast information and is not withdrawable.
+- **Fees Earned**: the total fee crystallised from closed monthly periods in the selected reporting range.
+- **Available to Withdraw**: crystallised fees still outstanding after linked received fee withdrawals. This is the only fee amount the Fund Manager may action as a fee withdrawal.
+- **Fees Withdrawn**: audited physical fee-withdrawal Cash Adjustments already received for the relevant crystallised periods.
+
+Fund Manager summary views should present **Available to Withdraw** as the primary actionable value and keep **Estimated Fees**, **Fees Earned**, and **Fees Withdrawn** available in supporting detail. An arbitrary selected date range must not relabel an open-period estimate as earned or crystallised.
+
+Later subscriber interfaces must use **Fees Charged** for crystallised fees that reduce subscriber entitlement, with separate management and investment fee components. Subscriber interfaces must not describe the Fund Manager's physical cash transfer as a second charge and do not need to expose operational withdrawal timing or linked Cash Adjustment ids.
+
 ## Inputs
 
 | Field | Type | Required | Source |
@@ -97,6 +110,7 @@ Fund Manager views may show:
 - provisional, crystallised, withdrawn and outstanding amounts
 - linked Cash Adjustment ids and withdrawal dates
 - gross cash snapshot and subscriber net entitlement
+- `Available to Withdraw` as the actionable crystallised outstanding amount
 
 Later subscriber/profile-owner views should show:
 
@@ -104,6 +118,7 @@ Later subscriber/profile-owner views should show:
 - management and investment fee percentages and amounts
 - total fee charged
 - post-fee/net entitlement
+- `Fees Charged`, rather than Fund Manager withdrawal operations
 
 Subscriber views do not need to expose whether or when the Fund Manager physically transferred an already disclosed fee. A later subscriber withdrawal-request workflow remains separate.
 

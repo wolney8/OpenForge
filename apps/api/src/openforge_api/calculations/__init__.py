@@ -1,1 +1,1 @@
-"""Pure calculation helpers for OpenForge."""
+"""Pure calculation helpers for Plum Duff."""

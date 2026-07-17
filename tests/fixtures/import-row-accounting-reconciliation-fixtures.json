@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "case_id": "IRA-001",
+      "inputs": {
+        "source_row_count": 5,
+        "summary": {"insert": 2, "no_op": 2, "blocked": 1}
+      },
+      "expected": {"accounted_row_count": 5, "state": "complete"}
+    },
+    {
+      "case_id": "IRA-002",
+      "inputs": {
+        "source_row_count": 5,
+        "summary": {"insert": 2, "no_op": 2}
+      },
+      "expected": {
+        "accounted_row_count": 4,
+        "state": "mismatch",
+        "confirmation_allowed": false
+      }
+    },
+    {
+      "case_id": "IRA-003",
+      "inputs": {
+        "source_row_count": 5,
+        "summary": {"imported": 3, "skipped_by_operator": 2}
+      },
+      "expected": {"accounted_row_count": 5, "state": "complete"}
+    }
+  ]
+}

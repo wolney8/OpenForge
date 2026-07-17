@@ -24,7 +24,15 @@ import {
   dedupeOptions,
 } from "@/lib/workbook-options";
 import { formatMoney } from "@/lib/tracker-summary";
-import type { BookmakerCatalogueRecord, BookmakerDisplaySettings } from "@/lib/bookmaker-catalogue";
+import type {
+  BookmakerCatalogueRecord,
+  BookmakerDisplaySettings,
+  MasterAccountCatalogue,
+  MasterAccountCatalogueRecord,
+  MasterAccountOperatingContext,
+  MasterAccountType,
+} from "@/lib/bookmaker-catalogue";
+import { getAvailableMasterAccountNames } from "@/lib/bookmaker-catalogue";
 
 type AccountRecord = {
   account_id: string;
@@ -40,6 +48,8 @@ type AccountRecord = {
   last_balance_update: string;
   group_name: string;
   platform: string;
+  sign_up_date: string;
+  notes: string;
   created_at: string;
   updated_at: string;
 };
@@ -57,6 +67,8 @@ type AccountFormState = {
   last_balance_update: string;
   group_name: string;
   platform: string;
+  sign_up_date: string;
+  notes: string;
 };
 
 type AccountTableMode =
@@ -105,6 +117,8 @@ function createBlankForm(): AccountFormState {
     last_balance_update: "",
     group_name: "",
     platform: "",
+    sign_up_date: "",
+    notes: "",
   };
 }
 
@@ -122,6 +136,8 @@ function recordToForm(record: AccountRecord): AccountFormState {
     last_balance_update: toDateTimeLocalValue(record.last_balance_update),
     group_name: record.group_name,
     platform: record.platform,
+    sign_up_date: record.sign_up_date,
+    notes: record.notes,
   };
 }
 
@@ -133,6 +149,12 @@ function parseAmount(value: string) {
 export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
+  const [masterAccountCatalogue, setMasterAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
+  const [masterAccountContext, setMasterAccountContext] = useState<MasterAccountOperatingContext>({
+    jurisdiction: "",
+    subdivision: "",
+    channels: [],
+  });
   const [bookmakerDisplaySettings, setBookmakerDisplaySettings] =
     useState<BookmakerDisplaySettings | null>(null);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
@@ -233,6 +255,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             setBookmakerCatalogue((await response.json()) as BookmakerCatalogueRecord[]);
           }
         ),
+        fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store" }).then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error("Unable to load the master account catalogue");
+            }
+            const catalogue = (await response.json()) as MasterAccountCatalogue;
+            setMasterAccountCatalogue(catalogue.records);
+            setMasterAccountContext(catalogue.default_operating_context);
+          }
+        ),
         fetch(`${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`, {
           cache: "no-store",
         }).then(async (response) => {
@@ -262,10 +294,19 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     [rows, selectedId]
   );
 
-  const accountOptions = useMemo(
-    () => dedupeOptions([...rows.map((row) => row.account), formState.account]),
-    [formState.account, rows]
-  );
+  const accountOptions = useMemo(() => {
+    const sourceType: MasterAccountType =
+      formState.type === "Exchange"
+        ? "Exchange"
+        : formState.type === "Bank"
+          ? "Bank"
+          : "Bookmaker";
+    return dedupeOptions([
+      ...getAvailableMasterAccountNames(masterAccountCatalogue, sourceType, masterAccountContext),
+      ...rows.filter((row) => row.type === formState.type).map((row) => row.account),
+      formState.account,
+    ]);
+  }, [formState.account, formState.type, masterAccountCatalogue, masterAccountContext, rows]);
 
   const selectableBookmakers = useMemo(
     () =>
@@ -796,6 +837,19 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             />
           </label>
           <label className="field-control">
+            <span>Sign-up date</span>
+            <input
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  sign_up_date: event.target.value,
+                }))
+              }
+              type="date"
+              value={formState.sign_up_date}
+            />
+          </label>
+          <label className="field-control">
             <span>Counts in cash total</span>
             <select
               onChange={(event) =>
@@ -843,6 +897,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="field-control field-span-2">
+            <span>Notes</span>
+            <textarea
+              onChange={(event) =>
+                setFormState((current) => ({ ...current, notes: event.target.value }))
+              }
+              rows={3}
+              value={formState.notes}
+            />
           </label>
               <div className="tracker-nav field-span-2">
                 <button className="button-link" disabled={isPending} type="submit">

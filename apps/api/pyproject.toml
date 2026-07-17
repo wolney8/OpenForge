@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openforge-api"
 version = "0.1.0"
-description = "OpenForge local-first API scaffold"
+description = "Plum Duff local-first API scaffold"
 requires-python = ">=3.13"
 dependencies = [
   "fastapi==0.122.0",

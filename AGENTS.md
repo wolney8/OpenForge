@@ -1,6 +1,6 @@
-# OpenForge Repository Agent Instructions
+# Plum Duff Repository Agent Instructions
 
-Last updated: 2026-06-30
+Last updated: 2026-07-16
 
 ## Project purpose
 
@@ -133,6 +133,30 @@ Read `docs/codex/data-safety-rules.md` before handling workbook-derived data.
 - Playwright coverage is required for route flows such as login, profile selection, tracker navigation, and critical data-entry/reporting paths once those surfaces exist.
 - Do not save Playwright videos, screenshots, or traces by default unless approval or troubleshooting requires them.
 
+## Mandatory UI and accessibility contract
+
+Before implementing or modifying any UI, read and follow:
+
+- `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`
+- `docs/agent-contracts/plum-duff-ui-implementation-checklist.md`
+- `docs/agent-contracts/plum-duff-known-ui-pitfalls.md`
+
+Non-negotiable baseline:
+
+- Material Design 3 principles using existing Plum Duff components, tokens and CSS primitives first
+- WCAG 2.2 Level AA
+- semantic HTML before ARIA
+- light and dark mode verification
+- context-specific accessible names and stable `data-pd-id` identifiers for important controls
+- contained table/dialog overflow with no unintended page-level horizontal scroll
+- process-correct enabled, disabled, loading, error and success states
+- repository-wide equivalent-pattern search whenever a UI pattern is fixed
+
+Complete the implementation checklist for every feature, bug fix, route, component, workflow or
+fixture-backed UI change. Larger existing issues belong in
+`docs/agent-contracts/plum-duff-ui-audit-backlog.md`; do not hide them or perform an unsafe visual
+rewrite.
+
 ## Task cadence
 
 Use the workflow in `docs/codex/task-cadence.md`.
@@ -191,6 +215,7 @@ At minimum:
 - `docs/planning/`: planning, discovery, build sequencing, and risk research
 - `docs/reference/`: safe reference summaries and approved non-raw extracts
 - `docs/templates/`: reusable contracts and workflow templates
+- `docs/agent-contracts/`: mandatory UI/accessibility contracts, checklists and audit registers
 - `.skills/`: local project skills for recurring review/check tasks
 - `tests/fixtures/`: synthetic or anonymised deterministic fixtures only
 - `data/`: local-only data handling guidance, not committed sensitive raw data

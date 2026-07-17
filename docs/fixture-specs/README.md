@@ -1,4 +1,4 @@
-# OpenForge Fixture Specs
+# Plum Duff Fixture Specs
 
 _Last updated: 2026-07-15_
 
@@ -62,6 +62,8 @@ Each fixture spec should include:
 - `financial-value-presentation-fixture-spec.md`
 - `material-accessible-ledger-editor-fixture-spec.md`
 - `guided-entry-focus-fixture-spec.md`
+- `master-account-catalogue-source-fixture-spec.md`
+- `cash-adjustment-import-field-map-fixture-spec.md`
 
 External calculator observation packets are classified by
 `tests/fixtures/m14/m14-external-calculator-reference-fixtures.json`. Only its

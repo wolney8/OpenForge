@@ -12,12 +12,19 @@ _Last updated: 2026-07-15_
 ## Editable MVP fields
 
 - subscriber/profile display name
+- unique profile code
 - operational status
+- tracking start date
 - management fee percentage
 - investment fee percentage
 
 Every successful update is persisted immediately and writes a before/after profile audit record.
 No edit changes tracker rows, settled values, cash snapshots, or historical fee-period snapshots.
+
+Profile codes use `3` to `32` uppercase letters, numbers or hyphens and must remain unique. The
+stable `profile_id`, not the editable code, remains the ownership key. Tracking start dates cannot
+be in the future. Editing either field is audited and must not rewrite historical rows, locked
+reports or crystallised fee periods.
 
 ## Status authority
 
@@ -60,6 +67,9 @@ classification, visibility, validation, and audit decisions before implementatio
 ## Tests
 
 - update name and status for one profile without changing another
+- update a unique profile code without changing `profile_id`
+- update a non-future tracking start date
+- reject duplicate/invalid profile codes and future tracking dates
 - update each fee independently
 - reject combined fees above `100`
 - cancel creates no change

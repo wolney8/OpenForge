@@ -18,7 +18,7 @@ Map the live GitHub roadmap to durable local contracts and deterministic fixture
 | M4 Fixtures and Calculation Engine | Make financial rules executable and regression-tested | Core issues complete | Core JSON fixtures exist; every later calculation still needs its own pack |
 | M5 Login Profiles Tracker Shell | Local shell, database and authentication boundary | 3/5 closed; issues #62-#63 open | Existing shell complete; optional Google OIDC and encrypted cloud-backup contracts drafted |
 | M6 Tracker MVP | Workbook-parity operational ledgers | Active: issue #10 | End-to-end smoke test remains the current completion gate |
-| M7 Reporting and Import/Export | Per-profile/combined reports and audited workbook round trip | Open: issues #11-#12 | Reporting contracts exist; import/export contract and fixtures now drafted |
+| M7 Reporting and Import/Export | Per-profile/combined reports and audited workbook round trip | Issue #11 complete; issue #12 implementation ready for smoke review | Reporting and sportsbook XLSX round-trip contracts/fixtures are implemented |
 | M8 OddsForge | Later odds matching | Deferred: six open issues | Existing separate contracts/fixtures; remains out of Tracker roadmap |
 | M9 Subscriber Access | Later managed read-only and self-service subscriber modes | Deferred: five open issues | Access and fee drafts/fixtures exist; production auth/invites remain unapproved |
 | M10 Fee Visibility | Calculate, display and explicitly withdraw management/investment fees | Open: issue #23 | Draft contract/fixtures added; fee-base decisions remain gated |
@@ -75,7 +75,10 @@ New round-trip evidence:
 - `docs/fixture-specs/spreadsheet-import-export-roundtrip-fixture-spec.md`
 - `tests/fixtures/spreadsheet-import-export-roundtrip-fixtures.json`
 
-Readiness: contract review required. Import implementation must follow a verified backup path and final field-map approval.
+Readiness: sportsbook XLSX dry run, review UI, verified pre-write backup, atomic confirmation,
+source lineage and workbook-shaped export are implemented on issue `#12`. Remaining ledger maps
+for Free Bets, Casino Offers, Cash Adjustments, Accounts and Settings require later contract-gated
+extensions.
 
 ### M10 Fee Visibility
 

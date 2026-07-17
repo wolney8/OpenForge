@@ -4,6 +4,7 @@ import type {
   ReportRow,
   TrackerSummaryResult,
 } from "./tracker-summary";
+import type { OperationalActionCounts } from "./operational-actions";
 
 export type ProfileReportingInput = {
   profileId: string;
@@ -11,6 +12,8 @@ export type ProfileReportingInput = {
   profileCode: string;
   status: string;
   summary: TrackerSummaryResult;
+  actionable?: OperationalActionCounts;
+  trueOpenPositionCount?: number;
 };
 
 export type ProfileComparisonRow = {
@@ -25,6 +28,9 @@ export type ProfileComparisonRow = {
   settledFinalValue: number;
   openBets: number;
   overdueBets: number;
+  sportsbookActionCount: number;
+  freeBetActionCount: number;
+  casinoActionCount: number;
   expiringFreeBetCount: number;
   currentLiability: number;
 };
@@ -39,6 +45,7 @@ export type CrossProfileReportingResult = {
   bookmakerBreakdown: BookmakerBreakdownRow[];
   weeklyReports: ReportRow[];
   monthlyReports: ReportRow[];
+  yearlyReports: ReportRow[];
 };
 
 function emptyReportRow(periodKey: string, periodLabel: string): ReportRow {
@@ -79,21 +86,27 @@ function aggregateReportRows(rows: ReportRow[]): ReportRow[] {
 export function aggregateCrossProfileReporting(
   profiles: ProfileReportingInput[]
 ): CrossProfileReportingResult {
-  const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary }) => ({
-    profileId,
-    displayName,
-    profileCode,
-    status,
-    grossBettingPnl: summary.reportingModel.selectedRange.grossBettingPnl,
-    retainedProfit: summary.reportingModel.selectedRange.retainedProfit,
-    cashSnapshot: summary.accountQuickView.cashSnapshot,
-    openCurrentValue: summary.reportingModel.selectedRange.openCurrentValue,
-    settledFinalValue: summary.reportingModel.selectedRange.settledFinalValue,
-    openBets: summary.betsQuickView.openBets,
-    overdueBets: summary.betsQuickView.overdueBets,
-    expiringFreeBetCount: summary.betsQuickView.expiringFreeBetCount,
-    currentLiability: summary.betsQuickView.currentLiability,
-  }));
+  const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
+    const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0 };
+    return {
+      profileId,
+      displayName,
+      profileCode,
+      status,
+      grossBettingPnl: summary.reportingModel.selectedRange.grossBettingPnl,
+      retainedProfit: summary.reportingModel.selectedRange.retainedProfit,
+      cashSnapshot: summary.accountQuickView.cashSnapshot,
+      openCurrentValue: summary.reportingModel.selectedRange.openCurrentValue,
+      settledFinalValue: summary.reportingModel.selectedRange.settledFinalValue,
+      openBets: trueOpenPositionCount ?? summary.betsQuickView.openBets,
+      overdueBets: summary.betsQuickView.overdueBets,
+      sportsbookActionCount: actionCounts.sportsbook,
+      freeBetActionCount: actionCounts.freeBets,
+      casinoActionCount: actionCounts.casinoOffers,
+      expiringFreeBetCount: summary.betsQuickView.expiringFreeBetCount,
+      currentLiability: summary.betsQuickView.currentLiability,
+    };
+  });
 
   const totals = profileRows.reduce(
     (aggregate, row) => ({
@@ -104,6 +117,9 @@ export function aggregateCrossProfileReporting(
       settledFinalValue: aggregate.settledFinalValue + row.settledFinalValue,
       openBets: aggregate.openBets + row.openBets,
       overdueBets: aggregate.overdueBets + row.overdueBets,
+      sportsbookActionCount: aggregate.sportsbookActionCount + row.sportsbookActionCount,
+      freeBetActionCount: aggregate.freeBetActionCount + row.freeBetActionCount,
+      casinoActionCount: aggregate.casinoActionCount + row.casinoActionCount,
       expiringFreeBetCount: aggregate.expiringFreeBetCount + row.expiringFreeBetCount,
       currentLiability: aggregate.currentLiability + row.currentLiability,
     }),
@@ -115,6 +131,9 @@ export function aggregateCrossProfileReporting(
       settledFinalValue: 0,
       openBets: 0,
       overdueBets: 0,
+      sportsbookActionCount: 0,
+      freeBetActionCount: 0,
+      casinoActionCount: 0,
       expiringFreeBetCount: 0,
       currentLiability: 0,
     }
@@ -165,6 +184,9 @@ export function aggregateCrossProfileReporting(
     weeklyReports: aggregateReportRows(profiles.flatMap((profile) => profile.summary.weeklyReports)),
     monthlyReports: aggregateReportRows(
       profiles.flatMap((profile) => profile.summary.monthlyReports)
+    ),
+    yearlyReports: aggregateReportRows(
+      profiles.flatMap((profile) => profile.summary.yearlyReports)
     ),
   };
 }

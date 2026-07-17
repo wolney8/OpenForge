@@ -178,6 +178,7 @@ type FreeBetTableMode =
 
 type FreeBetIssueFilter =
   | "any"
+  | "all-issues"
   | "back-unplaced"
   | "no-settle-date"
   | "outcome-needed"
@@ -702,6 +703,9 @@ function getFreeBetIssueFilterMatch(row: FreeBetRecord, issueType: FreeBetIssueF
   }
 
   const labels = new Set(getFreeBetIssueBadges(row).map((badge) => badge.label));
+  if (issueType === "all-issues") {
+    return labels.size > 0;
+  }
   if (issueType === "back-unplaced") {
     return labels.has("Back Unplaced");
   }
@@ -1026,10 +1030,12 @@ export function FreeBetWorkflowShell({
   profileId,
   initialTableMode,
   initialQuery = "",
+  initialIssueFilter,
 }: {
   profileId: string;
   initialTableMode?: string;
   initialQuery?: string;
+  initialIssueFilter?: string;
 }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
@@ -1054,7 +1060,11 @@ export function FreeBetWorkflowShell({
   );
   const [tableFilters, setTableFilters] = usePersistedState<FreeBetTableFilterState>(
     `openforge-ledger-table-filters:${profileId}:free-bets`,
-    emptyTableFilters
+    {
+      ...emptyTableFilters,
+      issue_type: initialIssueFilter === "outcome-needed" ? "outcome-needed" : initialIssueFilter === "all-issues" ? "all-issues" : "any",
+    },
+    Boolean(initialIssueFilter)
   );
   const [tableSort, setTableSort] = useState<FreeBetTableSort | null>(null);
   const [formState, setFormState] = useState<FreeBetFormState>(createBlankForm);
@@ -1065,7 +1075,7 @@ export function FreeBetWorkflowShell({
     freeBetTableModes.some((mode) => mode.value === initialTableMode)
       ? (initialTableMode as FreeBetTableMode)
       : "recent",
-    Boolean(initialTableMode)
+    Boolean(initialTableMode || initialIssueFilter)
   );
   const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
@@ -2656,6 +2666,7 @@ export function FreeBetWorkflowShell({
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
             aria-label="Free-bet filter controls"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -2818,7 +2829,7 @@ export function FreeBetWorkflowShell({
                   ))}
                 </select>
               </label>
-              <label className="field-control">
+              <label className={`field-control${tableFilters.issue_type !== "any" ? " is-active-filter" : ""}`}>
                 <span>Issue type</span>
                 <select
                   onChange={(event) =>
@@ -2826,7 +2837,8 @@ export function FreeBetWorkflowShell({
                   }
                   value={tableFilters.issue_type}
                 >
-                  <option value="any">All</option>
+                  <option value="any">All rows</option>
+                  <option value="all-issues">All issues</option>
                   <option value="back-unplaced">Back Unplaced</option>
                   <option value="no-settle-date">No Settle Date</option>
                   <option value="outcome-needed">Outcome Needed</option>
@@ -2908,8 +2920,10 @@ export function FreeBetWorkflowShell({
         <div className="modal-backdrop" onClick={() => setOutcomeModalState(null)}>
           <section
             aria-label="Update free-bet outcome"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
           >
             <div className="workflow-panel-header">
               <div className="stack">
@@ -2998,6 +3012,7 @@ export function FreeBetWorkflowShell({
         <div className="modal-backdrop" onClick={closeEditor}>
       <section
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
+        aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}

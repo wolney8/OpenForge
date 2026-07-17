@@ -14,7 +14,7 @@ _Last updated: 2026-07-11_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Tracker
 - Future/deferred module: OddsForge
 - Profile scoped: Yes

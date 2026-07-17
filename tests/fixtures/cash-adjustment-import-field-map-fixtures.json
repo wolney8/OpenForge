@@ -1,0 +1,58 @@
+{
+  "mapping_version": "cash-adjustments-v1",
+  "cases": [
+    {
+      "case_id": "CAI-001",
+      "source_record_id": "DEMO-CA-001",
+      "fields": {
+        "AdjustmentDate": "2026-07-06",
+        "Direction": "In",
+        "Amount": "50.00",
+        "AdjustmentType": "TopUp",
+        "AffectsInvestment": true,
+        "AffectsCashSnapshot": true,
+        "LinkedAccount": "Bank A",
+        "Description": "Synthetic top-up",
+        "SignedAmount": "999.00",
+        "WeekLabel": "WRONG"
+      },
+      "expected": {
+        "staged_action": "insert",
+        "signed_amount": "50.00",
+        "source_signed_amount_stored": false
+      }
+    },
+    {
+      "case_id": "CAI-002",
+      "source_record_id": "DEMO-CA-002",
+      "fields": {
+        "AdjustmentDate": "2026-07-07",
+        "Direction": "Out",
+        "Amount": "20.00",
+        "AdjustmentType": "Withdrawal",
+        "AffectsInvestment": true,
+        "AffectsCashSnapshot": true,
+        "LinkedAccount": "Bank A",
+        "Description": "Synthetic withdrawal"
+      },
+      "expected": {
+        "staged_action": "insert",
+        "signed_amount": "-20.00"
+      }
+    },
+    {
+      "case_id": "CAI-003",
+      "source_record_id": "DEMO-CA-003",
+      "fields": {
+        "AdjustmentDate": "2026-07-07",
+        "Direction": "In",
+        "Amount": "20.00",
+        "AdjustmentType": "Withdrawal"
+      },
+      "expected": {
+        "staged_action": "blocked",
+        "error_code": "invalid_cash_adjustment_payload"
+      }
+    }
+  ]
+}

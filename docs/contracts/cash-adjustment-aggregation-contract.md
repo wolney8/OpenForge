@@ -4,9 +4,9 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
-- Status: Draft
+- Status: Approved implementation baseline
 - Owner: Codex planning draft
-- Human approval required before implementation: Yes
+- Human approval required before implementation: Completed through contract review and workbook-parity sign-off
 - Related workflow contract: To confirm
 - Related spreadsheet source: `Cash Adjustments`, `Dashboard`, `Reports`
 - Related source-pack file: `_input/TRACKER_CALCULATION_SPEC_CASH_FIRST_MAY2026.md`
@@ -14,7 +14,7 @@ _Last updated: 2026-06-30_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Tracker
 - Future/deferred module: OddsForge
 - Profile scoped: Yes
@@ -231,8 +231,5 @@ Report aggregates:
 
 ## 21. Human approval
 
-- reviewer: To confirm
-- review date: To confirm
-- approval outcome: Pending
-- follow-up required before implementation:
-  - confirm handling of `Costs` in adjustment/report taxonomy
+- approval outcome: Approved for the existing controlled adjustment types
+- `Costs` remains outside the controlled input taxonomy until separately approved

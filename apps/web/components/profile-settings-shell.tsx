@@ -1,9 +1,9 @@
 "use client";
 
 import { AccountAuthoritySettings } from "@/components/account-authority-settings";
-import { BookmakerCatalogueSettings } from "@/components/bookmaker-catalogue-settings";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
+import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
 
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
@@ -37,7 +37,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           </article>
         </section>
         <TrackerDateSettings profileId={profileId} />
-        <BookmakerCatalogueSettings profileId={profileId} />
+        <ProfileSpreadsheetTransfer profileId={profileId} />
         <LookupValueSettings profileId={profileId} />
         <ExchangeCommissionSettings profileId={profileId} />
         <AccountAuthoritySettings profileId={profileId} />

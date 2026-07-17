@@ -14,7 +14,7 @@ _Last updated: 2026-06-30_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Tracker platform
 - Future/deferred module: subscriber-facing platform access
 - Profile scoped: Yes

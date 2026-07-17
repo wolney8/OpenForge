@@ -46,7 +46,9 @@ def test_profile_metadata_can_be_updated_with_audit(tmp_path: Path) -> None:
         "/profiles/profile-demo-001",
         json={
             "display_name": "Synthetic Subscriber One",
+            "profile_code": "SYNTH-001",
             "status": "Pending",
+            "tracking_start_date": "2026-04-01",
             "management_fee_percent": "35.00",
             "investment_fee_percent": "10.00",
         },
@@ -55,7 +57,9 @@ def test_profile_metadata_can_be_updated_with_audit(tmp_path: Path) -> None:
     assert response.status_code == 200
     profile = response.json()
     assert profile["display_name"] == "Synthetic Subscriber One"
+    assert profile["profile_code"] == "SYNTH-001"
     assert profile["status"] == "Pending"
+    assert profile["tracking_start_date"] == "2026-04-01"
     assert profile["management_fee_percent"] == "35.00"
     assert profile["investment_fee_percent"] == "10.00"
     assert count_profile_audit_rows("profile-demo-001") == 1
@@ -72,3 +76,22 @@ def test_profile_fees_cannot_exceed_one_hundred_percent(tmp_path: Path) -> None:
 
     assert response.status_code == 422
     assert "cannot exceed 100%" in response.json()["detail"]
+
+
+def test_profile_code_must_be_unique_and_tracking_start_cannot_be_future(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    duplicate_response = client.patch(
+        "/profiles/profile-demo-001",
+        json={"profile_code": "BRAVO-002"},
+    )
+    future_response = client.patch(
+        "/profiles/profile-demo-001",
+        json={"tracking_start_date": "2999-01-01"},
+    )
+
+    assert duplicate_response.status_code == 422
+    assert duplicate_response.json()["detail"] == "Profile code must be unique"
+    assert future_response.status_code == 422
+    assert "cannot be in the future" in str(future_response.json()["detail"])

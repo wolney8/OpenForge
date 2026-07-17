@@ -4,10 +4,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "OpenForge API"
+    app_name: str = "Plum Duff API"
     environment: str = "local"
     database_url: str = "sqlite:///data/private/db/openforge.sqlite3"
     backup_directory: str = "data/private/backups"
+    account_catalogue_source: str = "data/reference/master-account-catalogue.json"
 
     model_config = SettingsConfigDict(
         env_prefix="OPENFORGE_",
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     @property
     def backup_path(self) -> Path:
         return Path(self.backup_directory)
+
+    @property
+    def account_catalogue_source_path(self) -> Path:
+        return Path(self.account_catalogue_source)
 
 
 settings = Settings()

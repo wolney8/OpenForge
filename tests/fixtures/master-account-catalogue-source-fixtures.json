@@ -1,0 +1,141 @@
+{
+  "cases": [
+    {
+      "case_id": "MAC-001",
+      "input": {
+        "schema_version": "1.0",
+        "catalogue_name": "Synthetic Master Catalogue",
+        "updated_at": "2026-07-16",
+        "default_operating_context": {
+          "jurisdiction": "GB",
+          "subdivision": "",
+          "channels": ["web", "mobile"]
+        },
+        "records": [
+          {
+            "catalogue_id": "EXCHANGE-DEMO-001",
+            "account_type": "Exchange",
+            "operating_jurisdictions": ["GB"],
+            "operating_subdivisions": [],
+            "operating_channels": ["web", "mobile"],
+            "brand_name": "Exchange A",
+            "short_display_name": "Exchange A",
+            "foreground_colour": "#FFFFFF",
+            "background_colour": "#455A64",
+            "source": "Synthetic fixture"
+          },
+          {
+            "catalogue_id": "BANK-DEMO-001",
+            "account_type": "Bank",
+            "operating_jurisdictions": ["GB"],
+            "operating_subdivisions": [],
+            "operating_channels": ["web", "mobile"],
+            "brand_name": "Bank A",
+            "short_display_name": "Bank A",
+            "foreground_colour": "#FFFFFF",
+            "background_colour": "#455A64",
+            "source": "Synthetic fixture"
+          }
+        ]
+      },
+      "expected": {
+        "status": "accepted",
+        "record_count": 2
+      }
+    },
+    {
+      "case_id": "MAC-002",
+      "mutation": "duplicate catalogue_id",
+      "expected": {
+        "status": "blocked",
+        "error_code": "duplicate_catalogue_id"
+      }
+    },
+    {
+      "case_id": "MAC-008",
+      "input": {
+        "catalogue_id": "BOOKMAKER-ARCHIVED-001",
+        "account_type": "Bookmaker",
+        "brand_name": "Archived Bookmaker A",
+        "status": "Archived"
+      },
+      "expected": {
+        "available_for_new_profile_account": false,
+        "historically_resolvable": true
+      }
+    },
+    {
+      "case_id": "MAC-009",
+      "input": {
+        "provider_jurisdictions": ["GB"],
+        "provider_channels": ["mobile"],
+        "profile_jurisdiction": "GB",
+        "profile_channels": ["web"]
+      },
+      "expected": {"eligible": false}
+    },
+    {
+      "case_id": "MAC-010",
+      "input": {
+        "provider_jurisdictions": ["US"],
+        "provider_subdivisions": ["US-NJ"],
+        "provider_channels": ["web"],
+        "profile_jurisdiction": "US",
+        "profile_subdivision": "US-NJ",
+        "profile_channels": ["web"]
+      },
+      "expected": {"eligible": true}
+    },
+    {
+      "case_id": "MAC-011",
+      "input": {
+        "provider_jurisdictions": [],
+        "provider_channels": []
+      },
+      "expected": {"eligible": false, "reason": "availability_unverified"}
+    },
+    {
+      "case_id": "MAC-012",
+      "mutation": "set confidence Verified without evidence",
+      "expected": {
+        "status": "blocked",
+        "error_code": "verified_evidence_required"
+      }
+    },
+    {
+      "case_id": "MAC-013",
+      "mutation": "add valid synthetic bookmaker record",
+      "expected": {
+        "status": "accepted",
+        "backup_created": true,
+        "record_count_delta": 1
+      }
+    },
+    {
+      "case_id": "MAC-014",
+      "mutation": "archive existing synthetic account record",
+      "expected": {
+        "status": "accepted",
+        "catalogue_id_unchanged": true,
+        "backup_created": true
+      }
+    },
+    {
+      "case_id": "MAC-015",
+      "mutation": "add duplicate catalogue id",
+      "expected": {
+        "status": "blocked",
+        "source_unchanged": true,
+        "backup_created": false
+      }
+    },
+    {
+      "case_id": "MAC-016",
+      "mutation": "change catalogue id during edit",
+      "expected": {
+        "status": "blocked",
+        "source_unchanged": true
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill when reviewing a calculation contract for OpenForge money logic.
+Use this skill when reviewing a calculation contract for Plum Duff money logic.
 
 ## Required inputs
 

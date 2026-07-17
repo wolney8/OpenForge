@@ -1,8 +1,8 @@
-# OpenForge Financial Safety Rules
+# Plum Duff Financial Safety Rules
 
 ## Purpose
 
-OpenForge handles money-impacting tracker logic. A bad assumption can cause real losses. These rules apply to planning, implementation, testing, review, and documentation.
+Plum Duff handles money-impacting tracker logic. A bad assumption can cause real losses. These rules apply to planning, implementation, testing, review, and documentation.
 
 ## Core rules
 
@@ -55,7 +55,7 @@ For any displayed or stored financial value, define:
 
 ## Projected/current values vs actual/final values
 
-OpenForge must preserve the workbook's cash-first tracker behaviour:
+Plum Duff must preserve the workbook's cash-first tracker behaviour:
 
 - open or pending rows may still have a current value
 - scenario outcomes may need to be calculated before settlement

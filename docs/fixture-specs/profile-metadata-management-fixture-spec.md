@@ -15,3 +15,7 @@ _Last updated: 2026-07-15_
 | PM-004 | Management 80 and investment 30 | Rejected because combined fees exceed 100 |
 | PM-005 | Edit cancelled | No persistence or audit row |
 | PM-006 | Unknown status | Rejected by status authority |
+| PM-007 | Unique uppercase profile code | Persists; stable profile id unchanged; audit row added |
+| PM-008 | Duplicate profile code | Rejected; no profile change |
+| PM-009 | Non-future tracking start changed | Persists; historical tracker rows unchanged |
+| PM-010 | Future tracking start | Rejected; no profile change |

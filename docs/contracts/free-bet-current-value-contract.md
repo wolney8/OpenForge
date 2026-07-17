@@ -4,9 +4,9 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
-- Status: Draft
-- Owner: Codex planning draft
-- Human approval required before implementation: Yes
+- Status: Approved implementation baseline through prior contract review and workbook-parity sign-off
+- Owner: Plum Duff calculation contracts
+- Human approval required before formula changes: Yes
 - Related workflow contract: To confirm
 - Related spreadsheet source: `Free Bets`
 - Related source-pack file: `_input/TRACKER_CALCULATION_SPEC_CASH_FIRST_MAY2026.md`
@@ -14,7 +14,7 @@ _Last updated: 2026-06-30_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Tracker
 - Future/deferred module: OddsForge
 - Profile scoped: Yes

@@ -73,7 +73,7 @@ Reference: [PostgreSQL Backup and Restore](https://www.postgresql.org/docs/curre
 - `To confirm`: cloud object-storage provider and region.
 - `To confirm`: backup encryption/key-management mechanism.
 - `To confirm`: schedule, retention count, recovery point objective and recovery time objective.
-- `To confirm`: whether local backup is mandatory before every migration/import.
+- Resolved: a verified local backup is mandatory before every confirmed migration/import write.
 - `To confirm`: criteria for moving from local SQLite to managed PostgreSQL.
 
 ## Tests required
@@ -85,4 +85,3 @@ Reference: [PostgreSQL Backup and Restore](https://www.postgresql.org/docs/curre
 - successful restore preserves profile isolation and financial control totals
 - upload failure keeps verified local backup and reports failure
 - retention never deletes the last verified backup
-

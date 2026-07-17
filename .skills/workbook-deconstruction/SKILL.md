@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill when analysing the uploaded workbook and tracker-only source pack to reconstruct OpenForge tracker behaviour safely.
+Use this skill when analysing the uploaded workbook and tracker-only source pack to reconstruct Plum Duff tracker behaviour safely.
 
 ## Required reading order
 

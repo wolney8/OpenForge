@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "case_id": "FI-001",
+      "source_record_id": "DEMO-FB-IMPORT-001",
+      "fields": {
+        "DateSettling": "2026-07-20T18:00:00",
+        "ExpiryDateTime": "2026-07-18T23:59:00",
+        "EventName": "Synthetic Team A v Synthetic Team B",
+        "Offer": "Demo weekly free bet",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Free Bet",
+        "BetType": "Single",
+        "OfferName": "Weekly Reload",
+        "FixtureType": "Football",
+        "Status": "Placed",
+        "Result": "Pending",
+        "FreeBetRetentionMode": "SNR",
+        "FreeBetValue": "5.00",
+        "BackOdds": "4.00",
+        "MatchStrategy": "Standard",
+        "LayOdds1": "4.20",
+        "Exchange": "Exchange A",
+        "Lay (Actual)": "3.57",
+        "LayMatchedStake1": "3.57",
+        "OriginQualBetID": "DEMO-QB-ORIGIN-001",
+        "OfferGroupID": "DEMO-GROUP-001",
+        "UserNotes": "Synthetic import fixture",
+        "CalcNetPnL": "3.50",
+        "WeekLabel": "2026-W30"
+      }
+    },
+    {
+      "case_id": "FI-002",
+      "source_record_id": "DEMO-FB-IMPORT-002",
+      "fields": {
+        "DateSettling": "",
+        "ExpiryDateTime": "2026-07-25T23:59:00",
+        "EventName": "Synthetic SR selection",
+        "Offer": "Demo stake-returned free bet",
+        "Bookmaker": "Bookmaker B",
+        "OfferType": "Free Bet",
+        "BetType": "Single",
+        "OfferName": "Loyalty Free Bet",
+        "FixtureType": "Horse Racing",
+        "Status": "Available",
+        "Result": "Pending",
+        "FreeBetRetentionMode": "SR",
+        "FreeBetValue": "10.00",
+        "BackOdds": "3.00",
+        "MatchStrategy": "No Lay",
+        "LayOdds1": "",
+        "Exchange": "",
+        "Lay (Actual)": "",
+        "LayMatchedStake1": "",
+        "OriginQualBetID": "",
+        "OfferGroupID": "DEMO-GROUP-002",
+        "UserNotes": ""
+      }
+    },
+    {
+      "case_id": "FI-003",
+      "source_record_id": "DEMO-FB-IMPORT-003",
+      "fields": {
+        "EventName": "Synthetic override row",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Settled",
+        "Result": "Lay Won",
+        "FreeBetRetentionMode": "SNR",
+        "MatchStrategy": "Standard",
+        "FinalNetPnL": "4.25",
+        "ManualOverrideReason": ""
+      }
+    },
+    {
+      "case_id": "FI-004",
+      "source_record_id": "DEMO-FB-IMPORT-004",
+      "fields": {
+        "EventName": "Synthetic partial lay row",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Placed",
+        "Result": "Pending",
+        "FreeBetRetentionMode": "SNR",
+        "FreeBetValue": "5.00",
+        "BackOdds": "4.00",
+        "MatchStrategy": "Partial Lay",
+        "LayOdds1": "4.20",
+        "Exchange": "Exchange A",
+        "Lay (Actual)": "",
+        "LayMatchedStake1": ""
+      }
+    }
+  ]
+}

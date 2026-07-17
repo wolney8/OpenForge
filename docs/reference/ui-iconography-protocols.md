@@ -1,8 +1,10 @@
-# UI Iconography Protocols
+# Plum Duff UI Iconography Protocols
 
 Purpose
 
-- Provide durable guidance so future AI/code contributors follow WCHE-style accessibility and consistency rules for icon usage in OpenForge.
+- Provide durable guidance so future AI/code contributors follow WCAG 2.2 AA and Material 3
+  accessibility and consistency rules for icon usage in Plum Duff.
+- This document is subordinate to `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`.
 
 Scope
 
@@ -21,10 +23,12 @@ Protocol 1: Meaning, Semantics, and Accessibility
 Protocol 2: Visual Sizing, Alignment, and Consistency
 
 - Icon buttons should use consistent hit areas and sizing:
-  - Minimum touch target: `2.25rem` square.
+  - Normal target: at least `2.75rem` square; smaller dense-table exceptions require spacing and
+    accessibility review.
   - Internal icon glyph size: `0.9rem` to `1rem` unless a larger icon is required.
 - Keep icon glyph optically centered within the button; verify across Chromium/WebKit.
-- Prefer SVG path icons over emoji glyphs for alignment consistency.
+- Prefer the platform Material Symbols system over emoji or text glyphs. Use SVG only when the
+  platform icon set has no suitable semantic icon.
 - Destructive icons should use red/destructive palettes and maintain contrast against backgrounds.
 - Place inline action icons next to the field they affect, not in detached columns, when the action is field-specific.
 
@@ -40,6 +44,24 @@ Protocol 3: Behavioral Contracts for Action Icons
 - Status/risk icons/pills:
   - Use documented threshold ranges.
   - Keep displayed values rounded as specified by product rules.
+
+Ledger Semantic Icons
+
+- Sportsbook Bets: Material Symbol `sports`.
+- Free Bets: Material Symbol `award_star`.
+- Casino Offers: Material Symbol `playing_cards`.
+- Profile dashboard: Material Symbol `dashboard`.
+- Profile reports: Material Symbol `summarize`.
+- Use these symbols consistently for ledger-specific navigation, action counts, compact summaries,
+  and future ledger headers where an icon is appropriate.
+- Icon-and-count controls retain a full context-specific accessible name and tooltip. The visible
+  glyph and number must not be the only programmatic description.
+- In Fund Manager `Action required` tables, display a large underlined ledger icon with a red
+  notification badge over its top-right corner. Show counts from `1` to `9`, then `9+`. Centre the
+  complete control and all table cells vertically and horizontally.
+- Always show all three ledger icons. A zero-count icon has no badge or underline, uses muted
+  contrast, and opens the unfiltered ledger. A non-zero icon opens the ledger with `All issues`
+  selected and may use a reduced-motion-safe red hover/focus glow.
 
 Sportsbook Partial-Lay Specific Rules
 

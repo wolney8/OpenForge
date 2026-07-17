@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "case_id": "COR-001",
+      "mapping_version": "casino-offers-v1",
+      "rows": [
+        {"status": "In Progress", "date_started": "2026-07-13T09:00:00", "date_settling": "2026-07-14T20:00:00", "expiry_datetime": "2026-07-20T23:59:00", "calc_net_pnl": "-2.50", "final_net_pnl": "", "source_resolved_net_pnl": "-2.50", "compatible": true},
+        {"status": "Settled", "date_started": "2026-07-13T09:00:00", "date_settling": "2026-07-15T20:00:00", "expiry_datetime": "", "calc_net_pnl": "1.00", "final_net_pnl": "5.00", "source_resolved_net_pnl": "5.00", "compatible": true}
+      ],
+      "expected": {"state": "matched", "source_total": "2.50", "recomputed_total": "2.50", "difference": "0.00"}
+    },
+    {
+      "case_id": "COR-002",
+      "mapping_version": "casino-offers-v1",
+      "rows": [
+        {"status": "In Progress", "date_started": "2026-07-13T09:00:00", "date_settling": "2026-07-14T20:00:00", "expiry_datetime": "2026-07-20T23:59:00", "calc_net_pnl": "-2.50", "final_net_pnl": "", "source_resolved_net_pnl": "99.00", "compatible": true}
+      ],
+      "expected": {"state": "mismatch", "source_total": "99.00", "recomputed_total": "-2.50", "difference": "101.50"}
+    },
+    {
+      "case_id": "COR-003",
+      "mapping_version": "casino-offers-v1",
+      "rows": [
+        {"status": "In Progress", "date_started": "2026-07-13T09:00:00", "date_settling": "2026-07-14T20:00:00", "expiry_datetime": "", "calc_net_pnl": "-2.50", "final_net_pnl": "", "source_resolved_net_pnl": "", "compatible": true}
+      ],
+      "expected": {"state": "incomplete", "source_total": null, "recomputed_total": "-2.50", "difference": null}
+    }
+  ]
+}

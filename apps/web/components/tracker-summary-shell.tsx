@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   formatHumanDisplayDate,
   formatMoney,
@@ -438,7 +439,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const isReports = variant === "reports";
 
   return (
-    <section className="stack">
+    <section aria-busy={!summary} className="stack tracker-summary-shell">
       <section className="content-panel stack">
         <div className="panel-header">
           <div className="section-heading-row">
@@ -1071,9 +1072,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           )}
         </>
       ) : (
-        <section className="content-panel stack">
-          <p>Loading live tracker summaries.</p>
-        </section>
+        <LedgerLoadingIndicator label="Loading live tracker summaries" />
       )}
     </section>
   );

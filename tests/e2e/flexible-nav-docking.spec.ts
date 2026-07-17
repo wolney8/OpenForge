@@ -10,11 +10,11 @@ type NavSnapshot = {
 
 async function readNavSnapshot(page: Parameters<typeof test>[0]["page"]): Promise<NavSnapshot> {
   return page.evaluate(() => {
-    const topBar = document.querySelector<HTMLElement>("[data-openforge-top-bar]");
+    const topBar = document.querySelector<HTMLElement>('[data-pd-id="app-shell.top-bar"]');
     const placeholder = document.querySelector<HTMLElement>(
-      '[data-openforge-flex-nav="placeholder"]'
+      '[data-pd-id="tracker-nav.docked-placeholder"]'
     );
-    const overlay = document.querySelector<HTMLElement>('[data-openforge-flex-nav="overlay"]');
+    const overlay = document.querySelector<HTMLElement>('[data-pd-id="tracker-nav.floating-overlay"]');
 
     if (!topBar || !placeholder || !overlay) {
       throw new Error("Expected top bar, placeholder nav, and overlay nav to exist");
@@ -37,9 +37,8 @@ async function readNavSnapshot(page: Parameters<typeof test>[0]["page"]): Promis
 test.describe("Flexible nav docking", () => {
   test("undocks under the fixed top bar and redocks on scroll up", async ({ page }) => {
     await page.goto("/profiles/profile-demo-001/tracker/settings");
-    await page.waitForLoadState("networkidle");
 
-    const overlay = page.locator('[data-openforge-flex-nav="overlay"]');
+    const overlay = page.locator('[data-pd-id="tracker-nav.floating-overlay"]');
     await expect(overlay).toBeVisible();
 
     const initial = await readNavSnapshot(page);

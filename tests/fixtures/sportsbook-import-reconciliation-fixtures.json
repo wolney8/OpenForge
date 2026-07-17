@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "case_id": "SBR-001",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Placed","result":"Pending","offer_type":"Sign up / Welcome","back_stake":"10.00","back_odds":"2.00","match_strategy":"Standard","lay_odds_1":"2.10","lay_commission_1":"0.02","source_reporting_value":"-0.58","compatible":true}],
+      "expected": {"state":"matched","source_total":"-0.58","recomputed_total":"-0.58","difference":"0.00"}
+    },
+    {
+      "case_id": "SBR-002",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Placed","result":"Pending","offer_type":"Sign up / Welcome","back_stake":"10.00","back_odds":"2.00","match_strategy":"Standard","lay_odds_1":"2.10","lay_commission_1":"0.02","source_reporting_value":"1.00","compatible":true}],
+      "expected": {"state":"mismatch","source_total":"1.00","recomputed_total":"-0.58","difference":"1.58"}
+    },
+    {
+      "case_id": "SBR-003",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Placed","result":"Pending","offer_type":"Sign up / Welcome","back_stake":"10.00","back_odds":"2.00","match_strategy":"Standard","lay_odds_1":"2.10","lay_commission_1":"","source_reporting_value":"-0.58","compatible":true}],
+      "expected": {"state":"incomplete","source_total":null,"recomputed_total":"0.00","difference":null}
+    },
+    {
+      "case_id": "SBR-004",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Settled","result":"Void","offer_type":"Mug Bet","back_stake":"10.00","back_odds":"3.00","match_strategy":"No Lay","lay_odds_1":"","lay_commission_1":"","source_reporting_value":"0.00","compatible":true}],
+      "expected": {"state":"matched","source_total":"0.00","recomputed_total":"0.00","difference":"0.00"}
+    },
+    {
+      "case_id": "SBR-005",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Placed","result":"Pending","offer_type":"Sign up / Welcome","back_stake":"10.00","back_odds":"2.00","match_strategy":"Standard","lay_odds_1":"2.10","lay_commission_1":"0.02","source_reporting_value":"","compatible":true}],
+      "expected": {"state":"incomplete","source_total":null,"recomputed_total":"-0.58","difference":null}
+    },
+    {
+      "case_id": "SBR-006",
+      "mapping_version": "sportsbook-v1",
+      "rows": [{"profile_id":"PROFILE-001","status":"Placed","result":"Pending","offer_type":"Multi Outcome","back_stake":"10.00","back_odds":"5.00","match_strategy":"Multilay","lay_odds_1":"5.20","lay_commission_1":"0.02","multi_lay_outcome_1_name":"Outcome A","multi_lay_outcomes_json":"[{\"id\":\"outcome2\",\"label\":\"Outcome B\",\"layOdds\":\"6.20\"}]","source_reporting_value":"7.39","compatible":true}],
+      "expected": {"state":"matched","source_total":"7.39","recomputed_total":"7.39","difference":"0.00"}
+    }
+  ]
+}

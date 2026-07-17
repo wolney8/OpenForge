@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill when defining UI workflow test expectations for OpenForge.
+Use this skill when defining UI workflow test expectations for Plum Duff.
 
 ## Scope
 
@@ -27,12 +27,15 @@ For each UI flow, define:
 - profile-context assertions
 - error/empty-state assertions
 
-## OpenForge-specific checks
+## Plum Duff-specific checks
 
 - the active `profile_id` context must be obvious
 - profile switching must not leak previous profile data
 - current/projected values must be labelled if shown
 - sensitive raw data must not appear in fixtures or recordings
+- read `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`
+- use context-specific role/name locators for behaviour and `data-pd-id` for stable geometry/style inspection
+- cover keyboard focus, viewport overflow, light/dark contrast and process-correct disabled states where relevant
 
 ## Output format
 

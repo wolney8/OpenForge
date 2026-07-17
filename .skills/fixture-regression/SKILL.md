@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill when creating or reviewing deterministic OpenForge fixtures for financial or workflow regression tests.
+Use this skill when creating or reviewing deterministic Plum Duff fixtures for financial or workflow regression tests.
 
 ## Core rules
 

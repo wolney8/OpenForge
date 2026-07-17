@@ -110,6 +110,49 @@ export type TrackerSummaryDataset = {
   balanceSnapshots?: BalanceSnapshotSummaryRecord[];
 };
 
+export function formatTrackingTenure(value: string, asOf = new Date()): string {
+  const started = parseDateInput(value);
+  if (!started) return "Unknown";
+  const elapsedDays = Math.max(
+    0,
+    Math.floor((startOfDay(asOf).getTime() - startOfDay(started).getTime()) / 86_400_000)
+  );
+  if (elapsedDays < 31) return "< 1 month";
+  const elapsedMonths = Math.max(1, Math.floor(elapsedDays / 30.4375));
+  if (elapsedMonths < 24) return `+${elapsedMonths} ${elapsedMonths === 1 ? "month" : "months"}`;
+  const elapsedYears = Math.max(2, Math.floor(elapsedMonths / 12));
+  return `+${elapsedYears} years`;
+}
+
+function hasFutureSettlement(
+  status: string,
+  result: string,
+  settlementValue: string,
+  committedStatus: string,
+  asOf: Date
+): boolean {
+  if (status !== committedStatus || result !== "Pending") return false;
+  const settlement = parseDateInput(settlementValue);
+  return settlement !== null && settlement.getTime() > asOf.getTime();
+}
+
+export function countTrueOpenPositions(
+  dataset: TrackerSummaryDataset,
+  asOf = new Date()
+): number {
+  return (
+    dataset.sportsbookBets.filter((row) =>
+      hasFutureSettlement(row.status, row.result, row.date_settled, "Placed", asOf)
+    ).length +
+    dataset.freeBets.filter((row) =>
+      hasFutureSettlement(row.status, row.result, row.date_settled, "Placed", asOf)
+    ).length +
+    dataset.casinoOffers.filter((row) =>
+      hasFutureSettlement(row.status, row.result, row.date_settling, "Started", asOf)
+    ).length
+  );
+}
+
 export type TrackerSummarySettings = {
   mugBetFrequencyDays?: number;
   freeBetExpiryAlertWindowDays?: number;

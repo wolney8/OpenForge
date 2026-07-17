@@ -1,0 +1,62 @@
+{
+  "cases": [
+    {
+      "case_id": "CI-001",
+      "source_record_id": "DEMO-CO-IMPORT-001",
+      "fields": {
+        "OfferGroupID": "DEMO-CASINO-GROUP-001",
+        "DateStarted": "2026-07-13T09:00:00",
+        "DateSettling": "2026-07-14T20:00:00",
+        "ExpiryDateTime": "2026-07-20T23:59:00",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Wager",
+        "OfferName": "Demo wager offer",
+        "Game": "Demo Slots",
+        "CashStake": "10.00",
+        "CreditAmount": "10.00",
+        "BonusAmount": "10.00",
+        "WagerMultiplier": "20",
+        "WagerTarget": "200.00",
+        "Required Spins": "100",
+        "SpinStake": "0.20",
+        "Free Spins Awarded": "0",
+        "Free Spins Value": "0.00",
+        "Status": "In Progress",
+        "Result": "Pending",
+        "CalcNetPnL": "-2.50",
+        "FinalNetPnL": "",
+        "UserNotes": "Synthetic casino import fixture",
+        "NetPnL": "-2.50",
+        "WeekLabel": "W/C 13/07/2026"
+      }
+    },
+    {
+      "case_id": "CI-002",
+      "source_record_id": "DEMO-CO-IMPORT-002",
+      "fields": {
+        "OfferGroupID": "DEMO-CASINO-GROUP-002",
+        "DateStarted": "2026-07-16T10:00:00",
+        "DateSettling": "",
+        "ExpiryDateTime": "2026-07-22T23:59:00",
+        "Bookmaker": "Bookmaker B",
+        "OfferType": "Free Spins",
+        "OfferName": "Demo free spins",
+        "Game": "Demo Game",
+        "CashStake": "",
+        "CreditAmount": "",
+        "BonusAmount": "",
+        "WagerMultiplier": "",
+        "WagerTarget": "",
+        "Required Spins": "20",
+        "SpinStake": "0.10",
+        "Free Spins Awarded": "20",
+        "Free Spins Value": "2.00",
+        "Status": "Prospecting",
+        "Result": "Pending",
+        "CalcNetPnL": "",
+        "FinalNetPnL": "",
+        "UserNotes": ""
+      }
+    }
+  ]
+}

@@ -14,7 +14,7 @@ _Last updated: 2026-06-29_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Tracker
 - Future/deferred module: OddsForge
 - Profile scoped: Yes / No
@@ -53,7 +53,7 @@ Include:
 
 ## 4. Cash-first/current-value behaviour
 
-OpenForge must preserve the tracker’s cash-first protocol.
+Plum Duff must preserve the tracker’s cash-first protocol.
 
 Answer:
 
