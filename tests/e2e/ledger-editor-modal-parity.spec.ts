@@ -4,18 +4,22 @@ const scenarios = [
   {
     route: "/profiles/profile-demo-001/tracker/sportsbook-bets",
     dialogName: "Edit sportsbook row",
+    pdPrefix: "sportsbook",
   },
   {
     route: "/profiles/profile-demo-001/tracker/free-bets",
     dialogName: "Edit free-bet row",
+    pdPrefix: "free-bets",
   },
   {
     route: "/profiles/profile-demo-001/tracker/casino-offers",
     dialogName: "Edit casino row",
+    pdPrefix: "casino-offers",
   },
   {
     route: "/profiles/profile-demo-001/tracker/cash-adjustments",
     dialogName: "Edit cash adjustment",
+    pdPrefix: "cash-adjustments",
   },
 ];
 
@@ -33,7 +37,20 @@ test.describe("Ledger editor modal parity", () => {
       await expect(dialog).toBeVisible();
       await expect(dialog).toHaveClass(/workflow-editor-panel/);
       await expect(dialog).toHaveClass(/workflow-editor-modal/);
+      await expect(dialog).toHaveAttribute("data-pd-id", `${scenario.pdPrefix}.editor.dialog`);
       await expect(dialog).toHaveCSS("resize", "horizontal");
+
+      const header = dialog.locator(`[data-pd-id="${scenario.pdPrefix}.editor.header"]`);
+      const footer = dialog.locator(`[data-pd-id="${scenario.pdPrefix}.editor.actions"]`);
+      await expect(header).toHaveCSS("position", "sticky");
+      await expect(footer).toHaveCSS("position", "sticky");
+      await expect(footer).toBeVisible();
+
+      await dialog.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await expect(header).toBeVisible();
+      await expect(footer).toBeVisible();
 
       const dialogBounds = await dialog.boundingBox();
       expect(dialogBounds).not.toBeNull();

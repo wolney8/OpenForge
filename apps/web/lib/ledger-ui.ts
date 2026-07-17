@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 
 export const TRACKER_ROUTE_RESELECT_EVENT = "openforge:tracker-route-reselected";
@@ -85,6 +85,28 @@ export function useTrackerRouteReselect(onReselect: () => void) {
       window.removeEventListener(TRACKER_ROUTE_RESELECT_EVENT, handleReselect);
     };
   }, [onReselect, pathname]);
+}
+
+export function useDialogFocusLifecycle(
+  active: boolean,
+  dialogRef: RefObject<HTMLElement | null>
+) {
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const animationFrame = window.requestAnimationFrame(() => {
+      const initialFocus = dialogRef.current?.querySelector<HTMLElement>("[data-initial-focus]");
+      (initialFocus ?? dialogRef.current)?.focus({ preventScroll: true });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+    };
+  }, [active, dialogRef]);
 }
 
 export function scrollToElementTop(element: HTMLElement | null) {

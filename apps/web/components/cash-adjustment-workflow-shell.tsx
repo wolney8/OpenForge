@@ -9,6 +9,7 @@ import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   scrollToElementTopAfterRender,
+  useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
   useToastDismiss,
@@ -551,6 +552,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
   useToastDismiss(statusMessage, clearStatusMessage);
+  useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -1652,17 +1654,18 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
         aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        data-pd-id="cash-adjustments.editor.dialog"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}
         role="dialog"
       >
-          <div className="workflow-panel-header">
+          <div className="workflow-panel-header workflow-editor-header" data-pd-id="cash-adjustments.editor.header">
             <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit cash adjustment" : "Create cash adjustment"}</span>
             <strong>{selectedId ?? "New cash adjustment"}</strong>
             </div>
             <div className="tracker-nav">
-              <button className="button-link" onClick={closeEditor} type="button">
+              <button aria-label="Close cash-adjustment editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
                 Close
               </button>
             </div>
@@ -1887,7 +1890,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               </section>
             ) : null}
           </EditorSection>
-              <div className="tracker-nav field-span-2">
+              <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="cash-adjustments.editor.actions">
                 <button className="review-chip review-chip-copy" disabled={isPending} type="submit">
                   Save
                 </button>
@@ -1903,7 +1906,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 <button className="review-chip" onClick={handleResetForm} type="button">
                   Revert
                 </button>
-                <button className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+                <button aria-label="Close cash-adjustment editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
                   Close
                 </button>
               </div>

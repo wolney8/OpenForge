@@ -11,6 +11,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
   useToastDismiss,
@@ -2488,6 +2489,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
 
   useToastDismiss(statusMessage, clearStatusMessage);
+  useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -5358,11 +5360,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
             aria-modal="true"
             className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+            data-pd-id="sportsbook.editor.dialog"
             onClick={(event) => event.stopPropagation()}
             ref={editorRef}
             role="dialog"
           >
-            <div className="workflow-panel-header">
+            <div className="workflow-panel-header workflow-editor-header" data-pd-id="sportsbook.editor.header">
               <div className="stack">
                 <span className="eyebrow">
                   {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
@@ -5379,7 +5382,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     Edit settled row
                   </button>
                 ) : null}
-                <button className="button-link" onClick={closeEditor} type="button">
+                <button aria-label="Close sportsbook editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
                   Close
                 </button>
               </div>
@@ -7063,7 +7066,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </div>
               </fieldset>
             </EditorSection>
-            <div className="tracker-nav field-span-2">
+            <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
               <button
                 className="review-chip review-chip-copy"
                 disabled={isPending || isSettledReadOnly}
@@ -7083,7 +7086,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               <button className="review-chip" onClick={handleResetForm} type="button">
                 Revert
               </button>
-              <button className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+              <button aria-label="Close sportsbook editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
                 Close
               </button>
             </div>

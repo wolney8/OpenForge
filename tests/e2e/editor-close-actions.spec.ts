@@ -37,6 +37,7 @@ test.describe("Editor close-action parity", () => {
         hasText: "Close",
       });
       await expect(topClose).toBeVisible();
+      await expect(topClose).toBeFocused();
 
       const bottomClose = page.locator(
         ".workflow-editor-panel .tracker-nav .button-link.tracker-nav-right-action",
@@ -45,4 +46,15 @@ test.describe("Editor close-action parity", () => {
       await expect(bottomClose).toBeVisible();
     });
   }
+
+  test("closing a newly opened sportsbook editor restores focus to its trigger", async ({ page }) => {
+    await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+    const addButton = page.getByRole("button", { name: "Add sportsbook row" });
+    await addButton.click();
+
+    const closeButton = page.getByRole("button", { name: "Close sportsbook editor" }).first();
+    await expect(closeButton).toBeFocused();
+    await closeButton.click();
+    await expect(addButton).toBeFocused();
+  });
 });

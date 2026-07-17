@@ -11,6 +11,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
   useToastDismiss,
@@ -1122,6 +1123,7 @@ export function FreeBetWorkflowShell({
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
   useToastDismiss(statusMessage, clearStatusMessage);
+  useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -3014,11 +3016,12 @@ export function FreeBetWorkflowShell({
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
         aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        data-pd-id="free-bets.editor.dialog"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}
         role="dialog"
       >
-        <div className="workflow-panel-header">
+        <div className="workflow-panel-header workflow-editor-header" data-pd-id="free-bets.editor.header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit free-bet row" : "Create free-bet row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
@@ -3033,7 +3036,7 @@ export function FreeBetWorkflowShell({
                 Edit settled row
               </button>
             ) : null}
-            <button className="button-link" onClick={closeEditor} type="button">
+            <button aria-label="Close free-bet editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
               Close
             </button>
           </div>
@@ -3675,7 +3678,7 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
-          <div className="tracker-nav field-span-2">
+          <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
             <button className="review-chip review-chip-copy" disabled={isPending || isSettledReadOnly} type="submit">
               Save
             </button>
@@ -3687,7 +3690,7 @@ export function FreeBetWorkflowShell({
             <button className="review-chip" onClick={handleResetForm} type="button">
               Revert
             </button>
-            <button className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+            <button aria-label="Close free-bet editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
               Close
             </button>
           </div>
