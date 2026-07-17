@@ -56,12 +56,18 @@ test("Settings exposes the workbook-owned profile authorities", async ({ page })
   await page.goto(`/profiles/${primaryProfileId}/tracker/settings`);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByLabel("Tracker date settings")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Bookmaker catalogue" })).toBeVisible();
+  await expect(page.getByText(/Underlay .* Overlay/)).toBeVisible();
+
+  await page.getByRole("tab", { name: "Offer Lists" }).click();
   await expect(page.getByText("Exchanges", { exact: true })).toBeVisible();
   await expect(page.getByText("Sportsbook and free-bet offer names", { exact: true })).toBeVisible();
   await expect(page.getByText("Casino offer names", { exact: true })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Exchange Commission" }).click();
   await expect(page.getByLabel("Exchange commission settings")).toBeVisible();
-  await expect(page.getByText(/Underlay .* Overlay/)).toBeVisible();
+
+  await page.getByRole("tab", { name: "Account Authorities" }).click();
+  await expect(page.getByLabel("Account authority settings")).toBeVisible();
 });
 
 test("Dashboard and Reports expose distinct selected-range and formal-period views", async ({
