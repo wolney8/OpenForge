@@ -146,5 +146,6 @@ _Last updated: 2026-07-08_
 - Fixture spec: `docs/fixture-specs/oddsmatcher-public-shell-rating-fixture-spec.md`
 - Fixture data: `tests/fixtures/oddsmatcher-public-shell-rating-fixtures.json`
 - Blueprint: `docs/planning/oddsmatcher-development-blueprint.md`
-- Issue drafts: `docs/planning/oddsmatcher-m8-issue-drafts.md`
-- GitHub prompts: `docs/planning/oddsmatcher-m8-github-issue-prompts.md`
+- Delivery tracking now lives in GitHub. Repository documentation retains the approved M8
+  blueprint, contracts, fixtures, and reverse-engineering evidence rather than duplicate issue
+  payloads.

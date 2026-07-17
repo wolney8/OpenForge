@@ -1,0 +1,120 @@
+{
+  "cases": [
+    {
+      "case_id": "SI-001",
+      "source_record_id": "DEMO-QB-001",
+      "fields": {
+        "DateSettling": "2026-07-20T18:00:00",
+        "EventName": "Synthetic Team A v Synthetic Team B",
+        "Market": "Match result",
+        "Offer": "Demo qualifying offer",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Bet & Get",
+        "BetType": "Single",
+        "OfferName": "Weekly Reload",
+        "FixtureType": "Football",
+        "Status": "Placed",
+        "Result": "Pending",
+        "BackStake": "10.00",
+        "BackOdds": "3.50",
+        "MatchStrategy": "Standard",
+        "LayOdds1": "3.60",
+        "Exchange": "Exchange A",
+        "Lay (Actual)": "9.72",
+        "LayMatchedStake1": "9.72",
+        "UserNotes": "Synthetic import fixture"
+      },
+      "expected_action": "insert"
+    },
+    {
+      "case_id": "SI-002",
+      "source_record_id": "",
+      "fields": {
+        "EventName": "Synthetic missing identity",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Prospecting",
+        "Result": "Pending",
+        "MatchStrategy": "Standard"
+      },
+      "expected_error": "source_record_id_required"
+    },
+    {
+      "case_id": "SI-003",
+      "source_record_id": "DEMO-QB-003",
+      "fields": {
+        "EventName": "Synthetic helper audit row",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Placed",
+        "Result": "Pending",
+        "MatchStrategy": "Standard",
+        "CalcNetPnL": "-0.42",
+        "WeekLabel": "W/C 20/07/2026"
+      },
+      "expected_audit_only": ["CalcNetPnL", "WeekLabel"]
+    },
+    {
+      "case_id": "SI-004",
+      "source_record_id": "DEMO-QB-004",
+      "fields": {
+        "EventName": "Synthetic override row",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Settled",
+        "Result": "Lay Won",
+        "MatchStrategy": "Standard",
+        "ManualOverrideValue": "4.25",
+        "ManualOverrideReason": ""
+      },
+      "expected_error": "override_reason_required"
+    },
+    {
+      "case_id": "SI-005",
+      "source_record_id": "DEMO-QB-005",
+      "fields": {
+        "EventName": "Synthetic multi outcome row",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Placed",
+        "Result": "Pending",
+        "MatchStrategy": "Multilay",
+        "OutcomeCount": "2",
+        "LayOdds2": "5.20"
+      },
+      "expected_error": "advanced_branch_mapping_required"
+    },
+    {
+      "case_id": "SI-006",
+      "source_record_id": "DEMO-QB-006",
+      "fields": {
+        "EventName": "Synthetic mug bet",
+        "Bookmaker": "Bookmaker B",
+        "OfferType": "Mug Bet",
+        "BetType": "Single",
+        "Status": "Placed",
+        "Result": "Pending",
+        "BackStake": "2.00",
+        "BackOdds": "2.50",
+        "MatchStrategy": "No Lay",
+        "Exchange": "",
+        "LayOdds1": ""
+      },
+      "expected_action": "insert"
+    },
+    {
+      "case_id": "SI-007",
+      "source_record_id": "DEMO-QB-007",
+      "fields": {
+        "DateSettling": "2026-07-20T20:00:00",
+        "EventName": "Synthetic multi-lay round trip",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Placed",
+        "Result": "Pending",
+        "BackStake": "10.00",
+        "BackOdds": "4.00",
+        "MatchStrategy": "Multilay",
+        "Exchange": "Exchange A",
+        "MultiLayOutcome1Name": "Synthetic outcome A",
+        "MultiLayOutcomesJson": "[{\"id\":\"branch-a\",\"label\":\"Synthetic outcome A\",\"layOdds\":\"5.00\",\"placedMatchedStake\":\"4.00\"},{\"id\":\"branch-b\",\"label\":\"Synthetic outcome B\",\"layOdds\":\"6.00\",\"placedMatchedStake\":\"3.00\"}]"
+      },
+      "expected_action": "insert"
+    }
+  ]
+}

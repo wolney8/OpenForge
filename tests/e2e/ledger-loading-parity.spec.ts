@@ -37,4 +37,30 @@ test.describe("Cross-ledger loading parity", () => {
       await expect(contentPanel).toHaveAttribute("aria-busy", "false");
     });
   }
+
+  test("reports use the shared loading indicator until summary sources resolve", async ({ page }) => {
+    await page.route(
+      `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets`,
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        await route.fulfill({
+          body: "[]",
+          contentType: "application/json",
+          status: 200,
+        });
+      }
+    );
+
+    await page.goto(`/profiles/${profileId}/tracker/reports`);
+
+    const summaryShell = page.locator(".tracker-summary-shell");
+    const loadingState = page
+      .getByRole("status")
+      .filter({ hasText: "Loading live tracker summaries" });
+    await expect(summaryShell).toHaveAttribute("aria-busy", "true");
+    await expect(loadingState).toBeVisible();
+    await expect(loadingState.locator(".material-linear-progress")).toBeVisible();
+    await expect(loadingState).toBeHidden({ timeout: 10_000 });
+    await expect(summaryShell).toHaveAttribute("aria-busy", "false");
+  });
 });

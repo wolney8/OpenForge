@@ -88,6 +88,7 @@ const inputs: ProfileReportingInput[] = fixture.profiles.map((profile) => ({
   profileCode: profile.profileCode,
   status: profile.status,
   summary: fixtureSummary(profile),
+  trueOpenPositionCount: profile.trueOpenBets,
 }));
 
 describe("aggregateCrossProfileReporting", () => {
@@ -106,6 +107,16 @@ describe("aggregateCrossProfileReporting", () => {
       expiringFreeBetCount: fixture.expected.expiringFreeBetCount,
       currentLiability: fixture.expected.currentLiability,
     });
+  });
+
+  it("uses the explicit current open-position count when supplied", () => {
+    const result = aggregateCrossProfileReporting([
+      { ...inputs[0]!, trueOpenPositionCount: 1 },
+      { ...inputs[1]!, trueOpenPositionCount: 0 },
+    ]);
+
+    expect(result.profileRows.map((row) => row.openBets)).toEqual([1, 0]);
+    expect(result.totals.openBets).toBe(1);
   });
 
   it("groups category, bookmaker, weekly, and monthly outputs without changing signs", () => {
@@ -133,6 +144,7 @@ describe("aggregateCrossProfileReporting", () => {
     expect(result.profileRows).toEqual([]);
     expect(result.totals.grossBettingPnl).toBe(0);
     expect(result.weeklyReports).toEqual([]);
+    expect(result.yearlyReports).toEqual([]);
   });
 
   it("recalculates all aggregate families from an explicit profile subset", () => {

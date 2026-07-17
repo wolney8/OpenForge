@@ -126,7 +126,7 @@ type CasinoOfferTableMode =
   | "cashback"
   | "overdue";
 
-type CasinoIssueFilter = "any" | "offer-unplaced" | "no-settle-date" | "outcome-needed";
+type CasinoIssueFilter = "any" | "all-issues" | "offer-unplaced" | "no-settle-date" | "outcome-needed";
 type CasinoSortKey = "date_settling" | "bookmaker" | "status" | "displayed_value";
 type CasinoSortDirection = "asc" | "desc";
 type CasinoTableSort = {
@@ -266,6 +266,9 @@ function getCasinoIssueFilterMatch(row: CasinoOfferRecord, issueType: CasinoIssu
     return true;
   }
   const labels = new Set(getCasinoIssueBadges(row).map((badge) => badge.label));
+  if (issueType === "all-issues") {
+    return labels.size > 0;
+  }
   if (issueType === "offer-unplaced") {
     return labels.has("Offer Unplaced");
   }
@@ -950,7 +953,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
-export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { profileId: string; initialQuery?: string }) {
+export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter }: { profileId: string; initialQuery?: string; initialIssueFilter?: string }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
@@ -973,7 +976,11 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
   );
   const [tableFilters, setTableFilters] = usePersistedState<CasinoTableFilterState>(
     `openforge-ledger-table-filters:${profileId}:casino-offers`,
-    emptyTableFilters
+    {
+      ...emptyTableFilters,
+      issue_type: initialIssueFilter === "outcome-needed" ? "outcome-needed" : initialIssueFilter === "all-issues" ? "all-issues" : "any",
+    },
+    Boolean(initialIssueFilter)
   );
   const [tableSort, setTableSort] = useState<CasinoTableSort | null>(null);
   const [formState, setFormState] = useState<CasinoOfferFormState>(createBlankForm);
@@ -982,7 +989,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
   const [outcomeModalState, setOutcomeModalState] = useState<CasinoOutcomeModalState | null>(null);
   const [tableMode, setTableMode] = usePersistedState<CasinoOfferTableMode>(
     `openforge-ledger-table-mode:${profileId}:casino-offers`,
-    "recent"
+    "recent",
+    Boolean(initialIssueFilter)
   );
   const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
@@ -2215,6 +2223,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
             aria-label="Casino-offer filter controls"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -2307,7 +2316,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
                   ))}
                 </select>
               </label>
-              <label className="field-control">
+              <label className={`field-control${tableFilters.issue_type !== "any" ? " is-active-filter" : ""}`}>
                 <span>Issue type</span>
                 <select
                   onChange={(event) =>
@@ -2315,7 +2324,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
                   }
                   value={tableFilters.issue_type}
                 >
-                  <option value="any">All</option>
+                  <option value="any">All rows</option>
+                  <option value="all-issues">All issues</option>
                   <option value="offer-unplaced">Offer Unplaced</option>
                   <option value="no-settle-date">No Settle Date</option>
                   <option value="outcome-needed">Outcome Needed</option>
@@ -2393,8 +2403,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
         <div className="modal-backdrop" onClick={() => setOutcomeModalState(null)}>
           <section
             aria-label="Update casino outcome"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
           >
             <div className="workflow-panel-header">
               <div className="stack">
@@ -2479,6 +2491,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "" }: { pro
         <div className="modal-backdrop" onClick={closeEditor}>
       <section
         aria-label={selectedId ? "Edit casino row" : "Create casino row"}
+        aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}

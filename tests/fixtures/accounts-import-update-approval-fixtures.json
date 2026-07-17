@@ -1,0 +1,51 @@
+{
+  "mapping_version": "accounts-v1",
+  "cases": [
+    {
+      "case_id": "AIU-001",
+      "source_record_id": "DEMO-ACCOUNT-UPDATE-001",
+      "existing": {
+        "account": "Smarkets",
+        "type": "Exchange",
+        "status": "Active",
+        "current_balance": "100.00",
+        "pending_withdrawal_amount": ""
+      },
+      "proposed": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Limited",
+        "CurrentBalance": "125.40",
+        "PendingWithdrawalAmount": "10.00"
+      },
+      "expected": {
+        "staged_action": "update",
+        "changed_fields": [
+          "status",
+          "current_balance",
+          "pending_withdrawal_amount"
+        ],
+        "selected_by_default": false
+      }
+    },
+    {
+      "case_id": "AIU-006",
+      "source_record_id": "DEMO-ACCOUNT-UPDATE-006",
+      "proposed": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Active",
+        "CurrentBalance": "invalid-money",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "blocked",
+        "error_code": "invalid_account_money"
+      }
+    }
+  ]
+}

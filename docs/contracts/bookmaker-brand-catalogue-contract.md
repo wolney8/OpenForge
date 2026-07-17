@@ -55,6 +55,8 @@ platform, and risk-team entry for bookmaker accounts with a linked catalogue rec
 - Archived catalogue records remain resolvable for historical accounts and ledgers.
 - New bookmaker accounts select a catalogue record; catalogue-owned brand, group, and platform
   values are copied into legacy text columns for backward-compatible reporting.
+- The external authoring source and its no-silent-sync boundary are defined by
+  `docs/contracts/master-account-catalogue-source-contract.md`.
 
 ## Display resolution
 

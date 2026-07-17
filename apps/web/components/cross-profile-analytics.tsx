@@ -6,11 +6,18 @@ import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "./access-scope-badge";
 import {
   aggregateCrossProfileReporting,
+  type ProfileComparisonRow,
 } from "@/lib/cross-profile-reporting";
+import {
+  buildOperationalLedgerHref,
+  countOperationalActions,
+} from "@/lib/operational-actions";
 import {
   formatHumanDisplayDate,
   formatMoney,
+  formatTrackingTenure,
   getDatePresetOptions,
+  countTrueOpenPositions,
   resolveDateRange,
   summarizeTrackerData,
   type AccountSummaryRecord,
@@ -34,10 +41,12 @@ type ProfileDescriptor = {
   investmentFeePercent: string;
 };
 
-type AnalyticsTab = "overview" | "performance" | "exposure" | "reports";
+type AnalyticsTab = "profiles" | "performance" | "exposure" | "reports";
 type EditableProfileField =
   | "display_name"
+  | "profile_code"
   | "status"
+  | "tracking_start_date"
   | "management_fee_percent"
   | "investment_fee_percent";
 
@@ -52,7 +61,7 @@ type ProfileApiResponse = {
 };
 
 const analyticsTabs: { id: AnalyticsTab; label: string }[] = [
-  { id: "overview", label: "Overview" },
+  { id: "profiles", label: "Profiles" },
   { id: "performance", label: "Performance" },
   { id: "exposure", label: "Exposure" },
   { id: "reports", label: "Formal Reports" },
@@ -107,9 +116,11 @@ function rangeLabel(start: Date, end: Date) {
 }
 
 function ReportTable({
+  feeHeading,
   title,
   rows,
 }: {
+  feeHeading: "Estimated Fees" | "Fees Earned";
   title: string;
   rows: ReturnType<typeof aggregateCrossProfileReporting>["weeklyReports"];
 }) {
@@ -128,12 +139,13 @@ function ReportTable({
               <th>Withdrawals</th>
               <th>Costs</th>
               <th>Retained profit</th>
+              <th>{feeHeading}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8}>No formal report periods are available.</td>
+                <td colSpan={9}>No formal report periods are available.</td>
               </tr>
             ) : (
               rows.slice(0, 12).map((row) => (
@@ -146,6 +158,7 @@ function ReportTable({
                   <td>{formatMoney(row.withdrawals)}</td>
                   <td>{formatMoney(row.costs)}</td>
                   <td>{formatMoney(row.retainedProfit)}</td>
+                  <td><span className="table-status">Not Yet Calculated</span></td>
                 </tr>
               ))
             )}
@@ -153,6 +166,42 @@ function ReportTable({
         </table>
       </div>
     </section>
+  );
+}
+
+function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
+  const actions = [
+    { ledger: "sportsbook" as const, label: "Sportsbook", icon: "sports", count: row.sportsbookActionCount },
+    { ledger: "free-bets" as const, label: "Free Bets", icon: "award_star", count: row.freeBetActionCount },
+    { ledger: "casino-offers" as const, label: "Casino", icon: "playing_cards", count: row.casinoActionCount },
+  ];
+
+  return (
+    <span className="profile-action-links">
+      {actions.map((action) => {
+        const requiresAction = action.count > 0;
+        const accessibleLabel = requiresAction
+          ? `Open ${row.displayName} ${action.label} rows requiring action`
+          : `Open ${row.displayName} ${action.label} ledger`;
+        return (
+          <Link
+            aria-label={accessibleLabel}
+            className={`report-value-link profile-action-link ${requiresAction ? "report-value-link-urgent" : "is-inactive-action"}`}
+            data-pd-id={`profiles.${row.profileId}.actions.${action.ledger}`}
+            href={buildOperationalLedgerHref(row.profileId, action.ledger, requiresAction ? "all" : null)}
+            key={action.ledger}
+            title={accessibleLabel}
+          >
+            <span aria-hidden="true" className="profile-action-icon-wrap">
+              <span className="material-symbols-outlined profile-action-icon">{action.icon}</span>
+              {requiresAction ? (
+                <strong className="profile-action-count">{action.count > 9 ? "9+" : action.count}</strong>
+              ) : null}
+            </span>
+          </Link>
+        );
+      })}
+    </span>
   );
 }
 
@@ -167,7 +216,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
   const [failures, setFailures] = useState<ProfileLoadFailure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>("profiles");
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryStatus, setDirectoryStatus] = useState("all");
   const [directoryPage, setDirectoryPage] = useState(1);
@@ -233,6 +282,8 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         {
           ...profile,
           summary: summarizeTrackerData(dataset, resolvedRange),
+          actionable: countOperationalActions(dataset),
+          trueOpenPositionCount: countTrueOpenPositions(dataset),
         },
       ];
     });
@@ -246,10 +297,15 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
     [allProfileSummaries, selectedProfileIds]
   );
 
+  const allProfilesCombined = useMemo(
+    () => aggregateCrossProfileReporting(allProfileSummaries),
+    [allProfileSummaries]
+  );
+
   const directoryProfiles = useMemo(() => {
     const normalizedQuery = directoryQuery.trim().toLowerCase();
     const summaryByProfile = new Map(
-      aggregateCrossProfileReporting(allProfileSummaries).profileRows.map((row) => [
+      allProfilesCombined.profileRows.map((row) => [
         row.profileId,
         row,
       ])
@@ -270,7 +326,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           Number(pinnedProfileIds.includes(left.profileId));
         return pinDifference || left.displayName.localeCompare(right.displayName);
       });
-  }, [allProfileSummaries, directoryQuery, directoryStatus, pinnedProfileIds, profileRecords]);
+  }, [allProfilesCombined.profileRows, directoryQuery, directoryStatus, pinnedProfileIds, profileRecords]);
 
   const directoryPageCount = Math.max(1, Math.ceil(directoryProfiles.length / directoryPageSize));
   const visibleDirectoryProfiles = directoryProfiles.slice(
@@ -280,6 +336,12 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
   const detailProfile = profileRecords.find((profile) => profile.profileId === detailProfileId);
   const detailSummary = allProfileSummaries.find(
     (profile) => profile.profileId === detailProfileId
+  );
+  const detailComparisonRow = allProfilesCombined.profileRows.find(
+    (profile) => profile.profileId === detailProfileId
+  );
+  const detailModuleValues = new Map(
+    detailSummary?.summary.moduleBreakdown.map((row) => [row.moduleKey, row.reportingValue]) ?? []
   );
 
   const balanceSnapshots = useMemo(
@@ -359,8 +421,13 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         body: JSON.stringify({ [edit.field]: edit.value.trim() }),
       });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(body?.detail ?? `Profile update failed with status ${response.status}`);
+        const body = (await response.json().catch(() => null)) as {
+          detail?: string | { msg?: string }[];
+        } | null;
+        const detail = Array.isArray(body?.detail)
+          ? body.detail.map((item) => item.msg).filter(Boolean).join(". ")
+          : body?.detail;
+        throw new Error(detail || `Profile update failed with status ${response.status}`);
       }
       const updated = (await response.json()) as ProfileApiResponse;
       setProfileRecords((current) =>
@@ -369,7 +436,9 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             ? {
                 ...profile,
                 displayName: updated.display_name,
+                profileCode: updated.profile_code,
                 status: updated.status,
+                trackingStartDate: updated.tracking_start_date,
                 managementFeePercent: updated.management_fee_percent,
                 investmentFeePercent: updated.investment_fee_percent,
               }
@@ -402,7 +471,8 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
     field: EditableProfileField,
     value: string,
     label: string,
-    suffix = ""
+    suffix = "",
+    displayValue = value
   ) {
     if (profileEdit?.field === field) {
       return (
@@ -426,13 +496,18 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
               autoFocus
               className={`profile-inline-control${field.includes("fee") ? " is-fee" : ""}`}
               disabled={isSavingProfile}
-              max={field.includes("fee") ? "100" : undefined}
+              max={field.includes("fee") ? "100" : field === "tracking_start_date" ? new Date().toISOString().slice(0, 10) : undefined}
+              maxLength={field === "profile_code" ? 32 : undefined}
               min={field.includes("fee") ? "0" : undefined}
-              onChange={(event) => setProfileEdit({ field, value: event.target.value })}
+              onChange={(event) => setProfileEdit({
+                field,
+                value: field === "profile_code" ? event.target.value.toUpperCase() : event.target.value,
+              })}
               onBlur={() => void saveProfileField(profileEdit)}
               onKeyDown={handleInlineEditKeyDown}
+              pattern={field === "profile_code" ? "[A-Z0-9-]+" : undefined}
               step={field.includes("fee") ? "0.01" : undefined}
-              type={field.includes("fee") ? "number" : "text"}
+              type={field.includes("fee") ? "number" : field === "tracking_start_date" ? "date" : "text"}
               value={profileEdit.value}
             />
           )}
@@ -444,7 +519,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
 
     return (
       <span className="profile-inline-value">
-        {field === "status" ? normalizeProfileStatus(value) : `${value}${suffix}`}
+        {field === "status" ? normalizeProfileStatus(value) : `${displayValue}${suffix}`}
         <button
           aria-label={`Edit ${label}`}
           className="profile-field-action"
@@ -462,7 +537,8 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       className="content-panel stack cross-profile-analytics"
       aria-labelledby="combined-analytics-title"
     >
-      <div className="fund-manager-control-bar">
+      <div className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}>
+        {activeTab !== "profiles" ? (
         <details className="profile-report-picker">
         <summary>
           <span aria-hidden="true" className="material-symbols-outlined">
@@ -503,11 +579,15 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           </div>
         </fieldset>
         </details>
+        ) : null}
+        {activeTab === "profiles" ? (
+          <>
         <label className="m3-picker-field">
           <span className="m3-picker-label">Search directory</span>
           <span className="m3-picker-control">
             <span aria-hidden="true" className="material-symbols-outlined">search</span>
             <input
+              data-pd-id="profiles.directory.search"
               type="search"
               value={directoryQuery}
               onChange={(event) => {
@@ -522,6 +602,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           <span className="m3-picker-control">
             <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
             <select
+              data-pd-id="profiles.directory.status-filter"
               value={directoryStatus}
               onChange={(event) => {
                 setDirectoryStatus(event.target.value);
@@ -535,6 +616,8 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             </select>
           </span>
         </label>
+          </>
+        ) : null}
         <div className="compact-report-controls">
           <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
@@ -569,16 +652,16 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       </div>
       <div className="workflow-panel-header">
         <div className="stack-tight">
-          <span className="eyebrow">Fund Manager reporting</span>
+          <span className="eyebrow">Fund Manager control</span>
           <div className="section-heading-row">
-            <h2 id="combined-analytics-title">Combined profile analytics</h2>
+            <h2 id="combined-analytics-title">Profiles and combined analytics</h2>
             <AccessScopeBadge />
           </div>
         </div>
       </div>
 
       <p className="lede">
-        Shared range: {rangeLabel(resolvedRange.start, resolvedRange.end)}. Earnings are pre-fee.
+        Shared range: {rangeLabel(resolvedRange.start, resolvedRange.end)}. Displayed earnings are pre-fee.
       </p>
 
       {isLoading ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
@@ -595,12 +678,18 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         </div>
       ) : null}
 
-      <div className="analytics-tab-list" role="tablist" aria-label="Combined analytics sections">
+      <div
+        aria-label="Fund Manager profile and analytics sections"
+        className="analytics-tab-list"
+        data-pd-id="profiles.navigation.tabs"
+        role="tablist"
+      >
         {analyticsTabs.map((tab) => (
           <button
             aria-controls={`analytics-panel-${tab.id}`}
             aria-selected={activeTab === tab.id}
             className={`analytics-tab${activeTab === tab.id ? " is-active" : ""}`}
+            data-pd-id={`profiles.navigation.${tab.id}`}
             id={`analytics-tab-${tab.id}`}
             key={tab.id}
             onClick={() => selectTab(tab.id)}
@@ -616,190 +705,58 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
 
       {!isLoading ? (
         <>
-          {activeTab === "overview" || activeTab === "exposure" ? (
-          <section
-            aria-labelledby={`analytics-tab-${activeTab}`}
-            className="analytics-tab-panel stack"
-            id={`analytics-panel-${activeTab}`}
-            role="tabpanel"
-          >
-          <section className="stat-strip" aria-label="Combined selected-range totals">
-            {activeTab === "overview" ? (
-              <>
-            <article className="stat-card">
-              <span className="eyebrow">Gross P&amp;L</span>
-              <strong>{formatMoney(combined.totals.grossBettingPnl)}</strong>
-              <span>Pre-fee selected range</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Retained profit</span>
-              <strong>{formatMoney(combined.totals.retainedProfit)}</strong>
-              <span>Pre-fee workbook cash rules</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Cash snapshot</span>
-              <strong>{formatMoney(combined.totals.cashSnapshot)}</strong>
-              <span>Current included account balances</span>
-            </article>
-              </>
-            ) : (
-              <>
-            <article className={`stat-card${combined.totals.overdueBets > 0 ? " is-actionable" : ""}`}>
-              <span className="eyebrow">Open / overdue</span>
-              <strong>
-                {combined.totals.openBets} / {combined.totals.overdueBets}
-              </strong>
-              <span>Profile-scoped rows combined</span>
-              {combined.totals.overdueBets > 0 ? (
-                <a
-                  aria-label="Review overdue profiles"
-                  className="report-action-link"
-                  href="#profile-exposure-table"
-                >
-                  <span className="report-action-badge">Action needed: {combined.totals.overdueBets} overdue</span>
-                  <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                </a>
-              ) : null}
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Current liability</span>
-              <strong>{formatMoney(combined.totals.currentLiability)}</strong>
-              <span>Open sportsbook and free-bet exposure</span>
-            </article>
-            <article className={`stat-card${combined.totals.expiringFreeBetCount > 0 ? " is-actionable" : ""}`}>
-              <span className="eyebrow">Expiring free bets</span>
-              <strong>{combined.totals.expiringFreeBetCount}</strong>
-              <span>Available rows inside alert windows</span>
-              {combined.totals.expiringFreeBetCount > 0 ? (
-                <a
-                  aria-label="Review profiles with expiring free bets"
-                  className="report-action-link"
-                  href="#profile-exposure-table"
-                >
-                  <span className="report-action-badge">Action needed</span>
-                  <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                </a>
-              ) : null}
-            </article>
-              </>
-            )}
-          </section>
-
-          {activeTab === "overview" ? (
-          <section className="content-subpanel stack">
-            <h3>Profile comparison</h3>
-            <div className="table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Profile</th>
-                    <th>Gross P&amp;L</th>
-                    <th>Retained profit</th>
-                    <th>Cash snapshot</th>
-                    <th>Open current</th>
-                    <th>Settled final</th>
-                    <th>Open / overdue</th>
-                    <th>Liability</th>
-                    <th>Tracker</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {combined.profileRows.map((row) => (
-                    <tr key={row.profileId}>
-                      <td>
-                        <strong>{row.displayName}</strong>
-                        <br />
-                        {row.profileCode} / {row.status}
-                      </td>
-                      <td>{formatMoney(row.grossBettingPnl)}</td>
-                      <td>{formatMoney(row.retainedProfit)}</td>
-                      <td>{formatMoney(row.cashSnapshot)}</td>
-                      <td>{formatMoney(row.openCurrentValue)}</td>
-                      <td>{formatMoney(row.settledFinalValue)}</td>
-                      <td>
-                        {row.openBets} /{" "}
-                        {row.overdueBets > 0 ? (
-                          <Link
-                            aria-label={`Review ${row.displayName} overdue items`}
-                            className="report-value-link report-value-link-urgent"
-                            href={`/profiles/${row.profileId}/tracker/dashboard#overdue-watchlist`}
-                          >
-                            <span>{row.overdueBets}</span>
-                            <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                          </Link>
-                        ) : row.overdueBets}
-                      </td>
-                      <td>{formatMoney(row.currentLiability)}</td>
-                      <td>
-                        <Link href={`/profiles/${row.profileId}/tracker/dashboard`}>Open</Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          ) : (
-            <section className="content-subpanel stack" id="profile-exposure-table">
-              <h3>Profile exposure</h3>
-              <div className="table-shell">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Profile</th>
-                      <th>Open</th>
-                      <th>Overdue</th>
-                      <th>Expiring free bets</th>
-                      <th>Current liability</th>
-                      <th>Open current value</th>
-                      <th>Tracker</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combined.profileRows.map((row) => (
-                      <tr key={row.profileId}>
-                        <td>{row.displayName}</td>
-                        <td>
-                          <Link
-                            aria-label={`Review ${row.displayName} open positions`}
-                            className="report-value-link"
-                            href={`/profiles/${row.profileId}/tracker/dashboard#open-watchlist`}
-                          >
-                            {row.openBets}
-                            <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                          </Link>
-                        </td>
-                        <td>
-                          <Link
-                            aria-label={`Review ${row.displayName} overdue items`}
-                            className="report-value-link"
-                            href={`/profiles/${row.profileId}/tracker/dashboard#overdue-watchlist`}
-                          >
-                            {row.overdueBets}
-                            <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                          </Link>
-                        </td>
-                        <td>
-                          <Link
-                            aria-label={`Review ${row.displayName} expiring free bets`}
-                            className="report-value-link"
-                            href={`/profiles/${row.profileId}/tracker/free-bets?view=expiring-soon`}
-                          >
-                            {row.expiringFreeBetCount}
-                            <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                          </Link>
-                        </td>
-                        <td>{formatMoney(row.currentLiability)}</td>
-                        <td>{formatMoney(row.openCurrentValue)}</td>
-                        <td><Link href={`/profiles/${row.profileId}/tracker/dashboard`}>Open</Link></td>
+          {activeTab === "exposure" ? (
+            <section
+              aria-labelledby="analytics-tab-exposure"
+              className="analytics-tab-panel stack"
+              id="analytics-panel-exposure"
+              role="tabpanel"
+            >
+              <section className="stat-strip" aria-label="Combined exposure totals">
+                <article className="stat-card">
+                  <span className="eyebrow">Open / overdue</span>
+                  <strong>{combined.totals.openBets} / {combined.totals.overdueBets}</strong>
+                  <span>Profile-scoped rows combined</span>
+                </article>
+                <article className="stat-card">
+                  <span className="eyebrow">Current liability</span>
+                  <strong>{formatMoney(combined.totals.currentLiability)}</strong>
+                  <span>Open sportsbook and free-bet exposure</span>
+                </article>
+                <article className="stat-card">
+                  <span className="eyebrow">Expiring free bets</span>
+                  <strong>{combined.totals.expiringFreeBetCount}</strong>
+                  <span>Available rows inside alert windows</span>
+                </article>
+              </section>
+              <section className="content-subpanel stack">
+                <h3>Profile exposure</h3>
+                <div className="table-shell">
+                  <table className="profile-analytics-table">
+                    <thead>
+                      <tr>
+                        <th>Profile</th>
+                        <th>Open positions</th>
+                        <th>Expiring free bets</th>
+                        <th>Current liability</th>
+                        <th>Open current value</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {combined.profileRows.map((row) => (
+                        <tr key={row.profileId}>
+                          <td>{row.displayName}</td>
+                          <td>{row.openBets}</td>
+                          <td>{row.expiringFreeBetCount}</td>
+                          <td>{formatMoney(row.currentLiability)}</td>
+                          <td>{formatMoney(row.openCurrentValue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             </section>
-          )}
-          </section>
           ) : null}
 
           {activeTab === "performance" ? (
@@ -873,12 +830,13 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             id="analytics-panel-reports"
             role="tabpanel"
           >
-          <ReportTable title="Combined weekly reports" rows={combined.weeklyReports} />
-          <ReportTable title="Combined monthly reports" rows={combined.monthlyReports} />
+          <ReportTable feeHeading="Estimated Fees" title="Combined Weekly Reports" rows={combined.weeklyReports} />
+          <ReportTable feeHeading="Fees Earned" title="Combined Monthly Reports" rows={combined.monthlyReports} />
+          <ReportTable feeHeading="Fees Earned" title="Combined Yearly Reports" rows={combined.yearlyReports} />
           <section className="content-subpanel stack">
             <h3>Combined balance snapshot history</h3>
             <div className="table-shell">
-              <table>
+              <table className="profile-action-table">
                 <thead>
                   <tr>
                     <th>Profile</th>
@@ -913,42 +871,85 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         </>
       ) : null}
 
-      <section className="content-subpanel stack profile-directory" aria-labelledby="profile-directory-title">
+      {activeTab === "profiles" && !isLoading ? (
+      <section
+        aria-labelledby="analytics-tab-profiles"
+        className="analytics-tab-panel content-subpanel stack profile-directory"
+        data-pd-id="profiles.directory.panel"
+        id="analytics-panel-profiles"
+        role="tabpanel"
+      >
+        <section className="stat-strip" aria-label="All-profile headline totals">
+          <article className="stat-card">
+            <span className="eyebrow">Gross P&amp;L</span>
+            <strong>{formatMoney(allProfilesCombined.totals.grossBettingPnl)}</strong>
+            <span>Sportsbook + Free Bets + Casino</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Retained profit</span>
+            <strong>{formatMoney(allProfilesCombined.totals.retainedProfit)}</strong>
+            <span>Gross P&amp;L after signed withdrawals and costs</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Cash snapshot</span>
+            <strong>{formatMoney(allProfilesCombined.totals.cashSnapshot)}</strong>
+            <span>Current included account balances</span>
+          </article>
+          <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
+            <span className="eyebrow">Available to Withdraw</span>
+            <strong>Not Yet Calculated</strong>
+            <span>M10 monthly fee-period engine pending</span>
+          </article>
+        </section>
         <div className="section-heading-row">
           <div>
-            <span className="eyebrow">Fund Manager directory</span>
+            <span className="eyebrow">Fund Manager Directory</span>
             <h2 id="profile-directory-title">Profiles</h2>
           </div>
           <span className="profile-picker-count">{directoryProfiles.length} shown</span>
         </div>
         <div className="table-shell">
-          <table>
+          <table className="profile-action-table">
             <thead>
               <tr>
-                <th><span className="visually-hidden">Pinned</span></th>
-                <th>Profile</th>
-                <th>Status</th>
-                <th>Tracking start</th>
-                <th>Fees</th>
-                <th>Gross P&amp;L</th>
-                <th>Cash snapshot</th>
-                <th>Open / overdue</th>
-                <th>Actions</th>
+                <th scope="col"><span className="visually-hidden">Pinned</span></th>
+                <th scope="col">Profile</th>
+                <th scope="col">Status</th>
+                <th scope="col">Tracking</th>
+                <th scope="col">Gross P&amp;L</th>
+                <th scope="col">Available to Withdraw</th>
+                <th scope="col">Open Positions</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {visibleDirectoryProfiles.length === 0 ? (
-                <tr><td colSpan={9}>No profiles match the directory controls.</td></tr>
+                <tr><td colSpan={8}>No profiles match the directory controls.</td></tr>
               ) : visibleDirectoryProfiles.map((profile) => {
                 const isPinned = pinnedProfileIds.includes(profile.profileId);
                 return (
-                  <tr key={profile.profileId}>
+                  <tr
+                    aria-label={`Open details for ${profile.displayName}`}
+                    className="profile-directory-row"
+                    data-pd-id={`profiles.directory.row.${profile.profileId}`}
+                    key={profile.profileId}
+                    onClick={() => openProfileDetails(profile.profileId)}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                      event.preventDefault();
+                      openProfileDetails(profile.profileId);
+                    }}
+                    tabIndex={0}
+                  >
                     <td>
                       <button
                         aria-label={`${isPinned ? "Unpin" : "Pin"} ${profile.displayName}`}
                         aria-pressed={isPinned}
                         className={`directory-icon-button${isPinned ? " is-active" : ""}`}
-                        onClick={() => togglePinnedProfile(profile.profileId)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          togglePinnedProfile(profile.profileId);
+                        }}
                         type="button"
                       >
                         <span aria-hidden="true" className="material-symbols-outlined">push_pin</span>
@@ -956,32 +957,51 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
                     </td>
                     <td><strong>{profile.displayName}</strong><br /><small>{profile.profileCode}</small></td>
                     <td><span className="badge">{normalizeProfileStatus(profile.status)}</span></td>
-                    <td>{formatHumanDisplayDate(profile.trackingStartDate)}</td>
-                    <td>{profile.managementFeePercent}% / {profile.investmentFeePercent}%</td>
-                    <td>{profile.summary ? formatMoney(profile.summary.grossBettingPnl) : "Unavailable"}</td>
-                    <td>{profile.summary ? formatMoney(profile.summary.cashSnapshot) : "Unavailable"}</td>
                     <td>
-                      {profile.summary ? (
-                        <>
-                          {profile.summary.openBets} /{" "}
-                          {profile.summary.overdueBets > 0 ? (
-                            <Link
-                              aria-label={`Review ${profile.displayName} overdue items from directory`}
-                              className="report-value-link report-value-link-urgent"
-                              href={`/profiles/${profile.profileId}/tracker/dashboard#overdue-watchlist`}
-                            >
-                              <span>{profile.summary.overdueBets}</span>
-                              <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
-                            </Link>
-                          ) : profile.summary.overdueBets}
-                        </>
-                      ) : "Unavailable"}
+                      <span className="action-tooltip-wrap">
+                        <span
+                          aria-describedby={`tracking-tenure-${profile.profileId}`}
+                          aria-label={`Tracking for ${formatTrackingTenure(profile.trackingStartDate)} since ${formatHumanDisplayDate(profile.trackingStartDate)}`}
+                          className="profile-tenure-pill"
+                          tabIndex={0}
+                        >
+                          {formatTrackingTenure(profile.trackingStartDate)}
+                        </span>
+                        <span
+                          className="action-tooltip profile-tenure-tooltip"
+                          id={`tracking-tenure-${profile.profileId}`}
+                          role="tooltip"
+                        >
+                          Tracking started {formatHumanDisplayDate(profile.trackingStartDate)}
+                        </span>
+                      </span>
                     </td>
+                    <td>{profile.summary ? formatMoney(profile.summary.grossBettingPnl) : "Unavailable"}</td>
+                    <td><span className="table-status">Not Yet Calculated</span></td>
+                    <td>{profile.summary ? profile.summary.openBets : "Unavailable"}</td>
                     <td>
-                      <div className="directory-actions">
-                        <Link href={`/profiles/${profile.profileId}/tracker`}>Open tracker</Link>
-                        <Link href={`/profiles/${profile.profileId}/tracker/reports`}>View reports</Link>
-                        <button className="text-button" onClick={() => openProfileDetails(profile.profileId)} type="button">Details</button>
+                      <div className="directory-actions" onClick={(event) => event.stopPropagation()}>
+                        {profile.summary ? <OperationalActionLinks row={profile.summary} /> : "Unavailable"}
+                        <span className="directory-navigation-actions">
+                          <Link
+                            aria-label={`Open ${profile.displayName} dashboard`}
+                            className="directory-nav-action"
+                            data-pd-id={`profiles.${profile.profileId}.actions.dashboard`}
+                            href={`/profiles/${profile.profileId}/tracker/dashboard`}
+                            title={`Open ${profile.displayName} dashboard`}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+                          </Link>
+                          <Link
+                            aria-label={`Open ${profile.displayName} reports`}
+                            className="directory-nav-action"
+                            data-pd-id={`profiles.${profile.profileId}.actions.reports`}
+                            href={`/profiles/${profile.profileId}/tracker/reports`}
+                            title={`Open ${profile.displayName} reports`}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined">summarize</span>
+                          </Link>
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -1006,6 +1026,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           >Next</button>
         </div>
       </section>
+      ) : null}
 
       <dialog
         aria-label={detailProfile ? `Profile details for ${detailProfile.displayName}` : "Profile details"}
@@ -1019,7 +1040,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           <div className="profile-details-drawer-content stack">
             <div className="section-heading-row">
               <div>
-                <span className="eyebrow">Profile details</span>
+                <span className="eyebrow">Profile Details</span>
                 <div className="profile-drawer-title-row">
                   {profileEdit?.field === "display_name" ? (
                     renderEditableProfileValue("display_name", detailProfile.displayName, "subscriber name")
@@ -1042,19 +1063,62 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
                 <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <dl className="profile-detail-list">
-              <div><dt>Profile code</dt><dd>{detailProfile.profileCode}</dd></div>
-              <div><dt>Status</dt><dd>{renderEditableProfileValue("status", detailProfile.status, "status")}</dd></div>
-              <div><dt>Tracking start</dt><dd>{formatHumanDisplayDate(detailProfile.trackingStartDate)}</dd></div>
-              <div><dt>Management fee</dt><dd>{renderEditableProfileValue("management_fee_percent", detailProfile.managementFeePercent, "management fee", "%")}</dd></div>
-              <div><dt>Investment fee</dt><dd>{renderEditableProfileValue("investment_fee_percent", detailProfile.investmentFeePercent, "investment fee", "%")}</dd></div>
-              <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.reportingModel.selectedRange.grossBettingPnl) : "Unavailable"}</dd></div>
-              <div><dt>Cash snapshot</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.accountQuickView.cashSnapshot) : "Unavailable"}</dd></div>
-            </dl>
+            <section className="profile-drawer-section stack-tight">
+              <h3>Profile Settings</h3>
+              <dl className="profile-detail-list">
+                <div><dt>Profile code</dt><dd>{renderEditableProfileValue("profile_code", detailProfile.profileCode, "profile code")}</dd></div>
+                <div><dt>Status</dt><dd>{renderEditableProfileValue("status", detailProfile.status, "status")}</dd></div>
+                <div><dt>Tracking start</dt><dd>{renderEditableProfileValue("tracking_start_date", detailProfile.trackingStartDate, "tracking start", "", formatHumanDisplayDate(detailProfile.trackingStartDate))}</dd></div>
+                <div><dt>Management fee</dt><dd>{renderEditableProfileValue("management_fee_percent", detailProfile.managementFeePercent, "management fee", "%")}</dd></div>
+                <div><dt>Investment fee</dt><dd>{renderEditableProfileValue("investment_fee_percent", detailProfile.investmentFeePercent, "investment fee", "%")}</dd></div>
+              </dl>
+            </section>
+            <section className="profile-drawer-section stack-tight">
+              <h3>Selected-Range Performance</h3>
+              <dl className="profile-detail-list">
+                <div><dt>Sportsbook</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("sportsbook") ?? 0) : "Unavailable"}</dd></div>
+                <div><dt>Free Bets</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("free-bets") ?? 0) : "Unavailable"}</dd></div>
+                <div><dt>Casino</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("casino") ?? 0) : "Unavailable"}</dd></div>
+                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("cash-adjustments") ?? 0) : "Unavailable"}</dd></div>
+                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.reportingModel.selectedRange.grossBettingPnl) : "Unavailable"}</dd></div>
+              </dl>
+            </section>
+            <section className="profile-drawer-section stack-tight">
+              <h3>Current Cash</h3>
+              <dl className="profile-detail-list">
+                <div><dt>Cash snapshot</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.accountQuickView.cashSnapshot) : "Unavailable"}</dd></div>
+              </dl>
+            </section>
+            <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
+              <h3>Fee Position</h3>
+              <dl className="profile-detail-list">
+                <div><dt>Estimated Fees</dt><dd>Not Yet Calculated</dd></div>
+                <div><dt>Fees Earned</dt><dd>Not Yet Calculated</dd></div>
+                <div><dt>Available to Withdraw</dt><dd>Not Yet Calculated</dd></div>
+                <div><dt>Fees Withdrawn</dt><dd>Not Yet Calculated</dd></div>
+              </dl>
+            </section>
             {profileEditError ? <div className="validation-message" role="alert">{profileEditError}</div> : null}
-            <nav className="profile-drawer-actions" aria-label="Profile actions">
-              <Link onClick={() => setDrawerNavigationLabel("Opening tracker")} href={`/profiles/${detailProfile.profileId}/tracker`}>Open tracker</Link>
-              <Link onClick={() => setDrawerNavigationLabel("Opening reports")} href={`/profiles/${detailProfile.profileId}/tracker/reports`}>View reports</Link>
+            <nav className="profile-drawer-icon-actions" aria-label="Profile actions">
+              {detailComparisonRow ? <OperationalActionLinks row={detailComparisonRow} /> : null}
+              <Link
+                aria-label={`Open ${detailProfile.displayName} dashboard`}
+                className="directory-nav-action"
+                href={`/profiles/${detailProfile.profileId}/tracker/dashboard`}
+                onClick={() => setDrawerNavigationLabel("Opening dashboard")}
+                title={`Open ${detailProfile.displayName} dashboard`}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+              </Link>
+              <Link
+                aria-label={`Open ${detailProfile.displayName} reports`}
+                className="directory-nav-action"
+                href={`/profiles/${detailProfile.profileId}/tracker/reports`}
+                onClick={() => setDrawerNavigationLabel("Opening reports")}
+                title={`Open ${detailProfile.displayName} reports`}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">summarize</span>
+              </Link>
             </nav>
             {drawerNavigationLabel ? (
               <div className="profile-drawer-loading" role="status">

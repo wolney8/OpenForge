@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from openforge_api.account_catalogue_source import router as account_catalogue_source_router
 from openforge_api.accounts import router as accounts_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
 from openforge_api.bookmaker_catalogue import router as bookmaker_catalogue_router
@@ -9,6 +10,7 @@ from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.config import settings
 from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.free_bets import router as free_bets_router
+from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
@@ -23,11 +25,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(profiles_router)
+app.include_router(account_catalogue_source_router)
 app.include_router(accounts_router)
 app.include_router(balance_snapshots_router)
 app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(free_bets_router)
+app.include_router(imports_router)
 app.include_router(cash_adjustments_router)
 app.include_router(casino_offers_router)
 app.include_router(exchange_settings_router)
@@ -46,4 +50,5 @@ def config_summary() -> dict[str, str]:
         "environment": settings.environment,
         "database_url": settings.database_url,
         "backup_directory": settings.backup_directory,
+        "account_catalogue_source": settings.account_catalogue_source,
     }

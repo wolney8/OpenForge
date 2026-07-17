@@ -364,6 +364,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           last_balance_update TEXT NOT NULL,
           group_name TEXT NOT NULL,
           platform TEXT NOT NULL,
+          sign_up_date TEXT NOT NULL DEFAULT '',
+          notes TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
@@ -381,6 +383,68 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           created_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
           FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS import_batches (
+          import_batch_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          source_filename TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          mapping_version TEXT NOT NULL,
+          status TEXT NOT NULL,
+          row_count INTEGER NOT NULL,
+          error_count INTEGER NOT NULL,
+          warning_count INTEGER NOT NULL,
+          summary_json TEXT NOT NULL,
+          backup_snapshot_id TEXT NOT NULL DEFAULT '',
+          started_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS import_staged_rows (
+          import_staged_row_id TEXT PRIMARY KEY,
+          import_batch_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          source_sheet TEXT NOT NULL,
+          source_record_id TEXT NOT NULL,
+          source_row INTEGER,
+          source_hash TEXT NOT NULL,
+          staged_action TEXT NOT NULL,
+          errors_json TEXT NOT NULL,
+          warnings_json TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          mapped_payload_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY (import_batch_id) REFERENCES import_batches(import_batch_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS import_source_records (
+          source_sheet TEXT NOT NULL,
+          source_record_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          source_hash TEXT NOT NULL,
+          import_batch_id TEXT NOT NULL,
+          entity_type TEXT NOT NULL DEFAULT '',
+          entity_id TEXT NOT NULL DEFAULT '',
+          imported_at TEXT NOT NULL,
+          PRIMARY KEY (source_sheet, source_record_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (import_batch_id) REFERENCES import_batches(import_batch_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS backup_snapshots (
+          backup_snapshot_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL,
+          backup_scope TEXT NOT NULL,
+          schema_version TEXT NOT NULL,
+          storage_path TEXT NOT NULL,
+          status TEXT NOT NULL,
+          notes TEXT NOT NULL,
+          checksum_sha256 TEXT NOT NULL,
+          byte_size INTEGER NOT NULL,
+          integrity_check TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS account_audit (
@@ -560,7 +624,33 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         """
     )
     ensure_column(connection, "sportsbook_bets", "lay_commission_1", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "import_staged_rows",
+        "mapped_payload_json",
+        "TEXT NOT NULL DEFAULT '{}'",
+    )
+    ensure_column(
+        connection,
+        "import_batches",
+        "backup_snapshot_id",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "import_source_records",
+        "entity_type",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "import_source_records",
+        "entity_id",
+        "TEXT NOT NULL DEFAULT ''",
+    )
     ensure_column(connection, "accounts", "bookmaker_id", "TEXT")
+    ensure_column(connection, "accounts", "sign_up_date", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "accounts", "notes", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "bet_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "offer_name", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
@@ -1665,6 +1755,15 @@ def get_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> SportsbookBet
     return None if row is None else map_row(row)
 
 
+def get_sportsbook_bet_by_id(sportsbook_bet_id: str) -> SportsbookBetRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM sportsbook_bets WHERE sportsbook_bet_id = ?",
+            (sportsbook_bet_id,),
+        ).fetchone()
+    return None if row is None else map_row(row)
+
+
 def list_free_bets(profile_id: str) -> list[FreeBetRecord]:
     with connect() as connection:
         rows = connection.execute(
@@ -1688,6 +1787,15 @@ def get_free_bet(profile_id: str, free_bet_id: str) -> FreeBetRecord | None:
             WHERE profile_id = ? AND free_bet_id = ?
             """,
             (profile_id, free_bet_id),
+        ).fetchone()
+    return None if row is None else map_free_bet_row(row)
+
+
+def get_free_bet_by_id(free_bet_id: str) -> FreeBetRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM free_bets WHERE free_bet_id = ?",
+            (free_bet_id,),
         ).fetchone()
     return None if row is None else map_free_bet_row(row)
 
@@ -1722,6 +1830,17 @@ def get_cash_adjustment(
     return None if row is None else map_cash_adjustment_row(row)
 
 
+def get_cash_adjustment_by_id(
+    cash_adjustment_id: str,
+) -> CashAdjustmentRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM cash_adjustments WHERE cash_adjustment_id = ?",
+            (cash_adjustment_id,),
+        ).fetchone()
+    return None if row is None else map_cash_adjustment_row(row)
+
+
 def list_casino_offers(profile_id: str) -> list[CasinoOfferRecord]:
     with connect() as connection:
         rows = connection.execute(
@@ -1745,6 +1864,15 @@ def get_casino_offer(profile_id: str, casino_offer_id: str) -> CasinoOfferRecord
             WHERE profile_id = ? AND casino_offer_id = ?
             """,
             (profile_id, casino_offer_id),
+        ).fetchone()
+    return None if row is None else map_casino_offer_row(row)
+
+
+def get_casino_offer_by_id(casino_offer_id: str) -> CasinoOfferRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM casino_offers WHERE casino_offer_id = ?",
+            (casino_offer_id,),
         ).fetchone()
     return None if row is None else map_casino_offer_row(row)
 
@@ -2716,6 +2844,8 @@ class AccountRecord:
     last_balance_update: str
     group_name: str
     platform: str
+    sign_up_date: str
+    notes: str
     created_at: str
     updated_at: str
 
@@ -2730,6 +2860,65 @@ class BalanceSnapshotRecord:
     balance_amount: str
     notes: str
     created_at: str
+
+
+@dataclass(frozen=True)
+class ImportBatchRecord:
+    import_batch_id: str
+    profile_id: str
+    source_filename: str
+    source_type: str
+    mapping_version: str
+    status: str
+    row_count: int
+    error_count: int
+    warning_count: int
+    summary_json: str
+    backup_snapshot_id: str
+    started_at: str
+    completed_at: str
+
+
+@dataclass(frozen=True)
+class ImportStagedRowRecord:
+    import_staged_row_id: str
+    import_batch_id: str
+    profile_id: str
+    source_sheet: str
+    source_record_id: str
+    source_row: int | None
+    source_hash: str
+    staged_action: str
+    errors_json: str
+    warnings_json: str
+    payload_json: str
+    mapped_payload_json: str
+
+
+@dataclass(frozen=True)
+class ImportSourceRecord:
+    source_sheet: str
+    source_record_id: str
+    profile_id: str
+    source_hash: str
+    import_batch_id: str
+    entity_type: str
+    entity_id: str
+    imported_at: str
+
+
+@dataclass(frozen=True)
+class BackupSnapshotRecord:
+    backup_snapshot_id: str
+    created_at: str
+    backup_scope: str
+    schema_version: str
+    storage_path: str
+    status: str
+    notes: str
+    checksum_sha256: str
+    byte_size: int
+    integrity_check: str
 
 
 def map_exchange_commission_row(row: sqlite3.Row) -> ProfileExchangeCommissionRecord:
@@ -2762,6 +2951,22 @@ def map_account_row(row: sqlite3.Row) -> AccountRecord:
 
 def map_balance_snapshot_row(row: sqlite3.Row) -> BalanceSnapshotRecord:
     return BalanceSnapshotRecord(**dict(row))
+
+
+def map_import_batch_row(row: sqlite3.Row) -> ImportBatchRecord:
+    return ImportBatchRecord(**dict(row))
+
+
+def map_import_staged_row(row: sqlite3.Row) -> ImportStagedRowRecord:
+    return ImportStagedRowRecord(**dict(row))
+
+
+def map_import_source_row(row: sqlite3.Row) -> ImportSourceRecord:
+    return ImportSourceRecord(**dict(row))
+
+
+def map_backup_snapshot_row(row: sqlite3.Row) -> BackupSnapshotRecord:
+    return BackupSnapshotRecord(**dict(row))
 
 
 def list_bookmaker_catalogue(*, include_archived: bool = True) -> list[BookmakerCatalogueRecord]:
@@ -3004,7 +3209,9 @@ def update_profile_metadata(
     profile_id: str,
     *,
     display_name: str | None = None,
+    profile_code: str | None = None,
     status: str | None = None,
+    tracking_start_date: str | None = None,
     management_fee_percent: str | None = None,
     investment_fee_percent: str | None = None,
 ) -> ProfileRecord | None:
@@ -3013,7 +3220,13 @@ def update_profile_metadata(
         return None
 
     next_display_name = display_name if display_name is not None else current.display_name
+    next_profile_code = profile_code if profile_code is not None else current.profile_code
     next_status = status if status is not None else current.status
+    next_tracking_start_date = (
+        tracking_start_date
+        if tracking_start_date is not None
+        else current.tracking_start_date
+    )
     next_management_fee = (
         management_fee_percent
         if management_fee_percent is not None
@@ -3031,7 +3244,9 @@ def update_profile_metadata(
         key: {"from": old_value, "to": new_value}
         for key, old_value, new_value in (
             ("display_name", current.display_name, next_display_name),
+            ("profile_code", current.profile_code, next_profile_code),
             ("status", current.status, next_status),
+            ("tracking_start_date", current.tracking_start_date, next_tracking_start_date),
             ("management_fee_percent", current.management_fee_percent, next_management_fee),
             ("investment_fee_percent", current.investment_fee_percent, next_investment_fee),
         )
@@ -3041,15 +3256,24 @@ def update_profile_metadata(
         return current
 
     with connect() as connection:
+        duplicate = connection.execute(
+            "SELECT 1 FROM profiles WHERE profile_code = ? AND profile_id <> ?",
+            (next_profile_code, profile_id),
+        ).fetchone()
+        if duplicate is not None:
+            raise ValueError("Profile code must be unique")
         connection.execute(
             """
             UPDATE profiles
-            SET display_name = ?, status = ?, management_fee_percent = ?, investment_fee_percent = ?
+            SET display_name = ?, profile_code = ?, status = ?, tracking_start_date = ?,
+                management_fee_percent = ?, investment_fee_percent = ?
             WHERE profile_id = ?
             """,
             (
                 next_display_name,
+                next_profile_code,
                 next_status,
+                next_tracking_start_date,
                 next_management_fee,
                 next_investment_fee,
                 profile_id,
@@ -3388,6 +3612,1135 @@ def create_balance_snapshot(
     return BalanceSnapshotRecord(**record)
 
 
+def create_import_batch(
+    profile_id: str,
+    payload: dict[str, Any],
+    staged_rows: list[dict[str, Any]],
+) -> ImportBatchRecord:
+    timestamp = utc_now()
+    record = {
+        "import_batch_id": payload.get("import_batch_id")
+        or f"IMPORT-{uuid4().hex[:8].upper()}",
+        "profile_id": profile_id,
+        "source_filename": payload["source_filename"],
+        "source_type": payload["source_type"],
+        "mapping_version": payload["mapping_version"],
+        "status": payload["status"],
+        "row_count": payload["row_count"],
+        "error_count": payload["error_count"],
+        "warning_count": payload["warning_count"],
+        "summary_json": payload["summary_json"],
+        "backup_snapshot_id": "",
+        "started_at": timestamp,
+        "completed_at": timestamp,
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO import_batches (
+              import_batch_id,
+              profile_id,
+              source_filename,
+              source_type,
+              mapping_version,
+              status,
+              row_count,
+              error_count,
+              warning_count,
+              summary_json,
+              backup_snapshot_id,
+              started_at,
+              completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+        for row in staged_rows:
+            staged_record = {
+                "import_staged_row_id": f"STAGED-{uuid4().hex[:8].upper()}",
+                "import_batch_id": record["import_batch_id"],
+                "profile_id": profile_id,
+                "source_sheet": row["source_sheet"],
+                "source_record_id": row["source_record_id"],
+                "source_row": row.get("source_row"),
+                "source_hash": row["source_hash"],
+                "staged_action": row["staged_action"],
+                "errors_json": row["errors_json"],
+                "warnings_json": row["warnings_json"],
+                "payload_json": row["payload_json"],
+                "mapped_payload_json": row.get("mapped_payload_json", "{}"),
+            }
+            connection.execute(
+                """
+                INSERT INTO import_staged_rows (
+                  import_staged_row_id,
+                  import_batch_id,
+                  profile_id,
+                  source_sheet,
+                  source_record_id,
+                  source_row,
+                  source_hash,
+                  staged_action,
+                  errors_json,
+                  warnings_json,
+                  payload_json,
+                  mapped_payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                tuple(staged_record.values()),
+            )
+    return ImportBatchRecord(**record)
+
+
+def list_import_batches(profile_id: str) -> list[ImportBatchRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM import_batches
+            WHERE profile_id = ?
+            ORDER BY started_at DESC, import_batch_id DESC
+            """,
+            (profile_id,),
+        ).fetchall()
+    return [map_import_batch_row(row) for row in rows]
+
+
+def get_import_batch(
+    profile_id: str, import_batch_id: str
+) -> tuple[ImportBatchRecord, list[ImportStagedRowRecord]] | None:
+    with connect() as connection:
+        batch_row = connection.execute(
+            """
+            SELECT *
+            FROM import_batches
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch_row is None:
+            return None
+        staged_rows = connection.execute(
+            """
+            SELECT *
+            FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_sheet, source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+    return (
+        map_import_batch_row(batch_row),
+        [map_import_staged_row(row) for row in staged_rows],
+    )
+
+
+def delete_unconfirmed_import_batch(profile_id: str, import_batch_id: str) -> bool:
+    with connect() as connection:
+        batch = connection.execute(
+            """
+            SELECT status
+            FROM import_batches
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            return False
+        if not str(batch["status"]).startswith("dry_run_"):
+            raise ValueError("Confirmed import audit records cannot be deleted")
+        connection.execute(
+            "DELETE FROM import_staged_rows WHERE profile_id = ? AND import_batch_id = ?",
+            (profile_id, import_batch_id),
+        )
+        connection.execute(
+            "DELETE FROM import_batches WHERE profile_id = ? AND import_batch_id = ?",
+            (profile_id, import_batch_id),
+        )
+    return True
+
+
+def get_import_source_record(
+    source_sheet: str, source_record_id: str
+) -> ImportSourceRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT *
+            FROM import_source_records
+            WHERE source_sheet = ? AND source_record_id = ?
+            """,
+            (source_sheet, source_record_id),
+        ).fetchone()
+    return None if row is None else map_import_source_row(row)
+
+
+def register_import_source_record(
+    *,
+    profile_id: str,
+    source_sheet: str,
+    source_record_id: str,
+    source_hash: str,
+    import_batch_id: str,
+    entity_type: str = "",
+    entity_id: str = "",
+) -> ImportSourceRecord:
+    record = {
+        "source_sheet": source_sheet,
+        "source_record_id": source_record_id,
+        "profile_id": profile_id,
+        "source_hash": source_hash,
+        "import_batch_id": import_batch_id,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "imported_at": utc_now(),
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO import_source_records (
+              source_sheet,
+              source_record_id,
+              profile_id,
+              source_hash,
+              import_batch_id,
+              entity_type,
+              entity_id,
+              imported_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+    return ImportSourceRecord(**record)
+
+
+def get_import_source_record_for_entity(
+    profile_id: str, entity_type: str, entity_id: str
+) -> ImportSourceRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT *
+            FROM import_source_records
+            WHERE profile_id = ? AND entity_type = ? AND entity_id = ?
+            """,
+            (profile_id, entity_type, entity_id),
+        ).fetchone()
+    return None if row is None else map_import_source_row(row)
+
+
+def confirm_sportsbook_import_batch(
+    *,
+    profile_id: str,
+    import_batch_id: str,
+    backup_snapshot_id: str,
+    selected_staged_row_ids: set[str],
+) -> list[str]:
+    imported_ids: list[str] = []
+    with connect() as connection:
+        batch = connection.execute(
+            """
+            SELECT *
+            FROM import_batches
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            raise ValueError("Import batch was not found for this profile")
+        if batch["status"] != "dry_run_ready":
+            raise ValueError("Only a dry-run-ready batch can be confirmed")
+        if batch["mapping_version"] != "sportsbook-v1":
+            raise ValueError("Only sportsbook-v1 batches can use this confirmation path")
+
+        staged_rows = connection.execute(
+            """
+            SELECT *
+            FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+        if any(row["staged_action"] == "blocked" for row in staged_rows):
+            raise ValueError("Blocked staged rows prevent confirmation")
+        selectable_ids = {
+            str(row["import_staged_row_id"])
+            for row in staged_rows
+            if row["staged_action"] == "insert"
+        }
+        if not selected_staged_row_ids:
+            raise ValueError("At least one new sportsbook row must be selected")
+        if not selected_staged_row_ids.issubset(selectable_ids):
+            raise ValueError("Selected rows must be new rows from this import batch")
+
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
+                continue
+            payload = json.loads(staged_row["mapped_payload_json"])
+            timestamp = utc_now()
+            record = {
+                "sportsbook_bet_id": f"SB-{uuid4().hex[:8].upper()}",
+                "profile_id": profile_id,
+                "event_name": payload["event_name"],
+                "offer_text": payload["offer_text"],
+                "bookmaker": payload["bookmaker"],
+                "offer_type": payload["offer_type"],
+                "bet_type": payload["bet_type"],
+                "offer_name": payload["offer_name"],
+                "fixture_type": payload["fixture_type"],
+                "market": payload["market"],
+                "status": payload["status"],
+                "result": payload["result"],
+                "back_stake": payload["back_stake"],
+                "back_odds": payload["back_odds"],
+                "bonus_trigger": payload["bonus_trigger"],
+                "maximum_bonus": payload["maximum_bonus"],
+                "bonus_retention_rate": payload["bonus_retention_rate"],
+                "match_strategy": payload["match_strategy"],
+                "lay_odds_1": payload["lay_odds_1"],
+                "multi_lay_outcome_1_name": payload["multi_lay_outcome_1_name"],
+                "multi_lay_outcomes_json": payload["multi_lay_outcomes_json"],
+                "lay_actual": payload["lay_actual"],
+                "lay_matched_stake_1": payload["lay_matched_stake_1"],
+                "lay_commission_1": "",
+                "exchange_name": payload["exchange_name"],
+                "date_settled": payload["date_settled"],
+                "user_notes": payload["user_notes"],
+                "manual_override_value": payload["manual_override_value"],
+                "manual_override_reason": payload["manual_override_reason"],
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            connection.execute(
+                """
+                INSERT INTO sportsbook_bets (
+                  sportsbook_bet_id, profile_id, event_name, offer_text, bookmaker,
+                  offer_type, bet_type, offer_name, fixture_type, market, status, result,
+                  back_stake, back_odds, bonus_trigger, maximum_bonus, bonus_retention_rate,
+                  match_strategy, lay_odds_1, multi_lay_outcome_1_name,
+                  multi_lay_outcomes_json, lay_actual, lay_matched_stake_1, lay_commission_1,
+                  exchange_name, date_settled, user_notes, manual_override_value,
+                  manual_override_reason, created_at, updated_at
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                tuple(record.values()),
+            )
+            write_audit_entry(
+                connection=connection,
+                sportsbook_bet_id=record["sportsbook_bet_id"],
+                profile_id=profile_id,
+                action="imported",
+                payload={
+                    **record,
+                    "import_batch_id": import_batch_id,
+                    "source_record_id": staged_row["source_record_id"],
+                    "backup_snapshot_id": backup_snapshot_id,
+                },
+            )
+            connection.execute(
+                """
+                INSERT INTO import_source_records (
+                  source_sheet, source_record_id, profile_id, source_hash,
+                  import_batch_id, entity_type, entity_id, imported_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    staged_row["source_sheet"],
+                    staged_row["source_record_id"],
+                    profile_id,
+                    staged_row["source_hash"],
+                    import_batch_id,
+                    "sportsbook_bet",
+                    record["sportsbook_bet_id"],
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE import_staged_rows
+                SET staged_action = 'imported'
+                WHERE import_staged_row_id = ? AND import_batch_id = ?
+                """,
+                (staged_row["import_staged_row_id"], import_batch_id),
+            )
+            imported_ids.append(record["sportsbook_bet_id"])
+
+        connection.execute(
+            """
+            UPDATE import_staged_rows
+            SET staged_action = 'skipped_by_operator'
+            WHERE import_batch_id = ? AND profile_id = ? AND staged_action = 'insert'
+            """,
+            (import_batch_id, profile_id),
+        )
+        action_counts = connection.execute(
+            """
+            SELECT staged_action, COUNT(*) AS row_count
+            FROM import_staged_rows
+            WHERE import_batch_id = ? AND profile_id = ?
+            GROUP BY staged_action
+            """,
+            (import_batch_id, profile_id),
+        ).fetchall()
+        confirmed_summary = {
+            str(row["staged_action"]): int(row["row_count"])
+            for row in action_counts
+        }
+        connection.execute(
+            """
+            UPDATE import_batches
+            SET status = ?, summary_json = ?, backup_snapshot_id = ?, completed_at = ?
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (
+                "confirmed",
+                json.dumps(confirmed_summary, sort_keys=True),
+                backup_snapshot_id,
+                utc_now(),
+                profile_id,
+                import_batch_id,
+            ),
+        )
+    return imported_ids
+
+
+def confirm_free_bet_import_batch(
+    *,
+    profile_id: str,
+    import_batch_id: str,
+    backup_snapshot_id: str,
+    selected_staged_row_ids: set[str],
+) -> list[str]:
+    imported_ids: list[str] = []
+    with connect() as connection:
+        batch = connection.execute(
+            """
+            SELECT *
+            FROM import_batches
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            raise ValueError("Import batch was not found for this profile")
+        if batch["status"] != "dry_run_ready":
+            raise ValueError("Only a dry-run-ready batch can be confirmed")
+        if batch["mapping_version"] != "free-bets-v1":
+            raise ValueError("Only free-bets-v1 batches can use this confirmation path")
+
+        staged_rows = connection.execute(
+            """
+            SELECT *
+            FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+        if any(row["staged_action"] == "blocked" for row in staged_rows):
+            raise ValueError("Blocked staged rows prevent confirmation")
+        selectable_ids = {
+            str(row["import_staged_row_id"])
+            for row in staged_rows
+            if row["staged_action"] == "insert"
+        }
+        if not selected_staged_row_ids:
+            raise ValueError("At least one new free-bet row must be selected")
+        if not selected_staged_row_ids.issubset(selectable_ids):
+            raise ValueError("Selected rows must be new rows from this import batch")
+
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
+                continue
+            payload = json.loads(staged_row["mapped_payload_json"])
+            timestamp = utc_now()
+            record = {
+                "free_bet_id": f"FB-{uuid4().hex[:8].upper()}",
+                "profile_id": profile_id,
+                "event_name": payload["event_name"],
+                "offer_text": payload["offer_text"],
+                "bookmaker": payload["bookmaker"],
+                "offer_type": payload["offer_type"],
+                "bet_type": payload["bet_type"],
+                "offer_name": payload["offer_name"],
+                "fixture_type": payload["fixture_type"],
+                "status": payload["status"],
+                "result": payload["result"],
+                "retention_mode": payload["retention_mode"],
+                "free_bet_value": payload["free_bet_value"],
+                "back_odds": payload["back_odds"],
+                "match_strategy": payload["match_strategy"],
+                "lay_odds_1": payload["lay_odds_1"],
+                "lay_actual": payload["lay_actual"],
+                "lay_matched_stake_1": payload["lay_matched_stake_1"],
+                "lay_commission_1": "",
+                "exchange_name": payload["exchange_name"],
+                "expiry_datetime": payload["expiry_datetime"],
+                "date_settled": payload["date_settled"],
+                "origin_qual_bet_id": payload["origin_qual_bet_id"],
+                "offer_group_id": payload["offer_group_id"],
+                "user_notes": payload["user_notes"],
+                "manual_override_value": payload["manual_override_value"],
+                "manual_override_reason": payload["manual_override_reason"],
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            connection.execute(
+                """
+                INSERT INTO free_bets (
+                  free_bet_id, profile_id, event_name, offer_text, bookmaker,
+                  offer_type, bet_type, offer_name, fixture_type, status, result,
+                  retention_mode, free_bet_value, back_odds, match_strategy, lay_odds_1,
+                  lay_actual, lay_matched_stake_1, lay_commission_1, exchange_name,
+                  expiry_datetime, date_settled, origin_qual_bet_id, offer_group_id,
+                  user_notes, manual_override_value, manual_override_reason, created_at,
+                  updated_at
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?
+                )
+                """,
+                tuple(record.values()),
+            )
+            write_free_bet_audit_entry(
+                connection=connection,
+                free_bet_id=record["free_bet_id"],
+                profile_id=profile_id,
+                action="imported",
+                payload={
+                    **record,
+                    "import_batch_id": import_batch_id,
+                    "source_record_id": staged_row["source_record_id"],
+                    "backup_snapshot_id": backup_snapshot_id,
+                },
+            )
+            connection.execute(
+                """
+                INSERT INTO import_source_records (
+                  source_sheet, source_record_id, profile_id, source_hash,
+                  import_batch_id, entity_type, entity_id, imported_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    staged_row["source_sheet"],
+                    staged_row["source_record_id"],
+                    profile_id,
+                    staged_row["source_hash"],
+                    import_batch_id,
+                    "free_bet",
+                    record["free_bet_id"],
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE import_staged_rows
+                SET staged_action = 'imported'
+                WHERE import_staged_row_id = ? AND import_batch_id = ?
+                """,
+                (staged_row["import_staged_row_id"], import_batch_id),
+            )
+            imported_ids.append(record["free_bet_id"])
+
+        connection.execute(
+            """
+            UPDATE import_staged_rows
+            SET staged_action = 'skipped_by_operator'
+            WHERE import_batch_id = ? AND profile_id = ? AND staged_action = 'insert'
+            """,
+            (import_batch_id, profile_id),
+        )
+        action_counts = connection.execute(
+            """
+            SELECT staged_action, COUNT(*) AS row_count
+            FROM import_staged_rows
+            WHERE import_batch_id = ? AND profile_id = ?
+            GROUP BY staged_action
+            """,
+            (import_batch_id, profile_id),
+        ).fetchall()
+        confirmed_summary = {
+            str(row["staged_action"]): int(row["row_count"])
+            for row in action_counts
+        }
+        connection.execute(
+            """
+            UPDATE import_batches
+            SET status = ?, summary_json = ?, backup_snapshot_id = ?, completed_at = ?
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (
+                "confirmed",
+                json.dumps(confirmed_summary, sort_keys=True),
+                backup_snapshot_id,
+                utc_now(),
+                profile_id,
+                import_batch_id,
+            ),
+        )
+    return imported_ids
+
+
+def confirm_casino_offer_import_batch(
+    *,
+    profile_id: str,
+    import_batch_id: str,
+    backup_snapshot_id: str,
+    selected_staged_row_ids: set[str],
+) -> list[str]:
+    imported_ids: list[str] = []
+    with connect() as connection:
+        batch = connection.execute(
+            "SELECT * FROM import_batches WHERE profile_id = ? AND import_batch_id = ?",
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            raise ValueError("Import batch was not found for this profile")
+        if batch["status"] != "dry_run_ready":
+            raise ValueError("Only a dry-run-ready batch can be confirmed")
+        if batch["mapping_version"] != "casino-offers-v1":
+            raise ValueError("Only casino-offers-v1 batches can use this confirmation path")
+
+        staged_rows = connection.execute(
+            """
+            SELECT * FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+        if any(row["staged_action"] == "blocked" for row in staged_rows):
+            raise ValueError("Blocked staged rows prevent confirmation")
+        selectable_ids = {
+            str(row["import_staged_row_id"])
+            for row in staged_rows
+            if row["staged_action"] == "insert"
+        }
+        if not selected_staged_row_ids:
+            raise ValueError("At least one new casino-offer row must be selected")
+        if not selected_staged_row_ids.issubset(selectable_ids):
+            raise ValueError("Selected rows must be new rows from this import batch")
+
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
+                continue
+            payload = json.loads(staged_row["mapped_payload_json"])
+            timestamp = utc_now()
+            record = {
+                "casino_offer_id": f"CO-{uuid4().hex[:8].upper()}",
+                "profile_id": profile_id,
+                "offer_group_id": payload["offer_group_id"],
+                "date_started": payload["date_started"],
+                "date_settling": payload["date_settling"] or payload["date_started"],
+                "expiry_datetime": payload["expiry_datetime"],
+                "bookmaker": payload["bookmaker"],
+                "offer_type": payload["offer_type"],
+                "offer_name": payload["offer_name"],
+                "game": payload["game"],
+                "cash_stake": payload["cash_stake"],
+                "credit_amount": payload["credit_amount"],
+                "bonus_amount": payload["bonus_amount"],
+                "wager_multiplier": payload["wager_multiplier"],
+                "wager_target": payload["wager_target"],
+                "required_spins": payload["required_spins"],
+                "spin_stake": payload["spin_stake"],
+                "free_spins_awarded": payload["free_spins_awarded"],
+                "free_spins_value": payload["free_spins_value"],
+                "status": payload["status"],
+                "result": payload["result"],
+                "calc_net_pnl": payload["calc_net_pnl"],
+                "final_net_pnl": payload["final_net_pnl"],
+                "user_notes": payload["user_notes"],
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            connection.execute(
+                """
+                INSERT INTO casino_offers (
+                  casino_offer_id, profile_id, offer_group_id, date_started, date_settling,
+                  expiry_datetime, bookmaker, offer_type, offer_name, game, cash_stake,
+                  credit_amount, bonus_amount, wager_multiplier, wager_target, required_spins,
+                  spin_stake, free_spins_awarded, free_spins_value, status, result, calc_net_pnl,
+                  final_net_pnl, user_notes, created_at, updated_at
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                tuple(record.values()),
+            )
+            write_casino_offer_audit_entry(
+                connection=connection,
+                casino_offer_id=record["casino_offer_id"],
+                profile_id=profile_id,
+                action="imported",
+                payload={
+                    **record,
+                    "import_batch_id": import_batch_id,
+                    "source_record_id": staged_row["source_record_id"],
+                    "backup_snapshot_id": backup_snapshot_id,
+                },
+            )
+            connection.execute(
+                """
+                INSERT INTO import_source_records (
+                  source_sheet, source_record_id, profile_id, source_hash,
+                  import_batch_id, entity_type, entity_id, imported_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    staged_row["source_sheet"],
+                    staged_row["source_record_id"],
+                    profile_id,
+                    staged_row["source_hash"],
+                    import_batch_id,
+                    "casino_offer",
+                    record["casino_offer_id"],
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE import_staged_rows SET staged_action = 'imported'
+                WHERE import_staged_row_id = ? AND import_batch_id = ?
+                """,
+                (staged_row["import_staged_row_id"], import_batch_id),
+            )
+            imported_ids.append(record["casino_offer_id"])
+
+        connection.execute(
+            """
+            UPDATE import_staged_rows SET staged_action = 'skipped_by_operator'
+            WHERE import_batch_id = ? AND profile_id = ? AND staged_action = 'insert'
+            """,
+            (import_batch_id, profile_id),
+        )
+        action_counts = connection.execute(
+            """
+            SELECT staged_action, COUNT(*) AS row_count FROM import_staged_rows
+            WHERE import_batch_id = ? AND profile_id = ? GROUP BY staged_action
+            """,
+            (import_batch_id, profile_id),
+        ).fetchall()
+        confirmed_summary = {
+            str(row["staged_action"]): int(row["row_count"])
+            for row in action_counts
+        }
+        connection.execute(
+            """
+            UPDATE import_batches
+            SET status = ?, summary_json = ?, backup_snapshot_id = ?, completed_at = ?
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (
+                "confirmed",
+                json.dumps(confirmed_summary, sort_keys=True),
+                backup_snapshot_id,
+                utc_now(),
+                profile_id,
+                import_batch_id,
+            ),
+        )
+    return imported_ids
+
+
+def confirm_cash_adjustment_import_batch(
+    *,
+    profile_id: str,
+    import_batch_id: str,
+    backup_snapshot_id: str,
+    selected_staged_row_ids: set[str],
+) -> list[str]:
+    imported_ids: list[str] = []
+    with connect() as connection:
+        batch = connection.execute(
+            "SELECT * FROM import_batches WHERE profile_id = ? AND import_batch_id = ?",
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            raise ValueError("Import batch was not found for this profile")
+        if batch["status"] != "dry_run_ready":
+            raise ValueError("Only a dry-run-ready batch can be confirmed")
+        if batch["mapping_version"] != "cash-adjustments-v1":
+            raise ValueError("Only cash-adjustments-v1 batches can use this confirmation path")
+
+        staged_rows = connection.execute(
+            """
+            SELECT * FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+        if any(row["staged_action"] == "blocked" for row in staged_rows):
+            raise ValueError("Blocked staged rows prevent confirmation")
+        selectable_ids = {
+            str(row["import_staged_row_id"])
+            for row in staged_rows
+            if row["staged_action"] == "insert"
+        }
+        if not selected_staged_row_ids:
+            raise ValueError("At least one new cash-adjustment row must be selected")
+        if not selected_staged_row_ids.issubset(selectable_ids):
+            raise ValueError("Selected rows must be new rows from this import batch")
+
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
+                continue
+            payload = json.loads(staged_row["mapped_payload_json"])
+            timestamp = utc_now()
+            record = {
+                "cash_adjustment_id": f"CA-{uuid4().hex[:8].upper()}",
+                "profile_id": profile_id,
+                "adjustment_date": payload["adjustment_date"],
+                "direction": payload["direction"],
+                "amount": payload["amount"],
+                "adjustment_type": payload["adjustment_type"],
+                "affects_investment": int(bool(payload["affects_investment"])),
+                "affects_cash_snapshot": int(bool(payload["affects_cash_snapshot"])),
+                "linked_account": payload["linked_account"],
+                "description": payload["description"],
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            connection.execute(
+                """
+                INSERT INTO cash_adjustments (
+                  cash_adjustment_id, profile_id, adjustment_date, direction, amount,
+                  adjustment_type, affects_investment, affects_cash_snapshot,
+                  linked_account, description, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                tuple(record.values()),
+            )
+            write_cash_adjustment_audit_entry(
+                connection=connection,
+                cash_adjustment_id=record["cash_adjustment_id"],
+                profile_id=profile_id,
+                action="imported",
+                payload={
+                    **record,
+                    "import_batch_id": import_batch_id,
+                    "source_record_id": staged_row["source_record_id"],
+                    "backup_snapshot_id": backup_snapshot_id,
+                },
+            )
+            connection.execute(
+                """
+                INSERT INTO import_source_records (
+                  source_sheet, source_record_id, profile_id, source_hash,
+                  import_batch_id, entity_type, entity_id, imported_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    staged_row["source_sheet"],
+                    staged_row["source_record_id"],
+                    profile_id,
+                    staged_row["source_hash"],
+                    import_batch_id,
+                    "cash_adjustment",
+                    record["cash_adjustment_id"],
+                    timestamp,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE import_staged_rows SET staged_action = 'imported'
+                WHERE import_staged_row_id = ? AND import_batch_id = ?
+                """,
+                (staged_row["import_staged_row_id"], import_batch_id),
+            )
+            imported_ids.append(record["cash_adjustment_id"])
+
+        connection.execute(
+            """
+            UPDATE import_staged_rows SET staged_action = 'skipped_by_operator'
+            WHERE import_batch_id = ? AND profile_id = ? AND staged_action = 'insert'
+            """,
+            (import_batch_id, profile_id),
+        )
+        action_counts = connection.execute(
+            """
+            SELECT staged_action, COUNT(*) AS row_count FROM import_staged_rows
+            WHERE import_batch_id = ? AND profile_id = ? GROUP BY staged_action
+            """,
+            (import_batch_id, profile_id),
+        ).fetchall()
+        confirmed_summary = {
+            str(row["staged_action"]): int(row["row_count"])
+            for row in action_counts
+        }
+        connection.execute(
+            """
+            UPDATE import_batches
+            SET status = ?, summary_json = ?, backup_snapshot_id = ?, completed_at = ?
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (
+                "confirmed",
+                json.dumps(confirmed_summary, sort_keys=True),
+                backup_snapshot_id,
+                utc_now(),
+                profile_id,
+                import_batch_id,
+            ),
+        )
+    return imported_ids
+
+
+def confirm_account_import_batch(
+    *,
+    profile_id: str,
+    import_batch_id: str,
+    backup_snapshot_id: str,
+    selected_staged_row_ids: set[str],
+) -> list[str]:
+    imported_ids: list[str] = []
+    with connect() as connection:
+        batch = connection.execute(
+            "SELECT * FROM import_batches WHERE profile_id = ? AND import_batch_id = ?",
+            (profile_id, import_batch_id),
+        ).fetchone()
+        if batch is None:
+            raise ValueError("Import batch was not found for this profile")
+        if batch["status"] != "dry_run_ready":
+            raise ValueError("Only a dry-run-ready batch can be confirmed")
+        if batch["mapping_version"] != "accounts-v1":
+            raise ValueError("Only accounts-v1 batches can use this confirmation path")
+
+        staged_rows = connection.execute(
+            """
+            SELECT * FROM import_staged_rows
+            WHERE profile_id = ? AND import_batch_id = ?
+            ORDER BY source_row, import_staged_row_id
+            """,
+            (profile_id, import_batch_id),
+        ).fetchall()
+        if any(row["staged_action"] == "blocked" for row in staged_rows):
+            raise ValueError("Blocked staged rows prevent confirmation")
+        selectable_ids = {
+            str(row["import_staged_row_id"])
+            for row in staged_rows
+            if row["staged_action"] in {"insert", "update"}
+        }
+        if not selected_staged_row_ids:
+            raise ValueError("At least one new or changed account row must be selected")
+        if not selected_staged_row_ids.issubset(selectable_ids):
+            raise ValueError("Selected rows must be new or changed rows from this import batch")
+
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
+                continue
+            payload = json.loads(staged_row["mapped_payload_json"])
+            timestamp = utc_now()
+            is_update = staged_row["staged_action"] == "update"
+            source = connection.execute(
+                """
+                SELECT * FROM import_source_records
+                WHERE source_sheet = ? AND source_record_id = ?
+                """,
+                (staged_row["source_sheet"], staged_row["source_record_id"]),
+            ).fetchone()
+            target_account_id = (
+                str(source["entity_id"])
+                if source is not None and source["entity_type"] == "account"
+                else str(staged_row["source_record_id"])
+            )
+            existing = None
+            if is_update:
+                existing = connection.execute(
+                    "SELECT * FROM accounts WHERE profile_id = ? AND account_id = ?",
+                    (profile_id, target_account_id),
+                ).fetchone()
+                if existing is None:
+                    raise ValueError("Changed account target was not found for this profile")
+            record = {
+                "account_id": target_account_id if is_update else f"AC-{uuid4().hex[:8].upper()}",
+                "profile_id": profile_id,
+                "bookmaker_id": None,
+                "account": payload["account"],
+                "type": payload["type"],
+                "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
+                "channel": payload["channel"],
+                "status": payload["status"],
+                "current_balance": payload["current_balance"],
+                "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
+                "last_balance_update": payload["last_balance_update"],
+                "group_name": payload["group_name"],
+                "platform": payload["platform"],
+                "sign_up_date": payload["sign_up_date"],
+                "notes": payload["notes"],
+                "created_at": str(existing["created_at"]) if existing is not None else timestamp,
+                "updated_at": timestamp,
+            }
+            if is_update:
+                connection.execute(
+                    """
+                    UPDATE accounts SET
+                      bookmaker_id = ?, account = ?, type = ?, counts_in_cash_total = ?,
+                      channel = ?, status = ?, current_balance = ?,
+                      pending_withdrawal_amount = ?, last_balance_update = ?, group_name = ?,
+                      platform = ?, sign_up_date = ?, notes = ?, updated_at = ?
+                    WHERE profile_id = ? AND account_id = ?
+                    """,
+                    (
+                        record["bookmaker_id"], record["account"], record["type"],
+                        record["counts_in_cash_total"], record["channel"], record["status"],
+                        record["current_balance"], record["pending_withdrawal_amount"],
+                        record["last_balance_update"], record["group_name"], record["platform"],
+                        record["sign_up_date"], record["notes"], record["updated_at"],
+                        profile_id, record["account_id"],
+                    ),
+                )
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO accounts (
+                      account_id, profile_id, bookmaker_id, account, type,
+                      counts_in_cash_total, channel, status, current_balance,
+                      pending_withdrawal_amount, last_balance_update, group_name,
+                      platform, sign_up_date, notes, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    tuple(record.values()),
+                )
+            write_account_audit_entry(
+                connection=connection,
+                account_id=record["account_id"],
+                profile_id=profile_id,
+                action="imported_update" if is_update else "imported",
+                payload={
+                    **record,
+                    "import_batch_id": import_batch_id,
+                    "source_record_id": staged_row["source_record_id"],
+                    "backup_snapshot_id": backup_snapshot_id,
+                    "previous_record": dict(existing) if existing is not None else None,
+                },
+            )
+            if source is None:
+                connection.execute(
+                    """
+                    INSERT INTO import_source_records (
+                      source_sheet, source_record_id, profile_id, source_hash,
+                      import_batch_id, entity_type, entity_id, imported_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        staged_row["source_sheet"], staged_row["source_record_id"], profile_id,
+                        staged_row["source_hash"], import_batch_id, "account",
+                        record["account_id"], timestamp,
+                    ),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE import_source_records
+                    SET source_hash = ?, import_batch_id = ?, entity_type = 'account',
+                        entity_id = ?, imported_at = ?
+                    WHERE source_sheet = ? AND source_record_id = ? AND profile_id = ?
+                    """,
+                    (
+                        staged_row["source_hash"], import_batch_id, record["account_id"], timestamp,
+                        staged_row["source_sheet"], staged_row["source_record_id"], profile_id,
+                    ),
+                )
+            connection.execute(
+                """
+                UPDATE import_staged_rows SET staged_action = 'imported'
+                WHERE import_staged_row_id = ? AND import_batch_id = ?
+                """,
+                (staged_row["import_staged_row_id"], import_batch_id),
+            )
+            imported_ids.append(record["account_id"])
+
+        connection.execute(
+            """
+            UPDATE import_staged_rows SET staged_action = 'skipped_by_operator'
+            WHERE import_batch_id = ? AND profile_id = ?
+              AND staged_action IN ('insert', 'update')
+            """,
+            (import_batch_id, profile_id),
+        )
+        action_counts = connection.execute(
+            """
+            SELECT staged_action, COUNT(*) AS row_count FROM import_staged_rows
+            WHERE import_batch_id = ? AND profile_id = ? GROUP BY staged_action
+            """,
+            (import_batch_id, profile_id),
+        ).fetchall()
+        confirmed_summary = {
+            str(row["staged_action"]): int(row["row_count"])
+            for row in action_counts
+        }
+        connection.execute(
+            """
+            UPDATE import_batches
+            SET status = ?, summary_json = ?, backup_snapshot_id = ?, completed_at = ?
+            WHERE profile_id = ? AND import_batch_id = ?
+            """,
+            (
+                "confirmed",
+                json.dumps(confirmed_summary, sort_keys=True),
+                backup_snapshot_id,
+                utc_now(),
+                profile_id,
+                import_batch_id,
+            ),
+        )
+    return imported_ids
+
+
+def create_backup_snapshot_record(payload: dict[str, Any]) -> BackupSnapshotRecord:
+    record = {
+        "backup_snapshot_id": payload.get("backup_snapshot_id")
+        or f"BACKUP-{uuid4().hex[:8].upper()}",
+        "created_at": payload["created_at"],
+        "backup_scope": payload["backup_scope"],
+        "schema_version": payload["schema_version"],
+        "storage_path": payload["storage_path"],
+        "status": payload["status"],
+        "notes": payload["notes"],
+        "checksum_sha256": payload["checksum_sha256"],
+        "byte_size": payload["byte_size"],
+        "integrity_check": payload["integrity_check"],
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO backup_snapshots (
+              backup_snapshot_id,
+              created_at,
+              backup_scope,
+              schema_version,
+              storage_path,
+              status,
+              notes,
+              checksum_sha256,
+              byte_size,
+              integrity_check
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+    return BackupSnapshotRecord(**record)
+
+
+def list_backup_snapshot_records() -> list[BackupSnapshotRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM backup_snapshots
+            ORDER BY created_at DESC, backup_snapshot_id DESC
+            """
+        ).fetchall()
+    return [map_backup_snapshot_row(row) for row in rows]
+
+
 def list_accounts(profile_id: str) -> list[AccountRecord]:
     with connect() as connection:
         rows = connection.execute(
@@ -3415,6 +4768,15 @@ def get_account(profile_id: str, account_id: str) -> AccountRecord | None:
     return None if row is None else map_account_row(row)
 
 
+def get_account_by_id(account_id: str) -> AccountRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM accounts WHERE account_id = ?",
+            (account_id,),
+        ).fetchone()
+    return None if row is None else map_account_row(row)
+
+
 def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
     record = {
         "account_id": payload.get("account_id") or f"AC-{uuid4().hex[:8].upper()}",
@@ -3430,6 +4792,8 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
         "last_balance_update": payload["last_balance_update"],
         "group_name": payload["group_name"],
         "platform": payload["platform"],
+        "sign_up_date": payload.get("sign_up_date", ""),
+        "notes": payload.get("notes", ""),
         "created_at": utc_now(),
         "updated_at": utc_now(),
     }
@@ -3450,9 +4814,11 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
               last_balance_update,
               group_name,
               platform,
+              sign_up_date,
+              notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -3489,6 +4855,8 @@ def update_account(
         "last_balance_update": payload["last_balance_update"],
         "group_name": payload["group_name"],
         "platform": payload["platform"],
+        "sign_up_date": payload.get("sign_up_date", ""),
+        "notes": payload.get("notes", ""),
         "updated_at": utc_now(),
     }
     with connect() as connection:
@@ -3507,6 +4875,8 @@ def update_account(
               last_balance_update = ?,
               group_name = ?,
               platform = ?,
+              sign_up_date = ?,
+              notes = ?,
               updated_at = ?
             WHERE profile_id = ? AND account_id = ?
             """,
@@ -3522,6 +4892,8 @@ def update_account(
                 updated["last_balance_update"],
                 updated["group_name"],
                 updated["platform"],
+                updated["sign_up_date"],
+                updated["notes"],
                 updated["updated_at"],
                 profile_id,
                 account_id,

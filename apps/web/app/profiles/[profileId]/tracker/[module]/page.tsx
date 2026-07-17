@@ -28,6 +28,10 @@ export default async function TrackerModulePage({
   const query = await searchParams;
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
+  const requestedIssue =
+    query.view === "issues" && typeof query.issue === "string"
+      ? query.issue
+      : undefined;
   const profile = await getProfile(profileId);
   const moduleDefinition = trackerModuleDefinitions[module];
 
@@ -82,11 +86,11 @@ export default async function TrackerModulePage({
       {module === "accounts" ? (
         <AccountsWorkflowShell profileId={profile.profileId} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell initialQuery={requestedSearch} profileId={profile.profileId} />
+        <SportsbookWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} key={`sportsbook:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
       ) : module === "free-bets" ? (
-        <FreeBetWorkflowShell initialQuery={requestedSearch} initialTableMode={requestedView} profileId={profile.profileId} />
+        <FreeBetWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialTableMode={requestedView} key={`free-bets:${requestedIssue ?? requestedView ?? "default"}`} profileId={profile.profileId} />
       ) : module === "casino-offers" ? (
-        <CasinoOfferWorkflowShell initialQuery={requestedSearch} profileId={profile.profileId} />
+        <CasinoOfferWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} key={`casino:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (

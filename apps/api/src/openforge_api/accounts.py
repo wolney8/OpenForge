@@ -43,6 +43,8 @@ class AccountPayload(BaseModel):
     last_balance_update: str = Field(default="", max_length=60)
     group_name: str = Field(default="", max_length=120)
     platform: str = Field(default="", max_length=120)
+    sign_up_date: str = Field(default="", max_length=20)
+    notes: str = Field(default="", max_length=1000)
 
 
 class AccountResponse(AccountPayload):

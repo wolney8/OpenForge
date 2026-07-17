@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill when checking whether a proposed or implemented OpenForge web workflow preserves the spreadsheet workflow.
+Use this skill when checking whether a proposed or implemented Plum Duff web workflow preserves the spreadsheet workflow.
 
 ## Review steps
 

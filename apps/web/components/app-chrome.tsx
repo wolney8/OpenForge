@@ -244,7 +244,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <div className="app-frame">
-        <header className="top-app-bar" data-openforge-top-bar="">
+        <header className="top-app-bar" data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
             <div className="app-menu-shell" ref={appMenuRef}>
               <button
@@ -263,6 +263,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link className="nav-pill" href="/profiles" onClick={() => setAppMenuOpen(false)}>
                   Profiles
+                </Link>
+                <Link className="nav-pill" href="/settings" onClick={() => setAppMenuOpen(false)}>
+                  Settings
                 </Link>
                 <Link
                   className="nav-pill"

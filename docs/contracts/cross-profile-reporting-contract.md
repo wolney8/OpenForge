@@ -1,6 +1,6 @@
 # Calculation Contract: Cross-Profile Reporting Aggregation
 
-_Last updated: 2026-07-15_
+_Last updated: 2026-07-16_
 
 ## 0. Contract status
 
@@ -47,6 +47,17 @@ Per-profile comparison rows expose:
 - overdue count
 - expiring-free-bet count
 - current liability
+- sportsbook rows requiring action
+- free-bet rows requiring action
+- casino-offer rows requiring action
+
+The Fund Manager directory's `open-position count` is a current-state operational count, not the
+broader workbook `counts_as_open` reporting flag and not a selected-range count:
+
+- sportsbook/free-bet: `status = Placed`, `result = Pending`, valid settlement time `> now`
+- casino: `status = Started`, `result = Pending`, valid settlement time `> now`
+- overdue, missing-date, prospecting/available and settled rows are excluded from Open positions
+- excluded problem rows remain represented by the ledger-specific Actions indicators
 
 Combined outputs expose sums of the same fields plus:
 
@@ -100,6 +111,8 @@ Formal report fields retain their existing signed-value semantics:
 - The aggregator accepts completed profile summaries, never unscoped raw rows.
 - Each comparison row retains `profile_id` and profile label.
 - UI drilldowns must include the owning `profile_id`.
+- Operational action counts remain separated by ledger; an aggregate overdue count must not guess a
+  destination ledger.
 - No combined table may provide operational row mutation controls.
 - Balance snapshots retain their owning `profile_id`; historical snapshot amounts are not added to current cash snapshot or P&amp;L.
 - The combined surface is classified `internal_operational` and must not be rendered on subscriber routes.
@@ -115,6 +128,8 @@ Formal report fields retain their existing signed-value semantics:
 - bookmaker grouping across profiles
 - missing/failed profile exclusion reported explicitly
 - no mutation actions on the combined UI
+- direct sportsbook, free-bet and casino action links apply `view=issues&issue=all-issues`
+- destination ledger distinguishes `All rows` from `All issues`
 
 ## 10. UI requirements
 
@@ -127,8 +142,18 @@ Formal report fields retain their existing signed-value semantics:
 - Use human-readable British dates in report labels and tables while retaining stable machine period keys.
 - Surface concise action-needed indicators for overdue or expiring work without treating all open
   positions as errors.
-- Group the combined surface into accessible `Overview`, `Performance`, `Exposure`, and
+- Group the Fund Manager surface into accessible `Profiles`, `Performance`, `Exposure`, and
   `Formal Reports` views without changing the calculations or resolved range behind each view.
+- Keep profile management, operational issue links, dashboard navigation, report navigation and
+  the profile-details drawer exclusively in the `Profiles` directory view.
+- The directory combines ledger issue actions and dashboard/report navigation into one `Actions`
+  column. Clicking non-interactive row space opens profile details; nested controls retain their
+  own destinations and must not also open the drawer.
+- `Profiles` contains the all-profile headline values above the directory. Gross P&amp;L is
+  sportsbook + free-bet + casino reporting value; retained profit adds signed withdrawals and
+  qualifying costs; cash snapshot is the current included account balance total.
+- `Exposure` may compare profile-level exposure values, but must not duplicate generic ledger
+  actions or tracker navigation. Operational resolution starts from the `Profiles` directory.
 - Keep profile inclusion independent from directory search, status filters, pagination, and
   session pinning. Directory controls must never silently add or remove a profile from totals.
 - Present the profile roster as a paginated directory with basic metrics and profile-safe
@@ -136,7 +161,10 @@ Formal report fields retain their existing signed-value semantics:
 - Treat pinning as presentation-only behaviour. Quick profile details may update only the fields
   approved by `profile-metadata-management-workflow-contract.md`; those updates do not mutate
   tracker rows or silently change reporting inclusion.
-- Action links may drill into the owning profile dashboard or ledger with a review filter. They do
-  not mutate rows, settle bets, or bypass the destination workflow's profile scope.
+- Report-only watchlists may remain on the dashboard, but root-profile operational links must open
+  the owning sportsbook, free-bet or casino ledger directly with an explicit issue filter.
+- An external action link overrides persisted table mode/filter state for that navigation. It must
+  show all dates so an overdue row cannot remain hidden by the reporting date range.
+- Action links do not mutate rows, settle bets, or bypass the destination workflow's profile scope.
 - A future multi-profile offer action must hand off to the approved sequential multi-profile-entry
   contract. Combined reporting must never create or bulk-confirm operational rows directly.

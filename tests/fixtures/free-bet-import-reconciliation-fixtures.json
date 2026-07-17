@@ -1,0 +1,114 @@
+{
+  "cases": [
+    {
+      "case_id": "FBR-001",
+      "mapping_version": "free-bets-v1",
+      "rows": [
+        {
+          "profile_id": "PROFILE-001",
+          "status": "Placed",
+          "result": "Pending",
+          "retention_mode": "SNR",
+          "free_bet_value": "10.00",
+          "back_odds": "5.00",
+          "match_strategy": "Standard",
+          "lay_odds_1": "5.20",
+          "lay_commission_1": "0.02",
+          "default_underlay_factor": "0.928",
+          "default_overlay_factor": "1.300",
+          "source_reporting_value": "7.57",
+          "compatible": true
+        }
+      ],
+      "expected": {"state": "matched", "source_total": "7.57", "recomputed_total": "7.57", "difference": "0.00"}
+    },
+    {
+      "case_id": "FBR-002",
+      "mapping_version": "free-bets-v1",
+      "rows": [
+        {
+          "profile_id": "PROFILE-001",
+          "status": "Placed",
+          "result": "Pending",
+          "retention_mode": "SNR",
+          "free_bet_value": "10.00",
+          "back_odds": "5.00",
+          "match_strategy": "Standard",
+          "lay_odds_1": "5.20",
+          "lay_commission_1": "0.02",
+          "default_underlay_factor": "0.928",
+          "default_overlay_factor": "1.300",
+          "source_reporting_value": "9.00",
+          "compatible": true
+        }
+      ],
+      "expected": {"state": "mismatch", "source_total": "9.00", "recomputed_total": "7.57", "difference": "1.43"}
+    },
+    {
+      "case_id": "FBR-003",
+      "mapping_version": "free-bets-v1",
+      "rows": [
+        {
+          "profile_id": "PROFILE-001",
+          "status": "Placed",
+          "result": "Pending",
+          "retention_mode": "SNR",
+          "free_bet_value": "10.00",
+          "back_odds": "5.00",
+          "match_strategy": "Standard",
+          "lay_odds_1": "5.20",
+          "lay_commission_1": "",
+          "default_underlay_factor": "0.928",
+          "default_overlay_factor": "1.300",
+          "source_reporting_value": "7.57",
+          "compatible": true
+        }
+      ],
+      "expected": {"state": "incomplete", "source_total": null, "recomputed_total": "0.00", "difference": null}
+    },
+    {
+      "case_id": "FBR-004",
+      "mapping_version": "free-bets-v1",
+      "rows": [
+        {
+          "profile_id": "PROFILE-001",
+          "status": "Placed",
+          "result": "Pending",
+          "retention_mode": "SNR",
+          "free_bet_value": "10.00",
+          "back_odds": "5.00",
+          "match_strategy": "No Lay",
+          "lay_odds_1": "",
+          "lay_commission_1": "",
+          "default_underlay_factor": "0.928",
+          "default_overlay_factor": "1.300",
+          "source_reporting_value": "0.00",
+          "compatible": true
+        }
+      ],
+      "expected": {"state": "matched", "source_total": "0.00", "recomputed_total": "0.00", "difference": "0.00"}
+    },
+    {
+      "case_id": "FBR-005",
+      "mapping_version": "free-bets-v1",
+      "rows": [
+        {
+          "profile_id": "PROFILE-001",
+          "status": "Placed",
+          "result": "Pending",
+          "retention_mode": "SNR",
+          "free_bet_value": "10.00",
+          "back_odds": "5.00",
+          "match_strategy": "Standard",
+          "lay_odds_1": "5.20",
+          "lay_commission_1": "0.02",
+          "default_underlay_factor": "0.928",
+          "default_overlay_factor": "1.300",
+          "source_reporting_value": "",
+          "compatible": true
+        }
+      ],
+      "expected": {"state": "incomplete", "source_total": null, "recomputed_total": "7.57", "difference": null}
+    }
+  ]
+}

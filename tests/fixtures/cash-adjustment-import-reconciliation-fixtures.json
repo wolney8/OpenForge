@@ -1,0 +1,55 @@
+{
+  "cases": [
+    {
+      "case_id": "CAR-001",
+      "mapping_version": "cash-adjustments-v1",
+      "rows": [
+        {"adjustment_date": "2026-07-06", "adjustment_type": "TopUp", "direction": "In", "amount": "50.00", "source_signed_amount": "50.00", "compatible": true},
+        {"adjustment_date": "2026-07-07", "adjustment_type": "Withdrawal", "direction": "Out", "amount": "20.00", "source_signed_amount": "-20.00", "compatible": true}
+      ],
+      "expected": {
+        "state": "matched",
+        "source_total": "30.00",
+        "recomputed_total": "30.00",
+        "difference": "0.00"
+      }
+    },
+    {
+      "case_id": "CAR-002",
+      "mapping_version": "cash-adjustments-v1",
+      "rows": [
+        {"adjustment_date": "2026-07-06", "adjustment_type": "TopUp", "direction": "In", "amount": "50.00", "source_signed_amount": "999.00", "compatible": true}
+      ],
+      "expected": {
+        "state": "mismatch",
+        "source_total": "999.00",
+        "recomputed_total": "50.00",
+        "difference": "949.00"
+      }
+    },
+    {
+      "case_id": "CAR-003",
+      "mapping_version": "cash-adjustments-v1",
+      "rows": [
+        {"adjustment_date": "2026-07-06", "adjustment_type": "TopUp", "direction": "In", "amount": "50.00", "source_signed_amount": "", "compatible": true}
+      ],
+      "expected": {
+        "state": "incomplete",
+        "source_total": null,
+        "recomputed_total": "50.00",
+        "difference": null
+      }
+    },
+    {
+      "case_id": "CAR-004",
+      "mapping_version": "accounts-v1",
+      "rows": [],
+      "expected": {
+        "state": "not_available",
+        "source_total": null,
+        "recomputed_total": null,
+        "difference": null
+      }
+    }
+  ]
+}

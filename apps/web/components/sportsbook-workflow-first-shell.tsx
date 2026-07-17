@@ -324,7 +324,7 @@ type SportsbookTableMode =
   | "underlays"
   | "overlays";
 
-type SportsbookIssueFilter = "any" | "back-unplaced" | "no-settle-date" | "outcome-needed";
+type SportsbookIssueFilter = "any" | "all-issues" | "back-unplaced" | "no-settle-date" | "outcome-needed";
 
 type SportsbookTableFilterState = {
   bookmaker: string;
@@ -614,6 +614,10 @@ function getIssueFilterMatch(row: SportsbookRecord, issueType: SportsbookIssueFi
   }
 
   const issueLabels = new Set(getSportsbookIssueBadges(row).map((badge) => badge.label));
+
+  if (issueType === "all-issues") {
+    return issueLabels.size > 0;
+  }
 
   if (issueType === "back-unplaced") {
     return issueLabels.has("Back Unplaced");
@@ -2359,7 +2363,7 @@ function getPersistableSportsbookForm(
   };
 }
 
-export function SportsbookWorkflowShell({ profileId, initialQuery = "" }: { profileId: string; initialQuery?: string }) {
+export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter }: { profileId: string; initialQuery?: string; initialIssueFilter?: string }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
@@ -2381,13 +2385,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "" }: { prof
   );
   const [tableMode, setTableMode] = usePersistedState<SportsbookTableMode>(
     `openforge-ledger-table-mode:${profileId}:sportsbook-bets`,
-    "recent"
+    "recent",
+    Boolean(initialIssueFilter)
   );
   const [tableSort, setTableSort] = useState<SportsbookTableSort | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const [tableFilters, setTableFilters] = usePersistedState<SportsbookTableFilterState>(
     `openforge-ledger-table-filters:${profileId}:sportsbook-bets`,
-    emptyTableFilters
+    {
+      ...emptyTableFilters,
+      issue_type: initialIssueFilter === "outcome-needed" ? "outcome-needed" : initialIssueFilter === "all-issues" ? "all-issues" : "any",
+    },
+    Boolean(initialIssueFilter)
   );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<SportsbookColumnKey>>(
@@ -4843,6 +4852,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
             aria-label="Sportsbook filter controls"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -4995,7 +5005,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   ))}
                 </select>
               </label>
-              <label className="field-control">
+              <label className={`field-control${tableFilters.issue_type !== "any" ? " is-active-filter" : ""}`}>
                 <span>Issue type</span>
                 <select
                   onChange={(event) =>
@@ -5003,7 +5013,8 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   }
                   value={tableFilters.issue_type}
                 >
-                  <option value="any">All</option>
+                  <option value="any">All rows</option>
+                  <option value="all-issues">All issues</option>
                   <option value="back-unplaced">Back Unplaced</option>
                   <option value="no-settle-date">No Settle Date</option>
                   <option value="outcome-needed">Outcome Needed</option>
@@ -5076,8 +5087,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         <div className="modal-backdrop" onClick={() => setOutcomeModalState(null)}>
           <section
             aria-label="Update sportsbook outcome"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
           >
             <div className="workflow-panel-header">
               <div className="stack">
@@ -5166,8 +5179,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         >
           <section
             aria-label="Copy sportsbook row to free bets"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
           >
             <div className="workflow-panel-header">
               <div className="stack">
@@ -5341,6 +5356,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         <div className="modal-backdrop" onClick={closeEditor}>
           <section
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
+            aria-modal="true"
             className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
             onClick={(event) => event.stopPropagation()}
             ref={editorRef}

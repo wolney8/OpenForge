@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill to verify that OpenForge preserves the tracker's cash-first current-value calculations instead of replacing them with generic matched-betting calculator behaviour.
+Use this skill to verify that Plum Duff preserves the tracker's cash-first current-value calculations instead of replacing them with generic matched-betting calculator behaviour.
 
 ## Review questions
 

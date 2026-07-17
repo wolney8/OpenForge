@@ -9,7 +9,7 @@ Use the prompt below with an LLM that has reliable web access. Replace the URL p
 
 ---
 
-You are performing bounded public-web research for OpenForge, a local-first matched-betting tracker. Your task is to analyse the observable behaviour of free, publicly accessible matched-betting calculators and produce evidence-backed candidate documentation. Do not implement application code.
+You are performing bounded public-web research for Plum Duff, a local-first matched-betting tracker. Your task is to analyse the observable behaviour of free, publicly accessible matched-betting calculators and produce evidence-backed candidate documentation. Do not implement application code.
 
 ## Safety and legal boundaries
 
@@ -22,13 +22,13 @@ You are performing bounded public-web research for OpenForge, a local-first matc
 - Respect robots, site terms and reasonable request rates.
 - If inspection is blocked or terms prohibit the work, record that limitation and stop.
 
-## OpenForge authority rules
+## Plum Duff authority rules
 
-- The OpenForge workbook and current source pack remain the source of truth for tracker workflow and cash-first current value.
+- The Plum Duff workbook and current source pack remain the source of truth for tracker workflow and cash-first current value.
 - External calculators are reference evidence, not automatic authority.
 - Keep calculator/reference values separate from actual user-entered placement values.
 - Keep projected/current value separate from settled/final value.
-- Never replace OpenForge's conservative cash-first `MIN()`-style current value with a generic equal-profit headline.
+- Never replace Plum Duff's conservative cash-first `MIN()`-style current value with a generic equal-profit headline.
 - Do not infer a formula from one example. Use multiple controlled input changes.
 
 ## Calculator family
@@ -51,7 +51,7 @@ Research this calculator family:
 7. Mark every claim as `Observed`, `Inferred`, `Documented by source`, or `To confirm`.
 8. State confidence as `High`, `Medium` or `Low` and explain why.
 9. Compare results with a second public calculator where possible.
-10. Map calculator outputs to OpenForge fields without treating suggested stakes as actual placed stakes.
+10. Map calculator outputs to Plum Duff fields without treating suggested stakes as actual placed stakes.
 
 Do not use minified JavaScript as the sole evidence. If public client-side code is readable, describe behaviour and formula structure in your own words; do not copy implementation code.
 
@@ -99,7 +99,7 @@ Produce five sections.
 - blank/error handling
 - unresolved ambiguities
 
-### 3. OpenForge adaptation
+### 3. Plum Duff adaptation
 
 - spreadsheet/workbook equivalent
 - calculator/reference outputs
@@ -125,6 +125,6 @@ Provide:
 
 ## Completion rule
 
-Stop after research documentation, candidate contract and fixtures. Do not modify OpenForge application code. End with a concise list of contradictions between the external calculator, OpenForge workbook and common matched-betting conventions.
+Stop after research documentation, candidate contract and fixtures. Do not modify Plum Duff application code. End with a concise list of contradictions between the external calculator, Plum Duff workbook and common matched-betting conventions.
 
 ---

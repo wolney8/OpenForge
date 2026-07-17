@@ -4,9 +4,9 @@ _Last updated: 2026-07-14_
 
 ## Why this version exists
 
-Ordinary LLM web search can often read a page but cannot operate a JavaScript calculator. Asking one response to inspect multiple sites, run dozens of cases, infer formulas, understand OpenForge and draft contracts is also too broad.
+Ordinary LLM web search can often read a page but cannot operate a JavaScript calculator. Asking one response to inspect multiple sites, run dozens of cases, infer formulas, understand Plum Duff and draft contracts is also too broad.
 
-Use this sequence for one calculator URL and one calculator mode at a time. The external model produces only a compact evidence packet. Codex will compare that evidence with the workbook and create the final OpenForge contract and fixture files.
+Use this sequence for one calculator URL and one calculator mode at a time. The external model produces only a compact evidence packet. Codex will compare that evidence with the workbook and create the final Plum Duff contract and fixture files.
 
 ## Operating rule
 
@@ -130,7 +130,7 @@ Reject any formula that cannot reproduce every relevant observed output within t
 ## Phase 5: Evidence packet finalisation
 
 ```text
-Produce one compact final evidence packet for this calculator mode. Do not draft an OpenForge contract.
+Produce one compact final evidence packet for this calculator mode. Do not draft a Plum Duff contract.
 
 Include only:
 
@@ -144,7 +144,7 @@ Include only:
 
 Clearly distinguish OBSERVED from INFERRED. Include direct page citations for page-level claims and observation case IDs for numerical claims.
 
-Stop after the evidence packet. OpenForge Codex will perform workbook comparison, contract drafting and fixture acceptance.
+Stop after the evidence packet. Plum Duff Codex will perform workbook comparison, contract drafting and fixture acceptance.
 ```
 
 ## Manual capture route
@@ -173,6 +173,5 @@ Codex will then:
 2. reproduce the arithmetic independently
 3. identify contradictions
 4. draft or update the calculation contract
-5. create deterministic OpenForge fixtures
+5. create deterministic Plum Duff fixtures
 6. request human approval before calculation implementation
-

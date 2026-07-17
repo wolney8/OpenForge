@@ -6,9 +6,9 @@ const freeBetRoute = "/profiles/profile-demo-001/tracker/free-bets";
 test("unchanged editor navigation is silent while a real edit is protected", async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto(sportsbookRoute);
-  await page.waitForLoadState("networkidle");
-
-  await page.locator(".data-table tbody tr").first().click();
+  const firstSportsbookRow = page.locator(".data-table tbody tr").first();
+  await expect(firstSportsbookRow).toBeVisible();
+  await firstSportsbookRow.click();
   await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
 
   let unchangedDialogCount = 0;
@@ -43,11 +43,11 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
 
 test("tracker controls expose visible focus and an operable theme toggle", async ({ page }) => {
   await page.goto(sportsbookRoute);
-  await page.waitForLoadState("networkidle");
 
   const filterButton = page.getByRole("button", {
     name: "Open sportsbook filter and column controls",
   });
+  await expect(filterButton).toBeVisible();
   await filterButton.focus();
   await expect(filterButton).toBeFocused();
   const focusStyle = await filterButton.evaluate((element) => {

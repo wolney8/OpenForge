@@ -1,1 +1,1 @@
-"""OpenForge API package."""
+"""Plum Duff API package."""

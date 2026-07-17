@@ -1,8 +1,8 @@
-# OpenForge Workbook Deconstruction Plan
+# Plum Duff Workbook Deconstruction Plan
 
 ## Goal
 
-Extract the current spreadsheet architecture safely so OpenForge can mirror and improve the tracker without losing cash-first behaviour or profile-scoped intent.
+Extract the current spreadsheet architecture safely so Plum Duff can mirror and improve the tracker without losing cash-first behaviour or profile-scoped intent.
 
 ## Inputs
 

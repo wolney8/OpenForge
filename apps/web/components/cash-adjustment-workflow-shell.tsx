@@ -1464,6 +1464,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
             aria-label="Cash-adjustment filter controls"
+            aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -1649,6 +1650,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         <div className="modal-backdrop" onClick={closeEditor}>
       <section
         aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
+        aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}

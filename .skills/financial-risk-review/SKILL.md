@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this skill for any OpenForge feature that can affect money values, exposure, balances, reports, or user decisions.
+Use this skill for any Plum Duff feature that can affect money values, exposure, balances, reports, or user decisions.
 
 ## Review questions
 

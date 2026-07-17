@@ -10,13 +10,15 @@ const sportsbookLayoutVariant: SportsbookLayoutVariant = "workflow-first";
 export function SportsbookWorkflowShell({
   profileId,
   initialQuery,
+  initialIssueFilter,
 }: {
   profileId: string;
   initialQuery?: string;
+  initialIssueFilter?: string;
 }) {
   if (sportsbookLayoutVariant === "legacy") {
     return <LegacySportsbookWorkflowShell profileId={profileId} />;
   }
 
-  return <WorkflowFirstSportsbookWorkflowShell initialQuery={initialQuery} profileId={profileId} />;
+  return <WorkflowFirstSportsbookWorkflowShell initialIssueFilter={initialIssueFilter} initialQuery={initialQuery} profileId={profileId} />;
 }

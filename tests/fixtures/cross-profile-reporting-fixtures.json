@@ -15,6 +15,7 @@
         "settledFinalValue": 10
       },
       "cashSnapshot": 250,
+      "trueOpenBets": 1,
       "openBets": 2,
       "overdueBets": 1,
       "expiringFreeBetCount": 1,
@@ -48,6 +49,7 @@
         "settledFinalValue": -1.5
       },
       "cashSnapshot": 100,
+      "trueOpenBets": 0,
       "openBets": 1,
       "overdueBets": 0,
       "expiringFreeBetCount": 2,
@@ -76,7 +78,7 @@
     "openCurrentValue": 3.5,
     "settledFinalValue": 8.5,
     "cashSnapshot": 350,
-    "openBets": 3,
+    "openBets": 1,
     "overdueBets": 1,
     "expiringFreeBetCount": 3,
     "currentLiability": 25,

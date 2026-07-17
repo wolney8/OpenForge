@@ -46,7 +46,7 @@ export function ProfileFlexibleNav({ profileId }: ProfileFlexibleNavProps) {
 
   useEffect(() => {
     const placeholder = placeholderRef.current;
-    const topBar = document.querySelector<HTMLElement>("[data-openforge-top-bar]");
+    const topBar = document.querySelector<HTMLElement>('[data-pd-id="app-shell.top-bar"]');
 
     if (!placeholder || !topBar) {
       return;
@@ -154,6 +154,7 @@ export function ProfileFlexibleNav({ profileId }: ProfileFlexibleNavProps) {
       aria-hidden={!dockState.ready}
       className="flexible-nav-overlay-shell"
       data-openforge-flex-nav="overlay"
+      data-pd-id="tracker-nav.floating-overlay"
       style={overlayStyle}
     >
       <nav
@@ -183,6 +184,7 @@ export function ProfileFlexibleNav({ profileId }: ProfileFlexibleNavProps) {
         aria-label="Tracker sections"
         className="flexible-nav flexible-nav-placeholder"
         data-openforge-flex-nav="placeholder"
+        data-pd-id="tracker-nav.docked-placeholder"
         ref={placeholderRef}
       >
         {navItems.map((item) => (

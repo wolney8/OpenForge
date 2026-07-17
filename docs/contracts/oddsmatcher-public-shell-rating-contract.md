@@ -14,7 +14,7 @@ _Last updated: 2026-07-08_
 
 ## 1. Product context
 
-- Application: OpenForge
+- Application: Plum Duff
 - Module: Future/deferred OddsForge
 - Profile scoped: No for the public shell, yes for the future tracker-entry module
 - Profile-owned table(s): None yet

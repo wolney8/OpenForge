@@ -1,0 +1,99 @@
+{
+  "mapping_version": "accounts-v1",
+  "cases": [
+    {
+      "case_id": "AI-001",
+      "source_record_id": "DEMO-ACCOUNT-001",
+      "fields": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Active",
+        "CurrentBalance": "125.40",
+        "PendingWithdrawalAmount": "10.00",
+        "LastBalanceUpdate": "2026-07-17",
+        "LastPromoUsed": "2099-01-01",
+        "Group": "Stale Group",
+        "Platform": "Stale Platform",
+        "RiskTeam": "Stale Risk",
+        "SignUpDate": "2026-05-01",
+        "Notes": "Synthetic operational note"
+      },
+      "expected": {
+        "staged_action": "insert",
+        "current_balance": "125.40",
+        "pending_withdrawal_amount": "10.00",
+        "last_promo_used_stored": false
+      }
+    },
+    {
+      "case_id": "AI-005",
+      "source_record_id": "DEMO-ACCOUNT-005",
+      "fields": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Active",
+        "CurrentBalance": "not-money",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "blocked",
+        "error_code": "invalid_account_money"
+      }
+    },
+    {
+      "case_id": "AI-006",
+      "source_record_id": "DEMO-ACCOUNT-006",
+      "fields": {
+        "Account": "Unknown Synthetic Bookmaker",
+        "Type": "Bookie",
+        "Counts In Cash Total": true,
+        "Channel": "Unknown",
+        "Status": "Pending Sign Up",
+        "CurrentBalance": "0.00",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "blocked",
+        "error_code": "account_catalogue_match_required"
+      }
+    },
+    {
+      "case_id": "AI-011",
+      "source_record_id": "DEMO-ACCOUNT-011",
+      "fields": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Not Using",
+        "CurrentBalance": "",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "insert",
+        "current_balance": ""
+      }
+    },
+    {
+      "case_id": "AI-012",
+      "source_record_id": "DEMO-ACCOUNT-012",
+      "fields": {
+        "Account": "Betzone",
+        "Type": "Bookie",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Not Using",
+        "CurrentBalance": "0.00",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "insert",
+        "warning_code": "account_catalogue_entry_archived"
+      }
+    }
+  ]
+}

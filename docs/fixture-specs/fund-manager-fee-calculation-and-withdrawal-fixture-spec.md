@@ -8,6 +8,14 @@ _Last updated: 2026-07-14_
 
 Fixtures supply approved settled/final `eligible_period_profit` explicitly. Weekly estimates, monthly crystallisation, loss carry-forward, package validation and subscriber withdrawal reserves follow the approved policy in the contract.
 
+UI assertions must preserve the contract terminology:
+
+- `provisional_fee_reserve` / open-month estimates display as **Estimated Fees** and are not withdrawable.
+- `total_fee_due` for locked monthly periods contributes to **Fees Earned**.
+- `fee_outstanding_amount` displays as **Available to Withdraw**.
+- `fee_withdrawn_amount` displays as **Fees Withdrawn** in Fund Manager views.
+- subscriber views display crystallised amounts as **Fees Charged** and hide physical withdrawal metadata.
+
 | ID | Scenario | Key expectation |
 |---|---|---|
 | FEE-001 | Positive supplied base | Component fees use percentage-point semantics |
