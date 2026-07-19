@@ -2,7 +2,12 @@ import Link from "next/link";
 import { CrossProfileAnalytics } from "@/components/cross-profile-analytics";
 import { getProfiles } from "@/lib/tracker-data";
 
-export default async function ProfilesPage() {
+export default async function ProfilesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
   const profiles = await getProfiles();
   const analyticsProfiles = profiles.map((profile) => ({
     profileId: profile.profileId,
@@ -39,7 +44,11 @@ export default async function ProfilesPage() {
           </p>
         </aside>
       </section>
-      <CrossProfileAnalytics profiles={analyticsProfiles} />
+      <CrossProfileAnalytics
+        initialDetailProfileId={typeof query.profile === "string" ? query.profile : undefined}
+        initialFeeReviewMonth={typeof query.feeReview === "string" ? query.feeReview : undefined}
+        profiles={analyticsProfiles}
+      />
     </main>
   );
 }

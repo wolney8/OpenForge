@@ -35,3 +35,17 @@ UI assertions must preserve the contract terminology:
 | FEE-015 | Combined package fees equal 100% | Package accepted; fee components remain separate |
 | FEE-016 | Mid-period subscriber withdrawal | Provisional fees and crystallised outstanding fees are reserved |
 | FEE-017 | Weekly provisional breakdown | Estimate shown without fee crystallisation |
+| FEE-018 | Reopen before withdrawal | Fund Manager reason creates revision 2 and retains revision 1 |
+| FEE-019 | Reopen without reason | Reopen is blocked |
+| FEE-020 | Reopen after withdrawal | Historical period is immutable; correction route required |
+| FEE-021 | Post-withdrawal overcharge | Future fee credit is created |
+| FEE-022 | Post-withdrawal undercharge | Future fee debit is created |
+| FEE-023 | Closing profile with overcharge | Unused credit becomes refund due |
+| FEE-024 | Fund Manager confirmation | Ready period becomes crystallised Fees Earned |
+| FEE-025 | Positive weekly impact | Informational positive impact without crystallisation |
+| FEE-026 | Negative weekly impact | Informational negative impact without creating a credit |
+| FEE-027 | Monthly authority | Calendar month calculation remains unwithdrawable before confirmation |
+| FEE-028 | Viewing range independence | Date-range changes do not alter fee-period boundaries |
+| FEE-029 | Atomic partial withdrawal | Component Cash Adjustments and links are created together |
+| FEE-030 | Withdrawal exceeds outstanding | Entire withdrawal is rejected without partial writes |
+| FEE-031 | Linked adjustment mutation | Direct update/delete is blocked; correction workflow required |

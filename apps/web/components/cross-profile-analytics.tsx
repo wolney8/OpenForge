@@ -30,6 +30,30 @@ import {
   type TrackerSummaryDataset,
 } from "@/lib/tracker-summary";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
+import { FeePeriodReviewDialog } from "./fee-period-review-dialog";
+import { FeeCentreBreakdownDrawer } from "./fee-centre-breakdown-drawer";
+import {
+  FeeReportReviewQueueDialog,
+  type FeeReportQueueEntry,
+} from "./fee-report-review-queue-dialog";
+import {
+  combineFeePositions,
+  getClosedMonthOptions,
+  getPreviousMonthValue,
+  summarizeFeePeriods,
+  summarizeFeePeriodsForReports,
+  summarizeWeeklyIndicativeFeeImpacts,
+  type FeeReportValue,
+  type FeePeriodApiRecord,
+} from "@/lib/fee-period-summary";
+import {
+  filterFormalReportRows,
+  type FormalReportFinancialFilter,
+} from "@/lib/formal-report-filters";
+import {
+  deriveFeeCentreRow,
+  feeCentreStateLabels,
+} from "@/lib/fee-centre-status";
 
 type ProfileDescriptor = {
   profileId: string;
@@ -41,7 +65,7 @@ type ProfileDescriptor = {
   investmentFeePercent: string;
 };
 
-type AnalyticsTab = "profiles" | "performance" | "exposure" | "reports";
+type AnalyticsTab = "profiles" | "performance" | "exposure" | "fees" | "reports";
 type EditableProfileField =
   | "display_name"
   | "profile_code"
@@ -64,6 +88,7 @@ const analyticsTabs: { id: AnalyticsTab; label: string }[] = [
   { id: "profiles", label: "Profiles" },
   { id: "performance", label: "Performance" },
   { id: "exposure", label: "Exposure" },
+  { id: "fees", label: "Fees" },
   { id: "reports", label: "Formal Reports" },
 ];
 
@@ -111,44 +136,156 @@ async function loadProfileDataset(
   return { accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, balanceSnapshots };
 }
 
+async function loadProfileFeePeriods(
+  profileId: string,
+  signal: AbortSignal
+): Promise<FeePeriodApiRecord[]> {
+  return fetchJson<FeePeriodApiRecord[]>(
+    `${apiBaseUrl}/profiles/${profileId}/fee-periods`,
+    signal
+  );
+}
+
 function rangeLabel(start: Date, end: Date) {
   return `${formatHumanDisplayDate(start.toISOString())} to ${formatHumanDisplayDate(end.toISOString())}`;
 }
 
 function ReportTable({
   feeHeading,
+  feeGranularity,
   title,
   rows,
+  feeValues,
+  indicativeFeeValues,
+  onFeeAction,
 }: {
-  feeHeading: "Estimated Fees" | "Fees Earned";
+  feeHeading: "Indicative Fee Impact" | "Fees Earned";
+  feeGranularity: "week" | "month" | "year";
   title: string;
   rows: ReturnType<typeof aggregateCrossProfileReporting>["weeklyReports"];
+  feeValues?: Map<string, FeeReportValue>;
+  indicativeFeeValues?: Map<string, number>;
+  onFeeAction: (granularity: "week" | "month" | "year", key: string, label: string) => void;
 }) {
+  const [maximumPeriods, setMaximumPeriods] = useState("all");
+  const [periodKey, setPeriodKey] = useState("");
+  const [financialFilter, setFinancialFilter] =
+    useState<FormalReportFinancialFilter>("all");
+  const periodNoun = feeGranularity === "week" ? "weeks" : feeGranularity === "month" ? "months" : "years";
+  const periodLimits = feeGranularity === "week" ? [3, 6, 12] : feeGranularity === "month" ? [3, 6, 12] : [3, 5];
+  const filteredRows = filterFormalReportRows({
+    rows,
+    maximumPeriods: maximumPeriods === "all" ? null : Number(maximumPeriods),
+    periodKey,
+    financialFilter,
+    feeValue: (row) =>
+      feeGranularity === "week"
+        ? indicativeFeeValues?.get(row.periodKey) ?? 0
+        : feeValues?.get(row.periodKey)?.feesEarned ?? 0,
+    feeReviewRequired: (row) => {
+      if (feeGranularity === "week") return false;
+      return !(feeValues?.get(row.periodKey)?.crystallisedPeriodCount);
+    },
+  });
+
   return (
     <section className="content-subpanel stack">
-      <h3>{title}</h3>
+      <div className="section-heading-row formal-report-section-heading">
+        <h3>{title}</h3>
+        <div className="compact-report-controls formal-report-section-controls">
+          <label className="m3-picker-field">
+            <span className="m3-picker-label">Period range</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
+              <select
+                aria-label={`${title} period range`}
+                data-pd-id={`formal-reports.${feeGranularity}.period-range`}
+                onChange={(event) => {
+                  setMaximumPeriods(event.target.value);
+                  setPeriodKey("");
+                }}
+                value={maximumPeriods}
+              >
+                <option value="all">All {periodNoun}</option>
+                {periodLimits.map((limit) => (
+                  <option key={limit} value={limit}>Latest {limit} {periodNoun}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+          <label className="m3-picker-field">
+            <span className="m3-picker-label">Specific {feeGranularity}</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">event</span>
+              <select
+                aria-label={`${title} specific period`}
+                data-pd-id={`formal-reports.${feeGranularity}.specific-period`}
+                onChange={(event) => setPeriodKey(event.target.value)}
+                value={periodKey}
+              >
+                <option value="">Any {feeGranularity}</option>
+                {rows.map((row) => (
+                  <option key={row.periodKey} value={row.periodKey}>{row.periodLabel}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+          <label className="m3-picker-field">
+            <span className="m3-picker-label">Financial result</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
+              <select
+                aria-label={`${title} financial result`}
+                data-pd-id={`formal-reports.${feeGranularity}.financial-result`}
+                onChange={(event) => setFinancialFilter(event.target.value as FormalReportFinancialFilter)}
+                value={financialFilter}
+              >
+                <option value="all">All results</option>
+                <option value="positive-pnl">Positive P&amp;L</option>
+                <option value="negative-pnl">Negative P&amp;L</option>
+                <option value="positive-fees">Positive fees</option>
+                <option value="negative-fees">Negative fees</option>
+                {feeGranularity !== "week" ? (
+                  <option value="fee-review-required">Fee review required</option>
+                ) : null}
+              </select>
+            </span>
+          </label>
+        </div>
+      </div>
       <div className="table-shell">
         <table>
           <thead>
             <tr>
-              <th>Period</th>
-              <th>Sportsbook</th>
-              <th>Free Bets</th>
-              <th>Casino</th>
-              <th>Total P&amp;L</th>
-              <th>Withdrawals</th>
-              <th>Costs</th>
-              <th>Retained profit</th>
-              <th>{feeHeading}</th>
+              <th scope="col">Period</th>
+              <th scope="col">Sportsbook</th>
+              <th scope="col">Free Bets</th>
+              <th scope="col">Casino</th>
+              <th scope="col">Total P&amp;L</th>
+              <th scope="col">Withdrawals</th>
+              <th scope="col">Costs</th>
+              <th scope="col">Retained profit</th>
+              <th scope="col">{feeHeading}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={9}>No formal report periods are available.</td>
+                <td colSpan={9}>No formal report periods match these filters.</td>
               </tr>
             ) : (
-              rows.slice(0, 12).map((row) => (
+              filteredRows.map((row) => {
+                const feeValue = feeValues?.get(row.periodKey);
+                const indicativeFeeValue = indicativeFeeValues?.get(row.periodKey);
+                const feeLabel =
+                  feeGranularity === "week"
+                    ? formatMoney(indicativeFeeValue ?? 0)
+                    : feeValue?.crystallisedPeriodCount
+                      ? formatMoney(feeValue.feesEarned)
+                      : feeValue?.readyPeriodCount
+                        ? "Awaiting Confirmation"
+                        : "Review Required";
+                return (
                 <tr key={row.periodKey}>
                   <td>{row.periodLabel}</td>
                   <td>{formatMoney(row.sportsbookPnl)}</td>
@@ -158,9 +295,28 @@ function ReportTable({
                   <td>{formatMoney(row.withdrawals)}</td>
                   <td>{formatMoney(row.costs)}</td>
                   <td>{formatMoney(row.retainedProfit)}</td>
-                  <td><span className="table-status">Not Yet Calculated</span></td>
+                  <td>
+                    <button
+                      aria-label={`${feeGranularity === "week" ? "View monthly fee status for" : "Open fee review queue for"} ${row.periodLabel}`}
+                      className="report-value-link formal-report-fee-link"
+                      data-pd-id={`formal-reports.${feeGranularity}.${row.periodKey}.fees`}
+                      onClick={() => onFeeAction(feeGranularity, row.periodKey, row.periodLabel)}
+                      type="button"
+                    >
+                      <span className="table-status">{feeLabel}</span>
+                      <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
+                    </button>
+                    {feeGranularity === "week" ? (
+                      <small className="formal-report-fee-note">Informational until month-end</small>
+                    ) : feeValue?.readyPeriodCount && feeValue.crystallisedPeriodCount ? (
+                      <small className="formal-report-fee-note">
+                        {formatMoney(feeValue.awaitingConfirmation)} awaiting confirmation
+                      </small>
+                    ) : null}
+                  </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -190,6 +346,7 @@ function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
             data-pd-id={`profiles.${row.profileId}.actions.${action.ledger}`}
             href={buildOperationalLedgerHref(row.profileId, action.ledger, requiresAction ? "all" : null)}
             key={action.ledger}
+            onClick={(event) => event.stopPropagation()}
             title={accessibleLabel}
           >
             <span aria-hidden="true" className="profile-action-icon-wrap">
@@ -205,7 +362,14 @@ function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
   );
 }
 
-export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) {
+export function CrossProfileAnalytics({
+  profiles,
+  initialDetailProfileId,
+  initialFeeReviewMonth,
+}: CrossProfileAnalyticsProps & {
+  initialDetailProfileId?: string;
+  initialFeeReviewMonth?: string;
+}) {
   const [profileRecords, setProfileRecords] = useState(profiles);
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
   const [customStart, setCustomStart] = useState("");
@@ -214,6 +378,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
     profiles.map((profile) => profile.profileId)
   );
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
+  const [feePeriods, setFeePeriods] = useState<Map<string, FeePeriodApiRecord[]>>(new Map());
   const [failures, setFailures] = useState<ProfileLoadFailure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("profiles");
@@ -221,7 +386,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
   const [directoryStatus, setDirectoryStatus] = useState("all");
   const [directoryPage, setDirectoryPage] = useState(1);
   const [pinnedProfileIds, setPinnedProfileIds] = useState<string[]>([]);
-  const [detailProfileId, setDetailProfileId] = useState<string | null>(null);
+  const [detailProfileId, setDetailProfileId] = useState<string | null>(initialDetailProfileId ?? null);
   const [profileEdit, setProfileEdit] = useState<{
     field: EditableProfileField;
     value: string;
@@ -229,6 +394,20 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditError, setProfileEditError] = useState("");
   const [drawerNavigationLabel, setDrawerNavigationLabel] = useState("");
+  const [feeReviewProfileId, setFeeReviewProfileId] = useState<string | null>(
+    initialDetailProfileId && initialFeeReviewMonth ? initialDetailProfileId : null
+  );
+  const [feeReviewMonth, setFeeReviewMonth] = useState(initialFeeReviewMonth ?? "");
+  const [feeCentreMonth, setFeeCentreMonth] = useState(() => getPreviousMonthValue());
+  const [feeBreakdownProfileId, setFeeBreakdownProfileId] = useState<string | null>(null);
+  const [feeReportQueue, setFeeReportQueue] = useState<{
+    granularity: "week" | "month" | "year";
+    key: string;
+    label: string;
+  } | null>(null);
+  const [balanceSnapshotRange, setBalanceSnapshotRange] = useState("all");
+  const [balanceSnapshotType, setBalanceSnapshotType] = useState("all");
+  const [reportFilterAsOf] = useState(() => Date.now());
   const detailDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -238,6 +417,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       profiles.map(async (profile) => ({
         profile,
         dataset: await loadProfileDataset(profile.profileId, controller.signal),
+        periods: await loadProfileFeePeriods(profile.profileId, controller.signal),
       }))
     ).then((results) => {
       if (controller.signal.aborted) {
@@ -245,11 +425,13 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       }
 
       const nextDatasets = new Map<string, TrackerSummaryDataset>();
+      const nextFeePeriods = new Map<string, FeePeriodApiRecord[]>();
       const nextFailures: ProfileLoadFailure[] = [];
       results.forEach((result, index) => {
         const profile = profiles[index];
         if (result.status === "fulfilled") {
           nextDatasets.set(profile.profileId, result.value.dataset);
+          nextFeePeriods.set(profile.profileId, result.value.periods);
         } else {
           nextFailures.push({
             profileId: profile.profileId,
@@ -260,6 +442,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         }
       });
       setDatasets(nextDatasets);
+      setFeePeriods(nextFeePeriods);
       setFailures(nextFailures);
       setIsLoading(false);
     });
@@ -289,6 +472,26 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
     });
   }, [datasets, profileRecords, resolvedRange]);
 
+  const formalReportRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: "Custom",
+        customStart: "2000-01-01",
+        customEnd: "2100-12-31",
+      }),
+    []
+  );
+  const formalProfileSummaries = useMemo(
+    () =>
+      profileRecords.flatMap((profile) => {
+        const dataset = datasets.get(profile.profileId);
+        return dataset
+          ? [{ ...profile, summary: summarizeTrackerData(dataset, formalReportRange) }]
+          : [];
+      }),
+    [datasets, formalReportRange, profileRecords]
+  );
+
   const combined = useMemo(
     () =>
       aggregateCrossProfileReporting(
@@ -296,11 +499,169 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       ),
     [allProfileSummaries, selectedProfileIds]
   );
+  const formalCombined = useMemo(
+    () =>
+      aggregateCrossProfileReporting(
+        formalProfileSummaries.filter((profile) =>
+          selectedProfileIds.includes(profile.profileId)
+        )
+      ),
+    [formalProfileSummaries, selectedProfileIds]
+  );
 
   const allProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(allProfileSummaries),
     [allProfileSummaries]
   );
+
+  const feePositionByProfile = useMemo(
+    () =>
+      new Map(
+        profileRecords.map((profile) => [
+          profile.profileId,
+          summarizeFeePeriods(
+            feePeriods.get(profile.profileId) ?? [],
+            resolvedRange.start,
+            resolvedRange.end
+          ),
+        ])
+      ),
+    [feePeriods, profileRecords, resolvedRange.end, resolvedRange.start]
+  );
+
+  const allProfilesFeePosition = useMemo(
+    () => combineFeePositions([...feePositionByProfile.values()]),
+    [feePositionByProfile]
+  );
+  const allTimeFeePositionByProfile = useMemo(
+    () =>
+      new Map(
+        profileRecords.map((profile) => [
+          profile.profileId,
+          summarizeFeePeriods(
+            feePeriods.get(profile.profileId) ?? [],
+            new Date("2000-01-01T00:00:00"),
+            new Date("2100-12-31T23:59:59")
+          ),
+        ])
+      ),
+    [feePeriods, profileRecords]
+  );
+  const allTimeFeePosition = useMemo(
+    () => combineFeePositions([...allTimeFeePositionByProfile.values()]),
+    [allTimeFeePositionByProfile]
+  );
+  const feeCentreMonthOptions = useMemo(() => {
+    const earliestTrackingDate = profileRecords
+      .map((profile) => profile.trackingStartDate)
+      .sort()[0] ?? `${getPreviousMonthValue()}-01`;
+    return getClosedMonthOptions(earliestTrackingDate);
+  }, [profileRecords]);
+  const feeCentreRows = useMemo(
+    () =>
+      profileRecords.map((profile) => ({
+        profile,
+        result: deriveFeeCentreRow({
+          month: feeCentreMonth,
+          lastClosedMonth: getPreviousMonthValue(),
+          periods: feePeriods.get(profile.profileId) ?? [],
+          trackingStartDate: profile.trackingStartDate,
+        }),
+      })),
+    [feeCentreMonth, feePeriods, profileRecords]
+  );
+  const feeBreakdownRow = feeCentreRows.find(
+    (row) => row.profile.profileId === feeBreakdownProfileId
+  );
+  const feeCentreMonthLabel = feeCentreMonthOptions.find(
+    (option) => option.value === feeCentreMonth
+  )?.label ?? feeCentreMonth;
+  const feeCentreRange = useMemo(() => {
+    const [year, monthNumber] = feeCentreMonth.split("-").map(Number);
+    const periodEnd = new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
+    return resolveDateRange({
+      preset: "Custom",
+      customStart: `${feeCentreMonth}-01`,
+      customEnd: periodEnd,
+    });
+  }, [feeCentreMonth]);
+  const feeBreakdownCashAdjustmentTotal = useMemo(() => {
+    if (!feeBreakdownProfileId) return 0;
+    const dataset = datasets.get(feeBreakdownProfileId);
+    return dataset
+      ? summarizeTrackerData(dataset, feeCentreRange).reportingModel.selectedRange.cashAdjustments
+      : 0;
+  }, [datasets, feeBreakdownProfileId, feeCentreRange]);
+  const selectedFeePeriods = useMemo(
+    () =>
+      selectedProfileIds.flatMap((profileId) => feePeriods.get(profileId) ?? []),
+    [feePeriods, selectedProfileIds]
+  );
+  const monthlyReportFees = useMemo(
+    () => summarizeFeePeriodsForReports(selectedFeePeriods, "month"),
+    [selectedFeePeriods]
+  );
+  const yearlyReportFees = useMemo(
+    () => summarizeFeePeriodsForReports(selectedFeePeriods, "year"),
+    [selectedFeePeriods]
+  );
+  const weeklyIndicativeFeeImpacts = useMemo(
+    () =>
+      summarizeWeeklyIndicativeFeeImpacts(
+        formalProfileSummaries
+          .filter((profile) => selectedProfileIds.includes(profile.profileId))
+          .map((profile) => ({
+            managementFeePercent: profile.managementFeePercent,
+            investmentFeePercent: profile.investmentFeePercent,
+            weeklyReports: profile.summary.weeklyReports,
+          }))
+      ),
+    [formalProfileSummaries, selectedProfileIds]
+  );
+
+  const feeReportQueueEntries = useMemo<FeeReportQueueEntry[]>(() => {
+    if (!feeReportQueue) return [];
+    const lastClosedMonth = getPreviousMonthValue();
+    const months =
+      feeReportQueue.granularity === "year"
+        ? Array.from({ length: 12 }, (_, index) => `${feeReportQueue.key}-${String(index + 1).padStart(2, "0")}`)
+        : [feeReportQueue.key.slice(0, 7)];
+    const monthFormatter = new Intl.DateTimeFormat("en-GB", {
+      month: "long",
+      timeZone: "UTC",
+      year: "numeric",
+    });
+
+    return profileRecords
+      .filter((profile) => selectedProfileIds.includes(profile.profileId))
+      .flatMap((profile) =>
+        months.map((month) => {
+          const period = (feePeriods.get(profile.profileId) ?? []).find(
+            (candidate) => candidate.period_start.slice(0, 7) === month
+          );
+          const beforeTracking = month < profile.trackingStartDate.slice(0, 7);
+          const state: FeeReportQueueEntry["state"] = beforeTracking
+            ? "not_applicable"
+            : month > lastClosedMonth
+              ? "open"
+              : period?.state === "crystallised"
+                ? "crystallised"
+                : period?.state === "ready_to_crystallise"
+                  ? "awaiting_confirmation"
+                  : "review_required";
+          const monthDate = new Date(`${month}-01T00:00:00Z`);
+          return {
+            key: `${profile.profileId}:${month}`,
+            profileId: profile.profileId,
+            profileName: profile.displayName,
+            month,
+            monthLabel: monthFormatter.format(monthDate),
+            state,
+            amount: period ? Number(period.current_revision.total_fee_due) : null,
+          };
+        })
+      );
+  }, [feePeriods, feeReportQueue, profileRecords, selectedProfileIds]);
 
   const directoryProfiles = useMemo(() => {
     const normalizedQuery = directoryQuery.trim().toLowerCase();
@@ -340,13 +701,18 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
   const detailComparisonRow = allProfilesCombined.profileRows.find(
     (profile) => profile.profileId === detailProfileId
   );
+  const detailFeePosition = detailProfileId
+    ? feePositionByProfile.get(detailProfileId)
+    : undefined;
   const detailModuleValues = new Map(
     detailSummary?.summary.moduleBreakdown.map((row) => [row.moduleKey, row.reportingValue]) ?? []
   );
 
   const balanceSnapshots = useMemo(
-    () =>
-      profileRecords
+    () => {
+      const rangeDays = balanceSnapshotRange === "all" ? null : Number(balanceSnapshotRange);
+      const cutoff = rangeDays === null ? null : reportFilterAsOf - rangeDays * 86_400_000;
+      return profileRecords
         .filter((profile) => selectedProfileIds.includes(profile.profileId))
         .flatMap((profile) =>
           (datasets.get(profile.profileId)?.balanceSnapshots ?? []).map((snapshot) => ({
@@ -356,15 +722,27 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         )
         .filter((snapshot) => {
           const timestamp = Date.parse(snapshot.snapshot_at);
-          return (
-            Number.isFinite(timestamp) &&
-            timestamp >= resolvedRange.start.getTime() &&
-            timestamp <= resolvedRange.end.getTime()
-          );
+          return Number.isFinite(timestamp) &&
+            (cutoff === null || timestamp >= cutoff) &&
+            (balanceSnapshotType === "all" || snapshot.snapshot_type === balanceSnapshotType);
         })
         .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at))
-        .slice(0, 20),
-    [datasets, profileRecords, resolvedRange.end, resolvedRange.start, selectedProfileIds]
+        .slice(0, 50);
+    },
+    [balanceSnapshotRange, balanceSnapshotType, datasets, profileRecords, reportFilterAsOf, selectedProfileIds]
+  );
+  const balanceSnapshotTypes = useMemo(
+    () =>
+      [...new Set(
+        profileRecords
+          .filter((profile) => selectedProfileIds.includes(profile.profileId))
+          .flatMap((profile) =>
+            (datasets.get(profile.profileId)?.balanceSnapshots ?? []).map(
+              (snapshot) => snapshot.snapshot_type
+            )
+          )
+      )].sort(),
+    [datasets, profileRecords, selectedProfileIds]
   );
 
   function toggleProfile(profileId: string) {
@@ -408,6 +786,27 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
     setDrawerNavigationLabel("");
     setDetailProfileId(profileId);
     window.requestAnimationFrame(() => detailDialogRef.current?.showModal());
+  }
+
+  function openFeeReportQueue(
+    granularity: "week" | "month" | "year",
+    key: string,
+    label: string
+  ) {
+    setFeeReportQueue({ granularity, key, label });
+  }
+
+  function openFeeReviewFromQueue(profileId: string, month: string) {
+    setFeeReportQueue(null);
+    setDetailProfileId(profileId);
+    setFeeReviewMonth(month);
+    setFeeReviewProfileId(profileId);
+  }
+
+  function openFeeReview(profileId: string, month: string) {
+    setDetailProfileId(profileId);
+    setFeeReviewMonth(month);
+    setFeeReviewProfileId(profileId);
   }
 
   async function saveProfileField(edit = profileEdit) {
@@ -538,7 +937,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
       aria-labelledby="combined-analytics-title"
     >
       <div className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}>
-        {activeTab !== "profiles" ? (
+        {activeTab !== "profiles" && activeTab !== "fees" ? (
         <details className="profile-report-picker">
         <summary>
           <span aria-hidden="true" className="material-symbols-outlined">
@@ -618,6 +1017,25 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         </label>
           </>
         ) : null}
+        {activeTab === "fees" ? (
+          <label className="m3-picker-field">
+            <span className="m3-picker-label">Closed month</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">calendar_month</span>
+              <select
+                aria-label="Fee centre closed month"
+                data-pd-id="fees.closed-month"
+                onChange={(event) => setFeeCentreMonth(event.target.value)}
+                value={feeCentreMonth}
+              >
+                {feeCentreMonthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+        ) : null}
+        {activeTab !== "reports" && activeTab !== "fees" ? (
         <div className="compact-report-controls">
           <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
@@ -649,6 +1067,7 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             </>
           ) : null}
         </div>
+        ) : null}
       </div>
       <div className="workflow-panel-header">
         <div className="stack-tight">
@@ -660,9 +1079,11 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
         </div>
       </div>
 
-      <p className="lede">
-        Shared range: {rangeLabel(resolvedRange.start, resolvedRange.end)}. Displayed earnings are pre-fee.
-      </p>
+      {activeTab !== "reports" ? (
+        <p className="lede">
+          Shared range: {rangeLabel(resolvedRange.start, resolvedRange.end)}. Displayed earnings are pre-fee.
+        </p>
+      ) : null}
 
       {isLoading ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
 
@@ -705,6 +1126,116 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
 
       {!isLoading ? (
         <>
+          {activeTab === "fees" ? (
+            <section
+              aria-labelledby="analytics-tab-fees"
+              className="analytics-tab-panel stack fee-centre"
+              data-pd-id="fees.panel"
+              id="analytics-panel-fees"
+              role="tabpanel"
+            >
+              <section className="stat-strip" aria-label="Fund Manager fee position">
+                <article className="stat-card">
+                  <span className="eyebrow">Available to Withdraw</span>
+                  <strong>{formatMoney(allTimeFeePosition.availableToWithdraw)}</strong>
+                  <span>Confirmed and not yet withdrawn</span>
+                </article>
+                <article className="stat-card">
+                  <span className="eyebrow">Waiting for Confirmation</span>
+                  <strong>{feeCentreRows.filter((row) => row.result.state === "waiting_for_confirmation").length}</strong>
+                  <span>Prepared reviews for the selected month</span>
+                </article>
+                <article className="stat-card">
+                  <span className="eyebrow">Review Required</span>
+                  <strong>{feeCentreRows.filter((row) => row.result.state === "review_required").length}</strong>
+                  <span>Profiles not yet prepared for the selected month</span>
+                </article>
+                <article className="stat-card">
+                  <span className="eyebrow">Fees Withdrawn</span>
+                  <strong>{formatMoney(allTimeFeePosition.feesWithdrawn)}</strong>
+                  <span>Audited fee cash movements</span>
+                </article>
+              </section>
+              <section className="content-subpanel stack">
+                <div className="section-heading-row">
+                  <div>
+                    <span className="eyebrow">Fund Manager Only</span>
+                    <h3>Monthly Fee Status</h3>
+                  </div>
+                </div>
+                <div className="table-shell">
+                  <table className="profile-action-table fee-centre-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Profile</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Fees Earned</th>
+                        <th scope="col">Fees Withdrawn</th>
+                        <th scope="col">Available to Withdraw</th>
+                        <th scope="col">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feeCentreRows.map(({ profile, result }) => {
+                        const canReview = result.state !== "open" && result.state !== "not_applicable";
+                        const actionLabel = result.state === "review_required"
+                          ? "Review Fees"
+                          : result.state === "waiting_for_confirmation"
+                            ? "Confirm Fees"
+                            : result.state === "ready_to_withdraw" || result.state === "part_withdrawn"
+                              ? "Record Withdrawal"
+                              : "View Details";
+                        return (
+                          <tr
+                            aria-label={`Open fee breakdown for ${profile.displayName}`}
+                            className="fee-centre-row"
+                            data-pd-id={`fees.${profile.profileId}.row`}
+                            key={profile.profileId}
+                            onClick={(event) => {
+                              if (event.target instanceof Element && event.target.closest("button, a")) return;
+                              setFeeBreakdownProfileId(profile.profileId);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                              event.preventDefault();
+                              setFeeBreakdownProfileId(profile.profileId);
+                            }}
+                            tabIndex={0}
+                          >
+                            <td><strong>{profile.displayName}</strong><br /><small>{profile.profileCode}</small></td>
+                            <td>
+                              <span className={`table-status fee-centre-state fee-centre-state-${result.state}`}>
+                                {feeCentreStateLabels[result.state]}
+                              </span>
+                            </td>
+                            <td>{result.period?.state === "crystallised" ? formatMoney(result.feesEarned) : "—"}</td>
+                            <td>{result.period?.state === "crystallised" ? formatMoney(result.feesWithdrawn) : "—"}</td>
+                            <td>{result.period?.state === "crystallised" ? formatMoney(result.availableToWithdraw) : "—"}</td>
+                            <td>
+                              <button
+                                aria-label={`${actionLabel} for ${profile.displayName}, ${feeCentreMonth}`}
+                                className="button-link report-action-link"
+                                data-pd-id={`fees.${profile.profileId}.action`}
+                                disabled={!canReview}
+                                onClick={() => openFeeReview(profile.profileId, feeCentreMonth)}
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="material-symbols-outlined">
+                                  {result.state === "done" ? "visibility" : "calculate"}
+                                </span>
+                                {actionLabel}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+          ) : null}
+
           {activeTab === "exposure" ? (
             <section
               aria-labelledby="analytics-tab-exposure"
@@ -830,11 +1361,70 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             id="analytics-panel-reports"
             role="tabpanel"
           >
-          <ReportTable feeHeading="Estimated Fees" title="Combined Weekly Reports" rows={combined.weeklyReports} />
-          <ReportTable feeHeading="Fees Earned" title="Combined Monthly Reports" rows={combined.monthlyReports} />
-          <ReportTable feeHeading="Fees Earned" title="Combined Yearly Reports" rows={combined.yearlyReports} />
+          <ReportTable
+            feeGranularity="week"
+            feeHeading="Indicative Fee Impact"
+            indicativeFeeValues={weeklyIndicativeFeeImpacts}
+            onFeeAction={openFeeReportQueue}
+            rows={formalCombined.weeklyReports}
+            title="Combined Weekly Reports"
+          />
+          <ReportTable
+            feeGranularity="month"
+            feeHeading="Fees Earned"
+            feeValues={monthlyReportFees}
+            onFeeAction={openFeeReportQueue}
+            rows={formalCombined.monthlyReports}
+            title="Combined Monthly Reports"
+          />
+          <ReportTable
+            feeGranularity="year"
+            feeHeading="Fees Earned"
+            feeValues={yearlyReportFees}
+            onFeeAction={openFeeReportQueue}
+            rows={formalCombined.yearlyReports}
+            title="Combined Yearly Reports"
+          />
           <section className="content-subpanel stack">
-            <h3>Combined balance snapshot history</h3>
+            <div className="section-heading-row formal-report-section-heading">
+              <h3>Combined balance snapshot history</h3>
+              <div className="compact-report-controls formal-report-section-controls">
+                <label className="m3-picker-field">
+                  <span className="m3-picker-label">Snapshot range</span>
+                  <span className="m3-picker-control">
+                    <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
+                    <select
+                      aria-label="Balance snapshot period range"
+                      data-pd-id="formal-reports.balance-snapshots.period-range"
+                      onChange={(event) => setBalanceSnapshotRange(event.target.value)}
+                      value={balanceSnapshotRange}
+                    >
+                      <option value="all">All snapshots</option>
+                      <option value="30">Last 30 days</option>
+                      <option value="90">Last 3 months</option>
+                      <option value="180">Last 6 months</option>
+                    </select>
+                  </span>
+                </label>
+                <label className="m3-picker-field">
+                  <span className="m3-picker-label">Snapshot type</span>
+                  <span className="m3-picker-control">
+                    <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
+                    <select
+                      aria-label="Balance snapshot type"
+                      data-pd-id="formal-reports.balance-snapshots.type"
+                      onChange={(event) => setBalanceSnapshotType(event.target.value)}
+                      value={balanceSnapshotType}
+                    >
+                      <option value="all">All types</option>
+                      {balanceSnapshotTypes.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </span>
+                </label>
+              </div>
+            </div>
             <div className="table-shell">
               <table className="profile-action-table">
                 <thead>
@@ -897,8 +1487,12 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           </article>
           <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
             <span className="eyebrow">Available to Withdraw</span>
-            <strong>Not Yet Calculated</strong>
-            <span>M10 monthly fee-period engine pending</span>
+            <strong>{formatMoney(allProfilesFeePosition.availableToWithdraw)}</strong>
+            <span>
+              {allProfilesFeePosition.crystallisedPeriodCount > 0
+                ? `${formatMoney(allProfilesFeePosition.feesEarned)} earned · ${formatMoney(allProfilesFeePosition.feesWithdrawn)} withdrawn`
+                : "No crystallised fee periods in this range"}
+            </span>
           </article>
         </section>
         <div className="section-heading-row">
@@ -933,7 +1527,10 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
                     className="profile-directory-row"
                     data-pd-id={`profiles.directory.row.${profile.profileId}`}
                     key={profile.profileId}
-                    onClick={() => openProfileDetails(profile.profileId)}
+                    onClick={(event) => {
+                      if (event.target instanceof Element && event.target.closest("a, button, input, select")) return;
+                      openProfileDetails(profile.profileId);
+                    }}
                     onKeyDown={(event) => {
                       if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
                       event.preventDefault();
@@ -977,7 +1574,13 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
                       </span>
                     </td>
                     <td>{profile.summary ? formatMoney(profile.summary.grossBettingPnl) : "Unavailable"}</td>
-                    <td><span className="table-status">Not Yet Calculated</span></td>
+                    <td>
+                      <span className="table-status">
+                        {formatMoney(
+                          feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0
+                        )}
+                      </span>
+                    </td>
                     <td>{profile.summary ? profile.summary.openBets : "Unavailable"}</td>
                     <td>
                       <div className="directory-actions" onClick={(event) => event.stopPropagation()}>
@@ -1026,6 +1629,32 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           >Next</button>
         </div>
       </section>
+      ) : null}
+
+      {feeReportQueue ? (
+        <FeeReportReviewQueueDialog
+          entries={feeReportQueueEntries}
+          label={feeReportQueue.label}
+          onClose={() => setFeeReportQueue(null)}
+          onReview={openFeeReviewFromQueue}
+          open
+        />
+      ) : null}
+
+      {feeBreakdownRow ? (
+        <FeeCentreBreakdownDrawer
+          cashAdjustmentTotal={feeBreakdownCashAdjustmentTotal}
+          key={`${feeBreakdownRow.profile.profileId}-${feeCentreMonth}`}
+          month={feeCentreMonth}
+          monthLabel={feeCentreMonthLabel}
+          onClose={() => setFeeBreakdownProfileId(null)}
+          onReview={() => openFeeReview(feeBreakdownRow.profile.profileId, feeCentreMonth)}
+          open
+          profileCode={feeBreakdownRow.profile.profileCode}
+          profileId={feeBreakdownRow.profile.profileId}
+          profileName={feeBreakdownRow.profile.displayName}
+          result={feeBreakdownRow.result}
+        />
       ) : null}
 
       <dialog
@@ -1092,11 +1721,22 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
-                <div><dt>Estimated Fees</dt><dd>Not Yet Calculated</dd></div>
-                <div><dt>Fees Earned</dt><dd>Not Yet Calculated</dd></div>
-                <div><dt>Available to Withdraw</dt><dd>Not Yet Calculated</dd></div>
-                <div><dt>Fees Withdrawn</dt><dd>Not Yet Calculated</dd></div>
+                <div><dt>Estimated Fees</dt><dd>{formatMoney(detailFeePosition?.estimatedFees ?? 0)}</dd></div>
+                <div><dt>Fees Earned</dt><dd>{formatMoney(detailFeePosition?.feesEarned ?? 0)}</dd></div>
+                <div><dt>Available to Withdraw</dt><dd>{formatMoney(detailFeePosition?.availableToWithdraw ?? 0)}</dd></div>
+                <div><dt>Fees Withdrawn</dt><dd>{formatMoney(detailFeePosition?.feesWithdrawn ?? 0)}</dd></div>
               </dl>
+              <button
+                className="button-link"
+                data-pd-id="profiles.drawer.review-monthly-fees"
+                onClick={() => {
+                  setFeeReviewMonth("");
+                  setFeeReviewProfileId(detailProfile.profileId);
+                }}
+                type="button"
+              >
+                Review Monthly Fees
+              </button>
             </section>
             {profileEditError ? <div className="validation-message" role="alert">{profileEditError}</div> : null}
             <nav className="profile-drawer-icon-actions" aria-label="Profile actions">
@@ -1129,6 +1769,29 @@ export function CrossProfileAnalytics({ profiles }: CrossProfileAnalyticsProps) 
           </div>
         ) : null}
       </dialog>
+      {detailProfile && feeReviewProfileId === detailProfile.profileId ? (
+        <FeePeriodReviewDialog
+          initialMonth={feeReviewMonth || initialFeeReviewMonth}
+          onClose={() => setFeeReviewProfileId(null)}
+          onPeriodsChanged={(updatedPeriods) => {
+            setFeePeriods((current) => {
+              const next = new Map(current);
+              next.set(detailProfile.profileId, updatedPeriods);
+              return next;
+            });
+          }}
+          open
+          operationalActions={{
+            sportsbook: detailComparisonRow?.sportsbookActionCount ?? 0,
+            freeBets: detailComparisonRow?.freeBetActionCount ?? 0,
+            casinoOffers: detailComparisonRow?.casinoActionCount ?? 0,
+          }}
+          periods={feePeriods.get(detailProfile.profileId) ?? []}
+          profileId={detailProfile.profileId}
+          profileName={detailProfile.displayName}
+          trackingStartDate={detailProfile.trackingStartDate}
+        />
+      ) : null}
     </section>
   );
 }

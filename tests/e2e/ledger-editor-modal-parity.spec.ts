@@ -61,4 +61,21 @@ test.describe("Ledger editor modal parity", () => {
       await expect(firstSection).toHaveCSS("box-shadow", "none");
     });
   }
+
+  test("record query opens the exact casino row for action", async ({ page, request }) => {
+    const response = await request.get(
+      "http://127.0.0.1:8010/profiles/profile-demo-001/casino-offers"
+    );
+    expect(response.ok()).toBe(true);
+    const rows = (await response.json()) as { casino_offer_id: string }[];
+    expect(rows.length).toBeGreaterThan(0);
+    const recordId = rows[0].casino_offer_id;
+
+    await page.goto(
+      `/profiles/profile-demo-001/tracker/casino-offers?search=${encodeURIComponent(recordId)}&record=${encodeURIComponent(recordId)}&source=fee-review`
+    );
+
+    await expect(page.getByRole("dialog", { name: "Edit casino row" })).toBeVisible();
+    await expect(page.getByPlaceholder("Search casino-offer rows")).toHaveValue(recordId);
+  });
 });

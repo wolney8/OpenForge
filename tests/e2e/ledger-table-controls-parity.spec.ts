@@ -8,6 +8,7 @@ test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
   await expect(page.getByRole("columnheader", { name: "Lay Bet" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Back Bet" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Delete free-bet row / }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Open free-bet filter and column controls" }).click();
   const dialog = page.getByRole("dialog", { name: "Free-bet filter controls" });
@@ -23,6 +24,7 @@ test("Casino Offers exposes consistent filter controls and actions column", asyn
   await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Delete casino-offer row / }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Open casino-offer filter and column controls" }).click();
   const dialog = page.getByRole("dialog", { name: "Casino-offer filter controls" });
@@ -38,6 +40,7 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
   await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Delete cash-adjustment row / }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Open cash-adjustment filter and column controls" }).click();
   const dialog = page.getByRole("dialog", { name: "Cash-adjustment filter controls" });

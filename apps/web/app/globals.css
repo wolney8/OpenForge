@@ -719,6 +719,21 @@ textarea {
   grid-template-columns: repeat(3, minmax(150px, 210px));
 }
 
+.formal-report-section-heading {
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.formal-report-section-heading > h3 {
+  flex: 1 1 15rem;
+}
+
+.formal-report-section-controls {
+  flex: 1 1 36rem;
+  min-width: 0;
+  justify-content: end;
+}
+
 .reporting-breakdown-grid {
   display: grid;
   gap: 1rem;
@@ -930,6 +945,67 @@ textarea {
 .cross-profile-analytics {
   position: relative;
   min-height: 20rem;
+}
+
+.fee-centre-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.fee-centre-state-ready_to_withdraw,
+.fee-centre-state-done {
+  color: color-mix(in srgb, var(--success) 88%, var(--text));
+  border-color: color-mix(in srgb, var(--success) 58%, var(--outline));
+  background: color-mix(in srgb, var(--success) 20%, var(--surface-container));
+}
+
+.fee-centre-state-review_required,
+.fee-centre-state-waiting_for_confirmation,
+.fee-centre-state-part_withdrawn {
+  color: color-mix(in srgb, var(--warning) 88%, var(--text));
+  border-color: color-mix(in srgb, var(--warning) 58%, var(--outline));
+  background: color-mix(in srgb, var(--warning) 20%, var(--surface-container));
+}
+
+.fee-centre-table td,
+.fee-centre-table th {
+  vertical-align: middle;
+}
+
+.fee-centre-row {
+  cursor: pointer;
+}
+
+.fee-centre-row:hover {
+  background: color-mix(in srgb, var(--primary-soft) 52%, transparent);
+}
+
+.fee-centre-row:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.fee-centre-breakdown-actions {
+  margin-top: auto;
+  justify-content: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--outline);
+}
+
+.fee-centre-breakdown-drawer .fee-centre-state {
+  justify-self: start;
+}
+
+.fee-centre-breakdown-drawer dt small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .fund-manager-control-bar {
@@ -1163,6 +1239,425 @@ textarea {
 .profile-details-drawer::backdrop {
   background: color-mix(in srgb, #000 46%, transparent);
   backdrop-filter: blur(2px);
+}
+
+.fee-period-review-dialog {
+  width: min(64rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 1.5rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.fee-period-review-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.fee-period-review-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 54%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.fee-report-queue-dialog {
+  width: min(56rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 1.5rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.fee-report-queue-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.fee-report-queue-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 54%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.fee-report-queue-dialog .modal-sticky-header,
+.fee-report-queue-dialog .modal-sticky-footer {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: var(--surface-strong);
+}
+
+.fee-report-queue-dialog .modal-sticky-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--outline);
+}
+
+.fee-report-queue-body {
+  min-width: 0;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.fee-report-queue-body .table-scroll {
+  max-height: min(34rem, calc(100dvh - 14rem));
+}
+
+.fee-report-queue-body .data-table {
+  min-width: 44rem;
+}
+
+.formal-report-fee-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.formal-report-fee-note {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
+.fee-period-review-dialog .modal-sticky-header,
+.fee-period-review-dialog .modal-sticky-footer {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: var(--surface-strong);
+}
+
+.fee-period-review-body {
+  min-width: 0;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.fee-period-month-field {
+  width: min(22rem, 100%);
+}
+
+.fee-period-action-required {
+  padding: 1rem;
+  border: 2px solid color-mix(in srgb, var(--danger) 82%, var(--outline));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  animation: fee-period-action-pulse 1.8s ease-in-out infinite;
+}
+
+.fee-period-action-required > h3 {
+  color: color-mix(in srgb, var(--danger) 88%, var(--text));
+}
+
+@keyframes fee-period-action-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 24%, transparent);
+  }
+}
+
+.fee-period-review-dialog .validation-message ul {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fee-period-review-dialog .validation-message li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fee-period-review-dialog .validation-message li > span:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.fee-correction-controls > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.fee-period-reopened-banner {
+  border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--outline));
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface-container));
+}
+
+.fee-period-reopened-banner > div {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.fee-period-reopened-banner h3,
+.fee-period-reopened-banner p {
+  margin: 0;
+}
+
+.fee-revision-audit > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.fee-revision-audit[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.fee-revision-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fee-revision-list > li {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-inline-start: 3px solid var(--outline);
+  background: var(--surface-container-high);
+}
+
+.fee-revision-list > li.is-current {
+  border-inline-start-color: var(--primary);
+}
+
+.fee-revision-heading,
+.fee-revision-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.fee-revision-heading {
+  justify-content: space-between;
+}
+
+.fee-revision-heading time,
+.fee-revision-list small,
+.fee-revision-list p {
+  color: var(--on-surface-variant);
+}
+
+.fee-revision-list p {
+  margin: 0;
+}
+
+.fee-revision-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.fee-revision-values > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.fee-revision-values dt {
+  color: var(--on-surface-variant);
+  font-size: 0.8rem;
+}
+
+.fee-revision-values dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.fee-correction-controls[open] > summary {
+  margin-bottom: 1rem;
+}
+
+.fee-correction-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fee-correction-list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0;
+  list-style: none;
+}
+
+.fee-correction-list li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem;
+  border-inline-start: 3px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface-container));
+}
+
+@media (max-width: 720px) {
+  .fee-correction-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fee-correction-grid .field-span-2 {
+    grid-column: auto;
+  }
+
+  .fee-revision-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fee-revision-values {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fee-review-resolution-banner {
+  position: sticky;
+  top: 7rem;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid color-mix(in srgb, var(--danger) 78%, var(--outline));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface-strong));
+  box-shadow: var(--shadow);
+}
+
+.fee-review-resolution-banner > .material-symbols-outlined {
+  color: var(--danger);
+  font-size: 1.75rem;
+}
+
+.fee-review-resolution-banner > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.fee-review-resolution-banner > div > span {
+  color: var(--text-muted);
+}
+
+.fee-review-return-link {
+  white-space: nowrap;
+}
+
+.confirmation-dialog {
+  width: min(34rem, calc(100vw - 2rem));
+  max-width: none;
+  padding: 1.5rem;
+  border: 1px solid var(--outline);
+  border-radius: 1.5rem;
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.confirmation-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+@media (max-width: 720px) {
+  .fee-review-resolution-banner {
+    position: relative;
+    top: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .fee-review-return-link {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+
+.fee-period-blocker-link {
+  flex: 0 0 auto;
+}
+
+.fee-period-blocker-link .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+.fee-period-tracker-actions > p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.fee-period-action-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+}
+
+.fee-period-stat-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fee-period-review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid var(--outline);
+}
+
+.fee-period-review-footer > span {
+  margin-right: auto;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .fee-period-stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fee-period-review-footer {
+    flex-wrap: wrap;
+  }
+
+  .fee-period-review-footer > span {
+    flex-basis: 100%;
+  }
+
+  .fee-period-review-dialog .validation-message li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fee-period-action-required {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+  }
 }
 
 .profile-details-drawer-content {

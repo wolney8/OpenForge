@@ -11,6 +11,11 @@ import { TrackerModuleTable } from "@/components/tracker-module-table";
 import { trackerModuleDefinitions, trackerTableModules } from "@/lib/tracker-modules";
 import { getModuleRows, getProfile } from "@/lib/tracker-data";
 import type { TrackerModuleKey } from "@/lib/tracker-types";
+import {
+  parseFeeReviewRecordIds,
+  type FeeReviewLedger,
+  type FeeReviewResolutionContext,
+} from "@/lib/fee-review-session";
 
 type TrackerModulePageProps = {
   params: Promise<{
@@ -28,6 +33,10 @@ export default async function TrackerModulePage({
   const query = await searchParams;
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
+  const requestedRecord = typeof query.record === "string" ? query.record : undefined;
+  const requestedRecords = parseFeeReviewRecordIds(
+    typeof query.records === "string" ? query.records : undefined
+  );
   const requestedIssue =
     query.view === "issues" && typeof query.issue === "string"
       ? query.issue
@@ -38,6 +47,25 @@ export default async function TrackerModulePage({
   if (!profile || !moduleDefinition) {
     notFound();
   }
+
+  const feeReviewLedgerByModule: Partial<Record<keyof typeof trackerModuleDefinitions, FeeReviewLedger>> = {
+    "sportsbook-bets": "sportsbook",
+    "free-bets": "free_bet",
+    "casino-offers": "casino",
+  };
+  const feeReviewLedger = feeReviewLedgerByModule[module];
+  const feeReviewContext: FeeReviewResolutionContext | undefined =
+    requestedView === "fee-review" && feeReviewLedger && requestedRecords.length > 0
+      ? {
+          profileId,
+          profileName:
+            typeof query.feeProfileName === "string" ? query.feeProfileName : profile.displayName,
+          month: typeof query.feeMonth === "string" ? query.feeMonth : "",
+          ledger: feeReviewLedger,
+          recordIds: requestedRecords,
+          returnHref: typeof query.return === "string" ? query.return : "/profiles",
+        }
+      : undefined;
 
   if (module === "profit-tracker") {
     redirect(`/profiles/${profileId}/tracker/dashboard`);
@@ -86,11 +114,11 @@ export default async function TrackerModulePage({
       {module === "accounts" ? (
         <AccountsWorkflowShell profileId={profile.profileId} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} key={`sportsbook:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
+        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
       ) : module === "free-bets" ? (
-        <FreeBetWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialTableMode={requestedView} key={`free-bets:${requestedIssue ?? requestedView ?? "default"}`} profileId={profile.profileId} />
+        <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} />
       ) : module === "casino-offers" ? (
-        <CasinoOfferWorkflowShell initialIssueFilter={requestedIssue} initialQuery={requestedSearch} key={`casino:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
+        <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (

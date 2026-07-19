@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildOperationalLedgerHref, countOperationalActions, readOperationalIssueQuery } from "./operational-actions";
+import {
+  buildOperationalLedgerHref,
+  countOperationalActions,
+  getCasinoOperationalIssueBadges,
+  readOperationalIssueQuery,
+} from "./operational-actions";
 import type { TrackerSummaryDataset } from "./tracker-summary";
 
 const emptyDataset: TrackerSummaryDataset = {
@@ -39,7 +44,13 @@ describe("operational action routing", () => {
         },
       ],
       casinoOffers: [
-        { status: "Prospecting", result: "Pending", date_settling: "", is_overdue: false },
+        {
+          status: "Prospecting",
+          result: "Pending",
+          date_settling: "",
+          is_overdue: false,
+          resolved_net_pnl: null,
+        },
       ],
     } as TrackerSummaryDataset;
 
@@ -48,5 +59,17 @@ describe("operational action routing", () => {
       freeBets: 1,
       casinoOffers: 1,
     });
+  });
+
+  it("keeps settled casino rows without a final value actionable across reports and ledgers", () => {
+    expect(
+      getCasinoOperationalIssueBadges({
+        status: "Settled",
+        result: "Win",
+        date_settling: "2026-06-15T18:00:00",
+        is_overdue: false,
+        resolved_net_pnl: null,
+      })
+    ).toEqual([{ label: "Final Value Needed", tone: "danger" }]);
   });
 });

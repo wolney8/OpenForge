@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -8,6 +8,9 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
+import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
+import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -2364,7 +2367,7 @@ function getPersistableSportsbookForm(
   };
 }
 
-export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter }: { profileId: string; initialQuery?: string; initialIssueFilter?: string }) {
+export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
@@ -2432,7 +2435,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
     null
   );
-  const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const isCreatingDraftRef = useRef(false);
@@ -2523,61 +2525,59 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }
 
       const nextRows = (await response.json()) as SportsbookRecord[];
-      startTransition(() => {
-        setRows(nextRows);
-        setIsInitialLoading(false);
-        const nextSelectedCandidate =
-          preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
-        const selected =
-          nextSelectedCandidate &&
-          nextRows.some((row) => row.sportsbook_bet_id === nextSelectedCandidate)
-            ? nextSelectedCandidate
-            : null;
-        setSelectedId(selected);
-        if (selected) {
-          isCreatingDraftRef.current = false;
-          const activeRecord = nextRows.find((row) => row.sportsbook_bet_id === selected);
-          if (activeRecord) {
-            const nextFormState = recordToForm(activeRecord);
-            const parsedMultiLay = parseMultiLayOutcomes(activeRecord.multi_lay_outcomes_json, {
-              outcome1Label: activeRecord.multi_lay_outcome_1_name,
-              layOdds1: activeRecord.lay_odds_1,
-              exchangeName: activeRecord.exchange_name,
-              layActual: activeRecord.lay_actual,
-            });
-            setMultiLayOutcome1Label(getMultiLayOutcomeLabel(activeRecord.multi_lay_outcome_1_name));
-            setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
-            setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
-            setPartialLayLegs(parsePartialLayLegs(activeRecord.multi_lay_outcomes_json));
-            setFormState(nextFormState);
-            setPristineFormState(nextFormState);
-            setShowBetSetupValidation(false);
-            setSettledEditEnabled(false);
-            setFootballSettlesAssistUsed(false);
-            setFootballSettlesOriginalValue(null);
-          }
-          setWorkflowVisible(true);
-        } else {
-          if (isCreatingDraftRef.current) {
-            setWorkflowVisible(true);
-            return;
-          }
-          const blankForm = createBlankForm(defaultBonusRetentionRate);
-          setMultiLayOutcomes(createDefaultMultiLayOutcomes());
-          setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
-          setPartialLayLegs([]);
-          setMultiLayOutcome1Label("");
-          setFormState(blankForm);
-          setPristineFormState(blankForm);
+      setRows(nextRows);
+      setIsInitialLoading(false);
+      const nextSelectedCandidate =
+        preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
+      const selected =
+        nextSelectedCandidate &&
+        nextRows.some((row) => row.sportsbook_bet_id === nextSelectedCandidate)
+          ? nextSelectedCandidate
+          : null;
+      setSelectedId(selected);
+      if (selected) {
+        isCreatingDraftRef.current = false;
+        const activeRecord = nextRows.find((row) => row.sportsbook_bet_id === selected);
+        if (activeRecord) {
+          const nextFormState = recordToForm(activeRecord);
+          const parsedMultiLay = parseMultiLayOutcomes(activeRecord.multi_lay_outcomes_json, {
+            outcome1Label: activeRecord.multi_lay_outcome_1_name,
+            layOdds1: activeRecord.lay_odds_1,
+            exchangeName: activeRecord.exchange_name,
+            layActual: activeRecord.lay_actual,
+          });
+          setMultiLayOutcome1Label(getMultiLayOutcomeLabel(activeRecord.multi_lay_outcome_1_name));
+          setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
+          setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
+          setPartialLayLegs(parsePartialLayLegs(activeRecord.multi_lay_outcomes_json));
+          setFormState(nextFormState);
+          setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
           setSettledEditEnabled(false);
           setFootballSettlesAssistUsed(false);
           setFootballSettlesOriginalValue(null);
-          setWorkflowVisible(false);
         }
-      });
+        setWorkflowVisible(true);
+      } else {
+        if (isCreatingDraftRef.current) {
+          setWorkflowVisible(true);
+          return;
+        }
+        const blankForm = createBlankForm(defaultBonusRetentionRate);
+        setMultiLayOutcomes(createDefaultMultiLayOutcomes());
+        setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
+        setPartialLayLegs([]);
+        setMultiLayOutcome1Label("");
+        setFormState(blankForm);
+        setPristineFormState(blankForm);
+        setShowBetSetupValidation(false);
+        setSettledEditEnabled(false);
+        setFootballSettlesAssistUsed(false);
+        setFootballSettlesOriginalValue(null);
+        setWorkflowVisible(false);
+      }
     },
-    [defaultBonusRetentionRate, profileId, startTransition]
+    [defaultBonusRetentionRate, profileId]
   );
 
   const loadExchangeSettings = useCallback(async () => {
@@ -2633,7 +2633,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
-        loadRows(),
+        loadRows(initialRecordId),
         loadExchangeSettings(),
         loadAccountAuthorities(),
         loadLookupValues(),
@@ -2649,6 +2649,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }, [
     loadAccountAuthorities,
     loadExchangeSettings,
+    initialRecordId,
     loadLookupValues,
     loadRows,
     loadTrackerSettings,
@@ -3156,6 +3157,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const reviewRows = useMemo(() => {
     const nextRows = [...rows];
 
+    if (feeReviewContext) {
+      return nextRows.sort((left, right) =>
+        left.sportsbook_bet_id.localeCompare(right.sportsbook_bet_id)
+      );
+    }
+
     if (tableMode === "prospecting") {
       return nextRows
         .filter((row) => row.status === "Prospecting")
@@ -3226,7 +3233,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       const leftCreated = getComparableDate(left.created_at) ?? 0;
       return rightCreated - leftCreated;
     });
-  }, [placedRange.end, placedRange.start, rows, tableMode]);
+  }, [feeReviewContext, placedRange.end, placedRange.start, rows, tableMode]);
 
   const sortedReviewRows = useMemo(() => {
     return sortSportsbookRows(reviewRows, tableSort);
@@ -3267,6 +3274,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   const sportsbookFilteredReviewRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (feeReviewContext && !feeReviewContext.recordIds.includes(row.sportsbook_bet_id)) {
+        return false;
+      }
       if (tableFilters.bookmaker && row.bookmaker !== tableFilters.bookmaker) {
         return false;
       }
@@ -3311,7 +3321,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
       return true;
     });
-  }, [sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = sportsbookFilteredReviewRows.map((row) => ({
@@ -3609,7 +3619,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       multiLayPrimaryPlacementOverride?: MultiLayPrimaryPlacementState;
       partialLayLegsOverride?: PartialLayLegInput[];
     }
-  ) {
+  ): Promise<boolean> {
     setErrorMessage("");
     const resolvedMultiLayOutcomes = options?.multiLayOutcomesOverride ?? multiLayOutcomes;
     const resolvedMultiLayPrimaryPlacement =
@@ -3638,7 +3648,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
         );
       }
-      return;
+      return false;
     }
 
     const activeRowId = nextFormState.sportsbook_bet_id ?? selectedId;
@@ -3663,7 +3673,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (!response.ok) {
       const detail = await response.text();
       setErrorMessage(detail);
-      return;
+      return false;
     }
 
     if (persistableFormState !== nextFormState) {
@@ -3690,6 +3700,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ? `Updated sportsbook bet ${saved.sportsbook_bet_id}.`
           : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
     );
+    return true;
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -3795,20 +3806,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setStatusMessage("Football settles helper reset. You can apply +90m again.");
   }
 
-  async function handleDeleteSelectedRow() {
-    if (!selectedId) {
+  async function handleDeleteSelectedRow(rowId = selectedId) {
+    if (!rowId) {
       return;
     }
 
     const confirmed = window.confirm(
-      `Delete sportsbook row ${selectedId}? This will remove it from this profile tracker.`
+      `Delete sportsbook row ${rowId}? This will remove it from this profile tracker.`
     );
     if (!confirmed) {
       return;
     }
 
     setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${selectedId}`, {
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${rowId}`, {
       method: "DELETE",
     });
 
@@ -3819,9 +3830,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     await loadRows(null);
-    setWorkflowVisible(false);
+    if (selectedId === rowId) setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
-    setStatusMessage(`Deleted sportsbook bet ${selectedId}.`);
+    setStatusMessage(`Deleted sportsbook bet ${rowId}.`);
+    if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
   }
 
   async function updateRowFromTable(
@@ -3896,7 +3908,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       return;
     }
 
-    await updateRowFromTable(
+    if (getSettlementValidationMessage(
+      outcomeModalState.status,
+      outcomeModalState.result,
+      outcomeModalState.date_settled
+    )) return;
+
+    const saved = await updateRowFromTable(
       sourceRow,
       {
         status: outcomeModalState.status,
@@ -3906,7 +3924,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       `Updated outcome details for ${sourceRow.sportsbook_bet_id}.`,
       { preserveTableView: true }
     );
-    setOutcomeModalState(null);
+    if (saved) {
+      setOutcomeModalState(null);
+      if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
+    }
   }
 
   async function submitFreeBetBridgeModal() {
@@ -4533,6 +4554,15 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
           ) : (
             <span aria-hidden="true" className="table-action-button table-action-button-placeholder" />
           )}
+          <button
+            aria-label={`Delete sportsbook row ${sourceRow.sportsbook_bet_id}`}
+            className="icon-button icon-button-destructive table-action-button"
+            onClick={() => void handleDeleteSelectedRow(sourceRow.sportsbook_bet_id)}
+            title={`Delete ${sourceRow.sportsbook_bet_id}`}
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+          </button>
         </div>
       );
     }
@@ -4556,6 +4586,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
 
   return (
     <section className="stack">
+      {feeReviewContext ? (
+        <FeeReviewResolutionBanner
+          context={feeReviewContext}
+          hasUnsavedChanges={isDirty}
+          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
+        />
+      ) : null}
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section
         aria-busy={isInitialLoading}
@@ -5166,10 +5203,19 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               <button className="button-link" onClick={() => setOutcomeModalState(null)} type="button">
                 Close
               </button>
-              <button className="modal-primary-button" onClick={() => void submitOutcomeModal()} type="button">
+              <button
+                aria-describedby="sportsbook-outcome-validation"
+                className="modal-primary-button"
+                disabled={Boolean(getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settled))}
+                onClick={() => void submitOutcomeModal()}
+                type="button"
+              >
                 Save
               </button>
             </div>
+            <span className="field-help field-span-2" id="sportsbook-outcome-validation" role="status">
+              {getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settled)}
+            </span>
           </section>
         </div>
       ) : null}
@@ -7069,7 +7115,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
               <button
                 className="review-chip review-chip-copy"
-                disabled={isPending || isSettledReadOnly}
+                disabled={isInitialLoading || isSettledReadOnly}
                 type="submit"
               >
                 Save

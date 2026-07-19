@@ -196,6 +196,228 @@
         "weekly_breakdown_state": "provisional",
         "fee_crystallised": false
       }
+    },
+    {
+      "case_id": "FEE-018",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "crystallised",
+        "fee_withdrawn_amount": "0.00",
+        "actor_role": "fund_manager",
+        "reopen_reason": "Synthetic late settlement correction"
+      },
+      "expected": {
+        "reopen_allowed": true,
+        "original_revision_retained": true,
+        "next_revision_number": 2
+      }
+    },
+    {
+      "case_id": "FEE-019",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "crystallised",
+        "fee_withdrawn_amount": "0.00",
+        "actor_role": "fund_manager",
+        "reopen_reason": ""
+      },
+      "expected": {
+        "reopen_allowed": false,
+        "error_code": "reopen_reason_required"
+      }
+    },
+    {
+      "case_id": "FEE-020",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "crystallised",
+        "fee_withdrawn_amount": "10.00",
+        "actor_role": "fund_manager",
+        "reopen_reason": "Synthetic corrected result"
+      },
+      "expected": {
+        "reopen_allowed": false,
+        "error_code": "withdrawn_period_is_immutable",
+        "correction_route": "next_open_period"
+      }
+    },
+    {
+      "case_id": "FEE-021",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "original_fee_due": "50.00",
+        "corrected_fee_due": "35.00",
+        "profile_closing": false
+      },
+      "expected": {
+        "adjustment_type": "fee_credit",
+        "adjustment_amount": "15.00",
+        "outstanding_refund_due": "0.00"
+      }
+    },
+    {
+      "case_id": "FEE-022",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "original_fee_due": "35.00",
+        "corrected_fee_due": "50.00",
+        "profile_closing": false
+      },
+      "expected": {
+        "adjustment_type": "fee_debit",
+        "adjustment_amount": "15.00",
+        "outstanding_refund_due": "0.00"
+      }
+    },
+    {
+      "case_id": "FEE-023",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "original_fee_due": "50.00",
+        "corrected_fee_due": "35.00",
+        "profile_closing": true
+      },
+      "expected": {
+        "adjustment_type": "fee_credit",
+        "adjustment_amount": "15.00",
+        "outstanding_refund_due": "15.00"
+      }
+    },
+    {
+      "case_id": "FEE-024",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "ready_to_crystallise",
+        "actor_role": "fund_manager",
+        "confirmation": true
+      },
+      "expected": {
+        "period_state": "crystallised",
+        "fund_manager_confirmation_required": true,
+        "fees_earned_visible": true
+      }
+    },
+    {
+      "case_id": "FEE-025",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "week_label": "W/C 06/07/2026",
+        "weekly_settled_profit": "45.00",
+        "management_fee_percent": "35.00",
+        "investment_fee_percent": "5.00"
+      },
+      "expected": {
+        "calculation_state": "resolved",
+        "weekly_settled_profit": "45.00",
+        "management_fee_impact": "15.75",
+        "investment_fee_impact": "2.25",
+        "total_fee_impact": "18.00",
+        "fee_crystallised": false
+      }
+    },
+    {
+      "case_id": "FEE-026",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "week_label": "W/C 20/07/2026",
+        "weekly_settled_profit": "-10.00",
+        "management_fee_percent": "35.00",
+        "investment_fee_percent": "5.00"
+      },
+      "expected": {
+        "calculation_state": "resolved",
+        "weekly_settled_profit": "-10.00",
+        "management_fee_impact": "-3.50",
+        "investment_fee_impact": "-0.50",
+        "total_fee_impact": "-4.00",
+        "fee_crystallised": false
+      }
+    },
+    {
+      "case_id": "FEE-027",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "calendar_month": "2026-07",
+        "eligible_period_profit": "100.00",
+        "opening_loss_carryforward": "0.00",
+        "management_fee_percent": "35.00",
+        "investment_fee_percent": "5.00"
+      },
+      "expected": {
+        "fee_base": "100.00",
+        "management_fee_amount": "35.00",
+        "investment_fee_amount": "5.00",
+        "total_fee_due": "40.00",
+        "period_state_before_confirmation": "ready_to_crystallise",
+        "weekly_withdrawal_allowed": false
+      }
+    },
+    {
+      "case_id": "FEE-028",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "selected_view_start": "2026-07-08",
+        "selected_view_end": "2026-07-17",
+        "fee_period_start": "2026-07-01",
+        "fee_period_end": "2026-07-31"
+      },
+      "expected": {
+        "fee_period_start": "2026-07-01",
+        "fee_period_end": "2026-07-31",
+        "date_range_changes_fee_period": false
+      }
+    },
+    {
+      "case_id": "FEE-029",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "crystallised",
+        "management_fee_outstanding": "35.00",
+        "investment_fee_outstanding": "5.00",
+        "management_withdrawal": "20.00",
+        "investment_withdrawal": "5.00",
+        "linked_account": "Demo Bank",
+        "actor_role": "fund_manager"
+      },
+      "expected": {
+        "cash_adjustments_created": 2,
+        "fee_withdrawn_amount": "25.00",
+        "fee_outstanding_amount": "15.00",
+        "affects_cash_snapshot": true,
+        "affects_investment": false,
+        "transaction_is_atomic": true
+      }
+    },
+    {
+      "case_id": "FEE-030",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "period_state": "crystallised",
+        "management_fee_outstanding": "15.00",
+        "management_withdrawal": "15.01",
+        "actor_role": "fund_manager"
+      },
+      "expected": {
+        "withdrawal_allowed": false,
+        "error_code": "fee_withdrawal_exceeds_component_outstanding",
+        "cash_adjustments_created": 0,
+        "withdrawal_links_created": 0
+      }
+    },
+    {
+      "case_id": "FEE-031",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "cash_adjustment_id": "DEMO-FEE-WITHDRAWAL-001",
+        "linked_to_crystallised_fee_period": true,
+        "requested_action": "update_or_delete",
+        "actor_role": "fund_manager"
+      },
+      "expected": {
+        "action_allowed": false,
+        "error_code": "fee_withdrawal_adjustment_locked",
+        "correction_workflow_required": true
+      }
     }
   ]
 }

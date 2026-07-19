@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "cases": [
+    {
+      "case_id": "CASINO-WORKFLOW-001",
+      "name": "cash returned is not the authoritative net result",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "own_cash_committed": "5.00",
+        "cash_returned": "4.90",
+        "confirmed_net_result": "-0.10"
+      },
+      "expected": {
+        "suggested_net_result": "-0.10",
+        "authoritative_net_result": "-0.10",
+        "fund_manager_confirmation_required": true
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-002",
+      "name": "repeated turnover does not multiply own cash committed",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "own_cash_committed": "10.00",
+        "wager_target": "50.00",
+        "cash_returned": "12.00",
+        "confirmed_net_result": "2.00"
+      },
+      "expected": {
+        "suggested_net_result": "2.00",
+        "turnover_treated_as_cash_cost": false,
+        "authoritative_net_result": "2.00"
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-003",
+      "name": "wager and get free spins uses composable requirements",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "preset": "Wager and Get Free Spins",
+        "requirements": ["Opt In / Claim", "Wager Cash"],
+        "reward_type": "Free Spins"
+      },
+      "expected": {
+        "customisable_after_preset": true,
+        "net_result_required_on_settlement": true
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-004",
+      "name": "required spins round upward",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "wager_target": "5.00",
+        "spin_stake": "0.30"
+      },
+      "expected": {
+        "required_spins": 17,
+        "rounding": "CEILING"
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-005",
+      "name": "rtp remains planning information",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "game_catalogue_id": "GAME-DEMO-001",
+        "bookmaker_catalogue_id": "BOOKMAKER-DEMO-001",
+        "jurisdiction": "GB",
+        "rtp_percent": "96.20",
+        "source_url": "https://example.invalid/demo-game",
+        "last_verified_date": "2026-07-18"
+      },
+      "expected": {
+        "rtp_can_settle_net_result": false,
+        "source_required": true,
+        "verification_date_required": true
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-006",
+      "name": "optional planning data does not block fee review",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "status": "Settled",
+        "completed_at": "2026-07-18T14:00:00",
+        "confirmed_net_result": "0.00",
+        "rtp_percent": "",
+        "required_spins": ""
+      },
+      "expected": {
+        "fee_review_blocked": false
+      }
+    },
+    {
+      "case_id": "CASINO-WORKFLOW-007",
+      "name": "missing confirmed net result blocks fee review",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "status": "Settled",
+        "completed_at": "2026-07-18T14:00:00",
+        "confirmed_net_result": ""
+      },
+      "expected": {
+        "fee_review_blocked": true,
+        "blocker": "settled_final_value_unresolved"
+      }
+    }
+  ]
+}

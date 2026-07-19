@@ -72,8 +72,11 @@ export function BookmakerIdentity({
   mode?: BookmakerDisplaySettings["resolved_mode"];
 }) {
   const entry = findBookmakerCatalogueEntry(catalogue, bookmaker);
-  if (!entry || mode === "Name") {
+  if (!entry) {
     return <span>{bookmaker || "—"}</span>;
+  }
+  if (mode === "Name") {
+    return <span>{entry.brand_name}</span>;
   }
 
   const label = getBookmakerDisplayLabel(entry);
