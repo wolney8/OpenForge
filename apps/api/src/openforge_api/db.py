@@ -579,6 +579,83 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS fee_periods (
+          fee_period_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          period_start TEXT NOT NULL,
+          period_end TEXT NOT NULL,
+          state TEXT NOT NULL,
+          current_revision_number INTEGER NOT NULL,
+          crystallised_at TEXT,
+          crystallised_by TEXT,
+          reopened_at TEXT,
+          reopened_by TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (profile_id, period_start, period_end),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS fee_period_revisions (
+          fee_revision_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          fee_period_id TEXT NOT NULL,
+          revision_number INTEGER NOT NULL,
+          reporting_basis TEXT NOT NULL,
+          fee_base_source_version TEXT NOT NULL DEFAULT 'monthly-settled-final-v1',
+          fee_base_breakdown_json TEXT NOT NULL DEFAULT '{}',
+          eligible_period_profit TEXT NOT NULL,
+          opening_loss_carryforward TEXT NOT NULL,
+          closing_loss_carryforward TEXT NOT NULL,
+          fee_base TEXT NOT NULL,
+          management_fee_percent TEXT NOT NULL,
+          investment_fee_percent TEXT NOT NULL,
+          management_fee_amount TEXT NOT NULL,
+          investment_fee_amount TEXT NOT NULL,
+          total_fee_due TEXT NOT NULL,
+          fee_package_id TEXT NOT NULL DEFAULT '',
+          fee_package_version INTEGER,
+          change_reason TEXT NOT NULL DEFAULT '',
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          UNIQUE (fee_period_id, revision_number),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (fee_period_id) REFERENCES fee_periods(fee_period_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS fee_corrections (
+          fee_correction_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          source_fee_period_id TEXT NOT NULL,
+          target_fee_period_id TEXT,
+          adjustment_type TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          reason TEXT NOT NULL,
+          state TEXT NOT NULL,
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          applied_at TEXT,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (source_fee_period_id) REFERENCES fee_periods(fee_period_id),
+          FOREIGN KEY (target_fee_period_id) REFERENCES fee_periods(fee_period_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS fee_withdrawal_links (
+          fee_withdrawal_link_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          fee_period_id TEXT NOT NULL,
+          fee_revision_id TEXT NOT NULL,
+          cash_adjustment_id TEXT NOT NULL UNIQUE,
+          component TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (fee_period_id) REFERENCES fee_periods(fee_period_id),
+          FOREIGN KEY (fee_revision_id) REFERENCES fee_period_revisions(fee_revision_id),
+          FOREIGN KEY (cash_adjustment_id) REFERENCES cash_adjustments(cash_adjustment_id)
+        );
+
         CREATE TABLE IF NOT EXISTS casino_offers (
           casino_offer_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -713,6 +790,18 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "profile_tracker_settings",
         "default_free_bet_overlay_factor",
         "TEXT NOT NULL DEFAULT '1.3'",
+    )
+    ensure_column(
+        connection,
+        "fee_period_revisions",
+        "fee_base_source_version",
+        "TEXT NOT NULL DEFAULT 'monthly-settled-final-v1'",
+    )
+    ensure_column(
+        connection,
+        "fee_period_revisions",
+        "fee_base_breakdown_json",
+        "TEXT NOT NULL DEFAULT '{}'",
     )
     ensure_column(
         connection,
@@ -2440,6 +2529,16 @@ def update_cash_adjustment(
         "updated_at": utc_now(),
     }
     with connect() as connection:
+        linked_fee_withdrawal = connection.execute(
+            """
+            SELECT 1 FROM fee_withdrawal_links
+            WHERE profile_id = ? AND cash_adjustment_id = ?
+            LIMIT 1
+            """,
+            (profile_id, cash_adjustment_id),
+        ).fetchone()
+        if linked_fee_withdrawal is not None:
+            raise ValueError("fee_withdrawal_adjustment_locked")
         connection.execute(
             """
             UPDATE cash_adjustments
@@ -2489,6 +2588,16 @@ def delete_cash_adjustment(profile_id: str, cash_adjustment_id: str) -> bool:
         return False
 
     with connect() as connection:
+        linked_fee_withdrawal = connection.execute(
+            """
+            SELECT 1 FROM fee_withdrawal_links
+            WHERE profile_id = ? AND cash_adjustment_id = ?
+            LIMIT 1
+            """,
+            (profile_id, cash_adjustment_id),
+        ).fetchone()
+        if linked_fee_withdrawal is not None:
+            raise ValueError("fee_withdrawal_adjustment_locked")
         write_cash_adjustment_audit_entry(
             connection=connection,
             cash_adjustment_id=cash_adjustment_id,

@@ -83,6 +83,10 @@ describe("bookmaker catalogue matching", () => {
     expect(getBookmakerDisplayLabel(fixture({ short_display_name: "" }))).toBe("Bookmaker A");
   });
 
+  it("uses the full brand name even when a short label exists", () => {
+    expect(getBookmakerDisplayLabel(fixture())).toBe("Bookmaker A");
+  });
+
   it("returns active universal account choices for the selected account type", () => {
     const sourceRows = [
       masterFixture({ account_type: "Exchange", brand_name: "Exchange A" }),

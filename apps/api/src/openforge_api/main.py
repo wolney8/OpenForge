@@ -10,6 +10,7 @@ from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.config import settings
 from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.free_bets import router as free_bets_router
+from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.profiles import router as profiles_router
@@ -31,6 +32,7 @@ app.include_router(balance_snapshots_router)
 app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(free_bets_router)
+app.include_router(fund_manager_fee_periods_router)
 app.include_router(imports_router)
 app.include_router(cash_adjustments_router)
 app.include_router(casino_offers_router)

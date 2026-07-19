@@ -71,11 +71,14 @@ fixtures before replacing this transitional reference input.
 - open expired row
 - settled row not open
 - profile-isolation filtering
+- accepted workflow expansion cases in
+  `tests/fixtures/casino-offer-workflow-expansion-fixtures.json`
 
 ## UI requirements
 
-- Label `calc_net_pnl` as current value, not guaranteed profit.
-- Label `final_net_pnl` as final value override.
+- Label `calc_net_pnl` as reference net value, not guaranteed profit.
+- Label `final_net_pnl` as `Net Result (Profit/Loss)` so zero and negative
+  settled results are explicit and are not confused with gross winnings.
 - Show incomplete state when an active/non-placeholder row has no usable value.
 - Do not imply a deeper casino calculator has run unless a later calculation contract supports it.
 
@@ -84,3 +87,88 @@ fixtures before replacing this transitional reference input.
 Approved for workbook-parity value resolution and import/export only. Deeper casino-offer formula
 automation remains gated.
 
+## Approved casino workflow expansion boundary
+
+A later schema revision may add operational planning fields, but it must preserve
+`final_net_pnl` as the authoritative confirmed **Net Result (Profit/Loss)** used by
+reports and fee calculations.
+
+`Cash Returned` is optional audit/reference information: the withdrawable cash
+remaining or returned from the campaign. It is not interchangeable with Net Result.
+For example, spending `5.00` and returning `4.90` means Cash Returned is `4.90` and
+Net Result is `-0.10`.
+
+Plum Duff must not silently derive the authoritative Net Result. Where complete cash
+spent and returned inputs exist, the UI may show a non-authoritative suggestion for
+Fund Manager confirmation.
+
+The approved expansion may add:
+
+- optional withdrawable cash returned;
+- own cash committed to the campaign, excluding repeated turnover of the same funds;
+- bonus or credit awarded;
+- spin stake and required spin count;
+- wager target and wager multiplier;
+- game RTP as an optional reference input with source/audit metadata;
+- derived qualification spins (`wager target / spin stake`) with explicit rounding rules.
+
+Qualification requirements are composable because one campaign may require more
+than one step:
+
+- Opt In / Claim
+- Deposit
+- Wager Cash
+- Wager Bonus
+- Complete Spins or Hands
+- Lose / Net Loss Trigger
+- No Qualification
+- Other / Custom
+
+Reward types:
+
+- Cash
+- Withdrawable Cashback
+- Bonus Credit
+- Cashback as Bonus Credit
+- Free Spins
+- Free Play / Token
+- Loyalty Points
+- Prize or Draw Entry
+- No Reward
+- Other / Custom
+
+Initial editable presets:
+
+- Wager and Get Free Spins
+- Wager and Get Bonus
+- Deposit Match
+- Deposit and Get
+- Lossback / Risk Free
+- Net Loss Cashback
+- Free Spins
+- Free Play
+- Reload Bonus
+- Loyalty / VIP Reward
+- No Offer / Mug Play
+- Custom
+
+Approved lifecycle statuses are `Prospecting`, `Qualifying`, `Awaiting Reward`,
+`Playing Reward`, `Settled`, `Expired`, `Cancelled` and `Error`. Approved result
+values are `Pending`, `Profit`, `Loss`, `Break-even` and `Void`.
+
+Open rows use **Expected Completion**; settled rows use **Completed At**; campaign
+or reward deadlines use **Expiry**.
+
+`required_spins = CEILING(wager_target / spin_stake)` for one fixed spin stake in
+MVP. Multiple stake segments remain deferred.
+
+Games are master-catalogue entities. RTP and availability attach to the combination
+of game, provider, bookmaker and jurisdiction because operator variants may differ.
+Each RTP entry requires source, verification date and confidence metadata.
+
+RTP must not be used to promise or silently calculate realised winnings. Slot/game outcomes remain
+actual user-entered results.
+
+Missing optional Cash Returned, spin-planning or RTP data must not block monthly fee
+review. A settled Casino row blocks fee review only when its completion date or
+confirmed Net Result is unresolved.

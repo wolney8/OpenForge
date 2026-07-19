@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "fixture_set": "fund-manager-monthly-settled-fee-base",
+  "data_classification": "synthetic",
+  "rounding": "ROUND_HALF_UP to 2 decimal places",
+  "cases": [
+    {
+      "case_id": "FEE-BASE-001",
+      "description": "Settled sportsbook, free-bet and casino values form the monthly fee base",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "rows": [
+        {"module": "sportsbook", "record_id": "SB-DEMO-001", "status": "Settled", "settlement_date": "2025-01-10", "final_value": "-1.25"},
+        {"module": "free_bet", "record_id": "FB-DEMO-001", "status": "Settled", "settlement_date": "2025-01-11", "final_value": "8.40"},
+        {"module": "casino", "record_id": "CAS-DEMO-001", "status": "Settled", "settlement_date": "2025-01-12", "final_value": "12.345"}
+      ],
+      "expected": {"calculation_state": "resolved", "sportsbook_total": "-1.25", "free_bet_total": "8.40", "casino_total": "12.35", "eligible_period_profit": "19.50"}
+    },
+    {
+      "case_id": "FEE-BASE-002",
+      "description": "Open and out-of-period rows do not enter the fee base",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "rows": [
+        {"module": "sportsbook", "record_id": "SB-DEMO-OPEN", "status": "Placed", "settlement_date": "2025-01-15", "final_value": "50.00"},
+        {"module": "free_bet", "record_id": "FB-DEMO-OLD", "status": "Settled", "settlement_date": "2024-12-31", "final_value": "5.00"}
+      ],
+      "expected": {"calculation_state": "resolved", "sportsbook_total": "0.00", "free_bet_total": "0.00", "casino_total": "0.00", "eligible_period_profit": "0.00"}
+    },
+    {
+      "case_id": "FEE-BASE-003",
+      "description": "A settled row without a usable date blocks readiness",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "rows": [
+        {"module": "sportsbook", "record_id": "SB-DEMO-NO-DATE", "status": "Settled", "settlement_date": "", "final_value": "1.00"}
+      ],
+      "expected": {"calculation_state": "blocked", "blocker": "settled_row_missing_date"}
+    },
+    {
+      "case_id": "FEE-BASE-004",
+      "description": "A settled row without a final value blocks readiness",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "rows": [
+        {"module": "casino", "record_id": "CAS-DEMO-NO-FINAL", "status": "Settled", "settlement_date": "2025-01-20", "final_value": null}
+      ],
+      "expected": {"calculation_state": "blocked", "blocker": "settled_final_value_unresolved"}
+    }
+  ]
+}

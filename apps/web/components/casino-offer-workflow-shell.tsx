@@ -8,6 +8,9 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
+import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
+import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -24,6 +27,7 @@ import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/l
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
+import { getCasinoOperationalIssueBadges } from "@/lib/operational-actions";
 import {
   casinoOfferTypeOptions,
   casinoOfferResultOptions,
@@ -97,6 +101,7 @@ type CasinoOutcomeModalState = {
   status: string;
   result: string;
   date_settling: string;
+  final_net_pnl: string;
 };
 
 type TrackerSettingsRecord = {
@@ -127,7 +132,13 @@ type CasinoOfferTableMode =
   | "cashback"
   | "overdue";
 
-type CasinoIssueFilter = "any" | "all-issues" | "offer-unplaced" | "no-settle-date" | "outcome-needed";
+type CasinoIssueFilter =
+  | "any"
+  | "all-issues"
+  | "offer-unplaced"
+  | "no-settle-date"
+  | "outcome-needed"
+  | "final-value-needed";
 type CasinoSortKey = "date_settling" | "bookmaker" | "status" | "displayed_value";
 type CasinoSortDirection = "asc" | "desc";
 type CasinoTableSort = {
@@ -236,26 +247,13 @@ function parseCasinoCurrencyLikeValue(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getCasinoIssueBadges(
-  row: Pick<CasinoOfferRecord, "status" | "result" | "date_settling" | "is_overdue">
-): Array<{ label: string; tone: "warning" | "danger" }> {
-  const issues: Array<{ label: string; tone: "warning" | "danger" }> = [];
-  if (row.status === "Prospecting") {
-    issues.push({ label: "Offer Unplaced", tone: "warning" });
-  }
-  if (!row.date_settling.trim()) {
-    issues.push({ label: "No Settle Date", tone: "warning" });
-  }
-  if (row.status !== "Prospecting" && row.result === "Pending" && row.is_overdue && row.date_settling.trim()) {
-    issues.push({ label: "Outcome Needed", tone: "danger" });
-  }
-  return issues;
-}
-
 function getCasinoIssueTone(
-  row: Pick<CasinoOfferRecord, "status" | "result" | "date_settling" | "is_overdue">
+  row: Pick<
+    CasinoOfferRecord,
+    "status" | "result" | "date_settling" | "is_overdue" | "resolved_net_pnl"
+  >
 ): "warning" | "danger" | null {
-  const issues = getCasinoIssueBadges(row);
+  const issues = getCasinoOperationalIssueBadges(row);
   if (issues.length === 0) {
     return null;
   }
@@ -266,7 +264,7 @@ function getCasinoIssueFilterMatch(row: CasinoOfferRecord, issueType: CasinoIssu
   if (issueType === "any") {
     return true;
   }
-  const labels = new Set(getCasinoIssueBadges(row).map((badge) => badge.label));
+  const labels = new Set(getCasinoOperationalIssueBadges(row).map((badge) => badge.label));
   if (issueType === "all-issues") {
     return labels.size > 0;
   }
@@ -278,6 +276,9 @@ function getCasinoIssueFilterMatch(row: CasinoOfferRecord, issueType: CasinoIssu
   }
   if (issueType === "outcome-needed") {
     return labels.has("Outcome Needed");
+  }
+  if (issueType === "final-value-needed") {
+    return labels.has("Final Value Needed");
   }
   return true;
 }
@@ -526,10 +527,10 @@ function getDisplayedCasinoValue(row: CasinoOfferRecord | null): string {
 
 function getDisplayedCasinoValueLabel(row: CasinoOfferRecord | null): string {
   if (row?.final_net_pnl) {
-    return "Final value";
+    return "Net result";
   }
   if (row?.calc_net_pnl) {
-    return "Current value";
+    return "Reference net value";
   }
   return "Resolved value";
 }
@@ -561,10 +562,10 @@ function getDisplayedCasinoValueLabelForForm(formState: CasinoOfferFormState): s
     return "Current placeholder";
   }
   if (formState.status === "Settled" || formState.result !== "Pending") {
-    return "Final value";
+    return "Net result";
   }
   if (formState.calc_net_pnl.trim()) {
-    return "Current value";
+    return "Reference net value";
   }
   return "Value";
 }
@@ -954,7 +955,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
-export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter }: { profileId: string; initialQuery?: string; initialIssueFilter?: string }) {
+export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
@@ -1144,7 +1145,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings()]).catch(
+      void Promise.all([loadRows(initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings()]).catch(
         (error: Error) => {
           setIsInitialLoading(false);
           setErrorMessage(error.message);
@@ -1154,7 +1155,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings]);
+  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.casino_offer_id === selectedId) ?? null,
@@ -1287,6 +1288,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const reviewRows = useMemo(() => {
     const nextRows = [...rows];
 
+    if (feeReviewContext) {
+      return nextRows.sort((left, right) =>
+        left.casino_offer_id.localeCompare(right.casino_offer_id)
+      );
+    }
+
     if (tableMode === "prospecting") {
       return nextRows
         .filter((row) => casinoPlaceholderStatuses.has(row.status))
@@ -1403,7 +1410,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       const leftCreated = getComparableDate(left.created_at) ?? 0;
       return rightCreated - leftCreated;
     });
-  }, [rows, tableMode]);
+  }, [feeReviewContext, rows, tableMode]);
 
   const toggleColumnVisibility = useCallback(
     (columnKey: CasinoColumnKey) => {
@@ -1552,6 +1559,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (feeReviewContext && !feeReviewContext.recordIds.includes(row.casino_offer_id)) {
+        return false;
+      }
       if (tableFilters.bookmaker && row.bookmaker !== tableFilters.bookmaker) {
         return false;
       }
@@ -1579,7 +1589,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       }
       return true;
     });
-  }, [sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -1699,11 +1709,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       autosaveLabel?: string;
       suppressMissingRequiredMessage?: boolean;
       returnToLedgerOnSuccess?: boolean;
+      skipWorkflowValidation?: boolean;
     }
   ): Promise<boolean> {
     setErrorMessage("");
     const resolvedFormState = buildPersistForm(nextFormState);
-    if (!canPersistForm(resolvedFormState)) {
+    if (!options?.skipWorkflowValidation && !canPersistForm(resolvedFormState)) {
       setShowOfferIdentityValidation(true);
       if (!options?.suppressMissingRequiredMessage) {
         const missingFields = [
@@ -1791,20 +1802,34 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
 
+    if (
+      getSettlementValidationMessage(
+        outcomeModalState.status,
+        outcomeModalState.result,
+        outcomeModalState.date_settling
+      ) ||
+      (outcomeModalState.status === "Settled" &&
+        !sourceRow.calc_net_pnl &&
+        !outcomeModalState.final_net_pnl.trim())
+    ) return;
+
     const nextFormState: CasinoOfferFormState = {
       ...recordToForm(sourceRow),
       status: outcomeModalState.status,
       result: outcomeModalState.result,
       date_settling: outcomeModalState.date_settling,
+      final_net_pnl: outcomeModalState.final_net_pnl,
     };
 
     const saved = await persistForm(nextFormState, {
       autosaveLabel: "Outcome update",
       suppressMissingRequiredMessage: true,
       returnToLedgerOnSuccess: true,
+      skipWorkflowValidation: true,
     });
     if (saved) {
       setOutcomeModalState(null);
+      if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
     }
   }
 
@@ -1829,20 +1854,20 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setStatusMessage("Cleared the unsaved casino-offer draft.");
   }
 
-  async function handleDeleteSelectedRow() {
-    if (!selectedId) {
+  async function handleDeleteSelectedRow(rowId = selectedId) {
+    if (!rowId) {
       return;
     }
 
     const confirmed = window.confirm(
-      `Delete casino row ${selectedId}? This will remove it from this profile tracker.`
+      `Delete casino row ${rowId}? This will remove it from this profile tracker.`
     );
     if (!confirmed) {
       return;
     }
 
     setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers/${selectedId}`, {
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers/${rowId}`, {
       method: "DELETE",
     });
 
@@ -1852,8 +1877,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     await loadRows(null);
-    setWorkflowVisible(false);
-    setStatusMessage(`Deleted casino offer ${selectedId}.`);
+    if (selectedId === rowId) setWorkflowVisible(false);
+    setStatusMessage(`Deleted casino offer ${rowId}.`);
+    if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -1921,11 +1947,21 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 status: sourceRow.status,
                 result: sourceRow.result,
                 date_settling: toDateTimeLocalValue(sourceRow.date_settling),
+                final_net_pnl: sourceRow.final_net_pnl,
               })
             }
             type="button"
           >
             <span aria-hidden="true">🏁</span>
+          </button>
+          <button
+            aria-label={`Delete casino-offer row ${sourceRow.casino_offer_id}`}
+            className="icon-button icon-button-destructive table-action-button"
+            onClick={() => void handleDeleteSelectedRow(sourceRow.casino_offer_id)}
+            title={`Delete ${sourceRow.casino_offer_id}`}
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">delete</span>
           </button>
         </div>
       );
@@ -1946,6 +1982,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   return (
     <section className="stack">
+      {feeReviewContext ? (
+        <FeeReviewResolutionBanner
+          context={feeReviewContext}
+          hasUnsavedChanges={isDirty}
+          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
+        />
+      ) : null}
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section
         aria-busy={isInitialLoading}
@@ -2151,7 +2194,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                       const sourceRow = casinoRowsById.get(rowId);
                       const issueTone = sourceRow ? getCasinoIssueTone(sourceRow) : null;
                       const rowIssueBadges = sourceRow
-                        ? sortIssueBadgesByPriority(getCasinoIssueBadges(sourceRow))
+                        ? sortIssueBadgesByPriority(getCasinoOperationalIssueBadges(sourceRow))
                         : [];
                       return (
                         <tr
@@ -2331,6 +2374,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   <option value="offer-unplaced">Offer Unplaced</option>
                   <option value="no-settle-date">No Settle Date</option>
                   <option value="outcome-needed">Outcome Needed</option>
+                  <option value="final-value-needed">Final Value Needed</option>
                 </select>
               </label>
               <label className="field-control">
@@ -2476,15 +2520,53 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   value={outcomeModalState.date_settling}
                 />
               </label>
+              <label className="field-control field-span-2">
+                <span>Net Result (Profit/Loss)</span>
+                <input
+                  aria-describedby="casino-outcome-net-result-help"
+                  inputMode="decimal"
+                  onChange={(event) =>
+                    setOutcomeModalState((current) =>
+                      current ? { ...current, final_net_pnl: event.target.value } : current
+                    )
+                  }
+                  placeholder="0.00"
+                  value={outcomeModalState.final_net_pnl}
+                />
+                <small id="casino-outcome-net-result-help">
+                  Enter 0 for break-even or a negative amount for a loss.
+                </small>
+              </label>
             </div>
             <div className="tracker-nav">
               <button className="button-link" onClick={() => setOutcomeModalState(null)} type="button">
                 Close
               </button>
-              <button className="modal-primary-button" onClick={() => void submitOutcomeModal()} type="button">
+              <button
+                aria-describedby="casino-outcome-validation"
+                className="modal-primary-button"
+                disabled={Boolean(
+                  getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settling) ||
+                  (outcomeModalState.status === "Settled" &&
+                  !rows.find((row) => row.casino_offer_id === outcomeModalState.rowId)?.calc_net_pnl &&
+                  !outcomeModalState.final_net_pnl.trim()
+                    ? "Add the final value before saving this settled casino row."
+                    : "")
+                )}
+                onClick={() => void submitOutcomeModal()}
+                type="button"
+              >
                 Save
               </button>
             </div>
+            <span className="field-help field-span-2" id="casino-outcome-validation" role="status">
+              {getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settling) ||
+                (outcomeModalState.status === "Settled" &&
+                !rows.find((row) => row.casino_offer_id === outcomeModalState.rowId)?.calc_net_pnl &&
+                !outcomeModalState.final_net_pnl.trim()
+                  ? "Add the final value before saving this settled casino row."
+                  : "")}
+            </span>
           </section>
         </div>
       ) : null}
@@ -2521,6 +2603,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </div>
         </div>
         <div className="workflow-editor-body">
+        {initialRecordId === selectedId && !hasResolvedCasinoValue ? (
+          <div className="validation-message" role="status">
+            Final value required. Select <strong>Edit settled row</strong>, then enter the
+            confirmed result under <strong>Net Result (Profit/Loss)</strong> in Advanced controls.
+          </div>
+        ) : null}
         <section className="stat-strip" aria-label="Casino-offer summary">
           <article className="stat-card">
             <span className="eyebrow">{displayedValueLabel}</span>
@@ -3043,7 +3131,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </div>
             </fieldset>
           </EditorSection>
-          <EditorSection defaultOpen={false} title="Advanced controls">
+          <EditorSection
+            defaultOpen={Boolean(initialRecordId === selectedId && !hasResolvedCasinoValue)}
+            title="Advanced controls"
+          >
             {selectedRow?.calculation_notes.length ? (
               <section className="stack">
                 <span className="eyebrow">Calculation notes</span>
@@ -3057,7 +3148,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
               <label className="field-control">
-                <span>Current value</span>
+                <span>Reference net value</span>
                 <input
                   inputMode="decimal"
                   onChange={(event) =>
@@ -3067,14 +3158,18 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 />
               </label>
               <label className="field-control">
-                <span>Final value override</span>
+                <span>Net Result (Profit/Loss)</span>
                 <input
+                  aria-describedby="casino-editor-net-result-help"
                   inputMode="decimal"
                   onChange={(event) =>
                     setFormState((current) => ({ ...current, final_net_pnl: event.target.value }))
                   }
                   value={formState.final_net_pnl}
                 />
+                <small id="casino-editor-net-result-help">
+                  Settled bankroll result. Enter 0 for break-even or a negative amount for a loss.
+                </small>
               </label>
               <label className="field-control field-span-2">
                 <span>Notes</span>

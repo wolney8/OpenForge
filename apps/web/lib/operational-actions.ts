@@ -15,6 +15,11 @@ export type OperationalActionCounts = {
   casinoOffers: number;
 };
 
+export type OperationalIssueBadge = {
+  label: string;
+  tone: "warning" | "danger";
+};
+
 export function sportsbookHasActionIssue(row: SportsbookSummaryRecord): boolean {
   return getSportsbookIssueBadges(row).length > 0;
 }
@@ -40,12 +45,35 @@ export function freeBetHasActionIssue(row: FreeBetSummaryRecord, now = Date.now(
   );
 }
 
+export function getCasinoOperationalIssueBadges(
+  row: Pick<
+    CasinoSummaryRecord,
+    "status" | "result" | "date_settling" | "is_overdue" | "resolved_net_pnl"
+  >
+): OperationalIssueBadge[] {
+  const issues: OperationalIssueBadge[] = [];
+  if (row.status === "Prospecting") {
+    issues.push({ label: "Offer Unplaced", tone: "warning" });
+  }
+  if (!row.date_settling.trim()) {
+    issues.push({ label: "No Settle Date", tone: "warning" });
+  }
+  if (
+    row.status !== "Prospecting" &&
+    row.result === "Pending" &&
+    row.is_overdue &&
+    row.date_settling.trim()
+  ) {
+    issues.push({ label: "Outcome Needed", tone: "danger" });
+  }
+  if (row.status === "Settled" && row.resolved_net_pnl === null) {
+    issues.push({ label: "Final Value Needed", tone: "danger" });
+  }
+  return issues;
+}
+
 export function casinoOfferHasActionIssue(row: CasinoSummaryRecord): boolean {
-  return (
-    row.status === "Prospecting" ||
-    !row.date_settling.trim() ||
-    (row.status !== "Prospecting" && row.result === "Pending" && row.is_overdue)
-  );
+  return getCasinoOperationalIssueBadges(row).length > 0;
 }
 
 export function countOperationalActions(

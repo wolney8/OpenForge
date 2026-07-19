@@ -8,6 +8,9 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
+import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
+import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -1032,11 +1035,15 @@ export function FreeBetWorkflowShell({
   initialTableMode,
   initialQuery = "",
   initialIssueFilter,
+  initialRecordId,
+  feeReviewContext,
 }: {
   profileId: string;
   initialTableMode?: string;
   initialQuery?: string;
   initialIssueFilter?: string;
+  initialRecordId?: string;
+  feeReviewContext?: FeeReviewResolutionContext;
 }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
@@ -1295,7 +1302,7 @@ export function FreeBetWorkflowShell({
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
-        loadRows(),
+        loadRows(initialRecordId),
         loadExchangeSettings(),
         loadTrackerSettings(),
         loadAccountAuthorities(),
@@ -1316,6 +1323,7 @@ export function FreeBetWorkflowShell({
     applySportsbookPrefill,
     loadAccountAuthorities,
     loadExchangeSettings,
+    initialRecordId,
     loadLookupValues,
     loadRows,
     loadTrackerSettings,
@@ -1549,6 +1557,10 @@ export function FreeBetWorkflowShell({
   const reviewRows = useMemo(() => {
     const nextRows = [...rows];
 
+    if (feeReviewContext) {
+      return nextRows.sort((left, right) => left.free_bet_id.localeCompare(right.free_bet_id));
+    }
+
     if (tableMode === "placed") {
       return nextRows
         .filter((row) => row.status === "Placed")
@@ -1666,7 +1678,7 @@ export function FreeBetWorkflowShell({
       const leftCreated = getComparableDate(left.created_at) ?? 0;
       return rightCreated - leftCreated;
     });
-  }, [rows, tableMode]);
+  }, [feeReviewContext, rows, tableMode]);
 
   const toggleColumnVisibility = useCallback(
     (columnKey: FreeBetColumnKey) => {
@@ -1843,6 +1855,9 @@ export function FreeBetWorkflowShell({
 
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (feeReviewContext && !feeReviewContext.recordIds.includes(row.free_bet_id)) {
+        return false;
+      }
       if (tableFilters.bookmaker && row.bookmaker !== tableFilters.bookmaker) {
         return false;
       }
@@ -1891,7 +1906,7 @@ export function FreeBetWorkflowShell({
 
       return true;
     });
-  }, [sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -2145,20 +2160,20 @@ export function FreeBetWorkflowShell({
     setStatusMessage("Cleared the unsaved free-bet draft.");
   }
 
-  async function handleDeleteSelectedRow() {
-    if (!selectedId) {
+  async function handleDeleteSelectedRow(rowId = selectedId) {
+    if (!rowId) {
       return;
     }
 
     const confirmed = window.confirm(
-      `Delete free-bet row ${selectedId}? This will remove it from this profile tracker.`
+      `Delete free-bet row ${rowId}? This will remove it from this profile tracker.`
     );
     if (!confirmed) {
       return;
     }
 
     setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets/${selectedId}`, {
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets/${rowId}`, {
       method: "DELETE",
     });
 
@@ -2169,9 +2184,10 @@ export function FreeBetWorkflowShell({
     }
 
     await loadRows(null);
-    setWorkflowVisible(false);
+    if (selectedId === rowId) setWorkflowVisible(false);
     setPreviewCalculation(null);
-    setStatusMessage(`Deleted free bet ${selectedId}.`);
+    setStatusMessage(`Deleted free bet ${rowId}.`);
+    if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
   }
 
   async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
@@ -2214,6 +2230,12 @@ export function FreeBetWorkflowShell({
       return;
     }
 
+    if (getSettlementValidationMessage(
+      outcomeModalState.status,
+      outcomeModalState.result,
+      outcomeModalState.date_settled
+    )) return;
+
     const nextFormState: FreeBetFormState = {
       ...recordToForm(sourceRow),
       status: outcomeModalState.status,
@@ -2228,6 +2250,7 @@ export function FreeBetWorkflowShell({
     });
     if (saved) {
       setOutcomeModalState(null);
+      if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
     }
   }
 
@@ -2356,6 +2379,15 @@ export function FreeBetWorkflowShell({
           >
             <span aria-hidden="true">🏁</span>
           </button>
+          <button
+            aria-label={`Delete free-bet row ${sourceRow.free_bet_id}`}
+            className="icon-button icon-button-destructive table-action-button"
+            onClick={() => void handleDeleteSelectedRow(sourceRow.free_bet_id)}
+            title={`Delete ${sourceRow.free_bet_id}`}
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+          </button>
         </div>
       );
     }
@@ -2375,7 +2407,14 @@ export function FreeBetWorkflowShell({
 
   return (
     <section className="stack">
-        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      {feeReviewContext ? (
+        <FeeReviewResolutionBanner
+          context={feeReviewContext}
+          hasUnsavedChanges={isDirty}
+          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
+        />
+      ) : null}
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section
         aria-busy={isInitialLoading}
         className="content-panel stack sportsbook-page-shell"
@@ -3002,10 +3041,19 @@ export function FreeBetWorkflowShell({
               <button className="button-link" onClick={() => setOutcomeModalState(null)} type="button">
                 Close
               </button>
-              <button className="modal-primary-button" onClick={() => void submitOutcomeModal()} type="button">
+              <button
+                aria-describedby="free-bet-outcome-validation"
+                className="modal-primary-button"
+                disabled={Boolean(getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settled))}
+                onClick={() => void submitOutcomeModal()}
+                type="button"
+              >
                 Save
               </button>
             </div>
+            <span className="field-help field-span-2" id="free-bet-outcome-validation" role="status">
+              {getSettlementValidationMessage(outcomeModalState.status, outcomeModalState.result, outcomeModalState.date_settled)}
+            </span>
           </section>
         </div>
       ) : null}

@@ -46,6 +46,11 @@ type CashAdjustmentRecord = {
   calculation_notes: string[];
 };
 
+const lockedFeeWithdrawalTypes = new Set([
+  "Management Fee Withdrawal",
+  "Investment Fee Withdrawal",
+]);
+
 type CashAdjustmentFormState = {
   cash_adjustment_id?: string;
   adjustment_date: string;
@@ -982,6 +987,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     if (!record) {
       return;
     }
+    if (lockedFeeWithdrawalTypes.has(record.adjustment_type)) {
+      setStatusMessage(
+        "Confirmed fee withdrawals are read-only here. Use the monthly fee review correction workflow to make a change."
+      );
+      return;
+    }
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
     const nextFormState = recordToForm(record);
@@ -1133,13 +1144,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setStatusMessage("Cleared the unsaved cash-adjustment draft.");
   }
 
-  async function handleDeleteSelectedRow() {
-    if (!selectedId) {
+  async function handleDeleteSelectedRow(rowId = selectedId) {
+    if (!rowId) {
       return;
     }
 
     const confirmed = window.confirm(
-      `Delete cash-adjustment row ${selectedId}? This will remove it from this profile tracker.`
+      `Delete cash-adjustment row ${rowId}? This will remove it from this profile tracker.`
     );
     if (!confirmed) {
       return;
@@ -1147,7 +1158,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
     setErrorMessage("");
     const response = await fetch(
-      `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${selectedId}`,
+      `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${rowId}`,
       {
         method: "DELETE",
       }
@@ -1159,8 +1170,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     }
 
     await loadRows(null);
-    setWorkflowVisible(false);
-    setStatusMessage(`Deleted cash adjustment ${selectedId}.`);
+    if (selectedId === rowId) setWorkflowVisible(false);
+    setStatusMessage(`Deleted cash adjustment ${rowId}.`);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -1188,12 +1199,31 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           <button
             aria-label={`Edit ${sourceRow.cash_adjustment_id}`}
             className="icon-button table-action-button"
+            disabled={lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)}
             onClick={() => selectRow(sourceRow.cash_adjustment_id)}
+            title={
+              lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)
+                ? "Confirmed fee withdrawals are managed from monthly fee review"
+                : `Edit ${sourceRow.cash_adjustment_id}`
+            }
             type="button"
           >
             <span aria-hidden="true">✎</span>
           </button>
-          <span aria-hidden="true" className="table-action-button table-action-button-placeholder" />
+          <button
+            aria-label={`Delete cash-adjustment row ${sourceRow.cash_adjustment_id}`}
+            className="icon-button icon-button-destructive table-action-button"
+            disabled={lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)}
+            onClick={() => void handleDeleteSelectedRow(sourceRow.cash_adjustment_id)}
+            title={
+              lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)
+                ? "Confirmed fee withdrawals cannot be deleted directly"
+                : `Delete ${sourceRow.cash_adjustment_id}`
+            }
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+          </button>
         </div>
       );
     }

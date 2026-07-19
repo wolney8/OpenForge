@@ -29,6 +29,8 @@ AdjustmentTypeValue = Literal[
     "Subscription",
     "TopUp",
     "Withdrawal",
+    "Management Fee Withdrawal",
+    "Investment Fee Withdrawal",
 ]
 
 
@@ -49,6 +51,8 @@ class CashAdjustmentPayload(BaseModel):
             "Withdrawal",
             "Deduction",
             "Subscription",
+            "Management Fee Withdrawal",
+            "Investment Fee Withdrawal",
         }:
             msg = (
                 "direction 'In' cannot be combined with Withdrawal, Deduction, or Subscription"
@@ -145,7 +149,10 @@ def update_profile_cash_adjustment(
     cash_adjustment_id: str,
     payload: CashAdjustmentPayload,
 ) -> CashAdjustmentResponse:
-    updated = update_cash_adjustment(profile_id, cash_adjustment_id, payload.model_dump())
+    try:
+        updated = update_cash_adjustment(profile_id, cash_adjustment_id, payload.model_dump())
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     if updated is None:
         raise HTTPException(status_code=404, detail="Cash adjustment not found for this profile")
     return build_response(updated)
@@ -156,6 +163,9 @@ def delete_profile_cash_adjustment(
     profile_id: str,
     cash_adjustment_id: str,
 ) -> None:
-    deleted = delete_cash_adjustment(profile_id, cash_adjustment_id)
+    try:
+        deleted = delete_cash_adjustment(profile_id, cash_adjustment_id)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     if not deleted:
         raise HTTPException(status_code=404, detail="Cash adjustment not found for this profile")
