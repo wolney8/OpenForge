@@ -1,0 +1,6 @@
+interface:
+  display_name: "Plum Duff UI Consistency Enforcer"
+  short_description: "Fail-closed Material and WCAG consistency audit"
+  default_prompt: "Use $plum-duff-ui-consistency-enforcer to audit and verify this Plum Duff UI change before handoff."
+policy:
+  allow_implicit_invocation: true

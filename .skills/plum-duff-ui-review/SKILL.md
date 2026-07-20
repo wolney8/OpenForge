@@ -1,3 +1,8 @@
+---
+name: plum-duff-ui-review
+description: Review Plum Duff UI features and fixes against Material 3, WCAG 2.2 AA, platform primitives, process states, and the mandatory fail-closed UI consistency enforcer before handoff.
+---
+
 # Plum Duff UI Review
 
 ## Purpose
@@ -11,7 +16,8 @@ loading state or accessibility review.
 2. `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`
 3. `docs/agent-contracts/plum-duff-ui-implementation-checklist.md`
 4. `docs/agent-contracts/plum-duff-known-ui-pitfalls.md`
-5. relevant workflow/calculation contract
+5. `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`
+6. relevant workflow/calculation contract
 
 ## Review sequence
 
@@ -24,6 +30,7 @@ loading state or accessibility review.
 7. Define enabled, disabled, loading, success and error states.
 8. Add focused unit/Playwright coverage, including geometry/style parity for repeated defects.
 9. Complete the UI checklist and update the pitfalls/backlog documents when needed.
+10. Satisfy the consistency-enforcer evidence gate before declaring the UI ready for smoke testing.
 
 ## Stop conditions
 

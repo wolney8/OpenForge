@@ -19,6 +19,7 @@ AccountTypeValue = Literal["Bookie", "Exchange", "Bank"]
 ChannelValue = Literal["Online", "Retail", "Unknown"]
 StatusValue = Literal[
     "Active",
+    "Bonus Restricted",
     "Limited",
     "Gubbed",
     "Blocked",

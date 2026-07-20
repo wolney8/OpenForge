@@ -25,6 +25,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert response.json()["default_free_bet_underlay_factor"] == "0.928"
     assert response.json()["default_free_bet_overlay_factor"] == "1.3"
     assert response.json()["default_bonus_retention_percent"] == "0.7"
+    assert response.json()["default_exchange_name"] == ""
 
     save_response = client.put(
         "/profiles/profile-demo-001/tracker-settings",
@@ -41,6 +42,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
             "default_free_bet_underlay_factor": "0.94",
             "default_free_bet_overlay_factor": "1.25",
             "default_bonus_retention_percent": "0.72",
+            "default_exchange_name": "Exchange A",
         },
     )
     assert save_response.status_code == 200
@@ -49,6 +51,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert save_response.json()["free_bet_expiry_alert_window_days"] == 5
     assert save_response.json()["use_global_date_range_toggle"] is False
     assert save_response.json()["default_bonus_retention_percent"] == "0.72"
+    assert save_response.json()["default_exchange_name"] == "Exchange A"
 
     roundtrip_response = client.get("/profiles/profile-demo-001/tracker-settings")
     assert roundtrip_response.status_code == 200
@@ -60,6 +63,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert roundtrip_response.json()["default_free_bet_underlay_factor"] == "0.94"
     assert roundtrip_response.json()["default_free_bet_overlay_factor"] == "1.25"
     assert roundtrip_response.json()["default_bonus_retention_percent"] == "0.72"
+    assert roundtrip_response.json()["default_exchange_name"] == "Exchange A"
 
     other_profile_response = client.get("/profiles/profile-demo-002/tracker-settings")
     assert other_profile_response.status_code == 200
@@ -68,3 +72,4 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert other_profile_response.json()["mug_bet_frequency_days"] == 14
     assert other_profile_response.json()["free_bet_expiry_alert_window_days"] == 3
     assert other_profile_response.json()["use_global_date_range_toggle"] is True
+    assert other_profile_response.json()["default_exchange_name"] == ""

@@ -1,14 +1,22 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 const defaultMessage =
   "You have unsaved changes in this tracker form. Leave this page and discard them?";
+
+const activeUnsavedGuards = new Map<symbol, string>();
+
+export function confirmUnsavedTrackerChanges(): boolean {
+  const message = activeUnsavedGuards.values().next().value as string | undefined;
+  return message ? window.confirm(message) : true;
+}
 
 export function useUnsavedChangesGuard(
   isDirty: boolean,
   message: string = defaultMessage
 ): () => boolean {
+  const guardId = useRef(Symbol("unsaved-tracker-form"));
   const confirmDiscardChanges = useCallback(() => {
     if (!isDirty) {
       return true;
@@ -17,9 +25,13 @@ export function useUnsavedChangesGuard(
   }, [isDirty, message]);
 
   useEffect(() => {
+    const activeGuardId = guardId.current;
     if (!isDirty) {
+      activeUnsavedGuards.delete(activeGuardId);
       return;
     }
+
+    activeUnsavedGuards.set(activeGuardId, message);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -66,6 +78,7 @@ export function useUnsavedChangesGuard(
     document.addEventListener("click", handleDocumentClick, true);
 
     return () => {
+      activeUnsavedGuards.delete(activeGuardId);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleDocumentClick, true);
     };

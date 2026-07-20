@@ -8,6 +8,8 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
@@ -496,7 +498,7 @@ const defaultSportsbookColumnWidths: Record<SportsbookColumnKey, number> = {
   back_bet_status: 150,
   displayed_value: 130,
   status: 135,
-  actions: 118,
+  actions: 190,
 };
 
 const sportsbookTableModes: Array<{ value: SportsbookTableMode; label: string }> = [
@@ -2402,6 +2404,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     },
     Boolean(initialIssueFilter)
   );
+  useEffect(() => {
+    const supported = new Set<SportsbookIssueFilter>([
+      "all-issues",
+      "back-unplaced",
+      "no-settle-date",
+      "outcome-needed",
+    ]);
+    if (initialIssueFilter && supported.has(initialIssueFilter as SportsbookIssueFilter)) {
+      setTableFilters((current) => ({
+        ...current,
+        issue_type: initialIssueFilter as SportsbookIssueFilter,
+      }));
+    }
+  }, [initialIssueFilter, setTableFilters]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<SportsbookColumnKey>>(
     () => new Set(defaultVisibleSportsbookColumns)
@@ -2435,6 +2451,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
     null
   );
+  const [multiProfileCopySource, setMultiProfileCopySource] = useState<SportsbookRecord | null>(null);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const isCreatingDraftRef = useRef(false);
@@ -4555,6 +4572,16 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <span aria-hidden="true" className="table-action-button table-action-button-placeholder" />
           )}
           <button
+            aria-label={`Copy ${sourceRow.sportsbook_bet_id} to other profiles`}
+            className="icon-button table-action-button"
+            data-pd-id="sportsbook.actions.copy-to-profiles"
+            onClick={() => setMultiProfileCopySource(sourceRow)}
+            title="Copy to profiles"
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">group_add</span>
+          </button>
+          <button
             aria-label={`Delete sportsbook row ${sourceRow.sportsbook_bet_id}`}
             className="icon-button icon-button-destructive table-action-button"
             onClick={() => void handleDeleteSelectedRow(sourceRow.sportsbook_bet_id)}
@@ -4600,80 +4627,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Sportsbook Bets</h1>
-          <div className="tracker-nav">
-            <button className="button-link" onClick={startNewRow} type="button">
-              Add sportsbook row
-            </button>
-            <button
-              aria-label={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              className="icon-button ledger-collapse-button"
-              onClick={() => setTableCollapsed((current) => !current)}
-              title={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              type="button"
-            >
-              {tableCollapsed ? "+" : "-"}
-            </button>
-          </div>
         </div>
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading sportsbook ledger" />
         ) : null}
-        <div className="sportsbook-review-bar" aria-label="Sportsbook review filters">
-          <label className="field-control table-search-field">
-            <span>Search</span>
-            <input
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search sportsbook rows"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="table-filter-button-wrap">
-            <button
-              aria-label="Open sportsbook filter and column controls"
-              className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
-              onClick={() => setIsFilterModalOpen(true)}
-              title="Filter and columns"
-              type="button"
-            >
-              <svg
-                aria-hidden="true"
-                fill="none"
-                className="table-filter-icon"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
-              {hasActiveTableControls ? (
-                <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">
-                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
-                </span>
-              ) : null}
-            </button>
-            {hasActiveTableControls ? (
-              <button
-                aria-label="Clear active sportsbook filters and hidden-column states"
-                className="table-filter-clear"
-                onClick={() => {
-                  clearTableFilters();
-                  setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns));
-                }}
-                type="button"
-              >
-                ×
-              </button>
-            ) : null}
-          </div>
-        </div>
         <section className="stat-strip" aria-label="Sportsbook quick view">
           <article className="stat-card">
             <span className="eyebrow">Open / overdue</span>
@@ -4707,6 +4664,20 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <span>Current ledger total</span>
           </article>
         </section>
+        <div className="sportsbook-review-bar" aria-label="Sportsbook ledger controls" role="toolbar">
+          <label className="field-control table-search-field">
+            <span className="visually-hidden">Search sportsbook rows</span>
+            <input aria-label="Search sportsbook rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" type="search" value={query} />
+          </label>
+          <LedgerAddRowButton label="Add sportsbook row" onClick={startNewRow} />
+          <div className="table-filter-button-wrap">
+            <button aria-label="Open sportsbook filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button">
+              <svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>
+              {hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}
+            </button>
+            {hasActiveTableControls ? <button aria-label="Clear active sportsbook filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); }} type="button">×</button> : null}
+          </div>
+        </div>
         {errorMessage ? (
           <p className="error-text" role="alert">
             {errorMessage}
@@ -5120,6 +5091,18 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             </div>
           </section>
         </div>
+      ) : null}
+
+      {multiProfileCopySource ? (
+        <MultiProfileSportsbookCopyDialog
+          onClose={() => setMultiProfileCopySource(null)}
+          onComplete={(message) => {
+            setMultiProfileCopySource(null);
+            setStatusMessage(message);
+          }}
+          profileId={profileId}
+          source={multiProfileCopySource}
+        />
       ) : null}
 
       {outcomeModalState ? (

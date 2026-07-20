@@ -248,6 +248,7 @@ export const accountChannelOptions = ["Online", "Retail", "Unknown"] as const;
 
 export const accountStatusOptions = [
   "Active",
+  "Bonus Restricted",
   "Limited",
   "Gubbed",
   "Blocked",

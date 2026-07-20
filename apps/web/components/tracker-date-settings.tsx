@@ -25,6 +25,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name: string;
   created_at: string;
   updated_at: string;
 };
@@ -39,6 +40,7 @@ export function TrackerDateSettings({ profileId }: Props) {
   const [statusMessage, setStatusMessage] = useState("Loading tracker date settings...");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [exchangeOptions, setExchangeOptions] = useState<string[]>([]);
   const isDirty = useMemo(() => {
     if (!settings || !pristineSettings) {
       return false;
@@ -57,6 +59,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_underlay_factor: settings.default_free_bet_underlay_factor,
         default_free_bet_overlay_factor: settings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: settings.default_bonus_retention_percent,
+        default_exchange_name: settings.default_exchange_name,
       }) !==
       JSON.stringify({
         active_date_preset: pristineSettings.active_date_preset,
@@ -71,6 +74,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_underlay_factor: pristineSettings.default_free_bet_underlay_factor,
         default_free_bet_overlay_factor: pristineSettings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: pristineSettings.default_bonus_retention_percent,
+        default_exchange_name: pristineSettings.default_exchange_name,
       })
     );
   }, [pristineSettings, settings]);
@@ -90,14 +94,26 @@ export function TrackerDateSettings({ profileId }: Props) {
   }, [settings]);
 
   const loadSettings = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
+    const [response, accountsResponse] = await Promise.all([
+      fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, { cache: "no-store" }),
+      fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" }),
+    ]);
+    if (!response.ok || !accountsResponse.ok) {
       throw new Error("Unable to load tracker date settings.");
     }
 
     const data = normalizeTrackerSettingsRecord((await response.json()) as TrackerSettingsRecord);
+    const accounts = (await accountsResponse.json()) as {
+      account: string;
+      type: string;
+      status: string;
+    }[];
+    setExchangeOptions(
+      accounts
+        .filter((account) => account.type === "Exchange" && account.status === "Active")
+        .map((account) => account.account)
+        .sort((left, right) => left.localeCompare(right))
+    );
     setSettings(data);
     setPristineSettings(data);
     setStatusMessage("Loaded profile-scoped dashboard/profit/report date controls.");
@@ -159,6 +175,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_underlay_factor: nextSettings.default_free_bet_underlay_factor,
         default_free_bet_overlay_factor: nextSettings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: nextSettings.default_bonus_retention_percent,
+        default_exchange_name: nextSettings.default_exchange_name,
       }),
     });
 
@@ -424,6 +441,23 @@ export function TrackerDateSettings({ profileId }: Props) {
             />
           </label>
           <label className="field-control">
+            <span>Default exchange</span>
+            <select
+              onChange={(event) =>
+                void applyDropdownChange(
+                  (current) => ({ ...current, default_exchange_name: event.target.value }),
+                  "Default exchange change"
+                )
+              }
+              value={settings.default_exchange_name}
+            >
+              <option value="">Most used active exchange</option>
+              {exchangeOptions.map((exchange) => (
+                <option key={exchange} value={exchange}>{exchange}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field-control">
             <span>Default free-bet underlay factor</span>
             <input
               type="text"
@@ -499,6 +533,7 @@ export function TrackerDateSettings({ profileId }: Props) {
 function normalizeTrackerSettingsRecord(record: TrackerSettingsRecord): TrackerSettingsRecord {
   return {
     ...record,
+    default_exchange_name: record.default_exchange_name ?? "",
     default_bonus_retention_percent: normalizeBonusRetentionPercentForUi(
       record.default_bonus_retention_percent
     ),

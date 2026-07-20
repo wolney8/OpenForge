@@ -8,6 +8,7 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
@@ -1074,6 +1075,22 @@ export function FreeBetWorkflowShell({
     },
     Boolean(initialIssueFilter)
   );
+  useEffect(() => {
+    const supported = new Set<FreeBetIssueFilter>([
+      "all-issues",
+      "back-unplaced",
+      "no-settle-date",
+      "outcome-needed",
+      "expiry-watch",
+      "no-expiry",
+    ]);
+    if (initialIssueFilter && supported.has(initialIssueFilter as FreeBetIssueFilter)) {
+      setTableFilters((current) => ({
+        ...current,
+        issue_type: initialIssueFilter as FreeBetIssueFilter,
+      }));
+    }
+  }, [initialIssueFilter, setTableFilters]);
   const [tableSort, setTableSort] = useState<FreeBetTableSort | null>(null);
   const [formState, setFormState] = useState<FreeBetFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<FreeBetFormState>(createBlankForm);
@@ -2421,28 +2438,42 @@ export function FreeBetWorkflowShell({
       >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Free Bets</h1>
-          <div className="tracker-nav">
-            <button className="button-link" onClick={startNewRow} type="button">
-              Add free-bet row
-            </button>
-            <button
-              aria-label={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              className="icon-button ledger-collapse-button"
-              onClick={() => setTableCollapsed((current) => !current)}
-              title={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              type="button"
-            >
-              {tableCollapsed ? "+" : "-"}
-            </button>
-          </div>
         </div>
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading free-bet ledger" />
         ) : null}
-        <div className="sportsbook-review-bar" aria-label="Free-bet review filters">
+        <section className="stat-strip" aria-label="Free-bet quick view">
+          <article className="stat-card">
+            <span className="eyebrow">Open / overdue</span>
+            <strong>{quickView.openCount} / {quickView.overdueCount}</strong>
+            <span>Open rows • Overdue rows</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Placed / available</span>
+            <strong>{quickView.placedCount} / {quickView.availableCount}</strong>
+            <span>Placed rows • Placeholder rows</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Underlays / no lay</span>
+            <strong>{quickView.underlayCount} / {quickView.noLayCount}</strong>
+            <span>Underlay rows • No-lay rows</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Expiry watch</span>
+            <strong>{quickView.missingExpiryCount} / {quickView.upcomingExpiryCount}</strong>
+            <span>Missing Expiry / Upcoming Expiry</span>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Resolved value</span>
+            <strong>{formatMoney(quickView.totalReportingValue)}</strong>
+            <span>Current ledger total</span>
+          </article>
+        </section>
+        <div className="sportsbook-review-bar" aria-label="Free-bet ledger controls" role="toolbar">
           <label className="field-control table-search-field">
-            <span>Search</span>
+            <span className="visually-hidden">Search free-bet rows</span>
             <input
+              aria-label="Search free-bet rows"
               onChange={(event) => {
                 setQuery(event.target.value);
                 setCurrentPage(1);
@@ -2452,6 +2483,7 @@ export function FreeBetWorkflowShell({
               value={query}
             />
           </label>
+          <LedgerAddRowButton label="Add free-bet row" onClick={startNewRow} />
           <div className="table-filter-button-wrap">
             <button
               aria-label="Open free-bet filter and column controls"
@@ -2498,39 +2530,6 @@ export function FreeBetWorkflowShell({
             ) : null}
           </div>
         </div>
-        <section className="stat-strip" aria-label="Free-bet quick view">
-          <article className="stat-card">
-            <span className="eyebrow">Open / overdue</span>
-            <strong>{quickView.openCount} / {quickView.overdueCount}</strong>
-            <span>Open rows • Overdue rows</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Placed / available</span>
-            <strong>
-              {quickView.placedCount} / {quickView.availableCount}
-            </strong>
-            <span>Placed rows • Placeholder rows</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Underlays / no lay</span>
-            <strong>
-              {quickView.underlayCount} / {quickView.noLayCount}
-            </strong>
-            <span>Underlay rows • No-lay rows</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Expiry watch</span>
-            <strong>
-              {quickView.missingExpiryCount} / {quickView.upcomingExpiryCount}
-            </strong>
-            <span>Missing Expiry / Upcoming Expiry</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Resolved value</span>
-            <strong>{formatMoney(quickView.totalReportingValue)}</strong>
-            <span>Current ledger total</span>
-          </article>
-        </section>
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}

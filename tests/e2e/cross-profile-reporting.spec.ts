@@ -230,7 +230,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(directory.getByText("ALPHA-001", { exact: true })).toBeVisible();
   await analytics.getByLabel("Directory status").selectOption("all");
   const bravoDirectoryRow = directory.getByRole("row").filter({ hasText: "BRAVO-002" });
-  await expect(bravoDirectoryRow.getByText("£0.00", { exact: true })).toBeVisible();
+  await expect(bravoDirectoryRow.getByText("£0.00", { exact: true }).first()).toBeVisible();
   await bravoDirectoryRow.getByRole("button", { name: /^Pin / }).click();
   await expect(bravoDirectoryRow.getByRole("button", { name: /^Unpin / })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("dialog", { name: /Profile details/ })).toHaveCount(0);
@@ -313,7 +313,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await analytics.getByLabel("Date range").selectOption("Last Week");
   await expect(analytics.getByText(/Shared range:/)).toBeVisible();
 
-  await expect(analytics.getByRole("button", { name: /add|edit|delete|settle/i })).toHaveCount(0);
+  await expect(analytics.getByRole("button", { name: /edit|delete|settle/i })).toHaveCount(0);
   await expect(directory.getByRole("link", { name: /Open .* dashboard/ })).toHaveCount(2);
   await expect(directory.getByRole("link", { name: /Open .* reports/ })).toHaveCount(2);
   await page.setViewportSize({ width: 900, height: 900 });

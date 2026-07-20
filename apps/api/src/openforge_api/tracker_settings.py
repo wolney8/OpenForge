@@ -37,6 +37,7 @@ class TrackerSettingsPayload(BaseModel):
     default_free_bet_underlay_factor: str = Field(default="0.928", max_length=20)
     default_free_bet_overlay_factor: str = Field(default="1.3", max_length=20)
     default_bonus_retention_percent: str = Field(default="0.7", max_length=20)
+    default_exchange_name: str = Field(default="", max_length=120)
 
     @field_validator(
         "custom_start_date",
@@ -45,6 +46,7 @@ class TrackerSettingsPayload(BaseModel):
         "default_free_bet_underlay_factor",
         "default_free_bet_overlay_factor",
         "default_bonus_retention_percent",
+        "default_exchange_name",
     )
     @classmethod
     def normalize_dates(cls, value: str) -> str:

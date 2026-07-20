@@ -85,7 +85,122 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/fund-manager-account-catalogue.spec.ts` focuses a paired field and asserts
   the complete focus outline remains clear of its neighbouring control.
 
+## 2026-07-19: Opportunity table expanded the browser viewport
+
+- Area: Fund Manager multi-profile opportunity placement dialog.
+- Root cause: the placement table's deliberate wide minimum width was not fully constrained by
+  every dialog/content ancestor, allowing its min-content width to influence the page.
+- Prevention: wide workflow tables use the shared `table-scroll` viewport; the dialog and every
+  content ancestor set explicit viewport bounds and permit shrinking with `min-width: 0`.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` asserts dialog bounds, absence of
+  page-level horizontal scroll and deliberate table-local horizontal overflow.
+
+## 2026-07-20: Viewport dialog was constrained by page layout
+
+- Area: Fund Manager opportunity-first setup and placement dialog.
+- Root cause: the viewport-level dialog rendered inside an animated page subtree instead of the
+  established `document.body` portal, so fixed positioning and viewport bounds were unreliable.
+- Prevention: compare new dialogs with established platform modal implementations; portal
+  viewport-level dialogs and assert all four dialog edges plus header/footer visibility.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` verifies loading and populated dialog
+  geometry, local table overflow and page-level containment.
+
+## 2026-07-20: Local action selector overrode destructive styling
+
+- Area: opportunity placement table action column.
+- Root cause: a more-specific local icon selector replaced the shared danger colour and surface.
+- Prevention: destructive variant styling must be asserted after all local action-grid selectors;
+  stable action slots may size controls but must not replace semantic variants.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` compares the trash icon's computed
+  colour with the semantic danger token and checks action alignment.
+
+## 2026-07-20: End-to-end account fixtures leaked into daily-use authorities
+
+- Area: Fund Manager opportunity-first bookmaker and exchange selectors.
+- Root cause: Playwright created synthetic active accounts in the reused local development database
+  without archiving them after the scenario, so test names became valid daily workflow options.
+- Prevention: temporary account authorities must be unique, tracked and archived in Playwright
+  cleanup. Production selectors use the master catalogue plus explicit profile-owned status;
+  unavailable accounts remain visibly disabled and fixture labels must never become authority.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` now cleans temporary accounts and
+  opportunity rows after each scenario. The opportunity UI regression uses the active-account
+  authority path and verifies calculation/copy-down state independently.
+
+## 2026-07-20: Material Symbol name rendered as text
+
+- Area: Fund Manager opportunity target actions.
+- Root cause: markup used a Material Symbol name that was not included in the shared font request's
+  `icon_names` allowlist, so the ligature text appeared instead of an icon.
+- Prevention: use the shared unfiltered Material Symbols font request in `apps/web/app/layout.tsx`;
+  do not reintroduce a brittle icon-name allowlist. Prefer an established platform icon and assert
+  that its ligature renders at icon geometry rather than as visible fallback wording.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` asserts the Add Target action renders
+  the loaded `group_add` symbol.
+
+## 2026-07-20: Table assist tooltip escaped its cell
+
+- Area: opportunity placement lay-stake suggestion.
+- Root cause: an absolutely positioned tooltip rendered above a control inside a horizontally
+  scrolling table, so the help surface escaped the table viewport and obscured neighbouring UI.
+- Prevention: compact table assistance must expand within its owning input or cell; do not use
+  floating help surfaces where the table viewport cannot guarantee containment.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` verifies the expanded suggested-lay
+  action remains inside the lay-input shell and that no detached tooltip is rendered.
+
+## 2026-07-20: Adjacent heading actions used different geometry
+
+- Area: opportunity placement Add Target and New Opportunity actions.
+- Root cause: the icon action gained local flex styling while its text-only sibling retained generic
+  compact geometry, producing visibly different padding and vertical alignment.
+- Prevention: adjacent equivalent actions must share one explicit geometry class covering height,
+  padding, radius, line-height and alignment, regardless of whether one contains an icon.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` compares computed height, padding,
+  radius and vertical centres for both actions.
+
+## 2026-07-20: Secondary status text escaped a table control cell
+
+- Area: opportunity placement bookmaker selector.
+- Root cause: a warning string was rendered as a second inline child after a full-width select,
+  causing the warning to spill beyond the fixed bookmaker column.
+- Prevention: compact table controls must contain all visible state in the control or a bounded
+  indicator. Supplementary warning text may remain as an accessible description but must not enter
+  the visual row flow when the controlled option already communicates the status.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` uses a warning-state bookmaker and
+  verifies its description is visually hidden and its cell has no horizontal overflow.
+
+## 2026-07-20: Applied inline action disappeared and left unusable field geometry
+
+- Area: opportunity placement suggested lay control.
+- Root cause: applying the suggestion removed its action while the input retained action-reserved
+  padding, truncating the saved lay stake and removing the quick copy path.
+- Prevention: stateful inline field actions retain a stable slot and change semantic icon/action
+  after application; field padding must reserve only the collapsed action width.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` verifies calculate-to-copy state,
+  two-decimal input visibility, clipboard confirmation and reset after strategy change.
+
+## 2026-07-20: Ledger toolbar actions diverged across routes
+
+- Area: sportsbook, free-bet, casino-offer and cash-adjustment ledger toolbars.
+- Root cause: each ledger owned separate add/filter markup, allowing action wording, ordering and
+  geometry to drift.
+- Prevention: every current and future ledger uses `LedgerAddRowButton`, keeps search first, the
+  add action second and the filter as the rightmost control.
+- Test added: `tests/e2e/ledger-table-controls-parity.spec.ts` verifies icon rendering, add/filter
+  order and matching target widths across all current ledgers.
+
 ## Entry template
+
+## 2026-07-20: Cross-ledger controls and route state diverged
+
+- Area: ledger headers, deep-linked filters, top-bar utilities and opportunity setup.
+- Root cause: equivalent controls were changed locally without asserting shared visual order,
+  route-state synchronisation, compact icon geometry or loading/date-field parity.
+- Prevention: ledgers use `title -> loading -> stat cards -> search/add/filter toolbar`; add-row
+  actions use the shared `LedgerAddRowButton`, the filter remains the rightmost toolbar control, URL issue
+  filters must synchronise into the controlled filter modal; top-bar utility actions use the
+  compact icon primitive; opportunity loading and date/time entry use shared platform components.
+- Test added: cross-ledger toolbar geometry, issue-filter modal state, top-bar icon checks,
+  route-preserving profile switching and opportunity loading/date/copy behaviour.
 
 ### YYYY-MM-DD: Short issue name
 

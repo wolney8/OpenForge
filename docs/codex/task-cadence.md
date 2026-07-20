@@ -24,6 +24,8 @@ Extra guardrails:
 - Do not commit without explicit human approval.
 - Before any UI work, read the mandatory Plum Duff UI/accessibility contract and complete its
   implementation checklist.
+- Invoke `.skills/plum-duff-ui-consistency-enforcer/SKILL.md` for every UI change and satisfy its
+  fail-closed evidence gate before handoff.
 - Search for existing platform primitives and equivalent controls before adding markup or CSS.
 - For every UI fix, search current, sibling and shared implementations; update equivalent patterns
   or document why they intentionally differ.

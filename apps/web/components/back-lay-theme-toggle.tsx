@@ -79,7 +79,6 @@ export function BackLayThemeToggle() {
             />
           </svg>
         </span>
-        <strong>{backLayTheme === "smarkets" ? "Smarkets" : "Betfair"}</strong>
       </button>
       <div className={`app-menu-panel app-menu-panel-right ${isOpen ? "is-open" : ""}`} role="menu">
         <div className="back-lay-theme-menu-copy">Back/Lay Colour Theme</div>

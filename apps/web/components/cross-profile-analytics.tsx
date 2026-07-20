@@ -30,6 +30,7 @@ import {
   type TrackerSummaryDataset,
 } from "@/lib/tracker-summary";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
+import { MultiProfileOpportunityDialog } from "./multi-profile-opportunity-dialog";
 import { FeePeriodReviewDialog } from "./fee-period-review-dialog";
 import { FeeCentreBreakdownDrawer } from "./fee-centre-breakdown-drawer";
 import {
@@ -366,9 +367,11 @@ export function CrossProfileAnalytics({
   profiles,
   initialDetailProfileId,
   initialFeeReviewMonth,
+  initialOpportunityId,
 }: CrossProfileAnalyticsProps & {
   initialDetailProfileId?: string;
   initialFeeReviewMonth?: string;
+  initialOpportunityId?: string;
 }) {
   const [profileRecords, setProfileRecords] = useState(profiles);
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
@@ -394,6 +397,7 @@ export function CrossProfileAnalytics({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditError, setProfileEditError] = useState("");
   const [drawerNavigationLabel, setDrawerNavigationLabel] = useState("");
+  const [opportunityDialogOpen, setOpportunityDialogOpen] = useState(Boolean(initialOpportunityId));
   const [feeReviewProfileId, setFeeReviewProfileId] = useState<string | null>(
     initialDetailProfileId && initialFeeReviewMonth ? initialDetailProfileId : null
   );
@@ -1500,7 +1504,18 @@ export function CrossProfileAnalytics({
             <span className="eyebrow">Fund Manager Directory</span>
             <h2 id="profile-directory-title">Profiles</h2>
           </div>
-          <span className="profile-picker-count">{directoryProfiles.length} shown</span>
+          <div className="tracker-nav profile-directory-heading-actions">
+            <span className="profile-picker-count">{directoryProfiles.length} shown</span>
+            <button
+              className="modal-primary-button"
+              data-pd-id="profiles.opportunity.add"
+              onClick={() => setOpportunityDialogOpen(true)}
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">group_add</span>
+              Add Opportunity
+            </button>
+          </div>
         </div>
         <div className="table-shell">
           <table className="profile-action-table">
@@ -1638,6 +1653,13 @@ export function CrossProfileAnalytics({
           onClose={() => setFeeReportQueue(null)}
           onReview={openFeeReviewFromQueue}
           open
+        />
+      ) : null}
+      {opportunityDialogOpen ? (
+        <MultiProfileOpportunityDialog
+          initialOpportunityId={initialOpportunityId}
+          onClose={() => setOpportunityDialogOpen(false)}
+          profiles={profileRecords}
         />
       ) : null}
 

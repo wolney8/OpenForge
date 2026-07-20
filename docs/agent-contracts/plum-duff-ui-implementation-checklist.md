@@ -5,9 +5,11 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 ## Before implementation
 
 - [ ] Read `plum-duff-ui-accessibility-contract.md`.
+- [ ] Read and apply `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`.
 - [ ] Identify the workbook/workflow/financial contract, if relevant.
 - [ ] Search for an existing Plum Duff component or CSS primitive.
 - [ ] Search the current and related routes for equivalent controls.
+- [ ] Record the canonical Plum Duff equivalent for each changed surface/control.
 - [ ] Confirm all public-facing naming uses Plum Duff.
 
 ## Components and tokens
@@ -47,6 +49,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Similar controls elsewhere were searched and updated or intentionally excluded with reason.
 - [ ] Unit/Playwright/accessibility tests added or updated.
 - [ ] Geometry and computed-style parity asserted where the task fixes layout/style divergence.
+- [ ] Dialog/page top, bottom, left and right visibility asserted where geometry changed.
+- [ ] Action/icon dimensions, alignment and semantic destructive styling asserted where actions changed.
 - [ ] Light/dark contrast regression updated where colours changed.
 - [ ] Known-mistakes register updated if this fixes a repeated issue.
 - [ ] Lint, typecheck and relevant tests recorded in the completion report.

@@ -65,6 +65,10 @@ test("tracker controls expose visible focus and an operable theme toggle", async
   ).toBeTruthy();
 
   const themeToggle = page.getByRole("button", { name: /Switch to (light|dark) mode/ });
+  const backLayToggle = page.getByRole("button", { name: "Choose back/lay colour theme" });
+  await expect(themeToggle.locator(".theme-mode-icon-stage")).toBeVisible();
+  await expect(backLayToggle.locator(".palette-icon")).toBeVisible();
+  await expect(backLayToggle.locator("strong")).toHaveCount(0);
   const initialTheme = await page.locator("html").getAttribute("data-theme");
   await themeToggle.click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", initialTheme ?? "");
