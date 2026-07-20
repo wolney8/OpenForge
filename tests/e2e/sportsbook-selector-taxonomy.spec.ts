@@ -30,43 +30,101 @@ test("Sportsbook selectors follow the approved offer-type and bet-type model", a
   await expect(betTypeSelect.locator("option")).toHaveCount(2);
 });
 
-test("Sportsbook campaign tags narrow by offer-family keywords with safe fallback", async ({
+test("Sportsbook common combo prefills an unsaved draft and records no row until save", async ({
   page,
   request,
 }) => {
   const profileId = "profile-demo-001";
-  const nonce = Date.now().toString();
-  const ddhhTag = `Betfred DDHH ${nonce}`;
-  const reloadTag = `Weekly Reload ${nonce}`;
-  const boostTag = `Saturday Boost ${nonce}`;
+  const beforeResponse = await request.get(
+    `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets`
+  );
+  expect(beforeResponse.ok()).toBeTruthy();
+  const beforeCount = ((await beforeResponse.json()) as unknown[]).length;
 
-  for (const optionValue of [ddhhTag, reloadTag, boostTag]) {
-    const response = await request.post(
-      `http://127.0.0.1:8010/profiles/${profileId}/lookup-values`,
-      {
-        data: {
-          lookup_type: "offer_name",
-          option_value: optionValue,
-        },
-      }
-    );
-    expect(response.ok()).toBeTruthy();
-  }
+  await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Add sportsbook row" }).click();
+
+  const editor = page.getByRole("dialog", { name: "Create sportsbook row" });
+  const comboSelect = editor.getByLabel("Apply common bet combo to new sportsbook draft");
+  await expect(comboSelect).toBeVisible();
+  await comboSelect.selectOption("COMBO-WEEKLY-BUILDER");
+
+  await expect(editor.getByLabel("Offer type (promotion mechanism)")).toHaveValue("Bet & Get");
+  await expect(editor.getByLabel("Bet type (bet shape / placement)")).toHaveValue("Bet Builder");
+  await expect(editor.getByLabel("Fixture type")).toHaveValue("Football");
+  await expect(editor.getByLabel("Back stake")).toHaveValue("10.00");
+  await expect(editor.getByLabel("Back odds")).toHaveValue("");
+
+  const afterResponse = await request.get(
+    `http://127.0.0.1:8010/profiles/${profileId}/sportsbook-bets`
+  );
+  expect(afterResponse.ok()).toBeTruthy();
+  expect(((await afterResponse.json()) as unknown[]).length).toBe(beforeCount);
+});
+
+test("Sportsbook common combo requires an explicit choice from several eligible bookmakers", async ({
+  page,
+  request,
+}) => {
+  const createResponse = await request.post(
+    "http://127.0.0.1:8010/fund-manager/common-bet-combos",
+    {
+      data: {
+        name: `Two bookmaker combo ${Date.now()}`,
+        ledger_type: "Sportsbook",
+        bookmakers: ["247Bet", "32Red"],
+        offer_type: "Bet & Get",
+        bet_type: "Single",
+        offer_name: "",
+        fixture_type: "Football",
+        default_back_stake: "10.00",
+        minimum_back_odds: "2.00",
+        allowed_strategies: ["Standard", "Underlay"],
+      },
+    }
+  );
+  expect(createResponse.ok()).toBeTruthy();
+  const preset = (await createResponse.json()) as Record<string, unknown>;
+
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Add sportsbook row" }).click();
+  const editor = page.getByRole("dialog", { name: "Create sportsbook row" });
+  await editor
+    .getByLabel("Apply common bet combo to new sportsbook draft")
+    .selectOption(String(preset.preset_id));
+
+  const candidateRow = editor.locator('[data-pd-id="sportsbook.editor.combo-bookmakers"]');
+  await expect(candidateRow.getByRole("button", { name: "247Bet" })).toBeVisible();
+  await expect(candidateRow.getByRole("button", { name: "32Red" })).toBeVisible();
+  const bookmakerSelect = editor.getByRole("combobox", { name: "Bookmaker", exact: true });
+  await expect(bookmakerSelect).toHaveValue("");
+  await candidateRow.getByRole("button", { name: "32Red" }).click();
+  await expect(bookmakerSelect).toHaveValue("32Red");
+
+  const archiveResponse = await request.put(
+    `http://127.0.0.1:8010/fund-manager/common-bet-combos/${preset.preset_id}`,
+    { data: { ...preset, status: "Archived" } }
+  );
+  expect(archiveResponse.ok()).toBeTruthy();
+});
+
+test("Sportsbook campaign tag remains free text when offer family changes", async ({ page }) => {
+  const profileId = "profile-demo-001";
+  const campaignTag = `Saturday DDHH ${Date.now()}`;
 
   await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Add sportsbook row" }).click();
 
   const offerTypeSelect = page.getByLabel("Offer type (promotion mechanism)");
-  const campaignTagSelect = page.getByLabel("Campaign tag (optional)");
+  const campaignTagInput = page.getByLabel("Campaign tag (optional)");
 
   await offerTypeSelect.selectOption("Double Delight / Hat-trick Heaven");
-  await expect(campaignTagSelect.locator(`option[value="${ddhhTag}"]`)).toHaveCount(1);
-  await expect(campaignTagSelect.locator(`option[value="${reloadTag}"]`)).toHaveCount(0);
-  await expect(campaignTagSelect.locator(`option[value="${boostTag}"]`)).toHaveCount(0);
-
-  await offerTypeSelect.selectOption("Reload");
-  await expect(campaignTagSelect.locator(`option[value="${reloadTag}"]`)).toHaveCount(1);
+  await campaignTagInput.fill(campaignTag);
+  await offerTypeSelect.selectOption("Weekly Reload");
+  await expect(campaignTagInput).toHaveValue(campaignTag);
 });
 
 test("Free bets no longer require a campaign tag to save a prospecting row", async ({ page }) => {
@@ -86,24 +144,8 @@ test("Free bets no longer require a campaign tag to save a prospecting row", asy
   await expect(page.locator(".data-table")).toContainText("Optional campaign tag proof");
 });
 
-test("Free-bet selectors follow the approved offer-type and bet-type model", async ({ page, request }) => {
+test("Free-bet selectors follow the approved offer-type and bet-type model", async ({ page }) => {
   const profileId = "profile-demo-001";
-  const nonce = Date.now().toString();
-  const ddhhTag = `Betfred DDHH ${nonce}`;
-  const reloadTag = `Weekly Reload ${nonce}`;
-
-  for (const optionValue of [ddhhTag, reloadTag]) {
-    const response = await request.post(
-      `http://127.0.0.1:8010/profiles/${profileId}/lookup-values`,
-      {
-        data: {
-          lookup_type: "offer_name",
-          option_value: optionValue,
-        },
-      }
-    );
-    expect(response.ok()).toBeTruthy();
-  }
 
   await page.goto(`/profiles/${profileId}/tracker/free-bets`);
   await page.waitForLoadState("networkidle");
@@ -111,7 +153,7 @@ test("Free-bet selectors follow the approved offer-type and bet-type model", asy
 
   const offerTypeSelect = page.getByLabel("Offer type");
   const betTypeSelect = page.getByLabel("Bet type (bet shape / placement)");
-  const campaignTagSelect = page.getByLabel("Campaign tag (optional)");
+  const campaignTagInput = page.getByLabel("Campaign tag (optional)");
 
   await offerTypeSelect.selectOption("Bet & Get");
   await expect(betTypeSelect.locator('option[value="First Goalscorer"]')).toHaveCount(0);
@@ -120,8 +162,8 @@ test("Free-bet selectors follow the approved offer-type and bet-type model", asy
   await offerTypeSelect.selectOption("Double Delight / Hat-trick Heaven");
   await expect(betTypeSelect).toHaveValue("First Goalscorer");
   await expect(betTypeSelect.locator("option")).toHaveCount(2);
-  await expect(campaignTagSelect.locator(`option[value="${ddhhTag}"]`)).toHaveCount(1);
-  await expect(campaignTagSelect.locator(`option[value="${reloadTag}"]`)).toHaveCount(0);
+  await campaignTagInput.fill("Demo DDHH campaign");
+  await expect(campaignTagInput).toHaveValue("Demo DDHH campaign");
 });
 
 test("Legacy sportsbook rows keep deprecated offer-type values re-openable without exposing them on new rows", async ({

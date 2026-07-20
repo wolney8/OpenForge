@@ -4,7 +4,6 @@ import { KeyboardEvent, useEffect, useState } from "react";
 
 import { AccountAuthoritySettings } from "@/components/account-authority-settings";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
-import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
 
@@ -113,7 +112,6 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           id="profile-settings-panel-offer-lists"
           role="tabpanel"
         >
-          <LookupValueSettings profileId={profileId} />
         </section>
         <section
           aria-labelledby="profile-settings-tab-commission"

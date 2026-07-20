@@ -11,7 +11,7 @@ import { fromDateTimeLocalValue } from "@/lib/date-format";
 import { useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import type { LookupValueRecord } from "@/lib/lookup-values";
 import {
-  getAvailableMasterAccountNames,
+  getActiveMasterAccountNames,
   type MasterAccountCatalogue,
 } from "@/lib/bookmaker-catalogue";
 import {
@@ -78,6 +78,8 @@ type Opportunity = {
   default_back_stake: string;
   expected_settlement: string;
   reward_timing: string;
+  preset_id: string;
+  preset_version: number;
   state: string;
   targets: OpportunityTarget[];
 };
@@ -94,6 +96,23 @@ type SetupDraft = {
   offer_type: string;
   fixture_type: string;
   offer_name: string;
+  preset_id: string;
+  preset_version: number;
+};
+
+type CommonBetCombo = {
+  preset_id: string;
+  name: string;
+  bookmaker: string;
+  bookmakers: string[];
+  offer_type: string;
+  bet_type: string;
+  offer_name: string;
+  fixture_type: string;
+  default_back_stake: string;
+  minimum_back_odds: string;
+  allowed_strategies: string[];
+  version: number;
 };
 
 const emptySetup: SetupDraft = {
@@ -108,6 +127,8 @@ const emptySetup: SetupDraft = {
   offer_type: "",
   fixture_type: "",
   offer_name: "",
+  preset_id: "",
+  preset_version: 0,
 };
 
 const inlineStrategies = new Set(["Standard", "Underlay", "Overlay", "Custom", "No Lay"]);
@@ -257,6 +278,8 @@ export function MultiProfileOpportunityDialog({
     Record<string, ProfileBookmakerOption[]>
   >({});
   const [offerProgrammes, setOfferProgrammes] = useState<string[]>([]);
+  const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
+  const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
   const [saveStates, setSaveStates] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -331,8 +354,13 @@ export function MultiProfileOpportunityDialog({
       lookupValuesRequest,
       profileAccountsRequest,
       masterCatalogueRequest,
+      fetch(`${apiBaseUrl}/fund-manager/common-bet-combos?active_only=true`, {
+        cache: "no-store",
+      }).then(async (response) =>
+        response.ok ? ((await response.json()) as CommonBetCombo[]) : []
+      ),
     ])
-      .then(async ([opportunities, lookupValues, profileAccounts, masterCatalogue]) => {
+      .then(async ([opportunities, lookupValues, profileAccounts, masterCatalogue, combos]) => {
         if (!active) return;
         setActiveOpportunities(opportunities);
         const configuredBookmakers = profileAccounts.flatMap(({ accounts }) =>
@@ -340,10 +368,9 @@ export function MultiProfileOpportunityDialog({
             .filter((account) => account.type === "Bookie" && account.account.trim())
             .map((account) => account.account.trim())
         );
-        const catalogueBookmakers = getAvailableMasterAccountNames(
+        const catalogueBookmakers = getActiveMasterAccountNames(
           masterCatalogue.records,
-          "Bookmaker",
-          masterCatalogue.default_operating_context
+          "Bookmaker"
         );
         setBookmakers(
           [...new Set([...catalogueBookmakers, ...configuredBookmakers])].sort((left, right) =>
@@ -380,6 +407,7 @@ export function MultiProfileOpportunityDialog({
               .map((row) => row.option_value)
           )].sort((left, right) => left.localeCompare(right))
         );
+        setCommonBetCombos(combos);
         if (initialOpportunityId) {
           await loadOpportunity(initialOpportunityId);
         } else {
@@ -408,6 +436,53 @@ export function MultiProfileOpportunityDialog({
     () => eligibility.filter((target) => target.eligible).map((target) => target.profile_id),
     [eligibility]
   );
+
+  function applyCommonBetCombo(presetId: string) {
+    if (!presetId) {
+      setComboBookmakerCandidates([]);
+      setSetup((current) => ({ ...current, preset_id: "", preset_version: 0 }));
+      return;
+    }
+    const combo = commonBetCombos.find((row) => row.preset_id === presetId);
+    if (!combo) return;
+    const knownBookmakers = combo.bookmakers?.length
+      ? combo.bookmakers
+      : combo.bookmaker
+        ? [combo.bookmaker]
+        : [];
+    const validKnownBookmakers = knownBookmakers.filter((bookmaker) => bookmakers.includes(bookmaker));
+    const staleMappings = [
+      knownBookmakers.length !== validKnownBookmakers.length ? "bookmaker" : "",
+      combo.offer_type && !sportsbookOfferTypeOptions.some((value) => value === combo.offer_type) ? "offer type" : "",
+      combo.bet_type && !betTypeOptions.some((value) => value === combo.bet_type) ? "bet type" : "",
+      combo.fixture_type && !fixtureTypeOptions.some((value) => value === combo.fixture_type) ? "fixture type" : "",
+      combo.offer_name && !offerProgrammes.includes(combo.offer_name) ? "offer name" : "",
+    ].filter(Boolean);
+    if (staleMappings.length) {
+      setErrorMessage(
+        `${combo.name} needs remapping in Fund Manager Settings: ${staleMappings.join(", ")}.`
+      );
+      return;
+    }
+    setComboBookmakerCandidates(validKnownBookmakers);
+    setErrorMessage("");
+    setSetup((current) => ({
+      ...current,
+      preset: "Offer",
+      preset_id: combo.preset_id,
+      preset_version: combo.version,
+      bookmaker: validKnownBookmakers.length === 1 ? validKnownBookmakers[0] : "",
+      offer_type: combo.offer_type,
+      bet_type: combo.bet_type,
+      offer_name: combo.offer_name,
+      fixture_type: combo.fixture_type,
+      default_back_stake: combo.default_back_stake,
+      minimum_back_odds: combo.minimum_back_odds,
+    }));
+    setEligibility([]);
+    setSelectedProfileIds([]);
+    setStatusMessage(`${combo.name} applied.${validKnownBookmakers.length > 1 ? ` Choose one of ${validKnownBookmakers.length} known bookmakers.` : ""} Review the draft before creating rows.`);
+  }
 
   async function checkEligibility() {
     if (!setup.bookmaker || !setup.offer_type) return;
@@ -828,6 +903,7 @@ export function MultiProfileOpportunityDialog({
               <section className="stack-tight" aria-labelledby="opportunity-setup-title">
                 <h3 id="opportunity-setup-title">Opportunity Setup</h3>
                 <div className="form-grid opportunity-setup-grid">
+                  <div className="stack-tight"><label className="field-control"><span>Common Combo</span><select aria-label="Apply common bet combo" data-pd-id="multi-profile-opportunity.setup.common-combo" onChange={(event) => applyCommonBetCombo(event.target.value)} value={setup.preset_id}><option value="">No combo</option>{commonBetCombos.map((combo) => <option key={combo.preset_id} value={combo.preset_id}>{combo.name}</option>)}</select></label>{comboBookmakerCandidates.length > 1 ? <div aria-label="Known bookmakers for selected combo" className="common-combo-candidate-row" data-pd-id="multi-profile-opportunity.setup.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${setup.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => { setSetup((current) => ({ ...current, bookmaker })); setEligibility([]); setSelectedProfileIds([]); }} type="button">{bookmaker}</button>)}</div> : null}</div>
                   <label className="field-control"><span>Preset</span><select data-pd-id="multi-profile-opportunity.setup.preset" onChange={(event) => { const preset = event.target.value as SetupDraft["preset"]; setSetup({ ...setup, preset, offer_type: preset === "Mug Bet" ? "Mug Bet" : "", bet_type: preset === "Mug Bet" ? "Single" : "", bookmaker: "" }); setEligibility([]); setSelectedProfileIds([]); }} value={setup.preset}><option>Offer</option><option>Mug Bet</option></select></label>
                   <label className="field-control field-span-2"><span>Offer</span><input data-pd-id="multi-profile-opportunity.setup.offer" maxLength={200} onChange={(event) => setSetup({ ...setup, offer_text: event.target.value })} placeholder="World Cup Bet 10 Get 10 on Spain v Argentina" value={setup.offer_text} /></label>
                   {setup.preset === "Offer" ? <label className="field-control"><span>Bookmaker</span><select data-pd-id="multi-profile-opportunity.setup.bookmaker" onChange={(event) => { setSetup({ ...setup, bookmaker: event.target.value }); setEligibility([]); setSelectedProfileIds([]); }} value={setup.bookmaker}><option value="">Select configured bookmaker</option>{bookmakers.map((bookmaker) => <option key={bookmaker}>{bookmaker}</option>)}</select></label> : null}
@@ -927,7 +1003,14 @@ export function MultiProfileOpportunityDialog({
                       const suggestion = suggestedLay(row);
                       const suggestionApplied = suggestionIsApplied(row, suggestion);
                       const showSuggestion = Boolean(suggestion && isEditable);
-                      const strategyOptions = opportunity.offer_type === "Mug Bet" ? mugStrategies : standardStrategies;
+                      const comboStrategies = commonBetCombos.find(
+                        (combo) => combo.preset_id === opportunity.preset_id
+                      )?.allowed_strategies;
+                      const strategyOptions = opportunity.offer_type === "Mug Bet"
+                        ? mugStrategies
+                        : comboStrategies?.length
+                          ? comboStrategies
+                          : standardStrategies;
                       const copyDownAvailable = canCopyPlacementDown(row);
                       const profileBookmakerOptions = bookmakersByProfile[target.profile_id] ?? [];
                       const matchRating = formatMatchRating(row.match_rating);

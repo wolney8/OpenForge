@@ -6,9 +6,11 @@ const SPECIAL_OFFER_BOOKMAKERS: Record<string, readonly string[]> = {
   "Price Boost": ["Betfred", "Midnite", "bet365", "Sky Bet", "Paddy Power"],
   Cashback: ["Betfred", "Midnite", "BetUK", "talkSPORT BET"],
   Refund: ["Betfred", "Midnite", "BetUK", "Sky Bet"],
+  "Bonus Lock-In": ["Betfred", "Midnite", "BetUK", "Sky Bet"],
   "Bet Builder": ["bet365", "Sky Bet", "Paddy Power", "Betfred"],
   Acca: ["Betfred", "Sky Bet", "Paddy Power", "bet365"],
   Reload: ["Betfred", "Midnite", "BetUK", "BetMGM"],
+  "Weekly Reload": ["Betfred", "Midnite", "BetUK", "BetMGM"],
 };
 
 const UNAVAILABLE_BOOKMAKER_STATUSES = new Set([

@@ -29,7 +29,69 @@
       "case_id": "COMBO-006",
       "inputs": {"profile_id": "PROFILE-002", "preset_exchange": null, "profile_exchange": "Exchange B", "profile_commission": "0.03"},
       "expected": {"resolved_exchange": "Exchange B", "resolved_commission": "0.03"}
+    },
+    {
+      "case_id": "COMBO-007",
+      "inputs": {"profile_id": "PROFILE-001", "campaign_tag": "Demo Friday campaign"},
+      "expected": {"stored_on_row": true, "authority_created": false}
+    },
+    {
+      "case_id": "COMBO-008",
+      "inputs": {"offer_type": "Refund"},
+      "expected": {"resolved_offer_type": "Bonus Lock-In"}
+    },
+    {
+      "case_id": "COMBO-009",
+      "inputs": {"offer_type": "Reload"},
+      "expected": {"resolved_offer_type": "Weekly Reload"}
+    },
+    {
+      "case_id": "COMBO-010",
+      "inputs": {"lifecycle": "Active", "restrictions": ["Soft Limited"], "ledger": "sportsbook"},
+      "expected": {"available": true, "warning": "soft_limited"}
+    },
+    {
+      "case_id": "COMBO-011",
+      "inputs": {"lifecycle": "Active", "restrictions": ["Bonus Restricted"]},
+      "expected": {"promotional_available": false, "mug_bet_available": true}
+    },
+    {
+      "case_id": "COMBO-012",
+      "inputs": {"lifecycle": "Active", "restrictions": ["Casino Only"], "ledger": "sportsbook"},
+      "expected": {"available": false, "reason": "casino_only"}
+    },
+    {
+      "case_id": "COMBO-013",
+      "inputs": {"changed_profile_id": "PROFILE-001", "unchanged_profile_id": "PROFILE-002"},
+      "expected": {"profile_isolation_preserved": true}
+    },
+    {
+      "case_id": "COMBO-014",
+      "inputs": {"authority_state": "Archived", "historical_reference_count": 2},
+      "expected": {"new_selection_allowed": false, "historical_rows_preserved": 2}
+    },
+    {
+      "case_id": "COMBO-015",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-COMBO-001", "preset_version": 3, "entry_point": "sportsbook_add_row"},
+      "expected": {"draft_prefilled": true, "row_saved_before_submit": false, "saved_source_preset_id": "DEMO-COMBO-001", "saved_source_preset_version": 3}
+    },
+    {
+      "case_id": "COMBO-016",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-COMBO-MULTI", "known_bookmakers": ["Bookmaker A", "Bookmaker B", "Bookmaker C"], "unavailable_bookmakers": ["Bookmaker C"]},
+      "expected": {"eligible_choices": ["Bookmaker A", "Bookmaker B"], "selected_bookmaker": null, "requires_explicit_selection": true}
+    },
+    {
+      "case_id": "COMBO-017",
+      "inputs": {
+        "seed_catalogue": true,
+        "required_preset_ids": ["COMBO-BET-GET-SINGLE", "COMBO-BET-GET-IN-PLAY", "COMBO-BET-GET-ACCA", "COMBO-PRICE-BOOST", "COMBO-PROFIT-BOOST", "COMBO-CASHBACK-HORSE", "COMBO-DDHH-FGS", "COMBO-MUG-NO-LAY", "COMBO-WEEKLY-RELOAD", "COMBO-WELCOME-SINGLE", "COMBO-ENHANCED-PRICE"]
+      },
+      "expected": {"all_present": true, "all_bookmaker_neutral": true, "row_saved": false, "bet_placed": false}
+    },
+    {
+      "case_id": "COMBO-018",
+      "inputs": {"offer_type": "2UP / Early Payout", "calculation_implementation_status": "not_approved"},
+      "expected": {"seed_as_production_ready": false, "reason": "calculation_contract_and_fixture_implementation_required"}
     }
   ]
 }
-

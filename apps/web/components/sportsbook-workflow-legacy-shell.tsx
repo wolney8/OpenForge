@@ -36,6 +36,10 @@ type ResultOption = {
   label: string;
 };
 
+function isBonusLockInOfferType(value: string): boolean {
+  return value === "Bonus Lock-In" || value === "Refund";
+}
+
 type SportsbookRecord = {
   sportsbook_bet_id: string;
   profile_id: string;
@@ -528,7 +532,7 @@ function getSportsbookResultOptions(
     ];
   }
 
-  if (offerType === "Cashback" || offerType === "Refund") {
+  if (offerType === "Cashback" || isBonusLockInOfferType(offerType)) {
     const cashbackOptions: ResultOption[] = [
       { value: "Pending", label: "Pending" },
       { value: "Back Won", label: "Back won" },
@@ -598,11 +602,11 @@ function getScenarioBranchLabels(
     };
   }
 
-  if (offerType === "Cashback" || offerType === "Refund") {
+  if (offerType === "Cashback" || isBonusLockInOfferType(offerType)) {
     const triggerPossible =
-      offerType === "Refund" ? "Bonus/refund trigger hits" : "Cashback trigger hits";
+      isBonusLockInOfferType(offerType) ? "Bonus/refund trigger hits" : "Cashback trigger hits";
     const triggerSettled =
-      offerType === "Refund" ? "Bonus/refund triggered" : "Cashback triggered";
+      isBonusLockInOfferType(offerType) ? "Bonus/refund triggered" : "Cashback triggered";
     return {
       backWinLabel: {
         possible: "Back wins",
@@ -805,7 +809,7 @@ function applyOfferTypeDefaults(
     };
   }
 
-  if (nextOfferType === "Cashback" || nextOfferType === "Refund") {
+  if (nextOfferType === "Cashback" || isBonusLockInOfferType(nextOfferType)) {
     const bonusTrigger = current.bonus_trigger || "Lay Wins";
     const nextOptions = getSportsbookResultOptions(nextOfferType, current.match_strategy, bonusTrigger);
     const nextValues = new Set(nextOptions.map((option) => option.value));
@@ -1465,8 +1469,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     isMultiLayStrategy;
   const isDdhhOffer = formState.offer_type === "Double Delight / Hat-trick Heaven";
   const isCashbackOffer =
-    formState.offer_type === "Cashback" || formState.offer_type === "Refund";
-  const isRefundOffer = formState.offer_type === "Refund";
+    formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type);
+  const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
   const offerIdentityComplete = Boolean(
     formState.offer_type.trim() &&
       formState.event_name.trim() &&

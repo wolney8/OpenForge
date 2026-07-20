@@ -14,7 +14,11 @@ def configure_temp_database(tmp_path: Path) -> None:
 
 
 def add_authorities(
-    client: TestClient, profile_id: str, *, bookmaker_status: str = "Active"
+    client: TestClient,
+    profile_id: str,
+    *,
+    bookmaker_status: str = "Active",
+    restrictions: list[str] | None = None,
 ) -> None:
     assert client.patch(f"/profiles/{profile_id}", json={"status": "Active"}).status_code == 200
     assert (
@@ -24,6 +28,8 @@ def add_authorities(
                 "account": "Bookmaker Opportunity Demo",
                 "type": "Bookie",
                 "status": bookmaker_status,
+                "lifecycle_status": "Active",
+                "restrictions": restrictions or [],
                 "channel": "Online",
             },
         ).status_code
@@ -63,6 +69,8 @@ def setup_payload(**overrides: object) -> dict[str, object]:
         "expected_settlement": "2026-07-21T20:00:00",
         "reward_timing": "On settlement",
         "selected_profile_ids": ["profile-demo-001", "profile-demo-002"],
+        "preset_id": "DEMO-COMBO-001",
+        "preset_version": 3,
     }
     payload.update(overrides)
     return payload
@@ -78,6 +86,12 @@ def test_opportunity_creates_isolated_prospecting_rows_and_is_resumable(tmp_path
     assert response.status_code == 201, response.text
     opportunity = response.json()
     assert opportunity["state"] == "In Progress"
+    assert opportunity["preset_id"] == "DEMO-COMBO-001"
+    assert opportunity["preset_version"] == 3
+    for target in opportunity["targets"]:
+        if target["sportsbook_bet"] is not None:
+            assert target["sportsbook_bet"]["source_combo_preset_id"] == "DEMO-COMBO-001"
+            assert target["sportsbook_bet"]["source_combo_preset_version"] == 3
     selected_targets = [target for target in opportunity["targets"] if target["sportsbook_bet"]]
     assert {target["profile_id"] for target in selected_targets} == {
         "profile-demo-001",
@@ -505,6 +519,29 @@ def test_pending_and_limited_accounts_are_eligible_with_warnings(tmp_path: Path)
     assert rows["profile-demo-002"]["eligible"] is True
     assert rows["profile-demo-002"]["bookmaker_account_status"] == "Limited"
     assert "confirm it can be used" in rows["profile-demo-002"]["eligibility_warnings"][0]
+
+
+def test_bonus_restriction_blocks_promotion_but_allows_mug_bet(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    add_authorities(
+        client,
+        "profile-demo-001",
+        restrictions=["Bonus Restricted"],
+    )
+
+    promotion = client.post(
+        "/multi-profile-opportunities/eligibility",
+        json={"bookmaker": "Bookmaker Opportunity Demo", "offer_type": "Bet & Get"},
+    ).json()[0]
+    mug_bet = client.post(
+        "/multi-profile-opportunities/eligibility",
+        json={"bookmaker": "Bookmaker Opportunity Demo", "offer_type": "Mug Bet"},
+    ).json()[0]
+
+    assert promotion["eligible"] is False
+    assert "cannot use promotional offers" in promotion["eligibility_reasons"][0]
+    assert mug_bet["eligible"] is True
 
 
 def test_prospecting_target_can_be_reset_removed_and_restored(tmp_path: Path) -> None:

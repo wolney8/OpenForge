@@ -95,6 +95,194 @@ test("Opportunity loading state remains contained and omits the duplicate header
   await expect(dialog.getByLabel("Expected Settlement time")).toBeDisabled();
 });
 
+test("Fund Manager can manage and apply a common bet combo without creating rows", async ({
+  page,
+}) => {
+  await page.goto("/settings");
+  const comboManageButton = page.locator('[data-pd-id="common-bet-combos.manage"]');
+  const comboSection = page.locator('[data-pd-id="common-bet-combos.section"]');
+  const comboActionGeometry = await Promise.all([
+    comboManageButton.boundingBox(),
+    comboSection.boundingBox(),
+  ]);
+  expect(comboActionGeometry[0]).not.toBeNull();
+  expect(comboActionGeometry[1]).not.toBeNull();
+  expect(comboActionGeometry[0]!.width).toBeLessThan(comboActionGeometry[1]!.width / 2);
+  await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
+  await expect(settingsDialog).toBeVisible();
+  await expect(
+    settingsDialog.getByRole("cell", { name: "Weekly Bet Builder", exact: true })
+  ).toBeVisible();
+  await settingsDialog.getByRole("button", { name: "Add Combo" }).click();
+  const bookmakerChoices = settingsDialog.locator(
+    '[data-pd-id="common-bet-combos.editor"] .common-bet-combo-choice-grid .profile-filter-chip'
+  );
+  await expect(bookmakerChoices.first()).toBeVisible();
+  expect(await bookmakerChoices.count()).toBeGreaterThan(1);
+  const dialogGeometry = await settingsDialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      pageScrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(dialogGeometry.left).toBeGreaterThanOrEqual(0);
+  expect(dialogGeometry.right).toBeLessThanOrEqual(dialogGeometry.viewportWidth);
+  expect(dialogGeometry.top).toBeGreaterThanOrEqual(0);
+  expect(dialogGeometry.bottom).toBeLessThanOrEqual(dialogGeometry.viewportHeight);
+  expect(dialogGeometry.pageScrollWidth).toBeLessThanOrEqual(dialogGeometry.viewportWidth);
+  await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
+
+  await page.goto("/profiles");
+  await page.getByRole("button", { name: "Add Opportunity" }).click();
+  const opportunityDialog = page.getByRole("dialog", {
+    name: "Add sportsbook opportunity across profiles",
+  });
+  await opportunityDialog.getByLabel("Apply common bet combo").selectOption(
+    "COMBO-WEEKLY-BUILDER"
+  );
+  await expect(opportunityDialog.getByRole("combobox", { name: "Offer Type" })).toHaveValue(
+    "Bet & Get"
+  );
+  await expect(opportunityDialog.getByRole("combobox", { name: "Bet Type" })).toHaveValue(
+    "Bet Builder"
+  );
+  await expect(opportunityDialog.getByRole("combobox", { name: "Fixture Type" })).toHaveValue(
+    "Football"
+  );
+  await expect(opportunityDialog.getByLabel("Minimum Odds", { exact: true })).toHaveValue(
+    "2.00"
+  );
+  await expect(opportunityDialog.getByLabel("Default Back Stake", { exact: true })).toHaveValue(
+    "10.00"
+  );
+  await expect(
+    opportunityDialog.locator('[data-pd-id="multi-profile-opportunity.setup.create-rows"]')
+  ).toBeDisabled();
+});
+
+test("Tracker Lists uses the constrained Fund Manager settings modal pattern", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/settings");
+  const authorityManageButton = page.locator('[data-pd-id="fund-manager-authorities.manage"]');
+  const authoritySection = page.locator('[data-pd-id="fund-manager-authorities.section"]');
+  const authorityActionGeometry = await Promise.all([
+    authorityManageButton.boundingBox(),
+    authoritySection.boundingBox(),
+  ]);
+  expect(authorityActionGeometry[0]).not.toBeNull();
+  expect(authorityActionGeometry[1]).not.toBeNull();
+  expect(authorityActionGeometry[0]!.width).toBeLessThan(
+    authorityActionGeometry[1]!.width / 2
+  );
+  await page.getByRole("button", { name: "Manage Tracker Lists" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Manage Fund Manager tracker lists" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.table-scroll"]')).toBeVisible();
+  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.list-filter"]')).toBeVisible();
+  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.search"]')).toBeVisible();
+
+  const geometry = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      pageScrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(geometry.top).toBeGreaterThanOrEqual(0);
+  expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
+  expect(geometry.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.pageScrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+
+  const fieldStyles = await dialog.evaluate(() => {
+    const list = document.querySelector<HTMLElement>(
+      '[data-pd-id="fund-manager-authorities.list-filter"]'
+    );
+    const search = document.querySelector<HTMLElement>(
+      '[data-pd-id="fund-manager-authorities.search"]'
+    );
+    if (!list || !search) return null;
+    const listStyle = getComputedStyle(list);
+    const searchStyle = getComputedStyle(search);
+    return {
+      listHeight: listStyle.height,
+      searchHeight: searchStyle.height,
+      listRadius: listStyle.borderRadius,
+      searchRadius: searchStyle.borderRadius,
+      listBackground: listStyle.backgroundColor,
+      searchBackground: searchStyle.backgroundColor,
+    };
+  });
+  expect(fieldStyles).not.toBeNull();
+  expect(fieldStyles?.listHeight).toBe(fieldStyles?.searchHeight);
+  expect(fieldStyles?.listRadius).toBe(fieldStyles?.searchRadius);
+  expect(fieldStyles?.listBackground).toBe(fieldStyles?.searchBackground);
+
+  await dialog.getByRole("button", { name: "Add Value" }).click();
+  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.editor"]')).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Back to Tracker Lists" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Save Value" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Save Value" })).toBeDisabled();
+});
+
+test("Opportunity setup presents several combo bookmakers for explicit selection", async ({
+  page,
+  request,
+}) => {
+  const createResponse = await request.post(`${apiBaseUrl}/fund-manager/common-bet-combos`, {
+    data: {
+      name: `Opportunity combo ${Date.now()}`,
+      ledger_type: "Sportsbook",
+      bookmakers: ["247Bet", "32Red"],
+      offer_type: "Bet & Get",
+      bet_type: "Single",
+      offer_name: "",
+      fixture_type: "Football",
+      default_back_stake: "10.00",
+      minimum_back_odds: "2.00",
+      allowed_strategies: ["Standard", "Underlay"],
+    },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const preset = (await createResponse.json()) as Record<string, unknown>;
+
+  await page.goto("/profiles");
+  await page.getByRole("button", { name: "Add Opportunity" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Add sportsbook opportunity across profiles",
+  });
+  await dialog.getByLabel("Apply common bet combo").selectOption(String(preset.preset_id));
+
+  const candidates = dialog.locator(
+    '[data-pd-id="multi-profile-opportunity.setup.combo-bookmakers"]'
+  );
+  await expect(candidates.getByRole("button", { name: "247Bet" })).toBeVisible();
+  await expect(candidates.getByRole("button", { name: "32Red" })).toBeVisible();
+  const bookmakerSelect = dialog.getByRole("combobox", { name: "Bookmaker", exact: true });
+  await expect(bookmakerSelect).toHaveValue("");
+  await candidates.getByRole("button", { name: "247Bet" }).click();
+  await expect(bookmakerSelect).toHaveValue("247Bet");
+
+  const archiveResponse = await request.put(
+    `${apiBaseUrl}/fund-manager/common-bet-combos/${preset.preset_id}`,
+    { data: { ...preset, status: "Archived" } }
+  );
+  expect(archiveResponse.ok()).toBeTruthy();
+});
+
 test("Fund Manager creates and records one opportunity across eligible profiles", async ({
   page,
   request,

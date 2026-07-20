@@ -24,7 +24,7 @@ Map the live GitHub roadmap to durable local contracts and deterministic fixture
 | M10 Fee Visibility | Calculate, display and explicitly withdraw management/investment fees | Open: issue #23 | Draft contract/fixtures added; fee-base decisions remain gated |
 | M11 Multi-Profile Entry | Sequentially reuse an offer across eligible profiles | Open: issue #24 | Draft workflow/fixtures added |
 | M12 Target Decision Engine | Target progress and advisory offer decisions | Open: issues #25-#31 | Target maths/safety fixtures drafted; recommendation scoring remains unapproved |
-| M13 Common Bet Combos | Settings-owned quick-entry templates | Open: issue #32 | Draft workflow/fixtures added |
+| M13 Common Bet Combos | Settings-owned quick-entry templates | Open: issue #32 | Implemented across Settings, Fund Manager opportunity entry, and direct sportsbook drafts; smoke review pending |
 | M14 Calculator Workspace | Standalone calculators and ledger bridge | Open: issues #35-#40 | Bridge and evidence governance drafted; advanced families are classified by readiness |
 | M15 Platform Experience | Financial motion, accessibility, density, guided entry and approved platform branding | Open: issues #58-#61, #64-#65 | Financial presentation, UX, guidance and Plum Duff branding contracts drafted |
 

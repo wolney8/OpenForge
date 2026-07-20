@@ -60,6 +60,8 @@ class OpportunitySetupPayload(OpportunityEligibilityPayload):
     default_back_stake: str = Field(default="", max_length=40)
     expected_settlement: str = Field(default="", max_length=40)
     reward_timing: Literal["", "On placement", "On settlement"] = ""
+    preset_id: str = Field(default="", max_length=64)
+    preset_version: int = Field(default=0, ge=0)
     selected_profile_ids: list[str] = Field(min_length=1)
     target_selections: list[OpportunityTargetSelection] = Field(default_factory=list)
     actor_id: str = Field(default="local-fund-manager", min_length=1, max_length=120)
@@ -151,6 +153,8 @@ class OpportunityResponse(BaseModel):
     default_back_stake: str
     expected_settlement: str
     reward_timing: str
+    preset_id: str
+    preset_version: int
     state: str
     created_at: str
     updated_at: str
@@ -316,7 +320,7 @@ def opportunity_notes(payload: OpportunitySetupPayload) -> str:
 
 def create_profile_sportsbook_payload(
     payload: OpportunitySetupPayload, *, bookmaker: str | None = None
-) -> dict[str, str]:
+) -> dict[str, Any]:
     is_mug_bet = payload.preset == "Mug Bet"
     return {
         "event_name": payload.offer_text,
@@ -331,6 +335,8 @@ def create_profile_sportsbook_payload(
         "result": "Pending",
         "back_stake": payload.default_back_stake,
         "back_odds": "",
+        "source_combo_preset_id": payload.preset_id,
+        "source_combo_preset_version": payload.preset_version,
         "bonus_trigger": "",
         "maximum_bonus": "",
         "bonus_retention_rate": "70",

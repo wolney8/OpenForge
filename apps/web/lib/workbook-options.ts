@@ -42,9 +42,14 @@ export const sportsbookOfferTypeOptions = [
   "Mug Bet",
   "Enhanced Price",
   "Price Boost",
+  "Profit Boost",
   "Cashback",
-  "Refund",
-  "Reload",
+  "Bonus Lock-In",
+  "Weekly Reload",
+  "2UP / Early Payout",
+  "BOG / Best Odds Guaranteed",
+  "Each Way",
+  "Extra Places",
 ] as const;
 
 export const legacySportsbookOfferTypeOptions = ["None", "Bet Builder", "Acca"] as const;
@@ -79,15 +84,19 @@ const offerTypeDescriptors: Record<string, OfferTypeDescriptor> = {
     calculatorFamily: "standard qualifying",
     summary: "Boost mechanic that may later pair with named outcome workflows.",
   },
+  "Profit Boost": {
+    calculatorFamily: "profit boost",
+    summary: "Profit-only percentage boost or bookmaker-displayed boosted odds.",
+  },
   Cashback: {
     calculatorFamily: "cashback / bonus-lock-in",
     summary: "Trigger-based refund or cashback family with explicit branch wording.",
   },
-  Refund: {
+  "Bonus Lock-In": {
     calculatorFamily: "cashback / bonus-lock-in",
     summary: "Refund-style trigger family using retained-bonus assumptions.",
   },
-  Reload: {
+  "Weekly Reload": {
     calculatorFamily: "reload / recurring promo",
     summary: "Broad recurring-promo placeholder; actual mechanic should be clarified where possible.",
   },
@@ -131,8 +140,10 @@ const offerTypeBetTypeMap: Record<string, readonly string[]> = {
     "Correct Score",
     "Accumulator / Multiple",
   ],
+  "Profit Boost": ["Single", "Bet Builder", "Accumulator / Multiple"],
   Cashback: ["Single", "First Goalscorer", "Accumulator / Multiple", "In Play + Single"],
-  Refund: ["Single", "First Goalscorer", "Accumulator / Multiple", "In Play + Single"],
+  "Bonus Lock-In": ["Single", "First Goalscorer", "Accumulator / Multiple", "In Play + Single"],
+  "Weekly Reload": ["Single", "Bet Builder", "Accumulator / Multiple", "In Play + Single"],
   "Double Delight / Hat-trick Heaven": ["First Goalscorer"],
   "Mug Bet": ["Single"],
   "Bet Builder": ["Bet Builder"],
@@ -148,15 +159,16 @@ const offerTypeCampaignTagKeywords: Record<string, readonly string[]> = {
   "Bet & Get": ["bet", "get"],
   "Enhanced Price": ["enhanced", "price"],
   "Price Boost": ["boost", "price"],
+  "Profit Boost": ["boost", "profit"],
   Cashback: ["cashback", "cash back", "money back"],
-  Refund: ["refund", "money back", "lose"],
+  "Bonus Lock-In": ["refund", "bonus lock", "money back", "lose"],
   "Double Delight / Hat-trick Heaven": [
     "ddhh",
     "double delight",
     "hat-trick heaven",
     "hat trick heaven",
   ],
-  Reload: ["reload", "club", "daily", "weekly", "midweek", "friday", "saturday"],
+  "Weekly Reload": ["reload", "club", "daily", "weekly", "midweek", "friday", "saturday"],
   "2UP / Early Payout": ["2up", "early payout"],
   "BOG / Best Odds Guaranteed": ["bog", "best odds guaranteed"],
   "Each Way": ["each way"],
@@ -166,8 +178,26 @@ const offerTypeCampaignTagKeywords: Record<string, readonly string[]> = {
 export const fixtureTypeOptions = [
   "Football",
   "Horse Racing",
+  "Greyhound Racing",
   "Tennis",
   "Basketball",
+  "Golf",
+  "Cricket",
+  "Rugby Union",
+  "Rugby League",
+  "Darts",
+  "Snooker",
+  "Boxing",
+  "MMA / UFC",
+  "Motor Racing",
+  "Cycling",
+  "American Football",
+  "Baseball",
+  "Ice Hockey",
+  "eSports",
+  "Politics",
+  "Public Event / Entertainment",
+  "Virtual Sports",
   "Other",
 ] as const;
 
@@ -247,17 +277,55 @@ export const accountTypeOptions = ["Bookie", "Exchange", "Bank"] as const;
 export const accountChannelOptions = ["Online", "Retail", "Unknown"] as const;
 
 export const accountStatusOptions = [
+  "Not Signed Up",
+  "Pending Sign Up",
+  "Verification Pending",
   "Active",
   "Bonus Restricted",
+  "Soft Limited",
   "Limited",
+  "Casino Only",
+  "Sportsbook Only",
+  "KYC Blocked",
+  "Risk Blocked",
+  "Deposit Restricted",
+  "Withdrawal Restricted",
+  "Suspended",
   "Gubbed",
   "Blocked",
   "Not Using",
   "Closed",
-  "Pending Sign Up",
   "Inactive",
   "Archived",
 ] as const;
+
+export const accountLifecycleOptions = [
+  "Not Signed Up",
+  "Pending Sign Up",
+  "Verification Pending",
+  "Active",
+  "Suspended",
+  "Closed",
+  "Archived",
+] as const;
+
+export const accountRestrictionOptions = [
+  "Bonus Restricted",
+  "Soft Limited",
+  "Casino Only",
+  "Sportsbook Only",
+  "KYC Blocked",
+  "Risk Blocked",
+  "Deposit Restricted",
+  "Withdrawal Restricted",
+] as const;
+
+export function normalizeSportsbookOfferType(value: string): string {
+  const normalized = value.trim();
+  if (normalized === "Refund") return "Bonus Lock-In";
+  if (normalized === "Reload") return "Weekly Reload";
+  return normalized;
+}
 
 export function normalizeSportsbookBetType(value: string): string {
   const normalized = value.trim();
@@ -274,7 +342,7 @@ export function normalizeSportsbookBetType(value: string): string {
 
 export function getDefaultBetTypeForOfferType(offerType: string, currentBetType: string): string {
   const normalizedCurrentBetType = normalizeSportsbookBetType(currentBetType);
-  const mappedBetTypes = offerTypeBetTypeMap[offerType.trim()];
+  const mappedBetTypes = offerTypeBetTypeMap[normalizeSportsbookOfferType(offerType)];
   if (
     normalizedCurrentBetType &&
     (!mappedBetTypes || mappedBetTypes.includes(normalizedCurrentBetType))
@@ -298,7 +366,7 @@ export function getAllowedBetTypesForOfferType(
   currentBetType = ""
 ): string[] {
   const normalizedCurrentBetType = normalizeSportsbookBetType(currentBetType);
-  const mappedBetTypes = offerTypeBetTypeMap[offerType.trim()];
+  const mappedBetTypes = offerTypeBetTypeMap[normalizeSportsbookOfferType(offerType)];
   const baseOptions = mappedBetTypes ? [...mappedBetTypes] : [...betTypeOptions];
   return dedupeOptions([...baseOptions, normalizedCurrentBetType]);
 }
@@ -306,12 +374,12 @@ export function getAllowedBetTypesForOfferType(
 export function getOfferTypeOptions(currentOfferType = ""): string[] {
   return dedupeOptions([
     ...sportsbookOfferTypeOptions,
-    currentOfferType,
+    normalizeSportsbookOfferType(currentOfferType),
   ]);
 }
 
 export function getOfferTypeDescriptor(offerType: string): OfferTypeDescriptor | null {
-  return offerTypeDescriptors[offerType.trim()] ?? null;
+  return offerTypeDescriptors[normalizeSportsbookOfferType(offerType)] ?? null;
 }
 
 export function filterCampaignTagOptions(

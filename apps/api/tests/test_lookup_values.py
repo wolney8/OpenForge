@@ -149,3 +149,39 @@ def test_lookup_values_are_profile_scoped_and_mutable(tmp_path: Path) -> None:
         row["lookup_value_id"] != created["lookup_value_id"]
         for row in after_delete.json()
     )
+
+
+def test_fund_manager_authorities_are_shared_and_archivable(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    seeded = client.get("/fund-manager/lookup-values")
+    assert seeded.status_code == 200
+    assert any(
+        row["lookup_type"] == "offer_type" and row["option_value"] == "Profit Boost"
+        for row in seeded.json()
+    )
+
+    created = client.post(
+        "/fund-manager/lookup-values",
+        json={"lookup_type": "fixture_type", "option_value": "Demo Fixture"},
+    )
+    assert created.status_code == 201
+
+    profile_rows = client.get("/profiles/profile-demo-001/lookup-values")
+    assert any(
+        row["option_value"] == "Demo Fixture" and row["scope"] == "fund_manager"
+        for row in profile_rows.json()
+    )
+
+    archived = client.put(
+        f"/fund-manager/lookup-values/{created.json()['lookup_value_id']}",
+        json={
+            "lookup_type": "fixture_type",
+            "option_value": "Demo Fixture",
+            "status": "Archived",
+        },
+    )
+    assert archived.status_code == 200
+    profile_rows_after_archive = client.get("/profiles/profile-demo-002/lookup-values")
+    assert all(row["option_value"] != "Demo Fixture" for row in profile_rows_after_archive.json())

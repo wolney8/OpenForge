@@ -188,7 +188,27 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/ledger-table-controls-parity.spec.ts` verifies icon rendering, add/filter
   order and matching target widths across all current ledgers.
 
+## 2026-07-20: Fund Manager settings modals diverged
+
+- Area: Common Bet Combos and Tracker Lists in Fund Manager Settings.
+- Root cause: each feature reused the oversized generic workflow editor and kept editor actions
+  inside a nested body panel instead of sharing one constrained settings-dialog shell.
+- Prevention: Fund Manager catalogue/list editors use `fund-manager-settings-modal`, with a fixed
+  header/footer, a locally scrolling body, aligned platform fields and no nested editor surface.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` asserts Tracker Lists viewport
+  containment, local table structure, fixed footer actions and computed List/Search field parity.
+
 ## Entry template
+
+## 2026-07-20: Settings card actions stretched to panel width
+
+- Area: Fund Manager Tracker Lists and Common Bet Combos settings cards.
+- Root cause: generic buttons were direct children of a stacked layout and inherited the stack's
+  cross-axis stretch instead of retaining content-width action geometry.
+- Prevention: card-level actions use the shared `settings-card-action` class with content width and
+  an explicit start alignment; full-width actions require a deliberate workflow reason.
+- Test added: `tests/e2e/sportsbook-opportunity-first.spec.ts` compares each manage action width with
+  its parent settings section.
 
 ## 2026-07-20: Cross-ledger controls and route state diverged
 

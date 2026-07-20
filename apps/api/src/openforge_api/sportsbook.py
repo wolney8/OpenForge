@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, model_validator
 
+from openforge_api.calculations.profit_boost import (
+    ProfitBoostInput,
+    ProfitBoostResult,
+    calculate_profit_boost,
+)
 from openforge_api.calculations.sportsbook_current_value import (
     SportsbookCalculationInput,
     SportsbookCalculationResult,
@@ -85,6 +90,13 @@ class SportsbookBetPayload(BaseModel):
     result: ResultValue
     back_stake: str = Field(default="", max_length=40)
     back_odds: str = Field(default="", max_length=40)
+    profit_boost_mode: Literal["", "displayed_odds", "percentage"] = ""
+    base_back_odds: str = Field(default="", max_length=40)
+    profit_boost_percent: str = Field(default="", max_length=40)
+    maximum_boost_winnings: str = Field(default="", max_length=40)
+    actual_accepted_back_odds: str = Field(default="", max_length=40)
+    source_combo_preset_id: str = Field(default="", max_length=64)
+    source_combo_preset_version: int = Field(default=0, ge=0)
     bonus_trigger: str = Field(default="", max_length=40)
     maximum_bonus: str = Field(default="", max_length=40)
     bonus_retention_rate: str = Field(default="70", max_length=40)
@@ -132,6 +144,9 @@ class SportsbookBetResponse(SportsbookBetPayload):
     lay_status: str
     counts_as_open: bool
     is_overdue: bool
+    reference_boosted_odds: str | None
+    effective_back_odds: str | None
+    profit_boost_source: str | None
 
 
 class SportsbookCalculationPreviewResponse(BaseModel):
@@ -154,6 +169,9 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     lay_status: str
     counts_as_open: bool
     is_overdue: bool
+    reference_boosted_odds: str | None
+    effective_back_odds: str | None
+    profit_boost_source: str | None
 
 
 class MultiProfileExchangeOptionResponse(BaseModel):
@@ -213,6 +231,11 @@ SHARED_MULTI_PROFILE_FIELDS = (
     "bonus_trigger",
     "maximum_bonus",
     "bonus_retention_rate",
+    "profit_boost_mode",
+    "base_back_odds",
+    "profit_boost_percent",
+    "maximum_boost_winnings",
+    "actual_accepted_back_odds",
 )
 
 
@@ -261,6 +284,41 @@ def format_decimal(value: Decimal | None, *, decimals: int) -> str | None:
     return f"{value:.{decimals}f}"
 
 
+def resolve_profit_boost(values: dict[str, Any]) -> ProfitBoostResult | None:
+    if values.get("offer_type") != "Profit Boost":
+        return None
+    mode = cast(
+        Literal["displayed_odds", "percentage"],
+        values.get("profit_boost_mode") or "displayed_odds",
+    )
+    return calculate_profit_boost(
+        ProfitBoostInput(
+            profile_id=str(values["profile_id"]),
+            mode=mode,
+            back_stake=str(values.get("back_stake", "")),
+            base_back_odds=str(values.get("base_back_odds", "")),
+            profit_boost_percent=str(values.get("profit_boost_percent", "")),
+            boosted_back_odds=str(values.get("back_odds", "")),
+            actual_accepted_back_odds=str(values.get("actual_accepted_back_odds", "")),
+            maximum_boost_winnings=str(values.get("maximum_boost_winnings", "")),
+        )
+    )
+
+
+def serialize_profit_boost(result: ProfitBoostResult | None) -> dict[str, str | None]:
+    if result is None:
+        return {
+            "reference_boosted_odds": None,
+            "effective_back_odds": None,
+            "profit_boost_source": None,
+        }
+    return {
+        "reference_boosted_odds": format_decimal(result.reference_boosted_odds, decimals=4),
+        "effective_back_odds": format_decimal(result.effective_back_odds, decimals=4),
+        "profit_boost_source": result.boost_source,
+    }
+
+
 def build_response(
     profile_id: str,
     row: object,
@@ -268,6 +326,12 @@ def build_response(
     as_of_date: date,
 ) -> SportsbookBetResponse:
     record = row.__dict__
+    profit_boost = resolve_profit_boost(record)
+    effective_back_odds = (
+        format_decimal(profit_boost.effective_back_odds, decimals=4)
+        if profit_boost and profit_boost.effective_back_odds is not None
+        else record["back_odds"]
+    )
     calculation = calculate_sportsbook_current_value(
         SportsbookCalculationInput(
             profile_id=record["profile_id"],
@@ -276,7 +340,7 @@ def build_response(
             result=record["result"],
             offer_type=record["offer_type"],
             back_stake=record["back_stake"],
-            back_odds=record["back_odds"],
+            back_odds=effective_back_odds or "",
             bonus_trigger=record["bonus_trigger"],
             maximum_bonus=record["maximum_bonus"],
             bonus_retention_rate=record["bonus_retention_rate"],
@@ -304,6 +368,7 @@ def build_response(
                 record["exchange_name"],
             ),
             **serialize_calculation(calculation),
+            **serialize_profit_boost(profit_boost),
         }
     )
 
@@ -371,6 +436,13 @@ def preview_profile_sportsbook_bet(
     profile_id: str, payload: SportsbookBetPayload
 ) -> SportsbookCalculationPreviewResponse:
     resolved_commission = get_profile_exchange_commission(profile_id, payload.exchange_name)
+    values = {**payload.model_dump(), "profile_id": profile_id}
+    profit_boost = resolve_profit_boost(values)
+    effective_back_odds = (
+        format_decimal(profit_boost.effective_back_odds, decimals=4)
+        if profit_boost and profit_boost.effective_back_odds is not None
+        else payload.back_odds
+    )
     calculation = calculate_sportsbook_current_value(
         SportsbookCalculationInput(
             profile_id=profile_id,
@@ -379,7 +451,7 @@ def preview_profile_sportsbook_bet(
             result=payload.result,
             offer_type=payload.offer_type,
             back_stake=payload.back_stake,
-            back_odds=payload.back_odds,
+            back_odds=effective_back_odds or "",
             bonus_trigger=payload.bonus_trigger,
             maximum_bonus=payload.maximum_bonus,
             bonus_retention_rate=payload.bonus_retention_rate,
@@ -400,6 +472,7 @@ def preview_profile_sportsbook_bet(
         {
             "lay_commission_1": resolved_commission or None,
             **serialize_calculation(calculation),
+            **serialize_profit_boost(profit_boost),
         }
     )
 

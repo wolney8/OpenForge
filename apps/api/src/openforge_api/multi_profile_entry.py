@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -15,6 +16,14 @@ UNAVAILABLE_ACCOUNT_STATUSES = {
     "inactive",
     "not using",
 }
+UNAVAILABLE_LIFECYCLES = {
+    "archived",
+    "closed",
+    "not signed up",
+    "suspended",
+}
+WARNING_LIFECYCLES = {"pending sign up", "verification pending"}
+BLOCKING_RESTRICTIONS = {"kyc blocked", "risk blocked"}
 NON_PROMOTIONAL_OFFER_TYPES = {"", "mug bet", "none", "no offer", "qualifying bet"}
 
 
@@ -43,6 +52,24 @@ def offer_requires_promotional_access(offer_type: str) -> bool:
 
 def strategy_requires_exchange(match_strategy: str) -> bool:
     return match_strategy.strip().casefold() != "no lay"
+
+
+def get_account_restrictions(account: AccountRecord) -> set[str]:
+    try:
+        parsed = json.loads(account.restrictions_json)
+    except json.JSONDecodeError:
+        parsed = []
+    restrictions = {
+        str(value).strip().casefold()
+        for value in parsed
+        if str(value).strip()
+    }
+    legacy_status = account.status.strip().casefold()
+    if legacy_status in {"gubbed", "bonus restricted"}:
+        restrictions.add("bonus restricted")
+    if legacy_status == "limited":
+        restrictions.add("soft limited")
+    return restrictions
 
 
 def evaluate_multi_profile_target(
@@ -74,21 +101,36 @@ def evaluate_multi_profile_target(
         bookmaker_account = bookmaker_accounts[0]
         bookmaker_account_status = bookmaker_account.status
         normalized_status = bookmaker_account.status.strip().casefold()
-        if normalized_status in UNAVAILABLE_ACCOUNT_STATUSES:
+        lifecycle = bookmaker_account.lifecycle_status.strip().casefold()
+        restrictions = get_account_restrictions(bookmaker_account)
+        if normalized_status in UNAVAILABLE_ACCOUNT_STATUSES or lifecycle in UNAVAILABLE_LIFECYCLES:
             reasons.append(f"{bookmaker} account is {bookmaker_account.status}")
-        elif normalized_status in ACCOUNT_WARNING_STATUSES:
+        elif restrictions & BLOCKING_RESTRICTIONS:
+            reasons.append(
+                f"{bookmaker} account is blocked: "
+                + ", ".join(sorted(restrictions & BLOCKING_RESTRICTIONS))
+            )
+        elif "sportsbook only" not in restrictions and "casino only" in restrictions:
+            reasons.append(f"{bookmaker} account is Casino Only")
+        elif normalized_status in ACCOUNT_WARNING_STATUSES or lifecycle in WARNING_LIFECYCLES:
             warnings.append(
-                f"{bookmaker} account is {bookmaker_account.status}; confirm it can be used"
+                f"{bookmaker} account is {bookmaker_account.lifecycle_status}; "
+                "confirm it can be used"
             )
         elif (
-            normalized_status in PROMOTIONAL_ACCOUNT_BLOCK_STATUSES
+            (
+                normalized_status in PROMOTIONAL_ACCOUNT_BLOCK_STATUSES
+                or "bonus restricted" in restrictions
+            )
             and offer_requires_promotional_access(offer_type)
         ):
             reasons.append(
                 f"{bookmaker} account is {bookmaker_account.status} "
                 "and cannot use promotional offers"
             )
-        elif normalized_status != "active":
+        elif "soft limited" in restrictions:
+            warnings.append(f"{bookmaker} account is Soft Limited; confirm the stake is accepted")
+        elif normalized_status != "active" and lifecycle != "active":
             reasons.append(
                 f"{bookmaker} account status requires review: {bookmaker_account.status}"
             )

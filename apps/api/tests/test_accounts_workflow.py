@@ -77,3 +77,30 @@ def test_seed_rows_load_into_dedicated_accounts_table(tmp_path: Path) -> None:
     count = connection.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
     connection.close()
     assert count > 0
+
+
+def test_account_lifecycle_and_restrictions_are_profile_scoped(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    payload = {
+        "account": "Bookmaker A",
+        "type": "Bookie",
+        "counts_in_cash_total": True,
+        "channel": "Online",
+        "status": "Active",
+        "lifecycle_status": "Active",
+        "restrictions": ["Bonus Restricted", "Soft Limited"],
+        "current_balance": "0.00",
+        "pending_withdrawal_amount": "0.00",
+        "last_balance_update": "",
+        "group_name": "Demo Group",
+        "platform": "Demo Platform",
+    }
+
+    response = client.post("/profiles/profile-demo-001/accounts", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["lifecycle_status"] == "Active"
+    assert response.json()["restrictions"] == ["Bonus Restricted", "Soft Limited"]
+    other_profile = client.get("/profiles/profile-demo-002/accounts").json()
+    assert all(row["account_id"] != response.json()["account_id"] for row in other_profile)

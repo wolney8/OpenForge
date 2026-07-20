@@ -305,6 +305,14 @@ textarea {
   min-width: 3.5rem;
   min-height: 3.5rem;
   padding: 0;
+  border-color: color-mix(in srgb, var(--success) 70%, var(--outline));
+  background: color-mix(in srgb, var(--success) 18%, var(--surface-container));
+  color: color-mix(in srgb, var(--success) 88%, var(--text));
+}
+
+.ledger-toolbar-add-action:hover {
+  border-color: color-mix(in srgb, var(--success) 88%, var(--outline));
+  background: color-mix(in srgb, var(--success) 26%, var(--surface-container));
 }
 
 .ledger-toolbar-add-action .material-symbols-outlined {
@@ -4896,6 +4904,175 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 1rem;
   overflow: hidden;
   resize: none;
+}
+
+.modal-panel.workflow-editor-modal.fund-manager-settings-modal {
+  display: flex;
+  width: min(960px, calc(100vw - 2rem));
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+  max-height: min(820px, calc(100dvh - 2rem));
+  padding: 0;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  resize: none;
+}
+
+.fund-manager-settings-modal .workflow-editor-modal-header,
+.fund-manager-settings-modal .workflow-editor-modal-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  background: var(--surface);
+}
+
+.fund-manager-settings-modal .workflow-editor-modal-header {
+  border-bottom: 1px solid var(--outline);
+}
+
+.fund-manager-settings-modal .workflow-editor-modal-footer {
+  border-top: 1px solid var(--outline);
+}
+
+.common-bet-combo-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem 1.35rem;
+  overflow: auto;
+}
+
+.fund-manager-authority-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem 1.35rem;
+  overflow: auto;
+}
+
+.fund-manager-authority-toolbar {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(16rem, 1.5fr) auto;
+  align-items: end;
+}
+
+.fund-manager-authority-toolbar input,
+.fund-manager-authority-toolbar select {
+  width: 100%;
+  height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.fund-manager-authority-editor {
+  gap: 1rem 1.25rem;
+}
+
+.fund-manager-authority-editor > *,
+.fund-manager-authority-editor input,
+.fund-manager-authority-editor select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+  .fund-manager-authority-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.common-bet-combo-toolbar {
+  align-items: end;
+}
+
+.common-bet-combo-editor {
+  gap: 1.25rem;
+}
+
+.settings-card-action {
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+.common-bet-combo-form-grid {
+  gap: 1rem 1.25rem;
+}
+
+.common-bet-combo-form-grid > *,
+.common-bet-combo-form-grid input,
+.common-bet-combo-form-grid select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.common-bet-combo-choice-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+}
+
+.common-bet-combo-choice-group legend {
+  padding-inline: 0.3rem;
+  font-weight: 750;
+}
+
+.common-bet-combo-choice-group .field-support-text {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+}
+
+.common-bet-combo-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  max-height: 15rem;
+  padding: 0.2rem;
+  overflow: auto;
+}
+
+.common-bet-combo-strategy-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.common-combo-candidate-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.common-combo-candidate {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--outline-strong);
+  border-radius: 999px;
+  background: var(--surface-container);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.common-combo-candidate:hover,
+.common-combo-candidate:focus-visible,
+.common-combo-candidate.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .common-bet-combo-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .account-catalogue-modal > * {

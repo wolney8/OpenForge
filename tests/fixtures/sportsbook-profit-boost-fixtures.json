@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "cases": [
+    {
+      "case_id": "PB-001",
+      "inputs": {"profile_id": "PROFILE-001", "mode": "displayed_odds", "back_stake": "10.00", "boosted_back_odds": "3.30"},
+      "expected": {"effective_back_odds": "3.3000", "boost_source": "displayed"}
+    },
+    {
+      "case_id": "PB-002",
+      "inputs": {"profile_id": "PROFILE-001", "mode": "percentage", "back_stake": "10.00", "base_back_odds": "3.00", "profit_boost_percent": "15"},
+      "expected": {"uncapped_extra_profit": "3.00", "extra_profit": "3.00", "reference_boosted_odds": "3.3000"}
+    },
+    {
+      "case_id": "PB-003",
+      "inputs": {"profile_id": "PROFILE-001", "mode": "percentage", "back_stake": "10.00", "base_back_odds": "3.00", "profit_boost_percent": "15", "maximum_boost_winnings": "2.00"},
+      "expected": {"uncapped_extra_profit": "3.00", "extra_profit": "2.00", "reference_boosted_odds": "3.2000"}
+    },
+    {
+      "case_id": "PB-004",
+      "inputs": {"profile_id": "PROFILE-001", "mode": "percentage", "back_stake": "10.00", "base_back_odds": "3.00", "profit_boost_percent": "15", "actual_accepted_back_odds": "3.28"},
+      "expected": {"reference_boosted_odds": "3.3000", "effective_back_odds": "3.2800", "boost_source": "accepted"}
+    },
+    {
+      "case_id": "PB-007",
+      "inputs": {"profile_id": "PROFILE-001", "mode": "percentage", "back_stake": "10.00", "base_back_odds": "3.00", "profit_boost_percent": ""},
+      "expected": {"calculation_state": "incomplete", "money_outputs": null}
+    },
+    {
+      "case_id": "PB-009",
+      "inputs": {"profile_id": "PROFILE-001", "record_profile_id": "PROFILE-002"},
+      "expected": {"rejected": true, "reason": "profile_scope_mismatch"}
+    }
+  ]
+}
