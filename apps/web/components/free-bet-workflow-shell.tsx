@@ -30,7 +30,6 @@ import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
-  filterCampaignTagOptions,
   fixtureTypeOptions,
   freeBetResultOptions,
   freeBetRetentionModeOptions,
@@ -1362,36 +1361,6 @@ export function FreeBetWorkflowShell({
     [formState.offer_type]
   );
 
-  const offerNameOptions = useMemo(() => {
-    const workbookOfferNames = getLookupValuesByType(lookupValues, "offer_name");
-    if (workbookOfferNames.length > 0) {
-      return filterCampaignTagOptions(workbookOfferNames, {
-        offerType: formState.offer_type,
-        currentValue: formState.offer_name,
-      });
-    }
-
-    const scopedRows = rows.filter((row) => {
-      if (!row.offer_name.trim()) {
-        return false;
-      }
-
-      const bookmakerMatches = formState.bookmaker.trim()
-        ? row.bookmaker === formState.bookmaker
-        : true;
-      const offerTypeMatches = formState.offer_type.trim()
-        ? row.offer_type === formState.offer_type
-        : true;
-
-      return bookmakerMatches && offerTypeMatches;
-    });
-    const fallbackRows = rows.filter((row) => row.offer_name.trim());
-    const sourceRows = scopedRows.length > 0 ? scopedRows : fallbackRows;
-    return filterCampaignTagOptions(sourceRows.map((row) => row.offer_name), {
-      offerType: formState.offer_type,
-      currentValue: formState.offer_name,
-    });
-  }, [formState.bookmaker, formState.offer_name, formState.offer_type, lookupValues, rows]);
   const offerTypeDescriptor = useMemo(
     () => getOfferTypeDescriptor(formState.offer_type),
     [formState.offer_type]
@@ -3210,26 +3179,21 @@ export function FreeBetWorkflowShell({
               </label>
               <label className="field-control">
                 <span>Campaign tag (optional)</span>
-                <select
-                  onChange={(event) =>
-                    void applyDropdownChange(
-                      (current) => ({
-                        ...current,
-                        offer_name: event.target.value,
-                        offer_text: current.offer_text || event.target.value,
-                      }),
-                      "Campaign tag change"
-                    )
+                <input
+                  maxLength={120}
+                  onBlur={() =>
+                    void applyDropdownChange((current) => current, "Campaign tag change")
                   }
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      offer_name: event.target.value,
+                    }))
+                  }
+                  placeholder="Enter a campaign tag"
+                  type="text"
                   value={formState.offer_name}
-                >
-                  <option value="">Select campaign tag (optional)</option>
-                  {offerNameOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               <label className="field-control">
                 <span>Bet type (bet shape / placement)</span>

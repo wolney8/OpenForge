@@ -35,6 +35,8 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
         "result": "Pending",
         "back_stake": "10.00",
         "back_odds": "2.10",
+        "source_combo_preset_id": "COMBO-WEEKLY-BUILDER",
+        "source_combo_preset_version": 3,
         "match_strategy": "Standard",
         "lay_odds_1": "2.20",
         "lay_commission_1": "",
@@ -58,6 +60,8 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
     assert created["scenario_pnl_if_back_wins"] is not None
     assert created["scenario_pnl_if_lay_wins"] is not None
     assert created["lay_commission_1"] == "0.02"
+    assert created["source_combo_preset_id"] == "COMBO-WEEKLY-BUILDER"
+    assert created["source_combo_preset_version"] == 3
 
     list_profile_one = client.get("/profiles/profile-demo-001/sportsbook-bets")
     assert list_profile_one.status_code == 200
@@ -89,6 +93,8 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
     assert updated["manual_override_value"] == "-0.75"
     assert updated["manual_override_reason"] == "Manual correction after settlement review"
     assert updated["final_net_pnl"] == "-0.75"
+    assert updated["source_combo_preset_id"] == "COMBO-WEEKLY-BUILDER"
+    assert updated["source_combo_preset_version"] == 3
 
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/sportsbook-bets/{created['sportsbook_bet_id']}"
@@ -453,3 +459,42 @@ def test_multilay_saved_row_becomes_fully_laid_when_all_branches_are_placed(
     assert create_response.status_code == 201
     created = create_response.json()
     assert created["lay_status"] == "Fully Laid"
+
+
+def test_profit_boost_percentage_drives_existing_cash_first_calculation(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
+    )
+    payload = {
+        "event_name": "Profit Boost Demo Match",
+        "offer_text": "15 percent profit boost",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Profit Boost",
+        "bet_type": "Single",
+        "fixture_type": "Football",
+        "status": "Placed",
+        "result": "Pending",
+        "back_stake": "10.00",
+        "back_odds": "",
+        "profit_boost_mode": "percentage",
+        "base_back_odds": "3.00",
+        "profit_boost_percent": "15",
+        "maximum_boost_winnings": "",
+        "actual_accepted_back_odds": "",
+        "match_strategy": "Standard",
+        "lay_odds_1": "3.40",
+        "exchange_name": "Matchbook",
+        "date_settled": "2026-07-10",
+    }
+
+    response = client.post("/profiles/profile-demo-001/sportsbook-bets", json=payload)
+
+    assert response.status_code == 201, response.text
+    row = response.json()
+    assert row["reference_boosted_odds"] == "3.3000"
+    assert row["effective_back_odds"] == "3.3000"
+    assert row["profit_boost_source"] == "calculated"
+    assert row["calculation_state"] == "resolved"

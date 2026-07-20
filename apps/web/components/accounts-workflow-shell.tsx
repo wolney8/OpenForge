@@ -19,7 +19,8 @@ import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import {
   accountChannelOptions,
-  accountStatusOptions,
+  accountLifecycleOptions,
+  accountRestrictionOptions,
   accountTypeOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
@@ -43,6 +44,8 @@ type AccountRecord = {
   counts_in_cash_total: boolean;
   channel: string;
   status: string;
+  lifecycle_status: string;
+  restrictions: string[];
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -62,6 +65,8 @@ type AccountFormState = {
   counts_in_cash_total: boolean;
   channel: string;
   status: string;
+  lifecycle_status: string;
+  restrictions: string[];
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -112,6 +117,8 @@ function createBlankForm(): AccountFormState {
     counts_in_cash_total: true,
     channel: "Unknown",
     status: "Active",
+    lifecycle_status: "Active",
+    restrictions: [],
     current_balance: "",
     pending_withdrawal_amount: "",
     last_balance_update: "",
@@ -131,6 +138,8 @@ function recordToForm(record: AccountRecord): AccountFormState {
     counts_in_cash_total: record.counts_in_cash_total,
     channel: record.channel,
     status: record.status,
+    lifecycle_status: record.lifecycle_status,
+    restrictions: record.restrictions,
     current_balance: record.current_balance,
     pending_withdrawal_amount: record.pending_withdrawal_amount,
     last_balance_update: toDateTimeLocalValue(record.last_balance_update),
@@ -481,6 +490,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...formState,
+        status: formState.lifecycle_status,
         last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
       }),
     });
@@ -773,20 +783,46 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             </select>
           </label>
           <label className="field-control">
-            <span>Status</span>
+            <span>Lifecycle</span>
             <select
               onChange={(event) =>
-                setFormState((current) => ({ ...current, status: event.target.value }))
+                setFormState((current) => ({
+                  ...current,
+                  status: event.target.value,
+                  lifecycle_status: event.target.value,
+                }))
               }
-              value={formState.status}
+              value={formState.lifecycle_status}
             >
-              {accountStatusOptions.map((option) => (
+              {accountLifecycleOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
           </label>
+          <fieldset className="field-control field-span-2">
+            <legend>Restrictions</legend>
+            <div className="tracker-nav">
+              {accountRestrictionOptions.map((option) => (
+                <label className="checkbox-control" key={option}>
+                  <input
+                    checked={formState.restrictions.includes(option)}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        restrictions: event.target.checked
+                          ? [...current.restrictions, option]
+                          : current.restrictions.filter((value) => value !== option),
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="field-control">
             <span>Channel</span>
             <select

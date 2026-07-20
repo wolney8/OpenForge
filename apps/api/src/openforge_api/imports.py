@@ -242,7 +242,7 @@ ACCOUNT_SOURCE_MAP = {
     "Notes": "notes",
 }
 
-JsonScalar = str | int | float | bool | None
+JsonScalar = str | int | float | bool | list[str] | None
 SourceLookup = Callable[[str, str], ImportSourceRecord | None]
 
 
@@ -389,6 +389,10 @@ def cash_adjustment_mapped_fields(row: object) -> dict[str, JsonScalar]:
 
 def account_mapped_fields(row: AccountRecord) -> dict[str, JsonScalar]:
     record = row.__dict__
+    try:
+        restrictions = json.loads(record["restrictions_json"])
+    except json.JSONDecodeError:
+        restrictions = []
     return {
         "account_id": None,
         "bookmaker_id": None,
@@ -397,6 +401,8 @@ def account_mapped_fields(row: AccountRecord) -> dict[str, JsonScalar]:
         "counts_in_cash_total": record["counts_in_cash_total"],
         "channel": record["channel"],
         "status": record["status"],
+        "lifecycle_status": record["lifecycle_status"],
+        "restrictions": restrictions if isinstance(restrictions, list) else [],
         "current_balance": record["current_balance"],
         "pending_withdrawal_amount": record["pending_withdrawal_amount"],
         "last_balance_update": record["last_balance_update"],

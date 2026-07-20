@@ -52,7 +52,6 @@ import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
-  filterCampaignTagOptions,
   fixtureTypeOptions,
   freeBetRetentionModeOptions,
   getAllowedBetTypesForOfferType,
@@ -68,6 +67,10 @@ import {
 const visibleSportsbookStrategyOptions = sportsbookStrategyOptions.filter(
   (option) => option !== "Multilay-Underlay"
 );
+
+function isBonusLockInOfferType(value: string): boolean {
+  return value === "Bonus Lock-In" || value === "Refund";
+}
 
 type ResultOption = {
   value: string;
@@ -89,6 +92,13 @@ type SportsbookRecord = {
   result: string;
   back_stake: string;
   back_odds: string;
+  profit_boost_mode: string;
+  base_back_odds: string;
+  profit_boost_percent: string;
+  maximum_boost_winnings: string;
+  actual_accepted_back_odds: string;
+  source_combo_preset_id: string;
+  source_combo_preset_version: number;
   bonus_trigger: string;
   maximum_bonus: string;
   bonus_retention_rate: string;
@@ -124,6 +134,9 @@ type SportsbookRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  reference_boosted_odds: string | null;
+  effective_back_odds: string | null;
+  profit_boost_source: string | null;
 };
 
 type SportsbookFormState = {
@@ -140,6 +153,13 @@ type SportsbookFormState = {
   result: string;
   back_stake: string;
   back_odds: string;
+  profit_boost_mode: string;
+  base_back_odds: string;
+  profit_boost_percent: string;
+  maximum_boost_winnings: string;
+  actual_accepted_back_odds: string;
+  source_combo_preset_id: string;
+  source_combo_preset_version: number;
   bonus_trigger: string;
   maximum_bonus: string;
   bonus_retention_rate: string;
@@ -179,6 +199,21 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+};
+
+type CommonBetCombo = {
+  preset_id: string;
+  name: string;
+  bookmaker: string;
+  bookmakers: string[];
+  offer_type: string;
+  bet_type: string;
+  offer_name: string;
+  fixture_type: string;
+  default_back_stake: string;
+  minimum_back_odds: string;
+  allowed_strategies: string[];
+  version: number;
 };
 
 type LayStakePreview = {
@@ -299,6 +334,9 @@ type SportsbookCalculationPreview = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  reference_boosted_odds: string | null;
+  effective_back_odds: string | null;
+  profit_boost_source: string | null;
 };
 
 type OutcomeModalState = {
@@ -817,6 +855,13 @@ function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState 
     result: "Pending",
     back_stake: "",
     back_odds: "",
+    profit_boost_mode: "displayed_odds",
+    base_back_odds: "",
+    profit_boost_percent: "",
+    maximum_boost_winnings: "",
+    actual_accepted_back_odds: "",
+    source_combo_preset_id: "",
+    source_combo_preset_version: 0,
     bonus_trigger: "",
     maximum_bonus: "",
     bonus_retention_rate: defaultBonusRetentionRate,
@@ -850,6 +895,13 @@ function recordToForm(record: SportsbookRecord): SportsbookFormState {
     result: record.result,
     back_stake: record.back_stake,
     back_odds: record.back_odds,
+    profit_boost_mode: record.profit_boost_mode || "displayed_odds",
+    base_back_odds: record.base_back_odds,
+    profit_boost_percent: record.profit_boost_percent,
+    maximum_boost_winnings: record.maximum_boost_winnings,
+    actual_accepted_back_odds: record.actual_accepted_back_odds,
+    source_combo_preset_id: record.source_combo_preset_id || "",
+    source_combo_preset_version: record.source_combo_preset_version || 0,
     bonus_trigger: record.bonus_trigger,
     maximum_bonus: record.maximum_bonus,
     bonus_retention_rate: normalizeBonusRetentionPercentForUi(record.bonus_retention_rate),
@@ -910,6 +962,13 @@ function toInlineUpdatePayload(record: SportsbookRecord, overrides?: Partial<Spo
     result: formState.result,
     back_stake: formState.back_stake,
     back_odds: formState.back_odds,
+    profit_boost_mode: formState.profit_boost_mode,
+    base_back_odds: formState.base_back_odds,
+    profit_boost_percent: formState.profit_boost_percent,
+    maximum_boost_winnings: formState.maximum_boost_winnings,
+    actual_accepted_back_odds: formState.actual_accepted_back_odds,
+    source_combo_preset_id: formState.source_combo_preset_id,
+    source_combo_preset_version: formState.source_combo_preset_version,
     bonus_trigger: formState.bonus_trigger,
     maximum_bonus: formState.maximum_bonus,
     bonus_retention_rate: formState.bonus_retention_rate,
@@ -1263,7 +1322,7 @@ function getSportsbookResultOptions(
     ];
   }
 
-  if (offerType === "Cashback" || offerType === "Refund") {
+  if (offerType === "Cashback" || isBonusLockInOfferType(offerType)) {
     const cashbackOptions: ResultOption[] = ["Pending", "Back Won", "Lay Won", "Void"].map(
       (value) => ({
         value,
@@ -1392,11 +1451,11 @@ function getScenarioBranchLabels(
     };
   }
 
-  if (offerType === "Cashback" || offerType === "Refund") {
+  if (offerType === "Cashback" || isBonusLockInOfferType(offerType)) {
     const triggerPossible =
-      offerType === "Refund" ? "Bonus/refund trigger hits" : "Cashback trigger hits";
+      isBonusLockInOfferType(offerType) ? "Bonus/refund trigger hits" : "Cashback trigger hits";
     const triggerSettled =
-      offerType === "Refund" ? "Bonus/refund triggered" : "Cashback triggered";
+      isBonusLockInOfferType(offerType) ? "Bonus/refund triggered" : "Cashback triggered";
     return {
       backWinLabel: {
         possible: "Back wins",
@@ -1606,7 +1665,7 @@ function applyOfferTypeDefaults(
     };
   }
 
-  if (nextOfferType === "Cashback" || nextOfferType === "Refund") {
+  if (nextOfferType === "Cashback" || isBonusLockInOfferType(nextOfferType)) {
     const bonusTrigger = current.bonus_trigger || "Lay Wins";
     const nextOptions = getSportsbookResultOptions(nextOfferType, current.match_strategy, bonusTrigger);
     const nextValues = new Set(nextOptions.map((option) => option.value));
@@ -1854,9 +1913,13 @@ function hasPreviewInputsReady(
   formState: SportsbookFormState,
   resolvedCommission: string
 ): boolean {
+  const hasProfitBoostInputs =
+    formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage"
+      ? parseNumericInput(formState.base_back_odds) !== null &&
+        parseNumericInput(formState.profit_boost_percent) !== null
+      : parseNumericInput(formState.back_odds) !== null;
   const hasBackInputs =
-    parseNumericInput(formState.back_stake) !== null &&
-    parseNumericInput(formState.back_odds) !== null;
+    parseNumericInput(formState.back_stake) !== null && hasProfitBoostInputs;
 
   if (!hasBackInputs) {
     return false;
@@ -1894,8 +1957,15 @@ function getCalculatorMissingFields(
   if (parseNumericInput(formState.back_stake) === null) {
     missing.push("Back stake");
   }
-  if (parseNumericInput(formState.back_odds) === null) {
-    missing.push("Back odds");
+  if (formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage") {
+    if (parseNumericInput(formState.base_back_odds) === null) {
+      missing.push("Base back odds");
+    }
+    if (parseNumericInput(formState.profit_boost_percent) === null) {
+      missing.push("Profit boost %");
+    }
+  } else if (parseNumericInput(formState.back_odds) === null) {
+    missing.push(formState.offer_type === "Profit Boost" ? "Boosted back odds" : "Back odds");
   }
 
   if (formState.match_strategy === "No Lay") {
@@ -1919,14 +1989,14 @@ function getCalculatorMissingFields(
   }
 
   if (
-    (formState.offer_type === "Cashback" || formState.offer_type === "Refund") &&
+    (formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type)) &&
     parseNumericInput(formState.maximum_bonus) === null
   ) {
     missing.push("Maximum bonus");
   }
 
   if (
-    formState.offer_type === "Refund" &&
+    isBonusLockInOfferType(formState.offer_type) &&
     parseNumericInput(formState.bonus_retention_rate) === null
   ) {
     missing.push("Bonus retention %");
@@ -1988,7 +2058,7 @@ function getSportsbookWorkflowRule(
     return "DD/HH rows track four branches: player does not score first, scores first only, scores first and again, or scores first and gets a hat-trick.";
   }
 
-  if (offerType === "Refund") {
+  if (isBonusLockInOfferType(offerType)) {
     return `Refund rows keep the qualifying loss as the current value and use the ${bonusTrigger === "Back Wins" ? "back-win" : "lay-win"} trigger plus retained bonus percentage for the extra branch.`;
   }
 
@@ -2378,6 +2448,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
+  const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
+  const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -2647,6 +2719,16 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setTrackerSettings(nextSettings);
   }, [profileId]);
 
+  const loadCommonBetCombos = useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/common-bet-combos?active_only=true`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Unable to load common bet combos");
+    }
+    setCommonBetCombos((await response.json()) as CommonBetCombo[]);
+  }, []);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
@@ -2655,6 +2737,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         loadAccountAuthorities(),
         loadLookupValues(),
         loadTrackerSettings(),
+        loadCommonBetCombos(),
       ]).catch((error: Error) => {
         setIsInitialLoading(false);
         setErrorMessage(error.message);
@@ -2668,6 +2751,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     loadExchangeSettings,
     initialRecordId,
     loadLookupValues,
+    loadCommonBetCombos,
     loadRows,
     loadTrackerSettings,
   ]);
@@ -2716,36 +2800,140 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [formState.fixture_type, rows]
   );
 
-  const offerNameOptions = useMemo(() => {
-    const workbookOfferNames = getLookupValuesByType(lookupValues, "offer_name");
-    if (workbookOfferNames.length > 0) {
-      return filterCampaignTagOptions(workbookOfferNames, {
-        offerType: formState.offer_type,
-        currentValue: formState.offer_name,
-      });
+  function applyCommonBetCombo(presetId: string) {
+    if (formState.sportsbook_bet_id || selectedId) {
+      setErrorMessage("Common combos can only be applied to a new sportsbook draft.");
+      return;
+    }
+    if (!presetId) {
+      setComboBookmakerCandidates([]);
+      setFormState((current) => ({
+        ...current,
+        source_combo_preset_id: "",
+        source_combo_preset_version: 0,
+      }));
+      return;
     }
 
-    const scopedRows = rows.filter((row) => {
-      if (!row.offer_name.trim()) {
-        return false;
+    const combo = commonBetCombos.find((row) => row.preset_id === presetId);
+    if (!combo) {
+      setErrorMessage("That common combo is no longer available. Refresh and try again.");
+      return;
+    }
+
+    const staleMappings = [
+      combo.offer_type && !getOfferTypeOptions("").includes(combo.offer_type) ? "offer type" : "",
+      combo.bet_type &&
+      !getAllowedBetTypesForOfferType(combo.offer_type, combo.bet_type).includes(combo.bet_type)
+        ? "bet type"
+        : "",
+      combo.fixture_type && !fixtureTypeOptionsResolved.includes(combo.fixture_type)
+        ? "fixture type"
+        : "",
+    ].filter(Boolean);
+    if (staleMappings.length > 0) {
+      setErrorMessage(
+        `${combo.name} needs remapping in Fund Manager Settings: ${staleMappings.join(", ")}.`
+      );
+      return;
+    }
+
+    const knownBookmakers = combo.bookmakers?.length
+      ? combo.bookmakers
+      : combo.bookmaker
+        ? [combo.bookmaker]
+        : [];
+    const unavailableStatuses = new Set([
+      "Archived",
+      "Blocked",
+      "Closed",
+      "Gubbed",
+      "Inactive",
+      "KYC Blocked",
+      "Risk Blocked",
+      "Suspended",
+    ]);
+    const eligibleBookmakers = knownBookmakers.filter((bookmaker) => {
+      const profileAccount = accountAuthorities.find(
+        (account) =>
+          account.type === "Bookie" &&
+          account.account.trim().toLowerCase() === bookmaker.trim().toLowerCase()
+      );
+      if (!profileAccount) return false;
+      const lifecycleStatus = profileAccount?.lifecycle_status || profileAccount?.status || "";
+      const restrictions = (() => {
+        try {
+          return JSON.parse(profileAccount?.restrictions_json || "[]") as string[];
+        } catch {
+          return [];
+        }
+      })();
+      const effectiveRestrictions = new Set(restrictions);
+      if (["Bonus Restricted", "Casino Only", "Soft Limited"].includes(lifecycleStatus)) {
+        effectiveRestrictions.add(lifecycleStatus);
       }
-
-      const bookmakerMatches = formState.bookmaker.trim()
-        ? row.bookmaker === formState.bookmaker
-        : true;
-      const offerTypeMatches = formState.offer_type.trim()
-        ? row.offer_type === formState.offer_type
-        : true;
-
-      return bookmakerMatches && offerTypeMatches;
+      return !unavailableStatuses.has(lifecycleStatus) &&
+        !(effectiveRestrictions.has("Bonus Restricted") && combo.offer_type !== "Mug Bet") &&
+        !effectiveRestrictions.has("Casino Only");
     });
-    const fallbackRows = rows.filter((row) => row.offer_name.trim());
-    const sourceRows = scopedRows.length > 0 ? scopedRows : fallbackRows;
-    return filterCampaignTagOptions(sourceRows.map((row) => row.offer_name), {
-      offerType: formState.offer_type,
-      currentValue: formState.offer_name,
-    });
-  }, [formState.bookmaker, formState.offer_name, formState.offer_type, lookupValues, rows]);
+    if (knownBookmakers.length > 0 && eligibleBookmakers.length === 0) {
+      setComboBookmakerCandidates([]);
+      setErrorMessage(`All known bookmakers for ${combo.name} are unavailable on this profile.`);
+      return;
+    }
+    setComboBookmakerCandidates(eligibleBookmakers);
+    const selectedBookmaker = eligibleBookmakers.length === 1
+      ? eligibleBookmakers[0]
+      : eligibleBookmakers.some(
+          (bookmaker) => bookmaker.toLowerCase() === formState.bookmaker.toLowerCase()
+        )
+        ? formState.bookmaker
+        : "";
+
+    const allowedStrategies = combo.allowed_strategies.filter((strategy) =>
+      visibleSportsbookStrategyOptions.some((option) => option === strategy)
+    );
+    setErrorMessage("");
+    setFormState((current) => ({
+      ...current,
+      source_combo_preset_id: combo.preset_id,
+      source_combo_preset_version: combo.version,
+      bookmaker: selectedBookmaker || (knownBookmakers.length ? "" : current.bookmaker),
+      offer_type: combo.offer_type || current.offer_type,
+      bet_type: combo.bet_type || current.bet_type,
+      offer_name: combo.offer_name || current.offer_name,
+      fixture_type: combo.fixture_type || current.fixture_type,
+      back_stake: combo.default_back_stake || current.back_stake,
+      match_strategy:
+        allowedStrategies.includes(current.match_strategy)
+          ? current.match_strategy
+          : allowedStrategies[0] || current.match_strategy,
+    }));
+    const minimumOddsNote = combo.minimum_back_odds
+      ? ` Minimum back odds: ${combo.minimum_back_odds}.`
+      : "";
+    const profileAccount = selectedBookmaker
+      ? accountAuthorities.find(
+          (account) =>
+            account.type === "Bookie" &&
+            account.account.trim().toLowerCase() === selectedBookmaker.trim().toLowerCase()
+        )
+      : null;
+    const restrictionWarning =
+      profileAccount?.status === "Limited" ||
+      profileAccount?.status === "Soft Limited" ||
+      profileAccount?.lifecycle_status === "Soft Limited" ||
+      (profileAccount?.restrictions_json || "").includes("Soft Limited")
+        ? ` ${selectedBookmaker} is soft limited; verify the accepted stake.`
+        : "";
+    const bookmakerNote = eligibleBookmakers.length > 1
+      ? ` Choose one of ${eligibleBookmakers.length} eligible bookmakers.`
+      : "";
+    setStatusMessage(
+      `${combo.name} applied to this unsaved draft.${bookmakerNote}${minimumOddsNote}${restrictionWarning}`
+    );
+  }
+
   const offerTypeDescriptor = useMemo(
     () => getOfferTypeDescriptor(formState.offer_type),
     [formState.offer_type]
@@ -2761,41 +2949,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         : [],
     [freeBetBridgeModalState]
   );
-
-  const freeBetBridgeCampaignTagOptions = useMemo(() => {
-    if (!freeBetBridgeModalState) {
-      return [];
-    }
-
-    const workbookOfferNames = getLookupValuesByType(lookupValues, "offer_name");
-    if (workbookOfferNames.length > 0) {
-      return filterCampaignTagOptions(workbookOfferNames, {
-        offerType: freeBetBridgeModalState.offer_type,
-        currentValue: freeBetBridgeModalState.offer_name,
-      });
-    }
-
-    const scopedRows = rows.filter((row) => {
-      if (!row.offer_name.trim()) {
-        return false;
-      }
-
-      const bookmakerMatches = freeBetBridgeModalState.bookmaker.trim()
-        ? row.bookmaker === freeBetBridgeModalState.bookmaker
-        : true;
-      const offerTypeMatches = freeBetBridgeModalState.offer_type.trim()
-        ? row.offer_type === freeBetBridgeModalState.offer_type
-        : true;
-
-      return bookmakerMatches && offerTypeMatches;
-    });
-    const fallbackRows = rows.filter((row) => row.offer_name.trim());
-    const sourceRows = scopedRows.length > 0 ? scopedRows : fallbackRows;
-    return filterCampaignTagOptions(sourceRows.map((row) => row.offer_name), {
-      offerType: freeBetBridgeModalState.offer_type,
-      currentValue: freeBetBridgeModalState.offer_name,
-    });
-  }, [freeBetBridgeModalState, lookupValues, rows]);
 
   const specialOfferBookmakerSuggestion = useMemo(
     () =>
@@ -2851,8 +3004,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const showsPlacementSection = !isNoLayStrategy && showsLayMatchedStake;
   const isDdhhOffer = formState.offer_type === "Double Delight / Hat-trick Heaven";
   const isCashbackOffer =
-    formState.offer_type === "Cashback" || formState.offer_type === "Refund";
-  const isRefundOffer = formState.offer_type === "Refund";
+    formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type);
+  const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
+  const isProfitBoostOffer = formState.offer_type === "Profit Boost";
   const isFreeBetAwardableRow = isFreeBetAwardingOffer(formState.offer_type);
   const betSetupComplete = useMemo(() => getBetSetupComplete(formState), [formState]);
   const missingBetSetupFields = useMemo(() => getMissingBetSetupFields(formState), [formState]);
@@ -3094,6 +3248,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
   const backPlacementReady =
     parseNumericInput(formState.back_stake) !== null && parseNumericInput(formState.back_odds) !== null;
+  const backPlacementConfirmed = ["Placed", "Settled", "Free Bet Awarded"].includes(
+    formState.status
+  );
+  const layPlacementConfirmed =
+    partialLayLegs.length > 0 ||
+    (parseNumericInput(formState.lay_matched_stake_1) ?? 0) > 0;
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
@@ -4113,6 +4273,29 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
     if (result.statusMessage) {
       setStatusMessage(result.statusMessage);
     }
+  }
+
+  function revertBackPlacement() {
+    if (isSettledReadOnly) return;
+    setFormState((current) => ({
+      ...current,
+      status: "Prospecting",
+      result: "Pending",
+    }));
+    setStatusMessage("Back placement reopened. Save the sportsbook row to keep this correction.");
+  }
+
+  function revertLayPlacement() {
+    if (isSettledReadOnly) return;
+    setPartialLayLegs([]);
+    setPendingLegRemovalId(null);
+    setLastRemovedPartialLayLeg(null);
+    setFormState((current) => ({
+      ...current,
+      lay_actual: "",
+      lay_matched_stake_1: "",
+    }));
+    setStatusMessage("Lay placement reopened. Save the sportsbook row to keep this correction.");
   }
 
   function applyPartialLayLegState(nextLegs: PartialLayLegInput[]) {
@@ -5249,21 +5432,17 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </label>
               <label className="field-control">
                 <span>Campaign tag (optional)</span>
-                <select
+                <input
+                  maxLength={120}
                   onChange={(event) =>
                     setFreeBetBridgeModalState((current) =>
                       current ? { ...current, offer_name: event.target.value } : current
                     )
                   }
+                  placeholder="Enter a campaign tag"
+                  type="text"
                   value={freeBetBridgeModalState.offer_name}
-                >
-                  <option value="">Select campaign tag (optional)</option>
-                  {freeBetBridgeCampaignTagOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               <label className="field-control">
                 <span>Bet type (bet shape / placement)</span>
@@ -5471,6 +5650,27 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               ) : null}
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
               <div className="form-grid">
+                {!formState.sportsbook_bet_id && !selectedId ? (
+                  <div className="field-span-2 stack-tight">
+                  <label className="field-control">
+                    <span>Common combo (optional)</span>
+                    <select
+                      aria-label="Apply common bet combo to new sportsbook draft"
+                      data-pd-id="sportsbook.editor.common-combo"
+                      onChange={(event) => applyCommonBetCombo(event.target.value)}
+                      value={formState.source_combo_preset_id}
+                    >
+                      <option value="">No combo</option>
+                      {commonBetCombos.map((combo) => (
+                        <option key={combo.preset_id} value={combo.preset_id}>
+                          {combo.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
+                  </div>
+                ) : null}
                 <label className="field-control">
                   <span>Offer</span>
                   <input
@@ -5673,22 +5873,18 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 </label>
                 <label className="field-control">
                   <span>Campaign tag (optional)</span>
-                  <select
-                    onChange={(event) =>
-                      void applyDropdownChange(
-                        (current) => ({ ...current, offer_name: event.target.value }),
-                      "Campaign tag change"
-                      )
+                  <input
+                    maxLength={120}
+                    onBlur={() =>
+                      void applyDropdownChange((current) => current, "Campaign tag change")
                     }
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, offer_name: event.target.value }))
+                    }
+                    placeholder="Enter a campaign tag"
+                    type="text"
                     value={formState.offer_name}
-                  >
-                    <option value="">Select campaign tag (optional)</option>
-                    {offerNameOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
                 <label
                   className={`field-control${
@@ -5893,6 +6089,23 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             <span className="eyebrow">Back bet</span>
                           </div>
                           <div className="calculator-segment-grid calculator-segment-grid-back">
+                            {isProfitBoostOffer ? (
+                              <label className="field-control">
+                                <span>Bookmaker display</span>
+                                <select
+                                  onChange={(event) =>
+                                    setFormState((current) => ({
+                                      ...current,
+                                      profit_boost_mode: event.target.value,
+                                    }))
+                                  }
+                                  value={formState.profit_boost_mode}
+                                >
+                                  <option value="displayed_odds">Boosted odds shown</option>
+                                  <option value="percentage">Percentage shown</option>
+                                </select>
+                              </label>
+                            ) : null}
                             <label
                               className={`field-control${
                                 calculatorUnlocked && missingCalculatorFields.includes("Back stake")
@@ -5909,32 +6122,135 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                 value={formState.back_stake}
                               />
                             </label>
-                            <label
-                              className={`field-control${
-                                calculatorUnlocked && missingCalculatorFields.includes("Back odds")
-                                  ? " is-invalid"
-                                  : ""
-                              }`}
-                            >
-                              <span>Back odds</span>
-                              <input
-                                aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back odds")}
-                                onChange={(event) =>
-                                  setFormState((current) => ({ ...current, back_odds: event.target.value }))
-                                }
-                                value={formState.back_odds}
-                              />
-                            </label>
+                            {!isProfitBoostOffer || formState.profit_boost_mode === "displayed_odds" ? (
+                              <label
+                                className={`field-control${
+                                  calculatorUnlocked &&
+                                  missingCalculatorFields.some((field) =>
+                                    field === "Back odds" || field === "Boosted back odds"
+                                  )
+                                    ? " is-invalid"
+                                    : ""
+                                }`}
+                              >
+                                <span>{isProfitBoostOffer ? "Boosted back odds" : "Back odds"}</span>
+                                <input
+                                  aria-invalid={
+                                    calculatorUnlocked &&
+                                    missingCalculatorFields.some((field) =>
+                                      field === "Back odds" || field === "Boosted back odds"
+                                    )
+                                  }
+                                  onChange={(event) =>
+                                    setFormState((current) => ({
+                                      ...current,
+                                      back_odds: event.target.value,
+                                    }))
+                                  }
+                                  value={formState.back_odds}
+                                />
+                              </label>
+                            ) : (
+                              <>
+                                <label
+                                  className={`field-control${
+                                    missingCalculatorFields.includes("Base back odds")
+                                      ? " is-invalid"
+                                      : ""
+                                  }`}
+                                >
+                                  <span>Base back odds</span>
+                                  <input
+                                    onChange={(event) =>
+                                      setFormState((current) => ({
+                                        ...current,
+                                        base_back_odds: event.target.value,
+                                      }))
+                                    }
+                                    value={formState.base_back_odds}
+                                  />
+                                </label>
+                                <label
+                                  className={`field-control${
+                                    missingCalculatorFields.includes("Profit boost %")
+                                      ? " is-invalid"
+                                      : ""
+                                  }`}
+                                >
+                                  <span>Profit boost %</span>
+                                  <input
+                                    onChange={(event) =>
+                                      setFormState((current) => ({
+                                        ...current,
+                                        profit_boost_percent: event.target.value,
+                                      }))
+                                    }
+                                    value={formState.profit_boost_percent}
+                                  />
+                                </label>
+                                <label className="field-control">
+                                  <span>Maximum boost winnings</span>
+                                  <input
+                                    onChange={(event) =>
+                                      setFormState((current) => ({
+                                        ...current,
+                                        maximum_boost_winnings: event.target.value,
+                                      }))
+                                    }
+                                    value={formState.maximum_boost_winnings}
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {isProfitBoostOffer ? (
+                              <label className="field-control">
+                                <span>Actual accepted back odds</span>
+                                <input
+                                  onChange={(event) =>
+                                    setFormState((current) => ({
+                                      ...current,
+                                      actual_accepted_back_odds: event.target.value,
+                                    }))
+                                  }
+                                  value={formState.actual_accepted_back_odds}
+                                />
+                              </label>
+                            ) : null}
+                            {isProfitBoostOffer && previewCalculation?.effective_back_odds ? (
+                              <div className="field-control" role="status">
+                                <span>Effective boosted odds</span>
+                                <strong>{previewCalculation.effective_back_odds}</strong>
+                                <small>
+                                  {previewCalculation.profit_boost_source === "calculated"
+                                    ? "Reference calculation"
+                                    : previewCalculation.profit_boost_source === "accepted"
+                                      ? "Accepted by bookmaker"
+                                      : "Displayed by bookmaker"}
+                                </small>
+                              </div>
+                            ) : null}
                           </div>
                           <div className="review-chip-row" role="group" aria-label="Back placement actions">
                             <button
                               className="review-chip review-chip-action-placement"
-                              disabled={!backPlacementReady}
+                              disabled={!backPlacementReady || backPlacementConfirmed}
                               onClick={() => applyPlacementAction("back-placed")}
                               type="button"
                             >
                               Back Bet Placed
                             </button>
+                            {backPlacementConfirmed && !isSettledReadOnly ? (
+                              <button
+                                aria-label="Revert back bet placement"
+                                className="icon-button"
+                                data-pd-id="sportsbook.placement.revert-back"
+                                onClick={revertBackPlacement}
+                                title="Revert back bet placement"
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="material-symbols-outlined">undo</span>
+                              </button>
+                            ) : null}
                           </div>
                         </div>
 
@@ -6204,7 +6520,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             <div className="review-chip-row" role="group" aria-label="Lay placement actions">
                               <button
                                 className="review-chip review-chip-action-negative"
-                                disabled={!layPlacementReady}
+                                disabled={!layPlacementReady || layPlacementConfirmed}
                                 onClick={() => addPartialLayLeg({ isFinal: false })}
                                 type="button"
                               >
@@ -6212,12 +6528,24 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               </button>
                               <button
                                 className="review-chip review-chip-action-positive"
-                                disabled={!layPlacementReady}
+                                disabled={!layPlacementReady || layPlacementConfirmed}
                                 onClick={() => addPartialLayLeg({ isFinal: true })}
                                 type="button"
                               >
                                 Lay Fully Placed
                               </button>
+                              {layPlacementConfirmed && !isSettledReadOnly ? (
+                                <button
+                                  aria-label="Revert lay placement"
+                                  className="icon-button"
+                                  data-pd-id="sportsbook.placement.revert-lay"
+                                  onClick={revertLayPlacement}
+                                  title="Revert lay placement"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="material-symbols-outlined">undo</span>
+                                </button>
+                              ) : null}
                             </div>
                           ) : null}
                           {!isNoLayStrategy && !usesMultiLayStrategy ? (

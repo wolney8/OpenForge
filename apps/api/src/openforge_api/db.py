@@ -351,6 +351,37 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS fund_manager_lookup_values (
+          lookup_value_id TEXT PRIMARY KEY,
+          lookup_type TEXT NOT NULL,
+          option_value TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'Active',
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (lookup_type, option_value)
+        );
+
+        CREATE TABLE IF NOT EXISTS fund_manager_combo_presets (
+          preset_id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          ledger_type TEXT NOT NULL,
+          bookmaker TEXT NOT NULL DEFAULT '',
+          bookmakers_json TEXT NOT NULL DEFAULT '[]',
+          offer_type TEXT NOT NULL DEFAULT '',
+          bet_type TEXT NOT NULL DEFAULT '',
+          offer_name TEXT NOT NULL DEFAULT '',
+          fixture_type TEXT NOT NULL DEFAULT '',
+          default_back_stake TEXT NOT NULL DEFAULT '',
+          minimum_back_odds TEXT NOT NULL DEFAULT '',
+          allowed_strategies_json TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL DEFAULT 'Active',
+          version INTEGER NOT NULL DEFAULT 1,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS accounts (
           account_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -360,6 +391,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           counts_in_cash_total INTEGER NOT NULL DEFAULT 1,
           channel TEXT NOT NULL,
           status TEXT NOT NULL,
+          lifecycle_status TEXT NOT NULL DEFAULT 'Active',
+          restrictions_json TEXT NOT NULL DEFAULT '[]',
           current_balance TEXT NOT NULL,
           pending_withdrawal_amount TEXT NOT NULL,
           last_balance_update TEXT NOT NULL,
@@ -474,6 +507,13 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           result TEXT NOT NULL,
           back_stake TEXT NOT NULL,
           back_odds TEXT NOT NULL,
+          profit_boost_mode TEXT NOT NULL DEFAULT '',
+          base_back_odds TEXT NOT NULL DEFAULT '',
+          profit_boost_percent TEXT NOT NULL DEFAULT '',
+          maximum_boost_winnings TEXT NOT NULL DEFAULT '',
+          actual_accepted_back_odds TEXT NOT NULL DEFAULT '',
+          source_combo_preset_id TEXT NOT NULL DEFAULT '',
+          source_combo_preset_version INTEGER NOT NULL DEFAULT 0,
           bonus_trigger TEXT NOT NULL DEFAULT '',
           maximum_bonus TEXT NOT NULL DEFAULT '',
           bonus_retention_rate TEXT NOT NULL DEFAULT '70',
@@ -555,6 +595,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           default_back_stake TEXT NOT NULL,
           expected_settlement TEXT NOT NULL,
           reward_timing TEXT NOT NULL,
+          preset_id TEXT NOT NULL DEFAULT '',
+          preset_version INTEGER NOT NULL DEFAULT 0,
           state TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
@@ -801,13 +843,64 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "TEXT NOT NULL DEFAULT ''",
     )
     ensure_column(connection, "accounts", "bookmaker_id", "TEXT")
+    ensure_column(
+        connection,
+        "fund_manager_combo_presets",
+        "bookmakers_json",
+        "TEXT NOT NULL DEFAULT '[]'",
+    )
     ensure_column(connection, "accounts", "sign_up_date", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "accounts", "notes", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "multi_profile_opportunities",
+        "preset_id",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "multi_profile_opportunities",
+        "preset_version",
+        "INTEGER NOT NULL DEFAULT 0",
+    )
     ensure_column(connection, "sportsbook_bets", "bet_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "offer_name", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "market", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "lay_actual", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection, "sportsbook_bets", "profit_boost_mode", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection, "sportsbook_bets", "base_back_odds", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection, "sportsbook_bets", "profit_boost_percent", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "maximum_boost_winnings",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "actual_accepted_back_odds",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "source_combo_preset_id",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "source_combo_preset_version",
+        "INTEGER NOT NULL DEFAULT 0",
+    )
     ensure_column(connection, "sportsbook_bets", "bonus_trigger", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "maximum_bonus", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -865,6 +958,18 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "multi_profile_opportunity_targets",
         "bookmaker",
         "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "accounts",
+        "lifecycle_status",
+        "TEXT NOT NULL DEFAULT 'Active'",
+    )
+    ensure_column(
+        connection,
+        "accounts",
+        "restrictions_json",
+        "TEXT NOT NULL DEFAULT '[]'",
     )
     migrate_multi_profile_opportunity_targets(connection)
     ensure_column(
@@ -1843,6 +1948,13 @@ class SportsbookBetRecord:
     result: str
     back_stake: str
     back_odds: str
+    profit_boost_mode: str
+    base_back_odds: str
+    profit_boost_percent: str
+    maximum_boost_winnings: str
+    actual_accepted_back_odds: str
+    source_combo_preset_id: str
+    source_combo_preset_version: int
     bonus_trigger: str
     maximum_bonus: str
     bonus_retention_rate: str
@@ -2109,7 +2221,7 @@ def get_casino_offer_by_id(casino_offer_id: str) -> CasinoOfferRecord | None:
     return None if row is None else map_casino_offer_row(row)
 
 
-def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> SportsbookBetRecord:
+def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> SportsbookBetRecord:
     record = {
         "sportsbook_bet_id": payload.get("sportsbook_bet_id") or f"SB-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -2125,6 +2237,13 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
         "result": payload["result"],
         "back_stake": payload["back_stake"],
         "back_odds": payload["back_odds"],
+        "profit_boost_mode": payload.get("profit_boost_mode", ""),
+        "base_back_odds": payload.get("base_back_odds", ""),
+        "profit_boost_percent": payload.get("profit_boost_percent", ""),
+        "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
+        "actual_accepted_back_odds": payload.get("actual_accepted_back_odds", ""),
+        "source_combo_preset_id": payload.get("source_combo_preset_id", ""),
+        "source_combo_preset_version": int(payload.get("source_combo_preset_version", 0)),
         "bonus_trigger": payload.get("bonus_trigger", ""),
         "maximum_bonus": payload.get("maximum_bonus", ""),
         "bonus_retention_rate": payload.get("bonus_retention_rate", "70"),
@@ -2163,6 +2282,13 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
               result,
               back_stake,
               back_odds,
+              profit_boost_mode,
+              base_back_odds,
+              profit_boost_percent,
+              maximum_boost_winnings,
+              actual_accepted_back_odds,
+              source_combo_preset_id,
+              source_combo_preset_version,
               bonus_trigger,
               maximum_bonus,
               bonus_retention_rate,
@@ -2181,9 +2307,10 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
               created_at,
               updated_at
             ) VALUES (
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?
             )
             """,
             tuple(record.values()),
@@ -2203,7 +2330,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, str]) -> Sportsboo
 def update_sportsbook_bet(
     profile_id: str,
     sportsbook_bet_id: str,
-    payload: dict[str, str],
+    payload: dict[str, Any],
 ) -> SportsbookBetRecord | None:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is None:
@@ -2222,6 +2349,13 @@ def update_sportsbook_bet(
         "result": payload["result"],
         "back_stake": payload["back_stake"],
         "back_odds": payload["back_odds"],
+        "profit_boost_mode": payload.get("profit_boost_mode", ""),
+        "base_back_odds": payload.get("base_back_odds", ""),
+        "profit_boost_percent": payload.get("profit_boost_percent", ""),
+        "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
+        "actual_accepted_back_odds": payload.get("actual_accepted_back_odds", ""),
+        "source_combo_preset_id": payload.get("source_combo_preset_id", ""),
+        "source_combo_preset_version": int(payload.get("source_combo_preset_version", 0)),
         "bonus_trigger": payload.get("bonus_trigger", ""),
         "maximum_bonus": payload.get("maximum_bonus", ""),
         "bonus_retention_rate": payload.get("bonus_retention_rate", "70"),
@@ -2256,6 +2390,13 @@ def update_sportsbook_bet(
               result = ?,
               back_stake = ?,
               back_odds = ?,
+              profit_boost_mode = ?,
+              base_back_odds = ?,
+              profit_boost_percent = ?,
+              maximum_boost_winnings = ?,
+              actual_accepted_back_odds = ?,
+              source_combo_preset_id = ?,
+              source_combo_preset_version = ?,
               bonus_trigger = ?,
               maximum_bonus = ?,
               bonus_retention_rate = ?,
@@ -2287,6 +2428,13 @@ def update_sportsbook_bet(
                 updated["result"],
                 updated["back_stake"],
                 updated["back_odds"],
+                updated["profit_boost_mode"],
+                updated["base_back_odds"],
+                updated["profit_boost_percent"],
+                updated["maximum_boost_winnings"],
+                updated["actual_accepted_back_odds"],
+                updated["source_combo_preset_id"],
+                updated["source_combo_preset_version"],
                 updated["bonus_trigger"],
                 updated["maximum_bonus"],
                 updated["bonus_retention_rate"],
@@ -2521,8 +2669,8 @@ def create_multi_profile_opportunity(
               opportunity_id, actor_id, offer_text, bookmaker, offer_type,
               bet_type, offer_name, fixture_type, minimum_back_odds,
               default_back_stake, expected_settlement, reward_timing,
-              state, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress', ?, ?)
+              preset_id, preset_version, state, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress', ?, ?)
             """,
             (
                 opportunity_id,
@@ -2537,6 +2685,8 @@ def create_multi_profile_opportunity(
                 payload.get("default_back_stake", ""),
                 payload.get("expected_settlement", ""),
                 payload.get("reward_timing", ""),
+                payload.get("preset_id", ""),
+                int(payload.get("preset_version", 0)),
                 timestamp,
                 timestamp,
             ),
@@ -3524,6 +3674,38 @@ class ProfileLookupValueRecord:
 
 
 @dataclass(frozen=True)
+class FundManagerLookupValueRecord:
+    lookup_value_id: str
+    lookup_type: str
+    option_value: str
+    status: str
+    sort_order: int
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
+class FundManagerComboPresetRecord:
+    preset_id: str
+    name: str
+    ledger_type: str
+    bookmaker: str
+    bookmakers_json: str
+    offer_type: str
+    bet_type: str
+    offer_name: str
+    fixture_type: str
+    default_back_stake: str
+    minimum_back_odds: str
+    allowed_strategies_json: str
+    status: str
+    version: int
+    sort_order: int
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
 class AccountRecord:
     account_id: str
     profile_id: str
@@ -3533,6 +3715,8 @@ class AccountRecord:
     counts_in_cash_total: bool
     channel: str
     status: str
+    lifecycle_status: str
+    restrictions_json: str
     current_balance: str
     pending_withdrawal_amount: str
     last_balance_update: str
@@ -4172,6 +4356,240 @@ def list_profile_lookup_values(profile_id: str) -> list[ProfileLookupValueRecord
             (profile_id,),
         ).fetchall()
     return [map_lookup_value_row(row) for row in rows]
+
+
+def map_fund_manager_lookup_value_row(row: sqlite3.Row) -> FundManagerLookupValueRecord:
+    return FundManagerLookupValueRecord(
+        lookup_value_id=str(row["lookup_value_id"]),
+        lookup_type=str(row["lookup_type"]),
+        option_value=str(row["option_value"]),
+        status=str(row["status"]),
+        sort_order=int(row["sort_order"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def list_fund_manager_lookup_values(
+    *, active_only: bool = False
+) -> list[FundManagerLookupValueRecord]:
+    where_clause = "WHERE status = 'Active'" if active_only else ""
+    with connect() as connection:
+        rows = connection.execute(
+            f"""
+            SELECT * FROM fund_manager_lookup_values
+            {where_clause}
+            ORDER BY lookup_type ASC, sort_order ASC, option_value ASC
+            """
+        ).fetchall()
+    return [map_fund_manager_lookup_value_row(row) for row in rows]
+
+
+def get_fund_manager_lookup_value(
+    lookup_value_id: str,
+) -> FundManagerLookupValueRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM fund_manager_lookup_values WHERE lookup_value_id = ?",
+            (lookup_value_id,),
+        ).fetchone()
+    return None if row is None else map_fund_manager_lookup_value_row(row)
+
+
+def create_fund_manager_lookup_value(
+    payload: dict[str, Any],
+) -> FundManagerLookupValueRecord:
+    record = {
+        "lookup_value_id": payload.get("lookup_value_id")
+        or f"FMLOOKUP-{uuid4().hex[:8].upper()}",
+        "lookup_type": payload["lookup_type"],
+        "option_value": str(payload["option_value"]).strip(),
+        "status": payload.get("status", "Active"),
+        "sort_order": int(payload.get("sort_order", 0)),
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_lookup_values (
+              lookup_value_id, lookup_type, option_value, status, sort_order,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+    created = get_fund_manager_lookup_value(record["lookup_value_id"])
+    assert created is not None
+    return created
+
+
+def update_fund_manager_lookup_value(
+    lookup_value_id: str, payload: dict[str, Any]
+) -> FundManagerLookupValueRecord | None:
+    if get_fund_manager_lookup_value(lookup_value_id) is None:
+        return None
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE fund_manager_lookup_values
+            SET lookup_type = ?, option_value = ?, status = ?, sort_order = ?, updated_at = ?
+            WHERE lookup_value_id = ?
+            """,
+            (
+                payload["lookup_type"],
+                str(payload["option_value"]).strip(),
+                payload.get("status", "Active"),
+                int(payload.get("sort_order", 0)),
+                utc_now(),
+                lookup_value_id,
+            ),
+        )
+    return get_fund_manager_lookup_value(lookup_value_id)
+
+
+def map_fund_manager_combo_preset_row(
+    row: sqlite3.Row,
+) -> FundManagerComboPresetRecord:
+    return FundManagerComboPresetRecord(
+        preset_id=str(row["preset_id"]),
+        name=str(row["name"]),
+        ledger_type=str(row["ledger_type"]),
+        bookmaker=str(row["bookmaker"]),
+        bookmakers_json=str(row["bookmakers_json"]),
+        offer_type=str(row["offer_type"]),
+        bet_type=str(row["bet_type"]),
+        offer_name=str(row["offer_name"]),
+        fixture_type=str(row["fixture_type"]),
+        default_back_stake=str(row["default_back_stake"]),
+        minimum_back_odds=str(row["minimum_back_odds"]),
+        allowed_strategies_json=str(row["allowed_strategies_json"]),
+        status=str(row["status"]),
+        version=int(row["version"]),
+        sort_order=int(row["sort_order"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def list_fund_manager_combo_presets(
+    *, active_only: bool = False
+) -> list[FundManagerComboPresetRecord]:
+    where_clause = "WHERE status = 'Active'" if active_only else ""
+    with connect() as connection:
+        rows = connection.execute(
+            f"""
+            SELECT * FROM fund_manager_combo_presets
+            {where_clause}
+            ORDER BY sort_order ASC, name ASC, preset_id ASC
+            """
+        ).fetchall()
+    return [map_fund_manager_combo_preset_row(row) for row in rows]
+
+
+def get_fund_manager_combo_preset(
+    preset_id: str,
+) -> FundManagerComboPresetRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM fund_manager_combo_presets WHERE preset_id = ?",
+            (preset_id,),
+        ).fetchone()
+    return None if row is None else map_fund_manager_combo_preset_row(row)
+
+
+def create_fund_manager_combo_preset(
+    payload: dict[str, Any],
+) -> FundManagerComboPresetRecord:
+    bookmakers = [
+        str(value).strip()
+        for value in payload.get("bookmakers", [])
+        if str(value).strip()
+    ]
+    legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
+    if not bookmakers and legacy_bookmaker:
+        bookmakers = [legacy_bookmaker]
+    record = {
+        "preset_id": payload.get("preset_id") or f"COMBO-{uuid4().hex[:8].upper()}",
+        "name": str(payload["name"]).strip(),
+        "ledger_type": payload.get("ledger_type", "Sportsbook"),
+        "bookmaker": bookmakers[0] if len(bookmakers) == 1 else "",
+        "bookmakers_json": json.dumps(bookmakers, sort_keys=True),
+        "offer_type": str(payload.get("offer_type", "")).strip(),
+        "bet_type": str(payload.get("bet_type", "")).strip(),
+        "offer_name": str(payload.get("offer_name", "")).strip(),
+        "fixture_type": str(payload.get("fixture_type", "")).strip(),
+        "default_back_stake": str(payload.get("default_back_stake", "")).strip(),
+        "minimum_back_odds": str(payload.get("minimum_back_odds", "")).strip(),
+        "allowed_strategies_json": json.dumps(
+            payload.get("allowed_strategies", []), sort_keys=True
+        ),
+        "status": payload.get("status", "Active"),
+        "version": 1,
+        "sort_order": int(payload.get("sort_order", 0)),
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_combo_presets (
+              preset_id, name, ledger_type, bookmaker, bookmakers_json, offer_type, bet_type,
+              offer_name, fixture_type, default_back_stake, minimum_back_odds,
+              allowed_strategies_json, status, version, sort_order, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(record.values()),
+        )
+    created = get_fund_manager_combo_preset(record["preset_id"])
+    assert created is not None
+    return created
+
+
+def update_fund_manager_combo_preset(
+    preset_id: str, payload: dict[str, Any]
+) -> FundManagerComboPresetRecord | None:
+    existing = get_fund_manager_combo_preset(preset_id)
+    if existing is None:
+        return None
+    bookmakers = [
+        str(value).strip()
+        for value in payload.get("bookmakers", [])
+        if str(value).strip()
+    ]
+    legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
+    if not bookmakers and legacy_bookmaker:
+        bookmakers = [legacy_bookmaker]
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE fund_manager_combo_presets
+            SET name = ?, ledger_type = ?, bookmaker = ?, bookmakers_json = ?,
+                offer_type = ?, bet_type = ?,
+                offer_name = ?, fixture_type = ?, default_back_stake = ?,
+                minimum_back_odds = ?, allowed_strategies_json = ?, status = ?,
+                version = version + 1, sort_order = ?, updated_at = ?
+            WHERE preset_id = ?
+            """,
+            (
+                str(payload["name"]).strip(),
+                payload.get("ledger_type", "Sportsbook"),
+                bookmakers[0] if len(bookmakers) == 1 else "",
+                json.dumps(bookmakers, sort_keys=True),
+                str(payload.get("offer_type", "")).strip(),
+                str(payload.get("bet_type", "")).strip(),
+                str(payload.get("offer_name", "")).strip(),
+                str(payload.get("fixture_type", "")).strip(),
+                str(payload.get("default_back_stake", "")).strip(),
+                str(payload.get("minimum_back_odds", "")).strip(),
+                json.dumps(payload.get("allowed_strategies", []), sort_keys=True),
+                payload.get("status", "Active"),
+                int(payload.get("sort_order", 0)),
+                utc_now(),
+                preset_id,
+            ),
+        )
+    return get_fund_manager_combo_preset(preset_id)
 
 
 def get_profile_lookup_value(
@@ -5486,6 +5904,8 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
         "channel": payload["channel"],
         "status": payload["status"],
+        "lifecycle_status": payload.get("lifecycle_status", "Active"),
+        "restrictions_json": payload.get("restrictions_json", "[]"),
         "current_balance": payload["current_balance"],
         "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
         "last_balance_update": payload["last_balance_update"],
@@ -5508,6 +5928,8 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
               counts_in_cash_total,
               channel,
               status,
+              lifecycle_status,
+              restrictions_json,
               current_balance,
               pending_withdrawal_amount,
               last_balance_update,
@@ -5517,7 +5939,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
               notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -5549,6 +5971,8 @@ def update_account(
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
         "channel": payload["channel"],
         "status": payload["status"],
+        "lifecycle_status": payload.get("lifecycle_status", "Active"),
+        "restrictions_json": payload.get("restrictions_json", "[]"),
         "current_balance": payload["current_balance"],
         "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
         "last_balance_update": payload["last_balance_update"],
@@ -5569,6 +5993,8 @@ def update_account(
               counts_in_cash_total = ?,
               channel = ?,
               status = ?,
+              lifecycle_status = ?,
+              restrictions_json = ?,
               current_balance = ?,
               pending_withdrawal_amount = ?,
               last_balance_update = ?,
@@ -5586,6 +6012,8 @@ def update_account(
                 updated["counts_in_cash_total"],
                 updated["channel"],
                 updated["status"],
+                updated["lifecycle_status"],
+                updated["restrictions_json"],
                 updated["current_balance"],
                 updated["pending_withdrawal_amount"],
                 updated["last_balance_update"],

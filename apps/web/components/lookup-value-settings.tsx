@@ -40,7 +40,7 @@ const sections: Array<{
 
 export function LookupValueSettings({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<LookupValueRecord[]>([]);
-  const [drafts, setDrafts] = useState<Record<LookupValueType, string>>({
+  const [drafts, setDrafts] = useState<Partial<Record<LookupValueType, string>>>({
     bookmaker: "",
     exchange: "",
     offer_name: "",
@@ -103,7 +103,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
   );
 
   async function createLookupValue(lookupType: LookupValueType) {
-    const optionValue = drafts[lookupType].trim();
+    const optionValue = (drafts[lookupType] ?? "").trim();
     if (!optionValue) {
       return;
     }
@@ -204,7 +204,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
                   }
                   placeholder={`Add ${singularLabel} value`}
                   type="text"
-                  value={drafts[lookupType]}
+                  value={drafts[lookupType] ?? ""}
                 />
               </label>
               <div className="field-control align-end">

@@ -629,8 +629,8 @@ def calculate_sportsbook_current_value(
     lay_returns_after_commission = actual_lay_stake * (Decimal("1") - commission_1)
     scenario_lay_wins = quantize_money((-back_stake) + lay_returns_after_commission)
     scenario_cashback_trigger: Decimal | None = None
-    if calculation_input.offer_type in {"Cashback", "Refund"}:
-        if calculation_input.offer_type == "Refund":
+    if calculation_input.offer_type in {"Cashback", "Refund", "Bonus Lock-In"}:
+        if calculation_input.offer_type in {"Refund", "Bonus Lock-In"}:
             retained_bonus_value = _resolve_bonus_value(
                 back_stake, maximum_bonus, bonus_retention_rate
             )

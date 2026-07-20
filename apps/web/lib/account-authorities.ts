@@ -6,6 +6,8 @@ export type AccountAuthorityRecord = {
   counts_in_cash_total: boolean;
   channel: string;
   status: string;
+  lifecycle_status?: string;
+  restrictions_json?: string;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;

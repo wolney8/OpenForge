@@ -8,6 +8,7 @@ export function LedgerAddRowButton({ label, onClick }: LedgerAddRowButtonProps) 
     <button
       aria-label={label}
       className="icon-button ledger-toolbar-add-action"
+      data-pd-id="ledger.toolbar.add-row"
       onClick={onClick}
       title={label}
       type="button"
