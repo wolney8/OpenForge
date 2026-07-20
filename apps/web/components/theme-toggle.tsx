@@ -10,12 +10,15 @@ export function ThemeToggle() {
     <button
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       aria-pressed={isDark}
-      className="icon-button"
+      className={`icon-button theme-mode-toggle${isDark ? " is-dark" : " is-light"}`}
+      data-pd-id="app-shell.theme-toggle"
       onClick={toggleTheme}
       type="button"
     >
-      <span aria-hidden="true">{isDark ? "Light" : "Dark"}</span>
-      <strong>{isDark ? "Sun" : "Moon"}</strong>
+      <span aria-hidden="true" className="theme-mode-icon-stage">
+        <span className="material-symbols-outlined theme-mode-icon theme-mode-icon-sun">light_mode</span>
+        <span className="material-symbols-outlined theme-mode-icon theme-mode-icon-moon">dark_mode</span>
+      </span>
     </button>
   );
 }

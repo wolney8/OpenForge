@@ -8,6 +8,7 @@ import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
@@ -984,6 +985,21 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     },
     Boolean(initialIssueFilter)
   );
+  useEffect(() => {
+    const supported = new Set<CasinoIssueFilter>([
+      "all-issues",
+      "offer-unplaced",
+      "no-settle-date",
+      "outcome-needed",
+      "final-value-needed",
+    ]);
+    if (initialIssueFilter && supported.has(initialIssueFilter as CasinoIssueFilter)) {
+      setTableFilters((current) => ({
+        ...current,
+        issue_type: initialIssueFilter as CasinoIssueFilter,
+      }));
+    }
+  }, [initialIssueFilter, setTableFilters]);
   const [tableSort, setTableSort] = useState<CasinoTableSort | null>(null);
   const [formState, setFormState] = useState<CasinoOfferFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] =
@@ -1996,78 +2012,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Casino Offers</h1>
-          <div className="tracker-nav">
-            <button className="button-link" onClick={startNewRow} type="button">
-              Add casino row
-            </button>
-            <button
-              aria-label={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              className="icon-button ledger-collapse-button"
-              onClick={() => setTableCollapsed((current) => !current)}
-              title={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              type="button"
-            >
-              {tableCollapsed ? "+" : "-"}
-            </button>
-          </div>
         </div>
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading casino-offer ledger" />
         ) : null}
-        <div className="sportsbook-review-bar" aria-label="Casino-offer review controls">
-          <label className="field-control table-search-field">
-            <span>Search</span>
-            <input
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search casino-offer rows"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="table-filter-button-wrap">
-            <button
-              aria-label="Open casino-offer filter and column controls"
-              className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
-              onClick={() => setIsFilterModalOpen(true)}
-              title="Filter and columns"
-              type="button"
-            >
-              <svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24">
-                <path
-                  d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
-              {hasActiveTableControls ? (
-                <span
-                  aria-label={`${activeTableControlCount} active table controls`}
-                  className="table-filter-badge"
-                >
-                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
-                </span>
-              ) : null}
-            </button>
-            {hasActiveTableControls ? (
-              <button
-                aria-label="Clear active casino-offer filters and hidden-column states"
-                className="table-filter-clear"
-                onClick={() => {
-                  clearTableFilters();
-                  setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns));
-                }}
-                type="button"
-              >
-                ×
-              </button>
-            ) : null}
-          </div>
-        </div>
         <section className="stat-strip" aria-label="Casino quick view">
           <article className="stat-card">
             <span className="eyebrow">Open / prospecting</span>
@@ -2096,6 +2044,14 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <span>Current ledger total</span>
           </article>
         </section>
+        <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
+          <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
+          <LedgerAddRowButton label="Add casino row" onClick={startNewRow} />
+          <div className="table-filter-button-wrap">
+            <button aria-label="Open casino-offer filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
+            {hasActiveTableControls ? <button aria-label="Clear active casino-offer filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns)); }} type="button">×</button> : null}
+          </div>
+        </div>
         {!tableCollapsed ? (
           <>
             {errorMessage ? (

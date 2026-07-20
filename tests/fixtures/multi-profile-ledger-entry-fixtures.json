@@ -2,8 +2,8 @@
   "cases": [
     {
       "case_id": "MP-001",
-      "inputs": {"source_profile_id": "PROFILE-001", "targets": [{"profile_id": "PROFILE-001", "back_odds": "4.00"}, {"profile_id": "PROFILE-002", "back_odds": "4.20"}], "bookmaker": "Bookmaker A", "account_states": {"PROFILE-001": "Active", "PROFILE-002": "Active"}},
-      "expected": {"eligible_profiles": ["PROFILE-001", "PROFILE-002"], "created_row_count_after_two_confirmations": 2, "shared_row_id": false, "calculations_run_per_profile": true}
+      "inputs": {"source_profile_id": "PROFILE-001", "source_row_state": "saved", "targets": [{"profile_id": "PROFILE-002", "back_odds": "4.00"}, {"profile_id": "PROFILE-003", "back_odds": "4.20"}], "bookmaker": "Bookmaker A", "account_states": {"PROFILE-002": "Active", "PROFILE-003": "Active"}},
+      "expected": {"eligible_profiles": ["PROFILE-002", "PROFILE-003"], "created_target_row_count_after_two_confirmations": 2, "source_row_changed": false, "shared_row_id": false, "calculations_run_per_profile": true}
     },
     {
       "case_id": "MP-002",
@@ -22,13 +22,13 @@
     },
     {
       "case_id": "MP-005",
-      "inputs": {"review_sequence": [{"profile_id": "PROFILE-001", "action": "confirm"}, {"profile_id": "PROFILE-002", "action": "cancel"}]},
-      "expected": {"created_profiles": ["PROFILE-001"], "not_created_profiles": ["PROFILE-002"]}
+      "inputs": {"source_profile_id": "PROFILE-001", "review_sequence": [{"profile_id": "PROFILE-002", "action": "confirm"}, {"profile_id": "PROFILE-003", "action": "cancel"}]},
+      "expected": {"created_profiles": ["PROFILE-002"], "not_created_profiles": ["PROFILE-003"], "source_row_changed": false}
     },
     {
       "case_id": "MP-006",
-      "inputs": {"target_profile_ids": ["PROFILE-001", "PROFILE-002"], "action": "bulk_confirm"},
-      "expected": {"allowed": false, "error_code": "sequential_confirmation_required"}
+      "inputs": {"mode": "copy_saved_row", "target_profile_ids": ["PROFILE-001", "PROFILE-002"], "action": "bulk_confirm"},
+      "expected": {"allowed": false, "error_code": "sequential_confirmation_required", "opportunity_first_mode_affected": false}
     },
     {
       "case_id": "MP-007",
@@ -50,6 +50,106 @@
         "pin_state_affects_eligibility": false,
         "bulk_submit_available": false
       }
+    },
+    {
+      "case_id": "MP-008",
+      "inputs": {"mode": "opportunity_first", "bookmaker": "Bookmaker A", "selected_profile_ids": ["PROFILE-001", "PROFILE-002"], "blocked_profile_id": "PROFILE-003", "blocked_account_status": "Inactive"},
+      "expected": {"prospecting_rows_created": 2, "blocked_profile_row_created": false, "result": "Pending"}
+    },
+    {
+      "case_id": "MP-009",
+      "inputs": {"minimum_back_odds": "3.00", "profile_back_odds": "2.80"},
+      "expected": {"draft_saved": true, "placement_allowed": false, "reason": "below_minimum_back_odds"}
+    },
+    {
+      "case_id": "MP-010",
+      "inputs": {"selected_valid_profile_ids": ["PROFILE-001", "PROFILE-002"], "action": "record_selected_as_placed"},
+      "expected": {"placed_profile_ids": ["PROFILE-001", "PROFILE-002"], "external_bet_placement": false}
+    },
+    {
+      "case_id": "MP-011",
+      "inputs": {"selected_profile_ids": ["PROFILE-001", "PROFILE-002"], "incomplete_profile_id": "PROFILE-002"},
+      "expected": {"placed_profile_ids": ["PROFILE-001"], "prospecting_profile_ids": ["PROFILE-002"], "partial_result_explicit": true}
+    },
+    {
+      "case_id": "MP-012",
+      "inputs": {"complex_profile_id": "PROFILE-003", "strategy": "Multilay", "other_profile_ids": ["PROFILE-001", "PROFILE-002"]},
+      "expected": {"open_full_editor": true, "other_drafts_saved": true, "batch_resumable": true}
+    },
+    {
+      "case_id": "MP-013",
+      "inputs": {"configured_default": "Exchange B", "most_used": "Exchange A", "active_exchanges": ["Exchange A", "Exchange B"]},
+      "expected": {"resolved_exchange": "Exchange B", "resolution_source": "profile_setting"}
+    },
+    {
+      "case_id": "MP-014",
+      "inputs": {"workflow_state": "In Progress", "linked_row_states": ["Prospecting", "Prospecting"], "action": "delete_opportunity"},
+      "expected": {"draft_rows_deleted": 2, "placed_rows_retained": 0, "container_state": "deleted"}
+    },
+    {
+      "case_id": "MP-015",
+      "inputs": {"workflow_state": "In Progress", "linked_row_states": ["Placed", "Prospecting"], "action": "delete_opportunity"},
+      "expected": {"draft_rows_deleted": 1, "placed_rows_retained": 1, "container_state": "Archived"}
+    },
+    {
+      "case_id": "MP-016",
+      "inputs": {"preset": "Mug Bet", "targets": [{"profile_id": "PROFILE-001", "bookmaker": "Bookmaker A"}, {"profile_id": "PROFILE-001", "bookmaker": "Bookmaker B"}]},
+      "expected": {"created_target_rows": 2, "shared_row_id": false, "initial_strategy": "No Lay", "exchange_required": false}
+    },
+    {
+      "case_id": "MP-017",
+      "inputs": {"source_commission": "0.02", "target_commission": "0.05", "copied_fields": ["back_stake", "back_odds", "lay_odds", "strategy"]},
+      "expected": {"exchange_copied_only_if_available": true, "lay_stake_copied": false, "target_suggestion_recalculated": true}
+    },
+    {
+      "case_id": "MP-018",
+      "inputs": {"back_odds": "5.1", "lay_odds": "5"},
+      "expected": {"persisted_back_odds": "5.10", "persisted_lay_odds": "5.00"}
+    },
+    {
+      "case_id": "MP-019",
+      "inputs": {"resumable_opportunities": ["OPPORTUNITY-NEWEST", "OPPORTUNITY-SECOND", "OPPORTUNITY-OLDER"]},
+      "expected": {"default_visible": ["OPPORTUNITY-NEWEST", "OPPORTUNITY-SECOND"], "visible_after_expand": ["OPPORTUNITY-NEWEST", "OPPORTUNITY-SECOND", "OPPORTUNITY-OLDER"], "rows_changed": false}
+    },
+    {
+      "case_id": "MP-020",
+      "inputs": {"profile_id": "PROFILE-001", "current_bookmaker": "Bookmaker A", "replacement_bookmakers": {"Bookmaker B": "Active", "Bookmaker C": "Gubbed"}},
+      "expected": {"Bookmaker B": "target_and_linked_row_updated", "Bookmaker C": "rejected", "cross_profile_write": false}
+    },
+    {
+      "case_id": "MP-021",
+      "inputs": {"save_sequence": [{"version": 1, "strategy": "Underlay", "response_order": 2}, {"version": 2, "strategy": "Standard", "response_order": 1}]},
+      "expected": {"authoritative_version": 2, "displayed_strategy": "Standard", "suggested_lay_visible": true}
+    },
+    {
+      "case_id": "MP-022",
+      "inputs": {"back_stake": "10.00", "back_odds": "", "exchange": "Exchange A", "lay_odds": "", "strategy": "Standard"},
+      "expected": {"copy_down_enabled": false, "disabled_reason_available": true, "target_rows_changed": false}
+    },
+    {
+      "case_id": "MP-023",
+      "inputs": {"profile_id": "PROFILE-001", "stored_exchange": "", "resolved_default_exchange": "Exchange A", "commission": "0.02", "back_stake": "10.00", "back_odds": "2.10", "lay_odds": "2.20", "strategy": "Standard"},
+      "expected": {"persisted_exchange": "Exchange A", "suggested_lay_visible": true, "commission_source": "profile_setting"}
+    },
+    {
+      "case_id": "MP-024",
+      "inputs": {"accepted_lay": "9.55", "changed_field": "lay_odds", "previous_lay_odds": "2.20", "new_lay_odds": "2.30"},
+      "expected": {"accepted_lay_cleared": true, "stale_projection_visible": false, "suggestion_visible_while_recalculating": false, "new_suggestion_visible_after_save": true}
+    },
+    {
+      "case_id": "MP-025",
+      "inputs": {"profile_account_statuses": ["Active", "Pending Sign Up", "Limited", "Gubbed", "Blocked", "Not configured"]},
+      "expected": {"active_usable": true, "pending_sign_up_usable_with_warning": true, "limited_usable_with_warning": true, "gubbed_usable": false, "blocked_usable": false, "not_configured_usable": false}
+    },
+    {
+      "case_id": "MP-026",
+      "inputs": {"workflow_state": "Prospecting", "entered_back_stake": "25.00", "default_back_stake": "10.00", "entered_back_odds": "3.00", "entered_lay_stake": "23.00", "action": "Reset Row Data"},
+      "expected": {"row_retained": true, "back_stake": "10.00", "back_odds": "", "lay_stake": "", "status": "Prospecting"}
+    },
+    {
+      "case_id": "MP-027",
+      "inputs": {"workflow_state": "Prospecting", "action_sequence": ["Remove from Opportunity", "Add Target"]},
+      "expected": {"original_sportsbook_row_deleted": true, "target_hidden_after_remove": true, "target_can_be_restored": true, "restored_row_is_new_and_profile_scoped": true}
     }
   ]
 }

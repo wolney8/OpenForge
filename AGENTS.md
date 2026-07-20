@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-07-16
+Last updated: 2026-07-20
 
 ## Project purpose
 
@@ -140,6 +140,8 @@ Before implementing or modifying any UI, read and follow:
 - `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`
 - `docs/agent-contracts/plum-duff-ui-implementation-checklist.md`
 - `docs/agent-contracts/plum-duff-known-ui-pitfalls.md`
+- `.skills/plum-duff-ui-review/SKILL.md`
+- `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`
 
 Non-negotiable baseline:
 
@@ -156,6 +158,11 @@ Complete the implementation checklist for every feature, bug fix, route, compone
 fixture-backed UI change. Larger existing issues belong in
 `docs/agent-contracts/plum-duff-ui-audit-backlog.md`; do not hide them or perform an unsafe visual
 rewrite.
+
+The consistency-enforcer skill is a fail-closed handoff gate. An agent must compare changed UI
+against established Plum Duff equivalents and provide automated geometry, overflow, action/icon,
+theme and accessibility evidence before asking the user to smoke test it. Unverified UI work must
+be reported as incomplete, not handed to the user to discover basic consistency defects.
 
 ## Task cadence
 

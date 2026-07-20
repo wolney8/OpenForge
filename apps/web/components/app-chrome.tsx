@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
@@ -18,12 +18,14 @@ import {
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
 import { profileOverflowModules } from "@/lib/tracker-modules";
+import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
 
 const defaultProfileId = "profile-demo-001";
 
 type ProfileHeaderRecord = {
   profile_id: string;
   display_name: string;
+  status?: string;
 };
 
 type TrackerSettingsRecord = {
@@ -88,14 +90,51 @@ function buildResolvedRangeLabel(start: Date, end: Date): string {
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const resolvedProfileId = resolveProfileId(pathname ?? "");
   const activeProfileId = resolvedProfileId ?? defaultProfileId;
   const isInsideProfile = resolvedProfileId !== null;
   const [headerSummary, setHeaderSummary] = useState<HeaderSummaryState | null>(null);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
+  const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
+  const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
   const appMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isInsideProfile) {
+      return;
+    }
+    let isActive = true;
+    void fetch(`${apiBaseUrl}/profiles`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load active profiles");
+        return (await response.json()) as ProfileHeaderRecord[];
+      })
+      .then((profiles) => {
+        if (!isActive) return;
+        setActiveProfiles(
+          profiles.filter((item) => (item.status ?? "active").trim().toLowerCase() === "active")
+        );
+      })
+      .catch(() => {
+        if (isActive) setActiveProfiles([]);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [activeProfileId, isInsideProfile]);
+
+  useEffect(() => {
+    if (!isInsideProfile || !pathname) return;
+    for (const profile of activeProfiles) {
+      if (profile.profile_id === activeProfileId) continue;
+      router.prefetch(
+        pathname.replace(`/profiles/${activeProfileId}`, `/profiles/${profile.profile_id}`)
+      );
+    }
+  }, [activeProfileId, activeProfiles, isInsideProfile, pathname, router]);
 
   useEffect(() => {
     if (!isInsideProfile) {
@@ -196,6 +235,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
       if (trackerMenuOpen && trackerMenuRef.current && !trackerMenuRef.current.contains(target)) {
         setTrackerMenuOpen(false);
+        setProfileSwitchOpen(false);
       }
 
       if (appMenuOpen && appMenuRef.current && !appMenuRef.current.contains(target)) {
@@ -206,12 +246,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     const handleScroll = () => {
       setTrackerMenuOpen(false);
       setAppMenuOpen(false);
+      setProfileSwitchOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setTrackerMenuOpen(false);
         setAppMenuOpen(false);
+        setProfileSwitchOpen(false);
       }
     };
 
@@ -237,6 +279,21 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? headerSummary.profileSubtitle
       : "Loading range and P&L...";
   const brandSubtitle = "Local-first tracker";
+  const otherActiveProfiles = activeProfiles.filter(
+    (profile) => profile.profile_id !== activeProfileId
+  );
+
+  const switchToProfile = (profileId: string) => {
+    if (!confirmUnsavedTrackerChanges()) return;
+    const nextPath = (pathname ?? "/profiles").replace(
+      `/profiles/${activeProfileId}`,
+      `/profiles/${profileId}`
+    );
+    const query = typeof window === "undefined" ? "" : window.location.search;
+    setProfileSwitchOpen(false);
+    setTrackerMenuOpen(false);
+    router.push(`${nextPath}${query}`);
+  };
 
   return (
     <>
@@ -261,7 +318,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 <Link className="nav-pill" href="/login" onClick={() => setAppMenuOpen(false)}>
                   Login
                 </Link>
-                <Link className="nav-pill" href="/profiles" onClick={() => setAppMenuOpen(false)}>
+                <Link
+                  aria-label="Profiles"
+                  className="nav-pill"
+                  data-pd-id="app-menu.profiles"
+                  href="/profiles"
+                  onClick={() => setAppMenuOpen(false)}
+                >
                   Profiles
                 </Link>
                 <Link className="nav-pill" href="/settings" onClick={() => setAppMenuOpen(false)}>
@@ -286,13 +349,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           </div>
           <div className="top-bar-actions">
             {isInsideProfile ? (
-              <div className="app-menu-shell" ref={trackerMenuRef}>
+              <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <button
                   aria-expanded={trackerMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Open profile tracker menu"
                   className="summary-menu-button"
-                  onClick={() => setTrackerMenuOpen((current) => !current)}
+                  onClick={() =>
+                    setTrackerMenuOpen((current) => {
+                      if (current) setProfileSwitchOpen(false);
+                      return !current;
+                    })
+                  }
                   type="button"
                 >
                   <span className="summary-menu-copy">
@@ -304,9 +372,50 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                   </span>
                 </button>
                 <div
-                  className={`app-menu-panel app-menu-panel-right ${trackerMenuOpen ? "is-open" : ""}`}
+                  className={`app-menu-panel app-menu-panel-right profile-summary-menu-panel ${trackerMenuOpen ? "is-open" : ""}`}
                   role="menu"
                 >
+                  {otherActiveProfiles.length === 1 ? (
+                    <button
+                      aria-label={`Switch to ${otherActiveProfiles[0].display_name} in the current tracker section`}
+                      className="nav-pill profile-switch-action"
+                      data-pd-id="profile-menu.switch"
+                      onClick={() => switchToProfile(otherActiveProfiles[0].profile_id)}
+                      role="menuitem"
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
+                      <span>Switch</span>
+                    </button>
+                  ) : otherActiveProfiles.length > 1 ? (
+                    <div className="profile-switch-group">
+                      <button
+                        aria-expanded={profileSwitchOpen}
+                        aria-label="Choose an active profile and keep the current tracker section"
+                        className="nav-pill profile-switch-action"
+                        data-pd-id="profile-menu.switch"
+                        onClick={() => setProfileSwitchOpen((current) => !current)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
+                        <span>Switch</span>
+                      </button>
+                      <div className={`profile-switch-list${profileSwitchOpen ? " is-open" : ""}`}>
+                        {otherActiveProfiles.map((profile) => (
+                          <button
+                            className="nav-pill"
+                            key={profile.profile_id}
+                            onClick={() => switchToProfile(profile.profile_id)}
+                            role="menuitem"
+                            type="button"
+                          >
+                            {profile.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   {profileOverflowModules.map((route) => {
                     const href = `/profiles/${activeProfileId}/tracker/${route.href}`;
                     const isActive = pathname === href;
@@ -317,7 +426,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                         className={`nav-pill ${isActive ? "is-active" : ""}`}
                         href={href}
                         key={route.href}
-                        onClick={() => setTrackerMenuOpen(false)}
+                        onClick={() => {
+                          setTrackerMenuOpen(false);
+                          setProfileSwitchOpen(false);
+                        }}
                       >
                         {route.title}
                       </Link>

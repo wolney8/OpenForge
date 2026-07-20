@@ -335,6 +335,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
                     default_free_bet_underlay_factor TEXT NOT NULL DEFAULT '0.928',
                     default_free_bet_overlay_factor TEXT NOT NULL DEFAULT '1.3',
                     default_bonus_retention_percent TEXT NOT NULL DEFAULT '0.7',
+                    default_exchange_name TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
@@ -504,6 +505,80 @@ def initialize_database(connection: sqlite3.Connection) -> None:
             REFERENCES sportsbook_bets(sportsbook_bet_id)
             ON DELETE CASCADE,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS multi_profile_entry_batches (
+          batch_id TEXT PRIMARY KEY,
+          source_profile_id TEXT NOT NULL,
+          source_sportsbook_bet_id TEXT NOT NULL,
+          actor_id TEXT NOT NULL,
+          state TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (source_profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (source_sportsbook_bet_id)
+            REFERENCES sportsbook_bets(sportsbook_bet_id)
+            ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS multi_profile_entry_targets (
+          target_id TEXT PRIMARY KEY,
+          batch_id TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          eligibility_state TEXT NOT NULL,
+          eligibility_reasons_json TEXT NOT NULL,
+          copied_fields_json TEXT NOT NULL,
+          changed_fields_json TEXT NOT NULL,
+          submit_state TEXT NOT NULL,
+          created_sportsbook_bet_id TEXT,
+          submitted_at TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (batch_id, target_profile_id),
+          FOREIGN KEY (batch_id) REFERENCES multi_profile_entry_batches(batch_id) ON DELETE CASCADE,
+          FOREIGN KEY (target_profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (created_sportsbook_bet_id)
+            REFERENCES sportsbook_bets(sportsbook_bet_id)
+            ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS multi_profile_opportunities (
+          opportunity_id TEXT PRIMARY KEY,
+          actor_id TEXT NOT NULL,
+          offer_text TEXT NOT NULL,
+          bookmaker TEXT NOT NULL,
+          offer_type TEXT NOT NULL,
+          bet_type TEXT NOT NULL,
+          offer_name TEXT NOT NULL,
+          fixture_type TEXT NOT NULL,
+          minimum_back_odds TEXT NOT NULL,
+          default_back_stake TEXT NOT NULL,
+          expected_settlement TEXT NOT NULL,
+          reward_timing TEXT NOT NULL,
+          state TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS multi_profile_opportunity_targets (
+          target_id TEXT PRIMARY KEY,
+          opportunity_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          bookmaker TEXT NOT NULL DEFAULT '',
+          eligibility_state TEXT NOT NULL,
+          eligibility_reasons_json TEXT NOT NULL,
+          workflow_reasons_json TEXT NOT NULL DEFAULT '[]',
+          workflow_state TEXT NOT NULL,
+          sportsbook_bet_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (opportunity_id)
+            REFERENCES multi_profile_opportunities(opportunity_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (sportsbook_bet_id)
+            REFERENCES sportsbook_bets(sportsbook_bet_id)
+            ON DELETE SET NULL
         );
 
         CREATE TABLE IF NOT EXISTS free_bets (
@@ -776,6 +851,25 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(
         connection,
         "profile_tracker_settings",
+        "default_exchange_name",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "multi_profile_opportunity_targets",
+        "workflow_reasons_json",
+        "TEXT NOT NULL DEFAULT '[]'",
+    )
+    ensure_column(
+        connection,
+        "multi_profile_opportunity_targets",
+        "bookmaker",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    migrate_multi_profile_opportunity_targets(connection)
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
         "this_month_mode",
         "TEXT NOT NULL DEFAULT 'Calendar'",
     )
@@ -906,6 +1000,55 @@ def seed_bookmaker_catalogue_from_existing(connection: sqlite3.Connection) -> No
             """,
             (bookmaker_id, brand_name),
         )
+
+
+def migrate_multi_profile_opportunity_targets(connection: sqlite3.Connection) -> None:
+    table = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' "
+        "AND name = 'multi_profile_opportunity_targets'"
+    ).fetchone()
+    if table is None:
+        return
+    normalized_sql = " ".join(str(table["sql"] or "").lower().split())
+    if "unique (opportunity_id, profile_id)" not in normalized_sql:
+        return
+
+    connection.executescript(
+        """
+        CREATE TABLE multi_profile_opportunity_targets_v2 (
+          target_id TEXT PRIMARY KEY,
+          opportunity_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          bookmaker TEXT NOT NULL DEFAULT '',
+          eligibility_state TEXT NOT NULL,
+          eligibility_reasons_json TEXT NOT NULL,
+          workflow_reasons_json TEXT NOT NULL DEFAULT '[]',
+          workflow_state TEXT NOT NULL,
+          sportsbook_bet_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (opportunity_id)
+            REFERENCES multi_profile_opportunities(opportunity_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (sportsbook_bet_id)
+            REFERENCES sportsbook_bets(sportsbook_bet_id)
+            ON DELETE SET NULL
+        );
+        INSERT INTO multi_profile_opportunity_targets_v2 (
+          target_id, opportunity_id, profile_id, bookmaker,
+          eligibility_state, eligibility_reasons_json, workflow_reasons_json,
+          workflow_state, sportsbook_bet_id, created_at, updated_at
+        )
+        SELECT target_id, opportunity_id, profile_id, bookmaker,
+               eligibility_state, eligibility_reasons_json, workflow_reasons_json,
+               workflow_state, sportsbook_bet_id, created_at, updated_at
+        FROM multi_profile_opportunity_targets;
+        DROP TABLE multi_profile_opportunity_targets;
+        ALTER TABLE multi_profile_opportunity_targets_v2
+          RENAME TO multi_profile_opportunity_targets;
+        """
+    )
 
 
 def ensure_column(
@@ -2217,6 +2360,447 @@ def count_audit_rows(profile_id: str, sportsbook_bet_id: str) -> int:
     return int(row["count"])
 
 
+def create_multi_profile_entry_batch(
+    *,
+    source_profile_id: str,
+    source_sportsbook_bet_id: str,
+    actor_id: str,
+    targets: list[dict[str, Any]],
+) -> str:
+    batch_id = f"MPB-{uuid4().hex[:10].upper()}"
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO multi_profile_entry_batches (
+              batch_id, source_profile_id, source_sportsbook_bet_id,
+              actor_id, state, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, 'In Progress', ?, ?)
+            """,
+            (
+                batch_id,
+                source_profile_id,
+                source_sportsbook_bet_id,
+                actor_id,
+                timestamp,
+                timestamp,
+            ),
+        )
+        for target in targets:
+            connection.execute(
+                """
+                INSERT INTO multi_profile_entry_targets (
+                  target_id, batch_id, target_profile_id, eligibility_state,
+                  eligibility_reasons_json, copied_fields_json, changed_fields_json,
+                  submit_state, created_sportsbook_bet_id, submitted_at,
+                  created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, '{}', '{}', ?, NULL, '', ?, ?)
+                """,
+                (
+                    f"MPT-{uuid4().hex[:10].upper()}",
+                    batch_id,
+                    target["profile_id"],
+                    target["eligibility_state"],
+                    json.dumps(target.get("eligibility_reasons", []), sort_keys=True),
+                    target["submit_state"],
+                    timestamp,
+                    timestamp,
+                ),
+            )
+    return batch_id
+
+
+def get_multi_profile_entry_batch_target(
+    batch_id: str,
+    target_profile_id: str,
+) -> dict[str, Any] | None:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT b.*, t.*
+            FROM multi_profile_entry_batches b
+            JOIN multi_profile_entry_targets t ON t.batch_id = b.batch_id
+            WHERE b.batch_id = ? AND t.target_profile_id = ?
+            """,
+            (batch_id, target_profile_id),
+        ).fetchone()
+    return None if row is None else dict(row)
+
+
+def update_multi_profile_entry_target(
+    *,
+    batch_id: str,
+    target_profile_id: str,
+    eligibility_state: str | None = None,
+    eligibility_reasons: list[str] | None = None,
+    submit_state: str,
+    copied_fields: dict[str, Any] | None = None,
+    changed_fields: dict[str, Any] | None = None,
+    created_sportsbook_bet_id: str | None = None,
+) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        current = connection.execute(
+            """
+            SELECT eligibility_state, eligibility_reasons_json
+            FROM multi_profile_entry_targets
+            WHERE batch_id = ? AND target_profile_id = ?
+            """,
+            (batch_id, target_profile_id),
+        ).fetchone()
+        if current is None:
+            raise ValueError("Multi-profile target does not exist")
+        connection.execute(
+            """
+            UPDATE multi_profile_entry_targets
+            SET eligibility_state = ?, eligibility_reasons_json = ?,
+                copied_fields_json = ?, changed_fields_json = ?, submit_state = ?,
+                created_sportsbook_bet_id = ?, submitted_at = ?, updated_at = ?
+            WHERE batch_id = ? AND target_profile_id = ?
+            """,
+            (
+                eligibility_state or current["eligibility_state"],
+                json.dumps(eligibility_reasons, sort_keys=True)
+                if eligibility_reasons is not None
+                else current["eligibility_reasons_json"],
+                json.dumps(copied_fields or {}, sort_keys=True),
+                json.dumps(changed_fields or {}, sort_keys=True),
+                submit_state,
+                created_sportsbook_bet_id,
+                timestamp if submit_state == "Created" else "",
+                timestamp,
+                batch_id,
+                target_profile_id,
+            ),
+        )
+        pending_count = connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM multi_profile_entry_targets
+            WHERE batch_id = ? AND submit_state = 'Pending'
+            """,
+            (batch_id,),
+        ).fetchone()["count"]
+        if pending_count == 0:
+            connection.execute(
+                """
+                UPDATE multi_profile_entry_batches
+                SET state = 'Complete', updated_at = ?
+                WHERE batch_id = ?
+                """,
+                (timestamp, batch_id),
+            )
+
+
+def list_multi_profile_entry_batch_targets(batch_id: str) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM multi_profile_entry_targets
+            WHERE batch_id = ?
+            ORDER BY created_at, target_profile_id
+            """,
+            (batch_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def create_multi_profile_opportunity(
+    *,
+    actor_id: str,
+    payload: dict[str, Any],
+    targets: list[dict[str, Any]],
+) -> str:
+    opportunity_id = f"MPO-{uuid4().hex[:10].upper()}"
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO multi_profile_opportunities (
+              opportunity_id, actor_id, offer_text, bookmaker, offer_type,
+              bet_type, offer_name, fixture_type, minimum_back_odds,
+              default_back_stake, expected_settlement, reward_timing,
+              state, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress', ?, ?)
+            """,
+            (
+                opportunity_id,
+                actor_id,
+                payload["offer_text"],
+                payload["bookmaker"],
+                payload["offer_type"],
+                payload.get("bet_type", ""),
+                payload.get("offer_name", ""),
+                payload.get("fixture_type", ""),
+                payload.get("minimum_back_odds", ""),
+                payload.get("default_back_stake", ""),
+                payload.get("expected_settlement", ""),
+                payload.get("reward_timing", ""),
+                timestamp,
+                timestamp,
+            ),
+        )
+        for target in targets:
+            connection.execute(
+                """
+                INSERT INTO multi_profile_opportunity_targets (
+                  target_id, opportunity_id, profile_id, bookmaker, eligibility_state,
+                  eligibility_reasons_json, workflow_reasons_json,
+                  workflow_state, sportsbook_bet_id,
+                  created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)
+                """,
+                (
+                    target.get("target_id") or f"MPOT-{uuid4().hex[:10].upper()}",
+                    opportunity_id,
+                    target["profile_id"],
+                    target.get("bookmaker", payload.get("bookmaker", "")),
+                    target["eligibility_state"],
+                    json.dumps(target.get("eligibility_reasons", []), sort_keys=True),
+                    target["workflow_state"],
+                    target.get("sportsbook_bet_id"),
+                    timestamp,
+                    timestamp,
+                ),
+            )
+    return opportunity_id
+
+
+def update_multi_profile_opportunity_target(
+    *,
+    opportunity_id: str,
+    target_id: str,
+    workflow_state: str,
+    sportsbook_bet_id: str | None = None,
+    workflow_reasons: list[str] | None = None,
+    bookmaker: str | None = None,
+) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE multi_profile_opportunity_targets
+            SET workflow_state = ?,
+                sportsbook_bet_id = COALESCE(?, sportsbook_bet_id),
+                workflow_reasons_json = ?,
+                bookmaker = COALESCE(?, bookmaker),
+                updated_at = ?
+            WHERE opportunity_id = ? AND target_id = ?
+            """,
+            (
+                workflow_state,
+                sportsbook_bet_id,
+                json.dumps(workflow_reasons or [], sort_keys=True),
+                bookmaker,
+                timestamp,
+                opportunity_id,
+                target_id,
+            ),
+        )
+        connection.execute(
+            """
+            UPDATE multi_profile_opportunities
+            SET updated_at = ?
+            WHERE opportunity_id = ?
+            """,
+            (timestamp, opportunity_id),
+        )
+        remaining = connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM multi_profile_opportunity_targets
+            WHERE opportunity_id = ?
+              AND workflow_state IN ('Prospecting', 'Draft')
+            """,
+            (opportunity_id,),
+        ).fetchone()["count"]
+        if remaining == 0:
+            connection.execute(
+                """
+                UPDATE multi_profile_opportunities
+                SET state = 'Complete', updated_at = ?
+                WHERE opportunity_id = ?
+                """,
+                (timestamp, opportunity_id),
+            )
+
+
+def add_or_restore_multi_profile_opportunity_target(
+    *,
+    opportunity_id: str,
+    profile_id: str,
+    bookmaker: str,
+    eligibility_state: str,
+    eligibility_reasons: list[str],
+    sportsbook_bet_id: str,
+) -> str:
+    timestamp = utc_now()
+    with connect() as connection:
+        existing = connection.execute(
+            """
+            SELECT target_id
+            FROM multi_profile_opportunity_targets
+            WHERE opportunity_id = ? AND profile_id = ? AND bookmaker = ?
+              AND workflow_state IN ('Removed', 'Skipped')
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (opportunity_id, profile_id, bookmaker),
+        ).fetchone()
+        target_id = (
+            str(existing["target_id"])
+            if existing is not None
+            else f"MPOT-{uuid4().hex[:10].upper()}"
+        )
+        if existing is None:
+            connection.execute(
+                """
+                INSERT INTO multi_profile_opportunity_targets (
+                  target_id, opportunity_id, profile_id, bookmaker, eligibility_state,
+                  eligibility_reasons_json, workflow_reasons_json, workflow_state,
+                  sportsbook_bet_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, '[]', 'Prospecting', ?, ?, ?)
+                """,
+                (
+                    target_id,
+                    opportunity_id,
+                    profile_id,
+                    bookmaker,
+                    eligibility_state,
+                    json.dumps(eligibility_reasons, sort_keys=True),
+                    sportsbook_bet_id,
+                    timestamp,
+                    timestamp,
+                ),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE multi_profile_opportunity_targets
+                SET eligibility_state = ?, eligibility_reasons_json = ?,
+                    workflow_reasons_json = '[]', workflow_state = 'Prospecting',
+                    sportsbook_bet_id = ?, updated_at = ?
+                WHERE target_id = ?
+                """,
+                (
+                    eligibility_state,
+                    json.dumps(eligibility_reasons, sort_keys=True),
+                    sportsbook_bet_id,
+                    timestamp,
+                    target_id,
+                ),
+            )
+        connection.execute(
+            """
+            UPDATE multi_profile_opportunities
+            SET state = 'In Progress', updated_at = ?
+            WHERE opportunity_id = ?
+            """,
+            (timestamp, opportunity_id),
+        )
+    return target_id
+
+
+def remove_multi_profile_opportunity_target_row(
+    *, opportunity_id: str, target_id: str
+) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE multi_profile_opportunity_targets
+            SET workflow_state = 'Removed', sportsbook_bet_id = NULL,
+                workflow_reasons_json = '[]', updated_at = ?
+            WHERE opportunity_id = ? AND target_id = ?
+            """,
+            (timestamp, opportunity_id, target_id),
+        )
+        connection.execute(
+            """
+            UPDATE multi_profile_opportunities
+            SET updated_at = ? WHERE opportunity_id = ?
+            """,
+            (timestamp, opportunity_id),
+        )
+
+
+def get_multi_profile_opportunity(opportunity_id: str) -> dict[str, Any] | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM multi_profile_opportunities WHERE opportunity_id = ?",
+            (opportunity_id,),
+        ).fetchone()
+    return None if row is None else dict(row)
+
+
+def list_multi_profile_opportunity_targets(opportunity_id: str) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT t.*, p.display_name, p.profile_code
+            FROM multi_profile_opportunity_targets t
+            JOIN profiles p ON p.profile_id = t.profile_id
+            WHERE t.opportunity_id = ?
+            ORDER BY p.display_name COLLATE NOCASE, t.bookmaker COLLATE NOCASE, t.created_at
+            """,
+            (opportunity_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def list_multi_profile_opportunities(*, include_complete: bool = False) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM multi_profile_opportunities
+            WHERE ? = 1 OR state = 'In Progress'
+            ORDER BY updated_at DESC, rowid DESC
+            """,
+            (int(include_complete),),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_multi_profile_opportunity_state(opportunity_id: str, state: str) -> bool:
+    with connect() as connection:
+        updated = connection.execute(
+            """
+            UPDATE multi_profile_opportunities
+            SET state = ?, updated_at = ?
+            WHERE opportunity_id = ?
+            """,
+            (state, utc_now(), opportunity_id),
+        )
+    return updated.rowcount > 0
+
+
+def delete_multi_profile_opportunity(opportunity_id: str) -> bool:
+    with connect() as connection:
+        deleted = connection.execute(
+            "DELETE FROM multi_profile_opportunities WHERE opportunity_id = ?",
+            (opportunity_id,),
+        )
+    return deleted.rowcount > 0
+
+
+def get_most_used_profile_exchange(profile_id: str) -> str:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT exchange_name, COUNT(*) AS usage_count
+            FROM sportsbook_bets
+            WHERE profile_id = ? AND TRIM(exchange_name) != ''
+            GROUP BY exchange_name
+            ORDER BY usage_count DESC, exchange_name COLLATE NOCASE
+            LIMIT 1
+            """,
+            (profile_id,),
+        ).fetchone()
+    return "" if row is None else str(row["exchange_name"])
+
+
 def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
     record = {
         "free_bet_id": payload.get("free_bet_id") or f"FB-{uuid4().hex[:8].upper()}",
@@ -2924,6 +3508,7 @@ class ProfileTrackerSettingsRecord:
     default_free_bet_underlay_factor: str
     default_free_bet_overlay_factor: str
     default_bonus_retention_percent: str
+    default_exchange_name: str
     created_at: str
     updated_at: str
 
@@ -3456,9 +4041,10 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                                     default_free_bet_underlay_factor,
                                     default_free_bet_overlay_factor,
                                     default_bonus_retention_percent,
+                                    default_exchange_name,
                   created_at,
                   updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                                 (
                                         profile_id,
@@ -3474,6 +4060,7 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                                         "0.928",
                                         "1.3",
                                         "0.7",
+                                        "",
                                         timestamp,
                                         timestamp,
                                 ),
@@ -3519,9 +4106,10 @@ def upsert_profile_tracker_settings(
                             default_free_bet_underlay_factor,
                             default_free_bet_overlay_factor,
                             default_bonus_retention_percent,
+                            default_exchange_name,
               created_at,
               updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
               active_date_preset = excluded.active_date_preset,
               custom_start_date = excluded.custom_start_date,
@@ -3539,6 +4127,7 @@ def upsert_profile_tracker_settings(
                                 excluded.default_free_bet_overlay_factor,
                             default_bonus_retention_percent =
                                 excluded.default_bonus_retention_percent,
+                            default_exchange_name = excluded.default_exchange_name,
               updated_at = excluded.updated_at
             """,
             (
@@ -3555,6 +4144,7 @@ def upsert_profile_tracker_settings(
                 payload["default_free_bet_underlay_factor"],
                 payload["default_free_bet_overlay_factor"],
                 payload["default_bonus_retention_percent"],
+                payload.get("default_exchange_name", ""),
                 created_at,
                 timestamp,
             ),

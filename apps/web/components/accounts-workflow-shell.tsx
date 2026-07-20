@@ -83,7 +83,7 @@ type AccountTableMode =
 const accountTableModes: Array<{ label: string; value: AccountTableMode }> = [
   { label: "All", value: "All" },
   { label: "Active", value: "Active" },
-  { label: "Limited / Gubbed", value: "Limited / Gubbed" },
+  { label: "Restricted / Gubbed", value: "Limited / Gubbed" },
   { label: "Bookie", value: "Bookie" },
   { label: "Exchange", value: "Exchange" },
   { label: "Bank", value: "Bank" },
@@ -339,7 +339,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const accountQuickView = useMemo(() => {
     const activeAccounts = rows.filter((row) => row.status === "Active").length;
     const restrictedAccounts = rows.filter((row) =>
-      ["Limited", "Gubbed", "Inactive"].includes(row.status)
+      ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
     ).length;
     const cashTotalAccounts = rows.filter((row) => row.counts_in_cash_total);
     const cashIncludedBalance = cashTotalAccounts.reduce(
@@ -371,7 +371,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       case "Active":
         return rows.filter((row) => row.status === "Active");
       case "Limited / Gubbed":
-        return rows.filter((row) => ["Limited", "Gubbed", "Inactive"].includes(row.status));
+        return rows.filter((row) =>
+          ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
+        );
       case "Bookie":
       case "Exchange":
       case "Bank":

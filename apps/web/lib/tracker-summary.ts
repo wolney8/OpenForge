@@ -309,7 +309,7 @@ const cashAdjustmentTypesForDashboard = new Set([
   "TopUp",
   "Withdrawal",
 ]);
-const accountHealthStatuses = new Set(["Active", "Limited"]);
+const accountHealthStatuses = new Set(["Active", "Bonus Restricted", "Limited"]);
 const defaultMugFrequencyDays = 14;
 const defaultFreeBetExpiryAlertWindowDays = 3;
 const costAdjustmentTypes = new Set(["Deduction", "Subscription", "Costs"]);

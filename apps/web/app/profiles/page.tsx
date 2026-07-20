@@ -47,6 +47,7 @@ export default async function ProfilesPage({
       <CrossProfileAnalytics
         initialDetailProfileId={typeof query.profile === "string" ? query.profile : undefined}
         initialFeeReviewMonth={typeof query.feeReview === "string" ? query.feeReview : undefined}
+        initialOpportunityId={typeof query.opportunity === "string" ? query.opportunity : undefined}
         profiles={analyticsProfiles}
       />
     </main>

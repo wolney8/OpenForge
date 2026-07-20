@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, model_validator
@@ -13,12 +13,24 @@ from openforge_api.calculations.sportsbook_current_value import (
     calculate_sportsbook_current_value,
 )
 from openforge_api.db import (
+    create_multi_profile_entry_batch,
     create_sportsbook_bet,
     delete_sportsbook_bet,
+    get_multi_profile_entry_batch_target,
     get_profile_exchange_commission,
     get_sportsbook_bet,
+    list_accounts,
+    list_multi_profile_entry_batch_targets,
+    list_profile_exchange_commissions,
+    list_profiles,
     list_sportsbook_bets,
+    update_multi_profile_entry_target,
     update_sportsbook_bet,
+)
+from openforge_api.multi_profile_entry import (
+    MultiProfileTargetEligibility,
+    evaluate_multi_profile_target,
+    strategy_requires_exchange,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/sportsbook-bets", tags=["sportsbook"])
@@ -142,6 +154,105 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     lay_status: str
     counts_as_open: bool
     is_overdue: bool
+
+
+class MultiProfileExchangeOptionResponse(BaseModel):
+    exchange_name: str
+    commission_rate: str
+
+
+class MultiProfileTargetResponse(BaseModel):
+    profile_id: str
+    display_name: str
+    profile_code: str
+    eligible: bool
+    state: str
+    reasons: list[str]
+    bookmaker_account_status: str
+    exchange_options: list[MultiProfileExchangeOptionResponse]
+
+
+class MultiProfileBatchPayload(BaseModel):
+    target_profile_ids: list[str] = Field(min_length=1)
+    actor_id: str = Field(default="local-fund-manager", min_length=1, max_length=120)
+
+
+class MultiProfileBatchResponse(BaseModel):
+    batch_id: str
+    source_sportsbook_bet_id: str
+    selected_target_profile_ids: list[str]
+
+
+class MultiProfileTargetSubmitResponse(BaseModel):
+    batch_id: str
+    target_profile_id: str
+    submit_state: str
+    sportsbook_bet: SportsbookBetResponse
+
+
+class MultiProfileTargetSkipResponse(BaseModel):
+    batch_id: str
+    target_profile_id: str
+    submit_state: str
+
+
+class MultiProfileBatchCancelResponse(BaseModel):
+    batch_id: str
+    skipped_target_profile_ids: list[str]
+
+
+SHARED_MULTI_PROFILE_FIELDS = (
+    "event_name",
+    "offer_text",
+    "bookmaker",
+    "offer_type",
+    "bet_type",
+    "offer_name",
+    "fixture_type",
+    "market",
+    "bonus_trigger",
+    "maximum_bonus",
+    "bonus_retention_rate",
+)
+
+
+def build_target_eligibility(
+    *, source_profile_id: str, source_record: object
+) -> list[MultiProfileTargetEligibility]:
+    source = source_record.__dict__
+    return [
+        evaluate_multi_profile_target(
+            profile=profile,
+            accounts=list_accounts(profile.profile_id),
+            exchange_commissions=list_profile_exchange_commissions(profile.profile_id),
+            bookmaker=source["bookmaker"],
+            offer_type=source["offer_type"],
+            match_strategy=source["match_strategy"],
+        )
+        for profile in list_profiles()
+        if profile.profile_id != source_profile_id
+    ]
+
+
+def serialize_target_eligibility(
+    target: MultiProfileTargetEligibility,
+) -> MultiProfileTargetResponse:
+    return MultiProfileTargetResponse(
+        profile_id=target.profile_id,
+        display_name=target.display_name,
+        profile_code=target.profile_code,
+        eligible=target.eligible,
+        state=target.state,
+        reasons=list(target.reasons),
+        bookmaker_account_status=target.bookmaker_account_status,
+        exchange_options=[
+            MultiProfileExchangeOptionResponse(
+                exchange_name=option.exchange_name,
+                commission_rate=option.commission_rate,
+            )
+            for option in target.exchange_options
+        ],
+    )
 
 
 def format_decimal(value: Decimal | None, *, decimals: int) -> str | None:
@@ -299,6 +410,260 @@ def get_profile_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> Sport
     if record is None:
         raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
     return build_response(profile_id, record, as_of_date=date.today())
+
+
+@router.get(
+    "/{sportsbook_bet_id}/copy-targets",
+    response_model=list[MultiProfileTargetResponse],
+)
+def list_sportsbook_copy_targets(
+    profile_id: str, sportsbook_bet_id: str
+) -> list[MultiProfileTargetResponse]:
+    source = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source sportsbook bet not found")
+    return [
+        serialize_target_eligibility(target)
+        for target in build_target_eligibility(
+            source_profile_id=profile_id,
+            source_record=source,
+        )
+    ]
+
+
+@router.post(
+    "/{sportsbook_bet_id}/copy-batches",
+    response_model=MultiProfileBatchResponse,
+    status_code=201,
+)
+def create_sportsbook_copy_batch(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    payload: MultiProfileBatchPayload,
+) -> MultiProfileBatchResponse:
+    source = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source sportsbook bet not found")
+    candidates = build_target_eligibility(source_profile_id=profile_id, source_record=source)
+    candidates_by_id = {candidate.profile_id: candidate for candidate in candidates}
+    selected_ids = list(dict.fromkeys(payload.target_profile_ids))
+    unknown_ids = sorted(set(selected_ids) - set(candidates_by_id))
+    if unknown_ids:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown target profiles: {', '.join(unknown_ids)}",
+        )
+    blocked_selected = [
+        candidates_by_id[target_id]
+        for target_id in selected_ids
+        if not candidates_by_id[target_id].eligible
+    ]
+    if blocked_selected:
+        raise HTTPException(
+            status_code=409,
+            detail="Blocked profiles cannot be selected for submission",
+        )
+
+    batch_id = create_multi_profile_entry_batch(
+        source_profile_id=profile_id,
+        source_sportsbook_bet_id=sportsbook_bet_id,
+        actor_id=payload.actor_id,
+        targets=[
+            {
+                "profile_id": candidate.profile_id,
+                "eligibility_state": candidate.state,
+                "eligibility_reasons": list(candidate.reasons),
+                "submit_state": (
+                    "Pending"
+                    if candidate.profile_id in selected_ids
+                    else "Blocked"
+                    if not candidate.eligible
+                    else "Skipped"
+                ),
+            }
+            for candidate in candidates
+        ],
+    )
+    return MultiProfileBatchResponse(
+        batch_id=batch_id,
+        source_sportsbook_bet_id=sportsbook_bet_id,
+        selected_target_profile_ids=selected_ids,
+    )
+
+
+@router.post(
+    "/{sportsbook_bet_id}/copy-batches/{batch_id}/targets/{target_profile_id}/submit",
+    response_model=MultiProfileTargetSubmitResponse,
+    status_code=201,
+)
+def submit_sportsbook_copy_target(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    batch_id: str,
+    target_profile_id: str,
+    payload: SportsbookBetPayload,
+) -> MultiProfileTargetSubmitResponse:
+    source = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source sportsbook bet not found")
+    target_audit = get_multi_profile_entry_batch_target(batch_id, target_profile_id)
+    if (
+        target_audit is None
+        or target_audit["source_profile_id"] != profile_id
+        or target_audit["source_sportsbook_bet_id"] != sportsbook_bet_id
+    ):
+        raise HTTPException(status_code=404, detail="Copy batch target not found")
+    if target_audit["submit_state"] != "Pending":
+        raise HTTPException(status_code=409, detail="Target is not pending submission")
+
+    candidate = next(
+        (
+            item
+            for item in build_target_eligibility(
+                source_profile_id=profile_id,
+                source_record=source,
+            )
+            if item.profile_id == target_profile_id
+        ),
+        None,
+    )
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Target profile not found")
+    if not candidate.eligible:
+        update_multi_profile_entry_target(
+            batch_id=batch_id,
+            target_profile_id=target_profile_id,
+            eligibility_state="Blocked",
+            eligibility_reasons=list(candidate.reasons),
+            submit_state="Blocked",
+        )
+        raise HTTPException(status_code=409, detail="; ".join(candidate.reasons))
+
+    source_values = source.__dict__
+    submitted_values: dict[str, Any] = payload.model_dump()
+    for field_name in SHARED_MULTI_PROFILE_FIELDS:
+        if submitted_values[field_name] != source_values[field_name]:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Shared source field cannot be changed: {field_name}",
+            )
+    allowed_exchanges = {option.exchange_name for option in candidate.exchange_options}
+    if (
+        strategy_requires_exchange(payload.match_strategy)
+        and payload.exchange_name not in allowed_exchanges
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Select an active target exchange with configured commission",
+        )
+
+    submitted_values["sportsbook_bet_id"] = None
+    try:
+        created = create_sportsbook_bet(target_profile_id, submitted_values)
+    except Exception:
+        update_multi_profile_entry_target(
+            batch_id=batch_id,
+            target_profile_id=target_profile_id,
+            submit_state="Failed",
+        )
+        raise
+    copied_fields = {
+        field_name: source_values[field_name] for field_name in SHARED_MULTI_PROFILE_FIELDS
+    }
+    changed_fields = {
+        field_name: {
+            "source": source_values.get(field_name, ""),
+            "target": submitted_values.get(field_name, ""),
+        }
+        for field_name in submitted_values
+        if field_name not in SHARED_MULTI_PROFILE_FIELDS
+        and field_name != "sportsbook_bet_id"
+        and submitted_values.get(field_name, "") != source_values.get(field_name, "")
+    }
+    update_multi_profile_entry_target(
+        batch_id=batch_id,
+        target_profile_id=target_profile_id,
+        submit_state="Created",
+        copied_fields=copied_fields,
+        changed_fields=changed_fields,
+        created_sportsbook_bet_id=created.sportsbook_bet_id,
+    )
+    return MultiProfileTargetSubmitResponse(
+        batch_id=batch_id,
+        target_profile_id=target_profile_id,
+        submit_state="Created",
+        sportsbook_bet=build_response(target_profile_id, created, as_of_date=date.today()),
+    )
+
+
+@router.post(
+    "/{sportsbook_bet_id}/copy-batches/{batch_id}/targets/{target_profile_id}/skip",
+    response_model=MultiProfileTargetSkipResponse,
+)
+def skip_sportsbook_copy_target(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    batch_id: str,
+    target_profile_id: str,
+) -> MultiProfileTargetSkipResponse:
+    target_audit = get_multi_profile_entry_batch_target(batch_id, target_profile_id)
+    if (
+        target_audit is None
+        or target_audit["source_profile_id"] != profile_id
+        or target_audit["source_sportsbook_bet_id"] != sportsbook_bet_id
+    ):
+        raise HTTPException(status_code=404, detail="Copy batch target not found")
+    if target_audit["submit_state"] != "Pending":
+        raise HTTPException(status_code=409, detail="Target is not pending submission")
+    update_multi_profile_entry_target(
+        batch_id=batch_id,
+        target_profile_id=target_profile_id,
+        submit_state="Skipped",
+    )
+    return MultiProfileTargetSkipResponse(
+        batch_id=batch_id,
+        target_profile_id=target_profile_id,
+        submit_state="Skipped",
+    )
+
+
+@router.post(
+    "/{sportsbook_bet_id}/copy-batches/{batch_id}/cancel",
+    response_model=MultiProfileBatchCancelResponse,
+)
+def cancel_sportsbook_copy_batch(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    batch_id: str,
+) -> MultiProfileBatchCancelResponse:
+    targets = list_multi_profile_entry_batch_targets(batch_id)
+    if not targets:
+        raise HTTPException(status_code=404, detail="Copy batch not found")
+    batch_target = get_multi_profile_entry_batch_target(
+        batch_id,
+        targets[0]["target_profile_id"],
+    )
+    if (
+        batch_target is None
+        or batch_target["source_profile_id"] != profile_id
+        or batch_target["source_sportsbook_bet_id"] != sportsbook_bet_id
+    ):
+        raise HTTPException(status_code=404, detail="Copy batch not found")
+    pending_target_ids = [
+        target["target_profile_id"]
+        for target in targets
+        if target["submit_state"] == "Pending"
+    ]
+    for target_profile_id in pending_target_ids:
+        update_multi_profile_entry_target(
+            batch_id=batch_id,
+            target_profile_id=target_profile_id,
+            submit_state="Skipped",
+        )
+    return MultiProfileBatchCancelResponse(
+        batch_id=batch_id,
+        skipped_target_profile_ids=pending_target_ids,
+    )
 
 
 @router.post("", response_model=SportsbookBetResponse, status_code=201)
