@@ -5,7 +5,10 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from openforge_api.db import list_partial_lay_notifications
+from openforge_api.db import (
+    list_free_bet_follow_up_notifications,
+    list_partial_lay_notifications,
+)
 
 router = APIRouter(prefix="/fund-manager/notifications", tags=["fund-manager-notifications"])
 
@@ -27,6 +30,7 @@ class FundManagerNotificationResponse(BaseModel):
     settles_at: str
     created_at: str
     href: str
+    completion_href: str
     tone: str
 
 
@@ -90,8 +94,75 @@ def list_fund_manager_notifications() -> list[FundManagerNotificationResponse]:
                     f"/profiles/{profile_id}/tracker/sportsbook-bets"
                     f"?record={record_id}&source=notifications"
                 ),
+                completion_href=(
+                    f"/profiles/{profile_id}/sportsbook-bets/"
+                    f"{record_id}/partial-lay-reminder"
+                ),
                 tone="danger" if is_overdue else "warning",
             )
         )
 
-    return notifications
+    for row in list_free_bet_follow_up_notifications():
+        due_at = str(row["due_at"])
+        reminder_changed_at = str(row["reminder_changed_at"])
+        due_timestamp = parse_timestamp(due_at)
+        task_state = "done" if str(row["reminder_state"]) == "Resolved" else "new"
+        lifecycle_cutoff = (
+            str(row["date_settled"])
+            if str(row["status"]) == "Placed" and str(row["date_settled"]).strip()
+            else str(row["expiry_datetime"] or due_at)
+        )
+        cutoff_timestamp = parse_timestamp(lifecycle_cutoff)
+        if task_state == "done" and cutoff_timestamp is not None and cutoff_timestamp <= now:
+            continue
+
+        is_overdue = due_timestamp is not None and due_timestamp <= now
+        record_id = str(row["free_bet_id"])
+        profile_id = str(row["profile_id"])
+        event_label = str(row["event_name"] or row["offer_text"] or record_id)
+
+        notifications.append(
+            FundManagerNotificationResponse(
+                audience="fund_manager",
+                kind="task",
+                task_state=task_state,
+                notification_id=(
+                    f"free-bet-follow-up:{profile_id}:{record_id}:{reminder_changed_at}"
+                ),
+                notification_type="free_bet_follow_up_reminder",
+                title=(
+                    "Free-bet follow-up completed"
+                    if task_state == "done"
+                    else "Free-bet follow-up overdue"
+                    if is_overdue
+                    else "Free-bet follow-up"
+                ),
+                ledger_label="Free Bets",
+                bookmaker_label=str(row["bookmaker"] or "Bookmaker unavailable"),
+                message=event_label,
+                profile_id=profile_id,
+                profile_name=str(row["profile_name"]),
+                record_id=record_id,
+                due_at=due_at,
+                settles_at=lifecycle_cutoff,
+                created_at=reminder_changed_at,
+                href=(
+                    f"/profiles/{profile_id}/tracker/free-bets"
+                    f"?record={record_id}&source=notifications"
+                ),
+                completion_href=(
+                    f"/profiles/{profile_id}/free-bets/"
+                    f"{record_id}/follow-up-reminder"
+                ),
+                tone="danger" if is_overdue else "warning",
+            )
+        )
+
+    return sorted(
+        notifications,
+        key=lambda notification: (
+            notification.task_state == "done",
+            parse_timestamp(notification.due_at) or datetime.max.replace(tzinfo=UTC),
+            notification.profile_name.casefold(),
+        ),
+    )

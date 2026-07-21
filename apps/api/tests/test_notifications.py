@@ -74,6 +74,9 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
     assert notification["href"].endswith(
         f"sportsbook-bets?record={sportsbook_bet_id}&source=notifications"
     )
+    assert notification["completion_href"].endswith(
+        f"sportsbook-bets/{sportsbook_bet_id}/partial-lay-reminder"
+    )
 
     resolve_response = client.put(
         "/profiles/profile-demo-001/sportsbook-bets/"
@@ -181,3 +184,85 @@ def test_resolved_partial_lay_notification_expires_after_settlement(tmp_path: Pa
     assert sportsbook_bet_id not in {
         item["record_id"] for item in feed_response.json()
     }
+
+
+def test_free_bet_follow_up_reminders_feed_and_complete_from_notifications(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Smarkets", "commission_rate": "0.02"},
+    )
+    create_response = client.post(
+        "/profiles/profile-demo-001/free-bets",
+        json={
+            "event_name": "Synthetic Free-Bet Notification",
+            "offer_text": "Synthetic follow-up offer",
+            "bookmaker": "Bookmaker A",
+            "offer_type": "Bet & Get",
+            "bet_type": "Single",
+            "offer_name": "Synthetic free-bet notification",
+            "fixture_type": "Football",
+            "status": "Available",
+            "result": "Pending",
+            "retention_mode": "SNR",
+            "free_bet_value": "10.00",
+            "back_odds": "5.00",
+            "match_strategy": "Standard",
+            "lay_odds_1": "5.20",
+            "lay_actual": "7.72",
+            "lay_matched_stake_1": "7.72",
+            "lay_commission_1": "",
+            "exchange_name": "Smarkets",
+            "expiry_datetime": "2099-07-24T20:00:00",
+            "date_settled": "",
+            "origin_qual_bet_id": "",
+            "offer_group_id": "",
+            "user_notes": "",
+            "manual_override_value": "",
+            "manual_override_reason": "",
+        },
+    )
+    assert create_response.status_code == 201
+    free_bet_id = create_response.json()["free_bet_id"]
+    reminder_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2099-07-24T18:00:00",
+            "reason": "Review the free-bet conversion.",
+        },
+    )
+    assert reminder_response.status_code == 200
+
+    feed_response = client.get("/fund-manager/notifications")
+    assert feed_response.status_code == 200
+    notification = next(
+        item for item in feed_response.json() if item["record_id"] == free_bet_id
+    )
+    assert notification["notification_type"] == "free_bet_follow_up_reminder"
+    assert notification["ledger_label"] == "Free Bets"
+    assert notification["bookmaker_label"] == "Bookmaker A"
+    assert notification["message"] == "Synthetic Free-Bet Notification"
+    assert notification["task_state"] == "new"
+    assert notification["href"].endswith(
+        f"free-bets?record={free_bet_id}&source=notifications"
+    )
+    assert notification["completion_href"].endswith(
+        f"free-bets/{free_bet_id}/follow-up-reminder"
+    )
+
+    complete_response = client.put(
+        notification["completion_href"],
+        json={
+            "state": "Resolved",
+            "resolution_note": "Completed from the synthetic notification centre.",
+        },
+    )
+    assert complete_response.status_code == 200
+    completed_feed = client.get("/fund-manager/notifications").json()
+    completed = next(item for item in completed_feed if item["record_id"] == free_bet_id)
+    assert completed["task_state"] == "done"
+    assert completed["title"] == "Free-bet follow-up completed"

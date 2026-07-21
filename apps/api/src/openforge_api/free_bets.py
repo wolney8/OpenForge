@@ -20,8 +20,10 @@ from openforge_api.db import (
     get_free_bet,
     get_profile_exchange_commission,
     get_profile_tracker_settings,
+    list_free_bet_follow_up_reminder_audit,
     list_free_bets,
     update_free_bet,
+    update_free_bet_follow_up_reminder,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/free-bets", tags=["free-bets"])
@@ -83,6 +85,12 @@ class FreeBetResponse(FreeBetPayload):
     profile_id: str
     created_at: str
     updated_at: str
+    follow_up_reminder_state: str
+    follow_up_reminder_due_at: str
+    follow_up_reminder_reason: str
+    follow_up_reminder_resolution_note: str
+    follow_up_reminder_resolved_at: str
+    follow_up_reminder_resolved_by: str
     calculation_state: str
     calculation_notes: list[str]
     base_reference_lay_stake: str | None
@@ -98,6 +106,36 @@ class FreeBetResponse(FreeBetPayload):
     lay_status: str
     counts_as_open: bool
     is_overdue: bool
+
+
+class FreeBetFollowUpReminderPayload(BaseModel):
+    state: Literal["Active", "Resolved", "Dismissed"]
+    due_at: str = Field(default="", max_length=60)
+    reason: str = Field(default="", max_length=500)
+    resolution_note: str = Field(default="", max_length=500)
+    actor_id: str = Field(default="fund-manager-local", max_length=120)
+
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> "FreeBetFollowUpReminderPayload":
+        if self.state == "Active" and not self.due_at.strip():
+            raise ValueError("due_at is required for an active free-bet reminder")
+        if self.state in {"Resolved", "Dismissed"} and not self.resolution_note.strip():
+            raise ValueError("resolution_note is required to resolve or dismiss a reminder")
+        return self
+
+
+class FreeBetFollowUpReminderAuditResponse(BaseModel):
+    action: str
+    changed_at: str
+    free_bet_id: str
+    profile_id: str
+    previous_state: str
+    state: str
+    due_at: str
+    reason: str
+    resolution_note: str
+    resolved_at: str
+    actor_id: str
 
 
 class FreeBetCalculationPreviewResponse(BaseModel):
@@ -274,6 +312,89 @@ def update_profile_free_bet(
         raise HTTPException(status_code=404, detail="Free bet not found for this profile")
     tracker_settings = get_profile_tracker_settings(profile_id)
     return build_response(updated, tracker_settings=tracker_settings)
+
+
+def reminder_timestamp(value: str) -> float:
+    try:
+        return datetime.fromisoformat(value.strip().replace("Z", "+00:00")).timestamp()
+    except ValueError as error:
+        raise ValueError("Reminder and cutoff dates must use ISO date/time values") from error
+
+
+@router.put("/{free_bet_id}/follow-up-reminder", response_model=FreeBetResponse)
+def set_profile_free_bet_follow_up_reminder(
+    profile_id: str,
+    free_bet_id: str,
+    payload: FreeBetFollowUpReminderPayload,
+) -> FreeBetResponse:
+    row = get_free_bet(profile_id, free_bet_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Free bet not found for this profile")
+
+    if payload.state == "Active" and row.status in {
+        "Settled",
+        "Expired",
+        "Void",
+        "Converted",
+        "Error",
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="A follow-up reminder requires an unfinished free-bet row.",
+        )
+    if payload.state == "Active" and row.follow_up_reminder_state == "Active":
+        raise HTTPException(
+            status_code=409,
+            detail="This free-bet row already has an active follow-up reminder.",
+        )
+    if payload.state in {"Resolved", "Dismissed"} and row.follow_up_reminder_state != "Active":
+        raise HTTPException(
+            status_code=409,
+            detail="Only an active free-bet reminder can be resolved or dismissed.",
+        )
+
+    due_at = payload.due_at.strip() or row.follow_up_reminder_due_at
+    reason = payload.reason.strip() or row.follow_up_reminder_reason
+    if payload.state == "Active":
+        cutoff = row.date_settled if row.status == "Placed" else row.expiry_datetime
+        try:
+            due_timestamp = reminder_timestamp(due_at)
+            if cutoff.strip() and due_timestamp > reminder_timestamp(cutoff):
+                raise HTTPException(
+                    status_code=422,
+                    detail="Reminder must be due on or before the free-bet lifecycle cutoff.",
+                )
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    updated = update_free_bet_follow_up_reminder(
+        profile_id,
+        free_bet_id,
+        state=payload.state,
+        due_at=due_at,
+        reason=reason,
+        resolution_note=payload.resolution_note.strip(),
+        actor_id=payload.actor_id.strip() or "fund-manager-local",
+    )
+    assert updated is not None
+    tracker_settings = get_profile_tracker_settings(profile_id)
+    return build_response(updated, tracker_settings=tracker_settings)
+
+
+@router.get(
+    "/{free_bet_id}/follow-up-reminder/audit",
+    response_model=list[FreeBetFollowUpReminderAuditResponse],
+)
+def get_profile_free_bet_follow_up_reminder_audit(
+    profile_id: str,
+    free_bet_id: str,
+) -> list[FreeBetFollowUpReminderAuditResponse]:
+    if get_free_bet(profile_id, free_bet_id) is None:
+        raise HTTPException(status_code=404, detail="Free bet not found for this profile")
+    return [
+        FreeBetFollowUpReminderAuditResponse.model_validate(item)
+        for item in list_free_bet_follow_up_reminder_audit(profile_id, free_bet_id)
+    ]
 
 
 @router.delete("/{free_bet_id}", status_code=204)

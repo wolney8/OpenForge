@@ -214,7 +214,7 @@ export function NotificationCentre() {
     setActionError("");
     try {
       const response = await fetch(
-        `${apiBaseUrl}/profiles/${notification.profile_id}/sportsbook-bets/${notification.record_id}/partial-lay-reminder`,
+        `${apiBaseUrl}${notification.completion_href}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

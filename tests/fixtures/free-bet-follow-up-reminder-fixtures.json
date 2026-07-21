@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0",
+  "fixtures": [
+    {
+      "case_id": "FBR-001",
+      "description": "An available free bet accepts a reminder before expiry.",
+      "row": {
+        "profile_id": "PROFILE-001",
+        "free_bet_id": "FB-REMINDER-001",
+        "status": "Available",
+        "expiry_datetime": "2099-07-24T20:00:00",
+        "date_settled": ""
+      },
+      "action": {
+        "state": "Active",
+        "due_at": "2099-07-24T18:00:00",
+        "reason": ""
+      },
+      "expected": {
+        "accepted": true,
+        "notification_task_state": "new",
+        "financial_values_unchanged": true
+      }
+    },
+    {
+      "case_id": "FBR-002",
+      "description": "A placed free bet uses settlement as its reminder cutoff.",
+      "row": {
+        "profile_id": "PROFILE-001",
+        "free_bet_id": "FB-REMINDER-002",
+        "status": "Placed",
+        "expiry_datetime": "2099-07-23T12:00:00",
+        "date_settled": "2099-07-25T20:00:00"
+      },
+      "action": {
+        "state": "Active",
+        "due_at": "2099-07-25T18:00:00",
+        "reason": "Review settlement"
+      },
+      "expected": {
+        "accepted": true,
+        "cutoff_field": "date_settled"
+      }
+    },
+    {
+      "case_id": "FBR-003",
+      "description": "A reminder after the relevant expiry cutoff is rejected.",
+      "row": {
+        "profile_id": "PROFILE-001",
+        "free_bet_id": "FB-REMINDER-003",
+        "status": "Available",
+        "expiry_datetime": "2099-07-24T20:00:00",
+        "date_settled": ""
+      },
+      "action": {
+        "state": "Active",
+        "due_at": "2099-07-24T21:00:00",
+        "reason": "Too late"
+      },
+      "expected": {
+        "accepted": false,
+        "error": "Reminder must be due on or before the free-bet lifecycle cutoff."
+      }
+    },
+    {
+      "case_id": "FBR-004",
+      "description": "Resolving a reminder moves it to Done without changing money values.",
+      "row": {
+        "profile_id": "PROFILE-001",
+        "free_bet_id": "FB-REMINDER-004",
+        "status": "Placed",
+        "expiry_datetime": "2099-07-24T12:00:00",
+        "date_settled": "2099-07-25T20:00:00"
+      },
+      "action": {
+        "state": "Resolved",
+        "resolution_note": "Follow-up completed"
+      },
+      "expected": {
+        "notification_task_state": "done",
+        "audit_required": true,
+        "financial_values_unchanged": true
+      }
+    }
+  ]
+}

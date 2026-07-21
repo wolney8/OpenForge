@@ -665,6 +665,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           date_settled TEXT NOT NULL,
           origin_qual_bet_id TEXT NOT NULL DEFAULT '',
           offer_group_id TEXT NOT NULL DEFAULT '',
+          follow_up_reminder_state TEXT NOT NULL DEFAULT 'Not Set',
+          follow_up_reminder_due_at TEXT NOT NULL DEFAULT '',
+          follow_up_reminder_reason TEXT NOT NULL DEFAULT '',
+          follow_up_reminder_resolution_note TEXT NOT NULL DEFAULT '',
+          follow_up_reminder_resolved_at TEXT NOT NULL DEFAULT '',
+          follow_up_reminder_resolved_by TEXT NOT NULL DEFAULT '',
           user_notes TEXT NOT NULL,
           manual_override_value TEXT NOT NULL,
           manual_override_reason TEXT NOT NULL,
@@ -1005,6 +1011,42 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "free_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "origin_qual_bet_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "offer_group_id", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_state",
+        "TEXT NOT NULL DEFAULT 'Not Set'",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_due_at",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_reason",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_resolution_note",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_resolved_at",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "follow_up_reminder_resolved_by",
+        "TEXT NOT NULL DEFAULT ''",
+    )
     ensure_column(
         connection,
         "profile_tracker_settings",
@@ -2088,6 +2130,12 @@ class FreeBetRecord:
     date_settled: str
     origin_qual_bet_id: str
     offer_group_id: str
+    follow_up_reminder_state: str
+    follow_up_reminder_due_at: str
+    follow_up_reminder_reason: str
+    follow_up_reminder_resolution_note: str
+    follow_up_reminder_resolved_at: str
+    follow_up_reminder_resolved_by: str
     user_notes: str
     manual_override_value: str
     manual_override_reason: str
@@ -3230,6 +3278,12 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
         "date_settled": payload["date_settled"],
         "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
         "offer_group_id": payload.get("offer_group_id", ""),
+        "follow_up_reminder_state": "Not Set",
+        "follow_up_reminder_due_at": "",
+        "follow_up_reminder_reason": "",
+        "follow_up_reminder_resolution_note": "",
+        "follow_up_reminder_resolved_at": "",
+        "follow_up_reminder_resolved_by": "",
         "user_notes": payload["user_notes"],
         "manual_override_value": payload["manual_override_value"],
         "manual_override_reason": payload["manual_override_reason"],
@@ -3264,6 +3318,12 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
               date_settled,
               origin_qual_bet_id,
               offer_group_id,
+              follow_up_reminder_state,
+              follow_up_reminder_due_at,
+              follow_up_reminder_reason,
+              follow_up_reminder_resolution_note,
+              follow_up_reminder_resolved_at,
+              follow_up_reminder_resolved_by,
               user_notes,
               manual_override_value,
               manual_override_reason,
@@ -3271,7 +3331,8 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
               updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -3397,6 +3458,159 @@ def update_free_bet(
             payload={"free_bet_id": free_bet_id, "profile_id": profile_id, **updated},
         )
     return get_free_bet(profile_id, free_bet_id)
+
+
+def update_free_bet_follow_up_reminder(
+    profile_id: str,
+    free_bet_id: str,
+    *,
+    state: str,
+    due_at: str,
+    reason: str,
+    resolution_note: str,
+    actor_id: str,
+) -> FreeBetRecord | None:
+    existing = get_free_bet(profile_id, free_bet_id)
+    if existing is None:
+        return None
+
+    previous_state = existing.follow_up_reminder_state
+    resolved = state in {"Resolved", "Dismissed"}
+    resolved_at = utc_now() if resolved else ""
+    resolved_by = actor_id if resolved else ""
+    updated_at = utc_now()
+
+    if state == "Active":
+        action = (
+            "follow_up_reminder_reopened"
+            if previous_state in {"Resolved", "Dismissed"}
+            else "follow_up_reminder_updated"
+            if previous_state == "Active"
+            else "follow_up_reminder_created"
+        )
+    elif state == "Resolved":
+        action = "follow_up_reminder_resolved"
+    else:
+        action = "follow_up_reminder_dismissed"
+
+    audit_payload = {
+        "free_bet_id": free_bet_id,
+        "profile_id": profile_id,
+        "previous_state": previous_state,
+        "state": state,
+        "due_at": due_at,
+        "reason": reason,
+        "resolution_note": resolution_note,
+        "resolved_at": resolved_at,
+        "actor_id": actor_id,
+    }
+
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE free_bets
+            SET follow_up_reminder_state = ?,
+                follow_up_reminder_due_at = ?,
+                follow_up_reminder_reason = ?,
+                follow_up_reminder_resolution_note = ?,
+                follow_up_reminder_resolved_at = ?,
+                follow_up_reminder_resolved_by = ?,
+                updated_at = ?
+            WHERE profile_id = ? AND free_bet_id = ?
+            """,
+            (
+                state,
+                due_at,
+                reason,
+                resolution_note,
+                resolved_at,
+                resolved_by,
+                updated_at,
+                profile_id,
+                free_bet_id,
+            ),
+        )
+        write_free_bet_audit_entry(
+            connection=connection,
+            free_bet_id=free_bet_id,
+            profile_id=profile_id,
+            action=action,
+            payload=audit_payload,
+        )
+
+    return get_free_bet(profile_id, free_bet_id)
+
+
+def list_free_bet_follow_up_reminder_audit(
+    profile_id: str,
+    free_bet_id: str,
+) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT action, changed_at, payload_json
+            FROM free_bet_audit
+            WHERE profile_id = ?
+              AND free_bet_id = ?
+              AND action LIKE 'follow_up_reminder_%'
+            ORDER BY changed_at DESC, rowid DESC
+            """,
+            (profile_id, free_bet_id),
+        ).fetchall()
+
+    return [
+        {
+            "action": row["action"],
+            "changed_at": row["changed_at"],
+            **json.loads(row["payload_json"]),
+        }
+        for row in rows
+    ]
+
+
+def list_free_bet_follow_up_notifications() -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+              free_bets.free_bet_id,
+              free_bets.profile_id,
+              profiles.display_name AS profile_name,
+              free_bets.event_name,
+              free_bets.offer_text,
+              free_bets.bookmaker,
+              free_bets.status,
+              free_bets.expiry_datetime,
+              free_bets.date_settled,
+              free_bets.follow_up_reminder_due_at AS due_at,
+              free_bets.follow_up_reminder_reason AS reason,
+              free_bets.follow_up_reminder_state AS reminder_state,
+              free_bets.follow_up_reminder_resolved_at AS resolved_at,
+              COALESCE(
+                (
+                  SELECT free_bet_audit.changed_at
+                  FROM free_bet_audit
+                  WHERE free_bet_audit.profile_id = free_bets.profile_id
+                    AND free_bet_audit.free_bet_id = free_bets.free_bet_id
+                    AND free_bet_audit.action LIKE 'follow_up_reminder_%'
+                  ORDER BY free_bet_audit.changed_at DESC, free_bet_audit.rowid DESC
+                  LIMIT 1
+                ),
+                free_bets.updated_at
+              ) AS reminder_changed_at
+            FROM free_bets
+            INNER JOIN profiles ON profiles.profile_id = free_bets.profile_id
+            WHERE free_bets.follow_up_reminder_state IN ('Active', 'Resolved')
+            ORDER BY CASE free_bets.follow_up_reminder_state
+                       WHEN 'Active' THEN 0
+                       ELSE 1
+                     END,
+                     free_bets.follow_up_reminder_due_at ASC,
+                     free_bets.updated_at DESC
+            """
+        ).fetchall()
+
+    return [dict(row) for row in rows]
 
 
 def delete_free_bet(profile_id: str, free_bet_id: str) -> bool:

@@ -15,6 +15,37 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.backup_directory = str(tmp_path / "backups")
 
 
+def free_bet_reminder_payload(**overrides: str) -> dict[str, str]:
+    return {
+        "event_name": "Synthetic Free-Bet Follow-Up",
+        "offer_text": "Synthetic reminder offer",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "bet_type": "Single",
+        "offer_name": "Synthetic free-bet reminder",
+        "fixture_type": "Football",
+        "status": "Available",
+        "result": "Pending",
+        "retention_mode": "SNR",
+        "free_bet_value": "10.00",
+        "back_odds": "5.00",
+        "match_strategy": "Standard",
+        "lay_odds_1": "5.20",
+        "lay_actual": "7.72",
+        "lay_matched_stake_1": "7.72",
+        "lay_commission_1": "",
+        "exchange_name": "Smarkets",
+        "expiry_datetime": "2099-07-24T20:00:00",
+        "date_settled": "",
+        "origin_qual_bet_id": "",
+        "offer_group_id": "",
+        "user_notes": "",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+        **overrides,
+    }
+
+
 def test_free_bet_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
@@ -261,3 +292,129 @@ def test_free_bet_available_placeholder_can_be_saved_before_matching_plan_exists
     assert created["reporting_value"] == "0.00"
     assert created["counts_as_open"] is True
     assert created["lay_status"] == "Not Laid"
+
+
+def test_free_bet_follow_up_reminder_lifecycle_is_audited_and_profile_scoped(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Smarkets", "commission_rate": "0.02"},
+    )
+    created_response = client.post(
+        "/profiles/profile-demo-001/free-bets",
+        json=free_bet_reminder_payload(),
+    )
+    assert created_response.status_code == 201
+    created = created_response.json()
+    free_bet_id = created["free_bet_id"]
+    financial_snapshot = {
+        key: created[key]
+        for key in (
+            "projected_current_pnl",
+            "actual_net_pnl",
+            "final_net_pnl",
+            "reporting_value",
+            "calculated_liability_1",
+        )
+    }
+
+    wrong_profile_response = client.put(
+        f"/profiles/profile-demo-002/free-bets/{free_bet_id}/follow-up-reminder",
+        json={"state": "Active", "due_at": "2099-07-24T18:00:00"},
+    )
+    assert wrong_profile_response.status_code == 404
+
+    create_reminder_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2099-07-24T18:00:00",
+            "reason": "",
+        },
+    )
+    assert create_reminder_response.status_code == 200
+    reminder_row = create_reminder_response.json()
+    assert reminder_row["follow_up_reminder_state"] == "Active"
+    assert reminder_row["follow_up_reminder_reason"] == ""
+    assert {key: reminder_row[key] for key in financial_snapshot} == financial_snapshot
+
+    duplicate_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={"state": "Active", "due_at": "2099-07-24T17:00:00"},
+    )
+    assert duplicate_response.status_code == 409
+
+    resolve_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={"state": "Resolved", "resolution_note": "Synthetic follow-up completed."},
+    )
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()["follow_up_reminder_state"] == "Resolved"
+
+    reopen_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2099-07-24T17:30:00",
+            "reason": "Second synthetic follow-up",
+        },
+    )
+    assert reopen_response.status_code == 200
+    dismiss_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder",
+        json={"state": "Dismissed", "resolution_note": "No longer required."},
+    )
+    assert dismiss_response.status_code == 200
+    assert dismiss_response.json()["follow_up_reminder_state"] == "Dismissed"
+
+    audit_response = client.get(
+        f"/profiles/profile-demo-001/free-bets/{free_bet_id}/follow-up-reminder/audit"
+    )
+    assert audit_response.status_code == 200
+    assert {entry["action"] for entry in audit_response.json()} == {
+        "follow_up_reminder_created",
+        "follow_up_reminder_resolved",
+        "follow_up_reminder_reopened",
+        "follow_up_reminder_dismissed",
+    }
+
+
+def test_free_bet_follow_up_reminder_enforces_lifecycle_cutoff_and_terminal_status(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    available_response = client.post(
+        "/profiles/profile-demo-001/free-bets",
+        json=free_bet_reminder_payload(),
+    )
+    assert available_response.status_code == 201
+    available_id = available_response.json()["free_bet_id"]
+
+    after_expiry_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{available_id}/follow-up-reminder",
+        json={"state": "Active", "due_at": "2099-07-24T21:00:00"},
+    )
+    assert after_expiry_response.status_code == 422
+    assert "lifecycle cutoff" in after_expiry_response.json()["detail"]
+
+    settled_response = client.post(
+        "/profiles/profile-demo-001/free-bets",
+        json=free_bet_reminder_payload(
+            event_name="Synthetic Settled Free Bet",
+            status="Settled",
+            result="Back Won",
+            date_settled="2099-07-24T19:00:00",
+        ),
+    )
+    assert settled_response.status_code == 201
+    settled_id = settled_response.json()["free_bet_id"]
+    terminal_response = client.put(
+        f"/profiles/profile-demo-001/free-bets/{settled_id}/follow-up-reminder",
+        json={"state": "Active", "due_at": "2099-07-24T18:00:00"},
+    )
+    assert terminal_response.status_code == 409
+    assert "unfinished free-bet row" in terminal_response.json()["detail"]

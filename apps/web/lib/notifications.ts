@@ -26,6 +26,7 @@ export type FundManagerNotification = {
   settles_at: string;
   created_at: string;
   href: string;
+  completion_href: string;
   tone: "warning" | "danger";
 };
 
