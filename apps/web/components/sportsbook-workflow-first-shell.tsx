@@ -6463,6 +6463,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                           </div>
                           <div className="review-chip-row" role="group" aria-label="Back placement actions">
                             <button
+                              aria-pressed={backPlacementConfirmed}
                               className="review-chip review-chip-action-placement"
                               disabled={!backPlacementReady || backPlacementConfirmed}
                               onClick={() => applyPlacementAction("back-placed")}
@@ -6750,6 +6751,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                           {!isNoLayStrategy && !usesMultiLayStrategy ? (
                             <div className="review-chip-row" role="group" aria-label="Lay placement actions">
                               <button
+                                aria-pressed={layPartiallyConfirmed}
                                 className="review-chip review-chip-action-negative"
                                 disabled={!layPlacementReady || layPlacementConfirmed}
                                 onClick={() => addPartialLayLeg({ isFinal: false })}
@@ -6758,6 +6760,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                 Lay Placed but Partially Matched
                               </button>
                               <button
+                                aria-pressed={layFullyConfirmed}
                                 className="review-chip review-chip-action-positive"
                                 disabled={!layPlacementReady || layFullyConfirmed}
                                 onClick={() => addPartialLayLeg({ isFinal: true })}

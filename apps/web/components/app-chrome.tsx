@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { NotificationCentre } from "@/components/notification-centre";
@@ -101,7 +102,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
-  const appMenuRef = useRef<HTMLDivElement | null>(null);
+  const appMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeAppMenu = useCallback(() => setAppMenuOpen(false), []);
 
   useEffect(() => {
     if (!isInsideProfile) {
@@ -227,7 +229,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [activeProfileId, isInsideProfile]);
 
   useEffect(() => {
-    if (!trackerMenuOpen && !appMenuOpen) {
+    if (!trackerMenuOpen) {
       return;
     }
 
@@ -239,21 +241,16 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         setProfileSwitchOpen(false);
       }
 
-      if (appMenuOpen && appMenuRef.current && !appMenuRef.current.contains(target)) {
-        setAppMenuOpen(false);
-      }
     };
 
     const handleScroll = () => {
       setTrackerMenuOpen(false);
-      setAppMenuOpen(false);
       setProfileSwitchOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setTrackerMenuOpen(false);
-        setAppMenuOpen(false);
         setProfileSwitchOpen(false);
       }
     };
@@ -267,7 +264,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [appMenuOpen, trackerMenuOpen]);
+  }, [trackerMenuOpen]);
 
   const profileName = !isInsideProfile
     ? platformBrand.name
@@ -304,41 +301,24 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       <div className="app-frame">
         <header className="top-app-bar" data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
-            <div className="app-menu-shell" ref={appMenuRef}>
+            <div className="app-menu-shell">
               <button
                 aria-expanded={appMenuOpen}
-                aria-haspopup="menu"
-                aria-label="Open navigation menu"
-                className="icon-button"
-                onClick={() => setAppMenuOpen((current) => !current)}
+                aria-controls="app-navigation-drawer"
+                aria-haspopup="dialog"
+                aria-label="Open navigation drawer"
+                className="icon-button app-navigation-drawer-trigger"
+                data-pd-id="app-navigation.trigger"
+                onClick={() => {
+                  setTrackerMenuOpen(false);
+                  setProfileSwitchOpen(false);
+                  setAppMenuOpen(true);
+                }}
+                ref={appMenuTriggerRef}
                 type="button"
               >
-                <span aria-hidden="true">≡</span>
+                <span aria-hidden="true" className="material-symbols-outlined">menu</span>
               </button>
-              <div className={`app-menu-panel ${appMenuOpen ? "is-open" : ""}`} role="menu">
-                <Link className="nav-pill" href="/login" onClick={() => setAppMenuOpen(false)}>
-                  Login
-                </Link>
-                <Link
-                  aria-label="Profiles"
-                  className="nav-pill"
-                  data-pd-id="app-menu.profiles"
-                  href="/profiles"
-                  onClick={() => setAppMenuOpen(false)}
-                >
-                  Profiles
-                </Link>
-                <Link className="nav-pill" href="/settings" onClick={() => setAppMenuOpen(false)}>
-                  Settings
-                </Link>
-                <Link
-                  className="nav-pill"
-                  href={`/profiles/${activeProfileId}/tracker/sportsbook-bets`}
-                  onClick={() => setAppMenuOpen(false)}
-                >
-                  Tracker
-                </Link>
-              </div>
             </div>
             <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href="/">
               <BrandLogo priority variant="mark" />
@@ -444,6 +424,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
+        <AppNavigationDrawer
+          activeProfileId={activeProfileId}
+          isInsideProfile={isInsideProfile}
+          isOpen={appMenuOpen}
+          onClose={closeAppMenu}
+          profileName={profileName}
+          profileSubtitle={profileSubtitle}
+          triggerRef={appMenuTriggerRef}
+        />
         <div className="main-shell" id="main-content">
           {children}
         </div>

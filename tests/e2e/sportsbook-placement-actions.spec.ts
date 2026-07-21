@@ -46,24 +46,40 @@ test("Sportsbook placement actions progress a draft row into back-placed and lay
   expect(createResponse.ok()).toBeTruthy();
 
   await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
-  await page.waitForLoadState("networkidle");
 
   const row = page.locator(".data-table tbody tr", { hasText: "Placement Action Match" }).first();
-  await expect(row).toBeVisible();
+  await expect(row).toBeVisible({ timeout: 20_000 });
   await row.click();
 
   const editor = page.locator(".workflow-editor-panel");
   await expect(editor).toBeVisible();
 
-  await editor.getByRole("button", { name: "Back Bet Placed" }).click();
+  const backPlacedButton = editor.getByRole("button", { name: "Back Bet Placed" });
+  await backPlacedButton.click();
   await expect(editor.locator(".stat-card").first()).toContainText("Status: Placed");
-  await expect(editor.getByRole("button", { name: "Back Bet Placed" })).toBeDisabled();
+  await expect(backPlacedButton).toBeDisabled();
+  await expect(backPlacedButton).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await backPlacedButton.evaluate((element) => ({
+      cursor: getComputedStyle(element).cursor,
+      opacity: getComputedStyle(element).opacity,
+    }))
+  ).toEqual({ cursor: "not-allowed", opacity: "0.72" });
 
-  await editor.getByRole("button", { name: "Lay Fully Placed" }).click();
-  await expect(
-    editor.getByRole("button", { name: "Lay Placed but Partially Matched" })
-  ).toBeDisabled();
-  await expect(editor.getByRole("button", { name: "Lay Fully Placed" })).toBeDisabled();
+  const layPartiallyPlacedButton = editor.getByRole("button", {
+    name: "Lay Placed but Partially Matched",
+  });
+  const layFullyPlacedButton = editor.getByRole("button", { name: "Lay Fully Placed" });
+  await layFullyPlacedButton.click();
+  await expect(layPartiallyPlacedButton).toBeDisabled();
+  await expect(layFullyPlacedButton).toBeDisabled();
+  await expect(layFullyPlacedButton).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await layFullyPlacedButton.evaluate((element) => ({
+      cursor: getComputedStyle(element).cursor,
+      opacity: getComputedStyle(element).opacity,
+    }))
+  ).toEqual({ cursor: "not-allowed", opacity: "0.72" });
   const partialLayPanel = editor.locator('[aria-label="Partial lay legs"]');
   await expect(partialLayPanel).toBeVisible();
   await expect(partialLayPanel).toContainText("1 legs");
