@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "fixtures": [
+    {
+      "case_id": "PLR-001",
+      "description": "A future reminder is active on a part-laid row.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-PARTIAL-001",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-21T12:00:00Z",
+      "reminder": {
+        "state": "Active",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "",
+        "resolution_note": ""
+      },
+      "expected": {
+        "accepted": true,
+        "issue_label": "Lay Recheck",
+        "issue_tone": "warning"
+      }
+    },
+    {
+      "case_id": "PLR-002",
+      "description": "An active reminder is overdue.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-PARTIAL-002",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-22T18:30:00Z",
+      "reminder": {
+        "state": "Active",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "Recheck unmatched lay.",
+        "resolution_note": ""
+      },
+      "expected": {
+        "accepted": true,
+        "issue_label": "Lay Recheck Overdue",
+        "issue_tone": "danger"
+      }
+    },
+    {
+      "case_id": "PLR-003",
+      "description": "A reminder is explicitly resolved after the lay recheck.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-PARTIAL-003",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-22T18:15:00Z",
+      "reminder": {
+        "state": "Resolved",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "Recheck unmatched lay.",
+        "resolution_note": "Remaining exposure reviewed and accepted."
+      },
+      "expected": {
+        "accepted": true,
+        "issue_label": null,
+        "audit_action": "partial_lay_reminder_resolved"
+      }
+    },
+    {
+      "case_id": "PLR-004",
+      "description": "A dismissed reminder requires an explanation.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-PARTIAL-004",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-22T17:00:00Z",
+      "reminder": {
+        "state": "Dismissed",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "Recheck unmatched lay.",
+        "resolution_note": "Position intentionally left underlaid."
+      },
+      "expected": {
+        "accepted": true,
+        "issue_label": null,
+        "audit_action": "partial_lay_reminder_dismissed"
+      }
+    },
+    {
+      "case_id": "PLR-005",
+      "description": "A reminder cannot be activated on a fully laid row.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-FULL-001",
+      "lay_status": "Fully Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-21T12:00:00Z",
+      "reminder": {
+        "state": "Active",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "Invalid reminder target.",
+        "resolution_note": ""
+      },
+      "expected": {
+        "accepted": false,
+        "error": "Reminder requires a part-laid sportsbook row."
+      }
+    },
+    {
+      "case_id": "PLR-006",
+      "description": "A reminder cannot be scheduled after the known settlement cutoff.",
+      "profile_id": "PROFILE-001",
+      "sportsbook_bet_id": "SB-PARTIAL-006",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-21T12:00:00Z",
+      "reminder": {
+        "state": "Active",
+        "due_at": "2026-07-22T20:30:00Z",
+        "reason": "Invalid late reminder.",
+        "resolution_note": ""
+      },
+      "expected": {
+        "accepted": false,
+        "error": "Reminder must be due on or before the settlement cutoff."
+      }
+    },
+    {
+      "case_id": "PLR-007",
+      "description": "Profile isolation prevents a reminder update through another profile.",
+      "profile_id": "PROFILE-002",
+      "sportsbook_bet_id": "SB-PARTIAL-001",
+      "lay_status": "Part Laid",
+      "settles_at": "2026-07-22T20:00:00Z",
+      "as_of": "2026-07-21T12:00:00Z",
+      "reminder": {
+        "state": "Active",
+        "due_at": "2026-07-22T18:00:00Z",
+        "reason": "Cross-profile attempt.",
+        "resolution_note": ""
+      },
+      "expected": {
+        "accepted": false,
+        "http_status": 404
+      }
+    }
+  ]
+}

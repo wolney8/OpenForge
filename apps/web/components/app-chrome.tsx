@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
+import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
@@ -438,6 +439,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             ) : null}
+            <NotificationCentre />
             <BackLayThemeToggle />
             <ThemeToggle />
           </div>

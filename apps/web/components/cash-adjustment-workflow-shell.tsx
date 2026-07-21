@@ -1086,9 +1086,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     }
 
     const saved = (await response.json()) as CashAdjustmentRecord;
-    await loadRows(saved.cash_adjustment_id);
+    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+    await loadRows(returnToLedger ? null : saved.cash_adjustment_id);
     setShowAdjustmentValidation(false);
-    if (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel) {
+    if (returnToLedger) {
+      setSelectedId(null);
+      selectedIdRef.current = null;
       setWorkflowVisible(false);
       setTableCollapsed(false);
     }

@@ -27,7 +27,6 @@ test.describe("Ledger editor modal parity", () => {
   for (const scenario of scenarios) {
     test(`${scenario.route} opens the editor in a dialog shell`, async ({ page }) => {
       await page.goto(scenario.route);
-      await page.waitForLoadState("networkidle");
 
       const row = page.locator(".data-table tbody tr").first();
       await expect(row).toBeVisible();
@@ -59,6 +58,34 @@ test.describe("Ledger editor modal parity", () => {
       const firstSection = dialog.locator("section.editor-section").first();
       await expect(firstSection).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
       await expect(firstSection).toHaveCSS("box-shadow", "none");
+
+      const openSectionStyles = await dialog
+        .locator("section.editor-section.is-open .editor-section-content-inner")
+        .evaluateAll((elements) =>
+          elements.map((element) => {
+            const style = getComputedStyle(element);
+            return { overflowX: style.overflowX, overflowY: style.overflowY };
+          })
+        );
+      expect(openSectionStyles.length).toBeGreaterThan(0);
+      expect(
+        openSectionStyles.every(
+          ({ overflowX, overflowY }) => overflowX === "visible" && overflowY === "visible"
+        )
+      ).toBe(true);
+
+      const fieldSizing = await dialog.locator(".field-control").evaluateAll((elements) =>
+        elements.map((element) => {
+          const style = getComputedStyle(element);
+          return { minWidth: style.minWidth, maxWidth: style.maxWidth };
+        })
+      );
+      expect(fieldSizing.length).toBeGreaterThan(0);
+      expect(
+        fieldSizing.every(
+          ({ minWidth, maxWidth }) => minWidth === "0px" && maxWidth === "100%"
+        )
+      ).toBe(true);
     });
   }
 

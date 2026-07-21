@@ -1023,6 +1023,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const ignoreInitialRecordIdRef = useRef(false);
+  const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
   const pageSize = 8;
   const isDirty = useMemo(
@@ -1083,6 +1085,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
+      const requestId = ++loadRowsRequestIdRef.current;
       const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers`, {
         cache: "no-store",
       });
@@ -1091,7 +1094,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       }
 
       const nextRows = (await response.json()) as CasinoOfferRecord[];
+      if (requestId !== loadRowsRequestIdRef.current) {
+        return;
+      }
       startTransition(() => {
+        if (requestId !== loadRowsRequestIdRef.current) {
+          return;
+        }
         setRows(nextRows);
         setIsInitialLoading(false);
         const nextSelectedCandidate =
@@ -1176,7 +1185,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).catch(
+      void Promise.all([loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).catch(
         (error: Error) => {
           setIsInitialLoading(false);
           setErrorMessage(error.message);
@@ -1773,6 +1782,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
     setWorkflowVisible(false);
+    ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
     setStatusMessage("");
@@ -1841,10 +1851,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     const saved = (await response.json()) as CasinoOfferRecord;
-    await loadRows(saved.casino_offer_id);
+    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+    if (returnToLedger) {
+      ignoreInitialRecordIdRef.current = true;
+    }
+    await loadRows(returnToLedger ? null : saved.casino_offer_id);
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    if (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel) {
+    if (returnToLedger) {
+      setSelectedId(null);
+      selectedIdRef.current = null;
       setWorkflowVisible(false);
       setTableCollapsed(false);
     }

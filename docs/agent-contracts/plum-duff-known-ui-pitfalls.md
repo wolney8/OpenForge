@@ -200,6 +200,30 @@ cause, prevention rule and regression test.
 
 ## Entry template
 
+## 2026-07-21: Nested reminder dialog and duplicate sportsbook saves
+
+- Area: sportsbook editor placement and partial-lay follow-up.
+- Root cause: reminder controls opened a second dialog over the existing editor, while row saves had
+  no in-flight request guard and legacy primary matched stakes were not hydrated into the visible
+  execution-leg list.
+- Prevention: editor-owned supporting controls stay inline in their owning section; one row save may
+  be in flight at a time; legacy matched-stake columns must render as the first execution leg without
+  changing the contract-backed target or financial outputs.
+- Test added: `tests/e2e/sportsbook-partial-lay-reminder.spec.ts` asserts one visible dialog, inline
+  reminder persistence, one PUT per Save action, legacy first-leg visibility and independent
+  partial/full placement action states.
+
+## 2026-07-21: Partial-lay controls overflowed and used a bespoke delete icon
+
+- Area: sportsbook editor partial-lay execution legs.
+- Root cause: the global field minimum width was allowed to override the leg grid tracks, while the
+  remove action used a locally sized SVG instead of the shared Material destructive icon action.
+- Prevention: compact grid descendants explicitly opt into `min-width: 0` and full track width;
+  destructive row actions use the shared `table-action-button` geometry and Material `delete`
+  symbol.
+- Test added: `tests/e2e/sportsbook-partial-lay-reminder.spec.ts` asserts adjacent field geometry,
+  canonical destructive target dimensions and the rendered Material symbol.
+
 ## 2026-07-20: Settings card actions stretched to panel width
 
 - Area: Fund Manager Tracker Lists and Common Bet Combos settings cards.
@@ -221,6 +245,16 @@ cause, prevention rule and regression test.
   compact icon primitive; opportunity loading and date/time entry use shared platform components.
 - Test added: cross-ledger toolbar geometry, issue-filter modal state, top-bar icon checks,
   route-preserving profile switching and opportunity loading/date/copy behaviour.
+
+## 2026-07-21: Ledger editor focus rings clipped by expanded sections
+
+- Area: sportsbook, free-bet, casino-offer and cash-adjustment editor sections.
+- Root cause: the collapsible section animation wrapper retained `overflow: hidden` after
+  expansion, clipping the shared three-pixel focus outline at section boundaries.
+- Prevention: animation wrappers clip only while collapsed; the shared expanded state restores
+  visible overflow and is verified across every ledger editor.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts visible overflow on expanded
+  section content for all current ledger editors.
 
 ### YYYY-MM-DD: Short issue name
 

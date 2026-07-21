@@ -498,3 +498,229 @@ def test_profit_boost_percentage_drives_existing_cash_first_calculation(tmp_path
     assert row["effective_back_odds"] == "3.3000"
     assert row["profit_boost_source"] == "calculated"
     assert row["calculation_state"] == "resolved"
+
+
+def test_partial_lay_reminder_is_profile_scoped_audited_and_financially_neutral(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
+    )
+    payload = {
+        "event_name": "Synthetic Partial Lay Reminder Match",
+        "offer_text": "Synthetic partial lay follow-up",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "bet_type": "Single",
+        "fixture_type": "Football",
+        "status": "Placed",
+        "result": "Pending",
+        "back_stake": "10.00",
+        "back_odds": "2.10",
+        "match_strategy": "Partial Lay",
+        "lay_odds_1": "2.20",
+        "lay_actual": "9.55",
+        "lay_matched_stake_1": "4.78",
+        "exchange_name": "Matchbook",
+        "date_settled": "2026-07-22T20:00:00Z",
+    }
+    create_response = client.post(
+        "/profiles/profile-demo-001/sportsbook-bets",
+        json=payload,
+    )
+    assert create_response.status_code == 201, create_response.text
+    created = create_response.json()
+    assert created["lay_status"] == "Part Laid"
+    assert created["partial_lay_reminder_state"] == "Not Set"
+    financial_before = {
+        key: created[key]
+        for key in (
+            "calculated_liability_1",
+            "projected_current_pnl",
+            "scenario_pnl_if_back_wins",
+            "scenario_pnl_if_lay_wins",
+            "reporting_value",
+        )
+    }
+
+    reminder_response = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T18:00:00Z",
+            "reason": "",
+            "actor_id": "FUND-MANAGER-001",
+        },
+    )
+    assert reminder_response.status_code == 200, reminder_response.text
+    reminded = reminder_response.json()
+    assert reminded["partial_lay_reminder_state"] == "Active"
+    assert reminded["partial_lay_reminder_due_at"] == "2026-07-22T18:00:00Z"
+    assert reminded["partial_lay_reminder_reason"] == ""
+    assert {
+        key: reminded[key]
+        for key in financial_before
+    } == financial_before
+
+    reload_response = client.get(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}"
+    )
+    assert reload_response.status_code == 200
+    assert reload_response.json()["partial_lay_reminder_state"] == "Active"
+
+    wrong_profile_response = client.put(
+        "/profiles/profile-demo-002/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T18:00:00Z",
+            "reason": "Cross-profile attempt.",
+        },
+    )
+    assert wrong_profile_response.status_code == 404
+
+    resolved_response = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Resolved",
+            "resolution_note": "Remaining exposure reviewed and accepted.",
+            "actor_id": "FUND-MANAGER-001",
+        },
+    )
+    assert resolved_response.status_code == 200, resolved_response.text
+    resolved = resolved_response.json()
+    assert resolved["partial_lay_reminder_state"] == "Resolved"
+    assert resolved["partial_lay_reminder_resolution_note"] == (
+        "Remaining exposure reviewed and accepted."
+    )
+    assert resolved["partial_lay_reminder_resolved_at"]
+
+    reopened_response = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T17:00:00Z",
+            "reason": "New reminder after the previous task was completed.",
+            "actor_id": "FUND-MANAGER-001",
+        },
+    )
+    assert reopened_response.status_code == 200, reopened_response.text
+    reopened = reopened_response.json()
+    assert reopened["partial_lay_reminder_state"] == "Active"
+    assert reopened["partial_lay_reminder_due_at"] == "2026-07-22T17:00:00Z"
+    assert reopened["partial_lay_reminder_reason"] == (
+        "New reminder after the previous task was completed."
+    )
+    assert reopened["partial_lay_reminder_resolution_note"] == ""
+    assert reopened["partial_lay_reminder_resolved_at"] == ""
+
+    duplicate_active_response = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T16:00:00Z",
+            "reason": "Duplicate active reminder attempt.",
+            "actor_id": "FUND-MANAGER-001",
+        },
+    )
+    assert duplicate_active_response.status_code == 409
+    assert "already has an active" in duplicate_active_response.json()["detail"]
+
+    audit_response = client.get(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder/audit"
+    )
+    assert audit_response.status_code == 200
+    actions = [entry["action"] for entry in audit_response.json()]
+    assert actions == [
+        "partial_lay_reminder_reopened",
+        "partial_lay_reminder_resolved",
+        "partial_lay_reminder_created",
+    ]
+
+
+def test_partial_lay_reminder_rejects_invalid_target_cutoff_and_resolution(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
+    )
+    payload = {
+        "event_name": "Synthetic Fully Laid Reminder Match",
+        "offer_text": "Synthetic invalid reminder target",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "status": "Placed",
+        "result": "Pending",
+        "back_stake": "10.00",
+        "back_odds": "2.10",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.20",
+        "lay_actual": "9.55",
+        "lay_matched_stake_1": "9.55",
+        "exchange_name": "Matchbook",
+        "date_settled": "2026-07-22T20:00:00Z",
+    }
+    created_response = client.post(
+        "/profiles/profile-demo-001/sportsbook-bets",
+        json=payload,
+    )
+    assert created_response.status_code == 201
+    created = created_response.json()
+
+    invalid_target = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{created['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T18:00:00Z",
+            "reason": "Invalid fully laid target.",
+        },
+    )
+    assert invalid_target.status_code == 409
+
+    partial_payload = {
+        **payload,
+        "event_name": "Synthetic Partial Late Reminder Match",
+        "match_strategy": "Partial Lay",
+        "lay_matched_stake_1": "4.78",
+    }
+    partial_response = client.post(
+        "/profiles/profile-demo-001/sportsbook-bets",
+        json=partial_payload,
+    )
+    assert partial_response.status_code == 201
+    partial = partial_response.json()
+
+    invalid_cutoff = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{partial['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Active",
+            "due_at": "2026-07-22T20:30:00Z",
+            "reason": "Invalid late reminder.",
+        },
+    )
+    assert invalid_cutoff.status_code == 422
+    assert "settlement cutoff" in invalid_cutoff.json()["detail"]
+
+    invalid_resolution = client.put(
+        "/profiles/profile-demo-001/sportsbook-bets/"
+        f"{partial['sportsbook_bet_id']}/partial-lay-reminder",
+        json={
+            "state": "Resolved",
+            "resolution_note": "No active reminder exists.",
+        },
+    )
+    assert invalid_resolution.status_code == 409

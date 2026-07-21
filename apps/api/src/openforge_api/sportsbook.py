@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Literal, cast
 
@@ -29,8 +29,10 @@ from openforge_api.db import (
     list_profile_exchange_commissions,
     list_profiles,
     list_sportsbook_bets,
+    list_sportsbook_partial_lay_reminder_audit,
     update_multi_profile_entry_target,
     update_sportsbook_bet,
+    update_sportsbook_partial_lay_reminder,
 )
 from openforge_api.multi_profile_entry import (
     MultiProfileTargetEligibility,
@@ -126,6 +128,12 @@ class SportsbookBetResponse(SportsbookBetPayload):
     profile_id: str
     created_at: str
     updated_at: str
+    partial_lay_reminder_state: str
+    partial_lay_reminder_due_at: str
+    partial_lay_reminder_reason: str
+    partial_lay_reminder_resolution_note: str
+    partial_lay_reminder_resolved_at: str
+    partial_lay_reminder_resolved_by: str
     calculation_state: str
     calculation_notes: list[str]
     match_rating: str | None
@@ -172,6 +180,37 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     reference_boosted_odds: str | None
     effective_back_odds: str | None
     profit_boost_source: str | None
+
+
+class PartialLayReminderPayload(BaseModel):
+    state: Literal["Active", "Resolved", "Dismissed"]
+    due_at: str = Field(default="", max_length=40)
+    reason: str = Field(default="", max_length=500)
+    resolution_note: str = Field(default="", max_length=500)
+    actor_id: str = Field(default="fund-manager-local", min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_required_reminder_fields(self) -> "PartialLayReminderPayload":
+        if self.state == "Active":
+            if not self.due_at.strip():
+                raise ValueError("due_at is required for an active partial-lay reminder")
+        elif not self.resolution_note.strip():
+            raise ValueError("resolution_note is required to resolve or dismiss a reminder")
+        return self
+
+
+class PartialLayReminderAuditResponse(BaseModel):
+    action: str
+    changed_at: str
+    sportsbook_bet_id: str
+    profile_id: str
+    previous_state: str
+    state: str
+    due_at: str
+    reason: str
+    resolution_note: str
+    resolved_at: str
+    actor_id: str
 
 
 class MultiProfileExchangeOptionResponse(BaseModel):
@@ -423,11 +462,107 @@ def serialize_calculation(calculation: SportsbookCalculationResult) -> dict[str,
     }
 
 
+def reminder_timestamp(value: str, *, end_of_day_for_date: bool = False) -> float:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Reminder date is required")
+    try:
+        if end_of_day_for_date and len(normalized) == 10:
+            parsed = datetime.fromisoformat(f"{normalized}T23:59:59")
+        else:
+            parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("Reminder and settlement dates must use ISO date/time values") from error
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
 @router.get("", response_model=list[SportsbookBetResponse])
 def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]:
     return [
         build_response(profile_id, row, as_of_date=date.today())
         for row in list_sportsbook_bets(profile_id)
+    ]
+
+
+@router.put(
+    "/{sportsbook_bet_id}/partial-lay-reminder",
+    response_model=SportsbookBetResponse,
+)
+def set_profile_sportsbook_partial_lay_reminder(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    payload: PartialLayReminderPayload,
+) -> SportsbookBetResponse:
+    row = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
+
+    current = build_response(profile_id, row, as_of_date=date.today())
+    if payload.state == "Active" and current.lay_status != "Part Laid":
+        raise HTTPException(
+            status_code=409,
+            detail="Reminder requires a part-laid sportsbook row.",
+        )
+    if payload.state == "Active" and row.partial_lay_reminder_state == "Active":
+        raise HTTPException(
+            status_code=409,
+            detail="This sportsbook row already has an active partial-lay reminder.",
+        )
+    if payload.state in {"Resolved", "Dismissed"} and row.partial_lay_reminder_state != "Active":
+        raise HTTPException(
+            status_code=409,
+            detail="Only an active partial-lay reminder can be resolved or dismissed.",
+        )
+
+    due_at = payload.due_at.strip() or row.partial_lay_reminder_due_at
+    reason = payload.reason.strip() or row.partial_lay_reminder_reason
+    if payload.state == "Active":
+        try:
+            due_timestamp = reminder_timestamp(due_at)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        if row.date_settled.strip():
+            try:
+                settlement_timestamp = reminder_timestamp(
+                    row.date_settled,
+                    end_of_day_for_date=True,
+                )
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+            if due_timestamp > settlement_timestamp:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Reminder must be due on or before the settlement cutoff.",
+                )
+
+    updated = update_sportsbook_partial_lay_reminder(
+        profile_id,
+        sportsbook_bet_id,
+        state=payload.state,
+        due_at=due_at,
+        reason=reason,
+        resolution_note=payload.resolution_note.strip(),
+        actor_id=payload.actor_id,
+    )
+    assert updated is not None
+    return build_response(profile_id, updated, as_of_date=date.today())
+
+
+@router.get(
+    "/{sportsbook_bet_id}/partial-lay-reminder/audit",
+    response_model=list[PartialLayReminderAuditResponse],
+)
+def get_profile_sportsbook_partial_lay_reminder_audit(
+    profile_id: str,
+    sportsbook_bet_id: str,
+) -> list[PartialLayReminderAuditResponse]:
+    if get_sportsbook_bet(profile_id, sportsbook_bet_id) is None:
+        raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
+    return [
+        PartialLayReminderAuditResponse.model_validate(item)
+        for item in list_sportsbook_partial_lay_reminder_audit(profile_id, sportsbook_bet_id)
     ]
 
 

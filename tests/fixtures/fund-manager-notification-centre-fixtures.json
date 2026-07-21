@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "fixtures": [
+    {
+      "case_id": "FNC-001",
+      "description": "A future partial-lay reminder enters the feed unread.",
+      "source": {
+        "audience": "fund_manager",
+        "kind": "task",
+        "ledger_label": "Sportsbook Bets",
+        "bookmaker_label": "Bookmaker A",
+        "event_name": "Synthetic Fixture One",
+        "profile_id": "PROFILE-001",
+        "sportsbook_bet_id": "SB-NOTICE-001",
+        "reminder_state": "Active",
+        "due_at": "2026-07-23T18:00:00Z",
+        "settles_at": "2026-07-23T20:00:00Z",
+        "changed_at": "2026-07-21T12:00:00Z"
+      },
+      "view_state": {
+        "read_ids": [],
+        "dismissed_ids": []
+      },
+      "expected": {
+        "visible": true,
+        "unread": true,
+        "task_state": "new",
+        "tone": "warning"
+      }
+    },
+    {
+      "case_id": "FNC-002",
+      "description": "Reading a notification leaves its active reminder unchanged.",
+      "source": {
+        "audience": "fund_manager",
+        "kind": "task",
+        "ledger_label": "Sportsbook Bets",
+        "bookmaker_label": "Bookmaker B",
+        "event_name": "Synthetic Fixture Two",
+        "profile_id": "PROFILE-001",
+        "sportsbook_bet_id": "SB-NOTICE-002",
+        "reminder_state": "Active",
+        "due_at": "2026-07-20T18:00:00Z",
+        "settles_at": "2026-07-20T20:00:00Z",
+        "changed_at": "2026-07-20T12:00:00Z"
+      },
+      "view_action": "mark_read",
+      "expected": {
+        "visible": true,
+        "unread": false,
+        "task_state": "new",
+        "reminder_state": "Active",
+        "tone": "danger"
+      }
+    },
+    {
+      "case_id": "FNC-003",
+      "description": "Clearing a notification hides it locally without resolving the reminder.",
+      "source": {
+        "audience": "fund_manager",
+        "kind": "task",
+        "ledger_label": "Sportsbook Bets",
+        "bookmaker_label": "Bookmaker C",
+        "event_name": "Synthetic Fixture Three",
+        "profile_id": "PROFILE-001",
+        "sportsbook_bet_id": "SB-NOTICE-003",
+        "reminder_state": "Active",
+        "due_at": "2026-07-24T18:00:00Z",
+        "settles_at": "2026-07-24T20:00:00Z",
+        "changed_at": "2026-07-21T13:00:00Z"
+      },
+      "view_action": "clear",
+      "expected": {
+        "visible": false,
+        "reminder_state": "Active"
+      }
+    },
+    {
+      "case_id": "FNC-004",
+      "description": "Resolving the source moves it to Done until settlement.",
+      "source": {
+        "audience": "fund_manager",
+        "kind": "task",
+        "ledger_label": "Sportsbook Bets",
+        "bookmaker_label": "Bookmaker D",
+        "event_name": "Synthetic Fixture Four",
+        "profile_id": "PROFILE-002",
+        "sportsbook_bet_id": "SB-NOTICE-004",
+        "reminder_state": "Resolved",
+        "due_at": "2026-07-24T18:00:00Z",
+        "settles_at": "2026-07-24T20:00:00Z",
+        "changed_at": "2026-07-21T14:00:00Z"
+      },
+      "expected": {
+        "visible": true,
+        "task_state": "done",
+        "audit_required": true
+      }
+    },
+    {
+      "case_id": "FNC-005",
+      "description": "A read reminder re-enters unread state at each later attention threshold without duplicating its card.",
+      "source": {
+        "audience": "fund_manager",
+        "kind": "task",
+        "ledger_label": "Sportsbook Bets",
+        "bookmaker_label": "Bookmaker E",
+        "event_name": "Synthetic Fixture Five",
+        "profile_id": "PROFILE-003",
+        "sportsbook_bet_id": "SB-NOTICE-005",
+        "reminder_state": "Active",
+        "due_at": "2026-07-23T18:00:00Z",
+        "settles_at": "2026-07-23T20:00:00Z",
+        "changed_at": "2026-07-21T12:00:00Z"
+      },
+      "timeline": [
+        {
+          "now": "2026-07-21T12:00:00Z",
+          "stage": "created",
+          "action": "mark_read",
+          "unread_count": 0
+        },
+        {
+          "now": "2026-07-23T09:00:00Z",
+          "stage": "due-day",
+          "action": "none",
+          "unread_count": 1
+        },
+        {
+          "now": "2026-07-23T14:30:00Z",
+          "stage": "due-4h",
+          "action": "none",
+          "unread_count": 1
+        },
+        {
+          "now": "2026-07-23T16:30:00Z",
+          "stage": "due-2h",
+          "action": "none",
+          "unread_count": 1
+        }
+      ],
+      "expected": {
+        "visible_card_count": 1,
+        "maximum_badge_contribution": 1,
+        "task_state": "new"
+      }
+    }
+  ]
+}

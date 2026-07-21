@@ -57,8 +57,13 @@ test("Sportsbook placement actions progress a draft row into back-placed and lay
 
   await editor.getByRole("button", { name: "Back Bet Placed" }).click();
   await expect(editor.locator(".stat-card").first()).toContainText("Status: Placed");
+  await expect(editor.getByRole("button", { name: "Back Bet Placed" })).toBeDisabled();
 
   await editor.getByRole("button", { name: "Lay Fully Placed" }).click();
+  await expect(
+    editor.getByRole("button", { name: "Lay Placed but Partially Matched" })
+  ).toBeDisabled();
+  await expect(editor.getByRole("button", { name: "Lay Fully Placed" })).toBeDisabled();
   const partialLayPanel = editor.locator('[aria-label="Partial lay legs"]');
   await expect(partialLayPanel).toBeVisible();
   await expect(partialLayPanel).toContainText("1 legs");
