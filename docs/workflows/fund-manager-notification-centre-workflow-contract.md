@@ -5,7 +5,7 @@ _Last updated: 2026-07-21_
 ## 1. Workflow name
 
 - Name: Fund Manager notification centre
-- Initial notification source: active partial-lay follow-up reminders
+- Initial notification sources: active partial-lay and free-bet follow-up reminders
 
 ## 2. User goal
 
@@ -43,8 +43,8 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
 | Mark task done | Moved to `Done` until related settlement time passes | Becomes `Resolved` with an audit note |
 | Clear one task notification | Inline `Are you sure?` confirmation, then hidden locally | Source state is unchanged |
 | Clear notifications | All visible notifications hidden locally | Remain `Active` |
-| Resolve reminder in sportsbook workflow | Moved to `Done` until related settlement time passes | Becomes `Resolved` with audit note |
-| Dismiss reminder in sportsbook workflow | Removed from the notification centre | Becomes `Dismissed` with audit note |
+| Resolve reminder in its ledger workflow | Moved to `Done` until the related lifecycle cutoff passes | Becomes `Resolved` with audit note |
+| Dismiss reminder in its ledger workflow | Removed from the notification centre | Becomes `Dismissed` with audit note |
 
 Read and cleared state is local view state for the single local Fund Manager MVP. Resolving or
 dismissing the source reminder remains a profile-scoped, audited sportsbook action.
@@ -61,11 +61,13 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 
 ## 5. Data boundaries
 
-- source records remain profile-scoped in `sportsbook_bets`
+- source records remain profile-scoped in their owning ledger table
 - every response carries `audience = fund_manager`; this feed must never be returned to a future
   subscriber session
 - the feed endpoint returns only presentation-safe operational metadata and profile-scoped links
-- notification identity includes profile, sportsbook row and latest reminder action timestamp
+- notification identity includes profile, ledger row and latest reminder action timestamp
+- each task exposes a source-specific completion endpoint; the notification UI must not hard-code
+  sportsbook completion for other ledger sources
 - reopening or materially updating a reminder creates a new notification identity
 - local read/dismissed state must not contain credentials, financial inputs or workbook data
 
@@ -92,8 +94,9 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 - no calculation is introduced or changed
 - reading or clearing a notification must not change stake, liability, exposure, current value,
   settled value, status, result or reminder state
-- resolving the source reminder remains governed by
-  `docs/workflows/partial-lay-follow-up-workflow-contract.md`
+- resolving the source reminder remains governed by its source workflow contract:
+  `docs/workflows/partial-lay-follow-up-workflow-contract.md` or
+  `docs/workflows/free-bet-follow-up-reminder-workflow-contract.md`
 
 ## 8. Tests required
 
@@ -121,9 +124,9 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 
 ## 9. Deferred extensions
 
-Future approved Fund Manager notification sources may include free-bet expiry, overdue settlement,
-account-health actions and fee-review blockers. Each source requires its own workflow contract and
-deterministic fixture before it can enter this shared feed.
+Future approved Fund Manager notification sources may include automatic free-bet expiry, overdue
+settlement, account-health actions, cash-adjustment follow-ups and fee-review blockers. Each source
+requires its own workflow contract and deterministic fixture before it can enter this shared feed.
 
 Subscriber notifications are a separate deferred product surface. They require a subscriber-only,
 profile-scoped endpoint, separate view state and explicit visibility contract; they must not reuse or

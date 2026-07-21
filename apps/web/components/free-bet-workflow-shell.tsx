@@ -12,6 +12,8 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
+import { getFollowUpReminderDefaultDueAt } from "@/lib/follow-up-reminder";
+import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -23,7 +25,13 @@ import {
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
-import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import {
+  formatDisplayDate,
+  formatHumanDisplayDate,
+  formatMoney,
+  resolveDateRange,
+  type DatePreset,
+} from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -93,6 +101,12 @@ type FreeBetRecord = {
   manual_override_reason: string;
   created_at: string;
   updated_at: string;
+  follow_up_reminder_state: string;
+  follow_up_reminder_due_at: string;
+  follow_up_reminder_reason: string;
+  follow_up_reminder_resolution_note: string;
+  follow_up_reminder_resolved_at: string;
+  follow_up_reminder_resolved_by: string;
   calculation_state: string;
   calculation_notes: string[];
   base_reference_lay_stake: string | null;
@@ -144,6 +158,14 @@ type FreeBetOutcomeModalState = {
   status: string;
   result: string;
   date_settled: string;
+};
+
+type FreeBetFollowUpReminderEditorState = {
+  rowId: string;
+  due_at: string;
+  reason: string;
+  resolution_note: string;
+  wasActive: boolean;
 };
 
 type ExchangeCommissionRecord = {
@@ -212,6 +234,7 @@ type FreeBetTableFilterState = {
 };
 
 const freeBetPlaceholderStatuses = new Set(["Prospecting", "Available", "Not Yet Awarded"]);
+const freeBetTerminalStatuses = new Set(["Settled", "Expired", "Void", "Converted", "Error"]);
 
 function parseFreeBetAmount(value: string | null | undefined): number {
   if (!value?.trim()) {
@@ -1094,6 +1117,9 @@ export function FreeBetWorkflowShell({
   const [formState, setFormState] = useState<FreeBetFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<FreeBetFormState>(createBlankForm);
   const [outcomeModalState, setOutcomeModalState] = useState<FreeBetOutcomeModalState | null>(null);
+  const [followUpReminderEditorState, setFollowUpReminderEditorState] =
+    useState<FreeBetFollowUpReminderEditorState | null>(null);
+  const [isFollowUpReminderSaving, setIsFollowUpReminderSaving] = useState(false);
   const [tableMode, setTableMode] = usePersistedState<FreeBetTableMode>(
     `openforge-ledger-table-mode:${profileId}:free-bets`,
     freeBetTableModes.some((mode) => mode.value === initialTableMode)
@@ -1987,6 +2013,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setSelectedId(rowId);
+    setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = false;
     setPreviewCalculation(null);
     const nextFormState = recordToForm(record);
@@ -2006,6 +2033,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setSelectedId(null);
+    setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
     setTableCollapsed(false);
@@ -2025,6 +2053,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setWorkflowVisible(false);
+    setFollowUpReminderEditorState(null);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
@@ -2219,6 +2248,74 @@ export function FreeBetWorkflowShell({
         ? `Applied ${mode.toLowerCase()} best-value lay ${suggested}, switched strategy to ${mode}, and copied it to the clipboard.`
         : `Applied ${mode.toLowerCase()} best-value lay ${suggested} and switched strategy to ${mode}.`
     );
+  }
+
+  function openFollowUpReminderEditor(record: FreeBetRecord) {
+    const wasActive = record.follow_up_reminder_state === "Active";
+    const cutoff = record.status === "Placed" ? record.date_settled : record.expiry_datetime;
+    setFollowUpReminderEditorState({
+      rowId: record.free_bet_id,
+      due_at:
+        (wasActive ? toDateTimeLocalValue(record.follow_up_reminder_due_at) : "") ||
+        getFollowUpReminderDefaultDueAt(toDateTimeLocalValue(cutoff)),
+      reason: wasActive ? record.follow_up_reminder_reason : "",
+      resolution_note: "",
+      wasActive,
+    });
+  }
+
+  async function submitFollowUpReminder(state: "Active" | "Resolved" | "Dismissed") {
+    if (!followUpReminderEditorState) return;
+
+    setErrorMessage("");
+    setIsFollowUpReminderSaving(true);
+    try {
+      if (isDirty) {
+        const rowSaved = await persistForm(formState, {
+          autosaveLabel: "Free-bet reminder row",
+          returnToLedgerOnSuccess: false,
+        });
+        if (!rowSaved) return;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/profiles/${profileId}/free-bets/${followUpReminderEditorState.rowId}/follow-up-reminder`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            state,
+            due_at: fromDateTimeLocalValue(followUpReminderEditorState.due_at),
+            reason: followUpReminderEditorState.reason,
+            resolution_note: followUpReminderEditorState.resolution_note,
+            actor_id: "fund-manager-local",
+          }),
+        }
+      );
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null)) as { detail?: string } | null;
+        setErrorMessage(detail?.detail ?? "Unable to update the free-bet reminder.");
+        return;
+      }
+
+      const updatedRecord = (await response.json()) as FreeBetRecord;
+      setRows((current) =>
+        current.map((row) =>
+          row.free_bet_id === updatedRecord.free_bet_id ? updatedRecord : row
+        )
+      );
+      setFollowUpReminderEditorState(null);
+      window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+      setStatusMessage(
+        state === "Active"
+          ? "Free-bet follow-up reminder saved."
+          : state === "Resolved"
+            ? "Free-bet follow-up reminder resolved with an audit note."
+            : "Free-bet follow-up reminder dismissed with an audit note."
+      );
+    } finally {
+      setIsFollowUpReminderSaving(false);
+    }
   }
 
   async function submitOutcomeModal() {
@@ -3616,6 +3713,180 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
+          {selectedRow &&
+          (!freeBetTerminalStatuses.has(selectedRow.status) ||
+            selectedRow.follow_up_reminder_state === "Active") ? (
+            <EditorSection defaultOpen={false} title="Follow-up">
+              <section
+                aria-label="Free-bet follow-up reminder"
+                className="stack"
+                data-pd-id="free-bets.follow-up-reminder.summary"
+              >
+                <div className="section-heading-row">
+                  <span className="eyebrow">Follow-up task</span>
+                  <span
+                    className={`table-chip${
+                      selectedRow.follow_up_reminder_state === "Active"
+                        ? " table-chip-lay-partial"
+                        : ""
+                    }`}
+                  >
+                    {selectedRow.follow_up_reminder_state}
+                  </span>
+                </div>
+                {selectedRow.follow_up_reminder_state === "Active" ? (
+                  <div className="summary-list">
+                    <p className="lede">
+                      <span className="summary-label">Due</span>
+                      <strong>
+                        {formatHumanDisplayDate(
+                          selectedRow.follow_up_reminder_due_at,
+                          true
+                        )}
+                      </strong>
+                    </p>
+                    {selectedRow.follow_up_reminder_reason ? (
+                      <p className="lede">
+                        <span className="summary-label">Reason</span>
+                        <span>{selectedRow.follow_up_reminder_reason}</span>
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="tracker-nav">
+                  <button
+                    aria-label={
+                      selectedRow.follow_up_reminder_state === "Active"
+                        ? "Review free-bet follow-up reminder"
+                        : selectedRow.follow_up_reminder_state === "Not Set"
+                          ? "Set free-bet follow-up reminder"
+                          : "Set new free-bet follow-up reminder"
+                    }
+                    className="button-link icon-text-action"
+                    data-pd-id="free-bets.follow-up-reminder.open"
+                    onClick={() => openFollowUpReminderEditor(selectedRow)}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">
+                      {selectedRow.follow_up_reminder_state === "Active"
+                        ? "notifications_active"
+                        : "notification_add"}
+                    </span>
+                    {selectedRow.follow_up_reminder_state === "Active"
+                      ? "Review Reminder"
+                      : selectedRow.follow_up_reminder_state === "Not Set"
+                        ? "Set Reminder"
+                        : "Set New Reminder"}
+                  </button>
+                </div>
+                {followUpReminderEditorState?.rowId === selectedRow.free_bet_id ? (
+                  <div
+                    aria-label="Free-bet follow-up reminder controls"
+                    className="stack partial-lay-reminder-editor"
+                    data-pd-id="free-bets.follow-up-reminder.inline-editor"
+                  >
+                    <div className="form-grid">
+                      <label className="field-control">
+                        <span>Follow-up due</span>
+                        <input
+                          data-pd-id="free-bets.follow-up-reminder.due"
+                          disabled={isFollowUpReminderSaving}
+                          onChange={(event) =>
+                            setFollowUpReminderEditorState((current) =>
+                              current ? { ...current, due_at: event.target.value } : current
+                            )
+                          }
+                          type="datetime-local"
+                          value={followUpReminderEditorState.due_at}
+                        />
+                      </label>
+                      <label className="field-control">
+                        <span>Reason (optional)</span>
+                        <input
+                          data-pd-id="free-bets.follow-up-reminder.reason"
+                          disabled={isFollowUpReminderSaving}
+                          onChange={(event) =>
+                            setFollowUpReminderEditorState((current) =>
+                              current ? { ...current, reason: event.target.value } : current
+                            )
+                          }
+                          value={followUpReminderEditorState.reason}
+                        />
+                      </label>
+                      {followUpReminderEditorState.wasActive ? (
+                        <label className="field-control field-span-2">
+                          <span>Resolution or dismissal note</span>
+                          <textarea
+                            data-pd-id="free-bets.follow-up-reminder.resolution-note"
+                            disabled={isFollowUpReminderSaving}
+                            onChange={(event) =>
+                              setFollowUpReminderEditorState((current) =>
+                                current
+                                  ? { ...current, resolution_note: event.target.value }
+                                  : current
+                              )
+                            }
+                            rows={3}
+                            value={followUpReminderEditorState.resolution_note}
+                          />
+                        </label>
+                      ) : null}
+                    </div>
+                    <div className="tracker-nav">
+                      <button
+                        className="button-link"
+                        disabled={isFollowUpReminderSaving}
+                        onClick={() => setFollowUpReminderEditorState(null)}
+                        type="button"
+                      >
+                        Close
+                      </button>
+                      {followUpReminderEditorState.wasActive ? (
+                        <>
+                          <button
+                            className="review-chip review-chip-danger tracker-nav-right-action"
+                            disabled={
+                              isFollowUpReminderSaving ||
+                              !followUpReminderEditorState.resolution_note.trim()
+                            }
+                            onClick={() => void submitFollowUpReminder("Dismissed")}
+                            type="button"
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            className="modal-primary-button"
+                            disabled={
+                              isFollowUpReminderSaving ||
+                              !followUpReminderEditorState.resolution_note.trim()
+                            }
+                            onClick={() => void submitFollowUpReminder("Resolved")}
+                            type="button"
+                          >
+                            Resolve
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="modal-primary-button tracker-nav-right-action"
+                          disabled={
+                            isFollowUpReminderSaving ||
+                            !followUpReminderEditorState.due_at.trim()
+                          }
+                          onClick={() => void submitFollowUpReminder("Active")}
+                          type="button"
+                        >
+                          {selectedRow.follow_up_reminder_state === "Not Set"
+                            ? "Save Reminder"
+                            : "Save New Reminder"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            </EditorSection>
+          ) : null}
           <EditorSection defaultOpen={false} title="Advanced controls">
             {(activePreviewCalculation?.calculation_notes.length || selectedRow?.calculation_notes.length) ? (
               <section className="stack">

@@ -28,6 +28,7 @@ test("notification panel defaults to New and requires a deliberate hover to mark
           settles_at: "2099-07-23T20:00:00Z",
           created_at: "2026-07-21T12:00:00Z",
           href: "/profiles/profile-demo-001/tracker/sportsbook-bets?record=SB-HOVER",
+          completion_href: "/profiles/profile-demo-001/sportsbook-bets/SB-HOVER/partial-lay-reminder",
           tone: "warning",
         },
       ],

@@ -30,6 +30,7 @@ const notifications: FundManagerNotification[] = [
     settles_at: "2026-07-23T20:00:00Z",
     created_at: "2026-07-21T12:00:00Z",
     href: "/profiles/PROFILE-001/tracker/sportsbook-bets?record=SB-001",
+    completion_href: "/profiles/PROFILE-001/sportsbook-bets/SB-001/partial-lay-reminder",
     tone: "warning",
   },
   {
@@ -49,6 +50,7 @@ const notifications: FundManagerNotification[] = [
     settles_at: "2026-07-20T20:00:00Z",
     created_at: "2026-07-20T12:00:00Z",
     href: "/profiles/PROFILE-002/tracker/sportsbook-bets?record=SB-002",
+    completion_href: "/profiles/PROFILE-002/sportsbook-bets/SB-002/partial-lay-reminder",
     tone: "danger",
   },
 ];
