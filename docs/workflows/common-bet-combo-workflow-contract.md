@@ -7,6 +7,10 @@ _Last updated: 2026-07-20_
 - Status: Implemented pending human smoke review
 - Milestone: M13 Common Bet Combos and Quick Actions
 - Profile scoped: Yes
+- Current recurring source reference: `https://matchedbettingblog.com/reload-offers/`
+- Current seeded catalogue verified: `2026-07-20`
+
+Public reload listings are discovery evidence for descriptive defaults only. They are not calculation, profitability, eligibility, or settlement authority. The Fund Manager must recheck current terms before placing a bet.
 
 ## User goal
 
@@ -15,9 +19,9 @@ Choose a recognised recurring offer such as a synthetic weekly bet builder or lo
 ## Preset ownership
 
 - Fund Manager can create, edit, archive and order presets in Settings.
-- A preset has a short name, ledger type, offer taxonomy, zero or more known bookmakers, fixture/bet defaults and allowed strategies.
+- A preset has a short name, ledger type, offer taxonomy, zero or more known bookmakers, fixture/bet defaults and one optional preferred strategy.
 - No known bookmakers means the preset can be used with any eligible bookmaker. One known bookmaker may prefill after profile validation. Several known bookmakers must be presented as explicit choices; the platform must not silently choose one.
-- Presets must use controlled authority values where those lists exist.
+- Offer type, bet type and fixture type must use controlled authority values. Offer Name is optional free text and is not constrained to a lookup list.
 - Controlled authorities are Fund Manager-owned and shared across profiles. Profile account
   availability remains isolated and is checked when a preset is applied.
 - Campaign tag is optional free text and is never a preset authority or controlled list. A preset
@@ -34,6 +38,23 @@ Choose a recognised recurring offer such as a synthetic weekly bet builder or lo
 6. Leave profile-variable and market-variable values for review, especially stake, odds, exchange, commission, expiry and settlement date.
 7. Run the normal contract-backed calculator after required inputs exist.
 8. Require the normal explicit save and placement actions.
+
+The preferred strategy is a starting value only. It must never remove strategies from the normal
+ledger editor or prevent the Fund Manager changing the strategy after applying the combo. A
+preferred `Multi Lay` strategy may create the draft, but complex placement remains in the full
+profile sportsbook editor.
+
+## Known bookmaker coverage
+
+- Known bookmakers are universal associations maintained with the combo; they are not profile account states.
+- The universal Settings picker must support search, selection and removal without pretending to know a profile's eligibility.
+- When the combo is applied, Plum Duff compares those associations with the selected profile's accounts.
+- Active and eligible accounts are available.
+- Soft-limited or otherwise usable-with-warning accounts remain selectable with an explicit warning.
+- Gubbed, blocked, closed, inactive, casino-only or promotion-ineligible accounts are blocked with a reason.
+- A bookmaker not configured for the profile is shown as not signed up, not silently treated as unavailable or active.
+- In the multi-profile Opportunity workflow, the setup view shows aggregate eligible-profile coverage and Stage 2 shows the exact status for each target profile.
+- State must never be communicated by colour alone; visible text or an accessible explanation is required.
 
 If all known bookmakers for a special offer are unavailable, show a clear blocked-state warning. Do not silently choose another bookmaker.
 
@@ -84,6 +105,10 @@ account-health mug bets; weekly reloads; welcome offers; enhanced prices; and bo
 - preset change does not rewrite existing rows
 - direct sportsbook draft stores the source preset id/version only when the row is explicitly saved
 - campaign tag remains free text and is not added to a shared list
+- Offer Name remains free text and is not rejected because it is absent from a lookup authority
+- preferred strategy defaults the draft but does not restrict the strategy selector
+- preferred Multi Lay creates a draft and routes complex placement to the full editor
+- universal known bookmakers resolve independently for each profile as available, warning, blocked or not signed up
 - legacy taxonomy aliases load but save using the approved display value
 - account lifecycle and restriction combinations produce the contracted eligibility result
 - UI: selected profile -> add row -> choose quick action -> inspect prefill -> complete calculator -> save draft

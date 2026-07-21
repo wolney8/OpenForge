@@ -374,6 +374,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           fixture_type TEXT NOT NULL DEFAULT '',
           default_back_stake TEXT NOT NULL DEFAULT '',
           minimum_back_odds TEXT NOT NULL DEFAULT '',
+          default_strategy TEXT NOT NULL DEFAULT '',
           allowed_strategies_json TEXT NOT NULL DEFAULT '[]',
           status TEXT NOT NULL DEFAULT 'Active',
           version INTEGER NOT NULL DEFAULT 1,
@@ -597,6 +598,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           reward_timing TEXT NOT NULL,
           preset_id TEXT NOT NULL DEFAULT '',
           preset_version INTEGER NOT NULL DEFAULT 0,
+          preferred_strategy TEXT NOT NULL DEFAULT '',
           state TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
@@ -849,6 +851,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "bookmakers_json",
         "TEXT NOT NULL DEFAULT '[]'",
     )
+    ensure_column(
+        connection,
+        "fund_manager_combo_presets",
+        "default_strategy",
+        "TEXT NOT NULL DEFAULT ''",
+    )
     ensure_column(connection, "accounts", "sign_up_date", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "accounts", "notes", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -862,6 +870,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "multi_profile_opportunities",
         "preset_version",
         "INTEGER NOT NULL DEFAULT 0",
+    )
+    ensure_column(
+        connection,
+        "multi_profile_opportunities",
+        "preferred_strategy",
+        "TEXT NOT NULL DEFAULT ''",
     )
     ensure_column(connection, "sportsbook_bets", "bet_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "offer_name", "TEXT NOT NULL DEFAULT ''")
@@ -2669,8 +2683,8 @@ def create_multi_profile_opportunity(
               opportunity_id, actor_id, offer_text, bookmaker, offer_type,
               bet_type, offer_name, fixture_type, minimum_back_odds,
               default_back_stake, expected_settlement, reward_timing,
-              preset_id, preset_version, state, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress', ?, ?)
+              preset_id, preset_version, preferred_strategy, state, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Progress', ?, ?)
             """,
             (
                 opportunity_id,
@@ -2687,6 +2701,7 @@ def create_multi_profile_opportunity(
                 payload.get("reward_timing", ""),
                 payload.get("preset_id", ""),
                 int(payload.get("preset_version", 0)),
+                payload.get("preferred_strategy", ""),
                 timestamp,
                 timestamp,
             ),
@@ -3697,6 +3712,7 @@ class FundManagerComboPresetRecord:
     fixture_type: str
     default_back_stake: str
     minimum_back_odds: str
+    default_strategy: str
     allowed_strategies_json: str
     status: str
     version: int
@@ -4463,6 +4479,7 @@ def map_fund_manager_combo_preset_row(
         fixture_type=str(row["fixture_type"]),
         default_back_stake=str(row["default_back_stake"]),
         minimum_back_odds=str(row["minimum_back_odds"]),
+        default_strategy=str(row["default_strategy"]),
         allowed_strategies_json=str(row["allowed_strategies_json"]),
         status=str(row["status"]),
         version=int(row["version"]),
@@ -4485,6 +4502,18 @@ def list_fund_manager_combo_presets(
             """
         ).fetchall()
     return [map_fund_manager_combo_preset_row(row) for row in rows]
+
+
+def delete_fund_manager_combo_presets(preset_ids: set[str]) -> int:
+    if not preset_ids:
+        return 0
+    placeholders = ", ".join("?" for _ in preset_ids)
+    with connect() as connection:
+        cursor = connection.execute(
+            f"DELETE FROM fund_manager_combo_presets WHERE preset_id IN ({placeholders})",
+            tuple(sorted(preset_ids)),
+        )
+    return cursor.rowcount
 
 
 def get_fund_manager_combo_preset(
@@ -4521,6 +4550,7 @@ def create_fund_manager_combo_preset(
         "fixture_type": str(payload.get("fixture_type", "")).strip(),
         "default_back_stake": str(payload.get("default_back_stake", "")).strip(),
         "minimum_back_odds": str(payload.get("minimum_back_odds", "")).strip(),
+        "default_strategy": str(payload.get("default_strategy", "")).strip(),
         "allowed_strategies_json": json.dumps(
             payload.get("allowed_strategies", []), sort_keys=True
         ),
@@ -4536,8 +4566,9 @@ def create_fund_manager_combo_preset(
             INSERT INTO fund_manager_combo_presets (
               preset_id, name, ledger_type, bookmaker, bookmakers_json, offer_type, bet_type,
               offer_name, fixture_type, default_back_stake, minimum_back_odds,
-              allowed_strategies_json, status, version, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              default_strategy, allowed_strategies_json, status, version, sort_order,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -4567,7 +4598,8 @@ def update_fund_manager_combo_preset(
             SET name = ?, ledger_type = ?, bookmaker = ?, bookmakers_json = ?,
                 offer_type = ?, bet_type = ?,
                 offer_name = ?, fixture_type = ?, default_back_stake = ?,
-                minimum_back_odds = ?, allowed_strategies_json = ?, status = ?,
+                minimum_back_odds = ?, default_strategy = ?,
+                allowed_strategies_json = ?, status = ?,
                 version = version + 1, sort_order = ?, updated_at = ?
             WHERE preset_id = ?
             """,
@@ -4582,6 +4614,7 @@ def update_fund_manager_combo_preset(
                 str(payload.get("fixture_type", "")).strip(),
                 str(payload.get("default_back_stake", "")).strip(),
                 str(payload.get("minimum_back_odds", "")).strip(),
+                str(payload.get("default_strategy", "")).strip(),
                 json.dumps(payload.get("allowed_strategies", []), sort_keys=True),
                 payload.get("status", "Active"),
                 int(payload.get("sort_order", 0)),

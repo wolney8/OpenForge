@@ -2338,6 +2338,22 @@ textarea {
   gap: 0.4rem;
 }
 
+.review-chip-state-warning {
+  border-color: color-mix(in srgb, var(--warning) 70%, var(--outline));
+  background: color-mix(in srgb, var(--warning) 18%, var(--surface-container));
+  color: var(--text);
+}
+
+.review-chip-state-info {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--outline));
+  background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface-container));
+  color: var(--text);
+}
+
+.special-offer-chip-group .material-symbols-outlined {
+  font-size: 1rem;
+}
+
 .table-filter-field,
 .table-search-field {
   min-width: min(100%, 320px);
@@ -4984,7 +5000,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .common-bet-combo-toolbar {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) auto auto;
   align-items: end;
+  gap: 0.75rem;
+}
+
+.common-bet-combo-archive-toggle {
+  min-height: 2.75rem;
+  align-self: end;
 }
 
 .common-bet-combo-editor {
@@ -5036,6 +5060,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   overflow: auto;
 }
 
+.common-bet-combo-bookmaker-search {
+  width: min(100%, 28rem);
+  margin-block: 0.8rem;
+}
+
+.common-combo-candidate .material-symbols-outlined {
+  font-size: 1rem;
+}
+
 .common-bet-combo-strategy-grid {
   display: flex;
   flex-wrap: wrap;
@@ -5069,7 +5102,39 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   color: var(--text);
 }
 
+.common-combo-candidate small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.common-combo-candidate.is-available {
+  border-color: var(--success);
+}
+
+.common-combo-candidate.is-warning {
+  border-color: var(--warning);
+}
+
+.common-combo-candidate.is-blocked {
+  border-color: var(--danger);
+}
+
+.common-combo-candidate.is-missing {
+  border-color: var(--info, var(--primary));
+}
+
+.common-combo-candidate:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 @media (max-width: 760px) {
+  .common-bet-combo-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .common-bet-combo-choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

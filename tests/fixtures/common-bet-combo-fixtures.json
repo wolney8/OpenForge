@@ -84,14 +84,54 @@
       "case_id": "COMBO-017",
       "inputs": {
         "seed_catalogue": true,
-        "required_preset_ids": ["COMBO-BET-GET-SINGLE", "COMBO-BET-GET-IN-PLAY", "COMBO-BET-GET-ACCA", "COMBO-PRICE-BOOST", "COMBO-PROFIT-BOOST", "COMBO-CASHBACK-HORSE", "COMBO-DDHH-FGS", "COMBO-MUG-NO-LAY", "COMBO-WEEKLY-RELOAD", "COMBO-WELCOME-SINGLE", "COMBO-ENHANCED-PRICE"]
+        "required_preset_ids": ["COMBO-MBB-20260720-SKY-2UP", "COMBO-MBB-20260720-MIDNITE-BUILDER", "COMBO-MBB-20260720-PADDY-CASHBACK", "COMBO-MBB-20260720-UNIBET-UNIBOOST"]
       },
-      "expected": {"all_present": true, "all_bookmaker_neutral": true, "row_saved": false, "bet_placed": false}
+      "expected": {"all_present": true, "all_have_known_bookmakers": true, "row_saved": false, "bet_placed": false}
     },
     {
       "case_id": "COMBO-018",
       "inputs": {"offer_type": "2UP / Early Payout", "calculation_implementation_status": "not_approved"},
-      "expected": {"seed_as_production_ready": false, "reason": "calculation_contract_and_fixture_implementation_required"}
+      "expected": {"descriptive_preset_allowed": true, "specialist_calculation_claimed": false, "reason": "calculation_contract_and_fixture_implementation_required"}
+    },
+    {
+      "case_id": "COMBO-019",
+      "inputs": {"preferred_strategy": "Underlay", "supported_strategies": ["Standard", "Underlay", "Overlay", "Custom"]},
+      "expected": {"initial_strategy": "Underlay", "strategy_restricted": false, "later_strategy": "Standard"}
+    },
+    {
+      "case_id": "COMBO-020",
+      "inputs": {"entry_point": "multi_profile_opportunity", "preferred_strategy": "Multilay"},
+      "expected": {"draft_strategy": "Multilay", "inline_placement_allowed": false, "full_editor_required": true}
+    },
+    {
+      "case_id": "COMBO-021",
+      "inputs": {"offer_name": "Demo Friday Bet 10 Get 5", "authority_contains_value": false},
+      "expected": {"combo_save_allowed": true, "combo_apply_allowed": true, "authority_created": false}
+    },
+    {
+      "case_id": "COMBO-022",
+      "inputs": {"known_bookmakers": ["Bookmaker A", "Bookmaker B", "Bookmaker C", "Bookmaker D"], "profile_states": {"Bookmaker A": "Active", "Bookmaker B": "Soft Limited", "Bookmaker C": "Gubbed", "Bookmaker D": "Not configured"}},
+      "expected": {"Bookmaker A": "available", "Bookmaker B": "warning", "Bookmaker C": "blocked", "Bookmaker D": "not_signed_up"}
+    },
+    {
+      "case_id": "COMBO-023",
+      "inputs": {"entry_point": "multi_profile_opportunity", "known_bookmaker": "Bookmaker A", "profile_states": ["Active", "Soft Limited", "Gubbed"]},
+      "expected": {"aggregate_eligible": 2, "aggregate_total": 3, "stage_two_profile_states_preserved": true}
+    },
+    {
+      "case_id": "COMBO-024",
+      "inputs": {"retired_seed_id": "COMBO-WEEKLY-BUILDER", "custom_preset_id": "DEMO-COMBO-001"},
+      "expected": {"retired_seed_removed": true, "custom_preset_preserved": true}
+    },
+    {
+      "case_id": "COMBO-025",
+      "inputs": {"editor_open": true, "close_method": "modal_close", "reopen": true},
+      "expected": {"list_visible": true, "stale_editor_visible": false}
+    },
+    {
+      "case_id": "COMBO-026",
+      "inputs": {"preset_status": "Archived", "show_archived": false},
+      "expected": {"visible_by_default": false, "visible_after_toggle": true}
     }
   ]
 }

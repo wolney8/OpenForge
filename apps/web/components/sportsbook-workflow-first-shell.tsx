@@ -23,7 +23,10 @@ import {
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
-import { getSpecialOfferBookmakerSuggestion } from "@/lib/sportsbook-offer-knowledge";
+import {
+  getSpecialOfferBookmakerSuggestion,
+  resolveKnownBookmakerCoverage,
+} from "@/lib/sportsbook-offer-knowledge";
 import {
   applyPlacementActionToState,
   filterPlacedPendingRowsInDateRange,
@@ -212,6 +215,7 @@ type CommonBetCombo = {
   fixture_type: string;
   default_back_stake: string;
   minimum_back_odds: string;
+  default_strategy: string;
   allowed_strategies: string[];
   version: number;
 };
@@ -2843,42 +2847,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       : combo.bookmaker
         ? [combo.bookmaker]
         : [];
-    const unavailableStatuses = new Set([
-      "Archived",
-      "Blocked",
-      "Closed",
-      "Gubbed",
-      "Inactive",
-      "KYC Blocked",
-      "Risk Blocked",
-      "Suspended",
-    ]);
-    const eligibleBookmakers = knownBookmakers.filter((bookmaker) => {
-      const profileAccount = accountAuthorities.find(
-        (account) =>
-          account.type === "Bookie" &&
-          account.account.trim().toLowerCase() === bookmaker.trim().toLowerCase()
-      );
-      if (!profileAccount) return false;
-      const lifecycleStatus = profileAccount?.lifecycle_status || profileAccount?.status || "";
-      const restrictions = (() => {
-        try {
-          return JSON.parse(profileAccount?.restrictions_json || "[]") as string[];
-        } catch {
-          return [];
-        }
-      })();
-      const effectiveRestrictions = new Set(restrictions);
-      if (["Bonus Restricted", "Casino Only", "Soft Limited"].includes(lifecycleStatus)) {
-        effectiveRestrictions.add(lifecycleStatus);
-      }
-      return !unavailableStatuses.has(lifecycleStatus) &&
-        !(effectiveRestrictions.has("Bonus Restricted") && combo.offer_type !== "Mug Bet") &&
-        !effectiveRestrictions.has("Casino Only");
+    const coverage = resolveKnownBookmakerCoverage({
+      knownBookmakers,
+      accountAuthorities,
+      offerType: combo.offer_type,
     });
+    const eligibleBookmakers = coverage.filter((row) => row.selectable).map((row) => row.bookmaker);
     if (knownBookmakers.length > 0 && eligibleBookmakers.length === 0) {
       setComboBookmakerCandidates([]);
-      setErrorMessage(`All known bookmakers for ${combo.name} are unavailable on this profile.`);
+      const allMissing = coverage.every((row) => row.state === "not_signed_up");
+      setErrorMessage(
+        allMissing
+          ? `No known bookmakers for ${combo.name} are signed up on this profile.`
+          : `All known bookmakers for ${combo.name} are unavailable on this profile.`
+      );
       return;
     }
     setComboBookmakerCandidates(eligibleBookmakers);
@@ -2890,8 +2872,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? formState.bookmaker
         : "";
 
-    const allowedStrategies = combo.allowed_strategies.filter((strategy) =>
-      visibleSportsbookStrategyOptions.some((option) => option === strategy)
+    const preferredStrategy = visibleSportsbookStrategyOptions.find(
+      (option) => option === combo.default_strategy
     );
     setErrorMessage("");
     setFormState((current) => ({
@@ -2904,10 +2886,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       offer_name: combo.offer_name || current.offer_name,
       fixture_type: combo.fixture_type || current.fixture_type,
       back_stake: combo.default_back_stake || current.back_stake,
-      match_strategy:
-        allowedStrategies.includes(current.match_strategy)
-          ? current.match_strategy
-          : allowedStrategies[0] || current.match_strategy,
+      match_strategy: preferredStrategy || current.match_strategy,
     }));
     const minimumOddsNote = combo.minimum_back_odds
       ? ` Minimum back odds: ${combo.minimum_back_odds}.`
@@ -2951,15 +2930,28 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
 
   const specialOfferBookmakerSuggestion = useMemo(
-    () =>
+    () => {
+      const selectedCombo = commonBetCombos.find(
+        (combo) => combo.preset_id === formState.source_combo_preset_id
+      );
+      const matchingCombos = selectedCombo
+        ? [selectedCombo]
+        : commonBetCombos.filter(
+            (combo) => combo.offer_type === formState.offer_type && combo.bookmakers?.length
+          );
+      const knownBookmakers = [...new Set(matchingCombos.flatMap((combo) => combo.bookmakers || []))];
+      const knowledgeLabel = selectedCombo?.name || formState.offer_type;
+      return (
       getSpecialOfferBookmakerSuggestion({
         offerType: formState.offer_type,
-        offerName: formState.offer_name,
-        offerText: formState.offer_text,
         bookmaker: formState.bookmaker,
         accountAuthorities,
-      }),
-    [accountAuthorities, formState.bookmaker, formState.offer_name, formState.offer_text, formState.offer_type]
+        knownBookmakers,
+        knowledgeLabel,
+      })
+      );
+    },
+    [accountAuthorities, commonBetCombos, formState.bookmaker, formState.offer_type, formState.source_combo_preset_id]
   );
 
   const exchangeOptions = useMemo(() => {
@@ -5711,11 +5703,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                         <span className="eyebrow">Known bookmaker coverage</span>
                         <span className="field-help-text">
                           Matched from{" "}
-                          {specialOfferBookmakerSuggestion.resolutionSource === "campaign_tag"
-                            ? "campaign tag"
-                            : specialOfferBookmakerSuggestion.resolutionSource === "offer"
-                              ? "offer"
-                              : "offer family"}
+                          universal Common Combo knowledge
                           .
                         </span>
                       </div>
@@ -5729,6 +5717,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                       </span>
                       <span className="review-chip review-chip-state-unavailable">
                         Unavailable {specialOfferBookmakerSuggestion.unavailableBookmakers.length}
+                      </span>
+                      <span className="review-chip review-chip-state-warning">
+                        Warning {specialOfferBookmakerSuggestion.warningBookmakers.length}
                       </span>
                       <span className="review-chip review-chip-state-muted">
                         Missing {specialOfferBookmakerSuggestion.missingKnownBookmakers.length}
@@ -5776,13 +5767,36 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                           </div>
                         </div>
                       ) : null}
+                      {specialOfferBookmakerSuggestion.warningBookmakers.length > 0 ? (
+                        <div className="special-offer-chip-group">
+                          <span className="field-help-text">Needs attention on this profile</span>
+                          <div className="review-chip-row">
+                            {specialOfferBookmakerSuggestion.warningBookmakers.map((option) =>
+                              option.selectable ? (
+                                <button
+                                  aria-label={`${option.bookmaker}: ${option.reason}`}
+                                  className="review-chip review-chip-state-warning"
+                                  key={option.bookmaker}
+                                  onClick={() => void applyDropdownChange((current) => ({ ...current, bookmaker: option.bookmaker }), "Bookmaker suggestion")}
+                                  title={option.reason}
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="material-symbols-outlined">warning</span>{option.bookmaker}
+                                </button>
+                              ) : (
+                                <span aria-label={`${option.bookmaker}: ${option.reason}`} className="review-chip review-chip-state-warning" key={option.bookmaker} title={option.reason}><span aria-hidden="true" className="material-symbols-outlined">warning</span>{option.bookmaker}</span>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
                       {specialOfferBookmakerSuggestion.missingKnownBookmakers.length > 0 ? (
                         <div className="special-offer-chip-group">
                           <span className="field-help-text">Not yet linked on this profile</span>
                           <div className="review-chip-row">
                             {specialOfferBookmakerSuggestion.missingKnownBookmakers.map((option) => (
-                              <span className="review-chip review-chip-state-muted" key={option}>
-                                {option}
+                              <span className="review-chip review-chip-state-info" key={option}>
+                                <span aria-hidden="true" className="material-symbols-outlined">info</span>{option}
                               </span>
                             ))}
                           </div>
@@ -5794,12 +5808,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                         Add one of these bookmakers in Settings before using this offer on this profile.
                       </p>
                     ) : null}
-                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "unavailable" ? (
+                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "blocked" ? (
                       <p className="field-validation-text" role="status">
                         The selected bookmaker is known for this offer but unavailable on this profile.
                       </p>
                     ) : null}
-                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "missing" ? (
+                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "not_signed_up" ? (
                       <p className="field-help-text" role="status">
                         The selected bookmaker is known for this offer family but is not currently linked on this profile.
                       </p>

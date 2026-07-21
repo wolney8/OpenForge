@@ -24,8 +24,16 @@ _Last updated: 2026-07-20_
 | COMBO-014 | Archived universal authority | Historical row retained; new preset application blocked |
 | COMBO-015 | Direct sportsbook draft applies a preset | Fields prefill without save; explicit save records preset id/version |
 | COMBO-016 | Preset has several known bookmakers | Eligible bookmakers are shown for explicit selection; unavailable bookmakers are excluded; no bookmaker is silently selected |
-| COMBO-017 | Default preset catalogue is seeded | Workbook-backed/currently routed templates exist; all are bookmaker-neutral and never save or place a row |
-| COMBO-018 | Advanced offer family has a contract but no approved implementation | It remains a documented candidate and is not seeded as production-ready |
+| COMBO-017 | Current recurring preset catalogue is seeded | Source-checked recurring templates exist with explicit known bookmakers; they never save or place a row |
+| COMBO-018 | Advanced offer family has no approved specialist calculation | A descriptive preset may exist, but it must not claim specialist calculation support |
+| COMBO-019 | Preferred Underlay strategy applied | Draft defaults to Underlay; Fund Manager can still select Standard or another supported strategy |
+| COMBO-020 | Preferred Multi Lay applied in Opportunity quick add | Draft stores Multi Lay; placement is completed in the profile sportsbook editor |
+| COMBO-021 | Free-text Offer Name is not in an authority list | Combo saves and applies without creating or requiring a lookup value |
+| COMBO-022 | Universal known bookmakers have different profile states | Runtime coverage resolves active, warning, blocked and not-signed-up states independently |
+| COMBO-023 | Multi-profile Opportunity applies a combo | Setup shows aggregate eligibility; Stage 2 retains exact per-profile status and reasons |
+| COMBO-024 | Retired generic seed exists locally | Known retired seed is removed; user-created presets are not silently removed by startup seeding |
+| COMBO-025 | Editor is closed with the modal close action | The next open starts on the combo list, with no stale draft editor state |
+| COMBO-026 | Archived combo exists | Hidden by default; visible only when Show Archived is enabled |
 | PB-001 | Displayed boosted odds | Displayed odds drive sportsbook scenarios |
 | PB-002 | 15% boost on odds 3.00, stake 10 | Reference boosted odds 3.3000; extra profit 3.00 |
 | PB-003 | PB-002 capped at 2.00 | Reference boosted odds 3.2000; extra profit 2.00 |

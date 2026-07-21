@@ -1,172 +1,138 @@
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
 
-const SPECIAL_OFFER_BOOKMAKERS: Record<string, readonly string[]> = {
-  "Double Delight / Hat-trick Heaven": ["Betfred", "Midnite"],
-  "Enhanced Price": ["Betfred", "Midnite", "bet365", "Sky Bet"],
-  "Price Boost": ["Betfred", "Midnite", "bet365", "Sky Bet", "Paddy Power"],
-  Cashback: ["Betfred", "Midnite", "BetUK", "talkSPORT BET"],
-  Refund: ["Betfred", "Midnite", "BetUK", "Sky Bet"],
-  "Bonus Lock-In": ["Betfred", "Midnite", "BetUK", "Sky Bet"],
-  "Bet Builder": ["bet365", "Sky Bet", "Paddy Power", "Betfred"],
-  Acca: ["Betfred", "Sky Bet", "Paddy Power", "bet365"],
-  Reload: ["Betfred", "Midnite", "BetUK", "BetMGM"],
-  "Weekly Reload": ["Betfred", "Midnite", "BetUK", "BetMGM"],
-};
-
-const UNAVAILABLE_BOOKMAKER_STATUSES = new Set([
-  "gubbed",
-  "bonus restricted",
-  "blocked",
-  "not using",
-  "closed",
-  "inactive",
-  "archived",
-]);
-
 function normalizeValue(value: string) {
   return value.trim().toLowerCase();
 }
 
-function findSpecialOfferKey(input: string): string | null {
-  const normalizedInput = normalizeValue(input);
-  if (!normalizedInput) {
-    return null;
+function parseRestrictions(row: AccountAuthorityRecord): Set<string> {
+  let parsed: string[] = [];
+  try {
+    const value = JSON.parse(row.restrictions_json || "[]") as unknown;
+    parsed = Array.isArray(value) ? value.map(String) : [];
+  } catch {
+    parsed = [];
   }
-
-  return (
-    Object.keys(SPECIAL_OFFER_BOOKMAKERS).find((offerKey) =>
-      normalizedInput.includes(normalizeValue(offerKey))
-    ) ?? null
+  return new Set(
+    [row.status, row.lifecycle_status || "", ...parsed]
+      .map(normalizeValue)
+      .filter(Boolean)
   );
 }
 
-type SpecialOfferKnowledgeResolution = {
-  resolvedOfferKey: string;
-  resolutionSource: "offer_type" | "campaign_tag" | "offer";
+export type BookmakerCoverageState = "available" | "warning" | "blocked" | "not_signed_up";
+
+export type KnownBookmakerCoverage = {
+  bookmaker: string;
+  state: BookmakerCoverageState;
+  selectable: boolean;
+  reason: string;
 };
 
-function resolveSpecialOfferKnowledge(options: {
+export function resolveKnownBookmakerCoverage(options: {
+  knownBookmakers: string[];
+  accountAuthorities: AccountAuthorityRecord[];
   offerType: string;
-  offerName?: string;
-  offerText?: string;
-}): SpecialOfferKnowledgeResolution | null {
-  if (SPECIAL_OFFER_BOOKMAKERS[options.offerType]) {
+}): KnownBookmakerCoverage[] {
+  const bookieAuthorities = options.accountAuthorities.filter((row) => row.type === "Bookie");
+  return options.knownBookmakers.map((bookmaker) => {
+    const account = bookieAuthorities.find(
+      (row) => normalizeValue(row.account) === normalizeValue(bookmaker)
+    );
+    if (!account) {
+      return {
+        bookmaker,
+        state: "not_signed_up",
+        selectable: false,
+        reason: "Not signed up on this profile",
+      };
+    }
+    const states = parseRestrictions(account);
+    const blocked = [
+      "archived", "blocked", "closed", "gubbed", "inactive", "not using",
+      "kyc blocked", "risk blocked", "suspended", "casino only",
+    ].find((value) => states.has(value));
+    if (blocked) {
+      return {
+        bookmaker: account.account,
+        state: "blocked",
+        selectable: false,
+        reason: blocked === "casino only" ? "Casino-only account" : `Account is ${blocked}`,
+      };
+    }
+    if (states.has("bonus restricted") && options.offerType !== "Mug Bet") {
+      return {
+        bookmaker: account.account,
+        state: "warning",
+        selectable: false,
+        reason: "Bonus restricted; this promotional combo cannot be used",
+      };
+    }
+    const warning = ["soft limited", "limited", "pending sign up"].find((value) => states.has(value));
+    if (warning) {
+      return {
+        bookmaker: account.account,
+        state: "warning",
+        selectable: warning !== "pending sign up",
+        reason: warning === "pending sign up" ? "Sign-up is still pending" : "Stake or promotion may be limited",
+      };
+    }
     return {
-      resolvedOfferKey: options.offerType,
-      resolutionSource: "offer_type",
+      bookmaker: account.account,
+      state: "available",
+      selectable: true,
+      reason: "Active and eligible on this profile",
     };
-  }
-
-  const campaignTagMatch = findSpecialOfferKey(options.offerName ?? "");
-  if (campaignTagMatch) {
-    return {
-      resolvedOfferKey: campaignTagMatch,
-      resolutionSource: "campaign_tag",
-    };
-  }
-
-  const offerTextMatch = findSpecialOfferKey(options.offerText ?? "");
-  if (offerTextMatch) {
-    return {
-      resolvedOfferKey: offerTextMatch,
-      resolutionSource: "offer",
-    };
-  }
-
-  const offerTypeMatch = findSpecialOfferKey(options.offerType);
-  if (offerTypeMatch) {
-    return {
-      resolvedOfferKey: offerTypeMatch,
-      resolutionSource: "offer_type",
-    };
-  }
-
-  return null;
-}
-
-export function resolveSpecialOfferKnowledgeKey(options: {
-  offerType: string;
-  offerName?: string;
-  offerText?: string;
-}): string | null {
-  return resolveSpecialOfferKnowledge(options)?.resolvedOfferKey ?? null;
+  });
 }
 
 export type SpecialOfferBookmakerSuggestion = {
   resolvedOfferKey: string;
-  resolutionSource: "offer_type" | "campaign_tag" | "offer";
+  resolutionSource: "common_combo";
   knownBookmakers: string[];
   profileKnownBookmakers: string[];
   availableBookmakers: string[];
+  warningBookmakers: KnownBookmakerCoverage[];
   unavailableBookmakers: string[];
   missingKnownBookmakers: string[];
+  coverage: KnownBookmakerCoverage[];
   allKnownBookmakersUnavailableOnProfile: boolean;
-  selectedBookmakerState: "available" | "unavailable" | "missing" | null;
+  selectedBookmakerState: BookmakerCoverageState | null;
 };
 
 export function getSpecialOfferBookmakerSuggestion(options: {
   offerType: string;
-  offerName?: string;
-  offerText?: string;
   bookmaker?: string;
   accountAuthorities: AccountAuthorityRecord[];
+  knownBookmakers?: string[];
+  knowledgeLabel?: string;
 }): SpecialOfferBookmakerSuggestion | null {
-  const resolvedKnowledge = resolveSpecialOfferKnowledge({
+  const knownBookmakers = [...new Set(options.knownBookmakers ?? [])];
+  if (!knownBookmakers.length) return null;
+  const coverage = resolveKnownBookmakerCoverage({
+    knownBookmakers,
+    accountAuthorities: options.accountAuthorities,
     offerType: options.offerType,
-    offerName: options.offerName,
-    offerText: options.offerText,
   });
-  const knownBookmakers = resolvedKnowledge
-    ? SPECIAL_OFFER_BOOKMAKERS[resolvedKnowledge.resolvedOfferKey] ?? []
-    : [];
-
-  if (knownBookmakers.length === 0) {
-    return null;
-  }
-
-  const bookieAuthorities = options.accountAuthorities.filter((row) => row.type === "Bookie");
-  const profileKnownBookmakers = bookieAuthorities.filter((row) =>
-    knownBookmakers.some((bookmaker) => normalizeValue(bookmaker) === normalizeValue(row.account))
+  const available = coverage.filter((row) => row.state === "available");
+  const warning = coverage.filter((row) => row.state === "warning");
+  const blocked = coverage.filter((row) => row.state === "blocked");
+  const missing = coverage.filter((row) => row.state === "not_signed_up");
+  const selected = coverage.find(
+    (row) => normalizeValue(row.bookmaker) === normalizeValue(options.bookmaker ?? "")
   );
-
-  const availableBookmakers = profileKnownBookmakers
-    .filter((row) => !UNAVAILABLE_BOOKMAKER_STATUSES.has(normalizeValue(row.status)))
-    .map((row) => row.account);
-
-  const unavailableBookmakers = profileKnownBookmakers
-    .filter((row) => UNAVAILABLE_BOOKMAKER_STATUSES.has(normalizeValue(row.status)))
-    .map((row) => row.account);
-
-  const profileKnownBookmakerSet = new Set(
-    profileKnownBookmakers.map((row) => normalizeValue(row.account))
-  );
-  const missingKnownBookmakers = knownBookmakers.filter(
-    (bookmaker) => !profileKnownBookmakerSet.has(normalizeValue(bookmaker))
-  );
-  let selectedBookmakerState: "available" | "unavailable" | "missing" | null = null;
-  const normalizedSelectedBookmaker = normalizeValue(options.bookmaker ?? "");
-  if (normalizedSelectedBookmaker) {
-    if (availableBookmakers.some((bookmaker) => normalizeValue(bookmaker) === normalizedSelectedBookmaker)) {
-      selectedBookmakerState = "available";
-    } else if (
-      unavailableBookmakers.some((bookmaker) => normalizeValue(bookmaker) === normalizedSelectedBookmaker)
-    ) {
-      selectedBookmakerState = "unavailable";
-    } else if (knownBookmakers.some((bookmaker) => normalizeValue(bookmaker) === normalizedSelectedBookmaker)) {
-      selectedBookmakerState = "missing";
-    }
-  }
-
   return {
-    resolvedOfferKey: resolvedKnowledge?.resolvedOfferKey ?? "",
-    resolutionSource: resolvedKnowledge?.resolutionSource ?? "offer_type",
-    knownBookmakers: [...knownBookmakers],
-    profileKnownBookmakers: profileKnownBookmakers.map((row) => row.account),
-    availableBookmakers: [...new Set(availableBookmakers)],
-    unavailableBookmakers: [...new Set(unavailableBookmakers)],
-    missingKnownBookmakers,
+    resolvedOfferKey: options.knowledgeLabel || options.offerType || "Common combo",
+    resolutionSource: "common_combo",
+    knownBookmakers,
+    profileKnownBookmakers: [...available, ...warning, ...blocked].map((row) => row.bookmaker),
+    availableBookmakers: available.map((row) => row.bookmaker),
+    warningBookmakers: warning,
+    unavailableBookmakers: blocked.map((row) => row.bookmaker),
+    missingKnownBookmakers: missing.map((row) => row.bookmaker),
+    coverage,
     allKnownBookmakersUnavailableOnProfile:
-      profileKnownBookmakers.length > 0 && availableBookmakers.length === 0,
-    selectedBookmakerState,
+      coverage.some((row) => row.state !== "not_signed_up") &&
+      coverage.every((row) => !row.selectable),
+    selectedBookmakerState: selected?.state ?? null,
   };
 }

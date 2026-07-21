@@ -26,13 +26,14 @@ export type CommonBetCombo = {
   fixture_type: string;
   default_back_stake: string;
   minimum_back_odds: string;
+  default_strategy: string;
   allowed_strategies: string[];
   status: "Active" | "Archived";
   version: number;
   sort_order: number;
 };
 
-const strategies = ["Standard", "Underlay", "Overlay", "Custom", "No Lay"];
+const strategies = ["", "Standard", "Underlay", "Overlay", "Custom", "No Lay", "Partial Lay", "Multilay"];
 const emptyDraft: CommonBetCombo = {
   preset_id: "",
   name: "",
@@ -45,6 +46,7 @@ const emptyDraft: CommonBetCombo = {
   fixture_type: "",
   default_back_stake: "",
   minimum_back_odds: "",
+  default_strategy: "",
   allowed_strategies: ["Standard", "Underlay", "Overlay", "Custom"],
   status: "Active",
   version: 0,
@@ -55,8 +57,9 @@ export function CommonBetComboSettings() {
   const [isOpen, setIsOpen] = useState(false);
   const [rows, setRows] = useState<CommonBetCombo[]>([]);
   const [bookmakers, setBookmakers] = useState<string[]>([]);
-  const [offerNames, setOfferNames] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [bookmakerSearch, setBookmakerSearch] = useState("");
   const [draft, setDraft] = useState<CommonBetCombo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -67,28 +70,16 @@ export function CommonBetComboSettings() {
     setIsLoading(true);
     setError("");
     try {
-      const [presetResponse, catalogueResponse, lookupResponse] = await Promise.all([
+      const [presetResponse, catalogueResponse] = await Promise.all([
         fetch(`${apiBaseUrl}/fund-manager/common-bet-combos`, { cache: "no-store" }),
         fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/fund-manager/lookup-values`, { cache: "no-store" }),
       ]);
-      if (!presetResponse.ok || !catalogueResponse.ok || !lookupResponse.ok) {
+      if (!presetResponse.ok || !catalogueResponse.ok) {
         throw new Error("Common bet combos could not be loaded.");
       }
       const catalogue = (await catalogueResponse.json()) as MasterAccountCatalogue;
-      const lookups = (await lookupResponse.json()) as {
-        lookup_type: string;
-        option_value: string;
-        status: string;
-      }[];
       setRows((await presetResponse.json()) as CommonBetCombo[]);
       setBookmakers(getActiveMasterAccountNames(catalogue.records, "Bookmaker"));
-      setOfferNames(
-        lookups
-          .filter((row) => row.lookup_type === "offer_name" && row.status === "Active")
-          .map((row) => row.option_value)
-          .sort((left, right) => left.localeCompare(right))
-      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Common bet combos could not be loaded.");
     } finally {
@@ -104,11 +95,17 @@ export function CommonBetComboSettings() {
 
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return rows.filter((row) =>
-      !query || [row.name, ...(row.bookmakers || []), row.bookmaker, row.offer_type, row.bet_type]
-        .some((value) => value.toLowerCase().includes(query))
-    );
-  }, [rows, search]);
+    return rows.filter((row) => {
+      if (!showArchived && row.status === "Archived") return false;
+      return !query || [row.name, ...(row.bookmakers || []), row.bookmaker, row.offer_type, row.bet_type]
+        .some((value) => value.toLowerCase().includes(query));
+    });
+  }, [rows, search, showArchived]);
+
+  const visibleBookmakers = useMemo(() => {
+    const query = bookmakerSearch.trim().toLowerCase();
+    return bookmakers.filter((bookmaker) => !query || bookmaker.toLowerCase().includes(query));
+  }, [bookmakerSearch, bookmakers]);
 
   function toggleBookmaker(bookmaker: string) {
     if (!draft) return;
@@ -127,6 +124,24 @@ export function CommonBetComboSettings() {
     if (!values.length) return "Any eligible";
     if (values.length === 1) return values[0];
     return `${values.length} bookmakers`;
+  }
+
+  function openDialog() {
+    setDraft(null);
+    setSearch("");
+    setShowArchived(false);
+    setBookmakerSearch("");
+    setError("");
+    setIsOpen(true);
+  }
+
+  function closeDialog() {
+    setIsOpen(false);
+    setDraft(null);
+    setSearch("");
+    setShowArchived(false);
+    setBookmakerSearch("");
+    setError("");
   }
 
   async function save() {
@@ -163,7 +178,7 @@ export function CommonBetComboSettings() {
         <button
           className="button-link settings-card-action"
           data-pd-id="common-bet-combos.manage"
-          onClick={() => setIsOpen(true)}
+          onClick={openDialog}
           type="button"
         >
           Manage Common Bet Combos
@@ -174,7 +189,7 @@ export function CommonBetComboSettings() {
           <section aria-label="Manage common bet combos" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal common-bet-combo-modal" data-pd-id="common-bet-combos.dialog" role="dialog">
             <header className="workflow-editor-modal-header">
               <div><span className="eyebrow">Fund Manager Settings</span><h2>Common Bet Combos</h2></div>
-              <button aria-label="Close common bet combos" className="modal-close-button" onClick={() => setIsOpen(false)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+              <button aria-label="Close common bet combos" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
             <div className="workflow-editor-modal-body stack common-bet-combo-body">
               {isLoading ? <LedgerLoadingIndicator label="Loading common bet combos" /> : null}
@@ -183,6 +198,15 @@ export function CommonBetComboSettings() {
                 <>
                   <div className="table-toolbar common-bet-combo-toolbar">
                     <label className="field-control table-search-field"><span>Search</span><input aria-label="Search common bet combos" data-pd-id="common-bet-combos.search" onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
+                    <label className={`profile-filter-chip common-bet-combo-archive-toggle${showArchived ? " is-selected" : ""}`}>
+                      <input
+                        checked={showArchived}
+                        data-pd-id="common-bet-combos.show-archived"
+                        onChange={(event) => setShowArchived(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>Show Archived</span>
+                    </label>
                     <button className="button-link icon-text-action" data-pd-id="common-bet-combos.add" onClick={() => setDraft({ ...emptyDraft, sort_order: rows.length * 10 + 10 })} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Combo</span></button>
                   </div>
                   <div className="table-scroll" data-pd-id="common-bet-combos.table-scroll">
@@ -198,18 +222,18 @@ export function CommonBetComboSettings() {
                     <label className="field-control"><span>Combo Name</span><input maxLength={80} onChange={(event) => setDraft({ ...draft, name: event.target.value })} value={draft.name} /></label>
                     <label className="field-control"><span>Offer Type</span><select onChange={(event) => setDraft({ ...draft, offer_type: event.target.value })} value={draft.offer_type}><option value="">Select</option>{sportsbookOfferTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
                     <label className="field-control"><span>Bet Type</span><select onChange={(event) => setDraft({ ...draft, bet_type: event.target.value })} value={draft.bet_type}><option value="">Select</option>{betTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
-                    <label className="field-control"><span>Offer Name</span><select onChange={(event) => setDraft({ ...draft, offer_name: event.target.value })} value={draft.offer_name}><option value="">Not set</option>{offerNames.map((value) => <option key={value}>{value}</option>)}</select></label>
+                    <label className="field-control"><span>Offer Name</span><input maxLength={200} onChange={(event) => setDraft({ ...draft, offer_name: event.target.value })} placeholder="Optional free-text offer name" value={draft.offer_name} /></label>
                     <label className="field-control"><span>Fixture Type</span><select onChange={(event) => setDraft({ ...draft, fixture_type: event.target.value })} value={draft.fixture_type}><option value="">Not set</option>{fixtureTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
                     <label className="field-control"><span>Default Back Stake</span><input inputMode="decimal" onChange={(event) => setDraft({ ...draft, default_back_stake: event.target.value })} value={draft.default_back_stake} /></label>
                     <label className="field-control"><span>Minimum Back Odds</span><input inputMode="decimal" onChange={(event) => setDraft({ ...draft, minimum_back_odds: event.target.value })} value={draft.minimum_back_odds} /></label>
+                    <label className="field-control"><span>Preferred Strategy</span><select aria-describedby="preferred-strategy-help" onChange={(event) => setDraft({ ...draft, default_strategy: event.target.value })} value={draft.default_strategy || ""}>{strategies.map((value) => <option key={value || "none"} value={value}>{value ? value === "Custom" ? "Custom Lay" : value === "Multilay" ? "Multi Lay" : value : "No preference"}</option>)}</select><small className="field-support-text" id="preferred-strategy-help">Sets the initial strategy only. It never prevents a later change.</small></label>
                     <label className="field-control"><span>Status</span><select onChange={(event) => setDraft({ ...draft, status: event.target.value as CommonBetCombo["status"] })} value={draft.status}><option>Active</option><option>Archived</option></select></label>
                   </div>
-                  <fieldset className="common-bet-combo-choice-group"><legend>Known Bookmakers</legend><p className="field-support-text">Select every known bookmaker for this offer. Leave all clear when any eligible bookmaker can be used.</p><div className="common-bet-combo-choice-grid">{bookmakers.map((bookmaker) => <label className={`profile-filter-chip${draft.bookmakers.includes(bookmaker) ? " is-selected" : ""}`} key={bookmaker}><input checked={draft.bookmakers.includes(bookmaker)} onChange={() => toggleBookmaker(bookmaker)} type="checkbox" /><span>{bookmaker}</span></label>)}</div></fieldset>
-                  <fieldset className="common-bet-combo-choice-group"><legend>Allowed Strategies</legend><div className="common-bet-combo-strategy-grid">{strategies.map((strategy) => <label className="checkbox-label" key={strategy}><input checked={draft.allowed_strategies.includes(strategy)} onChange={(event) => setDraft({ ...draft, allowed_strategies: event.target.checked ? [...draft.allowed_strategies, strategy] : draft.allowed_strategies.filter((value) => value !== strategy) })} type="checkbox" />{strategy === "Custom" ? "Custom Lay" : strategy}</label>)}</div></fieldset>
+                  <fieldset className="common-bet-combo-choice-group"><legend>Known Bookmakers</legend><p className="field-support-text">Universal offer associations. Profile status is checked only when this combo is applied.</p>{draft.bookmakers.length ? <div aria-label="Selected known bookmakers" className="common-combo-candidate-row">{draft.bookmakers.map((bookmaker) => <button aria-label={`Remove ${bookmaker} from known bookmakers`} className="common-combo-candidate is-selected" key={bookmaker} onClick={() => toggleBookmaker(bookmaker)} type="button"><span>{bookmaker}</span><span aria-hidden="true" className="material-symbols-outlined">close</span></button>)}</div> : <p className="field-support-text">No associations selected; any eligible bookmaker may be used.</p>}<label className="field-control table-search-field common-bet-combo-bookmaker-search"><span>Search Bookmakers</span><input aria-label="Search known bookmakers" data-pd-id="common-bet-combos.bookmaker-search" onChange={(event) => setBookmakerSearch(event.target.value)} type="search" value={bookmakerSearch} /></label><div className="common-bet-combo-choice-grid">{visibleBookmakers.map((bookmaker) => <label className={`profile-filter-chip${draft.bookmakers.includes(bookmaker) ? " is-selected" : ""}`} key={bookmaker}><input checked={draft.bookmakers.includes(bookmaker)} onChange={() => toggleBookmaker(bookmaker)} type="checkbox" /><span>{bookmaker}</span></label>)}</div></fieldset>
                 </div>
               ) : null}
             </div>
-            <footer className="workflow-editor-modal-footer"><button className="button-link" onClick={() => draft ? setDraft(null) : setIsOpen(false)} type="button">{draft ? "Back to Combos" : "Close"}</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? "Saving" : "Save Combo"}</button> : null}</footer>
+            <footer className="workflow-editor-modal-footer"><button className="button-link" onClick={() => draft ? setDraft(null) : closeDialog()} type="button">{draft ? "Back to Combos" : "Close"}</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? "Saving" : "Save Combo"}</button> : null}</footer>
           </section>
         </div>
       ) : null}
