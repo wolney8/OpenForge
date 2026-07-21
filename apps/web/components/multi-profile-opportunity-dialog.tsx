@@ -9,7 +9,6 @@ import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import { fromDateTimeLocalValue } from "@/lib/date-format";
 import { useDialogFocusLifecycle } from "@/lib/ledger-ui";
-import type { LookupValueRecord } from "@/lib/lookup-values";
 import {
   getActiveMasterAccountNames,
   type MasterAccountCatalogue,
@@ -80,6 +79,7 @@ type Opportunity = {
   reward_timing: string;
   preset_id: string;
   preset_version: number;
+  preferred_strategy: string;
   state: string;
   targets: OpportunityTarget[];
 };
@@ -98,6 +98,7 @@ type SetupDraft = {
   offer_name: string;
   preset_id: string;
   preset_version: number;
+  preferred_strategy: string;
 };
 
 type CommonBetCombo = {
@@ -111,6 +112,7 @@ type CommonBetCombo = {
   fixture_type: string;
   default_back_stake: string;
   minimum_back_odds: string;
+  default_strategy: string;
   allowed_strategies: string[];
   version: number;
 };
@@ -129,10 +131,11 @@ const emptySetup: SetupDraft = {
   offer_name: "",
   preset_id: "",
   preset_version: 0,
+  preferred_strategy: "",
 };
 
 const inlineStrategies = new Set(["Standard", "Underlay", "Overlay", "Custom", "No Lay"]);
-const standardStrategies = ["Standard", "Underlay", "Overlay", "Custom"] as const;
+const standardStrategies = ["Standard", "Underlay", "Overlay", "Custom", "Partial Lay", "Multilay"] as const;
 const mugStrategies = ["No Lay", ...standardStrategies] as const;
 
 type MugTargetDraft = {
@@ -146,7 +149,12 @@ type ProfileBookmakerOption = {
   status: string;
 };
 
-const bookmakerWarningStatuses = new Set(["limited", "pending sign up"]);
+const bookmakerWarningStatuses = new Set([
+  "limited",
+  "soft limited",
+  "bonus restricted",
+  "pending sign up",
+]);
 const bookmakerBlockedStatuses = new Set([
   "archived",
   "blocked",
@@ -154,6 +162,10 @@ const bookmakerBlockedStatuses = new Set([
   "gubbed",
   "inactive",
   "not using",
+  "kyc blocked",
+  "risk blocked",
+  "suspended",
+  "casino only",
 ]);
 
 function bookmakerOptionIsUsable(status: string, offerType: string): boolean {
@@ -166,6 +178,10 @@ function bookmakerOptionIsUsable(status: string, offerType: string): boolean {
 
 function bookmakerOptionLabel(option: ProfileBookmakerOption): string {
   return `${option.name} — ${option.status || "Not configured"}`;
+}
+
+function comboOfferType(combos: CommonBetCombo[], presetId: string): string {
+  return combos.find((combo) => combo.preset_id === presetId)?.offer_type ?? "";
 }
 
 function formatOdds(value: string): string {
@@ -277,7 +293,6 @@ export function MultiProfileOpportunityDialog({
   const [bookmakersByProfile, setBookmakersByProfile] = useState<
     Record<string, ProfileBookmakerOption[]>
   >({});
-  const [offerProgrammes, setOfferProgrammes] = useState<string[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
   const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
   const [saveStates, setSaveStates] = useState<Record<string, string>>({});
@@ -320,15 +335,6 @@ export function MultiProfileOpportunityDialog({
 
   useEffect(() => {
     let active = true;
-    const lookupValuesRequest = Promise.all(
-      profiles.map((profile) =>
-        fetch(`${apiBaseUrl}/profiles/${profile.profileId}/lookup-values`, {
-          cache: "no-store",
-        }).then(async (response) =>
-          response.ok ? ((await response.json()) as LookupValueRecord[]) : []
-        )
-      )
-    ).then((rows) => rows.flat());
     const profileAccountsRequest = Promise.all(
       profiles.map((profile) =>
         fetch(`${apiBaseUrl}/profiles/${profile.profileId}/accounts`, {
@@ -351,7 +357,6 @@ export function MultiProfileOpportunityDialog({
       fetch(`${apiBaseUrl}/multi-profile-opportunities`, { cache: "no-store" }).then(
         async (response) => (response.ok ? (await response.json()) as Opportunity[] : [])
       ),
-      lookupValuesRequest,
       profileAccountsRequest,
       masterCatalogueRequest,
       fetch(`${apiBaseUrl}/fund-manager/common-bet-combos?active_only=true`, {
@@ -360,7 +365,7 @@ export function MultiProfileOpportunityDialog({
         response.ok ? ((await response.json()) as CommonBetCombo[]) : []
       ),
     ])
-      .then(async ([opportunities, lookupValues, profileAccounts, masterCatalogue, combos]) => {
+      .then(async ([opportunities, profileAccounts, masterCatalogue, combos]) => {
         if (!active) return;
         setActiveOpportunities(opportunities);
         const configuredBookmakers = profileAccounts.flatMap(({ accounts }) =>
@@ -400,13 +405,6 @@ export function MultiProfileOpportunityDialog({
             ])
           )
         );
-        setOfferProgrammes(
-          [...new Set(
-            lookupValues
-              .filter((row) => row.lookup_type === "offer_name")
-              .map((row) => row.option_value)
-          )].sort((left, right) => left.localeCompare(right))
-        );
         setCommonBetCombos(combos);
         if (initialOpportunityId) {
           await loadOpportunity(initialOpportunityId);
@@ -440,7 +438,7 @@ export function MultiProfileOpportunityDialog({
   function applyCommonBetCombo(presetId: string) {
     if (!presetId) {
       setComboBookmakerCandidates([]);
-      setSetup((current) => ({ ...current, preset_id: "", preset_version: 0 }));
+      setSetup((current) => ({ ...current, preset_id: "", preset_version: 0, preferred_strategy: "" }));
       return;
     }
     const combo = commonBetCombos.find((row) => row.preset_id === presetId);
@@ -456,7 +454,6 @@ export function MultiProfileOpportunityDialog({
       combo.offer_type && !sportsbookOfferTypeOptions.some((value) => value === combo.offer_type) ? "offer type" : "",
       combo.bet_type && !betTypeOptions.some((value) => value === combo.bet_type) ? "bet type" : "",
       combo.fixture_type && !fixtureTypeOptions.some((value) => value === combo.fixture_type) ? "fixture type" : "",
-      combo.offer_name && !offerProgrammes.includes(combo.offer_name) ? "offer name" : "",
     ].filter(Boolean);
     if (staleMappings.length) {
       setErrorMessage(
@@ -471,6 +468,7 @@ export function MultiProfileOpportunityDialog({
       preset: "Offer",
       preset_id: combo.preset_id,
       preset_version: combo.version,
+      preferred_strategy: combo.default_strategy || "",
       bookmaker: validKnownBookmakers.length === 1 ? validKnownBookmakers[0] : "",
       offer_type: combo.offer_type,
       bet_type: combo.bet_type,
@@ -903,14 +901,14 @@ export function MultiProfileOpportunityDialog({
               <section className="stack-tight" aria-labelledby="opportunity-setup-title">
                 <h3 id="opportunity-setup-title">Opportunity Setup</h3>
                 <div className="form-grid opportunity-setup-grid">
-                  <div className="stack-tight"><label className="field-control"><span>Common Combo</span><select aria-label="Apply common bet combo" data-pd-id="multi-profile-opportunity.setup.common-combo" onChange={(event) => applyCommonBetCombo(event.target.value)} value={setup.preset_id}><option value="">No combo</option>{commonBetCombos.map((combo) => <option key={combo.preset_id} value={combo.preset_id}>{combo.name}</option>)}</select></label>{comboBookmakerCandidates.length > 1 ? <div aria-label="Known bookmakers for selected combo" className="common-combo-candidate-row" data-pd-id="multi-profile-opportunity.setup.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${setup.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => { setSetup((current) => ({ ...current, bookmaker })); setEligibility([]); setSelectedProfileIds([]); }} type="button">{bookmaker}</button>)}</div> : null}</div>
+                  <div className="stack-tight"><label className="field-control"><span>Common Combo</span><select aria-label="Apply common bet combo" data-pd-id="multi-profile-opportunity.setup.common-combo" onChange={(event) => applyCommonBetCombo(event.target.value)} value={setup.preset_id}><option value="">No combo</option>{commonBetCombos.map((combo) => <option key={combo.preset_id} value={combo.preset_id}>{combo.name}</option>)}</select></label>{comboBookmakerCandidates.length ? <div aria-label="Known bookmaker coverage across active profiles" className="common-combo-candidate-row" data-pd-id="multi-profile-opportunity.setup.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => { const options = profiles.map((profile) => (bookmakersByProfile[profile.profileId] ?? []).find((option) => option.name.toLowerCase() === bookmaker.toLowerCase())); const eligibleCount = options.filter((option) => option && bookmakerOptionIsUsable(option.status, comboOfferType(commonBetCombos, setup.preset_id))).length; const warningCount = options.filter((option) => option && bookmakerWarningStatuses.has(option.status.toLowerCase())).length; const tone = eligibleCount === profiles.length ? " is-available" : eligibleCount > 0 ? " is-warning" : options.some((option) => option && option.status !== "Not configured") ? " is-blocked" : " is-missing"; return <button aria-label={`${bookmaker}: ${eligibleCount} of ${profiles.length} profiles eligible${warningCount ? `, ${warningCount} with warnings` : ""}`} className={`common-combo-candidate${tone}${setup.bookmaker === bookmaker ? " is-selected" : ""}`} disabled={eligibleCount === 0} key={bookmaker} onClick={() => { setSetup((current) => ({ ...current, bookmaker })); setEligibility([]); setSelectedProfileIds([]); }} title={`${eligibleCount}/${profiles.length} profiles eligible${warningCount ? `; ${warningCount} need attention` : ""}`} type="button"><span>{bookmaker}</span><small>{eligibleCount}/{profiles.length} eligible</small></button>; })}</div> : null}</div>
                   <label className="field-control"><span>Preset</span><select data-pd-id="multi-profile-opportunity.setup.preset" onChange={(event) => { const preset = event.target.value as SetupDraft["preset"]; setSetup({ ...setup, preset, offer_type: preset === "Mug Bet" ? "Mug Bet" : "", bet_type: preset === "Mug Bet" ? "Single" : "", bookmaker: "" }); setEligibility([]); setSelectedProfileIds([]); }} value={setup.preset}><option>Offer</option><option>Mug Bet</option></select></label>
                   <label className="field-control field-span-2"><span>Offer</span><input data-pd-id="multi-profile-opportunity.setup.offer" maxLength={200} onChange={(event) => setSetup({ ...setup, offer_text: event.target.value })} placeholder="World Cup Bet 10 Get 10 on Spain v Argentina" value={setup.offer_text} /></label>
                   {setup.preset === "Offer" ? <label className="field-control"><span>Bookmaker</span><select data-pd-id="multi-profile-opportunity.setup.bookmaker" onChange={(event) => { setSetup({ ...setup, bookmaker: event.target.value }); setEligibility([]); setSelectedProfileIds([]); }} value={setup.bookmaker}><option value="">Select configured bookmaker</option>{bookmakers.map((bookmaker) => <option key={bookmaker}>{bookmaker}</option>)}</select></label> : null}
                   <label className="field-control"><span>Offer Type</span><select data-pd-id="multi-profile-opportunity.setup.offer-type" disabled={setup.preset === "Mug Bet"} onChange={(event) => { setSetup({ ...setup, offer_type: event.target.value }); setEligibility([]); setSelectedProfileIds([]); }} value={setup.offer_type}><option value="">Select offer type</option>{setup.preset === "Mug Bet" ? <option>Mug Bet</option> : sportsbookOfferTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
                   <label className="field-control"><span>Bet Type</span><select disabled={setup.preset === "Mug Bet"} onChange={(event) => setSetup({ ...setup, bet_type: event.target.value })} value={setup.bet_type}><option value="">Optional</option>{betTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
                   <label className="field-control"><span>Fixture Type</span><select onChange={(event) => setSetup({ ...setup, fixture_type: event.target.value })} value={setup.fixture_type}><option value="">Optional</option>{fixtureTypeOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
-                  <label className="field-control"><span>Offer Programme</span><select onChange={(event) => setSetup({ ...setup, offer_name: event.target.value })} value={setup.offer_name}><option value="">Optional</option>{offerProgrammes.map((value) => <option key={value}>{value}</option>)}</select></label>
+                  <label className="field-control"><span>Offer Name</span><input maxLength={200} onChange={(event) => setSetup({ ...setup, offer_name: event.target.value })} placeholder="Optional free-text offer name" value={setup.offer_name} /></label>
                   <label className="field-control"><span>Minimum Odds</span><input inputMode="decimal" onBlur={() => setSetup((current) => ({ ...current, minimum_back_odds: formatOdds(current.minimum_back_odds) }))} onChange={(event) => setSetup({ ...setup, minimum_back_odds: event.target.value })} value={setup.minimum_back_odds} /></label>
                   <label className="field-control"><span>Default Back Stake</span><input inputMode="decimal" onChange={(event) => setSetup({ ...setup, default_back_stake: event.target.value })} value={setup.default_back_stake} /></label>
                   <MaterialDateTimeField
@@ -1003,14 +1001,9 @@ export function MultiProfileOpportunityDialog({
                       const suggestion = suggestedLay(row);
                       const suggestionApplied = suggestionIsApplied(row, suggestion);
                       const showSuggestion = Boolean(suggestion && isEditable);
-                      const comboStrategies = commonBetCombos.find(
-                        (combo) => combo.preset_id === opportunity.preset_id
-                      )?.allowed_strategies;
                       const strategyOptions = opportunity.offer_type === "Mug Bet"
                         ? mugStrategies
-                        : comboStrategies?.length
-                          ? comboStrategies
-                          : standardStrategies;
+                        : standardStrategies;
                       const copyDownAvailable = canCopyPlacementDown(row);
                       const profileBookmakerOptions = bookmakersByProfile[target.profile_id] ?? [];
                       const matchRating = formatMatchRating(row.match_rating);

@@ -18,24 +18,33 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
     seeded = client.get("/fund-manager/common-bet-combos")
     assert seeded.status_code == 200
     expected_defaults = {
-        "COMBO-WEEKLY-BUILDER",
-        "COMBO-LOSS-BACK",
-        "COMBO-PROFIT-BOOST",
-        "COMBO-BET-GET-SINGLE",
-        "COMBO-BET-GET-IN-PLAY",
-        "COMBO-BET-GET-ACCA",
-        "COMBO-PRICE-BOOST",
-        "COMBO-CASHBACK-HORSE",
-        "COMBO-DDHH-FGS",
-        "COMBO-MUG-NO-LAY",
-        "COMBO-WEEKLY-RELOAD",
-        "COMBO-WELCOME-SINGLE",
-        "COMBO-ENHANCED-PRICE",
+        "COMBO-MBB-20260720-SKY-2UP",
+        "COMBO-MBB-20260720-LADBROKES-2UP",
+        "COMBO-MBB-20260720-CORAL-2UP",
+        "COMBO-MBB-20260720-TOTE-ACCA",
+        "COMBO-MBB-20260720-TALKSPORT-FOOTIE",
+        "COMBO-MBB-20260720-SKY-CLUB",
+        "COMBO-MBB-20260720-PADDY-REWARDS",
+        "COMBO-MBB-20260720-MIDNITE-BUILDER",
+        "COMBO-MBB-20260720-MIDNITE-ACCA",
+        "COMBO-MBB-20260720-MIDNITE-BET-CLUB",
+        "COMBO-MBB-20260720-LOTTOLAND-CLUB",
+        "COMBO-MBB-20260720-DAZN-BOXING",
+        "COMBO-MBB-20260720-DAZN-RACING",
+        "COMBO-MBB-20260720-BOYLE-WEEKLY",
+        "COMBO-MBB-20260720-BETWAY-CLUB",
+        "COMBO-MBB-20260720-BETVICTOR-ACCA",
+        "COMBO-MBB-20260720-BET600-MONDAY",
+        "COMBO-MBB-20260720-BETUK-WEEKLY",
+        "COMBO-MBB-20260720-888-ACCA",
+        "COMBO-MBB-20260720-PADDY-CASHBACK",
+        "COMBO-MBB-20260720-UNIBET-UNIBOOST",
     }
     seeded_by_id = {row["preset_id"]: row for row in seeded.json()}
     assert seeded_by_id.keys() >= expected_defaults
-    assert seeded_by_id["COMBO-MUG-NO-LAY"]["allowed_strategies"][0] == "No Lay"
-    assert all(seeded_by_id[preset_id]["bookmakers"] == [] for preset_id in expected_defaults)
+    assert seeded_by_id["COMBO-MBB-20260720-MIDNITE-BUILDER"]["bookmakers"] == ["Midnite"]
+    assert seeded_by_id["COMBO-MBB-20260720-MIDNITE-BUILDER"]["default_back_stake"] == "10.00"
+    assert all(seeded_by_id[preset_id]["bookmakers"] for preset_id in expected_defaults)
 
     created = client.post(
         "/fund-manager/common-bet-combos",
@@ -49,6 +58,7 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
             "fixture_type": "Football",
             "default_back_stake": "10",
             "minimum_back_odds": "2",
+            "default_strategy": "Underlay",
             "allowed_strategies": ["Standard", "Underlay"],
         },
     )
@@ -56,6 +66,7 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
     preset = created.json()
     assert preset["default_back_stake"] == "10.00"
     assert preset["minimum_back_odds"] == "2.00"
+    assert preset["default_strategy"] == "Underlay"
     assert preset["bookmakers"] == ["Bookmaker A", "Bookmaker B"]
     assert preset["bookmaker"] == ""
     assert preset["version"] == 1
@@ -72,3 +83,24 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
     active = client.get("/fund-manager/common-bet-combos?active_only=true")
     assert active.status_code == 200
     assert preset["preset_id"] not in {row["preset_id"] for row in active.json()}
+
+
+def test_retired_seed_is_removed_without_deleting_custom_presets(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    retired = client.post(
+        "/fund-manager/common-bet-combos",
+        json={"preset_id": "COMBO-WEEKLY-BUILDER", "name": "Retired seed"},
+    )
+    custom = client.post(
+        "/fund-manager/common-bet-combos",
+        json={"preset_id": "DEMO-COMBO-001", "name": "Fund Manager custom combo"},
+    )
+    assert retired.status_code == 201
+    assert custom.status_code == 201
+
+    refreshed = client.get("/fund-manager/common-bet-combos")
+    refreshed_ids = {row["preset_id"] for row in refreshed.json()}
+    assert "COMBO-WEEKLY-BUILDER" not in refreshed_ids
+    assert "DEMO-COMBO-001" in refreshed_ids

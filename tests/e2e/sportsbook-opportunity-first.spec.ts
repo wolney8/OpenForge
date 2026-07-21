@@ -112,7 +112,7 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
   await expect(settingsDialog).toBeVisible();
   await expect(
-    settingsDialog.getByRole("cell", { name: "Weekly Bet Builder", exact: true })
+    settingsDialog.getByRole("cell", { name: "Midnite - Bet Builder Club", exact: true })
   ).toBeVisible();
   await settingsDialog.getByRole("button", { name: "Add Combo" }).click();
   const bookmakerChoices = settingsDialog.locator(
@@ -120,6 +120,8 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   );
   await expect(bookmakerChoices.first()).toBeVisible();
   expect(await bookmakerChoices.count()).toBeGreaterThan(1);
+  await expect(settingsDialog.getByLabel("Search known bookmakers")).toBeVisible();
+  await expect(settingsDialog.getByLabel("Preferred Strategy")).toBeVisible();
   const dialogGeometry = await settingsDialog.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
@@ -138,6 +140,26 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   expect(dialogGeometry.bottom).toBeLessThanOrEqual(dialogGeometry.viewportHeight);
   expect(dialogGeometry.pageScrollWidth).toBeLessThanOrEqual(dialogGeometry.viewportWidth);
   await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
+  await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
+  await expect(settingsDialog.getByRole("button", { name: "Add Combo" })).toBeVisible();
+  await expect(settingsDialog.locator('[data-pd-id="common-bet-combos.editor"]')).toHaveCount(0);
+  await expect(settingsDialog.getByText("Show Archived", { exact: true })).toBeVisible();
+  await settingsDialog.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
+  await settingsDialog.getByLabel("Status").selectOption("Archived");
+  await settingsDialog.getByRole("button", { name: "Save Combo" }).click();
+  await page.getByRole("button", { name: "Dismiss notification" }).click();
+  await expect(
+    settingsDialog.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
+  ).toHaveCount(0);
+  await settingsDialog.locator('[data-pd-id="common-bet-combos.show-archived"]').check();
+  await expect(
+    settingsDialog.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
+  ).toBeVisible();
+  await settingsDialog.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
+  await settingsDialog.getByLabel("Status").selectOption("Active");
+  await settingsDialog.getByRole("button", { name: "Save Combo" }).click();
+  await page.getByRole("button", { name: "Dismiss notification" }).click();
+  await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
 
   await page.goto("/profiles");
   await page.getByRole("button", { name: "Add Opportunity" }).click();
@@ -145,19 +167,19 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
     name: "Add sportsbook opportunity across profiles",
   });
   await opportunityDialog.getByLabel("Apply common bet combo").selectOption(
-    "COMBO-WEEKLY-BUILDER"
+    "COMBO-MBB-20260720-MIDNITE-BUILDER"
   );
   await expect(opportunityDialog.getByRole("combobox", { name: "Offer Type" })).toHaveValue(
-    "Bet & Get"
+    "Weekly Reload"
   );
   await expect(opportunityDialog.getByRole("combobox", { name: "Bet Type" })).toHaveValue(
     "Bet Builder"
   );
   await expect(opportunityDialog.getByRole("combobox", { name: "Fixture Type" })).toHaveValue(
-    "Football"
+    ""
   );
   await expect(opportunityDialog.getByLabel("Minimum Odds", { exact: true })).toHaveValue(
-    "2.00"
+    ""
   );
   await expect(opportunityDialog.getByLabel("Default Back Stake", { exact: true })).toHaveValue(
     "10.00"
@@ -253,6 +275,7 @@ test("Opportunity setup presents several combo bookmakers for explicit selection
       fixture_type: "Football",
       default_back_stake: "10.00",
       minimum_back_odds: "2.00",
+      default_strategy: "Underlay",
       allowed_strategies: ["Standard", "Underlay"],
     },
   });
@@ -269,11 +292,11 @@ test("Opportunity setup presents several combo bookmakers for explicit selection
   const candidates = dialog.locator(
     '[data-pd-id="multi-profile-opportunity.setup.combo-bookmakers"]'
   );
-  await expect(candidates.getByRole("button", { name: "247Bet" })).toBeVisible();
-  await expect(candidates.getByRole("button", { name: "32Red" })).toBeVisible();
+  await expect(candidates.getByRole("button", { name: /^247Bet:/ })).toBeVisible();
+  await expect(candidates.getByRole("button", { name: /^32Red:/ })).toBeVisible();
   const bookmakerSelect = dialog.getByRole("combobox", { name: "Bookmaker", exact: true });
   await expect(bookmakerSelect).toHaveValue("");
-  await candidates.getByRole("button", { name: "247Bet" }).click();
+  await candidates.getByRole("button", { name: /^247Bet:/ }).click();
   await expect(bookmakerSelect).toHaveValue("247Bet");
 
   const archiveResponse = await request.put(

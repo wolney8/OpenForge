@@ -62,6 +62,9 @@ class OpportunitySetupPayload(OpportunityEligibilityPayload):
     reward_timing: Literal["", "On placement", "On settlement"] = ""
     preset_id: str = Field(default="", max_length=64)
     preset_version: int = Field(default=0, ge=0)
+    preferred_strategy: Literal[
+        "", "Standard", "Underlay", "Overlay", "Custom", "No Lay", "Partial Lay", "Multilay"
+    ] = ""
     selected_profile_ids: list[str] = Field(min_length=1)
     target_selections: list[OpportunityTargetSelection] = Field(default_factory=list)
     actor_id: str = Field(default="local-fund-manager", min_length=1, max_length=120)
@@ -100,6 +103,8 @@ class OpportunityTargetUpdatePayload(BaseModel):
         "Overlay",
         "Custom",
         "No Lay",
+        "Partial Lay",
+        "Multilay",
     ] = "Standard"
 
     @field_validator("back_odds", "lay_odds_1")
@@ -155,6 +160,7 @@ class OpportunityResponse(BaseModel):
     reward_timing: str
     preset_id: str
     preset_version: int
+    preferred_strategy: str
     state: str
     created_at: str
     updated_at: str
@@ -340,7 +346,9 @@ def create_profile_sportsbook_payload(
         "bonus_trigger": "",
         "maximum_bonus": "",
         "bonus_retention_rate": "70",
-        "match_strategy": "No Lay" if is_mug_bet else "Standard",
+        "match_strategy": (
+            "No Lay" if is_mug_bet else payload.preferred_strategy or "Standard"
+        ),
         "lay_odds_1": "",
         "multi_lay_outcome_1_name": "",
         "multi_lay_outcomes_json": "[]",

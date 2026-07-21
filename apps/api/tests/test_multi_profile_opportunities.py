@@ -71,6 +71,7 @@ def setup_payload(**overrides: object) -> dict[str, object]:
         "selected_profile_ids": ["profile-demo-001", "profile-demo-002"],
         "preset_id": "DEMO-COMBO-001",
         "preset_version": 3,
+        "preferred_strategy": "Underlay",
     }
     payload.update(overrides)
     return payload
@@ -88,6 +89,7 @@ def test_opportunity_creates_isolated_prospecting_rows_and_is_resumable(tmp_path
     assert opportunity["state"] == "In Progress"
     assert opportunity["preset_id"] == "DEMO-COMBO-001"
     assert opportunity["preset_version"] == 3
+    assert opportunity["preferred_strategy"] == "Underlay"
     for target in opportunity["targets"]:
         if target["sportsbook_bet"] is not None:
             assert target["sportsbook_bet"]["source_combo_preset_id"] == "DEMO-COMBO-001"
@@ -101,6 +103,10 @@ def test_opportunity_creates_isolated_prospecting_rows_and_is_resumable(tmp_path
     assert all(target["sportsbook_bet"]["status"] == "Prospecting" for target in selected_targets)
     assert all(target["sportsbook_bet"]["result"] == "Pending" for target in selected_targets)
     assert all(target["sportsbook_bet"]["back_stake"] == "10.00" for target in selected_targets)
+    assert all(
+        target["sportsbook_bet"]["match_strategy"] == "Underlay"
+        for target in selected_targets
+    )
     assert all(
         "Reward timing: On settlement" in target["sportsbook_bet"]["user_notes"]
         for target in selected_targets

@@ -2,7 +2,19 @@ import { expect, test } from "@playwright/test";
 
 test("Sportsbook special-offer bookmaker panel shows explicit bookmaker states", async ({
   page,
+  request,
 }) => {
+  const combosResponse = await request.get("http://127.0.0.1:8010/fund-manager/common-bet-combos");
+  expect(combosResponse.ok()).toBeTruthy();
+  const combo = ((await combosResponse.json()) as Record<string, unknown>[]).find(
+    (row) => row.preset_id === "COMBO-DDHH-FGS"
+  );
+  expect(combo).toBeTruthy();
+  const updateResponse = await request.put(
+    "http://127.0.0.1:8010/fund-manager/common-bet-combos/COMBO-DDHH-FGS",
+    { data: { ...combo, bookmakers: ["Betfred", "Midnite"] } }
+  );
+  expect(updateResponse.ok()).toBeTruthy();
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
   await page.waitForLoadState("networkidle");
 
@@ -15,7 +27,7 @@ test("Sportsbook special-offer bookmaker panel shows explicit bookmaker states",
   const panel = page.locator(".special-offer-suggestion-panel");
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("Known bookmaker coverage");
-  await expect(panel).toContainText("Matched from offer family");
+  await expect(panel).toContainText("Matched from universal Common Combo knowledge");
   await expect(panel).toContainText("DDHH");
 
   const availableButtons = panel.getByRole("button");
