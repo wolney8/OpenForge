@@ -31,7 +31,7 @@ Strategy = Literal[
 class CommonBetComboPayload(BaseModel):
     preset_id: str | None = Field(default=None, max_length=64)
     name: str = Field(min_length=1, max_length=80)
-    ledger_type: Literal["Sportsbook"] = "Sportsbook"
+    ledger_type: Literal["Sportsbook", "Casino"] = "Sportsbook"
     bookmaker: str = Field(default="", max_length=120)
     bookmakers: list[str] = Field(default_factory=list, max_length=100)
     offer_type: str = Field(default="", max_length=120)
@@ -40,6 +40,15 @@ class CommonBetComboPayload(BaseModel):
     fixture_type: str = Field(default="", max_length=120)
     default_back_stake: str = Field(default="", max_length=40)
     minimum_back_odds: str = Field(default="", max_length=40)
+    game: str = Field(default="", max_length=200)
+    cash_stake: str = Field(default="", max_length=40)
+    credit_amount: str = Field(default="", max_length=40)
+    bonus_amount: str = Field(default="", max_length=40)
+    wager_multiplier: str = Field(default="", max_length=40)
+    required_spins: str = Field(default="", max_length=40)
+    spin_stake: str = Field(default="", max_length=40)
+    free_spins_awarded: str = Field(default="", max_length=40)
+    free_spins_value: str = Field(default="", max_length=40)
     default_strategy: Strategy | Literal[""] = ""
     # Kept for backward compatibility with presets created before preferred strategy.
     allowed_strategies: list[Strategy] = Field(default_factory=list)
@@ -64,6 +73,25 @@ class CommonBetComboPayload(BaseModel):
         parsed = parse_decimal(value, "Minimum back odds")
         if parsed <= 1:
             raise ValueError("Minimum back odds must be greater than 1")
+        return f"{parsed:.2f}"
+
+    @field_validator(
+        "cash_stake",
+        "credit_amount",
+        "bonus_amount",
+        "wager_multiplier",
+        "required_spins",
+        "spin_stake",
+        "free_spins_awarded",
+        "free_spins_value",
+    )
+    @classmethod
+    def validate_optional_non_negative_number(cls, value: str) -> str:
+        if not value.strip():
+            return ""
+        parsed = parse_decimal(value, "Casino preset value")
+        if parsed < 0:
+            raise ValueError("Casino preset values cannot be negative")
         return f"{parsed:.2f}"
 
     @field_validator("bookmakers")

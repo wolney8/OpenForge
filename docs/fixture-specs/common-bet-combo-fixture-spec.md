@@ -34,6 +34,10 @@ _Last updated: 2026-07-20_
 | COMBO-024 | Retired generic seed exists locally | Known retired seed is removed; user-created presets are not silently removed by startup seeding |
 | COMBO-025 | Editor is closed with the modal close action | The next open starts on the combo list, with no stale draft editor state |
 | COMBO-026 | Archived combo exists | Hidden by default; visible only when Show Archived is enabled |
+| COMBO-027 | Valid Casino Free Spins preset | Casino campaign fields prefill; dates, result and P&L remain empty; row remains unsaved |
+| COMBO-028 | Casino combo targets a Casino Only account | Account is available for Casino Offers |
+| COMBO-029 | Casino combo targets a Sportsbook Only account | Application is blocked with a capability reason |
+| COMBO-030 | Casino combo has several eligible bookmakers | Fund Manager must explicitly select one |
 | PB-001 | Displayed boosted odds | Displayed odds drive sportsbook scenarios |
 | PB-002 | 15% boost on odds 3.00, stake 10 | Reference boosted odds 3.3000; extra profit 3.00 |
 | PB-003 | PB-002 capped at 2.00 | Reference boosted odds 3.2000; extra profit 2.00 |
