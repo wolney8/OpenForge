@@ -1,6 +1,6 @@
 # OpenForge Sportsbook Smoke Review Notes
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-21_
 
 ## Purpose
 
@@ -1415,3 +1415,115 @@ Validation:
 - `pnpm --filter @openforge/web test` passed: 76 tests.
 - `pnpm playwright tests/e2e/bookmaker-brand-catalogue.spec.ts --reporter=line` passed,
   including sportsbook Name/Brand badge switching and Logo-mode badge fallback.
+
+### Partial-lay follow-up reminder and recheck control (2026-07-21)
+
+Implemented the approved operational risk-control workflow for part-laid sportsbook rows:
+
+- Added a profile-scoped reminder with due time, optional reason, state, resolution note, actor, and
+  audit history.
+- Active reminders are accepted only for rows whose existing contract calculation resolves to
+  `Part Laid`; reminder due times cannot exceed a known settlement cutoff.
+- Future reminders show `Lay Recheck`; due reminders show `Lay Recheck Overdue` and participate in
+  sportsbook issue filtering and Fund Manager operational action counts.
+- Reminder creation, resolution, and dismissal do not change lay placement, liability, exposure,
+  projected/current value, final value, reporting value, or P&amp;L.
+- Successful reminder updates refresh the affected table row directly; the controls remain inline
+  in Placement and close without waiting for a full ledger reload.
+- Browser coverage restores the profile's original date settings and removes its synthetic row after
+  the test.
+
+Contract and fixture evidence:
+
+- `docs/workflows/partial-lay-follow-up-workflow-contract.md`
+- `docs/fixture-specs/partial-lay-follow-up-fixture-spec.md`
+- `tests/fixtures/partial-lay-follow-up-fixtures.json`
+
+Validation:
+
+- Targeted API reminder lifecycle and isolation tests passed.
+- Sportsbook issue-state and operational-summary unit tests passed.
+- `pnpm exec playwright test tests/e2e/sportsbook-partial-lay-reminder.spec.ts` passed.
+## 2026-07-21 - Partial-lay reminder corrective pass
+
+- Reminder controls now remain inline in the sportsbook editor rather than opening a modal over a
+  modal.
+- Reminder reason is optional; due time defaults from settlement at minus two hours, then minus one
+  hour when necessary.
+- Reminder persistence updates the selected row in place and closes only the inline reminder
+  controls.
+- Saving a reminder first persists any valid dirty sportsbook fields exactly once, then saves the
+  reminder and keeps the sportsbook editor open.
+- Legacy part-laid rows with `lay_matched_stake_1` but no serialized execution legs are shown as a
+  first lay leg without changing their target, matched stake, liability, or P&L.
+- Placement actions now disable independently: partial stays disabled after partial placement while
+  full placement remains available until the target is matched.
+- Sportsbook saves now reject duplicate in-flight submissions.
+- Partial-lay exchange and odds controls now remain within separate grid tracks, and leg removal
+  uses the same Material destructive action geometry as ledger-row deletion.
+
+Validation:
+
+- `pnpm --filter @openforge/web lint` passed.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm --filter @openforge/web test` passed: 115 tests.
+- `scripts/run-python.sh -m pytest apps/api/tests -q` passed: 188 tests.
+- `pnpm exec playwright test tests/e2e/sportsbook-partial-lay-reminder.spec.ts --workers=1` passed,
+  including dirty-row autosave before reminder persistence.
+- `tests/e2e/sportsbook-editor-modal.spec.ts` and
+  `tests/e2e/sportsbook-placement-actions.spec.ts` passed in the combined regression run.
+
+## 2026-07-21 - Fund Manager notification centre
+
+- Added a global Material bell immediately before the back/lay colour-theme control.
+- Active partial-lay reminders now feed a lightweight Fund Manager notification endpoint across
+  profiles, with warning/overdue tone, due time, profile identity and a direct sportsbook-row link.
+- Any retained reminder uses `notifications_active`. Unread reminders additionally show a red
+  `1`-`9` / `9+` badge; reading all visible notifications removes the badge but keeps the active
+  bell until the retained list is empty.
+- Hovering, focusing or opening a notification marks it read. The three-dot menu supports
+  `Mark all as read` and `Clear notifications`; each card can also be cleared individually.
+- Task reminders expose a green completion action. Completing a partial-lay task resolves the
+  audited reminder and moves the server-backed task into `Done` until the related bet's settlement
+  time has passed. Resolving the same reminder in the ledger produces the identical `Done` state;
+  dismissing it removes it without recording completion. Clearing a task requires an inline
+  `Are you sure?` confirmation.
+- Partial-lay notification cards identify the affected sportsbook event rather than displaying the
+  optional reminder reason as their primary message.
+- Read and clear remain local view actions only. They do not resolve or otherwise modify the
+  audited sportsbook reminder; only the explicit green task-completion action resolves it.
+- The panel has a bounded viewport-safe geometry, fixed header, contained scrolling, contextual
+  accessible names, Escape focus return, stable `data-pd-id` hooks and a compact New/Done switch.
+- Reminder create/resolve/dismiss actions dispatch an immediate feed refresh; focus and one-minute
+  polling provide fallback refresh paths.
+
+Contract and fixture evidence:
+
+- `docs/workflows/fund-manager-notification-centre-workflow-contract.md`
+- `docs/fixture-specs/fund-manager-notification-centre-fixture-spec.md`
+- `tests/fixtures/fund-manager-notification-centre-fixtures.json`
+
+Validation:
+
+- `scripts/run-python.sh -m pytest apps/api/tests/test_notifications.py apps/api/tests/test_sportsbook_workflow.py -q` passed: 13 tests.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm --filter @openforge/web test` passed: 119 tests.
+- `pnpm playwright tests/e2e/fund-manager-notification-centre.spec.ts` passed.
+- Cross-ledger modal and section checks passed for Sportsbook Bets, Free Bets, Casino Offers, and
+  Cash Adjustments. Open sections now preserve visible focus outlines and flexible field sizing.
+- `pnpm build:web` passed.
+### Notification completion motion and confirmation sizing - 2026-07-21
+
+- Completing a New notification task now animates that card out of New before the server-backed
+  Done list refreshes; the Fund Manager remains on New rather than being moved between views.
+- Reduced-motion preferences bypass the visible transition while preserving the same audited
+  state change.
+- The clear-confirmation pill now has sufficient width and padding for its complete prompt and
+  actions without clipping.
+### Save closure and recurring reminder guard - 2026-07-21
+
+- Manual Save now deterministically clears the active selection and closes the add/edit modal in
+  Sportsbook Bets, Free Bets, Casino Offers and Cash Adjustments.
+- Autosaves remain in context and do not close the editor.
+- Resolved or dismissed partial-lay reminders can be followed by a fresh reminder while the row is
+  still part laid; an already-active reminder blocks duplicate creation.

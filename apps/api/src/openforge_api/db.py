@@ -536,6 +536,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           lay_commission_1 TEXT NOT NULL DEFAULT '',
           exchange_name TEXT NOT NULL,
           date_settled TEXT NOT NULL,
+          partial_lay_reminder_state TEXT NOT NULL DEFAULT 'Not Set',
+          partial_lay_reminder_due_at TEXT NOT NULL DEFAULT '',
+          partial_lay_reminder_reason TEXT NOT NULL DEFAULT '',
+          partial_lay_reminder_resolution_note TEXT NOT NULL DEFAULT '',
+          partial_lay_reminder_resolved_at TEXT NOT NULL DEFAULT '',
+          partial_lay_reminder_resolved_by TEXT NOT NULL DEFAULT '',
           user_notes TEXT NOT NULL,
           manual_override_value TEXT NOT NULL,
           manual_override_reason TEXT NOT NULL,
@@ -954,6 +960,42 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     )
     ensure_column(
         connection, "sportsbook_bets", "lay_matched_stake_1", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_state",
+        "TEXT NOT NULL DEFAULT 'Not Set'",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_due_at",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_reason",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_resolution_note",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_resolved_at",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "sportsbook_bets",
+        "partial_lay_reminder_resolved_by",
+        "TEXT NOT NULL DEFAULT ''",
     )
     ensure_column(connection, "free_bets", "lay_actual", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "lay_matched_stake_1", "TEXT NOT NULL DEFAULT ''")
@@ -2007,6 +2049,12 @@ class SportsbookBetRecord:
     lay_commission_1: str
     exchange_name: str
     date_settled: str
+    partial_lay_reminder_state: str
+    partial_lay_reminder_due_at: str
+    partial_lay_reminder_reason: str
+    partial_lay_reminder_resolution_note: str
+    partial_lay_reminder_resolved_at: str
+    partial_lay_reminder_resolved_by: str
     user_notes: str
     manual_override_value: str
     manual_override_reason: str
@@ -2298,6 +2346,12 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
         "lay_commission_1": "",
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
+        "partial_lay_reminder_state": "Not Set",
+        "partial_lay_reminder_due_at": "",
+        "partial_lay_reminder_reason": "",
+        "partial_lay_reminder_resolution_note": "",
+        "partial_lay_reminder_resolved_at": "",
+        "partial_lay_reminder_resolved_by": "",
         "user_notes": payload["user_notes"],
         "manual_override_value": payload["manual_override_value"],
         "manual_override_reason": payload["manual_override_reason"],
@@ -2341,6 +2395,12 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
               lay_commission_1,
               exchange_name,
               date_settled,
+              partial_lay_reminder_state,
+              partial_lay_reminder_due_at,
+              partial_lay_reminder_reason,
+              partial_lay_reminder_resolution_note,
+              partial_lay_reminder_resolved_at,
+              partial_lay_reminder_resolved_by,
               user_notes,
               manual_override_value,
               manual_override_reason,
@@ -2350,7 +2410,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -2503,6 +2563,156 @@ def update_sportsbook_bet(
             payload={"sportsbook_bet_id": sportsbook_bet_id, "profile_id": profile_id, **updated},
         )
     return get_sportsbook_bet(profile_id, sportsbook_bet_id)
+
+
+def update_sportsbook_partial_lay_reminder(
+    profile_id: str,
+    sportsbook_bet_id: str,
+    *,
+    state: str,
+    due_at: str,
+    reason: str,
+    resolution_note: str,
+    actor_id: str,
+) -> SportsbookBetRecord | None:
+    existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if existing is None:
+        return None
+
+    previous_state = existing.partial_lay_reminder_state
+    resolved = state in {"Resolved", "Dismissed"}
+    resolved_at = utc_now() if resolved else ""
+    resolved_by = actor_id if resolved else ""
+    updated_at = utc_now()
+
+    if state == "Active":
+        if previous_state in {"Resolved", "Dismissed"}:
+            action = "partial_lay_reminder_reopened"
+        elif previous_state == "Active":
+            action = "partial_lay_reminder_updated"
+        else:
+            action = "partial_lay_reminder_created"
+    elif state == "Resolved":
+        action = "partial_lay_reminder_resolved"
+    else:
+        action = "partial_lay_reminder_dismissed"
+
+    audit_payload = {
+        "sportsbook_bet_id": sportsbook_bet_id,
+        "profile_id": profile_id,
+        "previous_state": previous_state,
+        "state": state,
+        "due_at": due_at,
+        "reason": reason,
+        "resolution_note": resolution_note,
+        "resolved_at": resolved_at,
+        "actor_id": actor_id,
+    }
+
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE sportsbook_bets
+            SET partial_lay_reminder_state = ?,
+                partial_lay_reminder_due_at = ?,
+                partial_lay_reminder_reason = ?,
+                partial_lay_reminder_resolution_note = ?,
+                partial_lay_reminder_resolved_at = ?,
+                partial_lay_reminder_resolved_by = ?,
+                updated_at = ?
+            WHERE profile_id = ? AND sportsbook_bet_id = ?
+            """,
+            (
+                state,
+                due_at,
+                reason,
+                resolution_note,
+                resolved_at,
+                resolved_by,
+                updated_at,
+                profile_id,
+                sportsbook_bet_id,
+            ),
+        )
+        write_audit_entry(
+            connection=connection,
+            sportsbook_bet_id=sportsbook_bet_id,
+            profile_id=profile_id,
+            action=action,
+            payload=audit_payload,
+        )
+
+    return get_sportsbook_bet(profile_id, sportsbook_bet_id)
+
+
+def list_sportsbook_partial_lay_reminder_audit(
+    profile_id: str,
+    sportsbook_bet_id: str,
+) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT action, changed_at, payload_json
+            FROM sportsbook_bet_audit
+            WHERE profile_id = ?
+              AND sportsbook_bet_id = ?
+              AND action LIKE 'partial_lay_reminder_%'
+            ORDER BY changed_at DESC, rowid DESC
+            """,
+            (profile_id, sportsbook_bet_id),
+        ).fetchall()
+
+    return [
+        {
+            "action": row["action"],
+            "changed_at": row["changed_at"],
+            **json.loads(row["payload_json"]),
+        }
+        for row in rows
+    ]
+
+
+def list_partial_lay_notifications() -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+              sportsbook_bets.sportsbook_bet_id,
+              sportsbook_bets.profile_id,
+              profiles.display_name AS profile_name,
+              sportsbook_bets.event_name,
+              sportsbook_bets.offer_text,
+              sportsbook_bets.bookmaker,
+              sportsbook_bets.date_settled AS settles_at,
+              sportsbook_bets.partial_lay_reminder_due_at AS due_at,
+              sportsbook_bets.partial_lay_reminder_reason AS reason,
+              sportsbook_bets.partial_lay_reminder_state AS reminder_state,
+              sportsbook_bets.partial_lay_reminder_resolved_at AS resolved_at,
+              COALESCE(
+                (
+                  SELECT sportsbook_bet_audit.changed_at
+                  FROM sportsbook_bet_audit
+                  WHERE sportsbook_bet_audit.profile_id = sportsbook_bets.profile_id
+                    AND sportsbook_bet_audit.sportsbook_bet_id = sportsbook_bets.sportsbook_bet_id
+                    AND sportsbook_bet_audit.action LIKE 'partial_lay_reminder_%'
+                  ORDER BY sportsbook_bet_audit.changed_at DESC, sportsbook_bet_audit.rowid DESC
+                  LIMIT 1
+                ),
+                sportsbook_bets.updated_at
+              ) AS reminder_changed_at
+            FROM sportsbook_bets
+            INNER JOIN profiles ON profiles.profile_id = sportsbook_bets.profile_id
+            WHERE sportsbook_bets.partial_lay_reminder_state IN ('Active', 'Resolved')
+            ORDER BY CASE sportsbook_bets.partial_lay_reminder_state
+                       WHEN 'Active' THEN 0
+                       ELSE 1
+                     END,
+                     sportsbook_bets.partial_lay_reminder_due_at ASC,
+                     sportsbook_bets.updated_at DESC
+            """
+        ).fetchall()
+
+    return [dict(row) for row in rows]
 
 
 def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
@@ -4623,7 +4833,10 @@ def create_fund_manager_combo_preset(
               required_spins, spin_stake, free_spins_awarded, free_spins_value,
               default_strategy, allowed_strategies_json, status, version, sort_order,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
             """,
             tuple(record.values()),
         )

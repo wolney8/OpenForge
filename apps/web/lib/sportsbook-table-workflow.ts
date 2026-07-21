@@ -39,6 +39,40 @@ export type FinalizedLaySelection = {
   finalLegLayOdds: string;
 };
 
+function formatDateTimeLocalValue(value: Date): string {
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(
+    value.getHours()
+  )}:${pad(value.getMinutes())}`;
+}
+
+export function getPartialLayReminderDefaultDueAt(
+  settlementValue: string,
+  now = new Date()
+): string {
+  const normalized = settlementValue.trim().replace(" ", "T");
+  if (!normalized) return "";
+
+  const settlement = new Date(normalized);
+  if (Number.isNaN(settlement.getTime()) || settlement.getTime() <= now.getTime()) return "";
+
+  const twoHoursBefore = new Date(settlement.getTime() - 2 * 60 * 60 * 1000);
+  if (twoHoursBefore.getTime() > now.getTime()) {
+    return formatDateTimeLocalValue(twoHoursBefore);
+  }
+
+  const oneHourBefore = new Date(settlement.getTime() - 60 * 60 * 1000);
+  if (oneHourBefore.getTime() > now.getTime()) {
+    return formatDateTimeLocalValue(oneHourBefore);
+  }
+
+  const latestSafeTime = new Date(settlement.getTime() - 60 * 1000);
+  const nearTermFallback = new Date(now.getTime() + 5 * 60 * 1000);
+  return formatDateTimeLocalValue(
+    nearTermFallback.getTime() < latestSafeTime.getTime() ? nearTermFallback : latestSafeTime
+  );
+}
+
 export type DateRangeFilterRow = {
   status: string;
   result: string;
@@ -75,6 +109,8 @@ export type RowStateClassifiableSportsbookRow = {
   lay_actual: string;
   lay_odds_1: string;
   exchange_name: string;
+  partial_lay_reminder_state?: string;
+  partial_lay_reminder_due_at?: string;
 };
 
 export type SportsbookLifecycleBadge = {
@@ -227,9 +263,27 @@ export function getSportsbookBackBetStatusBadge(
 }
 
 export function getSportsbookIssueBadges(
-  row: Pick<RowStateClassifiableSportsbookRow, "status" | "result" | "date_settled" | "is_overdue">
+  row: Pick<
+    RowStateClassifiableSportsbookRow,
+    | "status"
+    | "result"
+    | "date_settled"
+    | "is_overdue"
+    | "partial_lay_reminder_state"
+    | "partial_lay_reminder_due_at"
+  >,
+  now = Date.now()
 ): SportsbookIssueBadge[] {
   const issues: SportsbookIssueBadge[] = [];
+
+  if (row.partial_lay_reminder_state === "Active") {
+    const dueTimestamp = Date.parse(row.partial_lay_reminder_due_at ?? "");
+    const reminderOverdue = Number.isFinite(dueTimestamp) && dueTimestamp <= now;
+    issues.push({
+      label: reminderOverdue ? "Lay Recheck Overdue" : "Lay Recheck",
+      tone: reminderOverdue ? "danger" : "warning",
+    });
+  }
 
   if (row.status === "Prospecting" || row.status === "Not Placed") {
     issues.push({
@@ -261,7 +315,15 @@ export function getSportsbookIssueBadges(
 }
 
 export function getSportsbookIssueTone(
-  row: Pick<RowStateClassifiableSportsbookRow, "status" | "result" | "date_settled" | "is_overdue">
+  row: Pick<
+    RowStateClassifiableSportsbookRow,
+    | "status"
+    | "result"
+    | "date_settled"
+    | "is_overdue"
+    | "partial_lay_reminder_state"
+    | "partial_lay_reminder_due_at"
+  >
 ): "warning" | "danger" | null {
   const issues = getSportsbookIssueBadges(row);
   if (issues.length === 0) {

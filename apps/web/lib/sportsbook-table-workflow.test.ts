@@ -8,6 +8,7 @@ import {
   getSportsbookIssueTone,
   getSportsbookLifecycleBadge,
   getPartialLayExecutionSummary,
+  getPartialLayReminderDefaultDueAt,
   getSportsbookPlacementMissingFields,
   getNextSportsbookTableSort,
   getSportsbookRowStateClassName,
@@ -15,6 +16,35 @@ import {
   type PlacementFormFields,
   sortSportsbookRows,
 } from "./sportsbook-table-workflow";
+
+describe("partial-lay reminder defaults", () => {
+  it("defaults to two hours before settlement when that time is still ahead", () => {
+    expect(
+      getPartialLayReminderDefaultDueAt(
+        "2026-07-22T20:00",
+        new Date("2026-07-22T12:00")
+      )
+    ).toBe("2026-07-22T18:00");
+  });
+
+  it("falls back to one hour before settlement after the two-hour point passes", () => {
+    expect(
+      getPartialLayReminderDefaultDueAt(
+        "2026-07-22T20:00",
+        new Date("2026-07-22T18:30")
+      )
+    ).toBe("2026-07-22T19:00");
+  });
+
+  it("does not create a reminder for an already-settled row", () => {
+    expect(
+      getPartialLayReminderDefaultDueAt(
+        "2026-07-22T20:00",
+        new Date("2026-07-22T20:01")
+      )
+    ).toBe("");
+  });
+});
 
 function createBaseFormState(overrides?: Partial<PlacementFormFields>): PlacementFormFields {
   return {
@@ -556,6 +586,30 @@ describe("sportsbook issue badges", () => {
         date_settled: "2026-07-20T18:00:00",
         is_overdue: false,
       })
+    ).toEqual([]);
+  });
+
+  it("surfaces active partial-lay reminders with due-time priority", () => {
+    const reminderRow = {
+      status: "Placed",
+      result: "Pending",
+      date_settled: "2026-07-22T20:00:00Z",
+      is_overdue: false,
+      partial_lay_reminder_state: "Active",
+      partial_lay_reminder_due_at: "2026-07-22T18:00:00Z",
+    };
+
+    expect(
+      getSportsbookIssueBadges(reminderRow, Date.parse("2026-07-22T17:00:00Z"))
+    ).toEqual([{ label: "Lay Recheck", tone: "warning" }]);
+    expect(
+      getSportsbookIssueBadges(reminderRow, Date.parse("2026-07-22T18:30:00Z"))
+    ).toEqual([{ label: "Lay Recheck Overdue", tone: "danger" }]);
+    expect(
+      getSportsbookIssueBadges(
+        { ...reminderRow, partial_lay_reminder_state: "Resolved" },
+        Date.parse("2026-07-22T18:30:00Z")
+      )
     ).toEqual([]);
   });
 });

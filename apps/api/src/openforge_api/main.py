@@ -16,6 +16,7 @@ from openforge_api.fund_manager_lookup_values import router as fund_manager_look
 from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
+from openforge_api.notifications import router as notifications_router
 from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
@@ -35,6 +36,7 @@ app.include_router(balance_snapshots_router)
 app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(multi_profile_opportunities_router)
+app.include_router(notifications_router)
 app.include_router(free_bets_router)
 app.include_router(fund_manager_lookup_values_router)
 app.include_router(fund_manager_fee_periods_router)

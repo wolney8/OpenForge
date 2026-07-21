@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -34,6 +35,7 @@ import {
   getSportsbookBackBetStatusBadge,
   getSportsbookIssueBadges,
   getPartialLayExecutionSummary,
+  getPartialLayReminderDefaultDueAt,
   getNextSportsbookTableSort,
   getSportsbookRowStateClassName,
   isSortableSportsbookColumn,
@@ -114,6 +116,12 @@ type SportsbookRecord = {
   lay_commission_1: string;
   exchange_name: string;
   date_settled: string;
+  partial_lay_reminder_state: string;
+  partial_lay_reminder_due_at: string;
+  partial_lay_reminder_reason: string;
+  partial_lay_reminder_resolution_note: string;
+  partial_lay_reminder_resolved_at: string;
+  partial_lay_reminder_resolved_by: string;
   user_notes: string;
   manual_override_value: string;
   manual_override_reason: string;
@@ -350,6 +358,14 @@ type OutcomeModalState = {
   date_settled: string;
 };
 
+type PartialLayReminderEditorState = {
+  rowId: string;
+  due_at: string;
+  reason: string;
+  resolution_note: string;
+  wasActive: boolean;
+};
+
 type FreeBetBridgeModalState = {
   sourceRowId: string;
   bookmaker: string;
@@ -372,7 +388,13 @@ type SportsbookTableMode =
   | "underlays"
   | "overlays";
 
-type SportsbookIssueFilter = "any" | "all-issues" | "back-unplaced" | "no-settle-date" | "outcome-needed";
+type SportsbookIssueFilter =
+  | "any"
+  | "all-issues"
+  | "back-unplaced"
+  | "no-settle-date"
+  | "outcome-needed"
+  | "lay-recheck";
 
 type SportsbookTableFilterState = {
   bookmaker: string;
@@ -677,6 +699,10 @@ function getIssueFilterMatch(row: SportsbookRecord, issueType: SportsbookIssueFi
 
   if (issueType === "outcome-needed") {
     return issueLabels.has("Outcome Needed");
+  }
+
+  if (issueType === "lay-recheck") {
+    return issueLabels.has("Lay Recheck") || issueLabels.has("Lay Recheck Overdue");
   }
 
   return true;
@@ -1057,7 +1083,14 @@ function createPartialLayLegId(index: number): string {
   return `layleg${index}`;
 }
 
-function parsePartialLayLegs(serialized: string): PartialLayLegInput[] {
+function parsePartialLayLegs(
+  serialized: string,
+  fallback?: {
+    exchangeName: string;
+    layOdds: string;
+    matchedStake: string;
+  }
+): PartialLayLegInput[] {
   try {
     const parsed = JSON.parse(serialized);
     if (!Array.isArray(parsed)) {
@@ -1092,10 +1125,24 @@ function parsePartialLayLegs(serialized: string): PartialLayLegInput[] {
       })
       .filter((entry): entry is PartialLayLegInput => entry !== null);
 
-    return legs;
+    if (legs.length > 0) return legs;
   } catch {
-    return [];
+    // Legacy rows can still be represented by the primary matched-stake columns.
   }
+
+  if (fallback && (parseNumericInput(fallback.matchedStake) ?? 0) > 0) {
+    return [
+      {
+        id: createPartialLayLegId(1),
+        exchangeName: fallback.exchangeName,
+        layOdds: fallback.layOdds,
+        matchedStake: fallback.matchedStake,
+        isFinal: false,
+      },
+    ];
+  }
+
+  return [];
 }
 
 function serializePartialLayLegs(legs: PartialLayLegInput[]): string {
@@ -2476,7 +2523,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     `openforge-ledger-table-filters:${profileId}:sportsbook-bets`,
     {
       ...emptyTableFilters,
-      issue_type: initialIssueFilter === "outcome-needed" ? "outcome-needed" : initialIssueFilter === "all-issues" ? "all-issues" : "any",
+      issue_type:
+        initialIssueFilter === "outcome-needed"
+          ? "outcome-needed"
+          : initialIssueFilter === "lay-recheck"
+            ? "lay-recheck"
+            : initialIssueFilter === "all-issues"
+              ? "all-issues"
+              : "any",
     },
     Boolean(initialIssueFilter)
   );
@@ -2486,6 +2540,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       "back-unplaced",
       "no-settle-date",
       "outcome-needed",
+      "lay-recheck",
     ]);
     if (initialIssueFilter && supported.has(initialIssueFilter as SportsbookIssueFilter)) {
       setTableFilters((current) => ({
@@ -2524,13 +2579,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [multiLayOutcome1Label, setMultiLayOutcome1Label] = useState("");
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
   const [outcomeModalState, setOutcomeModalState] = useState<OutcomeModalState | null>(null);
+  const [partialLayReminderEditorState, setPartialLayReminderEditorState] =
+    useState<PartialLayReminderEditorState | null>(null);
+  const [isPartialLayReminderSaving, setIsPartialLayReminderSaving] = useState(false);
+  const [isPersisting, setIsPersisting] = useState(false);
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
     null
   );
   const [multiProfileCopySource, setMultiProfileCopySource] = useState<SportsbookRecord | null>(null);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const ignoreInitialRecordIdRef = useRef(false);
+  const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+  const isPersistingRef = useRef(false);
   const pageSize = 8;
   const defaultBonusRetentionRate = useMemo(
     () =>
@@ -2540,6 +2602,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ),
     [trackerSettings]
   );
+  const defaultBonusRetentionRateRef = useRef(defaultBonusRetentionRate);
+
+  useEffect(() => {
+    defaultBonusRetentionRateRef.current = defaultBonusRetentionRate;
+  }, [defaultBonusRetentionRate]);
   const currentDirtyState = useMemo(
     () =>
       getComparableDirtyState(
@@ -2563,7 +2630,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         pristineFormState,
         pristineFormState.multi_lay_outcome_1_name,
         parsedMultiLay.extraOutcomes,
-        parsePartialLayLegs(pristineFormState.multi_lay_outcomes_json),
+        parsePartialLayLegs(pristineFormState.multi_lay_outcomes_json, {
+          exchangeName: pristineFormState.exchange_name,
+          layOdds: pristineFormState.lay_odds_1,
+          matchedStake: pristineFormState.lay_matched_stake_1,
+        }),
         parsedMultiLay.primaryPlacement
       );
     },
@@ -2609,6 +2680,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
+      const requestId = ++loadRowsRequestIdRef.current;
       const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
         cache: "no-store",
       });
@@ -2618,6 +2690,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }
 
       const nextRows = (await response.json()) as SportsbookRecord[];
+      if (requestId !== loadRowsRequestIdRef.current) {
+        return;
+      }
       setRows(nextRows);
       setIsInitialLoading(false);
       const nextSelectedCandidate =
@@ -2642,7 +2717,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           setMultiLayOutcome1Label(getMultiLayOutcomeLabel(activeRecord.multi_lay_outcome_1_name));
           setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
           setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
-          setPartialLayLegs(parsePartialLayLegs(activeRecord.multi_lay_outcomes_json));
+          setPartialLayLegs(
+            parsePartialLayLegs(activeRecord.multi_lay_outcomes_json, {
+              exchangeName: activeRecord.exchange_name,
+              layOdds: activeRecord.lay_odds_1,
+              matchedStake: activeRecord.lay_matched_stake_1,
+            })
+          );
           setFormState(nextFormState);
           setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
@@ -2656,7 +2737,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           setWorkflowVisible(true);
           return;
         }
-        const blankForm = createBlankForm(defaultBonusRetentionRate);
+        const blankForm = createBlankForm(defaultBonusRetentionRateRef.current);
         setMultiLayOutcomes(createDefaultMultiLayOutcomes());
         setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
         setPartialLayLegs([]);
@@ -2670,7 +2751,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setWorkflowVisible(false);
       }
     },
-    [defaultBonusRetentionRate, profileId]
+    [profileId]
   );
 
   const loadExchangeSettings = useCallback(async () => {
@@ -2736,7 +2817,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
-        loadRows(initialRecordId),
+        loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId),
         loadExchangeSettings(),
         loadAccountAuthorities(),
         loadLookupValues(),
@@ -3243,9 +3324,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const backPlacementConfirmed = ["Placed", "Settled", "Free Bet Awarded"].includes(
     formState.status
   );
-  const layPlacementConfirmed =
-    partialLayLegs.length > 0 ||
-    (parseNumericInput(formState.lay_matched_stake_1) ?? 0) > 0;
+  const layPartiallyConfirmed =
+    partialLayExecutionSummary.matchedTotal > 0 &&
+    !partialLayExecutionSummary.hasReachedTarget;
+  const layFullyConfirmed = partialLayExecutionSummary.hasReachedTarget;
+  const layPlacementConfirmed = layPartiallyConfirmed || layFullyConfirmed;
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
@@ -3721,7 +3804,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     });
     setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
     setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
-    setPartialLayLegs(parsePartialLayLegs(record.multi_lay_outcomes_json));
+    setPartialLayLegs(
+      parsePartialLayLegs(record.multi_lay_outcomes_json, {
+        exchangeName: record.exchange_name,
+        layOdds: record.lay_odds_1,
+        matchedStake: record.lay_matched_stake_1,
+      })
+    );
     setMultiLayOutcome1Label(getMultiLayOutcomeLabel(record.multi_lay_outcome_1_name));
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
@@ -3766,6 +3855,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     setWorkflowVisible(false);
+    ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
     setStatusMessage("");
@@ -3789,6 +3879,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       partialLayLegsOverride?: PartialLayLegInput[];
     }
   ): Promise<boolean> {
+    if (isPersistingRef.current) {
+      return false;
+    }
+
     setErrorMessage("");
     const resolvedMultiLayOutcomes = options?.multiLayOutcomesOverride ?? multiLayOutcomes;
     const resolvedMultiLayPrimaryPlacement =
@@ -3820,6 +3914,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return false;
     }
 
+    isPersistingRef.current = true;
+    setIsPersisting(true);
+
+    try {
+
     const activeRowId = nextFormState.sportsbook_bet_id ?? selectedId;
     const isEditing = Boolean(activeRowId);
     const url = isEditing
@@ -3850,14 +3949,48 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     const saved = (await response.json()) as SportsbookRecord;
+    const savedFormState = recordToForm(saved);
+    const savedMultiLay = parseMultiLayOutcomes(saved.multi_lay_outcomes_json, {
+      outcome1Label: saved.multi_lay_outcome_1_name,
+      layOdds1: saved.lay_odds_1,
+      exchangeName: saved.exchange_name,
+      layActual: saved.lay_actual,
+    });
+    setRows((current) => {
+      const rowExists = current.some(
+        (row) => row.sportsbook_bet_id === saved.sportsbook_bet_id
+      );
+      return rowExists
+        ? current.map((row) =>
+            row.sportsbook_bet_id === saved.sportsbook_bet_id ? saved : row
+          )
+        : [saved, ...current];
+    });
+    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+    if (returnToLedger) {
+      ignoreInitialRecordIdRef.current = true;
+    }
+    setSelectedId(returnToLedger ? null : saved.sportsbook_bet_id);
+    selectedIdRef.current = returnToLedger ? null : saved.sportsbook_bet_id;
+    setFormState(savedFormState);
+    setPristineFormState(savedFormState);
+    setMultiLayOutcome1Label(getMultiLayOutcomeLabel(saved.multi_lay_outcome_1_name));
+    setMultiLayOutcomes(savedMultiLay.extraOutcomes);
+    setMultiLayPrimaryPlacement(savedMultiLay.primaryPlacement);
+    setPartialLayLegs(
+      parsePartialLayLegs(saved.multi_lay_outcomes_json, {
+        exchangeName: saved.exchange_name,
+        layOdds: saved.lay_odds_1,
+        matchedStake: saved.lay_matched_stake_1,
+      })
+    );
     setShowBetSetupValidation(false);
-    await loadRows(saved.sportsbook_bet_id);
     setSettledEditEnabled(false);
-    if (!isEditing && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel)) {
+    if (!isEditing && returnToLedger) {
       setQuery("");
       setCurrentPage(1);
     }
-    if (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel) {
+    if (returnToLedger) {
       setWorkflowVisible(false);
       isCreatingDraftRef.current = false;
       setTableCollapsed(false);
@@ -3870,6 +4003,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
     );
     return true;
+    } finally {
+      isPersistingRef.current = false;
+      setIsPersisting(false);
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -3907,7 +4044,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       });
       setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
       setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
-      setPartialLayLegs(parsePartialLayLegs(selectedSportsbookRow.multi_lay_outcomes_json));
+      setPartialLayLegs(
+        parsePartialLayLegs(selectedSportsbookRow.multi_lay_outcomes_json, {
+          exchangeName: selectedSportsbookRow.exchange_name,
+          layOdds: selectedSportsbookRow.lay_odds_1,
+          matchedStake: selectedSportsbookRow.lay_matched_stake_1,
+        })
+      );
       setMultiLayOutcome1Label(
         getMultiLayOutcomeLabel(selectedSportsbookRow.multi_lay_outcome_1_name)
       );
@@ -4047,6 +4190,79 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       result: record.result,
       date_settled: toDateTimeLocalValue(record.date_settled),
     });
+  }
+
+  function openPartialLayReminderEditor(record: SportsbookRecord) {
+    const wasActive = record.partial_lay_reminder_state === "Active";
+    setPartialLayReminderEditorState({
+      rowId: record.sportsbook_bet_id,
+      due_at:
+        (wasActive ? toDateTimeLocalValue(record.partial_lay_reminder_due_at) : "") ||
+        getPartialLayReminderDefaultDueAt(toDateTimeLocalValue(record.date_settled)),
+      reason: wasActive ? record.partial_lay_reminder_reason : "",
+      resolution_note: "",
+      wasActive,
+    });
+  }
+
+  async function submitPartialLayReminder(
+    state: "Active" | "Resolved" | "Dismissed"
+  ) {
+    if (!partialLayReminderEditorState) {
+      return;
+    }
+
+    setErrorMessage("");
+    setIsPartialLayReminderSaving(true);
+    try {
+      if (isDirty) {
+        const rowSaved = await persistForm(formState, {
+          autosaveLabel: "Partial-lay reminder row",
+          returnToLedgerOnSuccess: false,
+        });
+        if (!rowSaved) {
+          return;
+        }
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${partialLayReminderEditorState.rowId}/partial-lay-reminder`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            state,
+            due_at: fromDateTimeLocalValue(partialLayReminderEditorState.due_at),
+            reason: partialLayReminderEditorState.reason,
+            resolution_note: partialLayReminderEditorState.resolution_note,
+            actor_id: "fund-manager-local",
+          }),
+        }
+      );
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null)) as { detail?: string } | null;
+        setErrorMessage(detail?.detail ?? "Unable to update the partial-lay reminder.");
+        return;
+      }
+
+      const updatedRecord = (await response.json()) as SportsbookRecord;
+      setRows((current) =>
+        current.map((row) =>
+          row.sportsbook_bet_id === updatedRecord.sportsbook_bet_id ? updatedRecord : row
+        )
+      );
+      setPartialLayReminderEditorState(null);
+      window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+      setStatusMessage(
+        state === "Active"
+          ? "Partial-lay recheck reminder saved."
+          : state === "Resolved"
+            ? "Partial-lay recheck reminder resolved with an audit note."
+            : "Partial-lay recheck reminder dismissed with an audit note."
+      );
+    } finally {
+      setIsPartialLayReminderSaving(false);
+    }
   }
 
 function openFreeBetBridgeModal(record: SportsbookRecord) {
@@ -5203,6 +5419,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   <option value="back-unplaced">Back Unplaced</option>
                   <option value="no-settle-date">No Settle Date</option>
                   <option value="outcome-needed">Outcome Needed</option>
+                  <option value="lay-recheck">Lay Recheck</option>
                 </select>
               </label>
               <label className="field-control">
@@ -6542,7 +6759,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               </button>
                               <button
                                 className="review-chip review-chip-action-positive"
-                                disabled={!layPlacementReady || layPlacementConfirmed}
+                                disabled={!layPlacementReady || layFullyConfirmed}
                                 onClick={() => addPartialLayLeg({ isFinal: true })}
                                 type="button"
                               >
@@ -6615,25 +6832,17 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                         />
                                         <button
                                           aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
-                                          className="icon-button icon-button-destructive leg-remove-icon"
+                                          className="icon-button icon-button-destructive table-action-button"
                                           onClick={() => requestRemovePartialLayLeg(leg.id)}
                                           title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
                                           type="button"
                                         >
-                                          <svg
+                                          <span
                                             aria-hidden="true"
-                                            className="leg-remove-icon-svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
+                                            className="material-symbols-outlined"
                                           >
-                                            <path
-                                              d="M4 7h16M10 3h4m-7 4 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13M10 11v6m4-6v6"
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth="1.8"
-                                            />
-                                          </svg>
+                                            delete
+                                          </span>
                                         </button>
                                       </div>
                                     </label>
@@ -7304,6 +7513,176 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     </div>
                   )}
                 </fieldset>
+                {selectedSportsbookRow &&
+                (selectedSportsbookRow.lay_status === "Part Laid" ||
+                  selectedSportsbookRow.partial_lay_reminder_state === "Active") ? (
+                  <section
+                    aria-label="Partial-lay follow-up reminder"
+                    className="stack"
+                    data-pd-id="sportsbook.partial-lay-reminder.summary"
+                  >
+                    <div className="section-heading-row">
+                      <span className="eyebrow">Lay follow-up</span>
+                      <span
+                        className={`table-chip${
+                          selectedSportsbookRow.partial_lay_reminder_state === "Active"
+                            ? " table-chip-lay-partial"
+                            : ""
+                        }`}
+                      >
+                        {selectedSportsbookRow.partial_lay_reminder_state}
+                      </span>
+                    </div>
+                    {selectedSportsbookRow.partial_lay_reminder_state === "Active" ? (
+                      <div className="summary-list">
+                        <p className="lede">
+                          <span className="summary-label">Due</span>
+                          <strong>
+                            {formatEditorSettlesDate(
+                              selectedSportsbookRow.partial_lay_reminder_due_at
+                            )}
+                          </strong>
+                        </p>
+                        <p className="lede">
+                          <span className="summary-label">Reason</span>
+                          <span>{selectedSportsbookRow.partial_lay_reminder_reason}</span>
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="tracker-nav">
+                      <button
+                        aria-label={
+                          selectedSportsbookRow.partial_lay_reminder_state === "Active"
+                            ? "Review partial-lay reminder"
+                            : selectedSportsbookRow.partial_lay_reminder_state === "Not Set"
+                              ? "Set partial-lay reminder"
+                              : "Set new partial-lay reminder"
+                        }
+                        className="button-link icon-text-action"
+                        data-pd-id="sportsbook.partial-lay-reminder.open"
+                        onClick={() => openPartialLayReminderEditor(selectedSportsbookRow)}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">
+                          {selectedSportsbookRow.partial_lay_reminder_state === "Active"
+                            ? "notifications_active"
+                            : "notification_add"}
+                        </span>
+                        {selectedSportsbookRow.partial_lay_reminder_state === "Active"
+                          ? "Review Reminder"
+                          : selectedSportsbookRow.partial_lay_reminder_state === "Not Set"
+                            ? "Set Reminder"
+                            : "Set New Reminder"}
+                      </button>
+                    </div>
+                    {partialLayReminderEditorState?.rowId ===
+                    selectedSportsbookRow.sportsbook_bet_id ? (
+                      <div
+                        aria-label="Partial-lay reminder controls"
+                        className="stack partial-lay-reminder-editor"
+                        data-pd-id="sportsbook.partial-lay-reminder.inline-editor"
+                      >
+                        <div className="form-grid">
+                          <label className="field-control">
+                            <span>Recheck due</span>
+                            <input
+                              data-pd-id="sportsbook.partial-lay-reminder.due"
+                              disabled={isPartialLayReminderSaving}
+                              onChange={(event) =>
+                                setPartialLayReminderEditorState((current) =>
+                                  current ? { ...current, due_at: event.target.value } : current
+                                )
+                              }
+                              type="datetime-local"
+                              value={partialLayReminderEditorState.due_at}
+                            />
+                          </label>
+                          <label className="field-control">
+                            <span>Reason (optional)</span>
+                            <input
+                              data-pd-id="sportsbook.partial-lay-reminder.reason"
+                              disabled={isPartialLayReminderSaving}
+                              onChange={(event) =>
+                                setPartialLayReminderEditorState((current) =>
+                                  current ? { ...current, reason: event.target.value } : current
+                                )
+                              }
+                              value={partialLayReminderEditorState.reason}
+                            />
+                          </label>
+                          {partialLayReminderEditorState.wasActive ? (
+                            <label className="field-control field-span-2">
+                              <span>Resolution or dismissal note</span>
+                              <textarea
+                                data-pd-id="sportsbook.partial-lay-reminder.resolution-note"
+                                disabled={isPartialLayReminderSaving}
+                                onChange={(event) =>
+                                  setPartialLayReminderEditorState((current) =>
+                                    current
+                                      ? { ...current, resolution_note: event.target.value }
+                                      : current
+                                  )
+                                }
+                                rows={3}
+                                value={partialLayReminderEditorState.resolution_note}
+                              />
+                            </label>
+                          ) : null}
+                        </div>
+                        <div className="tracker-nav">
+                          <button
+                            className="button-link"
+                            disabled={isPartialLayReminderSaving}
+                            onClick={() => setPartialLayReminderEditorState(null)}
+                            type="button"
+                          >
+                            Close
+                          </button>
+                          {partialLayReminderEditorState.wasActive ? (
+                            <>
+                              <button
+                                className="review-chip review-chip-danger tracker-nav-right-action"
+                                disabled={
+                                  isPartialLayReminderSaving ||
+                                  !partialLayReminderEditorState.resolution_note.trim()
+                                }
+                                onClick={() => void submitPartialLayReminder("Dismissed")}
+                                type="button"
+                              >
+                                Dismiss
+                              </button>
+                              <button
+                                className="modal-primary-button"
+                                disabled={
+                                  isPartialLayReminderSaving ||
+                                  !partialLayReminderEditorState.resolution_note.trim()
+                                }
+                                onClick={() => void submitPartialLayReminder("Resolved")}
+                                type="button"
+                              >
+                                Resolve
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="modal-primary-button tracker-nav-right-action"
+                              disabled={
+                                isPartialLayReminderSaving ||
+                                !partialLayReminderEditorState.due_at.trim()
+                              }
+                              onClick={() => void submitPartialLayReminder("Active")}
+                              type="button"
+                            >
+                              {selectedSportsbookRow.partial_lay_reminder_state === "Not Set"
+                                ? "Save Reminder"
+                                : "Save New Reminder"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
               </EditorSection>
             ) : null}
 
@@ -7440,10 +7819,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
               <button
                 className="review-chip review-chip-copy"
-                disabled={isInitialLoading || isSettledReadOnly}
+                disabled={isInitialLoading || isSettledReadOnly || isPersisting}
                 type="submit"
               >
-                Save
+                {isPersisting ? "Saving" : "Save"}
               </button>
               {selectedId ? (
                 <button
@@ -7465,6 +7844,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
           </section>
         </div>
       ) : null}
+
     </section>
   );
 }

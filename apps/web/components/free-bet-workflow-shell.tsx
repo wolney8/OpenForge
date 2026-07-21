@@ -1111,6 +1111,8 @@ export function FreeBetWorkflowShell({
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const ignoreInitialRecordIdRef = useRef(false);
+  const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
   const pageSize = 8;
   const isDirty = useMemo(
@@ -1170,13 +1172,20 @@ export function FreeBetWorkflowShell({
   }, [selectedId]);
 
   const loadRows = useCallback(async (preferredSelection?: string | null) => {
+    const requestId = ++loadRowsRequestIdRef.current;
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, { cache: "no-store" });
     if (!response.ok) {
       throw new Error("Unable to load free-bet rows");
     }
 
     const nextRows = (await response.json()) as FreeBetRecord[];
+    if (requestId !== loadRowsRequestIdRef.current) {
+      return;
+    }
     startTransition(() => {
+      if (requestId !== loadRowsRequestIdRef.current) {
+        return;
+      }
       setRows(nextRows);
       setIsInitialLoading(false);
       const nextSelectedCandidate =
@@ -1318,7 +1327,7 @@ export function FreeBetWorkflowShell({
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void Promise.all([
-        loadRows(initialRecordId),
+        loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId),
         loadExchangeSettings(),
         loadTrackerSettings(),
         loadAccountAuthorities(),
@@ -2016,6 +2025,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setWorkflowVisible(false);
+    ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
     setStatusMessage("");
@@ -2088,10 +2098,16 @@ export function FreeBetWorkflowShell({
     }
 
     const saved = (await response.json()) as FreeBetRecord;
-    await loadRows(saved.free_bet_id);
+    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+    if (returnToLedger) {
+      ignoreInitialRecordIdRef.current = true;
+    }
+    await loadRows(returnToLedger ? null : saved.free_bet_id);
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    if (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel) {
+    if (returnToLedger) {
+      setSelectedId(null);
+      selectedIdRef.current = null;
       setWorkflowVisible(false);
       setTableCollapsed(false);
     }

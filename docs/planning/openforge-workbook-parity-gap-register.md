@@ -63,10 +63,12 @@ What exists:
 - Leg-aware partial-lay execution summary now keeps target stake, cumulative matched stake, remaining stake, and next recommended stake separate.
 - Deterministic sportsbook helper tests now cover partial-lay target inference and remaining/next recommendation behavior.
 - Final lay completion now blocks duplicate final legs and syncs final-leg exchange/odds into primary lay inputs.
+- Contract- and fixture-backed partial-lay follow-up reminders now persist a due time and reason,
+  surface future/overdue issue states, remain profile-scoped, and require an audited Fund Manager
+  resolution or dismissal.
 
 Open gaps:
 
-- Contract/fixture-backed reminder/follow-up model for partial lays and exposure recheck.
 - Offer-type and bet-type rationalization per workbook usage.
 - `OfferType`, `BetType`, and `OfferName` ownership remains a live parity gap:
   - workbook preserved all three fields

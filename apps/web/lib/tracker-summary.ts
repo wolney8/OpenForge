@@ -42,6 +42,8 @@ export type SportsbookSummaryRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  partial_lay_reminder_state?: string;
+  partial_lay_reminder_due_at?: string;
 };
 
 export type FreeBetSummaryRecord = {

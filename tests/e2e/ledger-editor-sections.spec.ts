@@ -72,6 +72,16 @@ test.describe("Ledger editor sections", () => {
       await summary.click();
       await expect(summary).toHaveAttribute("aria-expanded", "true");
 
+      const expandedContent = targetSection.locator(".editor-section-content-inner");
+      await expect(expandedContent).toHaveCSS("overflow-x", "visible");
+      await expect(expandedContent).toHaveCSS("overflow-y", "visible");
+      const firstEnabledField = expandedContent
+        .locator("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")
+        .first();
+      await firstEnabledField.focus();
+      await expect(firstEnabledField).toHaveCSS("outline-style", "solid");
+      await expect(firstEnabledField).toHaveCSS("outline-width", "3px");
+
       await dialog.locator("form").evaluate((form) => {
         (form as HTMLFormElement).noValidate = true;
       });

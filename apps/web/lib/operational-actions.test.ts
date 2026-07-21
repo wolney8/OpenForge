@@ -72,4 +72,30 @@ describe("operational action routing", () => {
       })
     ).toEqual([{ label: "Final Value Needed", tone: "danger" }]);
   });
+
+  it("counts an active partial-lay reminder without changing financial summary fields", () => {
+    const dataset = {
+      ...emptyDataset,
+      sportsbookBets: [
+        {
+          status: "Placed",
+          result: "Pending",
+          date_settled: "2026-07-23T20:00:00Z",
+          is_overdue: false,
+          partial_lay_reminder_state: "Active",
+          partial_lay_reminder_due_at: "2026-07-22T18:00:00Z",
+          reporting_value: "-0.64",
+          calculated_liability_1: "5.26",
+        },
+      ],
+    } as TrackerSummaryDataset;
+
+    expect(countOperationalActions(dataset, Date.parse("2026-07-21T12:00:00Z"))).toEqual({
+      sportsbook: 1,
+      freeBets: 0,
+      casinoOffers: 0,
+    });
+    expect(dataset.sportsbookBets[0]?.reporting_value).toBe("-0.64");
+    expect(dataset.sportsbookBets[0]?.calculated_liability_1).toBe("5.26");
+  });
 });
