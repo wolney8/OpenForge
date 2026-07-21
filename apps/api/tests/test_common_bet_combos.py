@@ -104,3 +104,41 @@ def test_retired_seed_is_removed_without_deleting_custom_presets(tmp_path: Path)
     refreshed_ids = {row["preset_id"] for row in refreshed.json()}
     assert "COMBO-WEEKLY-BUILDER" not in refreshed_ids
     assert "DEMO-COMBO-001" in refreshed_ids
+
+
+def test_casino_common_combo_round_trips_descriptive_defaults(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    created = client.post(
+        "/fund-manager/common-bet-combos",
+        json={
+            "name": "Demo Free Spins Combo",
+            "ledger_type": "Casino",
+            "bookmakers": ["Bookmaker A"],
+            "offer_type": "Free Spins",
+            "offer_name": "Demo Weekly Spins",
+            "game": "Demo Slot",
+            "spin_stake": "0.10",
+            "free_spins_awarded": "20",
+            "free_spins_value": "2",
+        },
+    )
+
+    assert created.status_code == 201, created.text
+    preset = created.json()
+    assert preset["ledger_type"] == "Casino"
+    assert preset["bookmakers"] == ["Bookmaker A"]
+    assert preset["game"] == "Demo Slot"
+    assert preset["spin_stake"] == "0.10"
+    assert preset["free_spins_awarded"] == "20.00"
+    assert preset["free_spins_value"] == "2.00"
+    assert preset["default_back_stake"] == ""
+
+    updated = client.put(
+        f"/fund-manager/common-bet-combos/{preset['preset_id']}",
+        json={**preset, "bonus_amount": "5", "status": "Archived"},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["bonus_amount"] == "5.00"
+    assert updated.json()["version"] == 2

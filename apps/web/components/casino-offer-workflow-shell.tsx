@@ -10,6 +10,7 @@ import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
+import type { CommonBetCombo } from "@/components/common-bet-combo-settings";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
@@ -28,6 +29,7 @@ import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/l
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
+import { resolveCasinoBookmakerCoverage } from "@/lib/casino-offer-knowledge";
 import { getCasinoOperationalIssueBadges } from "@/lib/operational-actions";
 import {
   casinoOfferTypeOptions,
@@ -962,6 +964,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
+  const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
+  const [selectedComboId, setSelectedComboId] = useState("");
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1148,6 +1152,17 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setLookupValues(nextRows);
   }, [profileId]);
 
+  const loadCommonBetCombos = useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/common-bet-combos?active_only=true`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Unable to load common bet combos");
+    }
+    const nextRows = (await response.json()) as CommonBetCombo[];
+    setCommonBetCombos(nextRows.filter((row) => row.ledger_type === "Casino"));
+  }, []);
+
   const loadTrackerSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       cache: "no-store",
@@ -1161,7 +1176,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings()]).catch(
+      void Promise.all([loadRows(initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).catch(
         (error: Error) => {
           setIsInitialLoading(false);
           setErrorMessage(error.message);
@@ -1171,7 +1186,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings]);
+  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings, loadCommonBetCombos]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.casino_offer_id === selectedId) ?? null,
@@ -1260,6 +1275,63 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       ]),
     [accountAuthorities, formState.bookmaker, lookupValues, rows]
   );
+
+  const selectedComboCoverage = useMemo(() => {
+    const combo = commonBetCombos.find((row) => row.preset_id === selectedComboId);
+    if (!combo) return [];
+    const knownBookmakers = combo.bookmakers?.length
+      ? combo.bookmakers
+      : combo.bookmaker
+        ? [combo.bookmaker]
+        : [];
+    return resolveCasinoBookmakerCoverage({ knownBookmakers, accountAuthorities });
+  }, [accountAuthorities, commonBetCombos, selectedComboId]);
+
+  function applyCommonBetCombo(presetId: string) {
+    setSelectedComboId(presetId);
+    if (!presetId) return;
+    if (selectedId || formState.casino_offer_id) {
+      setErrorMessage("Common combos can only be applied to a new casino draft.");
+      return;
+    }
+    const combo = commonBetCombos.find((row) => row.preset_id === presetId);
+    if (!combo) {
+      setErrorMessage("That common combo is no longer available. Refresh and try again.");
+      return;
+    }
+    const selectable = resolveCasinoBookmakerCoverage({
+      knownBookmakers: combo.bookmakers?.length
+        ? combo.bookmakers
+        : combo.bookmaker
+          ? [combo.bookmaker]
+          : [],
+      accountAuthorities,
+    }).filter((row) => row.selectable);
+    const knownCount = combo.bookmakers?.length || (combo.bookmaker ? 1 : 0);
+    if (knownCount > 0 && selectable.length === 0) {
+      setErrorMessage(`All known bookmakers for ${combo.name} are unavailable on this profile.`);
+      return;
+    }
+    const nextBookmaker = selectable.length === 1 ? selectable[0].bookmaker : "";
+    setErrorMessage("");
+    setFormState((current) => ({
+      ...applyCasinoOfferTypeDefaults(current, combo.offer_type || current.offer_type),
+      bookmaker: nextBookmaker || (knownCount > 0 ? "" : current.bookmaker),
+      offer_name: combo.offer_name || current.offer_name,
+      game: combo.game || current.game,
+      cash_stake: combo.cash_stake || current.cash_stake,
+      credit_amount: combo.credit_amount || current.credit_amount,
+      bonus_amount: combo.bonus_amount || current.bonus_amount,
+      wager_multiplier: combo.wager_multiplier || current.wager_multiplier,
+      required_spins: combo.required_spins || current.required_spins,
+      spin_stake: combo.spin_stake || current.spin_stake,
+      free_spins_awarded: combo.free_spins_awarded || current.free_spins_awarded,
+      free_spins_value: combo.free_spins_value || current.free_spins_value,
+    }));
+    const choice = selectable.length > 1 ? ` Choose one of ${selectable.length} eligible bookmakers.` : "";
+    const warning = selectable.find((row) => row.state === "warning");
+    setStatusMessage(`${combo.name} applied to this unsaved casino draft.${choice}${warning ? ` ${warning.reason}.` : ""}`);
+  }
 
   const offerTypeOptions = useMemo(
     () =>
@@ -1663,6 +1735,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
     setSelectedId(rowId);
+    setSelectedComboId("");
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
     const nextFormState = recordToForm(record);
@@ -1681,6 +1754,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
     setSelectedId(null);
+    setSelectedComboId("");
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
     setTableCollapsed(false);
@@ -1862,6 +1936,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     const blankForm = createBlankForm();
+    setSelectedComboId("");
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
@@ -2644,6 +2719,42 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             invalid={offerIdentityValidationActive && missingOfferIdentityFields.length > 0}
             title="Offer setup"
           >
+            {!selectedId && !formState.casino_offer_id ? (
+              <div className="stack-tight common-bet-combo-apply" data-pd-id="casino-offers.common-combo">
+                <label className="field-control">
+                  <span>Common Combo</span>
+                  <select
+                    aria-label="Apply casino common combo"
+                    data-pd-id="casino-offers.common-combo.select"
+                    onChange={(event) => applyCommonBetCombo(event.target.value)}
+                    value={selectedComboId}
+                  >
+                    <option value="">No combo</option>
+                    {commonBetCombos.map((combo) => (
+                      <option key={combo.preset_id} value={combo.preset_id}>{combo.name}</option>
+                    ))}
+                  </select>
+                </label>
+                {selectedComboCoverage.length > 1 ? (
+                  <div aria-label="Eligible casino bookmakers" className="common-combo-candidate-row">
+                    {selectedComboCoverage.map((coverage) => (
+                      <button
+                        aria-label={`${coverage.bookmaker}: ${coverage.reason}`}
+                        className={`common-combo-candidate is-${coverage.state === "not_signed_up" ? "missing" : coverage.state}${formState.bookmaker === coverage.bookmaker ? " is-selected" : ""}`}
+                        disabled={!coverage.selectable}
+                        key={coverage.bookmaker}
+                        onClick={() => setFormState((current) => ({ ...current, bookmaker: coverage.bookmaker }))}
+                        title={coverage.reason}
+                        type="button"
+                      >
+                        <span>{coverage.bookmaker}</span>
+                        <small>{coverage.reason}</small>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {offerIdentityValidationActive && missingOfferIdentityFields.length > 0 ? (
               <p className="field-validation-text" role="alert">
                 Complete the required Offer identity fields: {missingOfferIdentityFields.join(", ")}.

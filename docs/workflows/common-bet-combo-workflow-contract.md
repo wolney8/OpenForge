@@ -94,6 +94,22 @@ account-health mug bets; weekly reloads; welcome offers; enhanced prices; and bo
 - Record preset id/version on the draft for audit, but the created row owns copied values independently.
 - Subscriber permissions are deferred to the subscriber-access contracts.
 
+## Casino Offer application
+
+- A Casino combo is a descriptive starting point for a new unsaved Casino Offer row.
+- It may prefill offer type, free-text Offer Name, game/slot and the campaign quantities explicitly
+  stored on the preset: cash stake, credit, bonus, wager multiplier, required spins, spin stake,
+  free spins awarded and free-spin value.
+- It must not prefill start, settlement or expiry dates, result, calculated P&L, final P&L or notes.
+- Applying a Casino combo must run the normal offer-type branching first so fields irrelevant to
+  the selected offer family remain cleared.
+- Known bookmaker coverage is resolved for casino use. Active and Casino Only accounts are
+  available; Bonus Restricted and limited accounts require a warning; Sportsbook Only, gubbed,
+  blocked, inactive and unsigned accounts cannot be silently selected.
+- Several eligible bookmakers require explicit selection. One eligible bookmaker may be selected
+  automatically. No eligible bookmaker blocks application with a visible reason.
+- Preset application never saves the Casino Offer and never claims a financial result.
+
 ## Tests and Playwright path
 
 - valid sportsbook preset fills approved fields only
@@ -112,3 +128,5 @@ account-health mug bets; weekly reloads; welcome offers; enhanced prices; and bo
 - legacy taxonomy aliases load but save using the approved display value
 - account lifecycle and restriction combinations produce the contracted eligibility result
 - UI: selected profile -> add row -> choose quick action -> inspect prefill -> complete calculator -> save draft
+- Casino UI: selected profile -> Casino Offers -> add row -> choose Casino combo -> verify
+  profile bookmaker coverage and descriptive prefill -> complete dates/result -> explicitly save

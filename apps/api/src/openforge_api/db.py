@@ -374,6 +374,15 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           fixture_type TEXT NOT NULL DEFAULT '',
           default_back_stake TEXT NOT NULL DEFAULT '',
           minimum_back_odds TEXT NOT NULL DEFAULT '',
+          game TEXT NOT NULL DEFAULT '',
+          cash_stake TEXT NOT NULL DEFAULT '',
+          credit_amount TEXT NOT NULL DEFAULT '',
+          bonus_amount TEXT NOT NULL DEFAULT '',
+          wager_multiplier TEXT NOT NULL DEFAULT '',
+          required_spins TEXT NOT NULL DEFAULT '',
+          spin_stake TEXT NOT NULL DEFAULT '',
+          free_spins_awarded TEXT NOT NULL DEFAULT '',
+          free_spins_value TEXT NOT NULL DEFAULT '',
           default_strategy TEXT NOT NULL DEFAULT '',
           allowed_strategies_json TEXT NOT NULL DEFAULT '[]',
           status TEXT NOT NULL DEFAULT 'Active',
@@ -857,6 +866,23 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "default_strategy",
         "TEXT NOT NULL DEFAULT ''",
     )
+    for column_name in (
+        "game",
+        "cash_stake",
+        "credit_amount",
+        "bonus_amount",
+        "wager_multiplier",
+        "required_spins",
+        "spin_stake",
+        "free_spins_awarded",
+        "free_spins_value",
+    ):
+        ensure_column(
+            connection,
+            "fund_manager_combo_presets",
+            column_name,
+            "TEXT NOT NULL DEFAULT ''",
+        )
     ensure_column(connection, "accounts", "sign_up_date", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "accounts", "notes", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -3712,6 +3738,15 @@ class FundManagerComboPresetRecord:
     fixture_type: str
     default_back_stake: str
     minimum_back_odds: str
+    game: str
+    cash_stake: str
+    credit_amount: str
+    bonus_amount: str
+    wager_multiplier: str
+    required_spins: str
+    spin_stake: str
+    free_spins_awarded: str
+    free_spins_value: str
     default_strategy: str
     allowed_strategies_json: str
     status: str
@@ -4479,6 +4514,15 @@ def map_fund_manager_combo_preset_row(
         fixture_type=str(row["fixture_type"]),
         default_back_stake=str(row["default_back_stake"]),
         minimum_back_odds=str(row["minimum_back_odds"]),
+        game=str(row["game"]),
+        cash_stake=str(row["cash_stake"]),
+        credit_amount=str(row["credit_amount"]),
+        bonus_amount=str(row["bonus_amount"]),
+        wager_multiplier=str(row["wager_multiplier"]),
+        required_spins=str(row["required_spins"]),
+        spin_stake=str(row["spin_stake"]),
+        free_spins_awarded=str(row["free_spins_awarded"]),
+        free_spins_value=str(row["free_spins_value"]),
         default_strategy=str(row["default_strategy"]),
         allowed_strategies_json=str(row["allowed_strategies_json"]),
         status=str(row["status"]),
@@ -4550,6 +4594,15 @@ def create_fund_manager_combo_preset(
         "fixture_type": str(payload.get("fixture_type", "")).strip(),
         "default_back_stake": str(payload.get("default_back_stake", "")).strip(),
         "minimum_back_odds": str(payload.get("minimum_back_odds", "")).strip(),
+        "game": str(payload.get("game", "")).strip(),
+        "cash_stake": str(payload.get("cash_stake", "")).strip(),
+        "credit_amount": str(payload.get("credit_amount", "")).strip(),
+        "bonus_amount": str(payload.get("bonus_amount", "")).strip(),
+        "wager_multiplier": str(payload.get("wager_multiplier", "")).strip(),
+        "required_spins": str(payload.get("required_spins", "")).strip(),
+        "spin_stake": str(payload.get("spin_stake", "")).strip(),
+        "free_spins_awarded": str(payload.get("free_spins_awarded", "")).strip(),
+        "free_spins_value": str(payload.get("free_spins_value", "")).strip(),
         "default_strategy": str(payload.get("default_strategy", "")).strip(),
         "allowed_strategies_json": json.dumps(
             payload.get("allowed_strategies", []), sort_keys=True
@@ -4566,9 +4619,11 @@ def create_fund_manager_combo_preset(
             INSERT INTO fund_manager_combo_presets (
               preset_id, name, ledger_type, bookmaker, bookmakers_json, offer_type, bet_type,
               offer_name, fixture_type, default_back_stake, minimum_back_odds,
+              game, cash_stake, credit_amount, bonus_amount, wager_multiplier,
+              required_spins, spin_stake, free_spins_awarded, free_spins_value,
               default_strategy, allowed_strategies_json, status, version, sort_order,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -4598,7 +4653,10 @@ def update_fund_manager_combo_preset(
             SET name = ?, ledger_type = ?, bookmaker = ?, bookmakers_json = ?,
                 offer_type = ?, bet_type = ?,
                 offer_name = ?, fixture_type = ?, default_back_stake = ?,
-                minimum_back_odds = ?, default_strategy = ?,
+                minimum_back_odds = ?, game = ?, cash_stake = ?, credit_amount = ?,
+                bonus_amount = ?, wager_multiplier = ?, required_spins = ?,
+                spin_stake = ?, free_spins_awarded = ?, free_spins_value = ?,
+                default_strategy = ?,
                 allowed_strategies_json = ?, status = ?,
                 version = version + 1, sort_order = ?, updated_at = ?
             WHERE preset_id = ?
@@ -4614,6 +4672,15 @@ def update_fund_manager_combo_preset(
                 str(payload.get("fixture_type", "")).strip(),
                 str(payload.get("default_back_stake", "")).strip(),
                 str(payload.get("minimum_back_odds", "")).strip(),
+                str(payload.get("game", "")).strip(),
+                str(payload.get("cash_stake", "")).strip(),
+                str(payload.get("credit_amount", "")).strip(),
+                str(payload.get("bonus_amount", "")).strip(),
+                str(payload.get("wager_multiplier", "")).strip(),
+                str(payload.get("required_spins", "")).strip(),
+                str(payload.get("spin_stake", "")).strip(),
+                str(payload.get("free_spins_awarded", "")).strip(),
+                str(payload.get("free_spins_value", "")).strip(),
                 str(payload.get("default_strategy", "")).strip(),
                 json.dumps(payload.get("allowed_strategies", []), sort_keys=True),
                 payload.get("status", "Active"),

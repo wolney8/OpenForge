@@ -132,6 +132,26 @@
       "case_id": "COMBO-026",
       "inputs": {"preset_status": "Archived", "show_archived": false},
       "expected": {"visible_by_default": false, "visible_after_toggle": true}
+    },
+    {
+      "case_id": "COMBO-027",
+      "inputs": {"ledger": "casino", "offer_type": "Free Spins", "game": "Demo Slot", "free_spins_awarded": "20.00", "free_spins_value": "2.00"},
+      "expected": {"draft_prefilled": true, "dates_prefilled": false, "result_prefilled": false, "pnl_prefilled": false, "row_saved": false}
+    },
+    {
+      "case_id": "COMBO-028",
+      "inputs": {"ledger": "casino", "account_status": "Casino Only"},
+      "expected": {"available": true, "warning": null}
+    },
+    {
+      "case_id": "COMBO-029",
+      "inputs": {"ledger": "casino", "account_status": "Sportsbook Only"},
+      "expected": {"available": false, "reason": "sportsbook_only"}
+    },
+    {
+      "case_id": "COMBO-030",
+      "inputs": {"ledger": "casino", "known_bookmakers": ["Bookmaker A", "Bookmaker B"], "eligible_bookmakers": ["Bookmaker A", "Bookmaker B"]},
+      "expected": {"selected_bookmaker": null, "requires_explicit_selection": true}
     }
   ]
 }
