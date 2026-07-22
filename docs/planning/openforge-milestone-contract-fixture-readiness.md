@@ -44,9 +44,11 @@ Recommended GitHub issue under M5:
 
 - `#62 Add Optional Google OIDC for Existing Fund Manager Login`
 
-### Local-first database with cloud backup
+### Local-first database backups
 
-SQLite remains the local operational source in the first supported mode. Encrypted cloud snapshots provide disaster recovery. Managed PostgreSQL is a later deployment mode; bidirectional sync is not approved.
+SQLite remains the local operational source. Verified local snapshots and profile-scoped XLSX
+import/export are the approved operational boundary. Cloud backup, managed PostgreSQL and
+bidirectional synchronisation are deferred and are not approved for implementation.
 
 Draft evidence:
 
@@ -56,7 +58,7 @@ Draft evidence:
 
 Recommended GitHub issue under M5:
 
-- `#63 Implement Verified Local and Encrypted Cloud Database Backups`
+- `#63 Implement Verified Local Database Backups` (cloud portion deferred)
 
 ## Requested milestone evidence
 

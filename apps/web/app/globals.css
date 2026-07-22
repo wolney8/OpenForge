@@ -5623,6 +5623,213 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   align-self: flex-start;
 }
 
+.database-backups-modal {
+  width: min(920px, calc(100vw - 2rem));
+}
+
+.database-backups-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem 1.35rem;
+  overflow: auto;
+}
+
+.database-backup-reason-field {
+  width: min(36rem, 100%);
+}
+
+.database-backup-reason-field input {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.database-backups-status {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.database-import-preview-status {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.database-import-preview-status dd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.database-restore-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 64%, var(--outline));
+  border-radius: var(--shape-large);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface-container));
+}
+
+.database-restore-warning .material-symbols-outlined {
+  flex: 0 0 auto;
+  color: var(--warning);
+}
+
+.database-restore-warning h3,
+.database-restore-warning p,
+.database-restore-success h3,
+.database-restore-success p {
+  margin: 0;
+}
+
+.database-restore-warning p,
+.database-restore-success p {
+  margin-top: 0.4rem;
+  color: var(--muted);
+}
+
+.database-restore-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  width: fit-content;
+  max-width: 100%;
+  font-weight: 650;
+}
+
+.database-restore-confirmation input {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.05rem;
+  accent-color: var(--primary);
+}
+
+.database-restore-success {
+  align-items: center;
+  max-width: 42rem;
+  margin: auto;
+  padding: 1.4rem;
+  border: 1px solid color-mix(in srgb, var(--success) 58%, var(--outline));
+  border-radius: var(--shape-large);
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-container));
+  text-align: center;
+}
+
+.database-restore-success > .material-symbols-outlined {
+  color: var(--success);
+  font-size: 2.1rem;
+}
+
+.database-backups-table-scroll {
+  min-width: 0;
+  max-height: 25rem;
+  overflow: auto;
+}
+
+.database-backups-table {
+  min-width: 760px;
+}
+
+.database-backups-table th,
+.database-backups-table td {
+  vertical-align: middle;
+}
+
+.database-backup-row-actions,
+.database-backup-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.database-backup-row-actions {
+  justify-content: center;
+}
+
+.database-backup-row-actions .icon-button {
+  width: 3rem;
+  height: 3rem;
+  min-height: 3rem;
+  justify-content: center;
+  padding: 0;
+}
+
+.database-backup-row-actions .material-symbols-outlined {
+  font-size: 1.45rem;
+}
+
+.database-backup-delete-disabled,
+.database-backup-delete-disabled:hover {
+  border-color: var(--outline);
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  color: var(--muted);
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.database-backup-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 58%, var(--outline));
+  border-radius: var(--shape-pill);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-strong));
+  white-space: nowrap;
+}
+
+.database-backup-delete-confirm > span {
+  color: color-mix(in srgb, var(--danger) 34%, var(--text));
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.database-backup-delete-confirm .destructive-action {
+  box-sizing: border-box;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.database-backup-delete-confirm .database-backup-cancel-delete {
+  box-sizing: border-box;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  border-color: var(--outline);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.database-backup-delete-confirm .database-backup-cancel-delete:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.database-backup-reason {
+  display: block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .database-backups-status,
+  .database-import-preview-status {
+    grid-template-columns: 1fr;
+  }
+
+  .database-backup-footer-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
 .common-bet-combo-form-grid {
   gap: 1rem 1.25rem;
 }

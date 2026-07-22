@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     environment: str = "local"
     database_url: str = "sqlite:///data/private/db/openforge.sqlite3"
     backup_directory: str = "data/private/backups"
+    source_instance_id: str = "local-fund-manager"
     account_catalogue_source: str = "data/reference/master-account-catalogue.json"
 
     model_config = SettingsConfigDict(

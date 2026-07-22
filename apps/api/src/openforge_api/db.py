@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,6 +15,8 @@ from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 from openforge_api.config import settings
+
+database_operation_lock = threading.RLock()
 
 
 def utc_now() -> str:
@@ -107,8 +110,7 @@ def extract_shared_strings(workbook_archive: ZipFile) -> list[str]:
     values: list[str] = []
     for string_item in root.findall("main:si", namespace):
         text_fragments = [
-            text_node.text or ""
-            for text_node in string_item.findall(".//main:t", namespace)
+            text_node.text or "" for text_node in string_item.findall(".//main:t", namespace)
         ]
         values.append("".join(text_fragments))
     return values
@@ -121,7 +123,9 @@ def extract_sheet_paths(workbook_archive: ZipFile) -> dict[str, str]:
         "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
         "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
     }
-    relationships_namespace = {"rels": "http://schemas.openxmlformats.org/package/2006/relationships"}
+    relationships_namespace = {
+        "rels": "http://schemas.openxmlformats.org/package/2006/relationships"
+    }
 
     relationship_targets = {
         relationship.attrib["Id"]: normalize_zip_path(relationship.attrib["Target"])
@@ -191,8 +195,7 @@ def read_workbook_named_range_values(workbook_path: Path, defined_name: str) -> 
             elif cell_type == "inlineStr":
                 normalized_value = normalize_seed_text(
                     "".join(
-                        text_node.text or ""
-                        for text_node in cell.findall(".//main:t", namespace)
+                        text_node.text or "" for text_node in cell.findall(".//main:t", namespace)
                     )
                 )
             else:
@@ -238,17 +241,18 @@ def parse_seed_bool(value: Any) -> bool:
 
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
-    database_path = settings.database_path
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(database_path)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    try:
-        initialize_database(connection)
-        yield connection
-        connection.commit()
-    finally:
-        connection.close()
+    with database_operation_lock:
+        database_path = settings.database_path
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(database_path)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        try:
+            initialize_database(connection)
+            yield connection
+            connection.commit()
+        finally:
+            connection.close()
 
 
 def initialize_database(connection: sqlite3.Connection) -> None:
@@ -489,6 +493,20 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           checksum_sha256 TEXT NOT NULL,
           byte_size INTEGER NOT NULL,
           integrity_check TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS database_restore_events (
+          restore_event_id TEXT PRIMARY KEY,
+          restored_at TEXT NOT NULL,
+          restored_by TEXT NOT NULL,
+          source_filename TEXT NOT NULL,
+          source_instance_id TEXT NOT NULL,
+          source_created_at TEXT NOT NULL,
+          pre_restore_backup_snapshot_id TEXT NOT NULL,
+          imported_backup_snapshot_id TEXT NOT NULL,
+          schema_version TEXT NOT NULL,
+          validation_summary_json TEXT NOT NULL,
+          reason TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS account_audit (
@@ -920,15 +938,9 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "sportsbook_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "market", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "lay_actual", "TEXT NOT NULL DEFAULT ''")
-    ensure_column(
-        connection, "sportsbook_bets", "profit_boost_mode", "TEXT NOT NULL DEFAULT ''"
-    )
-    ensure_column(
-        connection, "sportsbook_bets", "base_back_odds", "TEXT NOT NULL DEFAULT ''"
-    )
-    ensure_column(
-        connection, "sportsbook_bets", "profit_boost_percent", "TEXT NOT NULL DEFAULT ''"
-    )
+    ensure_column(connection, "sportsbook_bets", "profit_boost_mode", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "base_back_odds", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "profit_boost_percent", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
         connection,
         "sportsbook_bets",
@@ -964,9 +976,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(
         connection, "sportsbook_bets", "multi_lay_outcomes_json", "TEXT NOT NULL DEFAULT '[]'"
     )
-    ensure_column(
-        connection, "sportsbook_bets", "lay_matched_stake_1", "TEXT NOT NULL DEFAULT ''"
-    )
+    ensure_column(connection, "sportsbook_bets", "lay_matched_stake_1", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
         connection,
         "sportsbook_bets",
@@ -1287,13 +1297,10 @@ def ensure_column(
     column_definition: str,
 ) -> None:
     existing = {
-        row["name"]
-        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+        row["name"] for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
     }
     if column_name not in existing:
-        connection.execute(
-            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
-        )
+        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
 
 def seed_database(connection: sqlite3.Connection) -> None:
@@ -1301,12 +1308,10 @@ def seed_database(connection: sqlite3.Connection) -> None:
     account_count = connection.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
     sportsbook_count = connection.execute("SELECT COUNT(*) FROM sportsbook_bets").fetchone()[0]
     free_bet_count = connection.execute("SELECT COUNT(*) FROM free_bets").fetchone()[0]
-    cash_adjustment_count = connection.execute(
-        "SELECT COUNT(*) FROM cash_adjustments"
-    ).fetchone()[0]
-    casino_offer_count = connection.execute(
-        "SELECT COUNT(*) FROM casino_offers"
-    ).fetchone()[0]
+    cash_adjustment_count = connection.execute("SELECT COUNT(*) FROM cash_adjustments").fetchone()[
+        0
+    ]
+    casino_offer_count = connection.execute("SELECT COUNT(*) FROM casino_offers").fetchone()[0]
     commission_count = connection.execute(
         "SELECT COUNT(*) FROM profile_exchange_commissions"
     ).fetchone()[0]
@@ -1539,16 +1544,16 @@ def seed_database(connection: sqlite3.Connection) -> None:
                     0,
                     0,
                     14,
-                                        3,
-                                        1,
-                                        "Calendar",
-                                        "0.928",
-                                        "1.3",
-                                        "0.7",
+                    3,
+                    1,
+                    "Calendar",
+                    "0.928",
+                    "1.3",
+                    "0.7",
                     timestamp,
                     timestamp,
-                    ),
-                )
+                ),
+            )
 
     if lookup_value_count == 0:
         timestamp = utc_now()
@@ -1631,9 +1636,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                     "bonus_trigger": "",
                     "maximum_bonus": "",
                     "bonus_retention_rate": "70",
-                    "match_strategy": normalize_seed_text(
-                        row.get("matchStrategy"), "Standard"
-                    ),
+                    "match_strategy": normalize_seed_text(row.get("matchStrategy"), "Standard"),
                     "lay_odds_1": normalize_seed_text(row.get("layOdds1")),
                     "multi_lay_outcome_1_name": "",
                     "multi_lay_outcomes_json": "[]",
@@ -1796,9 +1799,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                         "Withdrawal",
                     ),
                     "affects_investment": int(parse_seed_bool(row.get("affectsInvestment"))),
-                    "affects_cash_snapshot": int(
-                        parse_seed_bool(row.get("affectsCashSnapshot"))
-                    ),
+                    "affects_cash_snapshot": int(parse_seed_bool(row.get("affectsCashSnapshot"))),
                     "linked_account": normalize_seed_text(row.get("linkedAccount")),
                     "description": normalize_seed_text(row.get("description")),
                     "created_at": timestamp,
@@ -3151,9 +3152,7 @@ def add_or_restore_multi_profile_opportunity_target(
     return target_id
 
 
-def remove_multi_profile_opportunity_target_row(
-    *, opportunity_id: str, target_id: str
-) -> None:
+def remove_multi_profile_opportunity_target_row(*, opportunity_id: str, target_id: str) -> None:
     timestamp = utc_now()
     with connect() as connection:
         connection.execute(
@@ -3661,8 +3660,7 @@ def create_cash_adjustment(
     payload: dict[str, Any],
 ) -> CashAdjustmentRecord:
     record = {
-        "cash_adjustment_id": payload.get("cash_adjustment_id")
-        or f"CA-{uuid4().hex[:8].upper()}",
+        "cash_adjustment_id": payload.get("cash_adjustment_id") or f"CA-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
         "adjustment_date": payload["adjustment_date"],
         "direction": payload["direction"],
@@ -4576,9 +4574,7 @@ def update_profile_metadata(
     next_profile_code = profile_code if profile_code is not None else current.profile_code
     next_status = status if status is not None else current.status
     next_tracking_start_date = (
-        tracking_start_date
-        if tracking_start_date is not None
-        else current.tracking_start_date
+        tracking_start_date if tracking_start_date is not None else current.tracking_start_date
     )
     next_management_fee = (
         management_fee_percent
@@ -4705,24 +4701,24 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                   updated_at
                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                                (
-                                        profile_id,
-                                        "Week (Mon-Sun)",
-                                        "",
-                                        "",
-                                        0,
-                                        0,
-                                        14,
-                                        3,
-                                        1,
-                                        "Calendar",
-                                        "0.928",
-                                        "1.3",
-                                        "0.7",
-                                        "",
-                                        timestamp,
-                                        timestamp,
-                                ),
+                (
+                    profile_id,
+                    "Week (Mon-Sun)",
+                    "",
+                    "",
+                    0,
+                    0,
+                    14,
+                    3,
+                    1,
+                    "Calendar",
+                    "0.928",
+                    "1.3",
+                    "0.7",
+                    "",
+                    timestamp,
+                    timestamp,
+                ),
             )
             row = connection.execute(
                 """
@@ -4875,8 +4871,7 @@ def create_fund_manager_lookup_value(
     payload: dict[str, Any],
 ) -> FundManagerLookupValueRecord:
     record = {
-        "lookup_value_id": payload.get("lookup_value_id")
-        or f"FMLOOKUP-{uuid4().hex[:8].upper()}",
+        "lookup_value_id": payload.get("lookup_value_id") or f"FMLOOKUP-{uuid4().hex[:8].upper()}",
         "lookup_type": payload["lookup_type"],
         "option_value": str(payload["option_value"]).strip(),
         "status": payload.get("status", "Active"),
@@ -4999,9 +4994,7 @@ def create_fund_manager_combo_preset(
     payload: dict[str, Any],
 ) -> FundManagerComboPresetRecord:
     bookmakers = [
-        str(value).strip()
-        for value in payload.get("bookmakers", [])
-        if str(value).strip()
+        str(value).strip() for value in payload.get("bookmakers", []) if str(value).strip()
     ]
     legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
     if not bookmakers and legacy_bookmaker:
@@ -5066,9 +5059,7 @@ def update_fund_manager_combo_preset(
     if existing is None:
         return None
     bookmakers = [
-        str(value).strip()
-        for value in payload.get("bookmakers", [])
-        if str(value).strip()
+        str(value).strip() for value in payload.get("bookmakers", []) if str(value).strip()
     ]
     legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
     if not bookmakers and legacy_bookmaker:
@@ -5138,8 +5129,7 @@ def create_profile_lookup_value(
     profile_id: str, payload: dict[str, str]
 ) -> ProfileLookupValueRecord:
     record = {
-        "lookup_value_id": payload.get("lookup_value_id")
-        or f"LOOKUP-{uuid4().hex[:8].upper()}",
+        "lookup_value_id": payload.get("lookup_value_id") or f"LOOKUP-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
         "lookup_type": payload["lookup_type"],
         "option_value": payload["option_value"].strip(),
@@ -5223,9 +5213,7 @@ def list_balance_snapshots(profile_id: str) -> list[BalanceSnapshotRecord]:
     return [map_balance_snapshot_row(row) for row in rows]
 
 
-def create_balance_snapshot(
-    profile_id: str, payload: dict[str, Any]
-) -> BalanceSnapshotRecord:
+def create_balance_snapshot(profile_id: str, payload: dict[str, Any]) -> BalanceSnapshotRecord:
     record = {
         "balance_snapshot_id": payload.get("balance_snapshot_id")
         or f"BS-{uuid4().hex[:8].upper()}",
@@ -5263,8 +5251,7 @@ def create_import_batch(
 ) -> ImportBatchRecord:
     timestamp = utc_now()
     record = {
-        "import_batch_id": payload.get("import_batch_id")
-        or f"IMPORT-{uuid4().hex[:8].upper()}",
+        "import_batch_id": payload.get("import_batch_id") or f"IMPORT-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
         "source_filename": payload["source_filename"],
         "source_type": payload["source_type"],
@@ -5404,9 +5391,7 @@ def delete_unconfirmed_import_batch(profile_id: str, import_batch_id: str) -> bo
     return True
 
 
-def get_import_source_record(
-    source_sheet: str, source_record_id: str
-) -> ImportSourceRecord | None:
+def get_import_source_record(source_sheet: str, source_record_id: str) -> ImportSourceRecord | None:
     with connect() as connection:
         row = connection.execute(
             """
@@ -5631,8 +5616,7 @@ def confirm_sportsbook_import_batch(
             (import_batch_id, profile_id),
         ).fetchall()
         confirmed_summary = {
-            str(row["staged_action"]): int(row["row_count"])
-            for row in action_counts
+            str(row["staged_action"]): int(row["row_count"]) for row in action_counts
         }
         connection.execute(
             """
@@ -5808,8 +5792,7 @@ def confirm_free_bet_import_batch(
             (import_batch_id, profile_id),
         ).fetchall()
         confirmed_summary = {
-            str(row["staged_action"]): int(row["row_count"])
-            for row in action_counts
+            str(row["staged_action"]): int(row["row_count"]) for row in action_counts
         }
         connection.execute(
             """
@@ -5971,8 +5954,7 @@ def confirm_casino_offer_import_batch(
             (import_batch_id, profile_id),
         ).fetchall()
         confirmed_summary = {
-            str(row["staged_action"]): int(row["row_count"])
-            for row in action_counts
+            str(row["staged_action"]): int(row["row_count"]) for row in action_counts
         }
         connection.execute(
             """
@@ -6115,8 +6097,7 @@ def confirm_cash_adjustment_import_batch(
             (import_batch_id, profile_id),
         ).fetchall()
         confirmed_summary = {
-            str(row["staged_action"]): int(row["row_count"])
-            for row in action_counts
+            str(row["staged_action"]): int(row["row_count"]) for row in action_counts
         }
         connection.execute(
             """
@@ -6232,12 +6213,22 @@ def confirm_account_import_batch(
                     WHERE profile_id = ? AND account_id = ?
                     """,
                     (
-                        record["bookmaker_id"], record["account"], record["type"],
-                        record["counts_in_cash_total"], record["channel"], record["status"],
-                        record["current_balance"], record["pending_withdrawal_amount"],
-                        record["last_balance_update"], record["group_name"], record["platform"],
-                        record["sign_up_date"], record["notes"], record["updated_at"],
-                        profile_id, record["account_id"],
+                        record["bookmaker_id"],
+                        record["account"],
+                        record["type"],
+                        record["counts_in_cash_total"],
+                        record["channel"],
+                        record["status"],
+                        record["current_balance"],
+                        record["pending_withdrawal_amount"],
+                        record["last_balance_update"],
+                        record["group_name"],
+                        record["platform"],
+                        record["sign_up_date"],
+                        record["notes"],
+                        record["updated_at"],
+                        profile_id,
+                        record["account_id"],
                     ),
                 )
             else:
@@ -6274,9 +6265,14 @@ def confirm_account_import_batch(
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        staged_row["source_sheet"], staged_row["source_record_id"], profile_id,
-                        staged_row["source_hash"], import_batch_id, "account",
-                        record["account_id"], timestamp,
+                        staged_row["source_sheet"],
+                        staged_row["source_record_id"],
+                        profile_id,
+                        staged_row["source_hash"],
+                        import_batch_id,
+                        "account",
+                        record["account_id"],
+                        timestamp,
                     ),
                 )
             else:
@@ -6288,8 +6284,13 @@ def confirm_account_import_batch(
                     WHERE source_sheet = ? AND source_record_id = ? AND profile_id = ?
                     """,
                     (
-                        staged_row["source_hash"], import_batch_id, record["account_id"], timestamp,
-                        staged_row["source_sheet"], staged_row["source_record_id"], profile_id,
+                        staged_row["source_hash"],
+                        import_batch_id,
+                        record["account_id"],
+                        timestamp,
+                        staged_row["source_sheet"],
+                        staged_row["source_record_id"],
+                        profile_id,
                     ),
                 )
             connection.execute(
@@ -6317,8 +6318,7 @@ def confirm_account_import_batch(
             (import_batch_id, profile_id),
         ).fetchall()
         confirmed_summary = {
-            str(row["staged_action"]): int(row["row_count"])
-            for row in action_counts
+            str(row["staged_action"]): int(row["row_count"]) for row in action_counts
         }
         connection.execute(
             """
@@ -6383,6 +6383,67 @@ def list_backup_snapshot_records() -> list[BackupSnapshotRecord]:
             """
         ).fetchall()
     return [map_backup_snapshot_row(row) for row in rows]
+
+
+def delete_backup_snapshot_record(backup_snapshot_id: str) -> BackupSnapshotRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM backup_snapshots WHERE backup_snapshot_id = ?",
+            (backup_snapshot_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        connection.execute(
+            "DELETE FROM backup_snapshots WHERE backup_snapshot_id = ?",
+            (backup_snapshot_id,),
+        )
+    return map_backup_snapshot_row(row)
+
+
+def update_backup_snapshot_status(
+    backup_snapshot_id: str, *, status: str
+) -> BackupSnapshotRecord | None:
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE backup_snapshots
+            SET status = ?
+            WHERE backup_snapshot_id = ?
+            """,
+            (status, backup_snapshot_id),
+        )
+        row = connection.execute(
+            "SELECT * FROM backup_snapshots WHERE backup_snapshot_id = ?",
+            (backup_snapshot_id,),
+        ).fetchone()
+    return None if row is None else map_backup_snapshot_row(row)
+
+
+def count_tracker_rows_created_after(created_after: str | None = None) -> int:
+    tracker_tables = (
+        "accounts",
+        "sportsbook_bets",
+        "free_bets",
+        "casino_offers",
+        "cash_adjustments",
+        "balance_snapshots",
+        "fee_periods",
+        "fee_period_revisions",
+        "fee_corrections",
+        "fee_withdrawal_links",
+    )
+    total = 0
+    with connect() as connection:
+        for table_name in tracker_tables:
+            if created_after:
+                row = connection.execute(
+                    f"SELECT COUNT(*) FROM {table_name} WHERE created_at > ?",
+                    (created_after,),
+                ).fetchone()
+            else:
+                row = connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+            total += int(row[0] if row is not None else 0)
+    return total
 
 
 def list_accounts(profile_id: str) -> list[AccountRecord]:

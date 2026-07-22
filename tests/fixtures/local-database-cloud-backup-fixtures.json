@@ -45,6 +45,26 @@
       "case_id": "BACKUP-007",
       "inputs": {"verified_backup_count": 1, "requested_delete_count": 1},
       "expected": {"deletion_allowed": false, "verified_backup_count_after": 1}
+    },
+    {
+      "case_id": "BACKUP-008",
+      "inputs": {"package_valid": true, "fund_manager_confirmed": false},
+      "expected": {"candidate_staged": true, "live_database_replaced": false}
+    },
+    {
+      "case_id": "BACKUP-009",
+      "inputs": {"package_valid": true, "foreign_key_violations": 1},
+      "expected": {"restore_allowed": false, "live_database_replaced": false}
+    },
+    {
+      "case_id": "BACKUP-010",
+      "inputs": {"file_type": "raw_sqlite", "manifest_present": false},
+      "expected": {"restore_allowed": false, "error_code": "invalid_package"}
+    },
+    {
+      "case_id": "BACKUP-011",
+      "inputs": {"verified_backup_count": 0, "days_since_latest_verified_backup": null, "rows_since_latest_verified_backup": 42},
+      "expected": {"fund_manager_notification_required": true, "notification_type": "database_backup_reminder"}
     }
   ]
 }

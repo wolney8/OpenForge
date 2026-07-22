@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from openforge_api.account_catalogue_source import router as account_catalogue_source_router
 from openforge_api.accounts import router as accounts_router
+from openforge_api.backups import router as backups_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
 from openforge_api.bookmaker_catalogue import router as bookmaker_catalogue_router
 from openforge_api.cash_adjustments import router as cash_adjustments_router
@@ -33,6 +34,7 @@ app.include_router(profiles_router)
 app.include_router(account_catalogue_source_router)
 app.include_router(accounts_router)
 app.include_router(balance_snapshots_router)
+app.include_router(backups_router)
 app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(multi_profile_opportunities_router)
