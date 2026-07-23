@@ -1,6 +1,6 @@
 # Workflow Contract: Common Bet Combos
 
-_Last updated: 2026-07-20_
+_Last updated: 2026-07-22_
 
 ## Status and scope
 
@@ -11,6 +11,68 @@ _Last updated: 2026-07-20_
 - Current seeded catalogue verified: `2026-07-20`
 
 Public reload listings are discovery evidence for descriptive defaults only. They are not calculation, profitability, eligibility, or settlement authority. The Fund Manager must recheck current terms before placing a bet.
+
+## Deferred external offer intelligence
+
+Plum Duff should later support a Fund Manager-maintained offer intelligence layer for:
+
+- common weekly reloads
+- common daily reloads
+- free-to-play daily offers, usually casino-led
+- welcome/sign-up and free-bet offer catalogues
+- account/risk-team warnings that affect which profiles can use those offers
+
+This is not live odds matching and is not autonomous betting. It must remain a planning and tracker
+prefill aid unless a later approved milestone changes that boundary.
+
+Allowed later sources may include public matched-betting offer pages and public bookmaker welcome
+offer pages. Any automated collection must be explicitly approved, must respect source terms and
+robots policy, and must not use login sessions, bookmaker credentials, cookies, account scraping, or
+bet-placement automation. If a source cannot be collected safely, the Fund Manager must be able to
+maintain the offer catalogue manually.
+
+Welcome offer capture from public sources such as `https://www.oddschecker.com/free-bets` is a
+deferred candidate only. It is governed by
+`docs/contracts/public-offer-source-ingestion-contract.md` before implementation. That
+source-ingestion contract defines:
+
+- whether the source permits automated access
+- fields captured, including bookmaker, offer description, minimum stake, minimum odds, award timing,
+  expiry and qualifying restrictions
+- how stale offers expire or require re-verification
+- evidence URL, checked date and confidence
+- how profile-specific availability is checked against the profile account state
+- how linked operator group, platform and risk-team data influence warnings
+- how a welcome-offer template can create Prospecting rows through the multi-profile opportunity
+  workflow without confirming placement
+
+## Deferred account restriction intelligence
+
+Plum Duff needs a strong profile-specific restriction log for bookmaker account health. This must
+distinguish at least:
+
+- Active
+- Pending Sign Up
+- Pending Verification
+- Bonus Restricted
+- Soft Limited / Stake Restricted
+- Gubbed / Promotions Removed
+- Blocked by KYC
+- Blocked by Risk Team
+- Closed
+- Casino Only
+- Sportsbook Only
+
+Restriction state belongs to the profile account record, not the universal bookmaker catalogue.
+The universal catalogue may store operator group, platform and risk-team links so Plum Duff can warn
+that one restriction may imply higher risk on related brands. These warnings must never silently
+block unrelated profile rows without showing the Fund Manager the reason.
+
+Some restricted accounts may still be useful for non-promotional workflows such as extra places,
+arbs or ordinary mug bets. Eligibility therefore depends on both account status and offer family:
+Bonus Restricted may block reloads but not necessarily ordinary betting; Soft Limited may allow an
+offer with a warning if the expected stake is low enough; Gubbed or Blocked accounts should be
+blocked from promotional workflows by default.
 
 ## User goal
 

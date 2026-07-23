@@ -6358,11 +6358,122 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .spreadsheet-review-table td {
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .spreadsheet-review-table td:last-child {
   text-align: left;
+}
+
+.spreadsheet-review-status-cell,
+.spreadsheet-review-status-cell * {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.spreadsheet-review-status-cell {
+  overflow: visible;
+}
+
+.spreadsheet-review-table details {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.35rem;
+  overflow: hidden;
+}
+
+.spreadsheet-review-table summary {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.spreadsheet-history-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.spreadsheet-history-actions .icon-button,
+.spreadsheet-review-delete-button {
+  width: 3rem;
+  height: 3rem;
+  min-height: 3rem;
+  justify-content: center;
+  padding: 0;
+}
+
+.spreadsheet-history-actions .material-symbols-outlined,
+.spreadsheet-review-delete-button .material-symbols-outlined,
+.spreadsheet-delete-confirm .material-symbols-outlined {
+  font-size: 1.45rem;
+}
+
+.spreadsheet-delete-disabled,
+.spreadsheet-delete-disabled:hover {
+  border-color: var(--outline);
+  background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  color: var(--muted);
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.spreadsheet-delete-confirm {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 58%, var(--outline));
+  border-radius: var(--shape-pill);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-strong));
+  white-space: nowrap;
+}
+
+.spreadsheet-delete-confirm > span {
+  color: color-mix(in srgb, var(--danger) 34%, var(--text));
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.spreadsheet-delete-confirm .destructive-action {
+  box-sizing: border-box;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.spreadsheet-delete-confirm .spreadsheet-cancel-delete {
+  box-sizing: border-box;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  border-color: var(--outline);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.spreadsheet-delete-confirm .spreadsheet-cancel-delete:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.spreadsheet-delete-confirm-compact {
+  max-width: 100%;
 }
 
 .spreadsheet-row-id {
@@ -6390,6 +6501,18 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   font-weight: 700;
 }
 
+.spreadsheet-review-controls > label > .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .spreadsheet-review-controls select,
 .spreadsheet-review-controls input {
   width: 100%;
@@ -6407,15 +6530,29 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .spreadsheet-findings {
+  box-sizing: border-box;
+  width: 100%;
   margin: 0.35rem 0;
-  padding-left: 1.15rem;
+  padding-left: 1.1rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  list-style-position: outside;
+}
+
+.spreadsheet-findings li {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .spreadsheet-row-details {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.35rem 0.8rem;
   margin-top: 0.65rem;
+  max-width: 100%;
 }
 
 .spreadsheet-row-details > div {
@@ -6429,6 +6566,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .spreadsheet-row-details dd {
+  min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -6544,6 +6682,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   z-index: 4;
   margin: 0 -1.35rem -1.35rem;
   padding: 1rem 1.35rem;
+  flex-wrap: wrap;
   justify-content: flex-end;
   background: color-mix(in srgb, var(--surface) 96%, transparent);
   backdrop-filter: blur(12px);

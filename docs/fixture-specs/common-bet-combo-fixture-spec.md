@@ -1,6 +1,6 @@
 # Fixture Spec: Common Bet Combos
 
-_Last updated: 2026-07-20_
+_Last updated: 2026-07-22_
 
 ## Contract covered
 
@@ -38,6 +38,13 @@ _Last updated: 2026-07-20_
 | COMBO-028 | Casino combo targets a Casino Only account | Account is available for Casino Offers |
 | COMBO-029 | Casino combo targets a Sportsbook Only account | Application is blocked with a capability reason |
 | COMBO-030 | Casino combo has several eligible bookmakers | Fund Manager must explicitly select one |
+| COMBO-031 | Public reload source suggests a daily or weekly offer | Offer can be saved as a draft intelligence record only; Fund Manager must verify terms before use |
+| COMBO-032 | Welcome-offer source proposes a bookmaker already linked to a risk team | Template shows linked-risk warning before creating profile Prospecting rows |
+| COMBO-033 | Profile is gubbed on one brand in a linked risk team | Related brands show elevated-risk warning but are not silently blocked unless profile account status also blocks them |
+| COMBO-034 | Profile is Bonus Restricted on a bookmaker | Reload and welcome-offer presets are blocked; non-promotional workflows may remain available with explicit warning |
+| COMBO-035 | Profile is Soft Limited / Stake Restricted | Offer remains selectable only with a stake-risk warning and no implied profitability claim |
+| COMBO-036 | External offer has stale evidence date | Combo application requires re-verification before creating new rows |
+| COMBO-037 | Source cannot be safely collected automatically | Manual catalogue maintenance remains available; no scraper is run |
 | PB-001 | Displayed boosted odds | Displayed odds drive sportsbook scenarios |
 | PB-002 | 15% boost on odds 3.00, stake 10 | Reference boosted odds 3.3000; extra profit 3.00 |
 | PB-003 | PB-002 capped at 2.00 | Reference boosted odds 3.2000; extra profit 2.00 |

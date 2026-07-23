@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const profileId = "profile-demo-001";
 const batchId = "IMPORT-PLAYWRIGHT";
@@ -227,7 +227,7 @@ function accountUpdateBatch(status = "dry_run_ready") {
         staged_action: status === "confirmed" ? "imported" : "update",
         warnings: status === "confirmed" ? [] : [{
           code: "explicit_update_approval_required",
-          message: "This changed Account row requires individual approval.",
+          message: "This changed Account row requires individual approval before Plum Duff can import the updated workbook values safely.",
         }],
         fields: {
           ...record.rows[0].fields,
@@ -249,6 +249,12 @@ function accountUpdateBatch(status = "dry_run_ready") {
       },
     ],
   };
+}
+
+async function openSpreadsheetTransfer(page: Page) {
+  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await page.getByRole("tab", { name: "Spreadsheet Transfer" }).click();
+  await expect(page.getByRole("heading", { name: "Spreadsheet transfer" })).toBeVisible();
 }
 
 test("profile settings reviews and explicitly confirms a sportsbook XLSX import", async ({
@@ -300,9 +306,8 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
     });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await expect(page.getByRole("heading", { name: "Spreadsheet transfer" })).toBeVisible();
   await expect(page.getByText("Import XLSX", { exact: true })).toBeVisible();
   await expect(page.getByText("Export XLSX", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Export Sportsbook Bets XLSX" })).toHaveAttribute(
@@ -351,7 +356,7 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
   await reviewSearch.fill("DEMO-QB-PW");
   await expect(dialog).toContainText("Synthetic Team A v Synthetic Team B");
   const confirmButton = dialog.getByRole("button", { name: "Create backup and import selected" });
-  await expect(dialog.getByRole("button", { name: "Delete review" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Delete review synthetic-sportsbook.xlsx" })).toBeVisible();
   await expect(confirmButton).toHaveAttribute("data-pd-id", "import-review.import-selected-button");
   await expect(confirmButton).toBeVisible();
   await expect(confirmButton).toBeDisabled();
@@ -371,7 +376,14 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
 
   await expect(dialog).toContainText("Verified backup: BACKUP-PLAYWRIGHT");
   await expect(dialog).toContainText("Imported review retained for audit.");
-  await expect(dialog.getByRole("button", { name: "Delete review" })).toBeDisabled();
+  const retainedDeleteButton = dialog.getByRole("button", {
+    name: "Delete unavailable for imported review synthetic-sportsbook.xlsx",
+  });
+  await expect(retainedDeleteButton).toBeDisabled();
+  await expect(retainedDeleteButton).toHaveAttribute(
+    "title",
+    "Imported reviews are retained for audit and cannot be deleted.",
+  );
   await expect(page.locator(".status-toast")).toContainText(
     "1 selected sportsbook rows were added after a verified local backup",
   );
@@ -392,7 +404,7 @@ test("workbook detection corrects a mismatched spreadsheet selection", async ({ 
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   const ledger = page.getByLabel("Spreadsheet transfer ledger");
   await ledger.selectOption("free-bets");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
@@ -403,9 +415,7 @@ test("workbook detection corrects a mismatched spreadsheet selection", async ({ 
 
   await expect(page.getByRole("heading", { name: "Sportsbook Bets import review" })).toBeVisible();
   await expect(ledger).toHaveValue("sportsbook");
-  await expect(page.locator(".status-toast")).toContainText(
-    "Sportsbook Bets workbook detected. Spreadsheet type changed from Free Bets.",
-  );
+  await expect(page.locator(".status-toast")).toBeHidden();
 });
 
 test("free-bet spreadsheet selection uses the free-bet review and confirmation path", async ({
@@ -449,7 +459,7 @@ test("free-bet spreadsheet selection uses the free-bet review and confirmation p
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   const ledger = page.getByLabel("Spreadsheet transfer ledger");
   await ledger.selectOption("free-bets");
   await expect(page.getByRole("link", { name: "Export Free Bets XLSX" })).toHaveAttribute(
@@ -516,7 +526,7 @@ test("casino-offer spreadsheet selection uses the casino review and confirmation
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   await page.getByLabel("Spreadsheet transfer ledger").selectOption("casino-offers");
   await expect(page.getByRole("link", { name: "Export Casino Offers XLSX" })).toHaveAttribute(
     "href",
@@ -583,7 +593,7 @@ test("cash-adjustment spreadsheet selection uses the cash review and confirmatio
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   await page.getByLabel("Spreadsheet transfer ledger").selectOption("cash-adjustments");
   await expect(page.getByRole("link", { name: "Export Cash Adjustments XLSX" })).toHaveAttribute(
     "href",
@@ -652,7 +662,7 @@ test("account spreadsheet selection uses the account review and confirmation pat
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
   await expect(page.getByRole("link", { name: "Export Accounts XLSX" })).toHaveAttribute(
     "href",
@@ -699,7 +709,7 @@ test("row-accounting mismatch is visible and blocks import confirmation", async 
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic incomplete accounts XLSX"),
@@ -755,7 +765,7 @@ test("changed account rows require individual diff review and selection", async 
     await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic changed accounts XLSX"),
@@ -765,6 +775,24 @@ test("changed account rows require individual diff review and selection", async 
 
   const dialog = page.getByRole("dialog", { name: "Spreadsheet import review" });
   await expect(dialog.getByText("Changed row", { exact: true })).toBeVisible();
+  await dialog.getByText("Review note").click();
+  const importStatusCell = dialog.locator(".spreadsheet-review-table tbody tr").first().locator("td").last();
+  const findingText = importStatusCell.locator(".spreadsheet-findings li").first();
+  await expect(findingText).toBeVisible();
+  await expect.poll(() => importStatusCell.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }))).toEqual(expect.objectContaining({
+    clientWidth: expect.any(Number),
+    scrollWidth: expect.any(Number),
+  }));
+  const importStatusDimensions = await importStatusCell.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(importStatusDimensions.scrollWidth).toBeLessThanOrEqual(importStatusDimensions.clientWidth + 1);
+  const findingStyle = await findingText.evaluate((element) => window.getComputedStyle(element).whiteSpace);
+  expect(findingStyle).toBe("normal");
   await dialog.getByText("Review changed fields").click();
   await expect(dialog.getByText("Before: 125.40")).toBeVisible();
   await expect(dialog.getByText("After: 130.55")).toBeVisible();
@@ -794,14 +822,17 @@ test("an unconfirmed spreadsheet review can be removed from settings history", a
       status: 200,
     });
   });
-  page.on("dialog", (dialog) => dialog.accept());
-
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   const removeButton = page.getByRole("button", {
     name: "Delete review synthetic-sportsbook.xlsx",
   });
   await expect(removeButton).toBeVisible();
   await removeButton.click();
+  const confirmDelete = page.getByRole("group", {
+    name: "Confirm delete review synthetic-sportsbook.xlsx",
+  });
+  await expect(confirmDelete).toBeVisible();
+  await confirmDelete.getByRole("button", { exact: true, name: "Delete" }).click();
 
   await expect(removeButton).toBeHidden();
   await expect(page.locator(".status-toast")).toContainText(
@@ -824,10 +855,17 @@ test("spreadsheet review history follows the selected ledger", async ({ page }) 
     });
   });
 
-  await page.goto(`/profiles/${profileId}/tracker/settings`);
+  await openSpreadsheetTransfer(page);
   const ledger = page.getByLabel("Spreadsheet transfer ledger");
   await expect(page.getByText("synthetic-sportsbook.xlsx", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Delete review synthetic-sportsbook.xlsx" })).toBeDisabled();
+  const confirmedDelete = page.getByRole("button", {
+    name: "Delete unavailable for imported review synthetic-sportsbook.xlsx",
+  });
+  await expect(confirmedDelete).toBeDisabled();
+  await expect(confirmedDelete).toHaveAttribute(
+    "title",
+    "Imported reviews are retained for audit and cannot be deleted.",
+  );
   await expect(page.getByText("synthetic-free-bets.xlsx", { exact: true })).toBeHidden();
 
   await ledger.selectOption("free-bets");
