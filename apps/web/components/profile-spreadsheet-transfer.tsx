@@ -140,12 +140,22 @@ function actionLabel(action: string): string {
 }
 
 function compatibilityLabel(row: StagedRow): string {
-  if (row.staged_action === "blocked") return "Not compatible";
-  if (row.staged_action === "insert" && row.warnings.length) return "Compatible with review";
-  if (row.staged_action === "insert") return "Compatible";
-  if (row.staged_action === "update") return "Compatible; approval required";
-  if (row.staged_action === "no_op") return "Unchanged; skipped";
+  if (row.staged_action === "blocked") return "Cannot import";
+  if (row.staged_action === "insert" && row.warnings.length) return "Can import after review";
+  if (row.staged_action === "insert") return "Can import";
+  if (row.staged_action === "update") return "Review before update";
+  if (row.staged_action === "no_op") return "Already imported";
   return "Not imported";
+}
+
+function canDeleteBatch(batch: ImportBatch): boolean {
+  return batch.status.startsWith("dry_run_");
+}
+
+function deleteBlockedReason(batch: ImportBatch): string {
+  return canDeleteBatch(batch)
+    ? "Delete this unconfirmed review."
+    : "Imported reviews are retained for audit and cannot be deleted.";
 }
 
 export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string }) {
@@ -163,6 +173,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedLedger, setSelectedLedger] = useState<LedgerKey>("sportsbook");
+  const [confirmDeleteBatchId, setConfirmDeleteBatchId] = useState("");
 
   const closeModal = useCallback(() => {
     setIsOpen(false);
@@ -218,6 +229,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
 
   function prepareBatch(batch: ImportBatch) {
     setActiveBatch(batch);
+    setConfirmDeleteBatchId("");
     setSelectedRowIds(new Set(
       batch.status === "dry_run_ready"
         ? batch.rows.filter((row) => row.staged_action === "insert").map((row) => row.import_staged_row_id)
@@ -270,15 +282,6 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
         setSelectedLedger(detectedLedger);
       }
       prepareBatch(batch);
-      const newRows = batch.summary.insert ?? 0;
-      const changedRows = batch.summary.update ?? 0;
-      const label = ledgerRowLabel(detectedLedger);
-      const detectionMessage = detectedLedger !== requestedLedger
-        ? `${ledgerLabel(detectedLedger)} workbook detected. Spreadsheet type changed from ${ledgerLabel(requestedLedger)}. `
-        : "";
-      setMessage(detectionMessage + (newRows || changedRows
-        ? `Review complete. ${newRows} new and ${changedRows} changed ${label} rows are available to review.`
-        : `Review complete. The workbook contains no new compatible ${label} rows.`));
       await loadBatches();
     } catch (error) {
       setMessage(getErrorMessage(error));
@@ -289,7 +292,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
   }
 
   async function deleteBatch(batch: ImportBatch) {
-    if (!window.confirm(`Remove the unconfirmed review for ${batch.source_filename}?`)) return;
+    if (!canDeleteBatch(batch)) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/imports/${batch.import_batch_id}`, { method: "DELETE" });
@@ -301,6 +304,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
       setMessage(getErrorMessage(error));
     } finally {
       setIsLoading(false);
+      setConfirmDeleteBatchId("");
     }
   }
 
@@ -457,7 +461,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
             </div>
             <div className="spreadsheet-review-controls">
               <label className="field-control table-search-field spreadsheet-search-control">
-                <span>Search</span>
+                <span className="visually-hidden">Search import review rows</span>
                 <input aria-label="Search import review rows" data-pd-id="import-review.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Event, account, description, ID or finding" type="search" value={search} />
               </label>
               <button className="button-link" disabled={!filteredSelectableIds.length} onClick={toggleAllFiltered} type="button">
@@ -495,7 +499,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
                       <td><span className={`status-chip import-action-${row.staged_action}`}>{actionLabel(row.staged_action)}</span></td>
                       <td>{field(row, "Account") !== "—" ? field(row, "Account") : field(row, "EventName") === "—" ? field(row, "OfferName") === "—" ? field(row, "Description") : field(row, "OfferName") : field(row, "EventName")}</td>
                       <td>{field(row, "Type") !== "—" ? field(row, "Type") : field(row, "Bookmaker") === "—" ? field(row, "LinkedAccount") : field(row, "Bookmaker")}</td>
-                      <td>
+                      <td className="spreadsheet-review-status-cell">
                         <strong>{row.staged_action === "imported" ? "Imported in this batch" : row.staged_action === "skipped_by_operator" ? "Not imported by operator choice" : compatibilityLabel(row)}</strong>
                         {findings.length ? <details><summary>Review note</summary><ul className="spreadsheet-findings">{findings.map((finding) => <li key={finding.code}>{finding.message}</li>)}</ul></details> : null}
                         {row.staged_action === "update" && Object.keys(row.field_diffs ?? {}).length ? <details><summary>Review changed fields</summary><dl className="spreadsheet-row-details spreadsheet-row-diff">
@@ -524,16 +528,25 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
             {!selectedRowIds.size && activeBatch.status === "dry_run_ready" ? <p className="spreadsheet-no-change">No new rows are selected. Unchanged rows are skipped and do not require another import.</p> : null}
             {confirmation ? <div className="spreadsheet-backup-proof" role="status"><strong>Verified backup: {confirmation.backup_snapshot_id}</strong><span>SHA-256: {confirmation.backup_checksum_sha256}</span></div> : null}
             <div className="tracker-nav spreadsheet-review-actions">
-              <button
-                className="danger-button"
-                disabled={isLoading || !activeBatch.status.startsWith("dry_run_")}
-                onClick={() => deleteBatch(activeBatch)}
-                title={activeBatch.status.startsWith("dry_run_") ? "Delete this unconfirmed review" : "Imported reviews are retained for audit and cannot be deleted"}
-                type="button"
-              >
-                Delete review
-              </button>
-              {!activeBatch.status.startsWith("dry_run_") ? <span className="spreadsheet-audit-retention">Imported review retained for audit.</span> : null}
+              {confirmDeleteBatchId === activeBatch.import_batch_id ? (
+                <div className="spreadsheet-delete-confirm" data-pd-id={`spreadsheet-transfer.delete-confirm.${activeBatch.import_batch_id}`} role="group" aria-label={`Confirm delete review ${activeBatch.source_filename}`}>
+                  <span>Delete review?</span>
+                  <button className="button-link compact-action destructive-action" disabled={isLoading} onClick={() => deleteBatch(activeBatch)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span>Delete</button>
+                  <button aria-label="Cancel delete review" className="icon-button spreadsheet-cancel-delete" disabled={isLoading} onClick={() => setConfirmDeleteBatchId("")} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+                </div>
+              ) : (
+                <button
+                  aria-label={canDeleteBatch(activeBatch) ? `Delete review ${activeBatch.source_filename}` : `Delete unavailable for imported review ${activeBatch.source_filename}`}
+                  className={`icon-button spreadsheet-review-delete-button ${canDeleteBatch(activeBatch) ? "icon-button-destructive" : "spreadsheet-delete-disabled"}`}
+                  disabled={isLoading || !canDeleteBatch(activeBatch)}
+                  onClick={() => setConfirmDeleteBatchId(activeBatch.import_batch_id)}
+                  title={deleteBlockedReason(activeBatch)}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                </button>
+              )}
+              {!canDeleteBatch(activeBatch) ? <span className="spreadsheet-audit-retention">Imported review retained for audit.</span> : null}
               <button className="button-link" onClick={closeModal} type="button">Close import review</button>
               {activeBatch.status === "dry_run_ready" ? <><span className="spreadsheet-action-reason" id="import-review-action-reason">{confirmDisabledReason}</span><button aria-describedby="import-review-action-reason" className="modal-primary-button" data-pd-id="import-review.import-selected-button" disabled={!canConfirm || isLoading} onClick={confirmImport} type="button">Create backup and import selected</button></> : null}
             </div>
@@ -568,7 +581,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
         <tbody>{visibleBatches.slice(0, 10).map((batch) => <tr key={batch.import_batch_id}>
           <td>{batch.source_filename}</td><td>{formatBatchTime(batch.started_at)}</td><td>{batch.row_count}</td>
           <td><span className="status-chip">{batch.status === "confirmed" ? "Imported" : "Review available"}</span></td>
-          <td><div className="tracker-nav"><button className="button-link compact-action" onClick={(event) => openBatch(batch.import_batch_id, event.currentTarget)} type="button">Review</button><button aria-label={`Delete review ${batch.source_filename}`} className="icon-action danger-icon-action" disabled={!batch.status.startsWith("dry_run_")} onClick={() => deleteBatch(batch)} title={batch.status.startsWith("dry_run_") ? "Delete this unconfirmed review" : "Imported reviews are retained for audit and cannot be deleted"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+          <td><div className="spreadsheet-history-actions"><button className="button-link compact-action" onClick={(event) => openBatch(batch.import_batch_id, event.currentTarget)} type="button">Review</button>{confirmDeleteBatchId === batch.import_batch_id ? <div className="spreadsheet-delete-confirm spreadsheet-delete-confirm-compact" data-pd-id={`spreadsheet-transfer.delete-confirm.${batch.import_batch_id}`} role="group" aria-label={`Confirm delete review ${batch.source_filename}`}><span>Delete?</span><button className="button-link compact-action destructive-action" disabled={isLoading} onClick={() => deleteBatch(batch)} type="button">Delete</button><button aria-label="Cancel delete review" className="icon-button spreadsheet-cancel-delete" disabled={isLoading} onClick={() => setConfirmDeleteBatchId("")} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div> : <button aria-label={canDeleteBatch(batch) ? `Delete review ${batch.source_filename}` : `Delete unavailable for imported review ${batch.source_filename}`} className={`icon-button spreadsheet-review-delete-button ${canDeleteBatch(batch) ? "icon-button-destructive" : "spreadsheet-delete-disabled"}`} disabled={isLoading || !canDeleteBatch(batch)} onClick={() => setConfirmDeleteBatchId(batch.import_batch_id)} title={deleteBlockedReason(batch)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button>}</div></td>
         </tr>)}</tbody>
       </table></div> : <p className="spreadsheet-no-change" data-pd-id="spreadsheet-transfer.empty-history">No {ledgerLabel(selectedLedger)} spreadsheet reviews yet.</p>}
     </section>
