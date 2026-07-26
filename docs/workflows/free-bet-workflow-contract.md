@@ -37,6 +37,7 @@ Allow the Fund Manager, inside a selected profile tracker, to record, review, an
 - entry points:
   - add free-bet row
   - claim or record available free bet
+  - sportsbook-to-free-bet award bridge
   - place free bet
   - settle free bet
 - profile context required:
@@ -65,6 +66,7 @@ Allow the Fund Manager, inside a selected profile tracker, to record, review, an
 - `docs/contracts/free-bet-current-value-contract.md`
 - `docs/contracts/liability-exposure-contract.md`
 - `docs/contracts/dashboard-selected-range-pnl-contract.md`
+- `docs/contracts/sportsbook-free-bet-award-bridge-contract.md`
 
 ## 8. Reports touched
 
@@ -95,6 +97,7 @@ Retain:
 - expiry state changes
 - override reason if used
 - origin qualifying-bet reference
+- source award group and split metadata when created from sportsbook bridge
 - acting user and timestamp
 
 ## 11. Tests required

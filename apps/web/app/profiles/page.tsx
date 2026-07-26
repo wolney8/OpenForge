@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CrossProfileAnalytics } from "@/components/cross-profile-analytics";
 import { getProfiles } from "@/lib/tracker-data";
 
@@ -23,25 +22,17 @@ export default async function ProfilesPage({
     <main className="page-shell stack">
       <section className="hero-panel split-hero">
         <div className="stack">
-          <span className="eyebrow">/profiles</span>
-          <h1>Profiles are isolated tracker containers.</h1>
+          <span className="eyebrow">Fund Manager</span>
+          <h1>Profiles and combined analytics</h1>
           <p className="lede">
-            The Fund Manager view is a roster and aggregate control screen.
-            Operational row entry and workbook workflow remain inside the selected
-            profile tracker.
+            Review profile performance, action queues, exposure, fees, and formal
+            reports before opening a profile tracker.
           </p>
-          <div className="tracker-nav">
-            <Link className="button-link" href="/profiles/new">
-              Add profile
-            </Link>
-          </div>
         </div>
-        <aside className="shell-note stack" aria-label="Combined analytics note">
-          <span className="eyebrow">Combined analytics</span>
-          <strong>Aggregate only</strong>
-          <p className="lede">
-            Cross-profile comparisons belong here. Mixed row editing does not.
-          </p>
+        <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
+          <span className="eyebrow">Active profiles</span>
+          <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
+          <p className="lede">Open a profile row below to work on its tracker.</p>
         </aside>
       </section>
       <CrossProfileAnalytics

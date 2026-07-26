@@ -59,11 +59,11 @@ describe("fund manager notification view state", () => {
   it("tracks unread visible notifications separately from dismissed notifications", () => {
     const now = new Date("2026-07-21T12:00:00Z");
     const readState = markNotificationsRead(emptyNotificationViewState, [notifications[0]], now);
-    expect(getUnreadNotificationCount(notifications, readState)).toBe(1);
+    expect(getUnreadNotificationCount(notifications, readState, now)).toBe(1);
 
     const dismissedState = dismissNotificationIds(readState, ["NOTICE-002"]);
     expect(getVisibleNotifications(notifications, dismissedState)).toEqual([notifications[0]]);
-    expect(getUnreadNotificationCount(notifications, dismissedState)).toBe(0);
+    expect(getUnreadNotificationCount(notifications, dismissedState, now)).toBe(0);
   });
 
   it("normalizes duplicate and malformed stored values", () => {

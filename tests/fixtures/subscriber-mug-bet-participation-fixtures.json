@@ -1,0 +1,210 @@
+{
+  "schema_version": "1.0",
+  "fixture_pack": "subscriber-mug-bet-participation",
+  "status": "deferred_draft",
+  "contract": "docs/contracts/subscriber-mug-bet-participation-contract.md",
+  "fixture_spec": "docs/fixture-specs/subscriber-mug-bet-participation-fixture-spec.md",
+  "sensitive_data_policy": "synthetic_only",
+  "cases": [
+    {
+      "case_id": "SMB-001",
+      "description": "Subscriber mug-bet preference is accepted by the Fund Manager.",
+      "stage": "stage_1_preferences",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_read_only",
+        "suggested_aggressiveness": "medium",
+        "suggested_frequency_days": 7,
+        "account_health_intent": "maintain_account",
+        "review_status": "submitted",
+        "fund_manager_decision": "accept",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "write_allowed": true,
+        "final_status": "accepted",
+        "profile_id_retained": "PROFILE-001",
+        "fund_manager_review_required": true,
+        "sportsbook_row_created": false
+      }
+    },
+    {
+      "case_id": "SMB-002",
+      "description": "High-risk daily mug-bet preference is declined with a review note.",
+      "stage": "stage_1_preferences",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_read_only",
+        "suggested_aggressiveness": "high",
+        "suggested_frequency_days": 1,
+        "account_health_intent": "reduce_restriction_risk",
+        "review_status": "submitted",
+        "fund_manager_decision": "decline",
+        "fund_manager_notes": "Synthetic preference too frequent for current account-health policy.",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "write_allowed": true,
+        "final_status": "declined",
+        "fund_manager_note_required": true,
+        "sportsbook_row_created": false
+      }
+    },
+    {
+      "case_id": "SMB-003",
+      "description": "Subscriber mug-bet suggestion is approved and converted into a profile-scoped sportsbook mug-bet row.",
+      "stage": "stage_1_suggestions",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_read_only",
+        "bookmaker_account_id": "ACCOUNT-BOOKMAKER-A",
+        "event_name": "Demo Home v Demo Away",
+        "fixture_type": "Football",
+        "market": "Match Result",
+        "stake": "2.00",
+        "odds": "2.10",
+        "status": "suggested",
+        "fund_manager_action": "convert_to_mug_bet",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "suggestion_final_status": "converted_to_mug_bet",
+        "sportsbook_row_created": true,
+        "sportsbook_row_profile_id": "PROFILE-001",
+        "sportsbook_offer_type": "Mug Bet",
+        "source": "subscriber_suggestion",
+        "subscriber_can_self_approve": false
+      }
+    },
+    {
+      "case_id": "SMB-004",
+      "description": "Subscriber mug-bet suggestion is rejected because the profile account is restricted.",
+      "stage": "stage_1_suggestions",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_read_only",
+        "bookmaker_account_id": "ACCOUNT-BOOKMAKER-RESTRICTED",
+        "profile_account_status": "gubbed",
+        "event_name": "Demo Restricted Event",
+        "fixture_type": "Football",
+        "market": "Match Result",
+        "stake": "2.00",
+        "odds": "2.00",
+        "status": "suggested",
+        "fund_manager_action": "decline",
+        "fund_manager_notes": "Synthetic account unavailable for mug-bet activity.",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "suggestion_final_status": "declined",
+        "sportsbook_row_created": false,
+        "rejection_reason_required": true,
+        "error_code": "profile_account_unavailable"
+      }
+    },
+    {
+      "case_id": "SMB-005",
+      "description": "Subscriber logs a settled losing mug bet and the Fund Manager accepts it for reporting.",
+      "stage": "stage_2_activity",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_mug_logger",
+        "bookmaker_account_id": "ACCOUNT-BOOKMAKER-A",
+        "event_name": "Demo Accepted Mug Bet",
+        "fixture_type": "Football",
+        "market": "Match Result",
+        "stake": "2.00",
+        "odds": "2.10",
+        "placed_at": "2026-07-20T15:00:00+01:00",
+        "settled_at": "2026-07-20T17:00:00+01:00",
+        "outcome": "lose",
+        "cash_result": "-2.00",
+        "status": "logged_by_subscriber",
+        "fund_manager_action": "accept",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "activity_final_status": "accepted",
+        "reportable": true,
+        "cash_result_allowed": true,
+        "cash_result": "-2.00",
+        "original_subscriber_values_retained": true
+      }
+    },
+    {
+      "case_id": "SMB-006",
+      "description": "Fund Manager corrects subscriber-entered mug activity and preserves original values.",
+      "stage": "stage_2_activity",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "actor_role": "managed_subscriber_mug_logger",
+        "bookmaker_account_id": "ACCOUNT-BOOKMAKER-A",
+        "event_name": "Demo Corrected Mug Bet",
+        "stake": "2.00",
+        "odds": "2.50",
+        "cash_result": "3.00",
+        "status": "needs_review",
+        "fund_manager_action": "correct",
+        "correction": {
+          "cash_result": "2.80",
+          "fund_manager_review_note": "Synthetic correction for returned stake treatment.",
+          "reviewed_by": "FUND-MANAGER-001"
+        }
+      },
+      "expected": {
+        "activity_final_status": "corrected_by_fund_manager",
+        "original_cash_result": "3.00",
+        "reporting_cash_result": "2.80",
+        "correction_note_required": true,
+        "original_subscriber_values_retained": true
+      }
+    },
+    {
+      "case_id": "SMB-007",
+      "description": "Subscriber attempts to log mug activity against an unlinked profile.",
+      "stage": "stage_2_activity",
+      "inputs": {
+        "profile_id": "PROFILE-002",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "linked_profile_ids": ["PROFILE-001"],
+        "actor_role": "managed_subscriber_mug_logger",
+        "bookmaker_account_id": "ACCOUNT-BOOKMAKER-A",
+        "event_name": "Demo Wrong Profile",
+        "stake": "2.00",
+        "odds": "2.10"
+      },
+      "expected": {
+        "write_allowed": false,
+        "error_code": "profile_access_denied",
+        "record_created": false,
+        "cross_profile_leak": false
+      }
+    },
+    {
+      "case_id": "SMB-008",
+      "description": "Locked subscriber mug activity cannot be silently edited after report inclusion.",
+      "stage": "stage_2_activity",
+      "inputs": {
+        "profile_id": "PROFILE-001",
+        "activity_id": "SMB-ACTIVITY-LOCKED-001",
+        "period_state": "report_included",
+        "activity_status": "locked",
+        "requested_action": "direct_edit",
+        "actor_role": "fund_manager",
+        "new_cash_result": "-1.50"
+      },
+      "expected": {
+        "direct_edit_allowed": false,
+        "error_code": "locked_activity_requires_correction",
+        "correction_route_required": true,
+        "original_activity_immutable": true
+      }
+    }
+  ]
+}

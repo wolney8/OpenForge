@@ -2,23 +2,20 @@ export default function NewProfilePage() {
   return (
     <main className="page-shell">
       <section className="content-panel stack">
-        <span className="eyebrow">/profiles/new</span>
+        <span className="eyebrow">Profiles</span>
         <h1>Add profile</h1>
         <p className="lede">
-          This shell reserves the profile-creation route. Form persistence, validation,
-          and database writes are intentionally deferred to the next implementation slice.
+          Create a new subscriber profile and keep its tracker data isolated from
+          every other profile.
         </p>
         <div className="meta-grid">
           <dl>
-            <dt>MVP fields</dt>
-            <dd>
-              display name, profile code, email, phone, status, tracking start date,
-              bankroll, notes, management fee, investment fee
-            </dd>
+            <dt>Profile setup</dt>
+            <dd>Identity, contact, bankroll, fees, and tracking start date</dd>
           </dl>
           <dl>
-            <dt>Safety rule</dt>
-            <dd>No credentials or payment secrets stored here</dd>
+            <dt>Data boundary</dt>
+            <dd>Tracker rows stay isolated to the selected profile</dd>
           </dl>
         </div>
       </section>

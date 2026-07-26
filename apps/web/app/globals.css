@@ -4078,6 +4078,127 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   gap: 1rem;
 }
 
+.compact-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: fit-content;
+  min-height: 2.5rem;
+}
+
+.bridge-split-panel {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--outline);
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--surface-container) 72%, transparent);
+}
+
+.bridge-split-list {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.bridge-split-row {
+  display: grid;
+  grid-template-areas:
+    "index value retention deadline remove"
+    "index bet fixture campaign note";
+  grid-template-columns: 2rem minmax(7rem, 0.75fr) minmax(8rem, 0.85fr) minmax(10rem, 1.05fr) minmax(3rem, auto);
+  align-items: end;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--outline);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.bridge-split-row .field-control {
+  min-width: 0;
+}
+
+.bridge-split-row .field-control input,
+.bridge-split-row .field-control select {
+  width: 100%;
+  min-width: 0;
+}
+
+.bridge-split-index {
+  grid-area: index;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.bridge-split-value {
+  grid-area: value;
+}
+
+.bridge-split-retention {
+  grid-area: retention;
+}
+
+.bridge-split-deadline {
+  grid-area: deadline;
+}
+
+.bridge-split-bet-type {
+  grid-area: bet;
+}
+
+.bridge-split-fixture {
+  grid-area: fixture;
+}
+
+.bridge-split-campaign {
+  grid-area: campaign;
+}
+
+.bridge-split-note {
+  grid-area: note;
+  min-width: 0;
+}
+
+.bridge-split-remove {
+  grid-area: remove;
+  align-self: end;
+  justify-content: center;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+}
+
+@media (max-width: 760px) {
+  .bridge-split-row {
+    grid-template-areas:
+      "index value"
+      "index retention"
+      "index deadline"
+      "index bet"
+      "index fixture"
+      "index campaign"
+      "index note"
+      "index remove";
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+
+  .bridge-split-row .field-control,
+  .bridge-split-remove {
+    grid-column: 2;
+  }
+}
+
 .access-scope-badge {
   display: inline-flex;
   align-items: center;

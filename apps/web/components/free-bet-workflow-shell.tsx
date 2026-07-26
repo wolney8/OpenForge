@@ -96,6 +96,11 @@ type FreeBetRecord = {
   date_settled: string;
   origin_qual_bet_id: string;
   offer_group_id: string;
+  source_award_group_id: string;
+  source_award_split_index: number;
+  source_award_split_total: number;
+  source_award_expected_value: string;
+  source_award_variance_reason: string;
   user_notes: string;
   manual_override_value: string;
   manual_override_reason: string;
@@ -148,6 +153,11 @@ type FreeBetFormState = {
   date_settled: string;
   origin_qual_bet_id: string;
   offer_group_id: string;
+  source_award_group_id: string;
+  source_award_split_index: number;
+  source_award_split_total: number;
+  source_award_expected_value: string;
+  source_award_variance_reason: string;
   user_notes: string;
   manual_override_value: string;
   manual_override_reason: string;
@@ -324,6 +334,41 @@ function getCalculationValueSource(
     return "Cash-first projected/current value for an open row";
   }
   return "Awaiting contract-backed value";
+}
+
+function hasFreeBetAwardSource(formState: Pick<FreeBetFormState, "origin_qual_bet_id" | "source_award_group_id">): boolean {
+  return Boolean(formState.origin_qual_bet_id.trim() || formState.source_award_group_id.trim());
+}
+
+function getFreeBetAwardSourceTitle(
+  formState: Pick<FreeBetFormState, "source_award_split_index" | "source_award_split_total">
+): string {
+  if (formState.source_award_split_total > 1 && formState.source_award_split_index > 0) {
+    return `Split ${formState.source_award_split_index} of ${formState.source_award_split_total}`;
+  }
+  return "Single award";
+}
+
+function getFreeBetAwardSourceDetail(
+  formState: Pick<
+    FreeBetFormState,
+    "origin_qual_bet_id" | "source_award_expected_value" | "source_award_variance_reason"
+  >
+): string {
+  const details = [];
+
+  if (formState.origin_qual_bet_id.trim()) {
+    details.push(`Source ${formState.origin_qual_bet_id.trim()}`);
+  }
+  const expectedAwardValue = parseNumericInput(formState.source_award_expected_value);
+  if (expectedAwardValue !== null) {
+    details.push(`Expected award ${formatMoney(expectedAwardValue)}`);
+  }
+  if (formState.source_award_variance_reason.trim()) {
+    details.push("Variance noted");
+  }
+
+  return details.join(" • ") || "Award source retained";
 }
 
 function getFreeBetBackLabel(result: string): string {
@@ -788,6 +833,11 @@ function createBlankForm(): FreeBetFormState {
     date_settled: "",
     origin_qual_bet_id: "",
     offer_group_id: "",
+    source_award_group_id: "",
+    source_award_split_index: 0,
+    source_award_split_total: 0,
+    source_award_expected_value: "",
+    source_award_variance_reason: "",
     user_notes: "",
     manual_override_value: "",
     manual_override_reason: ""
@@ -819,6 +869,11 @@ function recordToForm(record: FreeBetRecord): FreeBetFormState {
     date_settled: toDateTimeLocalValue(record.date_settled),
     origin_qual_bet_id: record.origin_qual_bet_id,
     offer_group_id: record.offer_group_id,
+    source_award_group_id: record.source_award_group_id,
+    source_award_split_index: record.source_award_split_index,
+    source_award_split_total: record.source_award_split_total,
+    source_award_expected_value: record.source_award_expected_value,
+    source_award_variance_reason: record.source_award_variance_reason,
     user_notes: record.user_notes,
     manual_override_value: record.manual_override_value,
     manual_override_reason: record.manual_override_reason
@@ -3204,6 +3259,13 @@ export function FreeBetWorkflowShell({
                     "Bookmaker and mode pending"}
               </span>
             </article>
+            {hasFreeBetAwardSource(formState) ? (
+              <article className="stat-card" data-pd-id="free-bets.editor.award-source-card">
+                <span className="eyebrow">Award source</span>
+                <strong>{getFreeBetAwardSourceTitle(formState)}</strong>
+                <span>{getFreeBetAwardSourceDetail(formState)}</span>
+              </article>
+            ) : null}
           </section>
         ) : null}
         {!isPlaceholderStatus || hasOutcomePreview ? (

@@ -1,0 +1,245 @@
+{
+  "schema_version": "1.0",
+  "fixture_pack": "subscriber-registration-and-funding-review",
+  "status": "deferred_draft",
+  "contract": "docs/contracts/subscriber-registration-and-funding-review-contract.md",
+  "fixture_spec": "docs/fixture-specs/subscriber-registration-and-funding-review-fixture-spec.md",
+  "sensitive_data_policy": "synthetic_metadata_only",
+  "cases": [
+    {
+      "case_id": "SRF-001",
+      "description": "Subscriber-funded registration is approved and converted into a profile.",
+      "inputs": {
+        "registration_id": "REG-001",
+        "subscriber_user_id": "SUBSCRIBER-001",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "status": "submitted",
+        "display_name": "Demo Subscriber One",
+        "email": "subscriber-one@example.invalid",
+        "phone": "+440000000001",
+        "country_code": "GB",
+        "documents": [
+          {
+            "document_type": "identity",
+            "storage_reference": "local-private://registrations/REG-001/identity-demo.png",
+            "mime_type": "image/png",
+            "file_size_bytes": 128000,
+            "checksum": "sha256-demo-identity-001",
+            "review_status": "accepted"
+          },
+          {
+            "document_type": "address",
+            "storage_reference": "local-private://registrations/REG-001/address-demo.pdf",
+            "mime_type": "application/pdf",
+            "file_size_bytes": 256000,
+            "checksum": "sha256-demo-address-001",
+            "review_status": "accepted"
+          }
+        ],
+        "funding_request": {
+          "subscriber_self_funding_amount": "500.00",
+          "fund_manager_provided_float_requested": false,
+          "fund_manager_provided_float_request_amount": "0.00",
+          "funding_model": "subscriber_funded",
+          "status": "submitted"
+        },
+        "fund_manager_action": "approve_create_profile"
+      },
+      "expected": {
+        "registration_final_status": "approved_profile_created",
+        "profile_created": true,
+        "profile_id": "PROFILE-REG-001",
+        "profile_status": "pending_funding_confirmation",
+        "funding_model": "subscriber_funded",
+        "raw_documents_in_fixture": false
+      }
+    },
+    {
+      "case_id": "SRF-002",
+      "description": "Registration is paused because required documentation is missing.",
+      "inputs": {
+        "registration_id": "REG-002",
+        "subscriber_user_id": "SUBSCRIBER-002",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "status": "submitted",
+        "display_name": "Demo Subscriber Two",
+        "email": "subscriber-two@example.invalid",
+        "country_code": "GB",
+        "documents": [
+          {
+            "document_type": "identity",
+            "storage_reference": "local-private://registrations/REG-002/identity-demo.png",
+            "mime_type": "image/png",
+            "file_size_bytes": 128000,
+            "checksum": "sha256-demo-identity-002",
+            "review_status": "accepted"
+          }
+        ],
+        "required_document_types": ["identity", "address"],
+        "fund_manager_action": "request_more_information"
+      },
+      "expected": {
+        "registration_final_status": "needs_more_information",
+        "missing_document_types": ["address"],
+        "profile_created": false,
+        "subscriber_visible_status": "More information required"
+      }
+    },
+    {
+      "case_id": "SRF-003",
+      "description": "Subscriber requests Fund-Manager-provided float and no approval is inferred.",
+      "inputs": {
+        "registration_id": "REG-003",
+        "subscriber_user_id": "SUBSCRIBER-003",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "status": "submitted",
+        "display_name": "Demo Subscriber Three",
+        "email": "subscriber-three@example.invalid",
+        "country_code": "GB",
+        "funding_request": {
+          "subscriber_self_funding_amount": "0.00",
+          "fund_manager_provided_float_requested": true,
+          "fund_manager_provided_float_request_amount": "500.00",
+          "funding_model": "fund_manager_provided_float",
+          "recovery_model": null,
+          "status": "submitted"
+        }
+      },
+      "expected": {
+        "funding_request_final_status": "submitted",
+        "profile_active": false,
+        "automatic_approval": false,
+        "recovery_model_inferred": false,
+        "approval_requires_fund_manager_decision": true
+      }
+    },
+    {
+      "case_id": "SRF-004",
+      "description": "Fund-Manager-provided float is approved only with explicit recovery metadata.",
+      "inputs": {
+        "registration_id": "REG-004",
+        "subscriber_user_id": "SUBSCRIBER-004",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "status": "under_fund_manager_review",
+        "funding_request": {
+          "subscriber_self_funding_amount": "0.00",
+          "fund_manager_provided_float_requested": true,
+          "fund_manager_provided_float_request_amount": "750.00",
+          "fund_manager_approved_float_amount": "750.00",
+          "funding_model": "fund_manager_provided_float",
+          "recovery_model": "priority_profit_repayment",
+          "fee_adjustment_policy_id": "POLICY-FLOAT-001",
+          "status": "submitted"
+        },
+        "fund_manager_action": "approve_float",
+        "decision_note": "Synthetic approval with explicit recovery policy.",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "funding_request_final_status": "approved_fund_manager_float",
+        "fund_manager_approved_float_amount": "750.00",
+        "recovery_model_recorded": true,
+        "decision_note_required": true,
+        "fee_calculation_allowed_without_recovery_contract": false
+      }
+    },
+    {
+      "case_id": "SRF-005",
+      "description": "Hybrid funding separates subscriber upfront funding and Fund Manager float.",
+      "inputs": {
+        "registration_id": "REG-005",
+        "subscriber_user_id": "SUBSCRIBER-005",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "funding_request": {
+          "subscriber_self_funding_amount": "400.00",
+          "fund_manager_provided_float_requested": true,
+          "fund_manager_provided_float_request_amount": "600.00",
+          "fund_manager_approved_float_amount": "600.00",
+          "funding_model": "hybrid",
+          "recovery_model": "higher_fee_until_float_recovered",
+          "status": "submitted"
+        },
+        "fund_manager_action": "approve_hybrid",
+        "decision_note": "Synthetic hybrid funding approval.",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "funding_request_final_status": "approved_hybrid",
+        "subscriber_self_funding_amount": "400.00",
+        "fund_manager_approved_float_amount": "600.00",
+        "total_starting_funding": "1000.00",
+        "amounts_are_not_collapsed": true
+      }
+    },
+    {
+      "case_id": "SRF-006",
+      "description": "Unsafe document metadata is rejected.",
+      "inputs": {
+        "registration_id": "REG-006",
+        "subscriber_user_id": "SUBSCRIBER-006",
+        "document": {
+          "document_type": "identity",
+          "storage_reference": "https://public.example.invalid/identity-demo.exe",
+          "mime_type": "application/x-msdownload",
+          "file_size_bytes": 64000,
+          "checksum": "sha256-demo-unsafe-006",
+          "review_status": "submitted"
+        }
+      },
+      "expected": {
+        "document_review_status": "rejected",
+        "registration_blocked": true,
+        "error_codes": ["unsupported_mime_type", "public_storage_reference_rejected"],
+        "profile_created": false
+      }
+    },
+    {
+      "case_id": "SRF-007",
+      "description": "Subscriber cannot approve their own registration.",
+      "inputs": {
+        "registration_id": "REG-007",
+        "subscriber_user_id": "SUBSCRIBER-007",
+        "actor_user_id": "SUBSCRIBER-007",
+        "actor_role": "prospective_subscriber",
+        "attempted_action": "approve_create_profile",
+        "status": "submitted"
+      },
+      "expected": {
+        "action_allowed": false,
+        "registration_status_unchanged": true,
+        "profile_created": false,
+        "error_code": "fund_manager_approval_required",
+        "audit_event_created": true
+      }
+    },
+    {
+      "case_id": "SRF-008",
+      "description": "Declined registration remains auditable with controlled subscriber-visible messaging.",
+      "inputs": {
+        "registration_id": "REG-008",
+        "subscriber_user_id": "SUBSCRIBER-008",
+        "fund_manager_id": "FUND-MANAGER-001",
+        "status": "under_fund_manager_review",
+        "funding_request": {
+          "subscriber_self_funding_amount": "0.00",
+          "fund_manager_provided_float_requested": true,
+          "fund_manager_provided_float_request_amount": "1000.00",
+          "funding_model": "fund_manager_provided_float",
+          "status": "submitted"
+        },
+        "fund_manager_action": "decline",
+        "decision_note": "Synthetic internal decline note.",
+        "subscriber_visible_reason": "Registration not approved at this time.",
+        "reviewed_by": "FUND-MANAGER-001"
+      },
+      "expected": {
+        "registration_final_status": "declined",
+        "funding_request_final_status": "declined",
+        "profile_created": false,
+        "decision_note_retained": true,
+        "subscriber_visible_reason_separate": true,
+        "fund_manager_only_notes_hidden_from_subscriber": true
+      }
+    }
+  ]
+}

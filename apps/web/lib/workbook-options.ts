@@ -98,11 +98,11 @@ const offerTypeDescriptors: Record<string, OfferTypeDescriptor> = {
   },
   "Weekly Reload": {
     calculatorFamily: "reload / recurring promo",
-    summary: "Broad recurring-promo placeholder; actual mechanic should be clarified where possible.",
+    summary: "Recurring promotion family; select the matching offer mechanic before placement.",
   },
   None: {
-    calculatorFamily: "placeholder / legacy",
-    summary: "Legacy placeholder only; prefer a concrete offer family on new rows.",
+    calculatorFamily: "unclassified",
+    summary: "Offer family not selected; choose a concrete mechanic before placement.",
   },
   "Bet Builder": {
     calculatorFamily: "legacy offer-type",

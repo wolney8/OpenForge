@@ -6,22 +6,21 @@ export default function LoginPage() {
     <main className="page-shell">
       <section className="hero-panel stack">
         <BrandLogo className="brand-logo-login" priority />
-        <span className="eyebrow">/login</span>
+        <span className="eyebrow">Fund Manager</span>
         <h1>Fund Manager login</h1>
         <p className="lede">
-          MVP login is intentionally local-first and single-operator. Production auth,
-          hosted SaaS sign-up, and subscriber self-service access remain deferred.
+          Sign in to manage profiles, tracker ledgers, reports, backups, and fee reviews.
         </p>
         <div className="meta-grid">
           <dl>
-            <dt>Operator mode</dt>
-            <dd>One local Fund Manager</dd>
+            <dt>Workspace</dt>
+            <dd>Fund Manager</dd>
           </dl>
           <dl>
-            <dt>Next route</dt>
+            <dt>Continue</dt>
             <dd>
               <Link className="button-link" href="/profiles">
-                Go to profiles
+                Open profiles
               </Link>
             </dd>
           </dl>

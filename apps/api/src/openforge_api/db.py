@@ -683,6 +683,11 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           date_settled TEXT NOT NULL,
           origin_qual_bet_id TEXT NOT NULL DEFAULT '',
           offer_group_id TEXT NOT NULL DEFAULT '',
+          source_award_group_id TEXT NOT NULL DEFAULT '',
+          source_award_split_index INTEGER NOT NULL DEFAULT 0,
+          source_award_split_total INTEGER NOT NULL DEFAULT 0,
+          source_award_expected_value TEXT NOT NULL DEFAULT '',
+          source_award_variance_reason TEXT NOT NULL DEFAULT '',
           follow_up_reminder_state TEXT NOT NULL DEFAULT 'Not Set',
           follow_up_reminder_due_at TEXT NOT NULL DEFAULT '',
           follow_up_reminder_reason TEXT NOT NULL DEFAULT '',
@@ -1021,6 +1026,11 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "free_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "origin_qual_bet_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "offer_group_id", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "free_bets", "source_award_group_id", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "free_bets", "source_award_split_index", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(connection, "free_bets", "source_award_split_total", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(connection, "free_bets", "source_award_expected_value", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "free_bets", "source_award_variance_reason", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
         connection,
         "free_bets",
@@ -2131,6 +2141,11 @@ class FreeBetRecord:
     date_settled: str
     origin_qual_bet_id: str
     offer_group_id: str
+    source_award_group_id: str
+    source_award_split_index: int
+    source_award_split_total: int
+    source_award_expected_value: str
+    source_award_variance_reason: str
     follow_up_reminder_state: str
     follow_up_reminder_due_at: str
     follow_up_reminder_reason: str
@@ -3277,6 +3292,11 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
         "date_settled": payload["date_settled"],
         "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
         "offer_group_id": payload.get("offer_group_id", ""),
+        "source_award_group_id": payload.get("source_award_group_id", ""),
+        "source_award_split_index": payload.get("source_award_split_index", 0),
+        "source_award_split_total": payload.get("source_award_split_total", 0),
+        "source_award_expected_value": payload.get("source_award_expected_value", ""),
+        "source_award_variance_reason": payload.get("source_award_variance_reason", ""),
         "follow_up_reminder_state": "Not Set",
         "follow_up_reminder_due_at": "",
         "follow_up_reminder_reason": "",
@@ -3317,6 +3337,11 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
               date_settled,
               origin_qual_bet_id,
               offer_group_id,
+              source_award_group_id,
+              source_award_split_index,
+              source_award_split_total,
+              source_award_expected_value,
+              source_award_variance_reason,
               follow_up_reminder_state,
               follow_up_reminder_due_at,
               follow_up_reminder_reason,
@@ -3331,7 +3356,7 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -3380,6 +3405,15 @@ def update_free_bet(
         "date_settled": payload["date_settled"],
         "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
         "offer_group_id": payload.get("offer_group_id", ""),
+        "source_award_group_id": payload.get("source_award_group_id", existing.source_award_group_id),
+        "source_award_split_index": payload.get("source_award_split_index", existing.source_award_split_index),
+        "source_award_split_total": payload.get("source_award_split_total", existing.source_award_split_total),
+        "source_award_expected_value": payload.get(
+            "source_award_expected_value", existing.source_award_expected_value
+        ),
+        "source_award_variance_reason": payload.get(
+            "source_award_variance_reason", existing.source_award_variance_reason
+        ),
         "user_notes": payload["user_notes"],
         "manual_override_value": payload["manual_override_value"],
         "manual_override_reason": payload["manual_override_reason"],
@@ -3412,6 +3446,11 @@ def update_free_bet(
               date_settled = ?,
               origin_qual_bet_id = ?,
               offer_group_id = ?,
+              source_award_group_id = ?,
+              source_award_split_index = ?,
+              source_award_split_total = ?,
+              source_award_expected_value = ?,
+              source_award_variance_reason = ?,
               user_notes = ?,
               manual_override_value = ?,
               manual_override_reason = ?,
@@ -3441,6 +3480,11 @@ def update_free_bet(
                 updated["date_settled"],
                 updated["origin_qual_bet_id"],
                 updated["offer_group_id"],
+                updated["source_award_group_id"],
+                updated["source_award_split_index"],
+                updated["source_award_split_total"],
+                updated["source_award_expected_value"],
+                updated["source_award_variance_reason"],
                 updated["user_notes"],
                 updated["manual_override_value"],
                 updated["manual_override_reason"],

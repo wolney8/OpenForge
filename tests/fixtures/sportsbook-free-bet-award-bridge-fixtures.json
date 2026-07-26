@@ -1,0 +1,231 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/sportsbook-free-bet-award-bridge-contract.md",
+  "cases": [
+    {
+      "case_id": "SFB-BRIDGE-001",
+      "name": "Single settlement-timing free-bet award",
+      "profile_id": "profile-demo-001",
+      "expected_award_value": "5.00",
+      "award_timing": "settlement",
+      "source_before": {
+        "sportsbook_bet_id": "SB-AWARD-001",
+        "status": "Placed",
+        "result": "Pending",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "offer_text": "Synthetic Bet 10 Get 5",
+        "offer_name": "Weekly Reload",
+        "bet_type": "Single",
+        "fixture_type": "Football",
+        "event_name": "Synthetic Team A v Synthetic Team B",
+        "date_settled": "2026-07-24T18:00:00"
+      },
+      "split_rows": [
+        {
+          "free_bet_value": "5.00",
+          "bet_type": "Single",
+          "fixture_type": "Football",
+          "offer_name": "Weekly Reload",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-27T18:00:00",
+          "restriction_note": ""
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "source_after_status": "Placed",
+        "created_free_bet_count": 1,
+        "created_free_bet_status": "Not Yet Awarded",
+        "requires_variance_reason": false
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-002",
+      "name": "Single placement-timing free-bet award",
+      "profile_id": "profile-demo-001",
+      "expected_award_value": "5.00",
+      "award_timing": "placement",
+      "source_before": {
+        "sportsbook_bet_id": "SB-AWARD-002",
+        "status": "Placed",
+        "result": "Pending",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "offer_text": "Synthetic Bet 10 Get 5 On Placement",
+        "offer_name": "Daily Reload",
+        "bet_type": "In Play + Single",
+        "fixture_type": "Football",
+        "event_name": "Synthetic Team C v Synthetic Team D",
+        "date_settled": "2026-07-24T20:00:00"
+      },
+      "split_rows": [
+        {
+          "free_bet_value": "5.00",
+          "bet_type": "In Play + Single",
+          "fixture_type": "Football",
+          "offer_name": "Daily Reload",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-27T20:00:00",
+          "restriction_note": ""
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "source_after_status": "Free Bet Awarded",
+        "created_free_bet_count": 1,
+        "created_free_bet_status": "Available",
+        "requires_variance_reason": false
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-003",
+      "name": "Split free-bet award exact total",
+      "profile_id": "profile-demo-001",
+      "expected_award_value": "5.00",
+      "award_timing": "placement",
+      "source_before": {
+        "sportsbook_bet_id": "SB-AWARD-003",
+        "status": "Placed",
+        "result": "Pending",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Bet & Get",
+        "offer_text": "Synthetic Bet 10 Get 3 And 2",
+        "offer_name": "Special Offer",
+        "bet_type": "Single",
+        "fixture_type": "Football",
+        "event_name": "Synthetic Team E v Synthetic Team F",
+        "date_settled": "2026-07-25T15:00:00"
+      },
+      "split_rows": [
+        {
+          "free_bet_value": "3.00",
+          "bet_type": "Bet Builder",
+          "fixture_type": "Football",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Football bet builder only"
+        },
+        {
+          "free_bet_value": "2.00",
+          "bet_type": "Single",
+          "fixture_type": "Horse Racing",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Horse racing only"
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "source_after_status": "Free Bet Awarded",
+        "created_free_bet_count": 2,
+        "created_free_bet_status": "Available",
+        "requires_variance_reason": false,
+        "shared_award_group": true
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-004",
+      "name": "Under-allocated split requires reason",
+      "profile_id": "profile-demo-001",
+      "expected_award_value": "5.00",
+      "award_timing": "placement",
+      "split_rows": [
+        {
+          "free_bet_value": "3.00",
+          "bet_type": "Bet Builder",
+          "fixture_type": "Football",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Football bet builder only"
+        },
+        {
+          "free_bet_value": "1.00",
+          "bet_type": "Single",
+          "fixture_type": "Horse Racing",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Horse racing only"
+        }
+      ],
+      "expected": {
+        "allowed_without_reason": false,
+        "allowed_with_reason": true,
+        "variance": "-1.00",
+        "variance_reason": "Bookmaker awarded less than advertised"
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-005",
+      "name": "Over-allocated split requires reason",
+      "profile_id": "profile-demo-001",
+      "expected_award_value": "5.00",
+      "award_timing": "placement",
+      "split_rows": [
+        {
+          "free_bet_value": "3.00",
+          "bet_type": "Bet Builder",
+          "fixture_type": "Football",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Football bet builder only"
+        },
+        {
+          "free_bet_value": "3.00",
+          "bet_type": "Single",
+          "fixture_type": "Horse Racing",
+          "offer_name": "Special Offer",
+          "retention_mode": "SNR",
+          "expiry": "2026-07-28T15:00:00",
+          "restriction_note": "Horse racing only"
+        }
+      ],
+      "expected": {
+        "allowed_without_reason": false,
+        "allowed_with_reason": true,
+        "variance": "1.00",
+        "variance_reason": "Bookmaker awarded an extra restricted token"
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-006",
+      "name": "Duplicate award group is blocked",
+      "profile_id": "profile-demo-001",
+      "source_sportsbook_bet_id": "SB-AWARD-003",
+      "source_award_group_id": "AWARD-GROUP-001",
+      "expected": {
+        "first_submission_allowed": true,
+        "second_submission_allowed": false,
+        "blocked_reason": "Duplicate source award group"
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-007",
+      "name": "Explicit second award group is allowed",
+      "profile_id": "profile-demo-001",
+      "source_sportsbook_bet_id": "SB-AWARD-003",
+      "existing_source_award_group_id": "AWARD-GROUP-001",
+      "new_source_award_group_id": "AWARD-GROUP-002",
+      "expected": {
+        "allowed": true,
+        "requires_explicit_copy_another_award_action": true
+      }
+    },
+    {
+      "case_id": "SFB-BRIDGE-008",
+      "name": "Profile mismatch is blocked",
+      "profile_id": "profile-demo-001",
+      "target_profile_id": "profile-demo-002",
+      "source_sportsbook_bet_id": "SB-AWARD-001",
+      "expected": {
+        "allowed": false,
+        "blocked_reason": "Target free-bet rows must use the source sportsbook profile"
+      }
+    }
+  ]
+}

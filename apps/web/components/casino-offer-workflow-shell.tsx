@@ -562,7 +562,7 @@ function getDisplayedCasinoValueForForm(formState: CasinoOfferFormState): string
 
 function getDisplayedCasinoValueLabelForForm(formState: CasinoOfferFormState): string {
   if (casinoPlaceholderStatuses.has(formState.status) && !formState.calc_net_pnl.trim()) {
-    return "Current placeholder";
+    return "Current value pending";
   }
   if (formState.status === "Settled" || formState.result !== "Pending") {
     return "Net result";
@@ -2694,7 +2694,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </article>
         </section>
         {isPlaceholderStatus && !hasResolvedCasinoValue ? (
-          <section className="stat-strip" aria-label="Casino placeholder guidance">
+          <section className="stat-strip" aria-label="Casino setup guidance">
             <article className="stat-card">
               <span className="eyebrow">Current bankroll value</span>
               <strong>{displayedValue}</strong>

@@ -5,15 +5,14 @@ test.describe("Login to profiles shell", () => {
     await page.goto("/login");
 
     await expect(page.getByRole("heading", { name: "Fund Manager login" })).toBeVisible();
-    const profilesLink = page.getByRole("link", { name: "Go to profiles" });
+    const profilesLink = page.getByRole("link", { name: "Open profiles" });
     await profilesLink.focus();
     await expect(profilesLink).toBeFocused();
     await profilesLink.click();
 
     await expect(page).toHaveURL(/\/profiles$/);
-    await expect(
-      page.getByRole("heading", { name: "Profiles are isolated tracker containers." })
-    ).toBeVisible();
+    await expect(page.locator("h1", { hasText: "Profiles and combined analytics" })).toBeVisible();
+    await expect(page.getByText("Profiles are isolated tracker containers.")).toHaveCount(0);
 
     const trackerLink = page.getByRole("link", { name: /Open .* dashboard/ }).first();
     const trackerHref = await trackerLink.getAttribute("href");

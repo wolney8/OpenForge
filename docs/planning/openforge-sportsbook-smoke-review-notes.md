@@ -1527,3 +1527,41 @@ Validation:
 - Autosaves remain in context and do not close the editor.
 - Resolved or dismissed partial-lay reminders can be followed by a fresh reminder while the row is
   still part laid; an already-active reminder blocks duplicate creation.
+
+### Free-bet award bridge split support - 2026-07-23
+
+- The Sportsbook Bets `Copy to free bets` bridge now supports one awarded offer producing multiple
+  free-bet rows, for example a split `Bet X Get X` award with separate football and racing
+  restrictions.
+- Split rows share an audited award group, preserve source sportsbook identity, record split index
+  and total, and retain expected award value plus variance reason where the split total differs.
+- The bridge remains profile-scoped and keeps the source sportsbook row separate from the awarded
+  free-bet rows.
+- Free Bets now surfaces split-award provenance in the editor overview so the Fund Manager can see
+  the source sportsbook row, expected award, and whether the row is one part of a split award.
+- App shell route-helper copy was reduced so the day-to-day platform surfaces read less like a
+  scaffold.
+
+Validation:
+
+- `pnpm --filter @openforge/web lint` passed.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm --filter @openforge/web test` passed: 125 tests.
+- `./scripts/run-python.sh -m pytest apps/api/tests/test_free_bet_workflow.py apps/api/tests/test_imports.py` passed: 41 tests.
+- `jq empty tests/fixtures/sportsbook-free-bet-award-bridge-fixtures.json && git diff --check` passed.
+- `pnpm exec playwright test tests/e2e/sportsbook-free-bet-bridge.spec.ts` passed: 4 tests,
+  including Free Bets source/split visibility.
+
+### Free-bet bridge split layout correction - 2026-07-23
+
+- The Free-bet awards split section now uses a two-line contained grid so split value, retention,
+  deadline, bet type, fixture, campaign and restriction note stay inside the bridge modal.
+- Added focused Playwright geometry coverage to prevent the split panel overflowing its modal.
+
+Validation:
+
+- `pnpm --filter @openforge/web lint` passed.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm --filter @openforge/web test` passed: 125 tests.
+- `pnpm exec playwright test tests/e2e/sportsbook-free-bet-bridge.spec.ts` passed: 4 tests.
+- `git diff --check` passed.

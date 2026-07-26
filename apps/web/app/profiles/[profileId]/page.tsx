@@ -19,11 +19,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   return (
     <main className="page-shell">
       <section className="content-panel stack">
-        <span className="eyebrow">/profiles/{profile.profileId}</span>
+        <span className="eyebrow">Profile</span>
         <h1>{profile.displayName}</h1>
         <p className="lede">
-          This profile surface is a control checkpoint before entering the isolated
-          tracker workspace.
+          Open this profile tracker or return to the Fund Manager profile dashboard.
         </p>
         <div className="meta-grid">
           <dl>

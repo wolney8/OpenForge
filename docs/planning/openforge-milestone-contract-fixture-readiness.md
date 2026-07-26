@@ -118,6 +118,9 @@ Readiness: ready for workflow review after Settings authority ownership is confi
 ### M14 Calculator Workspace
 
 - Existing row calculations: sportsbook/free-bet and advanced sportsbook contracts in `docs/contracts/`
+- `docs/contracts/sportsbook-free-bet-award-bridge-contract.md`
+- `docs/fixture-specs/sportsbook-free-bet-award-bridge-fixture-spec.md`
+- `tests/fixtures/sportsbook-free-bet-award-bridge-fixtures.json`
 - `docs/workflows/calculator-workspace-ledger-bridge-workflow-contract.md`
 - `docs/fixture-specs/calculator-workspace-ledger-bridge-fixture-spec.md`
 - `tests/fixtures/calculator-workspace-ledger-bridge-fixtures.json`
@@ -160,6 +163,37 @@ Branding issue #65 is approved for implementation. Supplied source assets are he
 `assets/source-logo/`; the current implementation intentionally defers favicon/compact
 mark work until a genuinely transparent supplied mark or explicit derivation approval
 exists. Bookmaker catalogue issue #64 remains separate from platform branding.
+
+### M9 Subscriber Access
+
+Existing access and fee evidence:
+
+- `docs/workflows/subscriber-access-and-visibility-workflow-contract.md`
+- `docs/contracts/subscriber-fee-aware-earnings-contract.md`
+- `docs/fixture-specs/subscriber-access-control-fixture-spec.md`
+- `docs/fixture-specs/subscriber-fee-aware-earnings-fixture-spec.md`
+
+New mug-bet participation evidence:
+
+- `docs/contracts/subscriber-mug-bet-participation-contract.md`
+- `docs/fixture-specs/subscriber-mug-bet-participation-fixture-spec.md`
+- `tests/fixtures/subscriber-mug-bet-participation-fixtures.json`
+
+New registration and funding review evidence:
+
+- `docs/contracts/subscriber-registration-and-funding-review-contract.md`
+- `docs/fixture-specs/subscriber-registration-and-funding-review-fixture-spec.md`
+- `tests/fixtures/subscriber-registration-and-funding-review-fixtures.json`
+
+Readiness: subscriber mug-bet preferences, suggestions and activity logging are now contract-gated
+for later M9 planning. Stage 1 allows subscriber suggestions only; Stage 2 allows subscriber mug
+activity logging only when role permissions, profile links and Fund Manager review are enforced.
+Subscriber registration and funding review is also contract-gated. It supports demographics,
+private document metadata, subscriber-entered self-funding amount, a registration checkbox for
+Fund-Manager-provided funding requests, subscriber-funded setup, hybrid setup and
+Fund-Manager-provided float requests. Funding is not part of profile tiers. This must not be
+implemented until subscriber login/role boundaries, document retention/storage rules, and
+legal/accounting treatment for any float or loan-like funding model are approved.
 
 ## Remaining smoke-test gate
 

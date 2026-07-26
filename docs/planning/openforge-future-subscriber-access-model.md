@@ -49,6 +49,7 @@ Deferred future role:
 Deferred future role:
 
 - signs up via secure invite or later approved sign-up flow
+- completes registration and funding review before profile activation
 - operates their own isolated profile tracker
 - may be subject to a higher investment fee and an additional platform fee
 - may have fewer administrative capabilities than a Fund Manager
@@ -79,6 +80,7 @@ Managed subscribers should be able to:
 - see approved performance metrics
 - see approved reports and progress views
 - see approved non-sensitive tracker data
+- suggest mug-bet preferences or candidate mug bets only when the Fund Manager enables that future permission
 
 Managed subscribers should not be able to:
 
@@ -88,6 +90,7 @@ Managed subscribers should not be able to:
 - edit notes intended for internal Fund Manager operations only
 - see combined cross-profile control data outside their own allowed scope
 - see other subscribers or other Fund Manager-owned profiles
+- approve, convert, or settle their own mug-bet suggestions
 
 ### Self-service subscriber boundary
 
@@ -96,12 +99,14 @@ Self-service subscribers should be able to:
 - access only their own isolated tracker
 - perform approved tracker workflows for their own profile context
 - see their own reports and metrics
+- complete an approved registration/onboarding workflow before profile activation
 
 Self-service subscribers should not be able to:
 
 - access other subscriber profiles
 - access Fund Manager combined control surfaces unless explicitly approved later
 - bypass fee policy or platform fee logic
+- create an active profile or approve funding without Fund Manager review
 
 ## Data-visibility model draft
 
@@ -154,6 +159,86 @@ Important rule:
 
 - fee application should remain a reporting/analytics concern, not a row-level bet-calculation concern
 
+## Future mug-bet participation direction
+
+Subscriber mug-bet participation is deferred and must remain Fund-Manager-reviewed.
+
+Stage 1 should allow a subscriber to:
+
+- suggest mug-bet aggressiveness and frequency
+- suggest candidate mug bets
+- see the review state of their own suggestions
+
+Stage 1 must not allow a subscriber to:
+
+- alter existing sportsbook rows
+- approve their own suggestions
+- see internal account-health or risk-team notes
+
+Stage 2 should allow a subscriber to:
+
+- log mug bets and mug activity they manually performed
+- provide stake, odds, date/time, outcome and cash result
+- see whether the Fund Manager accepted, corrected or rejected the activity
+
+Stage 2 must not allow a subscriber to:
+
+- write into another profile
+- bypass Fund Manager review where the profile is managed
+- silently edit locked/report-included activity
+- access Fund Manager-only fee withdrawal, import, audit or combined analytics surfaces
+
+Draft evidence:
+
+- `docs/contracts/subscriber-mug-bet-participation-contract.md`
+- `docs/fixture-specs/subscriber-mug-bet-participation-fixture-spec.md`
+- `tests/fixtures/subscriber-mug-bet-participation-fixtures.json`
+
+## Future registration and funding review direction
+
+Subscriber registration and funding review is deferred and must remain Fund-Manager-controlled.
+
+The planned registration workflow may allow a prospective subscriber to:
+
+- submit demographics and contact details
+- upload required documentation or image metadata through an approved private upload path
+- enter how much they will fund themselves
+- optionally tick a registration checkbox to request Fund-Manager-provided starting funds
+
+The Fund Manager must be able to:
+
+- review submitted details and document metadata
+- approve, decline, archive or request more information
+- create or link a profile only after review
+- confirm whether the profile is subscriber-funded, Fund-Manager-float-funded or hybrid-funded
+- apply only approved fee/recovery policies
+
+Funding must not be modelled as part of profile tiers. Tiers/packages may exist elsewhere for fees
+or service levels, but the subscriber funding request is a registration-form decision: the
+subscriber states their own funding amount, optionally requests Fund-Manager-provided funding, and
+the Fund Manager decides after reviewing registration documents.
+
+Funding terminology must remain careful. A subscriber request for a "loaned amount" should be
+modelled as a `fund_manager_provided_float_request` until legal/accounting approval confirms
+whether Plum Duff can support a loan-like product. No repayment, recovery, higher-fee or priority
+profit rule may be implemented without its own approved contract and fixtures.
+
+Registration must not allow:
+
+- public open sign-up
+- automatic profile activation
+- automatic funding approval
+- raw document fixtures
+- public storage of uploaded documents
+- hidden fee uplift or repayment logic
+- subscriber access to Fund Manager-only review notes
+
+Draft evidence:
+
+- `docs/contracts/subscriber-registration-and-funding-review-contract.md`
+- `docs/fixture-specs/subscriber-registration-and-funding-review-fixture-spec.md`
+- `tests/fixtures/subscriber-registration-and-funding-review-fixtures.json`
+
 ## Invite and onboarding direction
 
 Deferred future subscriber onboarding should use:
@@ -187,6 +272,8 @@ These are deferred and should not replace the approved MVP route model.
 - fee logic being inconsistently applied between Fund Manager and subscriber views
 - self-service subscribers getting access to control surfaces intended only for Fund Managers
 - subscriber-facing routes weakening the approved profile-isolation contract
+- document upload handling exposing sensitive identity or funding material
+- Fund-Manager-provided float being treated as an approved loan/recovery product without legal/accounting approval
 
 ## Recommended later planning slices
 
@@ -196,3 +283,5 @@ These are deferred and should not replace the approved MVP route model.
 4. self-service subscriber workflow
 5. subscriber fee-aware earnings contract
 6. invite/auth boundary planning
+7. subscriber mug-bet preferences, suggestions and activity logging
+8. subscriber registration, document review and funding request processing

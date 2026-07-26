@@ -134,11 +134,7 @@ export default async function TrackerModulePage({
           rows={dataRows}
         />
       ) : (
-        <section className="content-panel stack">
-          <p className="lede">
-            This route remains available for later workbook-parity work.
-          </p>
-        </section>
+        <section className="content-panel stack" aria-label={`${moduleDefinition.title} content`} />
       )}
     </main>
   );

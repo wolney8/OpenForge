@@ -640,7 +640,7 @@ export function FeePeriodReviewDialog({
                     <input
                       data-pd-id="fee-period-review.withdrawal.account"
                       onChange={(event) => setWithdrawalAccount(event.target.value)}
-                      placeholder="Demo Bank"
+                      placeholder="Bank or account reference"
                       type="text"
                       value={withdrawalAccount}
                     />

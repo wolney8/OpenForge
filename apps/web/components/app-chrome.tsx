@@ -106,6 +106,29 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const closeAppMenu = useCallback(() => setAppMenuOpen(false), []);
 
   useEffect(() => {
+    router.prefetch("/profiles");
+    router.prefetch("/login");
+  }, [router]);
+
+  useEffect(() => {
+    if (!isInsideProfile) {
+      return;
+    }
+
+    for (const route of [
+      "sportsbook-bets",
+      "free-bets",
+      "casino-offers",
+      "cash-adjustments",
+      "dashboard",
+      "reports",
+      "settings",
+    ]) {
+      router.prefetch(`/profiles/${activeProfileId}/tracker/${route}`);
+    }
+  }, [activeProfileId, isInsideProfile, router]);
+
+  useEffect(() => {
     if (!isInsideProfile) {
       return;
     }

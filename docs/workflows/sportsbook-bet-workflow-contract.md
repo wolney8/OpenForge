@@ -37,6 +37,7 @@ Allow the Fund Manager, inside a selected profile tracker, to record, review, an
 - entry points:
   - add sportsbook row
   - edit existing sportsbook row
+  - copy qualifying award into one or more linked free-bet rows
   - settle sportsbook row
 - profile context required:
   - yes, mandatory
@@ -67,6 +68,7 @@ Allow the Fund Manager, inside a selected profile tracker, to record, review, an
 - `docs/contracts/sportsbook-current-value-contract.md`
 - `docs/contracts/liability-exposure-contract.md`
 - `docs/contracts/dashboard-selected-range-pnl-contract.md`
+- `docs/contracts/sportsbook-free-bet-award-bridge-contract.md`
 
 ## 8. Reports touched
 
@@ -101,6 +103,7 @@ Retain:
 - override reason if used
 - result change history
 - linked free-bet reference
+- linked free-bet award group and split count where applicable
 - acting user and timestamp
 
 ## 11. Tests required
