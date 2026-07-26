@@ -3224,6 +3224,64 @@ html[data-theme="dark"] .notification-count-badge {
   line-height: 1.4;
 }
 
+.guided-entry-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.95rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 54%, var(--outline));
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary) 16%, transparent),
+      color-mix(in srgb, var(--surface-container) 92%, transparent)
+    );
+  color: var(--text);
+}
+
+.guided-entry-banner .eyebrow,
+.guided-entry-banner strong {
+  grid-column: 1;
+}
+
+.guided-entry-dismiss {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.guided-entry-banner-review_required {
+  border-color: color-mix(in srgb, var(--warning) 70%, var(--outline));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--warning) 16%, transparent),
+      color-mix(in srgb, var(--surface-container) 92%, transparent)
+    );
+}
+
+.field-control.is-guided-next span,
+.multi-lay-grid-wrap.is-guided-next {
+  color: var(--primary);
+}
+
+.field-control.is-guided-next input,
+.field-control.is-guided-next select,
+.field-control.is-guided-next textarea {
+  border-color: color-mix(in srgb, var(--primary) 78%, var(--outline));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 70%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.multi-lay-grid-wrap.is-guided-next {
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--outline));
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
 .table-status {
   color: var(--muted);
   font-size: 0.95rem;

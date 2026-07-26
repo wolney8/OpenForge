@@ -5,6 +5,10 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
+import {
+  getSportsbookGuidedEntry,
+  type GuidedEntryFieldKey,
+} from "@/lib/guided-entry-focus";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -2572,6 +2576,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
     false
@@ -2796,6 +2801,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           setFormState(nextFormState);
           setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
+          setGuidedEntryDismissed(false);
           setSettledEditEnabled(false);
           setFootballSettlesAssistUsed(false);
           setFootballSettlesOriginalValue(null);
@@ -2814,6 +2820,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setFormState(blankForm);
         setPristineFormState(blankForm);
         setShowBetSetupValidation(false);
+        setGuidedEntryDismissed(false);
         setSettledEditEnabled(false);
         setFootballSettlesAssistUsed(false);
         setFootballSettlesOriginalValue(null);
@@ -3218,6 +3225,69 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const calculatorGuidance = useMemo(
     () => getCalculatorGuidance(formState, resolvedCommission),
     [formState, resolvedCommission]
+  );
+  const guidedEntryOutcomes = useMemo(
+    () => [
+      {
+        label: multiLayOutcome1Label,
+        layOdds: formState.lay_odds_1,
+      },
+      ...multiLayOutcomes.map((outcome) => ({
+        label: outcome.label,
+        layOdds: outcome.layOdds,
+      })),
+    ],
+    [formState.lay_odds_1, multiLayOutcome1Label, multiLayOutcomes]
+  );
+  const guidedEntry = useMemo(
+    () =>
+      getSportsbookGuidedEntry({
+        ledger: "sportsbook",
+        offer: formState.offer_text,
+        bookmaker: formState.bookmaker,
+        betType: formState.bet_type,
+        offerType: formState.offer_type,
+        offerName: formState.offer_name,
+        fixtureType: formState.fixture_type,
+        eventName: formState.event_name,
+        backStake: formState.back_stake,
+        backOdds:
+          formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage"
+            ? formState.base_back_odds
+            : formState.back_odds,
+        exchange: formState.exchange_name,
+        layOdds1: formState.lay_odds_1,
+        layActual: formState.lay_actual,
+        strategy: formState.match_strategy,
+        status: formState.status,
+        result: formState.result,
+        settlementDate: formState.date_settled,
+        multiLayOutcomes: guidedEntryOutcomes,
+      }),
+    [formState, guidedEntryOutcomes]
+  );
+  const guidedEntryVisible =
+    workflowVisible && !guidedEntryDismissed && guidedEntry.state !== "complete";
+  const guidedEntryMessageId = "sportsbook-guided-entry-message";
+  const getGuidedFieldClass = useCallback(
+    (field: GuidedEntryFieldKey, extraClass = "") => {
+      const classes = ["field-control"];
+      if (extraClass) {
+        classes.push(extraClass);
+      }
+      if (guidedEntryVisible && guidedEntry.nextRequiredField === field) {
+        classes.push("is-guided-next");
+      }
+      return classes.join(" ");
+    },
+    [guidedEntry.nextRequiredField, guidedEntryVisible]
+  );
+  const getGuidedDescribedBy = useCallback(
+    (field: GuidedEntryFieldKey) =>
+      guidedEntryVisible && guidedEntry.nextRequiredField === field
+        ? guidedEntryMessageId
+        : undefined,
+    [guidedEntry.nextRequiredField, guidedEntryVisible]
   );
   const scenarioBranchLabels = useMemo(
     () =>
@@ -3874,7 +3944,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
 
   function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+    if (workflowVisible && rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
       return;
     }
     const record = rows.find((entry) => entry.sportsbook_bet_id === rowId);
@@ -3904,6 +3974,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setShowBetSetupValidation(false);
+    setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
@@ -3915,7 +3986,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+    if (workflowVisible && isDirty && !confirmDiscardChanges()) {
       return;
     }
     setSelectedId(null);
@@ -3931,6 +4002,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setShowBetSetupValidation(false);
+    setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
@@ -3944,6 +4016,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     setWorkflowVisible(false);
+    setGuidedEntryDismissed(false);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
@@ -6216,6 +6289,30 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               </article>
             </section>
           ) : null}
+          {guidedEntryVisible ? (
+            <section
+              aria-label="Sportsbook guided entry"
+              className={`guided-entry-banner guided-entry-banner-${guidedEntry.state}`}
+              data-pd-id="sportsbook.guided-entry"
+              role="status"
+            >
+              <span className="eyebrow">
+                {guidedEntry.state === "review_required" ? "Review required" : "Next required"}
+              </span>
+              <strong id={guidedEntryMessageId}>{guidedEntry.message}</strong>
+              <button
+                aria-label="Dismiss sportsbook guided entry"
+                className="icon-button guided-entry-dismiss"
+                onClick={() => setGuidedEntryDismissed(true)}
+                title="Dismiss guided entry"
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">
+                  close
+                </span>
+              </button>
+            </section>
+          ) : null}
           <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
             <EditorSection
               headerAside={
@@ -6253,9 +6350,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
                   </div>
                 ) : null}
-                <label className="field-control">
+                <label className={getGuidedFieldClass("offer")}>
                   <span>Offer</span>
                   <input
+                    aria-describedby={getGuidedDescribedBy("offer")}
                     onChange={(event) =>
                       setFormState((current) => ({ ...current, offer_text: event.target.value }))
                     }
@@ -6263,12 +6361,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   />
                 </label>
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("bookmaker")}${
                     betSetupValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
                   }`}
                 >
                   <span>Bookmaker</span>
                   <select
+                    aria-describedby={getGuidedDescribedBy("bookmaker")}
                     aria-invalid={betSetupValidationActive && !formState.bookmaker.trim()}
                     onChange={(event) =>
                       void applyDropdownChange(
@@ -6416,12 +6515,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   </div>
                 ) : null}
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("bet_type")}${
                     betSetupValidationActive && !formState.bet_type.trim() ? " is-invalid" : ""
                   }`}
                 >
                   <span>Bet type (bet shape / placement)</span>
                   <select
+                    aria-describedby={getGuidedDescribedBy("bet_type")}
                     aria-invalid={betSetupValidationActive && !formState.bet_type.trim()}
                     onChange={(event) =>
                       void applyDropdownChange(
@@ -6444,12 +6544,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   </p>
                 </label>
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("offer_type")}${
                     betSetupValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
                   }`}
                 >
                   <span>Offer type (promotion mechanism)</span>
                   <select
+                    aria-describedby={getGuidedDescribedBy("offer_type")}
                     aria-invalid={betSetupValidationActive && !formState.offer_type.trim()}
                     onChange={(event) =>
                       void applyDropdownChange(
@@ -6491,12 +6592,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   />
                 </label>
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("fixture_type")}${
                     betSetupValidationActive && !formState.fixture_type.trim() ? " is-invalid" : ""
                   }`}
                 >
                   <span>Fixture type</span>
                   <select
+                    aria-describedby={getGuidedDescribedBy("fixture_type")}
                     aria-invalid={betSetupValidationActive && !formState.fixture_type.trim()}
                     onChange={(event) =>
                       void applyDropdownChange(
@@ -6515,12 +6617,13 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   </select>
                 </label>
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("event_name")}${
                     betSetupValidationActive && !formState.event_name.trim() ? " is-invalid" : ""
                   }`}
                 >
                   <span>Event name</span>
                   <input
+                    aria-describedby={getGuidedDescribedBy("event_name")}
                     aria-invalid={betSetupValidationActive && !formState.event_name.trim()}
                     onChange={(event) =>
                       setFormState((current) => ({ ...current, event_name: event.target.value }))
@@ -6711,7 +6814,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               </label>
                             ) : null}
                             <label
-                              className={`field-control${
+                              className={`${getGuidedFieldClass("back_stake")}${
                                 calculatorUnlocked && missingCalculatorFields.includes("Back stake")
                                   ? " is-invalid"
                                   : ""
@@ -6719,6 +6822,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             >
                               <span>Back stake</span>
                               <input
+                                aria-describedby={getGuidedDescribedBy("back_stake")}
                                 aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back stake")}
                                 onChange={(event) =>
                                   setFormState((current) => ({ ...current, back_stake: event.target.value }))
@@ -6728,7 +6832,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             </label>
                             {!isProfitBoostOffer || formState.profit_boost_mode === "displayed_odds" ? (
                               <label
-                                className={`field-control${
+                                className={`${getGuidedFieldClass("back_odds")}${
                                   calculatorUnlocked &&
                                   missingCalculatorFields.some((field) =>
                                     field === "Back odds" || field === "Boosted back odds"
@@ -6739,6 +6843,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               >
                                 <span>{isProfitBoostOffer ? "Boosted back odds" : "Back odds"}</span>
                                 <input
+                                  aria-describedby={getGuidedDescribedBy("back_odds")}
                                   aria-invalid={
                                     calculatorUnlocked &&
                                     missingCalculatorFields.some((field) =>
@@ -6884,7 +6989,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             </label>
                             {!isNoLayStrategy ? (
                               <label
-                                className={`field-control${
+                                className={`${getGuidedFieldClass("exchange")}${
                                   calculatorUnlocked && missingCalculatorFields.includes("Exchange")
                                     ? " is-invalid"
                                     : ""
@@ -6892,6 +6997,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               >
                                 <span>Exchange</span>
                                 <select
+                                  aria-describedby={getGuidedDescribedBy("exchange")}
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Exchange")}
                                   onChange={(event) =>
                                     void applyDropdownChange(
@@ -6912,7 +7018,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             ) : null}
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
                               <label
-                                className={`field-control${
+                                className={`${getGuidedFieldClass("lay_odds_1")}${
                                   calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")
                                     ? " is-invalid"
                                     : ""
@@ -6920,6 +7026,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               >
                                 <span>Lay odds 1</span>
                                 <input
+                                  aria-describedby={getGuidedDescribedBy("lay_odds_1")}
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
                                   onChange={(event) =>
                                     setFormState((current) => ({
@@ -6933,7 +7040,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             ) : null}
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
                               <label
-                                className={`field-control${
+                                className={`${getGuidedFieldClass("lay_actual")}${
                                   calculatorUnlocked && missingCalculatorFields.includes("Lay actual")
                                     ? " is-invalid"
                                     : ""
@@ -6941,6 +7048,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               >
                                 <span>Lay actual</span>
                                 <input
+                                  aria-describedby={getGuidedDescribedBy("lay_actual")}
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
                                   onChange={(event) =>
                                     setFormState((current) => ({
@@ -7532,7 +7640,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               </button>
                               <span className="table-chip">{multiLayPlacementStatus}</span>
                             </div>
-                            <div className="multi-lay-grid-wrap">
+                            <div
+                              aria-describedby={getGuidedDescribedBy("multi_lay_outcomes")}
+                              className={`multi-lay-grid-wrap${
+                                guidedEntryVisible && guidedEntry.nextRequiredField === "multi_lay_outcomes"
+                                  ? " is-guided-next"
+                                  : ""
+                              }`}
+                            >
                               <table className="data-table multi-lay-planner-grid">
                                 <thead>
                                   <tr>
