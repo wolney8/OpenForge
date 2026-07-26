@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "./access-scope-badge";
+import { FinancialValue } from "./financial-value";
 import {
   aggregateCrossProfileReporting,
   type ProfileComparisonRow,
@@ -280,22 +281,22 @@ function ReportTable({
                 const indicativeFeeValue = indicativeFeeValues?.get(row.periodKey);
                 const feeLabel =
                   feeGranularity === "week"
-                    ? formatMoney(indicativeFeeValue ?? 0)
+                    ? <FinancialValue value={indicativeFeeValue ?? 0} />
                     : feeValue?.crystallisedPeriodCount
-                      ? formatMoney(feeValue.feesEarned)
+                      ? <FinancialValue value={feeValue.feesEarned} />
                       : feeValue?.readyPeriodCount
                         ? "Awaiting Confirmation"
                         : "Review Required";
                 return (
                 <tr key={row.periodKey}>
                   <td>{row.periodLabel}</td>
-                  <td>{formatMoney(row.sportsbookPnl)}</td>
-                  <td>{formatMoney(row.freeBetPnl)}</td>
-                  <td>{formatMoney(row.casinoPnl)}</td>
-                  <td>{formatMoney(row.totalPnl)}</td>
-                  <td>{formatMoney(row.withdrawals)}</td>
-                  <td>{formatMoney(row.costs)}</td>
-                  <td>{formatMoney(row.retainedProfit)}</td>
+                  <td><FinancialValue value={row.sportsbookPnl} /></td>
+                  <td><FinancialValue value={row.freeBetPnl} /></td>
+                  <td><FinancialValue value={row.casinoPnl} /></td>
+                  <td><FinancialValue value={row.totalPnl} /></td>
+                  <td><FinancialValue value={row.withdrawals} /></td>
+                  <td><FinancialValue value={row.costs} /></td>
+                  <td><FinancialValue value={row.retainedProfit} /></td>
                   <td>
                     <button
                       aria-label={`${feeGranularity === "week" ? "View monthly fee status for" : "Open fee review queue for"} ${row.periodLabel}`}
@@ -1141,7 +1142,7 @@ export function CrossProfileAnalytics({
               <section className="stat-strip" aria-label="Fund Manager fee position">
                 <article className="stat-card">
                   <span className="eyebrow">Available to Withdraw</span>
-                  <strong>{formatMoney(allTimeFeePosition.availableToWithdraw)}</strong>
+                  <strong><FinancialValue value={allTimeFeePosition.availableToWithdraw} /></strong>
                   <span>Confirmed and not yet withdrawn</span>
                 </article>
                 <article className="stat-card">
@@ -1156,7 +1157,7 @@ export function CrossProfileAnalytics({
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Fees Withdrawn</span>
-                  <strong>{formatMoney(allTimeFeePosition.feesWithdrawn)}</strong>
+                  <strong><FinancialValue value={allTimeFeePosition.feesWithdrawn} /></strong>
                   <span>Audited fee cash movements</span>
                 </article>
               </section>
@@ -1212,9 +1213,9 @@ export function CrossProfileAnalytics({
                                 {feeCentreStateLabels[result.state]}
                               </span>
                             </td>
-                            <td>{result.period?.state === "crystallised" ? formatMoney(result.feesEarned) : "—"}</td>
-                            <td>{result.period?.state === "crystallised" ? formatMoney(result.feesWithdrawn) : "—"}</td>
-                            <td>{result.period?.state === "crystallised" ? formatMoney(result.availableToWithdraw) : "—"}</td>
+                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesEarned} /> : "—"}</td>
+                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesWithdrawn} /> : "—"}</td>
+                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.availableToWithdraw} /> : "—"}</td>
                             <td>
                               <button
                                 aria-label={`${actionLabel} for ${profile.displayName}, ${feeCentreMonth}`}
@@ -1255,7 +1256,7 @@ export function CrossProfileAnalytics({
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Current liability</span>
-                  <strong>{formatMoney(combined.totals.currentLiability)}</strong>
+                  <strong><FinancialValue value={combined.totals.currentLiability} /></strong>
                   <span>Open sportsbook and free-bet exposure</span>
                 </article>
                 <article className="stat-card">
@@ -1283,8 +1284,8 @@ export function CrossProfileAnalytics({
                           <td>{row.displayName}</td>
                           <td>{row.openBets}</td>
                           <td>{row.expiringFreeBetCount}</td>
-                          <td>{formatMoney(row.currentLiability)}</td>
-                          <td>{formatMoney(row.openCurrentValue)}</td>
+                          <td><FinancialValue value={row.currentLiability} /></td>
+                          <td><FinancialValue value={row.openCurrentValue} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1318,7 +1319,7 @@ export function CrossProfileAnalytics({
                       <tr key={row.moduleKey}>
                         <td>{row.label}</td>
                         <td>{row.rowCount}</td>
-                        <td>{formatMoney(row.reportingValue)}</td>
+                        <td><FinancialValue value={row.reportingValue} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1345,7 +1346,7 @@ export function CrossProfileAnalytics({
                       combined.bookmakerBreakdown.slice(0, 12).map((row) => (
                         <tr key={row.bookmaker}>
                           <td>{row.bookmaker}</td>
-                          <td>{formatMoney(row.totalPnl)}</td>
+                          <td><FinancialValue value={row.totalPnl} /></td>
                           <td>{row.openRowCount}</td>
                         </tr>
                       ))
@@ -1452,7 +1453,7 @@ export function CrossProfileAnalytics({
                         <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
                         <td>{row.snapshot_type}</td>
                         <td>{row.account_id ?? "Profile total"}</td>
-                        <td>{formatMoney(Number(row.balance_amount))}</td>
+                        <td><FinancialValue value={Number(row.balance_amount)} /></td>
                       </tr>
                     ))
                   )}
@@ -1476,22 +1477,22 @@ export function CrossProfileAnalytics({
         <section className="stat-strip" aria-label="All-profile headline totals">
           <article className="stat-card">
             <span className="eyebrow">Gross P&amp;L</span>
-            <strong>{formatMoney(allProfilesCombined.totals.grossBettingPnl)}</strong>
+            <strong><FinancialValue value={allProfilesCombined.totals.grossBettingPnl} /></strong>
             <span>Sportsbook + Free Bets + Casino</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Retained profit</span>
-            <strong>{formatMoney(allProfilesCombined.totals.retainedProfit)}</strong>
+            <strong><FinancialValue value={allProfilesCombined.totals.retainedProfit} /></strong>
             <span>Gross P&amp;L after signed withdrawals and costs</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Cash snapshot</span>
-            <strong>{formatMoney(allProfilesCombined.totals.cashSnapshot)}</strong>
+            <strong><FinancialValue value={allProfilesCombined.totals.cashSnapshot} /></strong>
             <span>Current included account balances</span>
           </article>
           <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
             <span className="eyebrow">Available to Withdraw</span>
-            <strong>{formatMoney(allProfilesFeePosition.availableToWithdraw)}</strong>
+            <strong><FinancialValue value={allProfilesFeePosition.availableToWithdraw} /></strong>
             <span>
               {allProfilesFeePosition.crystallisedPeriodCount > 0
                 ? `${formatMoney(allProfilesFeePosition.feesEarned)} earned · ${formatMoney(allProfilesFeePosition.feesWithdrawn)} withdrawn`
@@ -1588,12 +1589,12 @@ export function CrossProfileAnalytics({
                         </span>
                       </span>
                     </td>
-                    <td>{profile.summary ? formatMoney(profile.summary.grossBettingPnl) : "Unavailable"}</td>
+                    <td>{profile.summary ? <FinancialValue value={profile.summary.grossBettingPnl} /> : "Unavailable"}</td>
                     <td>
                       <span className="table-status">
-                        {formatMoney(
-                          feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0
-                        )}
+                        <FinancialValue
+                          value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0}
+                        />
                       </span>
                     </td>
                     <td>{profile.summary ? profile.summary.openBets : "Unavailable"}</td>
@@ -1727,26 +1728,26 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight">
               <h3>Selected-Range Performance</h3>
               <dl className="profile-detail-list">
-                <div><dt>Sportsbook</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("sportsbook") ?? 0) : "Unavailable"}</dd></div>
-                <div><dt>Free Bets</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("free-bets") ?? 0) : "Unavailable"}</dd></div>
-                <div><dt>Casino</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("casino") ?? 0) : "Unavailable"}</dd></div>
-                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? formatMoney(detailModuleValues.get("cash-adjustments") ?? 0) : "Unavailable"}</dd></div>
-                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.reportingModel.selectedRange.grossBettingPnl) : "Unavailable"}</dd></div>
+                <div><dt>Sportsbook</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("sportsbook") ?? 0} /> : "Unavailable"}</dd></div>
+                <div><dt>Free Bets</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("free-bets") ?? 0} /> : "Unavailable"}</dd></div>
+                <div><dt>Casino</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("casino") ?? 0} /> : "Unavailable"}</dd></div>
+                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("cash-adjustments") ?? 0} /> : "Unavailable"}</dd></div>
+                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.reportingModel.selectedRange.grossBettingPnl} /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight">
               <h3>Current Cash</h3>
               <dl className="profile-detail-list">
-                <div><dt>Cash snapshot</dt><dd>{detailSummary ? formatMoney(detailSummary.summary.accountQuickView.cashSnapshot) : "Unavailable"}</dd></div>
+                <div><dt>Cash snapshot</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
-                <div><dt>Estimated Fees</dt><dd>{formatMoney(detailFeePosition?.estimatedFees ?? 0)}</dd></div>
-                <div><dt>Fees Earned</dt><dd>{formatMoney(detailFeePosition?.feesEarned ?? 0)}</dd></div>
-                <div><dt>Available to Withdraw</dt><dd>{formatMoney(detailFeePosition?.availableToWithdraw ?? 0)}</dd></div>
-                <div><dt>Fees Withdrawn</dt><dd>{formatMoney(detailFeePosition?.feesWithdrawn ?? 0)}</dd></div>
+                <div><dt>Estimated Fees</dt><dd><FinancialValue value={detailFeePosition?.estimatedFees ?? 0} /></dd></div>
+                <div><dt>Fees Earned</dt><dd><FinancialValue value={detailFeePosition?.feesEarned ?? 0} /></dd></div>
+                <div><dt>Available to Withdraw</dt><dd><FinancialValue value={detailFeePosition?.availableToWithdraw ?? 0} /></dd></div>
+                <div><dt>Fees Withdrawn</dt><dd><FinancialValue value={detailFeePosition?.feesWithdrawn ?? 0} /></dd></div>
               </dl>
               <button
                 className="button-link"

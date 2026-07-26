@@ -20,6 +20,23 @@
   --warning: #b8860b;
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.18);
+  --ledger-value-positive-bg: #d0f5de;
+  --ledger-value-positive-text: #063d22;
+  --ledger-value-positive-border: #4e996d;
+  --ledger-value-negative-bg: #ffd8de;
+  --ledger-value-negative-text: #790817;
+  --ledger-value-negative-border: #d96b76;
+  --bet-ledger-value-positive-bg: var(--ledger-value-positive-bg);
+  --bet-ledger-value-positive-text: var(--ledger-value-positive-text);
+  --bet-ledger-value-positive-border: var(--ledger-value-positive-border);
+  --bet-ledger-value-negative-bg: var(--ledger-value-negative-bg);
+  --bet-ledger-value-negative-text: var(--ledger-value-negative-text);
+  --bet-ledger-value-negative-border: var(--ledger-value-negative-border);
+  --ledger-value-neutral-bg: var(--surface-container);
+  --ledger-value-neutral-text: var(--muted);
+  --ledger-value-state-icon: var(--muted);
+  --ledger-value-current-icon: #a86f00;
+  --ledger-value-final-icon: #0e7c42;
   --shape-medium: 0.95rem;
   --shape-large: 1.25rem;
   --shadow: 0 18px 48px rgba(25, 39, 52, 0.12);
@@ -66,6 +83,23 @@ html[data-theme="dark"] {
   --warning: #f2cc4d;
   --danger: #ff8a8a;
   --danger-soft: rgba(255, 138, 138, 0.28);
+  --ledger-value-positive-bg: #bdf4d0;
+  --ledger-value-positive-text: #053c22;
+  --ledger-value-positive-border: #66c58d;
+  --ledger-value-negative-bg: #ffd0d7;
+  --ledger-value-negative-text: #790817;
+  --ledger-value-negative-border: #ff9aa5;
+  --bet-ledger-value-positive-bg: var(--ledger-value-positive-bg);
+  --bet-ledger-value-positive-text: var(--ledger-value-positive-text);
+  --bet-ledger-value-positive-border: var(--ledger-value-positive-border);
+  --bet-ledger-value-negative-bg: var(--ledger-value-negative-bg);
+  --bet-ledger-value-negative-text: var(--ledger-value-negative-text);
+  --bet-ledger-value-negative-border: var(--ledger-value-negative-border);
+  --ledger-value-neutral-bg: var(--surface);
+  --ledger-value-neutral-text: var(--muted);
+  --ledger-value-state-icon: var(--muted);
+  --ledger-value-current-icon: #f2cc4d;
+  --ledger-value-final-icon: #64d49d;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
   --hero-glow: radial-gradient(circle at top, rgba(104, 212, 216, 0.18), transparent 34%);
   --floating-nav-surface: rgba(40, 55, 70, 0.98);
@@ -3637,6 +3671,104 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   letter-spacing: 0.06em;
 }
 
+.ledger-value-cell {
+  align-items: center;
+  position: relative;
+  min-width: 6.25rem;
+  padding-top: 0.28rem;
+}
+
+.ledger-value-cell strong {
+  display: inline-flex;
+  justify-content: center;
+}
+
+.ledger-financial-value {
+  min-width: 5.95rem;
+  min-height: 2.35rem;
+  align-items: center;
+  padding: 0.34rem 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 0.82rem;
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.22);
+}
+
+.ledger-value-cell .ledger-financial-value,
+.ledger-value-cell .financial-value-visual,
+.ledger-value-cell .financial-value-character,
+.table-value-cell .ledger-financial-value,
+.table-value-cell .financial-value-visual,
+.table-value-cell .financial-value-character {
+  color: inherit;
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ledger-financial-value.financial-value-positive,
+.table-value-cell .ledger-financial-value.financial-value-positive {
+  border-color: var(--bet-ledger-value-positive-border);
+  background: var(--bet-ledger-value-positive-bg);
+  color: var(--bet-ledger-value-positive-text);
+}
+
+.ledger-financial-value.financial-value-negative,
+.table-value-cell .ledger-financial-value.financial-value-negative {
+  border-color: var(--bet-ledger-value-negative-border);
+  background: var(--bet-ledger-value-negative-bg);
+  color: var(--bet-ledger-value-negative-text);
+}
+
+.ledger-financial-value.financial-value-neutral,
+.ledger-financial-value-unavailable,
+.table-value-cell .ledger-financial-value.financial-value-neutral,
+.table-value-cell .ledger-financial-value-unavailable {
+  border-color: var(--outline);
+  background: var(--ledger-value-neutral-bg);
+  color: var(--ledger-value-neutral-text);
+}
+
+.table-value-cell .ledger-value-state {
+  position: absolute;
+  top: -0.44rem;
+  right: -0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ledger-value-state-icon);
+  font-size: 1.18rem;
+  letter-spacing: 0;
+  line-height: 1;
+  opacity: 0.75;
+  pointer-events: auto;
+  text-transform: none;
+  z-index: 2;
+}
+
+.table-value-cell .ledger-value-state .material-symbols-outlined {
+  color: inherit;
+  font-size: 1.18rem;
+  font-variation-settings: "FILL" 0, "wght" 650, "GRAD" 0, "opsz" 20;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.table-value-cell .ledger-value-state-current {
+  color: var(--ledger-value-current-icon);
+}
+
+.table-value-cell .ledger-value-state-final {
+  color: var(--ledger-value-final-icon);
+}
+
+.table-value-cell .ledger-value-state-neutral {
+  color: var(--ledger-value-state-icon);
+}
+
 .table-scroll {
   overflow-x: auto;
   border-radius: 1.15rem;
@@ -5391,6 +5523,17 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   font-weight: 800;
 }
 
+.financial-value-visual {
+  display: inline-flex;
+  justify-content: center;
+  min-width: inherit;
+}
+
+.financial-value-character {
+  display: inline-block;
+  min-width: 0.55ch;
+}
+
 .financial-value-positive {
   color: color-mix(in srgb, var(--success) 88%, var(--text));
 }
@@ -5401,6 +5544,43 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .financial-value-neutral {
   color: var(--text);
+}
+
+.financial-value-motion-up .financial-value-character {
+  animation: financial-value-roll-up 260ms ease-out both;
+}
+
+.financial-value-motion-down .financial-value-character {
+  animation: financial-value-roll-down 260ms ease-out both;
+}
+
+@keyframes financial-value-roll-up {
+  from {
+    opacity: 0.66;
+    transform: translateY(0.34em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes financial-value-roll-down {
+  from {
+    opacity: 0.66;
+    transform: translateY(-0.34em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .financial-value-motion-up .financial-value-character,
+  .financial-value-motion-down .financial-value-character {
+    animation: none;
+  }
 }
 
 .compact-action {

@@ -531,12 +531,12 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
   );
   expect(
     financialSemantics.every(({ text, tone }) => {
-      if (tone === "positive") return /^\+£\d+\.\d{2}$/.test(text);
-      if (tone === "negative") return /^-£\d+\.\d{2}$/.test(text);
-      return /^£0\.00$/.test(text);
+      if (tone === "positive") return /^(\+)?£ \d+\.\d{2}$/.test(text);
+      if (tone === "negative") return /^\(£ \d+\.\d{2}\)$/.test(text);
+      return text === "Unavailable";
     })
   ).toBeTruthy();
-  expect(financialSemantics.some(({ tone }) => tone !== "neutral")).toBeTruthy();
+  expect(financialSemantics.some(({ tone }) => tone === "positive" || tone === "negative")).toBeTruthy();
   const deleteButtons = dialog.getByRole("button", { name: /Manage .* opportunity row/ });
   const deleteCentres = await deleteButtons.evaluateAll((elements) =>
     elements.map((element) => {

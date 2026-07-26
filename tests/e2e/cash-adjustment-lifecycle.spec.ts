@@ -31,7 +31,7 @@ test("cash adjustment enforces direction rules, saves a signed value, and return
     await page.getByLabel("Adjustment date", { exact: true }).fill("2026-07-14T12:00");
     await page.getByLabel("Amount", { exact: true }).fill("10.00");
     await page.getByLabel("Description", { exact: true }).fill(description);
-    await expect(page.getByLabel("Signed value preview", { exact: true })).toHaveValue("-£10.00");
+    await expect(page.getByLabel("Signed value preview", { exact: true })).toHaveValue("(£ 10.00)");
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(dialog).toHaveCount(0);
