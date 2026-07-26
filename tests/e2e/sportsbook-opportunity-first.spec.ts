@@ -310,6 +310,7 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
   page,
   request,
 }) => {
+  test.setTimeout(75_000);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
     origin: "http://127.0.0.1:3010",
   });
@@ -519,6 +520,23 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
   await expect(secondRow.getByRole("textbox", { name: /back odds/ })).toHaveValue("2.10");
   await expect(secondRow.getByRole("textbox", { name: /lay odds/ })).toHaveValue("2.20");
   await secondRow.getByRole("button", { name: /Use suggested lay/ }).click();
+  const financialValues = dialog.locator('[data-money-tone]');
+  await expect(financialValues.first()).toBeVisible();
+  expect(await financialValues.count()).toBeGreaterThanOrEqual(4);
+  const financialSemantics = await financialValues.evaluateAll((elements) =>
+    elements.map((element) => ({
+      text: element.textContent?.trim() ?? "",
+      tone: element.getAttribute("data-money-tone"),
+    }))
+  );
+  expect(
+    financialSemantics.every(({ text, tone }) => {
+      if (tone === "positive") return /^\+£\d+\.\d{2}$/.test(text);
+      if (tone === "negative") return /^-£\d+\.\d{2}$/.test(text);
+      return /^£0\.00$/.test(text);
+    })
+  ).toBeTruthy();
+  expect(financialSemantics.some(({ tone }) => tone !== "neutral")).toBeTruthy();
   const deleteButtons = dialog.getByRole("button", { name: /Manage .* opportunity row/ });
   const deleteCentres = await deleteButtons.evaluateAll((elements) =>
     elements.map((element) => {

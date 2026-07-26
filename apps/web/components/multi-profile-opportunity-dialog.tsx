@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
@@ -194,12 +195,6 @@ function suggestedLay(row: SportsbookRow): string | null {
   if (row.match_strategy === "Underlay") return row.reference_lay_stake_underlay;
   if (row.match_strategy === "Overlay") return row.reference_lay_stake_overlay;
   return null;
-}
-
-function formatMoney(value: string | null): string | null {
-  if (value === null || !Number.isFinite(Number(value))) return null;
-  const amount = Number(value);
-  return `${amount < 0 ? "-" : "+"}£${Math.abs(amount).toFixed(2)}`;
 }
 
 function formatMatchRating(value: string | null): string | null {
@@ -1007,8 +1002,16 @@ export function MultiProfileOpportunityDialog({
                       const copyDownAvailable = canCopyPlacementDown(row);
                       const profileBookmakerOptions = bookmakersByProfile[target.profile_id] ?? [];
                       const matchRating = formatMatchRating(row.match_rating);
-                      const backWin = formatMoney(row.scenario_pnl_if_back_wins);
-                      const layWin = formatMoney(row.scenario_pnl_if_lay_wins);
+                      const backWin =
+                        row.scenario_pnl_if_back_wins === null ||
+                        !Number.isFinite(Number(row.scenario_pnl_if_back_wins))
+                          ? null
+                          : Number(row.scenario_pnl_if_back_wins);
+                      const layWin =
+                        row.scenario_pnl_if_lay_wins === null ||
+                        !Number.isFinite(Number(row.scenario_pnl_if_lay_wins))
+                          ? null
+                          : Number(row.scenario_pnl_if_lay_wins);
                       return (
                         <tr key={target.target_id}>
                           <td><input aria-label={`Select ${target.display_name} ${target.bookmaker} for placement`} checked={selectedPlacementIds.includes(target.target_id)} className="opportunity-placement-checkbox" disabled={!isEditable || !canInline} onChange={(event) => setSelectedPlacementIds((current) => event.target.checked ? [...current, target.target_id] : current.filter((id) => id !== target.target_id))} type="checkbox" /></td>
@@ -1021,8 +1024,8 @@ export function MultiProfileOpportunityDialog({
                           <td><div className="opportunity-lay-assist"><div className="opportunity-lay-input-shell"><input aria-label={`${target.display_name} ${target.bookmaker} lay stake`} className="opportunity-table-control opportunity-table-number" disabled={!isEditable || row.match_strategy === "No Lay"} inputMode="decimal" onBlur={() => void saveTarget(target.target_id)} onChange={(event) => updateTargetRow(target.target_id, { lay_actual: event.target.value })} value={row.lay_actual} />{showSuggestion ? <button aria-label={suggestionApplied ? `Copy applied lay ${suggestion} for ${target.display_name} ${target.bookmaker}` : `Use suggested lay ${suggestion} and copy it for ${target.display_name} ${target.bookmaker}`} className={`opportunity-suggested-lay-icon${suggestionApplied ? " is-applied" : ""}`} data-pd-id={`opportunity-placement.suggested-lay.${target.target_id}`} data-suggestion={Number(suggestion).toFixed(2)} onClick={() => suggestionApplied ? void copyAppliedLay(target) : void applySuggestedLay(target)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{suggestionApplied ? "copy_all" : "calculate"}</span></button> : null}{layCopyFeedbackTargetId === target.target_id ? <small aria-live="polite" className="opportunity-lay-copy-feedback"><span aria-hidden="true">✓</span> copied to clipboard!</small> : null}</div></div></td>
                           <td><select aria-label={`${target.display_name} ${target.bookmaker} strategy`} className="opportunity-table-control" disabled={!isEditable} onChange={(event) => void saveTarget(target.target_id, invalidatePlacementCalculation({ match_strategy: event.target.value }))} value={row.match_strategy}>{strategyOptions.map((value) => <option key={value} value={value}>{value === "Custom" ? "Custom Lay" : value}</option>)}</select></td>
                           <td>{matchRating ?? <PendingMetric label={`${target.display_name} match rating`} />}</td>
-                          <td className={backWin === null ? "" : Number(row.scenario_pnl_if_back_wins) < 0 ? "money-negative" : "money-positive"}>{backWin ?? <PendingMetric label={`${target.display_name} back-win value`} />}</td>
-                          <td className={layWin === null ? "" : Number(row.scenario_pnl_if_lay_wins) < 0 ? "money-negative" : "money-positive"}>{layWin ?? <PendingMetric label={`${target.display_name} lay-win value`} />}</td>
+                          <td>{backWin === null ? <PendingMetric label={`${target.display_name} back-win value`} /> : <FinancialValue label={`${target.display_name} back-win value`} showPositiveSign value={backWin} />}</td>
+                          <td>{layWin === null ? <PendingMetric label={`${target.display_name} lay-win value`} /> : <FinancialValue label={`${target.display_name} lay-win value`} showPositiveSign value={layWin} />}</td>
                           <td><div className="opportunity-row-actions">{index === 0 && isEditable && activePlacementTargets.length > 1 ? <button aria-describedby={!copyDownAvailable ? `copy-down-help-${target.target_id}` : undefined} aria-label={`Copy ${target.display_name} placement values down`} className="icon-action" disabled={!copyDownAvailable || isSubmitting} onClick={() => void copyFirstTargetDown(target)} title={!copyDownAvailable ? "Enter valid stake and odds, plus exchange and lay odds when laying." : undefined} type="button"><span aria-hidden="true" className="material-symbols-outlined">copy_all</span></button> : <span aria-hidden="true" className="opportunity-action-placeholder" />}<span className="visually-hidden" id={`copy-down-help-${target.target_id}`}>Enter valid stake and odds, plus exchange and lay odds when laying, before copying this row down.</span><Link aria-label={`Open ${target.display_name} sportsbook row in full editor`} className="directory-nav-action" href={`/profiles/${target.profile_id}/tracker/sportsbook-bets?record=${row.sportsbook_bet_id}`}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link>{isEditable ? <button aria-label={`Manage ${target.display_name} ${target.bookmaker} opportunity row`} className="icon-action danger-icon-action" disabled={isSubmitting} onClick={() => setTargetDecisionId(target.target_id)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button> : <span aria-hidden="true" className="opportunity-action-placeholder" />}</div></td>
                         </tr>
                       );

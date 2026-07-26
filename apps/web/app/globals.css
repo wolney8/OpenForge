@@ -5383,6 +5383,26 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   color: var(--danger);
 }
 
+.financial-value {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 5.2ch;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.financial-value-positive {
+  color: color-mix(in srgb, var(--success) 88%, var(--text));
+}
+
+.financial-value-negative {
+  color: color-mix(in srgb, var(--danger) 88%, var(--text));
+}
+
+.financial-value-neutral {
+  color: var(--text);
+}
+
 .compact-action {
   min-height: 2.5rem;
   padding: 0.45rem 0.8rem;
