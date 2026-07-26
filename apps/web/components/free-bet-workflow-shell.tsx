@@ -7,6 +7,8 @@ import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/accoun
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { FinancialValue } from "@/components/financial-value";
+import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -2548,12 +2550,8 @@ export function FreeBetWorkflowShell({
 
     if (column.key === "displayed_value") {
       const label = String(row.displayed_value_label ?? "Value");
-      return (
-        <span className="table-value-cell">
-          <strong>{value}</strong>
-          <span>{label}</span>
-        </span>
-      );
+      const numericValue = parseCurrencyLikeValue(value);
+      return <LedgerValueCell fallback={value} label={label} value={numericValue} />;
     }
 
     return <span className="table-cell-text">{value}</span>;
@@ -2602,7 +2600,7 @@ export function FreeBetWorkflowShell({
           </article>
           <article className="stat-card">
             <span className="eyebrow">Resolved value</span>
-            <strong>{formatMoney(quickView.totalReportingValue)}</strong>
+            <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
             <span>Current ledger total</span>
           </article>
         </section>

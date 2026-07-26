@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { formatFinancialValue } from "@/lib/financial-display";
 
 const PAGE_SIZE = 25;
 type LedgerKey = "sportsbook" | "free-bets" | "casino-offers" | "cash-adjustments" | "accounts";
@@ -84,7 +85,7 @@ function ledgerRowLabel(ledger: LedgerKey): string {
 
 function formatReconciliationMoney(value: string | null): string {
   if (value === null) return "—";
-  return value.startsWith("-") ? `-£${value.slice(1)}` : `£${value}`;
+  return formatFinancialValue(Number(value));
 }
 
 function batchLedger(batch: ImportBatch): LedgerKey {

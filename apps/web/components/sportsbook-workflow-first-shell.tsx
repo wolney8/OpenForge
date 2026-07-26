@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
+import { formatFinancialValue } from "@/lib/financial-display";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { FinancialValue } from "@/components/financial-value";
+import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
@@ -452,12 +455,6 @@ const freeBetAwardingOfferTypes = new Set([
 function isFreeBetAwardingOffer(offerType: string): boolean {
   return freeBetAwardingOfferTypes.has(offerType);
 }
-const gbpFormatter = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 function getDisplayedValue(
   calculation: Pick<
@@ -621,7 +618,7 @@ function parseCurrencyLikeValue(value: string | null | undefined): number | null
 }
 
 function formatCurrencyValue(value: number): string {
-  return gbpFormatter.format(value);
+  return formatFinancialValue(value);
 }
 
 function getDisplayedValueLabelForRow(
@@ -5121,12 +5118,8 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
 
     if (column.key === "displayed_value") {
       const label = String(row.displayed_value_label ?? "Value");
-      return (
-        <span className="table-value-cell">
-          <strong>{value}</strong>
-          <span>{label}</span>
-        </span>
-      );
+      const numericValue = parseCurrencyLikeValue(value);
+      return <LedgerValueCell fallback={value} label={label} value={numericValue} />;
     }
 
     return (
@@ -5185,7 +5178,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
           </article>
           <article className="stat-card">
             <span className="eyebrow">Resolved value</span>
-            <strong>{formatCurrencyValue(quickView.totalReportingValue)}</strong>
+            <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
             <span>Current ledger total</span>
           </article>
         </section>

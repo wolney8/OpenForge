@@ -19,6 +19,7 @@ import {
   buildOperationalLedgerHref,
   type OperationalActionCounts,
 } from "@/lib/operational-actions";
+import { FinancialValue } from "./financial-value";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 
 type FeePeriodPreview = {
@@ -69,7 +70,7 @@ function monthBounds(value: string) {
 }
 
 function money(value: string | null, unresolvedLabel = "Unavailable") {
-  return value === null ? unresolvedLabel : formatMoney(Number(value));
+  return value === null ? unresolvedLabel : <FinancialValue value={Number(value)} />;
 }
 
 function blockerLabel(reason: string) {
@@ -557,9 +558,9 @@ export function FeePeriodReviewDialog({
                               <time dateTime={revision.created_at}>{formatAuditDate(revision.created_at)}</time>
                             </div>
                             <dl className="fee-revision-values">
-                              <div><dt>Settled Profit</dt><dd>{formatMoney(Number(revision.eligible_period_profit))}</dd></div>
-                              <div><dt>Fee Base</dt><dd>{formatMoney(Number(revision.fee_base))}</dd></div>
-                              <div><dt>Total Fee</dt><dd>{formatMoney(Number(revision.total_fee_due))}</dd></div>
+                              <div><dt>Settled Profit</dt><dd><FinancialValue value={Number(revision.eligible_period_profit)} /></dd></div>
+                              <div><dt>Fee Base</dt><dd><FinancialValue value={Number(revision.fee_base)} /></dd></div>
+                              <div><dt>Total Fee</dt><dd><FinancialValue value={Number(revision.total_fee_due)} /></dd></div>
                             </dl>
                             <p><strong>Reason:</strong> {revision.change_reason || "Initial monthly fee review"}</p>
                             <small>Recorded by {revision.created_by}</small>
@@ -574,7 +575,7 @@ export function FeePeriodReviewDialog({
                           {(existingPeriod.corrections ?? []).map((correction) => (
                             <li key={correction.fee_correction_id}>
                               <strong>{correction.adjustment_type === "fee_credit" ? "Fee Credit" : "Fee Debit"}</strong>
-                              <span>{formatMoney(Number(correction.amount))} · {correction.state}</span>
+                              <span><FinancialValue value={Number(correction.amount)} /> · {correction.state}</span>
                               <small>{correction.reason}</small>
                             </li>
                           ))}

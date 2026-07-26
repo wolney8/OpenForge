@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
+import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   formatHumanDisplayDate,
@@ -136,13 +137,13 @@ function renderReportTable({
               rows.slice(0, 12).map((row) => (
                 <tr key={row.periodKey}>
                   <td>{row.periodLabel}</td>
-                  <td className="align-end">{formatMoney(row.sportsbookPnl)}</td>
-                  <td className="align-end">{formatMoney(row.freeBetPnl)}</td>
-                  <td className="align-end">{formatMoney(row.casinoPnl)}</td>
-                  <td className="align-end">{formatMoney(row.totalPnl)}</td>
-                  <td className="align-end">{formatMoney(row.withdrawals)}</td>
-                  <td className="align-end">{formatMoney(row.costs)}</td>
-                  <td className="align-end">{formatMoney(row.retainedProfit)}</td>
+                  <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
+                  <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
+                  <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
+                  <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
+                  <td className="align-end"><FinancialValue value={row.withdrawals} /></td>
+                  <td className="align-end"><FinancialValue value={row.costs} /></td>
+                  <td className="align-end"><FinancialValue value={row.retainedProfit} /></td>
                 </tr>
               ))
             )}
@@ -464,19 +465,19 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <>
               <article className="stat-card">
                 <span className="eyebrow">Selected-range P&amp;L</span>
-                <strong>{formatMoney(summary.profitQuickView.overallPnl)}</strong>
+                <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
                 <span>Workbook reporting value inside the resolved range</span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Retained profit</span>
-                <strong>{formatMoney(summary.reportingModel.selectedRange.retainedProfit)}</strong>
+                <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                 <span>After workbook cash-adjustment report rules</span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Open current / settled final</span>
                 <strong>
-                  {formatMoney(summary.reportingModel.selectedRange.openCurrentValue)} /{" "}
-                  {formatMoney(summary.reportingModel.selectedRange.settledFinalValue)}
+                  <FinancialValue value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
+                  <FinancialValue value={summary.reportingModel.selectedRange.settledFinalValue} />
                 </strong>
                 <span>Current value stays separate from settled value</span>
               </article>
@@ -487,7 +488,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <strong>
                   {isReports
                     ? `${summary.reportingModel.formalReports.weeklyPeriods}W / ${summary.reportingModel.formalReports.monthlyPeriods}M`
-                    : formatMoney(summary.accountQuickView.cashSnapshot)}
+                    : <FinancialValue value={summary.accountQuickView.cashSnapshot} />}
                 </strong>
                 <span>
                   {isReports
@@ -510,7 +511,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <section className="stat-strip" aria-label="Workbook module mix">
               <article className="stat-card">
                 <span className="eyebrow">Sportsbook</span>
-                <strong>{formatMoney(summary.profitQuickView.sportsbook.reportingValue)}</strong>
+                <strong><FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
                 <span>
                   Open/current {formatMoney(summary.profitQuickView.sportsbook.currentValue)} • Final{" "}
                   {formatMoney(summary.profitQuickView.sportsbook.finalValue)}
@@ -518,7 +519,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Free Bets</span>
-                <strong>{formatMoney(summary.profitQuickView.freeBets.reportingValue)}</strong>
+                <strong><FinancialValue value={summary.profitQuickView.freeBets.reportingValue} /></strong>
                 <span>
                   Open/current {formatMoney(summary.profitQuickView.freeBets.currentValue)} • Final{" "}
                   {formatMoney(summary.profitQuickView.freeBets.finalValue)}
@@ -526,12 +527,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Casino</span>
-                <strong>{formatMoney(summary.profitQuickView.casino.reportingValue)}</strong>
+                <strong><FinancialValue value={summary.profitQuickView.casino.reportingValue} /></strong>
                 <span>Resolved from casino net P&amp;L rows</span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Cash Adjustments</span>
-                <strong>{formatMoney(summary.betsQuickView.selectedRangeCashAdjustments)}</strong>
+                <strong><FinancialValue value={summary.betsQuickView.selectedRangeCashAdjustments} /></strong>
                 <span>
                   Withdrawals {formatMoney(summary.cashAdjustmentBreakdown.withdrawals)} • Costs{" "}
                   {formatMoney(summary.cashAdjustmentBreakdown.deductionsAndSubscriptions)}
@@ -544,7 +545,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <section className="stat-strip" aria-label="Tracker quick views">
               <article className="stat-card">
                 <span className="eyebrow">Cash snapshot</span>
-                <strong>{formatMoney(summary.accountQuickView.cashSnapshot)}</strong>
+                <strong><FinancialValue value={summary.accountQuickView.cashSnapshot} /></strong>
                 <span>
                   Bookie {formatMoney(summary.accountQuickView.bookieBalance)} • Exchange{" "}
                   {formatMoney(summary.accountQuickView.exchangeBalance)} • Bank{" "}
@@ -553,7 +554,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Selected-range P&amp;L</span>
-                <strong>{formatMoney(summary.profitQuickView.overallPnl)}</strong>
+                <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
                 <span>
                   Sportsbook {formatMoney(summary.profitQuickView.sportsbook.reportingValue)} •
                   Free Bets {formatMoney(summary.profitQuickView.freeBets.reportingValue)} • Casino{" "}
@@ -562,7 +563,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Retained profit</span>
-                <strong>{formatMoney(summary.reportingModel.selectedRange.retainedProfit)}</strong>
+                <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                 <span>
                   Cash adjustments {formatMoney(summary.reportingModel.selectedRange.cashAdjustments)}
                 </span>
@@ -582,12 +583,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Open current value</span>
-                <strong>{formatMoney(summary.profitQuickView.openCurrentValue)}</strong>
-                <span>Settled/final {formatMoney(summary.profitQuickView.settledFinalValue)}</span>
+                <strong><FinancialValue value={summary.profitQuickView.openCurrentValue} /></strong>
+                <span>Settled/final <FinancialValue value={summary.profitQuickView.settledFinalValue} /></span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Liability</span>
-                <strong>{formatMoney(summary.betsQuickView.currentLiability)}</strong>
+                <strong><FinancialValue value={summary.betsQuickView.currentLiability} /></strong>
                 <span>
                   Pending withdrawals {formatMoney(summary.accountQuickView.pendingWithdrawals)}
                 </span>
@@ -659,7 +660,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                     <tr key={row.moduleKey}>
                       <td>{row.label}</td>
                       <td className="align-end">{row.rowCount}</td>
-                      <td className="align-end">{formatMoney(row.reportingValue)}</td>
+                      <td className="align-end"><FinancialValue value={row.reportingValue} /></td>
                     </tr>
                   ))
                 ),
@@ -685,10 +686,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   summary.bookmakerBreakdown.map((row) => (
                     <tr key={row.bookmaker}>
                       <td>{row.bookmaker}</td>
-                      <td className="align-end">{formatMoney(row.sportsbookPnl)}</td>
-                      <td className="align-end">{formatMoney(row.freeBetPnl)}</td>
-                      <td className="align-end">{formatMoney(row.casinoPnl)}</td>
-                      <td className="align-end">{formatMoney(row.totalPnl)}</td>
+                      <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
+                      <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
+                      <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
+                      <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
                       <td className="align-end">{row.openRowCount}</td>
                     </tr>
                   ))
@@ -711,7 +712,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </tr>
                   ))
@@ -734,7 +735,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </tr>
                   ))
@@ -750,24 +751,24 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               <section className="stat-strip" aria-label="Cash adjustment summary">
                 <article className="stat-card">
                   <span className="eyebrow">Selected range</span>
-                  <strong>{formatMoney(summary.betsQuickView.selectedRangeCashAdjustments)}</strong>
+                  <strong><FinancialValue value={summary.betsQuickView.selectedRangeCashAdjustments} /></strong>
                     <span>Range-visible cash movement</span>
                 </article>
                   <article className="stat-card">
                     <span className="eyebrow">Top ups</span>
-                    <strong>{formatMoney(summary.cashAdjustmentBreakdown.topUps)}</strong>
+                    <strong><FinancialValue value={summary.cashAdjustmentBreakdown.topUps} /></strong>
                     <span>Included in cash movement only</span>
                   </article>
                   <article className="stat-card">
                     <span className="eyebrow">Deductions and subscriptions</span>
                     <strong>
-                      {formatMoney(summary.cashAdjustmentBreakdown.deductionsAndSubscriptions)}
+                      <FinancialValue value={summary.cashAdjustmentBreakdown.deductionsAndSubscriptions} />
                     </strong>
                     <span>Feeds retained-profit reporting</span>
                   </article>
                 <article className="stat-card">
                   <span className="eyebrow">Retained profit</span>
-                  <strong>{formatMoney(summary.cashAdjustmentBreakdown.retainedProfit)}</strong>
+                  <strong><FinancialValue value={summary.cashAdjustmentBreakdown.retainedProfit} /></strong>
                     <span>Workbook retained-profit output</span>
                 </article>
               </section>
@@ -800,7 +801,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                             <td>{row.bookmaker}</td>
                             <td>{row.status}</td>
                             <td>{formatHumanDisplayDate(row.expiry_datetime, true)}</td>
-                            <td className="align-end">{formatMoney(Number(row.reporting_value ?? 0))}</td>
+                            <td className="align-end"><FinancialValue value={Number(row.reporting_value ?? 0)} /></td>
                           </tr>
                         ))
                       )}
@@ -910,7 +911,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                           <td>{row.bookmakerOrAccount}</td>
                           <td>{row.status}</td>
                           <td>{formatHumanDisplayDate(row.date, true)}</td>
-                          <td className="align-end">{formatMoney(row.value)}</td>
+                          <td className="align-end"><FinancialValue value={row.value} /></td>
                         </tr>
                       ))
                     )}
@@ -928,7 +929,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   <strong>{summary.reportingModel.formalReports.weeklyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestWeeklyLabel} •{" "}
-                    {formatMoney(summary.reportingModel.formalReports.latestWeeklyRetainedProfit)}
+                    <FinancialValue value={summary.reportingModel.formalReports.latestWeeklyRetainedProfit} />
                   </span>
                 </article>
                 <article className="stat-card">
@@ -936,7 +937,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   <strong>{summary.reportingModel.formalReports.monthlyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestMonthlyLabel} •{" "}
-                    {formatMoney(summary.reportingModel.formalReports.latestMonthlyRetainedProfit)}
+                    <FinancialValue value={summary.reportingModel.formalReports.latestMonthlyRetainedProfit} />
                   </span>
                 </article>
                 <article className="stat-card">
@@ -944,12 +945,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   <strong>{summary.reportingModel.formalReports.yearlyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestYearlyLabel} •{" "}
-                    {formatMoney(summary.reportingModel.formalReports.latestYearlyRetainedProfit)}
+                    <FinancialValue value={summary.reportingModel.formalReports.latestYearlyRetainedProfit} />
                   </span>
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Open exposure</span>
-                  <strong>{formatMoney(summary.betsQuickView.currentLiability)}</strong>
+                  <strong><FinancialValue value={summary.betsQuickView.currentLiability} /></strong>
                   <span>
                     Open positions {summary.betsQuickView.openBets} • Overdue{" "}
                     {summary.betsQuickView.overdueBets}
@@ -968,24 +969,24 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <section className="stat-strip" aria-label="Report boundary summary">
                   <article className="stat-card">
                     <span className="eyebrow">Gross betting P&amp;L</span>
-                    <strong>{formatMoney(summary.reportingModel.selectedRange.grossBettingPnl)}</strong>
+                    <strong><FinancialValue value={summary.reportingModel.selectedRange.grossBettingPnl} /></strong>
                     <span>Selected-range module reporting values</span>
                   </article>
                   <article className="stat-card">
                     <span className="eyebrow">Retained profit</span>
-                    <strong>{formatMoney(summary.reportingModel.selectedRange.retainedProfit)}</strong>
+                    <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                     <span>After report-eligible withdrawals and costs</span>
                   </article>
                   <article className="stat-card">
                     <span className="eyebrow">Cash adjustments</span>
-                    <strong>{formatMoney(summary.reportingModel.selectedRange.cashAdjustments)}</strong>
+                    <strong><FinancialValue value={summary.reportingModel.selectedRange.cashAdjustments} /></strong>
                     <span>Dashboard-visible movement in range</span>
                   </article>
                   <article className="stat-card">
                     <span className="eyebrow">Open / final value</span>
                     <strong>
-                      {formatMoney(summary.reportingModel.selectedRange.openCurrentValue)} /{" "}
-                      {formatMoney(summary.reportingModel.selectedRange.settledFinalValue)}
+                      <FinancialValue value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
+                      <FinancialValue value={summary.reportingModel.selectedRange.settledFinalValue} />
                     </strong>
                     <span>Current open value remains separate from final</span>
                   </article>
@@ -1017,7 +1018,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </tr>
                     ))
@@ -1039,7 +1040,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end">{formatMoney(Number(row.value ?? 0))}</td>
+                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </tr>
                     ))
@@ -1059,7 +1060,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                           <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
                           <td>{row.snapshot_type}</td>
                           <td>{row.account_id ?? "Profile total"}</td>
-                          <td className="align-end">{formatMoney(Number(row.balance_amount))}</td>
+                          <td className="align-end"><FinancialValue value={Number(row.balance_amount)} /></td>
                           <td>{row.notes || "—"}</td>
                         </tr>
                       )),

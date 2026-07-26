@@ -371,4 +371,186 @@ test.describe("Plum Duff UI contract regressions", () => {
       expect(containment.scrollWidth).toBeLessThanOrEqual(containment.clientWidth + 1);
     }
   });
+
+  test("ledger value cells use financial badges and M3 current/final icons instead of text labels", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1366, height: 768 });
+    const eventName = `UI value badge ${Date.now()}`;
+    const existingRowsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+    if (existingRowsResponse.ok()) {
+      const existingRows = (await existingRowsResponse.json()) as Array<Record<string, string>>;
+      for (const row of existingRows.filter((record) =>
+        String(record.event_name ?? "").startsWith("UI value badge")
+      )) {
+        await request.delete(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${row.sportsbook_bet_id}`);
+      }
+    }
+    const createResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
+      data: {
+        event_name: eventName,
+        offer_text: "UI value badge offer",
+        bookmaker: "Bookmaker A",
+        offer_type: "Bet & Get",
+        bet_type: "Single",
+        offer_name: "UI Value Badge",
+        fixture_type: "Football",
+        market: "Match Odds",
+        status: "Placed",
+        result: "Pending",
+        back_stake: "10.00",
+        back_odds: "2.10",
+        match_strategy: "Standard",
+        lay_odds_1: "2.20",
+        lay_actual: "9.54",
+        lay_matched_stake_1: "9.54",
+        lay_commission_1: "",
+        exchange_name: "Matchbook",
+        date_settled: "2026-07-24T18:00",
+        user_notes: "",
+        manual_override_value: "",
+        manual_override_reason: "",
+      },
+    });
+    expect(createResponse.ok()).toBeTruthy();
+    const createdRow = await createResponse.json();
+    const finalEventName = `${eventName} final`;
+    const finalRow = {
+      ...createdRow,
+      sportsbook_bet_id: `${createdRow.sportsbook_bet_id}-final`,
+      event_name: finalEventName,
+      status: "Settled",
+      result: "Back Won",
+      projected_current_pnl: null,
+      final_net_pnl: "8.57",
+      reporting_value: "8.57",
+    };
+
+    try {
+      await page.route(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, async (route) => {
+        if (route.request().method() === "GET") {
+          await route.fulfill({
+            body: JSON.stringify([createdRow, finalRow]),
+            contentType: "application/json",
+            status: 200,
+          });
+          return;
+        }
+        await route.continue();
+      });
+      await page.addInitScript(() => {
+        window.localStorage.removeItem(
+          "openforge-ledger-table-mode:profile-demo-001:sportsbook-bets"
+        );
+        window.localStorage.removeItem(
+          "openforge-ledger-table-filters:profile-demo-001:sportsbook-bets"
+        );
+      });
+      await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
+      await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+
+      const row = page.locator(".data-table tbody tr", { hasText: eventName }).first();
+      await expect(row).toBeVisible();
+      const valueCell = row.locator(".ledger-value-cell").first();
+      await expect(valueCell).toBeVisible();
+      await expect(valueCell).not.toContainText(/Current value|Final value/i);
+      await expect(valueCell).toHaveAttribute(
+        "title",
+        "Current value: cash-first value while this row is still open."
+      );
+
+      const stateIcon = valueCell.locator(".material-symbols-outlined");
+      await expect(stateIcon).toHaveText("hourglass_top");
+
+      const stateBadge = valueCell.locator(".ledger-value-state");
+      await expect(stateBadge).toHaveAttribute(
+        "title",
+        "Current value: cash-first value while this row is still open."
+      );
+      await expect(stateBadge).toHaveAttribute("aria-label", "Current value");
+
+      const finalRowElement = page.locator(".data-table tbody tr", { hasText: finalEventName }).first();
+      await expect(finalRowElement).toBeVisible();
+      const finalValueCell = finalRowElement.locator(".ledger-value-cell").first();
+      await expect(finalValueCell).toHaveAttribute(
+        "title",
+        "Final value: settled result value for this row."
+      );
+      const finalStateIcon = finalValueCell.locator(".material-symbols-outlined");
+      await expect(finalStateIcon).toHaveText("done_all");
+      const finalStateBadge = finalValueCell.locator(".ledger-value-state");
+      await expect(finalStateBadge).toHaveAttribute(
+        "title",
+        "Final value: settled result value for this row."
+      );
+      await expect(finalStateBadge).toHaveAttribute("aria-label", "Final value");
+      await expect(finalValueCell.locator(".ledger-financial-value")).toHaveAttribute(
+        "title",
+        "Final value: settled result value for this row."
+      );
+
+      const badge = valueCell.locator(".ledger-financial-value");
+      await expect(badge).toHaveAttribute(
+        "title",
+        "Current value: cash-first value while this row is still open."
+      );
+      await expect(badge).toHaveAttribute("data-money-tone", /positive|negative|neutral/);
+      const [badgeStyles, iconStyles] = await Promise.all([
+        badge.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            backgroundColor: style.backgroundColor,
+            borderRadius: style.borderRadius,
+            color: style.color,
+            height: element.getBoundingClientRect().height,
+            right: element.getBoundingClientRect().right,
+            top: element.getBoundingClientRect().top,
+            width: element.getBoundingClientRect().width,
+          };
+        }),
+        stateBadge.evaluate((element) => {
+          const style = getComputedStyle(element);
+          const className = element.className;
+          return {
+            className: typeof className === "string" ? className : String(className),
+            color: style.color,
+            fontSize: style.fontSize,
+            height: element.getBoundingClientRect().height,
+            opacity: style.opacity,
+            pointerEvents: style.pointerEvents,
+            position: style.position,
+            right: element.getBoundingClientRect().right,
+            top: element.getBoundingClientRect().top,
+            badgeTop: element.parentElement?.getBoundingClientRect().top ?? 0,
+            width: element.getBoundingClientRect().width,
+          };
+        }),
+      ]);
+
+      expect(badgeStyles.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+      expect(parseFloat(badgeStyles.borderRadius)).toBeGreaterThanOrEqual(10);
+      expect(badgeStyles.height).toBeGreaterThanOrEqual(32);
+      expect(badgeStyles.width).toBeGreaterThanOrEqual(70);
+      expect(badgeStyles.color).not.toBe(badgeStyles.backgroundColor);
+      expect(iconStyles.position).toBe("absolute");
+      expect(Number(iconStyles.opacity)).toBeCloseTo(0.75, 1);
+      expect(iconStyles.pointerEvents).toBe("auto");
+      expect(parseFloat(iconStyles.fontSize)).toBeGreaterThanOrEqual(18);
+      expect(iconStyles.height).toBeGreaterThanOrEqual(22);
+      expect(iconStyles.width).toBeGreaterThanOrEqual(22);
+      expect(iconStyles.top).toBeLessThanOrEqual(iconStyles.badgeTop + 6);
+      expect(iconStyles.top).toBeLessThan(badgeStyles.top);
+      expect(iconStyles.right).toBeGreaterThan(badgeStyles.right - 10);
+      expect(iconStyles.color).not.toBe(badgeStyles.color);
+      expect(iconStyles.className).toMatch(
+        /ledger-value-state-(current|final|neutral)/
+      );
+    } finally {
+      await request.delete(
+        `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
+      );
+    }
+  });
 });

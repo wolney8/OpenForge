@@ -349,7 +349,7 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
   await expect(dialog).toContainText("New row");
   await expect(dialog).toContainText("Already imported");
   await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Matched");
-  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook -£1.16 • Plum Duff -£1.16");
+  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook (£ 1.16) • Plum Duff (£ 1.16)");
   await expect(dialog.getByLabel("Import source row 3")).toBeDisabled();
   await expect(dialog.getByLabel("Import review ledger")).toHaveCount(0);
   const reviewSearch = dialog.getByRole("searchbox", { name: "Search import review rows" });
@@ -476,7 +476,7 @@ test("free-bet spreadsheet selection uses the free-bet review and confirmation p
   const dialog = page.getByRole("dialog", { name: "Spreadsheet import review" });
   await expect(dialog.getByRole("heading", { name: "Free Bets import review" })).toBeVisible();
   await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Matched");
-  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook £7.57 • Plum Duff £7.57");
+  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook £ 7.57 • Plum Duff £ 7.57");
   await dialog.getByRole("checkbox", { name: /I confirm the 1 selected rows/ }).check();
   await dialog.getByRole("button", { name: "Create backup and import selected" }).click();
   await expect(page.locator(".status-toast")).toContainText(
@@ -542,7 +542,7 @@ test("casino-offer spreadsheet selection uses the casino review and confirmation
   await expect(dialog.getByRole("heading", { name: "Casino Offers import review" })).toBeVisible();
   await expect(dialog).toContainText("Synthetic casino wager");
   await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Matched");
-  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook -£2.50 • Plum Duff -£2.50");
+  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook (£ 2.50) • Plum Duff (£ 2.50)");
   await dialog.getByRole("checkbox", { name: /I confirm the 1 selected rows/ }).check();
   await dialog.getByRole("button", { name: "Create backup and import selected" }).click();
   await expect(page.locator(".status-toast")).toContainText(
@@ -610,7 +610,7 @@ test("cash-adjustment spreadsheet selection uses the cash review and confirmatio
   await expect(dialog).toContainText("Synthetic top-up");
   await expect(dialog).toContainText("Bank A");
   await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Matched");
-  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook £30.00 • Plum Duff £30.00");
+  await expect(dialog.locator('[data-pd-id="import-review.financial-reconciliation"]')).toContainText("Workbook £ 30.00 • Plum Duff £ 30.00");
   await dialog.getByRole("checkbox", { name: /I confirm the 1 selected rows/ }).check();
   await dialog.getByRole("button", { name: "Create backup and import selected" }).click();
   await expect(page.locator(".status-toast")).toContainText(

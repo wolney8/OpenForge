@@ -1,3 +1,5 @@
+import { formatFinancialValue } from "./financial-display";
+
 export type DatePreset =
   | "Today"
   | "Yesterday"
@@ -315,12 +317,6 @@ const accountHealthStatuses = new Set(["Active", "Bonus Restricted", "Limited"])
 const defaultMugFrequencyDays = 14;
 const defaultFreeBetExpiryAlertWindowDays = 3;
 const costAdjustmentTypes = new Set(["Deduction", "Subscription", "Costs"]);
-const moneyFormatter = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "2-digit",
@@ -429,7 +425,7 @@ function dateWithinRange(value: Date | null, range: ResolvedDateRange): boolean 
 }
 
 export function formatMoney(value: number): string {
-  return moneyFormatter.format(value);
+  return formatFinancialValue(value);
 }
 
 export function formatDisplayDate(value: string): string {

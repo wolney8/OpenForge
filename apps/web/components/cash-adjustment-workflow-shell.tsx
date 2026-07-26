@@ -4,6 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
+import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -17,6 +18,7 @@ import {
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { formatFinancialValue } from "@/lib/financial-display";
 import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
@@ -243,13 +245,6 @@ function isSortableCashAdjustmentColumn(columnKey: string): columnKey is CashAdj
     columnKey === "calculation_state"
   );
 }
-const currencyFormatter = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 function toDateTimeInputValue(value: string): string {
   const normalized = value.trim();
   if (!normalized) {
@@ -293,7 +288,7 @@ function formatMoneyValue(value: string | null | undefined): string {
     return normalized;
   }
 
-  return currencyFormatter.format(numeric);
+  return formatFinancialValue(numeric);
 }
 
 function parseDateValue(value: string | null | undefined): Date | null {
@@ -338,7 +333,7 @@ function getSignedAmountPreview(direction: string, amount: string): string {
   }
 
   const signedNumeric = direction === "In" ? numeric : -Math.abs(numeric);
-  return currencyFormatter.format(signedNumeric);
+  return formatFinancialValue(signedNumeric);
 }
 
 function getAdjustmentScopeLabel(
@@ -1193,6 +1188,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return <span className="table-chip">{value}</span>;
     }
 
+    if ((column.key === "amount" || column.key === "signed_amount") && sourceRow) {
+      const numericValue = Number(String(sourceRow[column.key] ?? "").replace(/,/g, ""));
+      return Number.isFinite(numericValue)
+        ? <FinancialValue className="ledger-financial-value" value={numericValue} />
+        : <span className="table-cell-text">{value}</span>;
+    }
+
     if (column.key === "actions" && sourceRow) {
       return (
         <div
@@ -1252,12 +1254,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           <article className="stat-card">
             <span className="eyebrow">Withdrawals</span>
             <strong>{quickView.withdrawalCount}</strong>
-            <span>{formatMoneyValue(String(quickView.withdrawalTotal))}</span>
+            <span><FinancialValue value={quickView.withdrawalTotal} /></span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Costs</span>
             <strong>{quickView.costCount}</strong>
-            <span>{formatMoneyValue(String(quickView.costTotal))}</span>
+            <span><FinancialValue value={quickView.costTotal} /></span>
           </article>
             <article className="stat-card">
               <span className="eyebrow">Workbook scope</span>
@@ -1268,7 +1270,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             </article>
           <article className="stat-card">
             <span className="eyebrow">Signed total</span>
-            <strong>{formatMoneyValue(String(quickView.signedTotal))}</strong>
+            <strong><FinancialValue value={quickView.signedTotal} /></strong>
             <span>Current net signed effect</span>
           </article>
         </section>

@@ -6,7 +6,7 @@ import {
   feeCentreStateLabels,
   type FeeCentreRow,
 } from "@/lib/fee-centre-status";
-import { formatMoney } from "@/lib/tracker-summary";
+import { FinancialValue } from "./financial-value";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 
 type FeePreview = {
@@ -43,7 +43,7 @@ type FeeCentreBreakdownDrawerProps = {
 };
 
 function optionalMoney(value: string | null | undefined, fallback = "Not prepared") {
-  return value === null || value === undefined ? fallback : formatMoney(Number(value));
+  return value === null || value === undefined ? fallback : <FinancialValue value={Number(value)} />;
 }
 
 function monthBounds(month: string) {
@@ -185,7 +185,7 @@ export function FeeCentreBreakdownDrawer({
             <div><dt>Casino Offers</dt><dd>{optionalMoney(moduleTotals?.casino)}</dd></div>
             <div>
               <dt>Cash Adjustments <small>Excluded from fee base</small></dt>
-              <dd>{formatMoney(cashAdjustmentTotal)}</dd>
+              <dd><FinancialValue value={cashAdjustmentTotal} /></dd>
             </div>
             <div><dt>Settled Profit</dt><dd><strong>{optionalMoney(settledProfit)}</strong></dd></div>
           </dl>
@@ -205,9 +205,9 @@ export function FeeCentreBreakdownDrawer({
         <section className="profile-drawer-section stack-tight">
           <h3>Withdrawal Position</h3>
           <dl className="profile-detail-list">
-            <div><dt>Fees Earned</dt><dd>{result.period?.state === "crystallised" ? formatMoney(result.feesEarned) : "Not confirmed"}</dd></div>
-            <div><dt>Fees Withdrawn</dt><dd>{result.period?.state === "crystallised" ? formatMoney(result.feesWithdrawn) : "—"}</dd></div>
-            <div><dt>Available to Withdraw</dt><dd><strong>{result.period?.state === "crystallised" ? formatMoney(result.availableToWithdraw) : "—"}</strong></dd></div>
+            <div><dt>Fees Earned</dt><dd>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesEarned} /> : "Not confirmed"}</dd></div>
+            <div><dt>Fees Withdrawn</dt><dd>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesWithdrawn} /> : "—"}</dd></div>
+            <div><dt>Available to Withdraw</dt><dd><strong>{result.period?.state === "crystallised" ? <FinancialValue value={result.availableToWithdraw} /> : "—"}</strong></dd></div>
           </dl>
         </section>
 

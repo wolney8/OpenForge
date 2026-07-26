@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { BookmakerIdentity } from "@/components/bookmaker-identity";
+import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
@@ -24,7 +25,6 @@ import {
   accountTypeOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
-import { formatMoney } from "@/lib/tracker-summary";
 import type {
   BookmakerCatalogueRecord,
   BookmakerDisplaySettings,
@@ -541,12 +541,12 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </article>
           <article className="stat-card">
             <span className="eyebrow">Cash-included balance</span>
-            <strong>{formatMoney(accountQuickView.cashIncludedBalance)}</strong>
+            <strong><FinancialValue value={accountQuickView.cashIncludedBalance} /></strong>
             <p className="lede">Accounts counted in cash total {accountQuickView.cashTotalCount}</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Pending withdrawals</span>
-            <strong>{formatMoney(accountQuickView.pendingWithdrawals)}</strong>
+            <strong><FinancialValue value={accountQuickView.pendingWithdrawals} /></strong>
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article>
           <article className="stat-card">

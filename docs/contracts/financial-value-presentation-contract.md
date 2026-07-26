@@ -25,9 +25,9 @@ Present existing contract-backed money values consistently and accessibly, with 
 
 - Use `Intl.NumberFormat` or equivalent locale-aware formatting.
 - Default locale: Fund Manager setting, initially `en-GB`.
-- Positive money: `+£10.00` when sign context is useful.
-- Negative money: `-£1.29`; never `£-1.29`.
-- Zero money: `£0.00` with neutral semantics.
+- Positive money: `+£ 10.00` when sign context is useful, or `£ 10.00` where a plus sign would add noise.
+- Negative money: accounting style `(£ 1.29)`; never `-£ 1.29`, `£-1.29` or `£ -1.29`.
+- Zero money: `£ 0.00` with positive/green semantics for resolved absolute zero.
 - Inputs may omit a plus sign while editing; resolved read-only values follow the signed display rule.
 - Use tabular numerals where changing values must remain aligned.
 - Currency and sign are textual information, not decorative icons.
@@ -35,17 +35,32 @@ Present existing contract-backed money values consistently and accessibly, with 
 ## Semantic colour
 
 - Positive: approved accessible green plus explicit sign/value.
-- Negative: approved accessible red plus explicit minus sign/value.
-- Zero/unknown: neutral colour plus explicit state label where needed.
+- Negative: approved accessible red plus accounting parentheses/value.
+- Absolute zero: approved accessible green plus explicit value.
+- Unknown/unavailable: neutral colour plus explicit state label where needed.
 - Colour must never be the only way to convey direction or state.
 - Text contrast must meet WCAG 2.2 AA: normally at least `4.5:1`; meaningful non-text boundaries at least `3:1`.
 
 Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 
-## Current, final and override labels
+## Current, final and override indicators
 
 - Open/pending rows label their displayed money as `Current value` or `Projected value` according to the calculation contract.
 - Settled rows label the resolved value as `Final value`.
+- Ledger tables must show this state with Material Symbols rather than visible repeated wording:
+  - `hourglass_top` for current/projected value.
+  - `done_all` for final/settled value.
+- The icon floats slightly over the top-right of the rounded value badge at roughly 75% opacity and must not cover the displayed number.
+- Current/projected icons use the warning/yellow token; final/settled icons use the success/green token.
+- The accessible name must expose `Current value` or `Final value`; the mouse-over title must explain the state in plain language.
+  - Current/projected tooltip meaning: cash-first value while the row is still open.
+  - Final/settled tooltip meaning: settled result value for the row.
+- Ledger table money values use a rounded square badge:
+  - positive and absolute-zero values use a green background with dark green text.
+  - negative values use a red background with dark red text.
+  - bet ledger value badges use dedicated `--bet-ledger-value-*` contrast tokens rather than generic success/danger tokens.
+  - unknown/unavailable values use a neutral badge.
+- Stat cards and sentence fragments may use the standard text-only financial value primitive unless a later UI contract requires badges there too.
 - Manual override displays an override indicator and retains access to calculated value and reason.
 - Motion and colour must not obscure a transition from current to final state.
 
@@ -74,6 +89,8 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 
 - GBP positive, negative and zero
 - current versus final labels
+- ledger badge treatment for positive, negative and zero values
+- ledger current/final Material Symbol indicator rendering
 - manual override indicator
 - value increase/decrease motion direction
 - reduced-motion replacement
@@ -86,4 +103,3 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - Formatted numeric result exactly represents the upstream decimal value.
 - No presentation operation changes money arithmetic or rounding.
 - Human visual/accessibility review is required in light, dark and reduced-motion modes.
-

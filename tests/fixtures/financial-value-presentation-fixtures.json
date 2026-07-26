@@ -3,27 +3,27 @@
     {
       "case_id": "FVP-001",
       "inputs": {"value": "10.00", "currency": "GBP", "locale": "en-GB", "show_sign": true, "state": "resolved"},
-      "expected": {"formatted": "+£10.00", "semantic_tone": "positive", "accessible_text": "positive 10 pounds"}
+      "expected": {"formatted": "+£ 10.00", "semantic_tone": "positive", "accessible_text": "positive 10 pounds"}
     },
     {
       "case_id": "FVP-002",
       "inputs": {"value": "-1.29", "currency": "GBP", "locale": "en-GB", "show_sign": true, "state": "resolved"},
-      "expected": {"formatted": "-£1.29", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
+      "expected": {"formatted": "(£ 1.29)", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
     },
     {
       "case_id": "FVP-003",
       "inputs": {"value": "0.00", "currency": "GBP", "locale": "en-GB", "show_sign": true},
-      "expected": {"formatted": "£0.00", "semantic_tone": "neutral"}
+      "expected": {"formatted": "£ 0.00", "semantic_tone": "positive"}
     },
     {
       "case_id": "FVP-004",
       "inputs": {"value": "-0.75", "record_status": "Placed", "result": "Pending"},
-      "expected": {"value_label": "Current value", "final_label_used": false}
+      "expected": {"value_label": "Current value", "ledger_icon": "hourglass_top", "badge_tone": "negative", "final_label_used": false}
     },
     {
       "case_id": "FVP-005",
       "inputs": {"value": "4.20", "record_status": "Settled", "result": "Lay Won"},
-      "expected": {"value_label": "Final value", "current_label_used": false}
+      "expected": {"value_label": "Final value", "ledger_icon": "done_all", "badge_tone": "positive", "current_label_used": false}
     },
     {
       "case_id": "FVP-006",
@@ -42,4 +42,3 @@
     }
   ]
 }
-

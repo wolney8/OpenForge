@@ -7,6 +7,8 @@ import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/accoun
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { FinancialValue } from "@/components/financial-value";
+import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -24,7 +26,7 @@ import {
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
-import { formatDisplayDate, formatMoney, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import { formatDisplayDate, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -2076,12 +2078,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
     if (column.key === "displayed_value") {
       const label = String(row.displayed_value_label ?? "Value");
-      return (
-        <span className="table-value-cell">
-          <strong>{value}</strong>
-          <span>{label}</span>
-        </span>
-      );
+      const numericValue = parseCasinoCurrencyLikeValue(value);
+      return <LedgerValueCell fallback={value} label={label} value={numericValue} />;
     }
 
     return <span className="table-cell-text">{value}</span>;
@@ -2131,7 +2129,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </article>
           <article className="stat-card">
             <span className="eyebrow">Resolved value</span>
-            <strong>{formatMoney(quickView.totalResolvedValue)}</strong>
+            <strong><FinancialValue value={quickView.totalResolvedValue} /></strong>
             <span>Current ledger total</span>
           </article>
         </section>

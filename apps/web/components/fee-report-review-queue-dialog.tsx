@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatMoney } from "@/lib/tracker-summary";
+import { FinancialValue } from "./financial-value";
 
 export type FeeReportQueueEntry = {
   key: string;
@@ -100,7 +100,7 @@ export function FeeReportReviewQueueDialog({
                     <td>{entry.profileName}</td>
                     <td>{entry.monthLabel}</td>
                     <td><span className="table-status">{stateLabels[entry.state]}</span></td>
-                    <td>{entry.amount === null ? "—" : formatMoney(entry.amount)}</td>
+                    <td>{entry.amount === null ? "—" : <FinancialValue value={entry.amount} />}</td>
                     <td>
                       <button
                         aria-label={`${actionLabel} for ${entry.profileName}, ${entry.monthLabel}`}
