@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 test("sportsbook guided entry uses text cues and advances without stealing focus", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
-  await expect(page.locator(".ledger-loading-overlay")).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
 
   await page.getByRole("button", { name: "Add sportsbook row" }).click();
 

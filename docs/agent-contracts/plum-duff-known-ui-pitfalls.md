@@ -182,11 +182,25 @@ cause, prevention rule and regression test.
 
 - Area: sportsbook, free-bet, casino-offer and cash-adjustment ledger toolbars.
 - Root cause: each ledger owned separate add/filter markup, allowing action wording, ordering and
-  geometry to drift.
+  geometry to drift; a later regression used a weak mixed success surface and did not explicitly
+  centre the filter icon within its circular control.
 - Prevention: every current and future ledger uses `LedgerAddRowButton`, keeps search first, the
-  add action second and the filter as the rightmost control.
+  add action second and the filter as the rightmost control. The add action is a green `Add Row`
+  pill with a context-specific accessible name; the filter is a smaller proportional icon control
+  with its Material filter icon centred by explicit flex geometry.
 - Test added: `tests/e2e/ledger-table-controls-parity.spec.ts` verifies icon rendering, add/filter
-  order and matching target widths across all current ledgers.
+  order, visible `Add Row` wording, positive action colour, centred filter icon geometry and
+  proportional target geometry across all current ledgers.
+
+## 2026-07-26: Shared select padding clipped arrows and focus affordances
+
+- Area: ledger editor and modal form fields.
+- Root cause: shared select controls used the same right padding as text inputs, leaving native
+  dropdown arrows crowded against text and focus rings on dense modal fields.
+- Prevention: platform `field-control select` reserves extra inline-end padding; dense grids must
+  opt into smaller tracks without overriding control internals.
+- Test added: existing ledger and toolbar parity tests cover the shared field-control path; add a
+  focused computed-style test if a future select-specific primitive is introduced.
 
 ## 2026-07-20: Fund Manager settings modals diverged
 

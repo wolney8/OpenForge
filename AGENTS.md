@@ -153,6 +153,9 @@ Non-negotiable baseline:
 - contained table/dialog overflow with no unintended page-level horizontal scroll
 - process-correct enabled, disabled, loading, error and success states
 - repository-wide equivalent-pattern search whenever a UI pattern is fixed
+- shared action semantics: positive/create actions use the green positive action token, destructive
+  actions use the red Material `delete` icon, close actions use the red Material `close` icon, and
+  neighbouring icons/buttons must match size, padding and centre alignment
 
 Complete the implementation checklist for every feature, bug fix, route, component, workflow or
 fixture-backed UI change. Larger existing issues belong in

@@ -104,7 +104,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   const totals = directory.getByLabel("All-profile headline totals");
   await expect(totals.getByText("Gross P&L", { exact: true })).toBeVisible();
   await expect(totals.getByText("Available to Withdraw", { exact: true })).toBeVisible();
-  await expect(totals.getByText("£40.00", { exact: true })).toBeVisible();
+  await expect(totals.getByText("£ 40.00", { exact: true })).toBeVisible();
   await expect(directory.getByRole("columnheader", { name: "Available to Withdraw" })).toBeVisible();
   await expect(directory.getByRole("columnheader", { name: "Cash snapshot" })).toHaveCount(0);
   await expect(directory.getByRole("columnheader", { name: "Open Positions" })).toBeVisible();
@@ -141,7 +141,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(feesPanel.getByLabel("Fund Manager fee position")).toContainText(
     "Available to Withdraw"
   );
-  await expect(feesPanel.getByText("£40.00", { exact: true })).toBeVisible();
+  await expect(feesPanel.getByText("£ 40.00", { exact: true })).toBeVisible();
   await expect(feesPanel.getByRole("columnheader", { name: "Status" })).toBeVisible();
   await expect(feesPanel.locator("tbody").getByText("Review Required", { exact: true })).toHaveCount(2);
   await expect(feesPanel.getByRole("button", { name: /^Review Fees for / })).toHaveCount(2);
@@ -239,7 +239,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("heading", { name: "Selected-Range Performance" })).toBeVisible();
   await expect(drawer.getByRole("heading", { name: "Fee Position" })).toBeVisible();
-  await expect(drawer.getByText("£15.00", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("£ 15.00", { exact: true })).toBeVisible();
   await expect(drawer.getByText("Cash Adjustments", { exact: true })).toBeVisible();
   await expect(drawer.getByRole("button", { name: "Edit profile code" })).toBeVisible();
   await expect(drawer.getByRole("button", { name: "Edit tracking start" })).toBeVisible();
@@ -258,7 +258,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
     await bravoDirectoryRow.locator(".profile-action-count").allTextContents()
   );
   const settledProfitCard = feeDialog.locator(".stat-card").filter({ hasText: "Settled Profit" });
-  await expect(settledProfitCard.getByText("£40.00", { exact: true })).toBeVisible();
+  await expect(settledProfitCard.getByText("£ 40.00", { exact: true })).toBeVisible();
   await expect(feeDialog.getByRole("button", { name: "Prepare Fee Review" })).toBeEnabled();
   const feeDialogBox = await feeDialog.boundingBox();
   expect(feeDialogBox).not.toBeNull();
@@ -497,7 +497,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   await expect(feeDialog.getByRole("status")).toContainText("fees are confirmed as earned");
   const action = feeDialog.getByRole("button", { name: "Mark as Withdrawn" });
   await expect(action).toBeDisabled();
-  await expect(feeDialog.getByText("£9.39 outstanding", { exact: true })).toBeVisible();
+  await expect(feeDialog.getByText("£ 9.39 outstanding", { exact: true })).toBeVisible();
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.management"]').fill("5.00");
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.investment"]').fill("0.00");
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.account"]').fill("Demo Bank");
@@ -507,7 +507,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   await expect(feeDialog.getByRole("status")).toContainText(
     "fee withdrawal was recorded in Cash Adjustments"
   );
-  await expect(feeDialog.getByText("£4.39 outstanding", { exact: true })).toBeVisible();
+  await expect(feeDialog.getByText("£ 4.39 outstanding", { exact: true })).toBeVisible();
   expect(submittedPayload).toMatchObject({
     actor_id: "fund-manager-local",
     linked_account: "Demo Bank",
@@ -523,7 +523,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   const correctionAction = feeDialog.getByRole("button", { name: "Record Fee Correction" });
   await expect(correctionAction).toBeEnabled();
   await correctionAction.click();
-  await expect(feeDialog.getByRole("status")).toContainText("Fee credit of £2.73 was recorded");
+  await expect(feeDialog.getByRole("status")).toContainText("Fee credit of £ 2.73 was recorded");
   await expect(feeDialog.getByLabel("Recorded fee corrections")).toContainText("Fee Credit");
   expect(correctionPayload).toMatchObject({
     actor_id: "fund-manager-local",

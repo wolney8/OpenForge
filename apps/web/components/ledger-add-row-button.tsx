@@ -16,6 +16,9 @@ export function LedgerAddRowButton({ label, onClick }: LedgerAddRowButtonProps) 
       <span aria-hidden="true" className="material-symbols-outlined">
         add
       </span>
+      <span aria-hidden="true" className="ledger-toolbar-add-action-label">
+        Add Row
+      </span>
     </button>
   );
 }

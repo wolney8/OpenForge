@@ -15,6 +15,7 @@ type FinancialValueProps = {
   showPositiveSign?: boolean;
   title?: string;
   value: number | string;
+  zeroTone?: "positive" | "neutral";
 };
 
 export function FinancialValue({
@@ -24,10 +25,11 @@ export function FinancialValue({
   showPositiveSign = false,
   title,
   value,
+  zeroTone = "positive",
 }: FinancialValueProps) {
   const numericValue = typeof value === "number" ? value : Number(value);
   const isValid = Number.isFinite(numericValue);
-  const tone = isValid ? moneyTone(numericValue) : "neutral";
+  const tone = isValid ? moneyTone(numericValue, { zeroTone }) : "neutral";
   const display = isValid
     ? formatFinancialValue(numericValue, { showPositiveSign })
     : "Unavailable";

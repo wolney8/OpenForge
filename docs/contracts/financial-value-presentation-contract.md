@@ -26,7 +26,7 @@ Present existing contract-backed money values consistently and accessibly, with 
 - Use `Intl.NumberFormat` or equivalent locale-aware formatting.
 - Default locale: Fund Manager setting, initially `en-GB`.
 - Positive money: `+£ 10.00` when sign context is useful, or `£ 10.00` where a plus sign would add noise.
-- Negative money: accounting style `(£ 1.29)`; never `-£ 1.29`, `£-1.29` or `£ -1.29`.
+- Negative money: accounting style with narrow internal bracket spacing `( £ 1.29 )`; never `-£ 1.29`, `£-1.29`, `£ -1.29` or compact `(£ 1.29)`.
 - Zero money: `£ 0.00` with positive/green semantics for resolved absolute zero.
 - Inputs may omit a plus sign while editing; resolved read-only values follow the signed display rule.
 - Use tabular numerals where changing values must remain aligned.

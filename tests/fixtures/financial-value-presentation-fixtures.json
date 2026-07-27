@@ -8,7 +8,7 @@
     {
       "case_id": "FVP-002",
       "inputs": {"value": "-1.29", "currency": "GBP", "locale": "en-GB", "show_sign": true, "state": "resolved"},
-      "expected": {"formatted": "(£ 1.29)", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
+      "expected": {"formatted": "( £ 1.29 )", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
     },
     {
       "case_id": "FVP-003",

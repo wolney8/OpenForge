@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "./access-scope-badge";
-import { FinancialValue } from "./financial-value";
+import { FinancialValue as PlatformFinancialValue } from "./financial-value";
 import {
   aggregateCrossProfileReporting,
   type ProfileComparisonRow,
@@ -85,6 +85,10 @@ type ProfileApiResponse = {
   management_fee_percent: string;
   investment_fee_percent: string;
 };
+
+function FinancialValue(props: ComponentProps<typeof PlatformFinancialValue>) {
+  return <PlatformFinancialValue zeroTone="neutral" {...props} />;
+}
 
 const analyticsTabs: { id: AnalyticsTab; label: string }[] = [
   { id: "profiles", label: "Profiles" },
