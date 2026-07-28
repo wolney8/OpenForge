@@ -2061,8 +2061,8 @@ export function FreeBetWorkflowShell({
     [editorHeaderFullTitle]
   );
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.free_bet_id === rowId);
@@ -2085,8 +2085,8 @@ export function FreeBetWorkflowShell({
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -2105,8 +2105,8 @@ export function FreeBetWorkflowShell({
     revealEditor({ expandLedger: true });
   }
 
-  function closeEditor() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function closeEditor() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -2515,7 +2515,7 @@ export function FreeBetWorkflowShell({
           <button
             aria-label={`Edit ${sourceRow.free_bet_id}`}
             className="icon-button table-action-button"
-            onClick={() => selectRow(sourceRow.free_bet_id)}
+            onClick={() => void selectRow(sourceRow.free_bet_id)}
             type="button"
           >
             <span aria-hidden="true">✎</span>
@@ -2618,7 +2618,7 @@ export function FreeBetWorkflowShell({
               value={query}
             />
           </label>
-          <LedgerAddRowButton label="Add free-bet row" onClick={startNewRow} />
+          <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button
               aria-label="Open free-bet filter and column controls"
@@ -2778,8 +2778,8 @@ export function FreeBetWorkflowShell({
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -3193,7 +3193,7 @@ export function FreeBetWorkflowShell({
       ) : null}
 
       {workflowVisible ? (
-        <div className="modal-backdrop" onClick={closeEditor}>
+        <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
         aria-modal="true"
@@ -3218,7 +3218,7 @@ export function FreeBetWorkflowShell({
                 Edit settled row
               </button>
             ) : null}
-            <button aria-label="Close free-bet editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
+            <button aria-label="Close free-bet editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
               Close
             </button>
           </div>
@@ -4048,7 +4048,7 @@ export function FreeBetWorkflowShell({
             <button className="review-chip" onClick={handleResetForm} type="button">
               Revert
             </button>
-            <button aria-label="Close free-bet editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+            <button aria-label="Close free-bet editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
               Close
             </button>
           </div>

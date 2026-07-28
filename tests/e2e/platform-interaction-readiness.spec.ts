@@ -4,7 +4,7 @@ const sportsbookRoute = "/profiles/profile-demo-001/tracker/sportsbook-bets";
 const freeBetRoute = "/profiles/profile-demo-001/tracker/free-bets";
 
 test("unchanged editor navigation is silent while a real edit is protected", async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await page.goto(sportsbookRoute);
   const firstSportsbookRow = page.locator(".data-table tbody tr").first();
   await expect(firstSportsbookRow).toBeVisible();
@@ -25,20 +25,41 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
   page.off("dialog", unchangedDialogHandler);
 
   await page.goto(sportsbookRoute);
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
   await page.getByRole("button", { name: "Add sportsbook row" }).click();
   const createDialog = page.getByRole("dialog", { name: "Create sportsbook row" });
   await createDialog.getByLabel("Offer", { exact: true }).fill("Unsaved guard check");
 
-  const guardDialog = page.waitForEvent("dialog");
-  const guardedNavigation = page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
+  await page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
     (link as HTMLAnchorElement).click();
   });
-  const dialog = await guardDialog;
-  expect(dialog.message()).toContain("You have unsaved changes");
-  await dialog.dismiss();
-  await guardedNavigation;
+  const guardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  await expect(guardDialog).toBeVisible();
+  await expect(guardDialog).toContainText("You have unsaved changes");
+  await expect(guardDialog).toHaveAttribute("aria-modal", "true");
+  await expect(guardDialog.getByRole("button", { name: "Keep Editing", exact: true })).toBeFocused();
+
+  const bounds = await guardDialog.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport!.height);
+
+  await page.keyboard.press("Escape");
+  await expect(guardDialog).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`${sportsbookRoute}$`));
   await expect(createDialog).toBeVisible();
+
+  await page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
+    (link as HTMLAnchorElement).click();
+  });
+  const secondGuardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  await expect(secondGuardDialog).toBeVisible();
+  await secondGuardDialog.getByRole("button", { name: "Discard Changes" }).click();
+  await expect(page).toHaveURL(new RegExp(`${freeBetRoute}$`));
 });
 
 test("tracker controls expose visible focus and an operable theme toggle", async ({ page }) => {

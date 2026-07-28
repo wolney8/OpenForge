@@ -1,6 +1,6 @@
 type LedgerAddRowButtonProps = {
   label: string;
-  onClick: () => void;
+  onClick: () => Promise<void> | void;
 };
 
 export function LedgerAddRowButton({ label, onClick }: LedgerAddRowButtonProps) {
@@ -9,7 +9,7 @@ export function LedgerAddRowButton({ label, onClick }: LedgerAddRowButtonProps) 
       aria-label={label}
       className="icon-button ledger-toolbar-add-action"
       data-pd-id="ledger.toolbar.add-row"
-      onClick={onClick}
+      onClick={() => void onClick()}
       title={label}
       type="button"
     >

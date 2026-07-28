@@ -1,27 +1,77 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const defaultMessage =
   "You have unsaved changes in this tracker form. Leave this page and discard them?";
 
 const activeUnsavedGuards = new Map<symbol, string>();
 
-export function confirmUnsavedTrackerChanges(): boolean {
+type UnsavedChangesPromptRequest = {
+  message: string;
+  resolve: (confirmed: boolean) => void;
+};
+
+let promptHandler: ((request: UnsavedChangesPromptRequest) => void) | null = null;
+
+function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
+  if (!promptHandler) {
+    // Browser unload cannot be replaced by app UI; this fallback is only for
+    // calls made before the app-level prompt controller has mounted.
+    return Promise.resolve(window.confirm(message));
+  }
+
+  return new Promise((resolve) => {
+    promptHandler?.({ message, resolve });
+  });
+}
+
+export function hasUnsavedTrackerChanges(): boolean {
+  return activeUnsavedGuards.size > 0;
+}
+
+export async function confirmUnsavedTrackerChanges(): Promise<boolean> {
   const message = activeUnsavedGuards.values().next().value as string | undefined;
-  return message ? window.confirm(message) : true;
+  return message ? requestUnsavedChangesConfirmation(message) : true;
+}
+
+export function useUnsavedChangesPromptController() {
+  const [request, setRequest] = useState<UnsavedChangesPromptRequest | null>(null);
+
+  useEffect(() => {
+    const handler = (nextRequest: UnsavedChangesPromptRequest) => {
+      setRequest(nextRequest);
+    };
+
+    promptHandler = handler;
+    return () => {
+      if (promptHandler === handler) {
+        promptHandler = null;
+      }
+    };
+  }, []);
+
+  const respond = useCallback(
+    (confirmed: boolean) => {
+      request?.resolve(confirmed);
+      setRequest(null);
+    },
+    [request]
+  );
+
+  return { request, respond };
 }
 
 export function useUnsavedChangesGuard(
   isDirty: boolean,
   message: string = defaultMessage
-): () => boolean {
+): () => Promise<boolean> {
   const guardId = useRef(Symbol("unsaved-tracker-form"));
-  const confirmDiscardChanges = useCallback(() => {
+  const confirmDiscardChanges = useCallback(async () => {
     if (!isDirty) {
       return true;
     }
-    return window.confirm(message);
+    return requestUnsavedChangesConfirmation(message);
   }, [isDirty, message]);
 
   useEffect(() => {
@@ -68,10 +118,14 @@ export function useUnsavedChangesGuard(
         return;
       }
 
-      if (!window.confirm(message)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
+      event.preventDefault();
+      event.stopPropagation();
+
+      void requestUnsavedChangesConfirmation(message).then((confirmed) => {
+        if (confirmed) {
+          window.location.assign(destination.href);
+        }
+      });
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);

@@ -202,6 +202,19 @@ cause, prevention rule and regression test.
 - Test added: existing ledger and toolbar parity tests cover the shared field-control path; add a
   focused computed-style test if a future select-specific primitive is introduced.
 
+## 2026-07-27: Dirty route guard used browser confirmation
+
+- Area: ledger add/edit flows and top-bar profile switching.
+- Root cause: dirty-state navigation relied on `window.confirm`, which escaped Plum Duff styling,
+  could not meet the app's dialog/focus contract, and made route guards visually inconsistent with
+  other Material-aligned confirmations.
+- Prevention: dirty in-app navigation uses the shared unsaved-changes prompt controller rendered
+  by `AppChrome`; browser confirmation is allowed only for the unavoidable `beforeunload` path or
+  as a fallback before the app-level controller mounts.
+- Test added: `tests/e2e/platform-interaction-readiness.spec.ts` verifies unchanged navigation is
+  silent, dirty navigation opens the bounded in-app prompt, Escape keeps editing, and discard
+  continues to the requested route.
+
 ## 2026-07-20: Fund Manager settings modals diverged
 
 - Area: Common Bet Combos and Tracker Lists in Fund Manager Settings.

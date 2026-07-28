@@ -1737,8 +1737,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     [editorHeaderFullTitle]
   );
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.casino_offer_id === rowId);
@@ -1760,8 +1760,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -1779,8 +1779,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     revealEditor({ expandLedger: true });
   }
 
-  function closeEditor() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function closeEditor() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -2042,7 +2042,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           <button
             aria-label={`Edit ${sourceRow.casino_offer_id}`}
             className="icon-button table-action-button"
-            onClick={() => selectRow(sourceRow.casino_offer_id)}
+            onClick={() => void selectRow(sourceRow.casino_offer_id)}
             type="button"
           >
             <span aria-hidden="true">✎</span>
@@ -2135,7 +2135,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
-          <LedgerAddRowButton label="Add casino row" onClick={startNewRow} />
+          <LedgerAddRowButton label="Add casino row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open casino-offer filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active casino-offer filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns)); }} type="button">×</button> : null}
@@ -2254,8 +2254,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -2617,7 +2617,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       ) : null}
 
       {workflowVisible ? (
-        <div className="modal-backdrop" onClick={closeEditor}>
+        <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit casino row" : "Create casino row"}
         aria-modal="true"
@@ -2642,7 +2642,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 Edit settled row
               </button>
             ) : null}
-            <button aria-label="Close casino-offer editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
+            <button aria-label="Close casino-offer editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
               Close
             </button>
           </div>
@@ -3277,7 +3277,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <button className="review-chip" onClick={handleResetForm} type="button">
               Revert
             </button>
-            <button aria-label="Close casino-offer editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+            <button aria-label="Close casino-offer editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
               Close
             </button>
           </div>

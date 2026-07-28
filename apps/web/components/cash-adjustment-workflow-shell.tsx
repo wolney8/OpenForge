@@ -975,8 +975,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     };
   }, [resolvedDateRange, rows]);
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.cash_adjustment_id === rowId);
@@ -1002,8 +1002,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setStatusMessage(`Opened cash adjustment ${rowId} for editing.`);
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -1019,8 +1019,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setStatusMessage("New cash adjustment ready. Complete the required fields, then save.");
   }
 
-  function closeEditor() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function closeEditor() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -1206,7 +1206,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             aria-label={`Edit ${sourceRow.cash_adjustment_id}`}
             className="icon-button table-action-button"
             disabled={lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)}
-            onClick={() => selectRow(sourceRow.cash_adjustment_id)}
+            onClick={() => void selectRow(sourceRow.cash_adjustment_id)}
             title={
               lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)
                 ? "Confirmed fee withdrawals are managed from monthly fee review"
@@ -1276,7 +1276,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search cash-adjustment rows</span><input aria-label="Search cash-adjustment rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" type="search" value={query} /></label>
-          <LedgerAddRowButton label="Add cash adjustment" onClick={startNewRow} />
+          <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
@@ -1390,8 +1390,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -1625,7 +1625,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       ) : null}
 
       {workflowVisible ? (
-        <div className="modal-backdrop" onClick={closeEditor}>
+        <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
         aria-modal="true"
@@ -1641,7 +1641,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             <strong>{selectedId ?? "New cash adjustment"}</strong>
             </div>
             <div className="tracker-nav">
-              <button aria-label="Close cash-adjustment editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
+              <button aria-label="Close cash-adjustment editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
                 Close
               </button>
             </div>
@@ -1882,7 +1882,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 <button className="review-chip" onClick={handleResetForm} type="button">
                   Revert
                 </button>
-                <button aria-label="Close cash-adjustment editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+                <button aria-label="Close cash-adjustment editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
                   Close
                 </button>
               </div>

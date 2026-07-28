@@ -20,7 +20,10 @@ import {
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
 import { profileOverflowModules } from "@/lib/tracker-modules";
-import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
+import {
+  confirmUnsavedTrackerChanges,
+  useUnsavedChangesPromptController,
+} from "@/lib/use-unsaved-changes-guard";
 
 const defaultProfileId = "profile-demo-001";
 
@@ -101,8 +104,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [appMenuOpen, setAppMenuOpen] = useState(false);
   const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
+  const unsavedPrompt = useUnsavedChangesPromptController();
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
   const appMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const unsavedKeepEditingRef = useRef<HTMLButtonElement | null>(null);
   const closeAppMenu = useCallback(() => setAppMenuOpen(false), []);
 
   useEffect(() => {
@@ -127,6 +132,29 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       router.prefetch(`/profiles/${activeProfileId}/tracker/${route}`);
     }
   }, [activeProfileId, isInsideProfile, router]);
+
+  useEffect(() => {
+    if (!unsavedPrompt.request) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      unsavedKeepEditingRef.current?.focus();
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        unsavedPrompt.respond(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [unsavedPrompt]);
 
   useEffect(() => {
     if (!isInsideProfile) {
@@ -304,8 +332,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     (profile) => profile.profile_id !== activeProfileId
   );
 
-  const switchToProfile = (profileId: string) => {
-    if (!confirmUnsavedTrackerChanges()) return;
+  const switchToProfile = async (profileId: string) => {
+    if (!(await confirmUnsavedTrackerChanges())) return;
     const nextPath = (pathname ?? "/profiles").replace(
       `/profiles/${activeProfileId}`,
       `/profiles/${profileId}`
@@ -384,7 +412,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                       aria-label={`Switch to ${otherActiveProfiles[0].display_name} in the current tracker section`}
                       className="nav-pill profile-switch-action"
                       data-pd-id="profile-menu.switch"
-                      onClick={() => switchToProfile(otherActiveProfiles[0].profile_id)}
+                      onClick={() => void switchToProfile(otherActiveProfiles[0].profile_id)}
                       role="menuitem"
                       type="button"
                     >
@@ -410,7 +438,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                           <button
                             className="nav-pill"
                             key={profile.profile_id}
-                            onClick={() => switchToProfile(profile.profile_id)}
+                            onClick={() => void switchToProfile(profile.profile_id)}
                             role="menuitem"
                             type="button"
                           >
@@ -460,6 +488,59 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      {unsavedPrompt.request ? (
+        <div
+          className="modal-backdrop modal-backdrop-elevated unsaved-changes-backdrop"
+          data-pd-id="unsaved-changes.backdrop"
+          onClick={() => unsavedPrompt.respond(false)}
+        >
+          <section
+            aria-label="Unsaved tracker changes"
+            aria-modal="true"
+            className="modal-panel unsaved-changes-dialog"
+            data-pd-id="unsaved-changes.dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="section-heading-row">
+              <div>
+                <span className="eyebrow">Unsaved Changes</span>
+                <h2>Leave this tracker form?</h2>
+              </div>
+              <button
+                aria-label="Keep editing tracker form"
+                className="dialog-close-button"
+                data-pd-id="unsaved-changes.keep-editing-icon"
+                onClick={() => unsavedPrompt.respond(false)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <p>{unsavedPrompt.request.message}</p>
+            <footer className="workflow-editor-modal-footer">
+              <button
+                className="button-link"
+                data-pd-id="unsaved-changes.keep-editing"
+                onClick={() => unsavedPrompt.respond(false)}
+                ref={unsavedKeepEditingRef}
+                type="button"
+              >
+                Keep Editing
+              </button>
+              <button
+                className="icon-button icon-button-destructive"
+                data-pd-id="unsaved-changes.discard"
+                onClick={() => unsavedPrompt.respond(true)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                <span>Discard Changes</span>
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }

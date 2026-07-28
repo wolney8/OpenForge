@@ -1932,6 +1932,42 @@ html[data-theme="dark"] .notification-count-badge {
   color: var(--primary-strong);
 }
 
+.unsaved-changes-backdrop {
+  z-index: 1000;
+}
+
+.unsaved-changes-dialog {
+  display: flex;
+  width: min(34rem, calc(100vw - 2rem));
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+  max-height: min(32rem, calc(100dvh - 2rem));
+  padding: 1.35rem;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  resize: none;
+}
+
+.unsaved-changes-dialog .section-heading-row {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.unsaved-changes-dialog p {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.unsaved-changes-dialog .workflow-editor-modal-footer {
+  margin-top: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .directory-icon-button.is-active .material-symbols-outlined {
   font-variation-settings: "FILL" 1;
 }

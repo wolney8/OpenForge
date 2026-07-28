@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.setTimeout(90_000);
+
 function rgbChannels(value: string) {
   const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!match) throw new Error(`Could not parse rgb colour: ${value}`);
@@ -53,9 +55,13 @@ async function expectLedgerToolbarAfterStats(
   await expect(page.getByRole("button", { name: /Collapse ledger|Expand ledger/ })).toHaveCount(0);
 }
 
+async function waitForLedgerReady(page: import("@playwright/test").Page, loadingText: string) {
+  await expect(page.getByText(loadingText)).toBeHidden({ timeout: 90_000 });
+}
+
 test("Sportsbook places its shared controls after the stat cards", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
-  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+  await waitForLedgerReady(page, "Loading sportsbook ledger");
   await expectLedgerToolbarAfterStats(
     page,
     "Sportsbook quick view",
@@ -66,7 +72,7 @@ test("Sportsbook places its shared controls after the stat cards", async ({ page
 
 test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/free-bets");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading free-bet ledger");
 
   await expect(page.getByRole("columnheader", { name: "Expiry" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Lay Bet" })).toBeVisible();
@@ -86,7 +92,7 @@ test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
 
 test("Casino Offers exposes consistent filter controls and actions column", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/casino-offers");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading casino-offer ledger");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Delete casino-offer row / }).first()).toBeVisible();
@@ -103,7 +109,7 @@ test("Casino Offers exposes consistent filter controls and actions column", asyn
 
 test("Cash Adjustments exposes consistent filter controls and actions column", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/cash-adjustments");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading cash-adjustment ledger");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Delete cash-adjustment row / }).first()).toBeVisible();

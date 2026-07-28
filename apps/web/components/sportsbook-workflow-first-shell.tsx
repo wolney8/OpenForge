@@ -3943,8 +3943,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [tableColumns]
   );
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (workflowVisible && rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (workflowVisible && rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.sportsbook_bet_id === rowId);
@@ -3985,8 +3985,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
-  function startNewRow() {
-    if (workflowVisible && isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (workflowVisible && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -4011,8 +4011,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     revealEditor({ expandLedger: true });
   }
 
-  function closeEditor() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function closeEditor() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -5260,7 +5260,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <span className="visually-hidden">Search sportsbook rows</span>
             <input aria-label="Search sportsbook rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" type="search" value={query} />
           </label>
-          <LedgerAddRowButton label="Add sportsbook row" onClick={startNewRow} />
+          <LedgerAddRowButton label="Add sportsbook row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open sportsbook filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button">
               <svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>
@@ -5384,8 +5384,8 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td
@@ -6218,7 +6218,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       ) : null}
 
       {workflowVisible ? (
-        <div className="modal-backdrop" onClick={closeEditor}>
+        <div className="modal-backdrop" onClick={() => void closeEditor()}>
           <section
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
             aria-modal="true"
@@ -6245,7 +6245,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     Edit settled row
                   </button>
                 ) : null}
-                <button aria-label="Close sportsbook editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
+                <button aria-label="Close sportsbook editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
                   Close
                 </button>
               </div>
@@ -8327,7 +8327,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               <button className="review-chip" onClick={handleResetForm} type="button">
                 Revert
               </button>
-              <button aria-label="Close sportsbook editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
+              <button aria-label="Close sportsbook editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
                 Close
               </button>
             </div>
