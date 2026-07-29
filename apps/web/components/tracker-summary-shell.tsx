@@ -466,12 +466,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               <article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
                 <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
-                <span>Workbook reporting value inside the resolved range</span>
+                <span>Total profit and loss for this range</span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Retained profit</span>
                 <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
-                <span>After workbook cash-adjustment report rules</span>
+                <span>After withdrawals, costs, and retained adjustments</span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Open current / settled final</span>
@@ -508,7 +508,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <div className="panel-header">
               <h2>Selected Range Module Mix</h2>
             </div>
-            <section className="stat-strip" aria-label="Workbook module mix">
+            <section className="stat-strip" aria-label="Selected range module mix">
               <article className="stat-card">
                 <span className="eyebrow">Sportsbook</span>
                 <strong><FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /></strong>

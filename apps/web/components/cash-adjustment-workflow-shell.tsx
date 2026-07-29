@@ -1266,17 +1266,17 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             <strong>{quickView.costCount}</strong>
             <span><FinancialValue value={quickView.costTotal} /></span>
           </article>
-            <article className="stat-card">
-              <span className="eyebrow">Workbook scope</span>
-              <strong>
-                {quickView.investmentCount} / {quickView.cashSnapshotCount}
-              </strong>
-            <span>Investment rows • Cash-snapshot rows</span>
-            </article>
+          <article className="stat-card">
+            <span className="eyebrow">Cash impact</span>
+            <strong>
+              {quickView.investmentCount} / {quickView.cashSnapshotCount}
+            </strong>
+            <span>Investment rows • Account-cash rows</span>
+          </article>
           <article className="stat-card">
             <span className="eyebrow">Signed total</span>
             <strong><FinancialValue value={quickView.signedTotal} /></strong>
-            <span>Current net signed effect</span>
+            <span>Net effect of visible adjustments</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">

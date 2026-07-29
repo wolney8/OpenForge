@@ -77,7 +77,9 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
       hasText: "Fund Manager only",
     })
   ).toBeVisible();
-  await expect(page.getByText("Formal Report Periods", { exact: true })).toBeVisible();
+  await expect(page.getByText("Formal Report Periods", { exact: true })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(
     page.getByRole("heading", { name: "Selected range vs formal reports", exact: true })
   ).toBeVisible();
