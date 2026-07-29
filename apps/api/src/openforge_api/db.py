@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, cast
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
@@ -1029,8 +1029,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "free_bets", "source_award_group_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "source_award_split_index", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(connection, "free_bets", "source_award_split_total", "INTEGER NOT NULL DEFAULT 0")
-    ensure_column(connection, "free_bets", "source_award_expected_value", "TEXT NOT NULL DEFAULT ''")
-    ensure_column(connection, "free_bets", "source_award_variance_reason", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection, "free_bets", "source_award_expected_value", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection, "free_bets", "source_award_variance_reason", "TEXT NOT NULL DEFAULT ''"
+    )
     ensure_column(
         connection,
         "free_bets",
@@ -3361,14 +3365,15 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
             """,
             tuple(record.values()),
         )
+        created_free_bet_id = cast(str, record["free_bet_id"])
         write_free_bet_audit_entry(
             connection=connection,
-            free_bet_id=record["free_bet_id"],
+            free_bet_id=created_free_bet_id,
             profile_id=profile_id,
             action="created",
             payload=record,
         )
-    created = get_free_bet(profile_id, record["free_bet_id"])
+    created = get_free_bet(profile_id, created_free_bet_id)
     assert created is not None
     return created
 
@@ -3405,9 +3410,15 @@ def update_free_bet(
         "date_settled": payload["date_settled"],
         "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
         "offer_group_id": payload.get("offer_group_id", ""),
-        "source_award_group_id": payload.get("source_award_group_id", existing.source_award_group_id),
-        "source_award_split_index": payload.get("source_award_split_index", existing.source_award_split_index),
-        "source_award_split_total": payload.get("source_award_split_total", existing.source_award_split_total),
+        "source_award_group_id": payload.get(
+            "source_award_group_id", existing.source_award_group_id
+        ),
+        "source_award_split_index": payload.get(
+            "source_award_split_index", existing.source_award_split_index
+        ),
+        "source_award_split_total": payload.get(
+            "source_award_split_total", existing.source_award_split_total
+        ),
         "source_award_expected_value": payload.get(
             "source_award_expected_value", existing.source_award_expected_value
         ),

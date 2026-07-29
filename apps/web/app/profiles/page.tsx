@@ -23,16 +23,11 @@ export default async function ProfilesPage({
       <section className="hero-panel split-hero">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
-          <h1>Profiles and combined analytics</h1>
-          <p className="lede">
-            Review profile performance, action queues, exposure, fees, and formal
-            reports before opening a profile tracker.
-          </p>
+          <h1>Fund Manager Dashboard</h1>
         </div>
         <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
           <span className="eyebrow">Active profiles</span>
           <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
-          <p className="lede">Open a profile row below to work on its tracker.</p>
         </aside>
       </section>
       <CrossProfileAnalytics

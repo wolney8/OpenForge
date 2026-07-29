@@ -1,30 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 const apiBaseUrl = "http://127.0.0.1:8010";
 const primaryProfileId = "profile-demo-001";
 const secondaryProfileId = "profile-demo-002";
-
-const summarySourcePaths = [
-  "accounts",
-  "sportsbook-bets",
-  "free-bets",
-  "casino-offers",
-  "cash-adjustments",
-  "balance-snapshots",
-  "tracker-settings",
-];
-
-function waitForSummarySources(page: Page, profileId: string) {
-  return Promise.all(
-    summarySourcePaths.map((path) =>
-      page.waitForResponse(
-        (response) =>
-          response.url() === `${apiBaseUrl}/profiles/${profileId}/${path}` && response.ok(),
-        { timeout: 60_000 }
-      )
-    )
-  );
-}
 
 test("Accounts remains profile-scoped and exposes no credential fields", async ({ page, request }) => {
   const primaryAccountsResponse = await request.get(
@@ -74,9 +52,8 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   page,
 }) => {
   test.setTimeout(120_000);
-  const dashboardSources = waitForSummarySources(page, primaryProfileId);
   await page.goto(`/profiles/${primaryProfileId}/tracker/dashboard`);
-  await dashboardSources;
+  await expect(page.getByText("Loading live tracker summaries")).toBeHidden({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await expect(
     page.locator('[data-access-tier="internal_operational"]', {
@@ -92,9 +69,8 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   const ledgerAction = page.getByRole("link", { name: /^Open .+ in (Sportsbook|Free Bet|Casino)$/ }).first();
   await expect(ledgerAction).toHaveAttribute("href", /\/tracker\/(sportsbook-bets|free-bets|casino-offers)\?search=.+/);
 
-  const reportSources = waitForSummarySources(page, primaryProfileId);
   await page.goto(`/profiles/${primaryProfileId}/tracker/reports`);
-  await reportSources;
+  await expect(page.getByText("Loading live tracker summaries")).toBeHidden({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
   await expect(
     page.locator('[data-access-tier="internal_operational"]', {

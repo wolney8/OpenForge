@@ -95,19 +95,10 @@ export default async function TrackerModulePage({
         <ProfileFlexibleNav profileId={profile.profileId} />
         {!usesCompactHero ? (
           <>
-            <span className="eyebrow">
-              /profiles/{profile.profileId}/tracker/{module}
-            </span>
+            <span className="eyebrow">{profile.profileCode}</span>
             <h1>
               {profile.displayName}: {moduleDefinition.title}
             </h1>
-            <p className="lede">{moduleDefinition.summary}</p>
-            <div className="meta-grid">
-              <dl>
-                <dt>Profile context</dt>
-                <dd>{profile.profileCode}</dd>
-              </dl>
-            </div>
           </>
         ) : null}
       </section>
