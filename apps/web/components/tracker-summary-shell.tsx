@@ -7,7 +7,11 @@ import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
-import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import {
   formatHumanDisplayDate,
   formatMoney,
@@ -237,14 +241,35 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       balanceSnapshots: `${apiBaseUrl}/profiles/${profileId}/balance-snapshots`,
       trackerSettings: `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
     };
-    const cachedSettings = readCachedJson<TrackerSettingsRecord>(urls.trackerSettings, 30_000);
+    const cachedSettings = readCachedJson<TrackerSettingsRecord>(
+      urls.trackerSettings,
+      TRACKER_STALE_WHILE_REFRESH_MS
+    );
     const cachedData = {
-      accounts: readCachedJson<AccountSummaryRecord[]>(urls.accounts, 30_000),
-      sportsbookBets: readCachedJson<SportsbookSummaryRecord[]>(urls.sportsbookBets, 30_000),
-      freeBets: readCachedJson<FreeBetSummaryRecord[]>(urls.freeBets, 30_000),
-      casinoOffers: readCachedJson<CasinoSummaryRecord[]>(urls.casinoOffers, 30_000),
-      cashAdjustments: readCachedJson<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments, 30_000),
-      balanceSnapshots: readCachedJson<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots, 30_000),
+      accounts: readCachedJson<AccountSummaryRecord[]>(
+        urls.accounts,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
+      sportsbookBets: readCachedJson<SportsbookSummaryRecord[]>(
+        urls.sportsbookBets,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
+      freeBets: readCachedJson<FreeBetSummaryRecord[]>(
+        urls.freeBets,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
+      casinoOffers: readCachedJson<CasinoSummaryRecord[]>(
+        urls.casinoOffers,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
+      cashAdjustments: readCachedJson<CashAdjustmentSummaryRecord[]>(
+        urls.cashAdjustments,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
+      balanceSnapshots: readCachedJson<BalanceSnapshotSummaryRecord[]>(
+        urls.balanceSnapshots,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
     };
 
     if (

@@ -3,7 +3,12 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  invalidateCachedJson,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -1090,7 +1095,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     async (preferredSelection?: string | null) => {
       const requestId = ++loadRowsRequestIdRef.current;
       const url = `${apiBaseUrl}/profiles/${profileId}/casino-offers`;
-      const cachedRows = readCachedJson<CasinoOfferRecord[]>(url);
+      const cachedRows = readCachedJson<CasinoOfferRecord[]>(
+        url,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
       if (cachedRows && requestId === loadRowsRequestIdRef.current) {
         setRows(cachedRows);
         setIsInitialLoading(false);

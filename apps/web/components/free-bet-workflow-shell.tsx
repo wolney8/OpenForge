@@ -3,7 +3,12 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  invalidateCachedJson,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -1258,7 +1263,7 @@ export function FreeBetWorkflowShell({
   const loadRows = useCallback(async (preferredSelection?: string | null) => {
     const requestId = ++loadRowsRequestIdRef.current;
     const url = `${apiBaseUrl}/profiles/${profileId}/free-bets`;
-    const cachedRows = readCachedJson<FreeBetRecord[]>(url);
+    const cachedRows = readCachedJson<FreeBetRecord[]>(url, TRACKER_STALE_WHILE_REFRESH_MS);
     if (cachedRows && requestId === loadRowsRequestIdRef.current) {
       setRows(cachedRows);
       setIsInitialLoading(false);

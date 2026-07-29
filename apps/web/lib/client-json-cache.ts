@@ -7,6 +7,8 @@ type CacheEntry<T> = {
 
 const jsonCache = new Map<string, CacheEntry<unknown>>();
 
+export const TRACKER_STALE_WHILE_REFRESH_MS = 300_000;
+
 export function readCachedJson<T>(url: string, maxAgeMs = 60_000): T | null {
   const entry = jsonCache.get(url);
   if (!entry) return null;

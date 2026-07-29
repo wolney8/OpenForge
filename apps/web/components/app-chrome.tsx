@@ -11,7 +11,11 @@ import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
-import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import {
   formatMoney,
   resolveDateRange,
@@ -219,8 +223,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
       const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
 
-      const cachedProfile = readCachedJson<ProfileHeaderRecord>(profileUrl, 30_000);
-      const cachedSettings = readCachedJson<TrackerSettingsRecord>(settingsUrl, 30_000);
+      const cachedProfile = readCachedJson<ProfileHeaderRecord>(
+        profileUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedSettings = readCachedJson<TrackerSettingsRecord>(
+        settingsUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
       const applyHeaderIdentity = (
         profile: ProfileHeaderRecord,
         settings: TrackerSettingsRecord,
@@ -240,7 +250,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           profileName: profile.display_name,
           profileRangeLabel: rangeLabel,
           profileSubtitle:
-            typeof overallPnl === "number" ? `${rangeLabel} • ${formatMoney(overallPnl)}` : rangeLabel,
+            typeof overallPnl === "number"
+              ? `${rangeLabel} • ${formatMoney(overallPnl)}`
+              : rangeLabel,
           overallPnl,
         });
 
@@ -253,11 +265,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
       const cachedSportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(
         sportsbookUrl,
-        30_000
+        TRACKER_STALE_WHILE_REFRESH_MS
       );
-      const cachedFreeBets = readCachedJson<FreeBetSummaryRecord[]>(freeBetUrl, 30_000);
-      const cachedCasinoOffers = readCachedJson<CasinoSummaryRecord[]>(casinoUrl, 30_000);
-      const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(cashUrl, 30_000);
+      const cachedFreeBets = readCachedJson<FreeBetSummaryRecord[]>(
+        freeBetUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedCasinoOffers = readCachedJson<CasinoSummaryRecord[]>(
+        casinoUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(
+        cashUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
 
       if (
         cachedProfile &&
@@ -290,7 +311,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         );
 
         if (isActive) {
-          applyHeaderIdentity(cachedProfile, cachedSettings, cachedSummary.profitQuickView.overallPnl);
+          applyHeaderIdentity(
+            cachedProfile,
+            cachedSettings,
+            cachedSummary.profitQuickView.overallPnl
+          );
         }
       }
 

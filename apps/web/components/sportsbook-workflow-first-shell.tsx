@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  invalidateCachedJson,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
@@ -2757,7 +2762,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     async (preferredSelection?: string | null) => {
       const requestId = ++loadRowsRequestIdRef.current;
       const url = `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`;
-      const cachedRows = readCachedJson<SportsbookRecord[]>(url);
+      const cachedRows = readCachedJson<SportsbookRecord[]>(
+        url,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
       if (cachedRows && requestId === loadRowsRequestIdRef.current) {
         setRows(cachedRows);
         setIsInitialLoading(false);

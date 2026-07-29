@@ -3,7 +3,12 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
+import {
+  fetchJsonAndCache,
+  invalidateCachedJson,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
@@ -580,7 +585,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
       const url = `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
-      const cachedRows = readCachedJson<CashAdjustmentRecord[]>(url);
+      const cachedRows = readCachedJson<CashAdjustmentRecord[]>(
+        url,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
       if (cachedRows) {
         setRows(cachedRows);
         setIsInitialLoading(false);
