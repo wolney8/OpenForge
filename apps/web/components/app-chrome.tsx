@@ -218,23 +218,99 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       const freeBetUrl = `${apiBaseUrl}/profiles/${activeProfileId}/free-bets`;
       const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
       const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
-      const [profile, settings, sportsbookBets, freeBets, casinoOffers, cashAdjustments] =
-        await Promise.all([
-          fetchJsonAndCache<ProfileHeaderRecord>(profileUrl),
-          fetchJsonAndCache<TrackerSettingsRecord>(settingsUrl),
-          fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
-          fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
-          fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
-          fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
-        ]);
 
-      const resolvedRange = resolveDateRange({
-        preset: settings.active_date_preset,
-        customStart: settings.custom_start_date,
-        customEnd: settings.custom_end_date,
-        rangeBackDays: settings.range_back_days,
-        rangeForwardDays: settings.range_forward_days,
-      });
+      const cachedProfile = readCachedJson<ProfileHeaderRecord>(profileUrl, 30_000);
+      const cachedSettings = readCachedJson<TrackerSettingsRecord>(settingsUrl, 30_000);
+      const applyHeaderIdentity = (
+        profile: ProfileHeaderRecord,
+        settings: TrackerSettingsRecord,
+        overallPnl: number | null
+      ) => {
+        const resolvedRange = resolveDateRange({
+          preset: settings.active_date_preset,
+          customStart: settings.custom_start_date,
+          customEnd: settings.custom_end_date,
+          rangeBackDays: settings.range_back_days,
+          rangeForwardDays: settings.range_forward_days,
+        });
+        const rangeLabel = buildResolvedRangeLabel(resolvedRange.start, resolvedRange.end);
+
+        setHeaderSummary({
+          profileId: activeProfileId,
+          profileName: profile.display_name,
+          profileRangeLabel: rangeLabel,
+          profileSubtitle:
+            typeof overallPnl === "number" ? `${rangeLabel} • ${formatMoney(overallPnl)}` : rangeLabel,
+          overallPnl,
+        });
+
+        return resolvedRange;
+      };
+
+      if (cachedProfile && cachedSettings && isActive) {
+        applyHeaderIdentity(cachedProfile, cachedSettings, null);
+      }
+
+      const cachedSportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(
+        sportsbookUrl,
+        30_000
+      );
+      const cachedFreeBets = readCachedJson<FreeBetSummaryRecord[]>(freeBetUrl, 30_000);
+      const cachedCasinoOffers = readCachedJson<CasinoSummaryRecord[]>(casinoUrl, 30_000);
+      const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(cashUrl, 30_000);
+
+      if (
+        cachedProfile &&
+        cachedSettings &&
+        cachedSportsbookBets &&
+        cachedFreeBets &&
+        cachedCasinoOffers &&
+        cachedCashAdjustments
+      ) {
+        const cachedRange = resolveDateRange({
+          preset: cachedSettings.active_date_preset,
+          customStart: cachedSettings.custom_start_date,
+          customEnd: cachedSettings.custom_end_date,
+          rangeBackDays: cachedSettings.range_back_days,
+          rangeForwardDays: cachedSettings.range_forward_days,
+        });
+        const cachedSummary = summarizeTrackerData(
+          {
+            accounts: [],
+            sportsbookBets: cachedSportsbookBets,
+            freeBets: cachedFreeBets,
+            casinoOffers: cachedCasinoOffers,
+            cashAdjustments: cachedCashAdjustments,
+          },
+          cachedRange,
+          undefined,
+          {
+            mugBetFrequencyDays: cachedSettings.mug_bet_frequency_days,
+          }
+        );
+
+        if (isActive) {
+          applyHeaderIdentity(cachedProfile, cachedSettings, cachedSummary.profitQuickView.overallPnl);
+        }
+      }
+
+      const [profile, settings] = await Promise.all([
+        fetchJsonAndCache<ProfileHeaderRecord>(profileUrl),
+        fetchJsonAndCache<TrackerSettingsRecord>(settingsUrl),
+      ]);
+
+      if (!isActive) {
+        return;
+      }
+
+      const resolvedRange = applyHeaderIdentity(profile, settings, null);
+
+      const [sportsbookBets, freeBets, casinoOffers, cashAdjustments] = await Promise.all([
+        fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
+        fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
+        fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
+        fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
+      ]);
 
       const summary = summarizeTrackerData(
         {
@@ -255,16 +331,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setHeaderSummary({
-        profileId: activeProfileId,
-        profileName: profile.display_name,
-        profileRangeLabel: buildResolvedRangeLabel(resolvedRange.start, resolvedRange.end),
-        profileSubtitle: `${buildResolvedRangeLabel(
-          resolvedRange.start,
-          resolvedRange.end
-        )} • ${formatMoney(summary.profitQuickView.overallPnl)}`,
-        overallPnl: summary.profitQuickView.overallPnl,
-      });
+      applyHeaderIdentity(profile, settings, summary.profitQuickView.overallPnl);
     };
 
     void loadHeader().catch(() => {

@@ -131,8 +131,10 @@ test("top bar profile summary exposes accounting-formatted coloured P&L", async 
 
   const summaryButton = page.locator("button.summary-menu-button");
   await expect(summaryButton).toBeVisible();
+  await expect(summaryButton).not.toContainText("Loading profile...", { timeout: 30_000 });
+  await expect(summaryButton).not.toContainText("Loading range and P&L...", { timeout: 30_000 });
   const summaryValue = summaryButton.locator(".summary-menu-financial-value");
-  await expect(summaryValue).toBeVisible();
+  await expect(summaryValue).toBeVisible({ timeout: 90_000 });
   await expect(summaryValue).toHaveAttribute("data-money-tone", /^(positive|negative|neutral)$/);
   await expect(summaryValue).toContainText(/^£ ((\([0-9,]+\.[0-9]{2}\))|([0-9,]+\.[0-9]{2})|-)$/);
 });
