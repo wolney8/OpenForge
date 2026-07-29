@@ -20,7 +20,7 @@ import {
   paginateTrackerRows,
 } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import {
   betTypeOptions,
   dedupeOptions,
@@ -1753,9 +1753,11 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete sportsbook row ${selectedId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete sportsbook row ${selectedId}? This will remove it from this profile tracker.`,
+      title: "Delete sportsbook row?",
+    });
     if (!confirmed) {
       return;
     }

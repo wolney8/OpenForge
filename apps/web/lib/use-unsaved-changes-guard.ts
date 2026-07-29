@@ -8,21 +8,61 @@ const defaultMessage =
 const activeUnsavedGuards = new Map<symbol, string>();
 
 type UnsavedChangesPromptRequest = {
+  accessibleName: string;
+  cancelLabel: string;
+  confirmLabel: string;
+  eyebrow: string;
   message: string;
+  title: string;
+  variant: "discard" | "destructive";
   resolve: (confirmed: boolean) => void;
 };
 
 let promptHandler: ((request: UnsavedChangesPromptRequest) => void) | null = null;
 
 function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
+  return requestAppConfirmation({
+    accessibleName: "Unsaved tracker changes",
+    cancelLabel: "Keep Editing",
+    confirmLabel: "Discard Changes",
+    eyebrow: "Unsaved Changes",
+    message,
+    title: "Leave this tracker form?",
+    variant: "discard",
+  });
+}
+
+export function requestAppConfirmation(
+  request: Omit<UnsavedChangesPromptRequest, "resolve">
+): Promise<boolean> {
   if (!promptHandler) {
     // Browser unload cannot be replaced by app UI; this fallback is only for
     // calls made before the app-level prompt controller has mounted.
-    return Promise.resolve(window.confirm(message));
+    return Promise.resolve(window.confirm(request.message));
   }
 
   return new Promise((resolve) => {
-    promptHandler?.({ message, resolve });
+    promptHandler?.({ ...request, resolve });
+  });
+}
+
+export function confirmDestructiveAction({
+  confirmLabel = "Delete",
+  message,
+  title,
+}: {
+  confirmLabel?: string;
+  message: string;
+  title: string;
+}): Promise<boolean> {
+  return requestAppConfirmation({
+    accessibleName: title,
+    cancelLabel: "Cancel",
+    confirmLabel,
+    eyebrow: "Confirm Delete",
+    message,
+    title,
+    variant: "destructive",
   });
 }
 

@@ -6,10 +6,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
+import { FinancialValue } from "@/components/financial-value";
 import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
+import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
 import {
   formatMoney,
   resolveDateRange,
@@ -56,7 +58,9 @@ type TrackerSettingsRecord = {
 type HeaderSummaryState = {
   profileId: string;
   profileName: string;
+  profileRangeLabel: string;
   profileSubtitle: string;
+  overallPnl: number | null;
 };
 
 function resolveProfileId(pathname: string): string | null {
@@ -161,11 +165,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       return;
     }
     let isActive = true;
-    void fetch(`${apiBaseUrl}/profiles`, { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load active profiles");
-        return (await response.json()) as ProfileHeaderRecord[];
-      })
+    const profilesUrl = `${apiBaseUrl}/profiles`;
+    const cachedProfiles = readCachedJson<ProfileHeaderRecord[]>(profilesUrl);
+    let cachedFrame: number | null = null;
+    if (cachedProfiles) {
+      cachedFrame = window.requestAnimationFrame(() => {
+        if (!isActive) return;
+        setActiveProfiles(
+          cachedProfiles.filter((item) => (item.status ?? "active").trim().toLowerCase() === "active")
+        );
+      });
+    }
+    void fetchJsonAndCache<ProfileHeaderRecord[]>(profilesUrl)
       .then((profiles) => {
         if (!isActive) return;
         setActiveProfiles(
@@ -177,6 +188,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       });
     return () => {
       isActive = false;
+      if (cachedFrame !== null) {
+        window.cancelAnimationFrame(cachedFrame);
+      }
     };
   }, [activeProfileId, isInsideProfile]);
 
@@ -198,33 +212,21 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     let isActive = true;
 
     const loadHeader = async () => {
-      const [profileResponse, settingsResponse, sportsbookResponse, freeBetResponse, casinoResponse, cashResponse] =
+      const profileUrl = `${apiBaseUrl}/profiles/${activeProfileId}`;
+      const settingsUrl = `${apiBaseUrl}/profiles/${activeProfileId}/tracker-settings`;
+      const sportsbookUrl = `${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`;
+      const freeBetUrl = `${apiBaseUrl}/profiles/${activeProfileId}/free-bets`;
+      const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
+      const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
+      const [profile, settings, sportsbookBets, freeBets, casinoOffers, cashAdjustments] =
         await Promise.all([
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/tracker-settings`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/free-bets`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`, { cache: "no-store" }),
+          fetchJsonAndCache<ProfileHeaderRecord>(profileUrl),
+          fetchJsonAndCache<TrackerSettingsRecord>(settingsUrl),
+          fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
+          fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
+          fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
+          fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
         ]);
-
-      if (
-        !profileResponse.ok ||
-        !settingsResponse.ok ||
-        !sportsbookResponse.ok ||
-        !freeBetResponse.ok ||
-        !casinoResponse.ok ||
-        !cashResponse.ok
-      ) {
-        throw new Error("Unable to load profile header summary");
-      }
-
-      const profile = (await profileResponse.json()) as ProfileHeaderRecord;
-      const settings = (await settingsResponse.json()) as TrackerSettingsRecord;
-      const sportsbookBets = (await sportsbookResponse.json()) as SportsbookSummaryRecord[];
-      const freeBets = (await freeBetResponse.json()) as FreeBetSummaryRecord[];
-      const casinoOffers = (await casinoResponse.json()) as CasinoSummaryRecord[];
-      const cashAdjustments = (await cashResponse.json()) as CashAdjustmentSummaryRecord[];
 
       const resolvedRange = resolveDateRange({
         preset: settings.active_date_preset,
@@ -256,10 +258,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       setHeaderSummary({
         profileId: activeProfileId,
         profileName: profile.display_name,
+        profileRangeLabel: buildResolvedRangeLabel(resolvedRange.start, resolvedRange.end),
         profileSubtitle: `${buildResolvedRangeLabel(
           resolvedRange.start,
           resolvedRange.end
         )} • ${formatMoney(summary.profitQuickView.overallPnl)}`,
+        overallPnl: summary.profitQuickView.overallPnl,
       });
     };
 
@@ -270,7 +274,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       setHeaderSummary({
         profileId: activeProfileId,
         profileName: "Selected profile",
+        profileRangeLabel: "Header summary unavailable",
         profileSubtitle: "Header summary unavailable",
+        overallPnl: null,
       });
     });
 
@@ -327,6 +333,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     : headerSummary?.profileId === activeProfileId
       ? headerSummary.profileSubtitle
       : "Loading range and P&L...";
+  const profileRangeLabel = !isInsideProfile
+    ? "Local-first profile-scoped tracker"
+    : headerSummary?.profileId === activeProfileId
+      ? headerSummary.profileRangeLabel
+      : "Loading range and P&L...";
+  const profileOverallPnl =
+    isInsideProfile && headerSummary?.profileId === activeProfileId
+      ? headerSummary.overallPnl
+      : null;
   const brandSubtitle = "Local-first tracker";
   const otherActiveProfiles = activeProfiles.filter(
     (profile) => profile.profile_id !== activeProfileId
@@ -397,7 +412,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 >
                   <span className="summary-menu-copy">
                     <strong>{profileName}</strong>
-                    <span>{profileSubtitle}</span>
+                    <span className="summary-menu-subtitle">
+                      <span>{profileRangeLabel}</span>
+                      {typeof profileOverallPnl === "number" ? (
+                        <>
+                          <span aria-hidden="true" className="summary-menu-separator">•</span>
+                          <FinancialValue
+                            animate={false}
+                            className="summary-menu-financial-value"
+                            label={`${profileName} overall P&L`}
+                            value={profileOverallPnl}
+                          />
+                        </>
+                      ) : null}
+                    </span>
                   </span>
                   <span aria-hidden="true" className="summary-menu-icon">
                     ⋯
@@ -495,7 +523,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           onClick={() => unsavedPrompt.respond(false)}
         >
           <section
-            aria-label="Unsaved tracker changes"
+            aria-label={unsavedPrompt.request.accessibleName}
             aria-modal="true"
             className="modal-panel unsaved-changes-dialog"
             data-pd-id="unsaved-changes.dialog"
@@ -504,11 +532,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           >
             <header className="section-heading-row">
               <div>
-                <span className="eyebrow">Unsaved Changes</span>
-                <h2>Leave this tracker form?</h2>
+                <span className="eyebrow">{unsavedPrompt.request.eyebrow}</span>
+                <h2>{unsavedPrompt.request.title}</h2>
               </div>
               <button
-                aria-label="Keep editing tracker form"
+                aria-label={`Close confirmation and ${unsavedPrompt.request.cancelLabel.toLocaleLowerCase()}`}
                 className="dialog-close-button"
                 data-pd-id="unsaved-changes.keep-editing-icon"
                 onClick={() => unsavedPrompt.respond(false)}
@@ -526,7 +554,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 ref={unsavedKeepEditingRef}
                 type="button"
               >
-                Keep Editing
+                {unsavedPrompt.request.cancelLabel}
               </button>
               <button
                 className="icon-button icon-button-destructive"
@@ -535,7 +563,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 type="button"
               >
                 <span aria-hidden="true" className="material-symbols-outlined">delete</span>
-                <span>Discard Changes</span>
+                <span>{unsavedPrompt.request.confirmLabel}</span>
               </button>
             </footer>
           </section>

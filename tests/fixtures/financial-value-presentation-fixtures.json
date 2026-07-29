@@ -3,17 +3,17 @@
     {
       "case_id": "FVP-001",
       "inputs": {"value": "10.00", "currency": "GBP", "locale": "en-GB", "show_sign": true, "state": "resolved"},
-      "expected": {"formatted": "+£ 10.00", "semantic_tone": "positive", "accessible_text": "positive 10 pounds"}
+      "expected": {"formatted": "£ 10.00", "semantic_tone": "positive", "accessible_text": "positive 10 pounds"}
     },
     {
       "case_id": "FVP-002",
       "inputs": {"value": "-1.29", "currency": "GBP", "locale": "en-GB", "show_sign": true, "state": "resolved"},
-      "expected": {"formatted": "( £ 1.29 )", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
+      "expected": {"formatted": "£ (1.29)", "semantic_tone": "negative", "accessible_text": "negative 1 pound and 29 pence"}
     },
     {
       "case_id": "FVP-003",
       "inputs": {"value": "0.00", "currency": "GBP", "locale": "en-GB", "show_sign": true},
-      "expected": {"formatted": "£ 0.00", "semantic_tone": "positive"}
+      "expected": {"formatted": "£ -", "semantic_tone": "neutral"}
     },
     {
       "case_id": "FVP-004",

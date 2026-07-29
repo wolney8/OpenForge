@@ -25,7 +25,7 @@ export function FinancialValue({
   showPositiveSign = false,
   title,
   value,
-  zeroTone = "positive",
+  zeroTone = "neutral",
 }: FinancialValueProps) {
   const numericValue = typeof value === "number" ? value : Number(value);
   const isValid = Number.isFinite(numericValue);

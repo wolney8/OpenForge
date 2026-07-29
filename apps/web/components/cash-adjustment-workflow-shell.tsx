@@ -3,6 +3,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
@@ -22,7 +23,7 @@ import { formatFinancialValue } from "@/lib/financial-display";
 import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   cashAdjustmentDirectionOptions,
@@ -578,14 +579,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
-      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Unable to load cash-adjustment rows");
+      const url = `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
+      const cachedRows = readCachedJson<CashAdjustmentRecord[]>(url);
+      if (cachedRows) {
+        setRows(cachedRows);
+        setIsInitialLoading(false);
       }
 
-      const nextRows = (await response.json()) as CashAdjustmentRecord[];
+      const nextRows = await fetchJsonAndCache<CashAdjustmentRecord[]>(url);
       startTransition(() => {
         setRows(nextRows);
         setIsInitialLoading(false);
@@ -1081,6 +1082,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     }
 
     const saved = (await response.json()) as CashAdjustmentRecord;
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
     const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
     await loadRows(returnToLedger ? null : saved.cash_adjustment_id);
     setShowAdjustmentValidation(false);
@@ -1148,9 +1150,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete cash-adjustment row ${rowId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete cash-adjustment row ${rowId}? This will remove it from this profile tracker.`,
+      title: "Delete cash-adjustment row?",
+    });
     if (!confirmed) {
       return;
     }
@@ -1168,6 +1172,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted cash adjustment ${rowId}.`);

@@ -604,16 +604,42 @@ textarea {
   min-width: 0;
 }
 
-.summary-menu-copy strong,
-.summary-menu-copy span {
+.summary-menu-copy > strong,
+.summary-menu-copy > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.summary-menu-copy span {
+.summary-menu-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.summary-menu-subtitle > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-menu-separator {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.summary-menu-financial-value,
+.summary-menu-financial-value .financial-value-visual {
+  min-width: 0;
+  font-size: inherit;
+}
+
+.summary-menu-financial-value .financial-value-character {
+  min-width: 0.48ch;
+  font-size: inherit;
 }
 
 .summary-menu-icon {
@@ -3388,7 +3414,8 @@ html[data-theme="dark"] .notification-count-badge {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  width: 10.9rem;
+  width: 100%;
+  min-width: 9.8rem;
 }
 
 .table-action-button {
@@ -3401,7 +3428,7 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .table-action-button .material-symbols-outlined {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
@@ -5690,7 +5717,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .financial-value-neutral {
-  color: var(--text);
+  color: var(--muted);
 }
 
 .financial-value-motion-up .financial-value-character {

@@ -3,6 +3,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -36,7 +37,7 @@ import {
 } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
@@ -599,11 +600,11 @@ const defaultFreeBetColumnWidths: Record<FreeBetColumnKey, number> = {
   event_name: 220,
   offer_details: 230,
   match_strategy: 150,
-  lay_status: 120,
-  back_bet_status: 130,
+  lay_status: 145,
+  back_bet_status: 155,
   displayed_value: 130,
-  status: 135,
-  actions: 110,
+  status: 175,
+  actions: 170,
 };
 
 const freeBetTableModes: Array<{ value: FreeBetTableMode; label: string }> = [
@@ -1256,12 +1257,14 @@ export function FreeBetWorkflowShell({
 
   const loadRows = useCallback(async (preferredSelection?: string | null) => {
     const requestId = ++loadRowsRequestIdRef.current;
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("Unable to load free-bet rows");
+    const url = `${apiBaseUrl}/profiles/${profileId}/free-bets`;
+    const cachedRows = readCachedJson<FreeBetRecord[]>(url);
+    if (cachedRows && requestId === loadRowsRequestIdRef.current) {
+      setRows(cachedRows);
+      setIsInitialLoading(false);
     }
 
-    const nextRows = (await response.json()) as FreeBetRecord[];
+    const nextRows = await fetchJsonAndCache<FreeBetRecord[]>(url);
     if (requestId !== loadRowsRequestIdRef.current) {
       return;
     }
@@ -2184,6 +2187,7 @@ export function FreeBetWorkflowShell({
     }
 
     const saved = (await response.json()) as FreeBetRecord;
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
     const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
     if (returnToLedger) {
       ignoreInitialRecordIdRef.current = true;
@@ -2253,9 +2257,11 @@ export function FreeBetWorkflowShell({
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete free-bet row ${rowId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete free-bet row ${rowId}? This will remove it from this profile tracker.`,
+      title: "Delete free-bet row?",
+    });
     if (!confirmed) {
       return;
     }
@@ -2271,6 +2277,7 @@ export function FreeBetWorkflowShell({
       return;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setPreviewCalculation(null);
@@ -2356,6 +2363,7 @@ export function FreeBetWorkflowShell({
       }
 
       const updatedRecord = (await response.json()) as FreeBetRecord;
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
       setRows((current) =>
         current.map((row) =>
           row.free_bet_id === updatedRecord.free_bet_id ? updatedRecord : row

@@ -3,6 +3,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
@@ -29,7 +30,7 @@ import type { TableColumn } from "@/lib/tracker-modules";
 import { formatDisplayDate, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import { resolveCasinoBookmakerCoverage } from "@/lib/casino-offer-knowledge";
 import { getCasinoOperationalIssueBadges } from "@/lib/operational-actions";
@@ -1088,14 +1089,14 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
       const requestId = ++loadRowsRequestIdRef.current;
-      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Unable to load casino-offer rows");
+      const url = `${apiBaseUrl}/profiles/${profileId}/casino-offers`;
+      const cachedRows = readCachedJson<CasinoOfferRecord[]>(url);
+      if (cachedRows && requestId === loadRowsRequestIdRef.current) {
+        setRows(cachedRows);
+        setIsInitialLoading(false);
       }
 
-      const nextRows = (await response.json()) as CasinoOfferRecord[];
+      const nextRows = await fetchJsonAndCache<CasinoOfferRecord[]>(url);
       if (requestId !== loadRowsRequestIdRef.current) {
         return;
       }
@@ -1853,6 +1854,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     const saved = (await response.json()) as CasinoOfferRecord;
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/casino-offers`);
     const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
     if (returnToLedger) {
       ignoreInitialRecordIdRef.current = true;
@@ -1968,9 +1970,11 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete casino row ${rowId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete casino row ${rowId}? This will remove it from this profile tracker.`,
+      title: "Delete casino row?",
+    });
     if (!confirmed) {
       return;
     }
@@ -1985,6 +1989,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/casino-offers`);
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted casino offer ${rowId}.`);

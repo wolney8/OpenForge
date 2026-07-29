@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { fetchJsonAndCache, invalidateCachedJson, readCachedJson } from "@/lib/client-json-cache";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
@@ -60,7 +61,7 @@ import {
   paginateTrackerRows,
 } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   dedupeOptions,
@@ -2755,15 +2756,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
       const requestId = ++loadRowsRequestIdRef.current;
-      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Unable to load sportsbook rows");
+      const url = `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`;
+      const cachedRows = readCachedJson<SportsbookRecord[]>(url);
+      if (cachedRows && requestId === loadRowsRequestIdRef.current) {
+        setRows(cachedRows);
+        setIsInitialLoading(false);
       }
 
-      const nextRows = (await response.json()) as SportsbookRecord[];
+      const nextRows = await fetchJsonAndCache<SportsbookRecord[]>(url);
       if (requestId !== loadRowsRequestIdRef.current) {
         return;
       }
@@ -4111,6 +4111,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     const saved = (await response.json()) as SportsbookRecord;
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
     const savedFormState = recordToForm(saved);
     const savedMultiLay = parseMultiLayOutcomes(saved.multi_lay_outcomes_json, {
       outcome1Label: saved.multi_lay_outcome_1_name,
@@ -4285,9 +4286,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete sportsbook row ${rowId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete sportsbook row ${rowId}? This will remove it from this profile tracker.`,
+      title: "Delete sportsbook row?",
+    });
     if (!confirmed) {
       return;
     }
@@ -4303,6 +4306,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
@@ -4336,6 +4340,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return false;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
     await loadRows(options?.preserveTableView ? null : record.sportsbook_bet_id);
     if (options?.preserveTableView) {
       setWorkflowVisible(false);
@@ -4408,6 +4413,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }
 
       const updatedRecord = (await response.json()) as SportsbookRecord;
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
       setRows((current) =>
         current.map((row) =>
           row.sportsbook_bet_id === updatedRecord.sportsbook_bet_id ? updatedRecord : row
@@ -4571,6 +4577,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       const createdFreeBet = (await freeBetCreateResponse.json()) as { free_bet_id: string };
       createdFreeBetIds.push(createdFreeBet.free_bet_id);
     }
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
 
     if (
       freeBetBridgeModalState.award_timing === "placement" &&
@@ -4593,6 +4600,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       );
     } else {
       setFreeBetBridgeModalState(null);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
       await loadRows(null);
       setWorkflowVisible(false);
       setTableCollapsed(false);

@@ -52,9 +52,9 @@ A loss carry-forward prevents fees being charged on profit that only recovers an
 
 Example:
 
-1. April settles at `( £ 20.00 )`. No fee is earned and `£ 20.00` carries forward.
-2. May settles at `+£ 15.00`. The profit reduces the carried loss to `£ 5.00`; no fee is earned.
-3. June settles at `+£ 30.00`. The first `£ 5.00` clears the remaining loss, leaving a `£ 25.00` fee base.
+1. April settles at `£ (20.00)`. No fee is earned and `£ 20.00` carries forward.
+2. May settles at `£ 15.00`. The profit reduces the carried loss to `£ 5.00`; no fee is earned.
+3. June settles at `£ 30.00`. The first `£ 5.00` clears the remaining loss, leaving a `£ 25.00` fee base.
 
 A negative weekly Indicative Fee Impact is not a credit and does not move cash. It only explains why the expected month-end fee has fallen.
 

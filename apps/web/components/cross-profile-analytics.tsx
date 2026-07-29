@@ -5,6 +5,7 @@ import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue } from "./financial-value";
+import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
 import {
   aggregateCrossProfileReporting,
   type ProfileComparisonRow,
@@ -86,6 +87,14 @@ type ProfileApiResponse = {
   investment_fee_percent: string;
 };
 
+type TrackerSettingsRecord = {
+  active_date_preset: DatePreset;
+  custom_start_date: string;
+  custom_end_date: string;
+  range_back_days: number;
+  range_forward_days: number;
+};
+
 function FinancialValue(props: ComponentProps<typeof PlatformFinancialValue>) {
   return <PlatformFinancialValue zeroTone="neutral" {...props} />;
 }
@@ -117,11 +126,7 @@ type ProfileLoadFailure = {
 };
 
 async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", signal });
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-  return (await response.json()) as T;
+  return fetchJsonAndCache<T>(url, { signal });
 }
 
 async function loadProfileDataset(
@@ -148,6 +153,16 @@ async function loadProfileFeePeriods(
 ): Promise<FeePeriodApiRecord[]> {
   return fetchJson<FeePeriodApiRecord[]>(
     `${apiBaseUrl}/profiles/${profileId}/fee-periods`,
+    signal
+  );
+}
+
+async function loadProfileTrackerSettings(
+  profileId: string,
+  signal: AbortSignal
+): Promise<TrackerSettingsRecord> {
+  return fetchJson<TrackerSettingsRecord>(
+    `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
     signal
   );
 }
@@ -387,6 +402,7 @@ export function CrossProfileAnalytics({
   );
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
   const [feePeriods, setFeePeriods] = useState<Map<string, FeePeriodApiRecord[]>>(new Map());
+  const [trackerSettings, setTrackerSettings] = useState<Map<string, TrackerSettingsRecord>>(new Map());
   const [failures, setFailures] = useState<ProfileLoadFailure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("profiles");
@@ -421,12 +437,52 @@ export function CrossProfileAnalytics({
 
   useEffect(() => {
     const controller = new AbortController();
+    let cachedFrame: number | null = null;
+    const cachedDatasets = new Map<string, TrackerSummaryDataset>();
+    const cachedFeePeriods = new Map<string, FeePeriodApiRecord[]>();
+    const cachedTrackerSettings = new Map<string, TrackerSettingsRecord>();
+
+    for (const profile of profiles) {
+      const base = `${apiBaseUrl}/profiles/${profile.profileId}`;
+      const accounts = readCachedJson<AccountSummaryRecord[]>(`${base}/accounts`);
+      const sportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(`${base}/sportsbook-bets`);
+      const freeBets = readCachedJson<FreeBetSummaryRecord[]>(`${base}/free-bets`);
+      const casinoOffers = readCachedJson<CasinoSummaryRecord[]>(`${base}/casino-offers`);
+      const cashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(`${base}/cash-adjustments`);
+      const balanceSnapshots = readCachedJson<BalanceSnapshotSummaryRecord[]>(`${base}/balance-snapshots`);
+      const periods = readCachedJson<FeePeriodApiRecord[]>(`${base}/fee-periods`);
+      const settings = readCachedJson<TrackerSettingsRecord>(`${base}/tracker-settings`);
+
+      if (accounts && sportsbookBets && freeBets && casinoOffers && cashAdjustments && balanceSnapshots) {
+        cachedDatasets.set(profile.profileId, {
+          accounts,
+          sportsbookBets,
+          freeBets,
+          casinoOffers,
+          cashAdjustments,
+          balanceSnapshots,
+        });
+      }
+      if (periods) cachedFeePeriods.set(profile.profileId, periods);
+      if (settings) cachedTrackerSettings.set(profile.profileId, settings);
+    }
+
+    if (cachedDatasets.size > 0) {
+      cachedFrame = window.requestAnimationFrame(() => {
+        if (controller.signal.aborted) return;
+        setDatasets(cachedDatasets);
+        if (cachedFeePeriods.size > 0) setFeePeriods(cachedFeePeriods);
+        if (cachedTrackerSettings.size > 0) setTrackerSettings(cachedTrackerSettings);
+        setIsLoading(false);
+      });
+    }
 
     void Promise.allSettled(
       profiles.map(async (profile) => ({
         profile,
         dataset: await loadProfileDataset(profile.profileId, controller.signal),
         periods: await loadProfileFeePeriods(profile.profileId, controller.signal),
+        settings: await loadProfileTrackerSettings(profile.profileId, controller.signal),
       }))
     ).then((results) => {
       if (controller.signal.aborted) {
@@ -435,12 +491,14 @@ export function CrossProfileAnalytics({
 
       const nextDatasets = new Map<string, TrackerSummaryDataset>();
       const nextFeePeriods = new Map<string, FeePeriodApiRecord[]>();
+      const nextTrackerSettings = new Map<string, TrackerSettingsRecord>();
       const nextFailures: ProfileLoadFailure[] = [];
       results.forEach((result, index) => {
         const profile = profiles[index];
         if (result.status === "fulfilled") {
           nextDatasets.set(profile.profileId, result.value.dataset);
           nextFeePeriods.set(profile.profileId, result.value.periods);
+          nextTrackerSettings.set(profile.profileId, result.value.settings);
         } else {
           nextFailures.push({
             profileId: profile.profileId,
@@ -452,11 +510,17 @@ export function CrossProfileAnalytics({
       });
       setDatasets(nextDatasets);
       setFeePeriods(nextFeePeriods);
+      setTrackerSettings(nextTrackerSettings);
       setFailures(nextFailures);
       setIsLoading(false);
     });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (cachedFrame !== null) {
+        window.cancelAnimationFrame(cachedFrame);
+      }
+    };
   }, [profiles]);
 
   const resolvedRange = useMemo(
@@ -480,6 +544,34 @@ export function CrossProfileAnalytics({
       ];
     });
   }, [datasets, profileRecords, resolvedRange]);
+
+  const trackerRangeProfileSummaries = useMemo(() => {
+    return profileRecords.flatMap((profile) => {
+      const dataset = datasets.get(profile.profileId);
+      if (!dataset) {
+        return [];
+      }
+      const settings = trackerSettings.get(profile.profileId);
+      const profileRange = settings
+        ? resolveDateRange({
+            preset: settings.active_date_preset,
+            customStart: settings.custom_start_date,
+            customEnd: settings.custom_end_date,
+            rangeBackDays: settings.range_back_days,
+            rangeForwardDays: settings.range_forward_days,
+          })
+        : resolvedRange;
+
+      return [
+        {
+          ...profile,
+          summary: summarizeTrackerData(dataset, profileRange),
+          actionable: countOperationalActions(dataset),
+          trueOpenPositionCount: countTrueOpenPositions(dataset),
+        },
+      ];
+    });
+  }, [datasets, profileRecords, resolvedRange, trackerSettings]);
 
   const formalReportRange = useMemo(
     () =>
@@ -521,6 +613,10 @@ export function CrossProfileAnalytics({
   const allProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(allProfileSummaries),
     [allProfileSummaries]
+  );
+  const trackerRangeAllProfilesCombined = useMemo(
+    () => aggregateCrossProfileReporting(trackerRangeProfileSummaries),
+    [trackerRangeProfileSummaries]
   );
 
   const feePositionByProfile = useMemo(
@@ -675,7 +771,7 @@ export function CrossProfileAnalytics({
   const directoryProfiles = useMemo(() => {
     const normalizedQuery = directoryQuery.trim().toLowerCase();
     const summaryByProfile = new Map(
-      allProfilesCombined.profileRows.map((row) => [
+      trackerRangeAllProfilesCombined.profileRows.map((row) => [
         row.profileId,
         row,
       ])
@@ -696,7 +792,7 @@ export function CrossProfileAnalytics({
           Number(pinnedProfileIds.includes(left.profileId));
         return pinDifference || left.displayName.localeCompare(right.displayName);
       });
-  }, [allProfilesCombined.profileRows, directoryQuery, directoryStatus, pinnedProfileIds, profileRecords]);
+  }, [directoryQuery, directoryStatus, pinnedProfileIds, profileRecords, trackerRangeAllProfilesCombined.profileRows]);
 
   const directoryPageCount = Math.max(1, Math.ceil(directoryProfiles.length / directoryPageSize));
   const visibleDirectoryProfiles = directoryProfiles.slice(
@@ -704,7 +800,7 @@ export function CrossProfileAnalytics({
     directoryPage * directoryPageSize
   );
   const detailProfile = profileRecords.find((profile) => profile.profileId === detailProfileId);
-  const detailSummary = allProfileSummaries.find(
+  const detailSummary = trackerRangeProfileSummaries.find(
     (profile) => profile.profileId === detailProfileId
   );
   const detailComparisonRow = allProfilesCombined.profileRows.find(
@@ -1490,9 +1586,9 @@ export function CrossProfileAnalytics({
             <span>Gross P&amp;L after signed withdrawals and costs</span>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Cash snapshot</span>
-            <strong><FinancialValue value={allProfilesCombined.totals.cashSnapshot} /></strong>
-            <span>Current included account balances</span>
+            <span className="eyebrow">Current Account Cash</span>
+            <strong><FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} /></strong>
+            <span>Current bookmaker, exchange, and bank balances</span>
           </article>
           <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
             <span className="eyebrow">Available to Withdraw</span>
@@ -1742,7 +1838,7 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight">
               <h3>Current Cash</h3>
               <dl className="profile-detail-list">
-                <div><dt>Cash snapshot</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : "Unavailable"}</dd></div>
+                <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
