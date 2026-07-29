@@ -464,7 +464,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {summary ? (
             <>
               <article className="stat-card">
-                <span className="eyebrow">Selected-range P&amp;L</span>
+                <span className="eyebrow">Selected Range P&amp;L</span>
                 <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
                 <span>Workbook reporting value inside the resolved range</span>
               </article>
@@ -483,7 +483,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </article>
               <article className="stat-card">
                 <span className="eyebrow">
-                  {isReports ? "Formal report periods" : "Cash snapshot"}
+                  {isReports ? "Formal Report Periods" : "Current Account Cash"}
                 </span>
                 <strong>
                   {isReports
@@ -506,7 +506,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         <>
           <section className="content-panel stack">
             <div className="panel-header">
-              <h2>Selected-range module mix</h2>
+              <h2>Selected Range Module Mix</h2>
             </div>
             <section className="stat-strip" aria-label="Workbook module mix">
               <article className="stat-card">
@@ -544,7 +544,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {isDashboardLike && (
             <section className="stat-strip" aria-label="Tracker quick views">
               <article className="stat-card">
-                <span className="eyebrow">Cash snapshot</span>
+                <span className="eyebrow">Current Account Cash</span>
                 <strong><FinancialValue value={summary.accountQuickView.cashSnapshot} /></strong>
                 <span>
                   Bookie {formatMoney(summary.accountQuickView.bookieBalance)} • Exchange{" "}
@@ -553,7 +553,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 </span>
               </article>
               <article className="stat-card">
-                <span className="eyebrow">Selected-range P&amp;L</span>
+                <span className="eyebrow">Selected Range P&amp;L</span>
                 <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
                 <span>
                   Sportsbook {formatMoney(summary.profitQuickView.sportsbook.reportingValue)} •
@@ -609,9 +609,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {isDashboardLike && (
             <section className="content-panel stack">
               <div className="panel-header">
-                <h2>Selected-range activity</h2>
+                <h2>Selected Range Activity</h2>
               </div>
-              <section className="stat-strip" aria-label="Selected-range activity">
+              <section className="stat-strip" aria-label="Selected range activity">
               <article className="stat-card">
                 <span className="eyebrow">Sportsbook rows</span>
                 <strong>{summary.activityQuickView.sportsbookCount}</strong>
@@ -746,7 +746,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <>
             <section className="content-panel stack">
               <div className="panel-header">
-                <h2>Selected-range cash adjustments</h2>
+                <h2>Selected Range Cash Adjustments</h2>
               </div>
               <section className="stat-strip" aria-label="Cash adjustment summary">
                 <article className="stat-card">
@@ -970,7 +970,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   <article className="stat-card">
                     <span className="eyebrow">Gross betting P&amp;L</span>
                     <strong><FinancialValue value={summary.reportingModel.selectedRange.grossBettingPnl} /></strong>
-                    <span>Selected-range module reporting values</span>
+                    <span>Selected range module reporting values</span>
                   </article>
                   <article className="stat-card">
                     <span className="eyebrow">Retained profit</span>

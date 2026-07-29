@@ -1826,7 +1826,7 @@ export function CrossProfileAnalytics({
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight">
-              <h3>Selected-Range Performance</h3>
+              <h3>Selected Range Performance</h3>
               <dl className="profile-detail-list">
                 <div><dt>Sportsbook</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("sportsbook") ?? 0} /> : "Unavailable"}</dd></div>
                 <div><dt>Free Bets</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("free-bets") ?? 0} /> : "Unavailable"}</dd></div>

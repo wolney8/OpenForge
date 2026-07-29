@@ -61,11 +61,11 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
     })
   ).toBeVisible();
   await expect(page.getByText("Resolved range", { exact: true })).toBeVisible();
-  await expect(page.getByText("Selected-range P&L", { exact: true }).first()).toBeVisible({
+  await expect(page.getByText("Selected Range P&L", { exact: true }).first()).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText("Open current / settled final", { exact: true })).toBeVisible();
-  await expect(page.getByText("Cash snapshot", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Current Account Cash", { exact: true }).first()).toBeVisible();
   const ledgerAction = page.getByRole("link", { name: /^Open .+ in (Sportsbook|Free Bet|Casino)$/ }).first();
   await expect(ledgerAction).toHaveAttribute("href", /\/tracker\/(sportsbook-bets|free-bets|casino-offers)\?search=.+/);
 
@@ -77,7 +77,7 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
       hasText: "Fund Manager only",
     })
   ).toBeVisible();
-  await expect(page.getByText("Formal report periods", { exact: true })).toBeVisible();
+  await expect(page.getByText("Formal Report Periods", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Selected range vs formal reports", exact: true })
   ).toBeVisible();

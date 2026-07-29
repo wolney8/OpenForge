@@ -238,7 +238,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await bravoDirectoryRow.getByText("BRAVO-002", { exact: true }).click();
   const drawer = page.getByRole("dialog", { name: /Profile details/ });
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole("heading", { name: "Selected-Range Performance" })).toBeVisible();
+  await expect(drawer.getByRole("heading", { name: "Selected Range Performance" })).toBeVisible();
   await expect(drawer.getByRole("heading", { name: "Fee Position" })).toBeVisible();
   await expect(drawer.getByText("£ 15.00", { exact: true })).toBeVisible();
   await expect(drawer.getByText("Cash Adjustments", { exact: true })).toBeVisible();
