@@ -7,6 +7,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
 import {
   formatHumanDisplayDate,
   formatMoney,
@@ -227,6 +228,46 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadData = useCallback(async () => {
+    const urls = {
+      accounts: `${apiBaseUrl}/profiles/${profileId}/accounts`,
+      sportsbookBets: `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`,
+      freeBets: `${apiBaseUrl}/profiles/${profileId}/free-bets`,
+      casinoOffers: `${apiBaseUrl}/profiles/${profileId}/casino-offers`,
+      cashAdjustments: `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`,
+      balanceSnapshots: `${apiBaseUrl}/profiles/${profileId}/balance-snapshots`,
+      trackerSettings: `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
+    };
+    const cachedSettings = readCachedJson<TrackerSettingsRecord>(urls.trackerSettings, 30_000);
+    const cachedData = {
+      accounts: readCachedJson<AccountSummaryRecord[]>(urls.accounts, 30_000),
+      sportsbookBets: readCachedJson<SportsbookSummaryRecord[]>(urls.sportsbookBets, 30_000),
+      freeBets: readCachedJson<FreeBetSummaryRecord[]>(urls.freeBets, 30_000),
+      casinoOffers: readCachedJson<CasinoSummaryRecord[]>(urls.casinoOffers, 30_000),
+      cashAdjustments: readCachedJson<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments, 30_000),
+      balanceSnapshots: readCachedJson<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots, 30_000),
+    };
+
+    if (
+      cachedSettings &&
+      cachedData.accounts &&
+      cachedData.sportsbookBets &&
+      cachedData.freeBets &&
+      cachedData.casinoOffers &&
+      cachedData.cashAdjustments &&
+      cachedData.balanceSnapshots
+    ) {
+      setSettings(cachedSettings);
+      setData({
+        accounts: cachedData.accounts,
+        sportsbookBets: cachedData.sportsbookBets,
+        freeBets: cachedData.freeBets,
+        casinoOffers: cachedData.casinoOffers,
+        cashAdjustments: cachedData.cashAdjustments,
+        balanceSnapshots: cachedData.balanceSnapshots,
+      });
+      setStatusMessage("Refreshing tracker summaries...");
+    }
+
     const [
       accounts,
       sportsbookBets,
@@ -235,37 +276,24 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       cashAdjustments,
       balanceSnapshots,
       trackerSettings,
-    ] =
-      await Promise.all([
-        fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/balance-snapshots`, { cache: "no-store" }),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, { cache: "no-store" }),
-      ]);
+    ] = await Promise.all([
+      fetchJsonAndCache<AccountSummaryRecord[]>(urls.accounts),
+      fetchJsonAndCache<SportsbookSummaryRecord[]>(urls.sportsbookBets),
+      fetchJsonAndCache<FreeBetSummaryRecord[]>(urls.freeBets),
+      fetchJsonAndCache<CasinoSummaryRecord[]>(urls.casinoOffers),
+      fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments),
+      fetchJsonAndCache<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots),
+      fetchJsonAndCache<TrackerSettingsRecord>(urls.trackerSettings),
+    ]);
 
-    if (
-      !accounts.ok ||
-      !sportsbookBets.ok ||
-      !freeBets.ok ||
-      !casinoOffers.ok ||
-      !cashAdjustments.ok ||
-      !balanceSnapshots.ok ||
-      !trackerSettings.ok
-    ) {
-      throw new Error("Unable to load one or more tracker summary sources");
-    }
-
-    setSettings((await trackerSettings.json()) as TrackerSettingsRecord);
+    setSettings(trackerSettings);
     setData({
-      accounts: (await accounts.json()) as AccountSummaryRecord[],
-      sportsbookBets: (await sportsbookBets.json()) as SportsbookSummaryRecord[],
-      freeBets: (await freeBets.json()) as FreeBetSummaryRecord[],
-      casinoOffers: (await casinoOffers.json()) as CasinoSummaryRecord[],
-      cashAdjustments: (await cashAdjustments.json()) as CashAdjustmentSummaryRecord[],
-      balanceSnapshots: (await balanceSnapshots.json()) as BalanceSnapshotSummaryRecord[],
+      accounts,
+      sportsbookBets,
+      freeBets,
+      casinoOffers,
+      cashAdjustments,
+      balanceSnapshots,
     });
   }, [profileId]);
 
