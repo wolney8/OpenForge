@@ -567,7 +567,7 @@ const freeBetTableColumns: TableColumn[] = [
   { key: "match_strategy", label: "Strategy" },
   { key: "lay_status", label: "Lay Bet" },
   { key: "back_bet_status", label: "Back Bet" },
-  { key: "displayed_value", label: "Value", align: "end" },
+  { key: "displayed_value", label: "Value" },
   { key: "status", label: "Status" },
   { key: "actions", label: "Actions" },
 ];
@@ -608,7 +608,7 @@ const defaultFreeBetColumnWidths: Record<FreeBetColumnKey, number> = {
   lay_status: 145,
   back_bet_status: 155,
   displayed_value: 130,
-  status: 175,
+  status: 205,
   actions: 170,
 };
 
@@ -2531,7 +2531,7 @@ export function FreeBetWorkflowShell({
             onClick={() => void selectRow(sourceRow.free_bet_id)}
             type="button"
           >
-            <span aria-hidden="true">✎</span>
+            <span aria-hidden="true" className="material-symbols-outlined">edit</span>
           </button>
           <button
             aria-label={`Review settlement for ${sourceRow.free_bet_id}`}
@@ -2546,7 +2546,7 @@ export function FreeBetWorkflowShell({
             }
             type="button"
           >
-            <span aria-hidden="true">🏁</span>
+            <span aria-hidden="true" className="material-symbols-outlined">sports_score</span>
           </button>
           <button
             aria-label={`Delete free-bet row ${sourceRow.free_bet_id}`}
