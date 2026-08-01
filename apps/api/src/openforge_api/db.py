@@ -17,6 +17,7 @@ from zipfile import ZipFile
 from openforge_api.config import settings
 
 database_operation_lock = threading.RLock()
+SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 
 
 def utc_now() -> str:
@@ -242,6 +243,14 @@ def parse_seed_bool(value: Any) -> bool:
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     with database_operation_lock:
+        database_mode = settings.database_mode.strip().lower() or "local"
+        if database_mode not in SUPPORTED_SQLITE_RUNTIME_MODES:
+            raise RuntimeError(
+                "Database mode "
+                f"{settings.database_mode!r} is not supported by the current SQLite runtime "
+                "adapter. Neon/PostgreSQL cutover must use an explicit runtime adapter before "
+                "writes are allowed, to prevent split-brain data."
+            )
         database_path = settings.database_path
         database_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(database_path)

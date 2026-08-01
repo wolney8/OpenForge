@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Plum Duff API"
     environment: str = "local"
+    database_mode: str = "local"
     database_url: str = "sqlite:///data/private/db/openforge.sqlite3"
+    neon_database_url: str = ""
     backup_directory: str = "data/private/backups"
     source_instance_id: str = "local-fund-manager"
     account_catalogue_source: str = "data/reference/master-account-catalogue.json"

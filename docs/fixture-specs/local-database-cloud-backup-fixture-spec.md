@@ -1,6 +1,6 @@
 # Fixture Spec: Local Database and Cloud Backup
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-08-01_
 
 ## Contract covered
 
@@ -25,6 +25,15 @@ Use two profiles with synthetic row counts and financial control totals. Backup 
 | BACKUP-009 | Candidate has foreign-key violations | Preview rejected; live database unchanged |
 | BACKUP-010 | Raw SQLite file supplied | Import rejected because package manifest is absent |
 | BACKUP-011 | Backup reminder threshold reached | Fund Manager notification points to Database Backups |
+| BACKUP-012 | Neon cutover configured with AI Diary database, schema, role, or connection string | Configuration rejected before connection test |
+| BACKUP-013 | Neon authentication fails | User sees credential/access error; credentials are not logged or displayed; writes are blocked |
+| BACKUP-014 | Neon network, DNS, timeout, or suspended-compute delay occurs | Provider state is unavailable; latest verified local backup remains visible; no silent SQLite write fallback |
+| BACKUP-015 | Fund Manager explicitly enters local recovery mode | Verified local package is required; mode is labelled `recovery-local`; divergent row merge is blocked |
+| BACKUP-016 | Neon schema or migration version differs from expected Plum Duff schema | Cutover blocked before live traffic; local database remains authoritative |
+| BACKUP-017 | Guarded Neon data load targets a non-empty table | Data load blocked before any insert |
+| BACKUP-018 | Guarded Neon data load completes with exact row-count parity | Rehearsal marked loaded; runtime remains local |
+| BACKUP-019 | Neon content fingerprint differs after load | Verification fails; cutover remains blocked |
+| BACKUP-020 | Neon staging verifies but runtime adapter is absent | Staging ready; runtime cutover blocked; local SQLite remains authoritative |
 
 ## Current implementation coverage
 
@@ -39,6 +48,8 @@ Use two profiles with synthetic row counts and financial control totals. Backup 
   local backups.
 - `BACKUP-011` is covered by the Fund Manager notification feed when no verified backup exists,
   seven days pass, or twenty-five tracker rows are created since the latest verified backup.
+- `BACKUP-012` through `BACKUP-020` cover Neon/PostgreSQL readiness, guarded schema creation,
+  guarded data load and verification. Runtime cutover remains deferred.
 
 ## Acceptance
 
