@@ -42,3 +42,30 @@ test("sportsbook guided entry uses text cues and advances without stealing focus
   await expect(reopenedEditor).toBeVisible();
   await expect(reopenedEditor.locator('[data-pd-id="sportsbook.guided-entry"]')).toBeVisible();
 });
+
+test("sportsbook guided entry hides lay fields for no-lay rows", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+
+  await page.getByRole("button", { name: "Add sportsbook row" }).click();
+
+  const editor = page.getByRole("dialog", { name: "Create sportsbook row" });
+  await expect(editor).toBeVisible();
+
+  await editor.getByLabel("Offer", { exact: true }).fill("Guided no-lay demo offer");
+  await editor.getByLabel("Bookmaker").selectOption({ index: 1 });
+  await editor.getByLabel("Bet type").selectOption({ label: "Single" });
+  await editor.getByLabel("Offer type").selectOption({ label: "Mug Bet" });
+  await editor.getByLabel("Fixture type").selectOption({ label: "Football" });
+  await editor.getByLabel("Event name").fill("Guided no-lay demo event");
+
+  await editor.getByLabel("Back stake").fill("10");
+  await editor.getByLabel("Back odds").fill("2.00");
+  await editor.getByLabel("Strategy").selectOption({ label: "No Lay" });
+
+  await expect(editor.getByLabel("Exchange")).toHaveCount(0);
+  await expect(editor.getByLabel("Lay odds 1")).toHaveCount(0);
+  await expect(editor.getByLabel("Lay actual")).toHaveCount(0);
+  await expect(editor.locator('[data-pd-id="sportsbook.guided-entry"]')).toHaveCount(0);
+});
