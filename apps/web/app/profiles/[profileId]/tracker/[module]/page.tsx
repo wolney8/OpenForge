@@ -3,7 +3,6 @@ import { AccountsWorkflowShell } from "@/components/accounts-workflow-shell";
 import { CashAdjustmentWorkflowShell } from "@/components/cash-adjustment-workflow-shell";
 import { CasinoOfferWorkflowShell } from "@/components/casino-offer-workflow-shell";
 import { FreeBetWorkflowShell } from "@/components/free-bet-workflow-shell";
-import { ProfileFlexibleNav } from "@/components/profile-flexible-nav";
 import { ProfileSettingsShell } from "@/components/profile-settings-shell";
 import { SportsbookWorkflowShell } from "@/components/sportsbook-workflow-shell";
 import { TrackerSummaryShell } from "@/components/tracker-summary-shell";
@@ -89,19 +88,14 @@ export default async function TrackerModulePage({
 
   return (
     <main className="page-shell stack">
-      <section
-        className={`hero-panel stack tracker-hero${usesCompactHero ? " tracker-hero-compact" : ""}`}
-      >
-        <ProfileFlexibleNav profileId={profile.profileId} />
-        {!usesCompactHero ? (
-          <>
-            <span className="eyebrow">{profile.profileCode}</span>
-            <h1>
-              {profile.displayName}: {moduleDefinition.title}
-            </h1>
-          </>
-        ) : null}
-      </section>
+      {!usesCompactHero ? (
+        <section className="hero-panel stack tracker-hero">
+          <span className="eyebrow">{profile.profileCode}</span>
+          <h1>
+            {profile.displayName}: {moduleDefinition.title}
+          </h1>
+        </section>
+      ) : null}
       {module === "accounts" ? (
         <AccountsWorkflowShell profileId={profile.profileId} />
       ) : module === "sportsbook-bets" ? (

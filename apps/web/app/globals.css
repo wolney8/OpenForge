@@ -360,8 +360,17 @@ textarea {
   padding: 1rem;
 }
 
+.app-navigation-drawer-group {
+  box-sizing: border-box;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .app-navigation-drawer-link {
   position: relative;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 2.5rem minmax(0, 1fr);
   align-items: center;
@@ -372,6 +381,18 @@ textarea {
   color: var(--text);
   font-weight: 700;
   transition: background 170ms ease, border-color 170ms ease, color 170ms ease;
+}
+
+.app-navigation-drawer-button {
+  appearance: none;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-navigation-drawer-expand-icon {
+  justify-self: end;
 }
 
 .app-navigation-drawer-link:hover {
@@ -397,6 +418,54 @@ textarea {
 
 .app-navigation-drawer-link .material-symbols-outlined {
   font-size: 1.35rem;
+}
+
+.app-navigation-profile-shortcuts {
+  box-sizing: border-box;
+  display: none;
+  gap: 0.3rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.1rem 0 0.4rem 2.75rem;
+}
+
+.app-navigation-profile-shortcuts.is-open {
+  display: grid;
+}
+
+.app-navigation-profile-link {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  min-width: 0;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-container) 88%, transparent);
+  color: var(--text);
+  font-weight: 700;
+  transition: background 170ms ease, border-color 170ms ease, color 170ms ease;
+}
+
+.app-navigation-profile-link:hover,
+.app-navigation-profile-link.is-active {
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--outline));
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.app-navigation-profile-link span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-navigation-profile-link .material-symbols-outlined {
+  font-size: 1.15rem;
 }
 
 .app-navigation-drawer-context {
@@ -477,8 +546,28 @@ textarea {
 
 .profile-summary-menu-panel {
   box-sizing: border-box;
-  min-width: 100%;
-  width: 100%;
+  width: min(22rem, calc(100vw - 2rem));
+  min-width: min(22rem, calc(100vw - 2rem));
+}
+
+.profile-summary-menu-panel .nav-pill {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  justify-items: center;
+  min-width: 0;
+}
+
+.profile-summary-menu-panel .nav-pill > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-summary-route-group,
+.profile-switch-group {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .brand-mark {
@@ -1281,16 +1370,20 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .page-shell {
+  box-sizing: border-box;
   width: min(1560px, calc(100vw - 2rem));
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .hero-panel,
 .content-panel,
 .route-card,
 .content-subpanel {
+  box-sizing: border-box;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--outline);
   border-radius: 1.75rem;
@@ -1413,119 +1506,6 @@ html[data-theme="dark"] .notification-count-badge {
 
 .tracker-hero-compact {
   padding-block: 1rem 1.1rem;
-}
-
-.flex-nav-shell {
-  position: relative;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.flexible-nav {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.85rem;
-  width: 100%;
-  padding: 0.8rem;
-  border-radius: 1.4rem;
-  border: 1px solid var(--outline);
-  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
-  box-shadow: 0 10px 24px rgba(20, 31, 42, 0.08);
-}
-
-.flexible-nav-placeholder {
-  position: relative;
-  z-index: 1;
-  transition: opacity 180ms ease;
-}
-
-.flex-nav-shell.is-enhanced .flexible-nav-placeholder {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.flexible-nav-overlay-shell {
-  position: fixed;
-  z-index: 32;
-  pointer-events: auto;
-  opacity: 1;
-  transform: translateZ(0);
-  will-change: top, left, width;
-}
-
-.flexible-nav-overlay {
-  gap: calc(0.85rem - (0.14rem * var(--dock-progress, 0)));
-  padding: 0.8rem calc(0.8rem - (0.2rem * var(--dock-progress, 0)));
-  border-radius: calc(1.4rem - (0.35rem * var(--dock-progress, 0)));
-  border-color: color-mix(
-    in srgb,
-    var(--outline) calc(100% - (30% * var(--dock-progress, 0))),
-    var(--outline-strong) calc(30% * var(--dock-progress, 0))
-  );
-  box-shadow: 0 10px 24px rgba(20, 31, 42, 0.08);
-  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
-  transition:
-    box-shadow 180ms ease,
-    border-color 180ms ease,
-    gap 220ms ease,
-    padding-inline 220ms ease,
-    border-radius 220ms ease;
-}
-
-.flexible-nav-overlay.is-floating {
-  box-shadow: var(--floating-nav-shadow);
-  background: var(--floating-nav-surface);
-  border-color: var(--floating-nav-outline);
-}
-
-.flexible-nav-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 0;
-  min-height: 3.2rem;
-  padding: 0.8rem 1rem;
-  border-radius: 1.15rem;
-  border: 1px solid var(--outline);
-  background: var(--surface-strong);
-  color: var(--text);
-  text-align: center;
-  transition:
-    border-color 180ms ease,
-    transform 180ms ease,
-    flex-basis 220ms ease,
-    border-radius 220ms ease,
-    padding-inline 220ms ease,
-    opacity 180ms ease;
-}
-
-.flexible-nav-overlay .flexible-nav-pill {
-  flex: 1 1 0;
-  min-height: 3.2rem;
-  padding: 0.8rem calc(1rem - (0.15rem * var(--dock-progress, 0)));
-  border-radius: calc(1.15rem - (0.3rem * var(--dock-progress, 0)));
-  background: var(--surface-strong);
-}
-
-.flexible-nav-overlay.is-floating .flexible-nav-pill {
-  background: var(--floating-nav-pill-surface);
-  border-color: var(--floating-nav-pill-outline);
-}
-
-.flexible-nav-pill:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  transform: translateY(-1px);
-}
-
-.flexible-nav-pill.is-active {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-}
-
-.flexible-nav-label {
-  font-weight: 600;
 }
 
 .stat-strip {
@@ -2532,15 +2512,18 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .fund-manager-control-bar {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns:
-    minmax(13rem, 1.1fr)
-    minmax(13rem, 0.9fr)
-    minmax(13rem, 0.9fr)
-    minmax(14rem, 0.95fr)
-    minmax(14rem, 0.95fr);
+    minmax(0, 1.1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.95fr)
+    minmax(0, 0.95fr);
   gap: 0.85rem;
   align-items: end;
+  max-width: 100%;
+  min-width: 0;
   padding: 0.85rem;
   border-radius: 1.25rem;
   background: var(--surface-container);
@@ -2548,20 +2531,20 @@ html[data-theme="dark"] .notification-count-badge {
 
 .fund-manager-control-bar.is-directory {
   grid-template-columns:
-    minmax(13rem, 1.1fr)
-    minmax(13rem, 0.9fr)
-    minmax(13rem, 0.9fr)
-    minmax(14rem, 0.95fr)
-    minmax(14rem, 0.95fr);
+    minmax(0, 1.1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.95fr)
+    minmax(0, 0.95fr);
 }
 
 .fund-manager-control-bar.is-analytics {
   grid-template-columns:
-    minmax(13rem, 1.1fr)
-    minmax(13rem, 0.9fr)
-    minmax(13rem, 0.9fr)
-    minmax(14rem, 0.95fr)
-    minmax(14rem, 0.95fr);
+    minmax(0, 1.1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.95fr)
+    minmax(0, 0.95fr);
 }
 
 .fund-manager-control-bar .profile-report-picker {
@@ -3503,10 +3486,13 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .workflow-panel-header {
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .workflow-panel-header .stack {
@@ -8259,19 +8245,6 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   .modal-panel.workflow-editor-modal {
     min-width: 0;
     resize: none;
-  }
-
-  .flexible-nav {
-    flex-wrap: wrap;
-    padding: 0.55rem;
-  }
-
-  .flexible-nav-pill {
-    flex-basis: calc(50% - 0.5rem);
-  }
-
-  .flexible-nav-overlay .flexible-nav-pill {
-    flex: 1 1 calc(50% - 0.5rem);
   }
 
   .table-toolbar {

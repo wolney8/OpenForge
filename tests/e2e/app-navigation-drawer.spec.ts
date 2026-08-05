@@ -19,6 +19,9 @@ test.describe("Global application navigation drawer", () => {
       "aria-current",
       "page"
     );
+    await page.locator('[data-pd-id="app-navigation.profiles"]').click();
+    await expect(page.locator('[data-pd-id^="app-navigation.profile."]').first()).toBeVisible();
+    await expect(page.locator('[data-pd-id^="app-navigation.profile."]')).toHaveCount(2);
 
     const openState = await page.evaluate(() => ({
       appFrameInert: document.querySelector(".app-frame")?.hasAttribute("inert"),

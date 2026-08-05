@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
 import { platformBrand } from "@/lib/brand";
 
+type ProfileNavigationRecord = {
+  profile_id: string;
+  display_name: string;
+  status?: string;
+};
+
 type AppNavigationDrawerProps = {
   activeProfileId: string;
+  activeProfiles: ProfileNavigationRecord[];
   isInsideProfile: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -27,6 +34,7 @@ const subscribeToPortalAvailability = () => () => undefined;
 
 export function AppNavigationDrawer({
   activeProfileId,
+  activeProfiles,
   isInsideProfile,
   isOpen,
   onClose,
@@ -35,6 +43,7 @@ export function AppNavigationDrawer({
   triggerRef,
 }: AppNavigationDrawerProps) {
   const pathname = usePathname() ?? "";
+  const [profilesExpanded, setProfilesExpanded] = useState(false);
   const portalReady = useSyncExternalStore(
     subscribeToPortalAvailability,
     () => true,
@@ -104,16 +113,6 @@ export function AppNavigationDrawer({
       pdId: "app-navigation.login",
     },
     {
-      href: "/profiles",
-      icon: "group",
-      label: "Profiles",
-      isActive:
-        pathname === "/profiles" ||
-        pathname === "/profiles/new" ||
-        /^\/profiles\/[^/]+$/.test(pathname),
-      pdId: "app-navigation.profiles",
-    },
-    {
       href: `/profiles/${activeProfileId}/tracker/sportsbook-bets`,
       icon: "sports",
       label: "Tracker",
@@ -128,6 +127,12 @@ export function AppNavigationDrawer({
       pdId: "app-navigation.settings",
     },
   ];
+  const profilesIsActive =
+    pathname === "/profiles" ||
+    pathname === "/profiles/new" ||
+    /^\/profiles\/[^/]+$/.test(pathname);
+  const profileShortcuts = activeProfiles.slice(0, 3);
+  const hasMoreProfiles = activeProfiles.length > profileShortcuts.length;
 
   return createPortal(
     <div
@@ -174,7 +179,84 @@ export function AppNavigationDrawer({
         </header>
 
         <nav aria-label="Primary navigation" className="app-navigation-drawer-list">
-          {navigationItems.map((item) => (
+          {navigationItems.slice(0, 1).map((item) => (
+            <Link
+              aria-current={item.isActive ? "page" : undefined}
+              className={`app-navigation-drawer-link${item.isActive ? " is-active" : ""}`}
+              data-pd-id={item.pdId}
+              href={item.href}
+              key={item.href}
+              onClick={onClose}
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+          <div className="app-navigation-drawer-group">
+            <button
+              aria-controls="app-navigation-profile-shortcuts"
+              aria-current={profilesIsActive ? "page" : undefined}
+              aria-expanded={profilesExpanded}
+              aria-label="Show profile dashboards"
+              className={`app-navigation-drawer-link app-navigation-drawer-button${
+                profilesIsActive ? " is-active" : ""
+              }`}
+              data-pd-id="app-navigation.profiles"
+              onClick={() => setProfilesExpanded((current) => !current)}
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">group</span>
+              <span>Profiles</span>
+              <span aria-hidden="true" className="material-symbols-outlined app-navigation-drawer-expand-icon">
+                {profilesExpanded ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+            <div
+              className={`app-navigation-profile-shortcuts${profilesExpanded ? " is-open" : ""}`}
+              id="app-navigation-profile-shortcuts"
+            >
+              {profileShortcuts.map((profile) => (
+                <Link
+                  aria-current={profile.profile_id === activeProfileId && pathname.includes("/tracker/dashboard") ? "page" : undefined}
+                  className={`app-navigation-profile-link${
+                    profile.profile_id === activeProfileId && pathname.includes("/tracker/dashboard")
+                      ? " is-active"
+                      : ""
+                  }`}
+                  data-pd-id={`app-navigation.profile.${profile.profile_id}`}
+                  href={`/profiles/${profile.profile_id}/tracker/dashboard`}
+                  key={profile.profile_id}
+                  onClick={onClose}
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+                  <span>{profile.display_name}</span>
+                </Link>
+              ))}
+              {hasMoreProfiles ? (
+                <Link
+                  className="app-navigation-profile-link"
+                  data-pd-id="app-navigation.profiles.view-all"
+                  href="/profiles"
+                  onClick={onClose}
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">more_horiz</span>
+                  <span>View all</span>
+                </Link>
+              ) : null}
+              {profileShortcuts.length === 0 ? (
+                <Link
+                  className="app-navigation-profile-link"
+                  data-pd-id="app-navigation.profiles.view-all"
+                  href="/profiles"
+                  onClick={onClose}
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">group</span>
+                  <span>View profiles</span>
+                </Link>
+              ) : null}
+            </div>
+          </div>
+          {navigationItems.slice(1).map((item) => (
             <Link
               aria-current={item.isActive ? "page" : undefined}
               className={`app-navigation-drawer-link${item.isActive ? " is-active" : ""}`}

@@ -249,7 +249,7 @@ test("top bar profile summary shows date range, value, and range-name hover deta
     .toBe(Math.min(expectedLastMonthRows, 8));
 });
 
-test("top bar profile menu exposes dashboard picker options", async ({ page }) => {
+test("top bar profile menu exposes active profile tracker route options", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/profiles/profile-demo-001/tracker/dashboard");
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 90_000 });
@@ -258,14 +258,19 @@ test("top bar profile menu exposes dashboard picker options", async ({ page }) =
   await expect(summaryButton).toBeVisible();
   await summaryButton.click();
 
-  await expect(page.getByText("Profile dashboards", { exact: true })).toBeVisible();
-  const dashboardOptions = page.locator('[data-pd-id^="profile-menu.dashboard."]');
-  await expect(dashboardOptions.first()).toBeVisible();
-  const optionCount = await dashboardOptions.count();
-  expect(optionCount).toBeGreaterThan(0);
+  await expect(page.getByRole("menuitem", { name: /Switch/ })).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.dashboard"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.sportsbook-bets"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.free-bets"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.casino-offers"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.cash-adjustments"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.accounts"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.reports"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-menu.route.settings"]')).toBeVisible();
 
-  await dashboardOptions.first().click();
-  await expect(page).toHaveURL(/\/profiles\/[^/]+\/tracker\/dashboard$/);
+  await page.locator('[data-pd-id="profile-menu.route.sportsbook-bets"]').click();
+  await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/sportsbook-bets$/);
+  await expect(page.locator(".flexible-nav")).toHaveCount(0);
 });
 
 test("tracker range scopes visible rows across ledgers unless the route is an action view", async ({
