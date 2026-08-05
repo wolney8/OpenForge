@@ -13,6 +13,7 @@ import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-a
 import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
+import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -1731,14 +1732,20 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             title="Adjustment setup"
           >
             {adjustmentValidationActive && missingAdjustmentFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required Adjustment details fields: {missingAdjustmentFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`cash-adjustment-setup:${selectedId ?? formState.cash_adjustment_id ?? "new"}:${missingAdjustmentFields.join("|")}`}
+                id="cash-adjustment.editor.setup-validation"
+                message={`Complete these fields before saving: ${missingAdjustmentFields.join(", ")}.`}
+                title="Adjustment setup incomplete"
+              />
             ) : null}
             {adjustmentValidationActive && hasInvalidAdjustmentCombination ? (
-              <p className="field-validation-text" role="alert">
-                Direction and adjustment type must stay in a workbook-safe combination.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`cash-adjustment-combination:${selectedId ?? formState.cash_adjustment_id ?? "new"}:${formState.direction}:${formState.adjustment_type}`}
+                id="cash-adjustment.editor.combination-validation"
+                message="Direction and adjustment type must stay in a workbook-safe combination."
+                title="Workbook-safe combination required"
+              />
             ) : null}
             <div className="form-grid">
               <label

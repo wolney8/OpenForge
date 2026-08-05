@@ -13,6 +13,7 @@ import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/accoun
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -3352,9 +3353,12 @@ export function FreeBetWorkflowShell({
             title="Offer setup"
           >
             {offerIdentityValidationActive && missingOfferIdentityFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required Offer setup fields: {missingOfferIdentityFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`free-bet-offer:${selectedId ?? formState.free_bet_id ?? "new"}:${missingOfferIdentityFields.join("|")}`}
+                id="free-bet.editor.offer-validation"
+                message={`Complete these fields before saving: ${missingOfferIdentityFields.join(", ")}.`}
+                title="Offer setup incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
@@ -3492,9 +3496,12 @@ export function FreeBetWorkflowShell({
             title="Award and settlement"
           >
             {offerIdentityValidationActive && missingPlacementFields.includes("Settles") ? (
-              <p className="field-validation-text" role="alert">
-                Settled or resolved free-bet rows need a settle date.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`free-bet-settlement:${selectedId ?? formState.free_bet_id ?? "new"}:${missingPlacementFields.join("|")}`}
+                id="free-bet.editor.settlement-validation"
+                message="Settled or resolved free-bet rows need a settle date."
+                title="Settlement incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
@@ -3571,9 +3578,12 @@ export function FreeBetWorkflowShell({
             title="Calculator panel"
           >
             {offerIdentityValidationActive && missingPlacementFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required placed/settled free-bet fields: {missingPlacementFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`free-bet-placement:${selectedId ?? formState.free_bet_id ?? "new"}:${missingPlacementFields.join("|")}`}
+                id="free-bet.editor.placement-validation"
+                message={`Complete these placed/settled fields: ${missingPlacementFields.join(", ")}.`}
+                title="Placement incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly || !calculatorUnlocked}>
             <div className="calculator-panel-shell">
@@ -3584,9 +3594,12 @@ export function FreeBetWorkflowShell({
                 <div className="calculator-band calculator-band-primary">
                   <span className="eyebrow">Matching plan</span>
                   {calculatorUnlocked && !previewReady && missingCalculatorFields.length > 0 ? (
-                    <p className="field-validation-text" role="alert">
-                      Complete calculator inputs: {missingCalculatorFields.join(", ")}.
-                    </p>
+                    <EditorValidationBanner
+                      dismissKey={`free-bet-calculator:${selectedId ?? formState.free_bet_id ?? "new"}:${missingCalculatorFields.join("|")}`}
+                      id="free-bet.editor.calculator-validation"
+                      message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
+                      title="Calculator inputs incomplete"
+                    />
                   ) : null}
                   <div className="form-grid calculator-input-grid">
                     {calculatorRuleItems.length > 0 ? (

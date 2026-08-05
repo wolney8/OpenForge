@@ -13,6 +13,7 @@ import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/accoun
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -2834,9 +2835,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               </div>
             ) : null}
             {offerIdentityValidationActive && missingOfferIdentityFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required Offer identity fields: {missingOfferIdentityFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`casino-offer-identity:${selectedId ?? formState.casino_offer_id ?? "new"}:${missingOfferIdentityFields.join("|")}`}
+                id="casino-offer.editor.identity-validation"
+                message={`Complete these fields before saving: ${missingOfferIdentityFields.join(", ")}.`}
+                title="Offer identity incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
@@ -2970,9 +2974,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             title={getCasinoCampaignHeading(formState.offer_type)}
           >
             {offerIdentityValidationActive && campaignUnlocked && missingCampaignFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required campaign fields: {missingCampaignFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`casino-offer-campaign:${selectedId ?? formState.casino_offer_id ?? "new"}:${missingCampaignFields.join("|")}`}
+                id="casino-offer.editor.campaign-validation"
+                message={`Complete these campaign fields: ${missingCampaignFields.join(", ")}.`}
+                title="Campaign incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly || !campaignUnlocked}>
             <div className="form-grid">
@@ -3125,9 +3132,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             title={getCasinoRewardHeading(formState.offer_type)}
           >
             {offerIdentityValidationActive && rewardUnlocked && missingRewardFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required reward fields: {missingRewardFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`casino-offer-reward:${selectedId ?? formState.casino_offer_id ?? "new"}:${missingRewardFields.join("|")}`}
+                id="casino-offer.editor.reward-validation"
+                message={`Complete these reward fields: ${missingRewardFields.join(", ")}.`}
+                title="Reward incomplete"
+              />
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly || !rewardUnlocked}>
             <div className="form-grid">
