@@ -81,6 +81,14 @@ function isMultiLayStrategy(strategy: string | undefined): boolean {
   return strategy === "Multilay" || strategy === "Multilay-Underlay" || strategy === "Multi Lay";
 }
 
+function needsSettlementDetails(input: SportsbookGuidedEntryInput): boolean {
+  if (input.status !== "Settled" && (!input.result || input.result === "Pending")) {
+    return false;
+  }
+
+  return !isFilled(input.settlementDate) || !isFilled(input.result) || input.result === "Pending";
+}
+
 function uniqueFields(fields: GuidedEntryFieldKey[]): GuidedEntryFieldKey[] {
   return Array.from(new Set(fields));
 }
@@ -209,6 +217,10 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
     return buildResult("ready", missingBackField[0], hiddenFields, fieldMessage(missingBackField[0]));
   }
 
+  if (needsSettlementDetails(input)) {
+    return buildResult("ready", "settlement", hiddenFields, fieldMessage("settlement"));
+  }
+
   if (strategy === "No Lay") {
     return buildResult("complete", null, hiddenFields, "Guided entry complete.");
   }
@@ -253,13 +265,6 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
 
   if ((strategy === "Custom" || strategy === "Partial Lay") && !isFilled(input.layActual)) {
     return buildResult("ready", "lay_actual", hiddenFields, fieldMessage("lay_actual"));
-  }
-
-  if (
-    (input.status === "Settled" || (input.result && input.result !== "Pending")) &&
-    !isFilled(input.settlementDate)
-  ) {
-    return buildResult("ready", "settlement", hiddenFields, fieldMessage("settlement"));
   }
 
   return buildResult("complete", null, hiddenFields, "Guided entry complete.");

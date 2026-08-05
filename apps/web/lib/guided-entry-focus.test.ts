@@ -195,6 +195,49 @@ describe("getSportsbookGuidedEntry", () => {
     expect(guidance.message).toContain("settlement date");
   });
 
+  it("GUIDE-009 requires an outcome when status is settled but result is still pending", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+      layOdds1: "2.10",
+      strategy: "Standard",
+      status: "Settled",
+      result: "Pending",
+      settlementDate: "2026-07-20T18:00",
+    });
+
+    expect(guidance.nextRequiredField).toBe("settlement");
+    expect(guidance.message).toContain("settlement date");
+  });
+
+  it("GUIDE-009 keeps no-lay settled rows incomplete until settlement details are present", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Mug Bet",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "2.00",
+      strategy: "No Lay",
+      status: "Settled",
+      result: "Pending",
+    });
+
+    expect(guidance.nextRequiredField).toBe("settlement");
+    expect(guidance.hiddenFields).toEqual(["exchange", "lay_odds_1", "lay_actual"]);
+  });
+
   it("GUIDE-006 flags an incompatible mug bet and multi-lay strategy for review", () => {
     const guidance = getSportsbookGuidedEntry({
       ledger: "sportsbook",
