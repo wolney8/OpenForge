@@ -31,8 +31,11 @@ test("sportsbook guided entry uses text cues and advances without stealing focus
   await editor.getByRole("button", { name: "Dismiss sportsbook guided entry" }).click();
   await expect(guide).toHaveCount(0);
 
-  page.once("dialog", (dialog) => void dialog.accept());
   await editor.getByRole("button", { name: "Close sportsbook editor" }).first().click();
+  await page
+    .getByRole("dialog", { name: "Unsaved tracker changes" })
+    .getByRole("button", { name: "Discard Changes" })
+    .click();
   await expect(editor).toBeHidden();
   await page.getByRole("button", { name: "Add sportsbook row" }).click();
   const reopenedEditor = page.getByRole("dialog", { name: "Create sportsbook row" });

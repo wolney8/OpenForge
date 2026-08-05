@@ -51,6 +51,74 @@ describe("getSportsbookGuidedEntry", () => {
     expect(guidance.hiddenFields).toContain("lay_odds_1");
   });
 
+  it("GUIDE-003 keeps multi-lay rows guided until every branch placement is confirmed", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      strategy: "Multilay",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "First Goalscorer",
+      offerType: "Price Boost",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "5.00",
+      exchange: "Exchange A",
+      multiLayOutcomes: [
+        {
+          label: "Player A",
+          layOdds: "6.00",
+          placedMatchedStake: "4.20",
+          placementState: "placed",
+        },
+        {
+          label: "Player B",
+          layOdds: "7.00",
+          placedMatchedStake: "",
+          placementState: "pending",
+        },
+      ],
+    });
+
+    expect(guidance.requiredGroup).toBe("multi_lay_placements");
+    expect(guidance.nextRequiredField).toBe("multi_lay_placements");
+    expect(guidance.message).toContain("branch placement");
+  });
+
+  it("GUIDE-003 completes multi-lay rows when all named branches are placed", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      strategy: "Multilay",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "First Goalscorer",
+      offerType: "Price Boost",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "5.00",
+      exchange: "Exchange A",
+      multiLayOutcomes: [
+        {
+          label: "Player A",
+          layOdds: "6.00",
+          placedMatchedStake: "4.20",
+          placementState: "placed",
+        },
+        {
+          label: "Player B",
+          layOdds: "7.00",
+          placedMatchedStake: "5.30",
+          placementState: "placed",
+        },
+      ],
+    });
+
+    expect(guidance.state).toBe("complete");
+    expect(guidance.nextRequiredField).toBeNull();
+    expect(guidance.hiddenFields).toEqual(["lay_odds_1"]);
+  });
+
   it("GUIDE-004 reports the first invalid field on save without relying on colour only", () => {
     const guidance = getSportsbookGuidedEntry({
       ledger: "sportsbook",

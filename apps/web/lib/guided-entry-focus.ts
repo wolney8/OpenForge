@@ -14,6 +14,7 @@ export type GuidedEntryFieldKey =
   | "lay_odds_1"
   | "lay_actual"
   | "multi_lay_outcomes"
+  | "multi_lay_placements"
   | "settlement";
 
 export type GuidedEntryState = "ready" | "review_required" | "complete";
@@ -54,7 +55,13 @@ export type SportsbookGuidedEntryInput = {
   status?: string;
   result?: string;
   settlementDate?: string;
-  multiLayOutcomes?: Array<{ label?: string; name?: string; layOdds?: string }>;
+  multiLayOutcomes?: Array<{
+    label?: string;
+    name?: string;
+    layOdds?: string;
+    placedMatchedStake?: string;
+    placementState?: "pending" | "placed";
+  }>;
   prefersReducedMotion?: boolean;
 };
 
@@ -62,8 +69,20 @@ function isFilled(value: string | undefined): boolean {
   return Boolean(value?.trim());
 }
 
+function isPositiveNumber(value: string | undefined): boolean {
+  if (!isFilled(value)) {
+    return false;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0;
+}
+
 function isMultiLayStrategy(strategy: string | undefined): boolean {
   return strategy === "Multilay" || strategy === "Multilay-Underlay" || strategy === "Multi Lay";
+}
+
+function uniqueFields(fields: GuidedEntryFieldKey[]): GuidedEntryFieldKey[] {
+  return Array.from(new Set(fields));
 }
 
 function getNextMissingFromCompletedFields(
@@ -102,6 +121,8 @@ function fieldMessage(field: GuidedEntryFieldKey): string {
       return "Next required: enter the actual lay stake.";
     case "multi_lay_outcomes":
       return "Next required: complete the multi-lay outcome names and odds.";
+    case "multi_lay_placements":
+      return "Next required: copy or confirm each multi-lay branch placement.";
     case "settlement":
       return "Next required: confirm the settlement date and outcome.";
   }
@@ -120,7 +141,7 @@ function buildResult(
     state,
     nextRequiredField,
     requiredGroup,
-    hiddenFields,
+    hiddenFields: uniqueFields(hiddenFields),
     message,
     autoFocus: false,
     pulsingAnimation: false,
@@ -210,7 +231,20 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
         "multi_lay_outcomes"
       );
     }
-    return buildResult("complete", null, hiddenFields, "Guided entry complete.", "multi_lay_outcomes");
+    const placedOutcomes = completedOutcomes.filter(
+      (outcome) =>
+        outcome.placementState === "placed" && isPositiveNumber(outcome.placedMatchedStake)
+    );
+    if (placedOutcomes.length < completedOutcomes.length) {
+      return buildResult(
+        "ready",
+        "multi_lay_placements",
+        hiddenFields,
+        fieldMessage("multi_lay_placements"),
+        "multi_lay_placements"
+      );
+    }
+    return buildResult("complete", null, hiddenFields, "Guided entry complete.", "multi_lay_placements");
   }
 
   if (!isFilled(input.layOdds1)) {

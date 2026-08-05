@@ -3271,13 +3271,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       {
         label: multiLayOutcome1Label,
         layOdds: formState.lay_odds_1,
+        placedMatchedStake: multiLayPrimaryPlacement.placedMatchedStake,
+        placementState: multiLayPrimaryPlacement.placementState,
       },
       ...multiLayOutcomes.map((outcome) => ({
         label: outcome.label,
         layOdds: outcome.layOdds,
+        placedMatchedStake: outcome.placedMatchedStake,
+        placementState: outcome.placementState,
       })),
     ],
-    [formState.lay_odds_1, multiLayOutcome1Label, multiLayOutcomes]
+    [
+      formState.lay_odds_1,
+      multiLayOutcome1Label,
+      multiLayOutcomes,
+      multiLayPrimaryPlacement.placedMatchedStake,
+      multiLayPrimaryPlacement.placementState,
+    ]
   );
   const guidedEntry = useMemo(
     () =>
@@ -7976,7 +7986,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               >
                 <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                   {usesMultiLayStrategy ? (
-                    <div className="multi-lay-grid-wrap">
+                    <div
+                      aria-describedby={getGuidedDescribedBy("multi_lay_placements")}
+                      className={`multi-lay-grid-wrap${
+                        guidedEntryVisible && guidedEntry.nextRequiredField === "multi_lay_placements"
+                          ? " is-guided-next"
+                          : ""
+                      }`}
+                    >
                       <table className="data-table multi-lay-placement-grid">
                         <thead>
                           <tr>
