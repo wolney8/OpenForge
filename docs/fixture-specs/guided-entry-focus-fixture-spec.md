@@ -17,4 +17,5 @@ _Last updated: 2026-07-14_
 | GUIDE-006 | Offer/strategy contradiction | Review required; no guessed next step |
 | GUIDE-007 | Reduced motion | No pulsing/glow animation |
 | GUIDE-008 | Partial-lay strategy with missing actual lay | Actual lay stake is next required field |
-| GUIDE-009 | Settled row without settlement date | Settlement group is next required field |
+| GUIDE-009 | Settled row without settlement date or with Pending outcome | Settlement group is next required field |
+| GUIDE-009B | No-lay settled row without final outcome | Settlement group is next required field while lay fields remain hidden |
