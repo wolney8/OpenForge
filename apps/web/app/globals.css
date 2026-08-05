@@ -4088,14 +4088,15 @@ html[data-theme="dark"] .notification-count-badge {
 .editor-validation-banner {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  gap: 0.85rem;
   align-items: center;
   width: 100%;
-  padding: 0.85rem 0.95rem;
-  border-radius: var(--radius-lg);
+  padding: 0.95rem 1rem;
+  border-radius: 1.25rem;
   border: 1px solid var(--outline);
   background: var(--surface-container);
   color: var(--text);
+  overflow: visible;
 }
 
 .editor-validation-banner-danger {
@@ -4130,9 +4131,24 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .editor-validation-banner-dismiss {
-  width: 2.3rem;
-  height: 2.3rem;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  border-radius: 999px;
   color: var(--danger);
+  line-height: 1;
+  overflow: visible;
+}
+
+.editor-validation-banner-dismiss .material-symbols-outlined {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .field-choice-pills {
@@ -8201,11 +8217,24 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  padding: 0.65rem 0.25rem;
+  padding: 0.95rem 0.35rem;
 }
 
 .workflow-editor-modal .editor-section.is-invalid-section {
   border-color: color-mix(in srgb, var(--danger) 82%, var(--outline));
+}
+
+.workflow-editor-modal .editor-section-summary {
+  min-height: 3rem;
+  padding: 0.45rem 0.25rem;
+}
+
+.workflow-editor-modal .editor-section-content-inner {
+  padding-top: 0.65rem;
+}
+
+.workflow-editor-modal .editor-section.is-open > .editor-section-content > .editor-section-content-inner {
+  padding-top: 0.85rem;
 }
 
 .workflow-editor-modal .form-grid > *,

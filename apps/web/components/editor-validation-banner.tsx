@@ -35,7 +35,7 @@ export function EditorValidationBanner({
       </div>
       <button
         aria-label={`Hide ${title}`}
-        className="icon-button editor-validation-banner-dismiss"
+        className="icon-button icon-button-destructive editor-validation-banner-dismiss"
         onClick={() => setDismissedKey(dismissKey)}
         title={`Hide ${title}`}
         type="button"

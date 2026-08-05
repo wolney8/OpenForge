@@ -13,13 +13,15 @@ const scenarios = [
   },
   {
     route: "/profiles/profile-demo-001/tracker/casino-offers",
-    dialogName: "Edit casino row",
+    dialogName: "Create casino row",
     pdPrefix: "casino-offers",
+    openByAdd: true,
   },
   {
     route: "/profiles/profile-demo-001/tracker/cash-adjustments",
-    dialogName: "Edit cash adjustment",
+    dialogName: "Create cash adjustment",
     pdPrefix: "cash-adjustments",
+    openByAdd: true,
   },
 ];
 
@@ -28,9 +30,18 @@ test.describe("Ledger editor modal parity", () => {
     test(`${scenario.route} opens the editor in a dialog shell`, async ({ page }) => {
       await page.goto(scenario.route);
 
-      const row = page.locator(".data-table tbody tr").first();
-      await expect(row).toBeVisible();
-      await row.click();
+      const rangeSelect = page.getByLabel("Change tracker date range");
+      if (!scenario.openByAdd && (await rangeSelect.isVisible())) {
+        await rangeSelect.selectOption({ label: "All Dates" });
+      }
+
+      if (scenario.openByAdd) {
+        await page.getByRole("button", { name: /Add .*row|Add cash adjustment/i }).click();
+      } else {
+        const row = page.locator(".data-table tbody tr").first();
+        await expect(row).toBeVisible();
+        await row.click();
+      }
 
       const dialog = page.getByRole("dialog", { name: scenario.dialogName });
       await expect(dialog).toBeVisible();
@@ -86,6 +97,69 @@ test.describe("Ledger editor modal parity", () => {
           ({ minWidth, maxWidth }) => minWidth === "0px" && maxWidth === "100%"
         )
       ).toBe(true);
+
+      await dialog.evaluate((element) => {
+        const banner = document.createElement("div");
+        banner.className = "editor-validation-banner editor-validation-banner-danger";
+        banner.setAttribute("data-pd-id", "test.editor-validation-banner");
+        banner.innerHTML = `
+          <span aria-hidden="true" class="material-symbols-outlined">error</span>
+          <div>
+            <strong>Validation required</strong>
+            <span>Complete the required fields before saving.</span>
+          </div>
+          <button
+            aria-label="Hide validation required"
+            class="icon-button icon-button-destructive editor-validation-banner-dismiss"
+            type="button"
+          >
+            <span aria-hidden="true" class="material-symbols-outlined">close</span>
+          </button>
+        `;
+        element.prepend(banner);
+      });
+
+      const banner = dialog.locator('[data-pd-id="test.editor-validation-banner"]');
+      const dismiss = banner.getByRole("button", { name: "Hide validation required" });
+      await expect(banner).toBeVisible();
+      await expect(banner).toHaveCSS("overflow", "visible");
+      await expect(dismiss).toHaveCSS("border-radius", "999px");
+
+      const bannerGeometry = await banner.evaluate((element) => {
+        const bannerStyle = getComputedStyle(element);
+        const dismissButton = element.querySelector("button");
+        const dismissIcon = dismissButton?.querySelector(".material-symbols-outlined");
+        if (!dismissButton || !dismissIcon) {
+          throw new Error("Validation dismiss control missing");
+        }
+        const buttonStyle = getComputedStyle(dismissButton);
+        const iconStyle = getComputedStyle(dismissIcon);
+        const buttonBounds = dismissButton.getBoundingClientRect();
+        const iconBounds = dismissIcon.getBoundingClientRect();
+        return {
+          bannerRadius: Number.parseFloat(bannerStyle.borderTopLeftRadius),
+          buttonHeight: buttonBounds.height,
+          buttonWidth: buttonBounds.width,
+          iconCenterX: iconBounds.left + iconBounds.width / 2,
+          iconCenterY: iconBounds.top + iconBounds.height / 2,
+          buttonCenterX: buttonBounds.left + buttonBounds.width / 2,
+          buttonCenterY: buttonBounds.top + buttonBounds.height / 2,
+          paddingLeft: buttonStyle.paddingLeft,
+          paddingRight: buttonStyle.paddingRight,
+          display: buttonStyle.display,
+          alignItems: buttonStyle.alignItems,
+          justifyItems: buttonStyle.justifyItems,
+        };
+      });
+      expect(bannerGeometry.bannerRadius).toBeGreaterThanOrEqual(20);
+      expect(Math.abs(bannerGeometry.buttonWidth - bannerGeometry.buttonHeight)).toBeLessThan(1);
+      expect(Math.abs(bannerGeometry.iconCenterX - bannerGeometry.buttonCenterX)).toBeLessThan(1);
+      expect(Math.abs(bannerGeometry.iconCenterY - bannerGeometry.buttonCenterY)).toBeLessThan(1);
+      expect(bannerGeometry.paddingLeft).toBe("0px");
+      expect(bannerGeometry.paddingRight).toBe("0px");
+      expect(bannerGeometry.display).toBe("grid");
+      expect(bannerGeometry.alignItems).toBe("center");
+      expect(bannerGeometry.justifyItems).toBe("center");
     });
   }
 

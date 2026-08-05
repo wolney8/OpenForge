@@ -284,6 +284,19 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts visible overflow on expanded
   section content for all current ledger editors.
 
+## 2026-07-27: Editor validation banners and dismiss controls diverged
+
+- Area: ledger editor modal sections and validation banners.
+- Root cause: validation banners used local spacing and a generic pill-shaped `icon-button` for the
+  dismiss action, producing sharp-looking nested edges, crowded headings and a non-circular
+  misaligned close control.
+- Prevention: editor validation states use the shared rounded banner treatment and destructive
+  icon-button semantics; dismiss actions explicitly own square/circle geometry, zero padding,
+  centred Material Symbols and enough spacing from neighbouring borders. Section headings retain
+  a minimum hit area and content starts below the header with a consistent gutter.
+- Test added: pending Issue 61 editor-flow refactor must include computed geometry checks for
+  validation banners, dismiss buttons and section heading spacing across all ledger editors.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:
