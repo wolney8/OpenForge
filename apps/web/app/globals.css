@@ -1555,6 +1555,11 @@ html[data-theme="dark"] .notification-count-badge {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.dashboard-secondary-grid > .dashboard-visual-card,
+.dashboard-tertiary-grid > .dashboard-visual-card {
+  min-height: 14rem;
+}
+
 .dashboard-fee-section {
   display: grid;
   min-width: 0;
@@ -1888,6 +1893,20 @@ html[data-theme="dark"] .notification-count-badge {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 8.5rem) minmax(4.75rem, 5.75rem);
   gap: 0.75rem;
+}
+
+.dashboard-bookmaker-row-heading {
+  padding-top: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-bookmaker-row-heading > span:nth-child(2),
+.dashboard-bookmaker-row-heading > span:nth-child(3) {
+  justify-self: end;
 }
 
 .dashboard-activity-row {

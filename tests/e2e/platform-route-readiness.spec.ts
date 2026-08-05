@@ -77,12 +77,19 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   await expect(page.getByRole("heading", { name: "Action Load" })).toBeVisible();
   await expect(page.locator('[data-pd-id="dashboard.target-progress"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="dashboard.bookmaker-breakdown"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.bookmaker-breakdown"]')).toContainText("Range P&L");
   await expect(page.locator('[data-pd-id="dashboard.recent-activity"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.peer-comparison"]')).toContainText("Open current value");
+  await expect(page.locator('[data-pd-id="dashboard.fund-manager-fees"]')).toContainText("Available to withdraw");
   await expect(page.getByRole("button", { name: "Dashboard range shortcut 1M" })).toBeVisible();
   const hasNoPageHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
   );
   expect(hasNoPageHorizontalOverflow).toBeTruthy();
+  const cardWidths = await page
+    .locator('[data-pd-id="dashboard.target-progress"], [data-pd-id="dashboard.module-mix"], [data-pd-id="dashboard.action-load"]')
+    .evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().width)));
+  expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(2);
   await expect(page.getByText("Open Current Value", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Current Account Cash", { exact: true }).first()).toBeVisible();
 

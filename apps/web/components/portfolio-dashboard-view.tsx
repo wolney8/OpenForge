@@ -119,14 +119,43 @@ export function PortfolioDashboardView({
       summary.betsQuickView.overdueBets -
       summary.betsQuickView.partLaidBets
   );
+  const openPositionDetails = [
+    { label: "Overdue", value: summary.betsQuickView.overdueBets },
+    { label: "Part laid", value: summary.betsQuickView.partLaidBets },
+    { label: "Due later", value: openUnflaggedBets },
+  ];
   const totalActionLoad =
     summary.betsQuickView.overdueBets +
     summary.betsQuickView.expiringFreeBetCount +
     summary.betsQuickView.partLaidBets +
     summary.betsQuickView.accountsNeedingMugReview;
+  const operationalAlertDetails = [
+    { label: "Overdue rows", value: summary.betsQuickView.overdueBets },
+    { label: "Part laid", value: summary.betsQuickView.partLaidBets },
+    { label: "Expiring free bets", value: summary.betsQuickView.expiringFreeBetCount },
+    { label: "Mug reviews", value: summary.betsQuickView.accountsNeedingMugReview },
+  ];
   const overdueHref = `/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=dashboard`;
   const freeBetHref = `/profiles/${profileId}/tracker/free-bets?view=issues&issue=all-issues&source=dashboard`;
   const accountHref = `/profiles/${profileId}/tracker/accounts`;
+  const alertHref =
+    summary.betsQuickView.overdueBets > 0 || summary.betsQuickView.partLaidBets > 0
+      ? overdueHref
+      : summary.betsQuickView.expiringFreeBetCount > 0
+        ? freeBetHref
+        : summary.betsQuickView.accountsNeedingMugReview > 0
+          ? accountHref
+          : undefined;
+  const currentPeerBarWidth = clampPercent(
+    Math.abs(summary.profitQuickView.overallPnl) /
+      Math.max(1, Math.abs(summary.profitQuickView.overallPnl) + Math.abs(summary.profitQuickView.openCurrentValue)) *
+      100
+  );
+  const openPeerBarWidth = clampPercent(
+    Math.abs(summary.profitQuickView.openCurrentValue) /
+      Math.max(1, Math.abs(summary.profitQuickView.overallPnl) + Math.abs(summary.profitQuickView.openCurrentValue)) *
+      100
+  );
 
   return (
     <section
@@ -195,9 +224,9 @@ export function PortfolioDashboardView({
             label="Open rows"
             value={summary.betsQuickView.openBets}
           >
-            <span>Overdue {summary.betsQuickView.overdueBets}</span>
-            <span>Part laid {summary.betsQuickView.partLaidBets}</span>
-            <span>Due later {openUnflaggedBets}</span>
+            {openPositionDetails.map((detail) => (
+              <span key={detail.label}>{detail.label} {detail.value}</span>
+            ))}
           </DashboardMetricCard>
           <DashboardMetricCard
             eyebrow="Open Current Value"
@@ -223,18 +252,17 @@ export function PortfolioDashboardView({
             <span>Bank {formatMoney(summary.accountQuickView.bankBalance)}</span>
           </DashboardMetricCard>
           <DashboardMetricCard
-            actionHref={summary.betsQuickView.expiringFreeBetCount > 0 ? freeBetHref : undefined}
-            actionLabel="Open free bet expiry issues"
+            actionHref={alertHref}
+            actionLabel="Open action-required tracker rows"
             badge={totalActionLoad > 0 ? "Action needed" : undefined}
             badgeTone={totalActionLoad > 0 ? "warning" : "neutral"}
             eyebrow="Operational Alerts"
             label="Alerts"
             value={totalActionLoad}
           >
-            <span>Overdue rows {summary.betsQuickView.overdueBets}</span>
-            <span>Part laid {summary.betsQuickView.partLaidBets}</span>
-            <span>Expiring free bets {summary.betsQuickView.expiringFreeBetCount}</span>
-            <span>Mug reviews {summary.betsQuickView.accountsNeedingMugReview}</span>
+            {operationalAlertDetails.map((detail) => (
+              <span key={detail.label}>{detail.label} {detail.value}</span>
+            ))}
           </DashboardMetricCard>
           <DashboardMetricCard
             eyebrow="Selected Range Activity"
@@ -379,6 +407,11 @@ export function PortfolioDashboardView({
           </div>
         </div>
         <div className="dashboard-bookmaker-list">
+          <div className="dashboard-bookmaker-row dashboard-bookmaker-row-heading" aria-hidden="true">
+            <span>Bookmaker</span>
+            <span>Range P&amp;L</span>
+            <span>Open</span>
+          </div>
           {summary.bookmakerBreakdown.slice(0, 6).map((row) => (
             <div className="dashboard-bookmaker-row" key={row.bookmaker}>
               <span>{row.bookmaker}</span>
@@ -419,14 +452,19 @@ export function PortfolioDashboardView({
         </div>
         <div className="dashboard-peer-bars" aria-label="Internal peer comparison status">
           <div className="dashboard-peer-row">
-            <span>Current profile</span>
+            <span>Selected range P&amp;L</span>
             <FinancialValue animate={false} value={summary.profitQuickView.overallPnl} />
-            <i style={{ width: "100%" }} />
+            <i style={{ width: `${Math.max(6, currentPeerBarWidth)}%` }} />
+          </div>
+          <div className="dashboard-peer-row">
+            <span>Open current value</span>
+            <FinancialValue animate={false} value={summary.profitQuickView.openCurrentValue} />
+            <i style={{ width: `${Math.max(6, openPeerBarWidth)}%` }} />
           </div>
           <div className="dashboard-peer-row dashboard-peer-row-muted">
-            <span>Peer average</span>
-            <strong>Use Profiles</strong>
-            <i style={{ width: "42%" }} />
+            <span>Peer comparison</span>
+            <strong>Fund Manager dashboard</strong>
+            <i style={{ width: "52%" }} />
           </div>
         </div>
         <Link className="dashboard-card-action" href="/profiles">
