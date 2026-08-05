@@ -153,6 +153,48 @@ describe("getSportsbookGuidedEntry", () => {
     expect(guidance.autoFocus).toBe(false);
   });
 
+  it("GUIDE-008 requires actual lay stake for partial-lay placement review", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+      layOdds1: "2.10",
+      strategy: "Partial Lay",
+    });
+
+    expect(guidance.nextRequiredField).toBe("lay_actual");
+    expect(guidance.message).toContain("actual lay stake");
+  });
+
+  it("GUIDE-009 requires settlement details for settled rows", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+      layOdds1: "2.10",
+      strategy: "Standard",
+      status: "Settled",
+      result: "Back Won",
+    });
+
+    expect(guidance.nextRequiredField).toBe("settlement");
+    expect(guidance.message).toContain("settlement date");
+  });
+
   it("GUIDE-006 flags an incompatible mug bet and multi-lay strategy for review", () => {
     const guidance = getSportsbookGuidedEntry({
       ledger: "sportsbook",
