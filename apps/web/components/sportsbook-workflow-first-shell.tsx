@@ -93,6 +93,7 @@ import {
 const visibleSportsbookStrategyOptions = sportsbookStrategyOptions.filter(
   (option) => option !== "Multilay-Underlay"
 );
+const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
 
 function isBonusLockInOfferType(value: string): boolean {
   return value === "Bonus Lock-In" || value === "Refund";
@@ -102,6 +103,46 @@ type ResultOption = {
   value: string;
   label: string;
 };
+
+function EditorValidationBanner({
+  id,
+  message,
+  onDismiss,
+  title,
+}: {
+  id: string;
+  message: string;
+  onDismiss: () => void;
+  title: string;
+}) {
+  return (
+    <section
+      aria-labelledby={`${id}-title`}
+      className="editor-validation-banner editor-validation-banner-danger"
+      data-pd-id={id}
+      role="alert"
+    >
+      <span aria-hidden="true" className="material-symbols-outlined editor-validation-banner-icon">
+        error
+      </span>
+      <div className="editor-validation-banner-copy">
+        <strong id={`${id}-title`}>{title}</strong>
+        <span>{message}</span>
+      </div>
+      <button
+        aria-label={`Hide ${title}`}
+        className="icon-button editor-validation-banner-dismiss"
+        onClick={onDismiss}
+        title={`Hide ${title}`}
+        type="button"
+      >
+        <span aria-hidden="true" className="material-symbols-outlined">
+          close
+        </span>
+      </button>
+    </section>
+  );
+}
 
 type SportsbookRecord = {
   sportsbook_bet_id: string;
@@ -2592,6 +2633,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
+  const [dismissedValidationBanners, setDismissedValidationBanners] = useState<string[]>([]);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
     false
@@ -3245,6 +3287,31 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const missingPlacementFields = useMemo(
     () => getMissingPlacementFields(formState, resolvedCommission, multiLayOutcomes),
     [formState, multiLayOutcomes, resolvedCommission]
+  );
+  const validationBannerScope = selectedId ?? formState.sportsbook_bet_id ?? "new-draft";
+  const placementValidationBannerKey = useMemo(
+    () =>
+      `sportsbook-placement:${validationBannerScope}:${missingPlacementFields.join(
+        "|"
+      )}:${betSetupValidationActive}`,
+    [betSetupValidationActive, missingPlacementFields, validationBannerScope]
+  );
+  const calculatorValidationBannerKey = useMemo(
+    () => `sportsbook-calculator:${validationBannerScope}:${missingCalculatorFields.join("|")}`,
+    [missingCalculatorFields, validationBannerScope]
+  );
+  const betSetupValidationBannerKey = useMemo(
+    () => `sportsbook-bet-setup:${validationBannerScope}:${missingBetSetupFields.join("|")}`,
+    [missingBetSetupFields, validationBannerScope]
+  );
+  const dismissValidationBanner = useCallback((key: string) => {
+    setDismissedValidationBanners((current) =>
+      current.includes(key) ? current : [...current, key]
+    );
+  }, []);
+  const isValidationBannerDismissed = useCallback(
+    (key: string) => dismissedValidationBanners.includes(key),
+    [dismissedValidationBanners]
   );
   const placementPlanRequired =
     formState.status === "Placed" ||
@@ -6396,11 +6463,15 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               invalid={betSetupValidationActive && missingBetSetupFields.length > 0}
               title="Bet setup"
             >
-              {betSetupValidationActive && missingBetSetupFields.length > 0 ? (
-                <p className="field-validation-text" role="alert">
-                  Complete the required Bet setup fields before saving this sportsbook row:{" "}
-                  {missingBetSetupFields.join(", ")}.
-                </p>
+              {betSetupValidationActive &&
+              missingBetSetupFields.length > 0 &&
+              !isValidationBannerDismissed(betSetupValidationBannerKey) ? (
+                <EditorValidationBanner
+                  id="sportsbook.editor.bet-setup-validation"
+                  message={`Complete these fields before saving: ${missingBetSetupFields.join(", ")}.`}
+                  onDismiss={() => dismissValidationBanner(betSetupValidationBannerKey)}
+                  title="Bet setup incomplete"
+                />
               ) : null}
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
               <div className="form-grid">
@@ -6464,11 +6535,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   <div className="field-span-2 special-offer-suggestion-panel">
                     <div className="section-heading-row">
                       <div className="stack stack-tight">
-                        <span className="eyebrow">Known bookmaker coverage</span>
+                        <span className="eyebrow">Common combo bookmaker coverage</span>
                         <span className="field-help-text">
-                          Matched from{" "}
-                          universal Common Combo knowledge
-                          .
+                          Profile availability from the Fund Manager common-combo list.
                         </span>
                       </div>
                       <span className="table-chip">
@@ -6690,6 +6759,28 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                       </option>
                     ))}
                   </select>
+                  <div aria-label="Common fixture type shortcuts" className="field-choice-pills">
+                    {commonFixtureQuickPicks
+                      .filter((option) => fixtureTypeOptionsResolved.includes(option))
+                      .map((option) => (
+                        <button
+                          aria-pressed={formState.fixture_type === option}
+                          className={`field-choice-pill${
+                            formState.fixture_type === option ? " is-selected" : ""
+                          }`}
+                          key={option}
+                          onClick={() =>
+                            void applyDropdownChange(
+                              (current) => ({ ...current, fixture_type: option }),
+                              "Fixture type quick pick"
+                            )
+                          }
+                          type="button"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                  </div>
                 </label>
                 <label
                   className={`${getGuidedFieldClass("event_name")}${
@@ -6814,16 +6905,23 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               }
               title="Odds and matching"
             >
-              {placementPlanRequired && missingPlacementFields.length > 0 ? (
-                <p className="field-validation-text" role={betSetupValidationActive ? "alert" : "status"}>
-                  {betSetupValidationActive
-                    ? `Complete the required placed/settled sportsbook fields: ${missingPlacementFields.join(
-                        ", "
-                      )}.`
-                    : `Placement currently incomplete: ${missingPlacementFields.join(
-                        ", "
-                      )}. Save remains blocked until these are filled.`}
-                </p>
+              {placementPlanRequired &&
+              missingPlacementFields.length > 0 &&
+              !isValidationBannerDismissed(placementValidationBannerKey) ? (
+                <EditorValidationBanner
+                  id="sportsbook.editor.placement-validation"
+                  message={
+                    betSetupValidationActive
+                      ? `Complete these fields before saving: ${missingPlacementFields.join(", ")}.`
+                      : `Save remains blocked until these are filled: ${missingPlacementFields.join(", ")}.`
+                  }
+                  onDismiss={() => dismissValidationBanner(placementValidationBannerKey)}
+                  title={
+                    betSetupValidationActive
+                      ? "Placed or settled row needs required fields"
+                      : "Placement currently incomplete"
+                  }
+                />
               ) : null}
               <fieldset
                 className="section-fieldset stack"
@@ -6851,10 +6949,16 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   <div className="calculator-shell">
                     <div className="calculator-band calculator-band-primary">
                       <span className="eyebrow">Calculator</span>
-                      {calculatorUnlocked && !isPreviewReady && missingCalculatorFields.length > 0 ? (
-                        <p className="field-validation-text" role="alert">
-                          Complete calculator inputs: {missingCalculatorFields.join(", ")}.
-                        </p>
+                      {calculatorUnlocked &&
+                      !isPreviewReady &&
+                      missingCalculatorFields.length > 0 &&
+                      !isValidationBannerDismissed(calculatorValidationBannerKey) ? (
+                        <EditorValidationBanner
+                          id="sportsbook.editor.calculator-validation"
+                          message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
+                          onDismiss={() => dismissValidationBanner(calculatorValidationBannerKey)}
+                          title="Calculator inputs incomplete"
+                        />
                       ) : null}
                       <div className="form-grid calculator-input-grid">
                         {calculatorRuleItems.length > 0 ? (

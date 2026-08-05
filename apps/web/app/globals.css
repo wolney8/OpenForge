@@ -3971,7 +3971,16 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .field-control select {
-  padding-inline-end: 2.45rem;
+  appearance: none;
+  padding-inline-end: 3.1rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.35rem) 52%,
+    calc(100% - 1rem) 52%;
+  background-repeat: no-repeat;
+  background-size: 0.38rem 0.38rem;
 }
 
 .field-control input:disabled,
@@ -4074,6 +4083,88 @@ html[data-theme="dark"] .notification-count-badge {
   color: var(--danger);
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.editor-validation-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--outline);
+  background: var(--surface-container);
+  color: var(--text);
+}
+
+.editor-validation-banner-danger {
+  border-color: color-mix(in srgb, var(--danger) 70%, var(--outline));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--danger) 18%, transparent),
+      color-mix(in srgb, var(--surface-container) 92%, transparent)
+    );
+}
+
+.editor-validation-banner-icon {
+  color: var(--danger);
+  font-size: 1.35rem;
+}
+
+.editor-validation-banner-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.editor-validation-banner-copy strong {
+  color: var(--danger);
+  font-size: 0.95rem;
+}
+
+.editor-validation-banner-copy span {
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.editor-validation-banner-dismiss {
+  width: 2.3rem;
+  height: 2.3rem;
+  color: var(--danger);
+}
+
+.field-choice-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.1rem;
+}
+
+.field-choice-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.05rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: var(--surface-strong);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.field-choice-pill:hover,
+.field-choice-pill:focus-visible,
+.field-choice-pill.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--outline));
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-strong));
+  color: var(--primary-strong);
 }
 
 .field-help-text {
@@ -8121,6 +8212,11 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .workflow-editor-modal .field-control {
   min-width: 0;
   max-width: 100%;
+}
+
+.workflow-editor-modal .field-control {
+  padding: 0.18rem;
+  margin: -0.18rem;
 }
 
 .workflow-editor-modal .field-control input,
