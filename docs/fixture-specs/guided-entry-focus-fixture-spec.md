@@ -11,8 +11,8 @@ _Last updated: 2026-07-14_
 | GUIDE-001 | Empty sportsbook draft | Offer is next required field |
 | GUIDE-002 | No-lay selected | Lay fields hidden and not required |
 | GUIDE-003 | Multi-lay selected | Branch planner required; single lay field hidden |
+| GUIDE-003B | Multi-lay outcomes complete but one branch unplaced | Branch placement group is next required |
 | GUIDE-004 | Invalid save | First invalid field identified without colour alone |
 | GUIDE-005 | User actively typing | Guidance does not move focus |
 | GUIDE-006 | Offer/strategy contradiction | Review required; no guessed next step |
 | GUIDE-007 | Reduced motion | No pulsing/glow animation |
-
