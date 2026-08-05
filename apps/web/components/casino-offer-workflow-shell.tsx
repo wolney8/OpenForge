@@ -17,6 +17,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import type { CommonBetCombo } from "@/components/common-bet-combo-settings";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
@@ -32,7 +33,14 @@ import {
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
-import { formatDisplayDate, resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
+import {
+  formatDisplayDate,
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
+  resolveDateRange,
+  type DatePreset,
+} from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -129,6 +137,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name?: string;
   created_at: string;
   updated_at: string;
 };
@@ -976,6 +985,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [selectedComboId, setSelectedComboId] = useState("");
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -1257,10 +1267,30 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       }),
     [trackerSettings]
   );
+
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!trackerSettings || trackerSettings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
+        setTrackerSettings(savedSettings);
+        setStatusMessage(`Tracker range set to ${preset}.`);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, trackerSettings]
+  );
   const quickView = useMemo(() => {
-    const rangeRows = rows.filter((row) =>
-      isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
-    );
+    const rangeRows = initialIssueFilter
+      ? rows
+      : rows.filter((row) =>
+          isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
+        );
     const rewardLedRows = rangeRows.filter((row) => freeSpinCampaignTypes.has(row.offer_type));
     const wageringRows = rangeRows.filter((row) => wageringCampaignTypes.has(row.offer_type));
     const cashbackRows = rangeRows.filter((row) => row.offer_type === "Cashback");
@@ -1283,7 +1313,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       cashbackCount: cashbackRows.length,
       totalResolvedValue,
     };
-  }, [resolvedDateRange, rows]);
+  }, [initialIssueFilter, resolvedDateRange, rows]);
+  const quickViewRangeContext = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRange(resolvedDateRange);
+  const quickViewRangeDetail = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRangeContext(resolvedDateRange);
 
   const bookmakerOptions = useMemo(
     () =>
@@ -1667,6 +1703,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (
+        !initialIssueFilter &&
+        !feeReviewContext &&
+        !isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
+      ) {
+        return false;
+      }
       if (feeReviewContext && !feeReviewContext.recordIds.includes(row.casino_offer_id)) {
         return false;
       }
@@ -1697,7 +1740,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       }
       return true;
     });
-  }, [feeReviewContext, sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, initialIssueFilter, resolvedDateRange, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -2119,12 +2162,20 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           <LedgerLoadingIndicator label="Loading casino-offer ledger" />
         ) : null}
         <section className="stat-strip" aria-label="Casino quick view">
+          <TrackerRangeCard
+            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isActionView={Boolean(initialIssueFilter)}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={quickViewRangeDetail}
+            rangeContext={quickViewRangeContext}
+          />
           <article className="stat-card">
             <span className="eyebrow">Open / prospecting</span>
             <strong>
               {quickView.openCount} / {quickView.prospectingCount}
             </strong>
-            <span>Active rows • Placeholder rows</span>
+            <span>Active rows • Prospecting rows</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Settling / overdue</span>

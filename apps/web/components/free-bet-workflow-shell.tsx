@@ -17,6 +17,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
@@ -33,10 +34,13 @@ import {
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import {
   formatDisplayDate,
   formatHumanDisplayDate,
   formatMoney,
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
   resolveDateRange,
   type DatePreset,
 } from "@/lib/tracker-summary";
@@ -208,6 +212,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name?: string;
   created_at: string;
   updated_at: string;
 };
@@ -1138,6 +1143,7 @@ export function FreeBetWorkflowShell({
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
@@ -1509,6 +1515,24 @@ export function FreeBetWorkflowShell({
         rangeForwardDays: trackerSettings?.range_forward_days,
       }),
     [trackerSettings]
+  );
+
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!trackerSettings || trackerSettings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
+        setTrackerSettings(savedSettings);
+        setStatusMessage(`Tracker range set to ${preset}.`);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, trackerSettings]
   );
 
   const isNoLayStrategy = formState.match_strategy === "No Lay";
@@ -1941,6 +1965,13 @@ export function FreeBetWorkflowShell({
 
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (
+        !initialIssueFilter &&
+        !feeReviewContext &&
+        !isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
+      ) {
+        return false;
+      }
       if (feeReviewContext && !feeReviewContext.recordIds.includes(row.free_bet_id)) {
         return false;
       }
@@ -1992,7 +2023,7 @@ export function FreeBetWorkflowShell({
 
       return true;
     });
-  }, [feeReviewContext, sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, initialIssueFilter, resolvedDateRange, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -2021,9 +2052,11 @@ export function FreeBetWorkflowShell({
   }, [filteredSourceRows, query]);
 
   const quickView = useMemo(() => {
-    const rangeRows = rows.filter((row) =>
-      isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
-    );
+    const rangeRows = initialIssueFilter
+      ? rows
+      : rows.filter((row) =>
+          isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
+        );
     const totalReportingValue = rangeRows.reduce(
       (sum, row) => sum + parseFreeBetAmount(row.reporting_value ?? row.final_net_pnl ?? row.projected_current_pnl),
       0
@@ -2043,7 +2076,13 @@ export function FreeBetWorkflowShell({
       upcomingExpiryCount: expiryWatchRows.filter((row) => row.expiry_datetime.trim()).length,
       totalReportingValue,
     };
-  }, [resolvedDateRange, rows]);
+  }, [initialIssueFilter, resolvedDateRange, rows]);
+  const quickViewRangeContext = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRange(resolvedDateRange);
+  const quickViewRangeDetail = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRangeContext(resolvedDateRange);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
@@ -2591,6 +2630,14 @@ export function FreeBetWorkflowShell({
           <LedgerLoadingIndicator label="Loading free-bet ledger" />
         ) : null}
         <section className="stat-strip" aria-label="Free-bet quick view">
+          <TrackerRangeCard
+            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isActionView={Boolean(initialIssueFilter)}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={quickViewRangeDetail}
+            rangeContext={quickViewRangeContext}
+          />
           <article className="stat-card">
             <span className="eyebrow">Open / overdue</span>
             <strong>{quickView.openCount} / {quickView.overdueCount}</strong>
@@ -2599,7 +2646,7 @@ export function FreeBetWorkflowShell({
           <article className="stat-card">
             <span className="eyebrow">Placed / available</span>
             <strong>{quickView.placedCount} / {quickView.availableCount}</strong>
-            <span>Placed rows • Placeholder rows</span>
+            <span>Placed rows • Available awards</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Underlays / no lay</span>

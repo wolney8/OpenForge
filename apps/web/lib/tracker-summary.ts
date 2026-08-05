@@ -11,6 +11,8 @@ export type DatePreset =
   | "Fortnight"
   | "This Month"
   | "Last Month"
+  | "This Year"
+  | "All Dates"
   | "Custom";
 
 export type AccountSummaryRecord = {
@@ -44,6 +46,7 @@ export type SportsbookSummaryRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  created_at?: string | null;
   partial_lay_reminder_state?: string;
   partial_lay_reminder_due_at?: string;
 };
@@ -65,6 +68,7 @@ export type FreeBetSummaryRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  created_at?: string | null;
 };
 
 export type CasinoSummaryRecord = {
@@ -444,6 +448,24 @@ export function formatHumanDisplayDate(value: string, includeTime = false): stri
   return formatHumanDate(parsed, includeTime);
 }
 
+function formatCompactRangeDate(value: Date): string {
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(value);
+  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(value);
+  const day = value.getDate();
+  return `${weekday} ${day}${ordinalSuffix(day)} ${month}`;
+}
+
+export function formatResolvedDateRange(range: ResolvedDateRange): string {
+  return `${formatCompactRangeDate(range.start)} to ${formatCompactRangeDate(range.end)}`;
+}
+
+export function formatResolvedDateRangeContext(
+  range: ResolvedDateRange,
+  label = "Tracker range"
+): string {
+  return `${label}: ${range.preset} • ${formatResolvedDateRange(range)}`;
+}
+
 export function getDatePresetOptions(): DatePreset[] {
   return [
     "Today",
@@ -456,6 +478,8 @@ export function getDatePresetOptions(): DatePreset[] {
     "Fortnight",
     "This Month",
     "Last Month",
+    "This Year",
+    "All Dates",
     "Custom",
   ];
 }
@@ -523,6 +547,14 @@ export function resolveDateRange({
       baseEnd = endOfMonth(lastMonthDate);
       break;
     }
+    case "This Year":
+      baseStart = new Date(baseToday.getFullYear(), 0, 1);
+      baseEnd = endOfDay(new Date(baseToday.getFullYear(), 11, 31));
+      break;
+    case "All Dates":
+      baseStart = new Date(2000, 0, 1);
+      baseEnd = endOfDay(new Date(2100, 11, 31));
+      break;
     case "Custom":
       baseStart = startOfDay(parseDateInput(customStart) ?? baseToday);
       baseEnd = endOfDay(parseDateInput(customEnd) ?? baseStart);
@@ -643,13 +675,23 @@ export function summarizeTrackerData(
     .reduce((sum, row) => sum + parseMoney(row.pending_withdrawal_amount), 0);
 
   const sportsbookInRange = dataset.sportsbookBets.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
+    dateWithinRange(parseDateInput(row.date_settled) ?? parseDateInput(row.created_at), resolvedDateRange)
   );
   const freeBetsInRange = dataset.freeBets.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
+    dateWithinRange(
+      parseDateInput(row.date_settled) ??
+        parseDateInput(row.expiry_datetime) ??
+        parseDateInput(row.created_at),
+      resolvedDateRange
+    )
   );
   const casinoInRange = dataset.casinoOffers.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settling), resolvedDateRange)
+    dateWithinRange(
+      parseDateInput(row.date_settling) ??
+        parseDateInput(row.date_started) ??
+        parseDateInput(row.expiry_datetime),
+      resolvedDateRange
+    )
   );
   const cashAdjustmentsInRange = dataset.cashAdjustments.filter((row) =>
     dateWithinRange(parseDateInput(row.adjustment_date), resolvedDateRange)

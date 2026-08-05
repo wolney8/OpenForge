@@ -167,10 +167,6 @@ async function loadProfileTrackerSettings(
   );
 }
 
-function rangeLabel(start: Date, end: Date) {
-  return `${formatHumanDisplayDate(start.toISOString())} to ${formatHumanDisplayDate(end.toISOString())}`;
-}
-
 function ReportTable({
   feeHeading,
   feeGranularity,
@@ -1043,7 +1039,7 @@ export function CrossProfileAnalytics({
     >
       <div className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}>
         {activeTab !== "profiles" && activeTab !== "fees" ? (
-        <details className="profile-report-picker">
+        <details className="profile-report-picker fund-manager-control-slot-profile">
         <summary>
           <span aria-hidden="true" className="material-symbols-outlined">
             group
@@ -1086,7 +1082,7 @@ export function CrossProfileAnalytics({
         ) : null}
         {activeTab === "profiles" ? (
           <>
-        <label className="m3-picker-field">
+        <label className="m3-picker-field fund-manager-control-slot-search">
           <span className="m3-picker-label">Search directory</span>
           <span className="m3-picker-control">
             <span aria-hidden="true" className="material-symbols-outlined">search</span>
@@ -1101,7 +1097,7 @@ export function CrossProfileAnalytics({
             />
           </span>
         </label>
-        <label className="m3-picker-field">
+        <label className="m3-picker-field fund-manager-control-slot-status">
           <span className="m3-picker-label">Directory status</span>
           <span className="m3-picker-control">
             <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
@@ -1123,7 +1119,7 @@ export function CrossProfileAnalytics({
           </>
         ) : null}
         {activeTab === "fees" ? (
-          <label className="m3-picker-field">
+          <label className="m3-picker-field fund-manager-control-slot-range">
             <span className="m3-picker-label">Closed month</span>
             <span className="m3-picker-control">
               <span aria-hidden="true" className="material-symbols-outlined">calendar_month</span>
@@ -1141,7 +1137,7 @@ export function CrossProfileAnalytics({
           </label>
         ) : null}
         {activeTab !== "reports" && activeTab !== "fees" ? (
-        <div className="compact-report-controls">
+        <div className="compact-report-controls fund-manager-control-slot-range">
           <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
             <span className="m3-picker-control">
@@ -1184,12 +1180,6 @@ export function CrossProfileAnalytics({
         </div>
       </div>
 
-      {activeTab !== "reports" ? (
-        <p className="lede">
-          Shared range: {rangeLabel(resolvedRange.start, resolvedRange.end)}. Displayed earnings are pre-fee.
-        </p>
-      ) : null}
-
       {isLoading ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (
@@ -1202,6 +1192,70 @@ export function CrossProfileAnalytics({
             .map((failure) => failure.displayName)
             .join(", ")} are excluded from totals.
         </div>
+      ) : null}
+
+      {!isLoading ? (
+        <section
+          aria-label="Combined portfolio visual summary"
+          className="portfolio-dashboard-view portfolio-dashboard-compact profiles-visual-header"
+          data-pd-id="profiles.visual-summary"
+        >
+          <article className="dashboard-visual-card dashboard-performance-card">
+            <div className="dashboard-visual-header">
+              <div>
+                <span className="eyebrow">Combined P&amp;L</span>
+                <h3>Selected Range Performance</h3>
+              </div>
+              <span className="badge">{preset}</span>
+            </div>
+            <strong className="dashboard-hero-value">
+              <FinancialValue
+                label="Combined selected range profit and loss"
+                value={combined.totals.grossBettingPnl}
+              />
+            </strong>
+            <div className="dashboard-point-rail profiles-command-rail" aria-label="Fund Manager command metrics">
+              <span>
+                <small>Active Profiles</small>
+                {selectedProfileIds.length}
+              </span>
+              <span>
+                <small>Retained Profit</small>
+                <FinancialValue animate={false} value={combined.totals.retainedProfit} />
+              </span>
+              <span>
+                <small>Cash Snapshot</small>
+                <FinancialValue animate={false} value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />
+              </span>
+              <span>
+                <small>Fee Position</small>
+                <FinancialValue animate={false} value={allProfilesFeePosition.availableToWithdraw} />
+              </span>
+            </div>
+          </article>
+          <article className="dashboard-visual-card dashboard-focus-card">
+            <div className="dashboard-visual-header">
+              <div>
+                <span className="eyebrow">Fund Manager Actions</span>
+                <h3>Profile Workload</h3>
+              </div>
+            </div>
+            <dl className="dashboard-focus-list">
+              <div>
+                <dt>Sportsbook</dt>
+                <dd>{combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0)}</dd>
+              </div>
+              <div>
+                <dt>Free Bets</dt>
+                <dd>{combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0)}</dd>
+              </div>
+              <div>
+                <dt>Casino</dt>
+                <dd>{combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0)}</dd>
+              </div>
+            </dl>
+          </article>
+        </section>
       ) : null}
 
       <div

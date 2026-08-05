@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+const apiBaseUrl = "http://127.0.0.1:8010";
 const sportsbookRoute = "/profiles/profile-demo-001/tracker/sportsbook-bets";
 const freeBetRoute = "/profiles/profile-demo-001/tracker/free-bets";
+const casinoRoute = "/profiles/profile-demo-001/tracker/casino-offers";
+const cashAdjustmentRoute = "/profiles/profile-demo-001/tracker/cash-adjustments";
 
 function colourChannels(value: string) {
   const rgbMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
@@ -31,9 +34,60 @@ function expectRedDominant(value: string) {
   expect(channels.r).toBeGreaterThan(channels.b);
 }
 
+function normalizeText(value: string | null) {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function parseApiDate(value: string | null | undefined) {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  const parsed = new Date(normalized.replace(" ", "T"));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getLastMonthRange(today = new Date()) {
+  const start = new Date(today.getFullYear(), today.getMonth() - 1, 1, 0, 0, 0, 0);
+  const end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+  return { end, start };
+}
+
+function isWithinRange(value: Date | null, range: { start: Date; end: Date }) {
+  return Boolean(value && value >= range.start && value <= range.end);
+}
+
+async function expectRangeCardControlContained(page: import("@playwright/test").Page) {
+  const rangeCard = page.locator('[data-pd-id="tracker.range-card"]').first();
+  const rangeSelect = page.locator('[data-pd-id="tracker.range-card.select"]').first();
+  await expect(rangeCard).toBeVisible();
+  await expect(rangeSelect).toBeVisible();
+  const rangeCardBox = await rangeCard.boundingBox();
+  const rangeSelectBox = await rangeSelect.boundingBox();
+  expect(rangeCardBox).not.toBeNull();
+  expect(rangeSelectBox).not.toBeNull();
+  expect(rangeSelectBox!.x).toBeGreaterThanOrEqual(rangeCardBox!.x);
+  expect(rangeSelectBox!.x + rangeSelectBox!.width).toBeLessThanOrEqual(
+    rangeCardBox!.x + rangeCardBox!.width + 1
+  );
+  expect(rangeSelectBox!.y).toBeGreaterThanOrEqual(rangeCardBox!.y);
+  expect(rangeSelectBox!.y + rangeSelectBox!.height).toBeLessThanOrEqual(
+    rangeCardBox!.y + rangeCardBox!.height + 1
+  );
+}
+
+async function clearLedgerTableState(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    const ledgers = ["sportsbook-bets", "free-bets", "casino-offers", "cash-adjustments"];
+    for (const ledger of ledgers) {
+      window.localStorage.removeItem(`openforge-ledger-table-mode:profile-demo-001:${ledger}`);
+      window.localStorage.removeItem(`openforge-ledger-table-filters:profile-demo-001:${ledger}`);
+    }
+  });
+}
+
 test("unchanged editor navigation is silent while a real edit is protected", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto(sportsbookRoute);
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
   const firstSportsbookRow = page.locator(".data-table tbody tr").first();
   await expect(firstSportsbookRow).toBeVisible();
   await firstSportsbookRow.click();
@@ -124,19 +178,171 @@ test("tracker controls expose visible focus and an operable theme toggle", async
   await expect(page.getByRole("button", { name: /Switch to (light|dark) mode/ })).toBeVisible();
 });
 
-test("top bar profile summary exposes accounting-formatted coloured P&L", async ({ page }) => {
+test("top bar profile summary shows date range, value, and range-name hover detail", async ({
+  page,
+  request,
+}) => {
   test.setTimeout(90_000);
+  await clearLedgerTableState(page);
   await page.goto(sportsbookRoute);
   await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+
+  const rangeCard = page.locator('[data-pd-id="tracker.range-card"]').first();
+  const rangeSelect = page.locator('[data-pd-id="tracker.range-card.select"]').first();
+  await expectRangeCardControlContained(page);
+  await expect(rangeCard).toHaveAttribute("title", /Tracker range:/);
+  await expect(rangeCard).not.toContainText("Tracker range:");
 
   const summaryButton = page.locator("button.summary-menu-button");
   await expect(summaryButton).toBeVisible();
   await expect(summaryButton).not.toContainText("Loading profile...", { timeout: 30_000 });
   await expect(summaryButton).not.toContainText("Loading range and P&L...", { timeout: 30_000 });
+  await expect(summaryButton).not.toContainText("Tracker range:");
   const summaryValue = summaryButton.locator(".summary-menu-financial-value");
   await expect(summaryValue).toBeVisible({ timeout: 90_000 });
   await expect(summaryValue).toHaveAttribute("data-money-tone", /^(positive|negative|neutral)$/);
   await expect(summaryValue).toContainText(/^£ ((\([0-9,]+\.[0-9]{2}\))|([0-9,]+\.[0-9]{2})|-)$/);
+  await expect(summaryButton).toHaveAttribute("title", /Tracker range:/);
+  const resolvedValueCard = page
+    .locator(".stat-card", { hasText: /Resolved value/i })
+    .first()
+    .locator(".financial-value");
+  await expect
+    .poll(async () => normalizeText(await summaryValue.textContent()))
+    .toBe(normalizeText(await resolvedValueCard.textContent()));
+
+  await rangeSelect.selectOption("This Month");
+  await expect(rangeCard).toHaveAttribute("title", /Tracker range: This Month/, {
+    timeout: 30_000,
+  });
+  await expect(summaryButton).toHaveAttribute("title", /Tracker range: This Month/, {
+    timeout: 30_000,
+  });
+  await expect
+    .poll(async () => normalizeText(await summaryValue.textContent()))
+    .toBe(normalizeText(await resolvedValueCard.textContent()));
+
+  await rangeSelect.selectOption("Last Month");
+  await expect(rangeCard).toHaveAttribute("title", /Tracker range: Last Month/, {
+    timeout: 30_000,
+  });
+  const sportsbookRowsResponse = await request.get(
+    `${apiBaseUrl}/profiles/profile-demo-001/sportsbook-bets`
+  );
+  expect(sportsbookRowsResponse.ok()).toBeTruthy();
+  const sportsbookRows = (await sportsbookRowsResponse.json()) as Array<{
+    created_at?: string | null;
+    date_settled?: string | null;
+  }>;
+  const lastMonthRange = getLastMonthRange();
+  const expectedLastMonthRows = sportsbookRows.filter((row) => {
+    const anchor = parseApiDate(row.date_settled) ?? parseApiDate(row.created_at);
+    return Boolean(
+      anchor && anchor >= lastMonthRange.start && anchor <= lastMonthRange.end
+    );
+  }).length;
+  const visibleDataRows = page
+    .locator(".data-table tbody tr")
+    .filter({ hasNot: page.locator(".empty-cell") });
+  await expect
+    .poll(async () => visibleDataRows.count())
+    .toBe(Math.min(expectedLastMonthRows, 8));
+});
+
+test("top bar profile menu exposes dashboard picker options", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/profiles/profile-demo-001/tracker/dashboard");
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 90_000 });
+
+  const summaryButton = page.locator("button.summary-menu-button");
+  await expect(summaryButton).toBeVisible();
+  await summaryButton.click();
+
+  await expect(page.getByText("Profile dashboards", { exact: true })).toBeVisible();
+  const dashboardOptions = page.locator('[data-pd-id^="profile-menu.dashboard."]');
+  await expect(dashboardOptions.first()).toBeVisible();
+  const optionCount = await dashboardOptions.count();
+  expect(optionCount).toBeGreaterThan(0);
+
+  await dashboardOptions.first().click();
+  await expect(page).toHaveURL(/\/profiles\/[^/]+\/tracker\/dashboard$/);
+});
+
+test("tracker range scopes visible rows across ledgers unless the route is an action view", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  await clearLedgerTableState(page);
+  const lastMonthRange = getLastMonthRange();
+  const scenarios = [
+    {
+      apiPath: "free-bets",
+      loadingLabel: "Loading free-bet ledger",
+      route: freeBetRoute,
+      countExpectedRows: (rows: Array<Record<string, string | null | undefined>>) =>
+        rows.filter((row) =>
+          isWithinRange(
+            parseApiDate(row.date_settled) ??
+              parseApiDate(row.expiry_datetime) ??
+              parseApiDate(row.created_at),
+            lastMonthRange
+          )
+        ).length,
+    },
+    {
+      apiPath: "casino-offers",
+      loadingLabel: "Loading casino-offer ledger",
+      route: casinoRoute,
+      countExpectedRows: (rows: Array<Record<string, string | null | undefined>>) =>
+        rows.filter((row) =>
+          isWithinRange(
+            parseApiDate(row.date_settling) ??
+              parseApiDate(row.date_started) ??
+              parseApiDate(row.expiry_datetime),
+            lastMonthRange
+          )
+        ).length,
+    },
+    {
+      apiPath: "cash-adjustments",
+      loadingLabel: "Loading cash-adjustment ledger",
+      route: cashAdjustmentRoute,
+      countExpectedRows: (rows: Array<Record<string, string | null | undefined>>) =>
+        rows.filter((row) => isWithinRange(parseApiDate(row.adjustment_date), lastMonthRange))
+          .length,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    await page.goto(scenario.route);
+    await expect(page.getByText(scenario.loadingLabel)).toBeHidden({ timeout: 90_000 });
+    const rangeSelect = page.locator('[data-pd-id="tracker.range-card.select"]').first();
+    await expectRangeCardControlContained(page);
+    await rangeSelect.selectOption("Last Month");
+    await expect(page.locator('[data-pd-id="tracker.range-card"]').first()).toHaveAttribute(
+      "title",
+      /Tracker range: Last Month/,
+      { timeout: 30_000 }
+    );
+
+    const response = await request.get(
+      `${apiBaseUrl}/profiles/profile-demo-001/${scenario.apiPath}`
+    );
+    expect(response.ok()).toBeTruthy();
+    const rows = (await response.json()) as Array<Record<string, string | null | undefined>>;
+    const expectedVisibleRows = Math.min(scenario.countExpectedRows(rows), 8);
+    const visibleDataRows = page
+      .locator(".data-table tbody tr")
+      .filter({ hasNot: page.locator(".empty-cell") });
+    await expect.poll(async () => visibleDataRows.count()).toBe(expectedVisibleRows);
+  }
+
+  await page.goto(`${freeBetRoute}?view=issues&issue=all-issues&source=profiles`);
+  await expect(page.getByText("Loading free-bet ledger")).toBeHidden({ timeout: 90_000 });
+  await expect(page.locator('[data-pd-id="tracker.range-card"]').first()).toContainText(
+    "All Dates"
+  );
 });
 
 test("ledger row delete uses the in-app destructive confirmation", async ({ page }) => {

@@ -7,14 +7,23 @@ import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import {
   fetchJsonAndCache,
   readCachedJson,
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
 import {
+  summarizeFeePeriods,
+  type FeePeriodApiRecord,
+} from "@/lib/fee-period-summary";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
+import {
   formatHumanDisplayDate,
   formatMoney,
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
   resolveDateRange,
   summarizeTrackerData,
   type AccountSummaryRecord,
@@ -44,14 +53,19 @@ type TrackerSettingsRecord = {
   mug_bet_frequency_days: number;
   free_bet_expiry_alert_window_days: number;
   use_global_date_range_toggle: boolean;
+  this_month_mode: string;
+  default_free_bet_underlay_factor: string;
+  default_free_bet_overlay_factor: string;
+  default_bonus_retention_percent: string;
+  default_exchange_name?: string;
+  dashboard_view_mode?: string;
+  weekly_profit_target?: string;
+  monthly_profit_target?: string;
+  annual_profit_target?: string;
 };
 
 function readErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
-}
-
-function buildRangeLabel(start: Date, end: Date) {
-  return `${formatHumanDisplayDate(start.toISOString())} to ${formatHumanDisplayDate(end.toISOString())}`;
 }
 
 function isWithinResolvedRange(value: string, start: Date, end: Date) {
@@ -227,8 +241,9 @@ function renderAttentionTable({
 
 export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellProps) {
   const [data, setData] = useState<TrackerSummaryDataset | null>(null);
+  const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
-  const [statusMessage, setStatusMessage] = useState("Loading tracker summaries...");
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadData = useCallback(async () => {
@@ -239,6 +254,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       casinoOffers: `${apiBaseUrl}/profiles/${profileId}/casino-offers`,
       cashAdjustments: `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`,
       balanceSnapshots: `${apiBaseUrl}/profiles/${profileId}/balance-snapshots`,
+      feePeriods: `${apiBaseUrl}/profiles/${profileId}/fee-periods`,
       trackerSettings: `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
     };
     const cachedSettings = readCachedJson<TrackerSettingsRecord>(
@@ -270,6 +286,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         urls.balanceSnapshots,
         TRACKER_STALE_WHILE_REFRESH_MS
       ),
+      feePeriods: readCachedJson<FeePeriodApiRecord[]>(
+        urls.feePeriods,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
     };
 
     if (
@@ -279,7 +299,8 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       cachedData.freeBets &&
       cachedData.casinoOffers &&
       cachedData.cashAdjustments &&
-      cachedData.balanceSnapshots
+      cachedData.balanceSnapshots &&
+      cachedData.feePeriods
     ) {
       setSettings(cachedSettings);
       setData({
@@ -290,7 +311,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         cashAdjustments: cachedData.cashAdjustments,
         balanceSnapshots: cachedData.balanceSnapshots,
       });
-      setStatusMessage("Refreshing tracker summaries...");
+      setFeePeriods(cachedData.feePeriods);
     }
 
     const [
@@ -300,6 +321,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       casinoOffers,
       cashAdjustments,
       balanceSnapshots,
+      feePeriodsResponse,
       trackerSettings,
     ] = await Promise.all([
       fetchJsonAndCache<AccountSummaryRecord[]>(urls.accounts),
@@ -308,10 +330,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       fetchJsonAndCache<CasinoSummaryRecord[]>(urls.casinoOffers),
       fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments),
       fetchJsonAndCache<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots),
+      fetchJsonAndCache<FeePeriodApiRecord[]>(urls.feePeriods),
       fetchJsonAndCache<TrackerSettingsRecord>(urls.trackerSettings),
     ]);
 
     setSettings(trackerSettings);
+    setFeePeriods(feePeriodsResponse);
     setData({
       accounts,
       sportsbookBets,
@@ -326,12 +350,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     const timeoutId = window.setTimeout(() => {
       void loadData()
         .then(() => {
-          setStatusMessage("Tracker summaries loaded from live profile rows.");
           setErrorMessage("");
         })
         .catch((error: unknown) => {
           setErrorMessage(readErrorMessage(error, "Unable to load tracker summaries"));
-          setStatusMessage("Tracker summaries could not be loaded.");
         });
     }, 0);
 
@@ -356,6 +378,23 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     [settings]
   );
 
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!settings || settings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, settings, preset);
+        setSettings(savedSettings);
+      } catch (error) {
+        setErrorMessage(readErrorMessage(error, "Unable to save tracker range."));
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, settings]
+  );
+
   const summary = useMemo(() => {
     if (!data) {
       return null;
@@ -372,6 +411,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     settings?.mug_bet_frequency_days,
     settings?.use_global_date_range_toggle,
   ]);
+
+  const feePosition = useMemo(
+    () => summarizeFeePeriods(feePeriods, resolvedRange.start, resolvedRange.end),
+    [feePeriods, resolvedRange.end, resolvedRange.start]
+  );
 
   const openAttentionRows = useMemo(() => {
     if (!data) {
@@ -501,20 +545,15 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             <AccessScopeBadge />
           </div>
         </div>
-        <section className="stat-strip" aria-label="Resolved range and workbook reporting">
-          <article className="stat-card">
-            <span className="eyebrow">Preset</span>
-            <strong>{settings?.active_date_preset ?? "Week (Mon-Sun)"}</strong>
-            <span>
-              Back {settings?.range_back_days ?? 0} / Forward {settings?.range_forward_days ?? 0}
-            </span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Resolved range</span>
-            <strong>{buildRangeLabel(resolvedRange.start, resolvedRange.end)}</strong>
-            <span>{statusMessage}</span>
-          </article>
-          {summary ? (
+        <section className="stat-strip" aria-label="Tracker range and reporting">
+          <TrackerRangeCard
+            activePreset={settings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={formatResolvedDateRangeContext(resolvedRange)}
+            rangeContext={formatResolvedDateRange(resolvedRange)}
+          />
+          {summary && !isDashboardLike ? (
             <>
               <article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
@@ -557,6 +596,27 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
       {summary ? (
         <>
+          {isDashboardLike && (
+            <PortfolioDashboardView
+              activePreset={settings?.active_date_preset ?? "Week (Mon-Sun)"}
+              isRangeSaving={isTrackerRangeSaving}
+              onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+              profileId={profileId}
+              dataset={data ?? undefined}
+              resolvedRange={resolvedRange}
+              settings={{
+                dashboard_view_mode: settings?.dashboard_view_mode,
+                weekly_profit_target: settings?.weekly_profit_target,
+                monthly_profit_target: settings?.monthly_profit_target,
+                annual_profit_target: settings?.annual_profit_target,
+              }}
+              summary={summary}
+              feePosition={feePosition}
+            />
+          )}
+
+          {!isDashboardLike ? (
+          <>
           <section className="content-panel stack">
             <div className="panel-header">
               <h2>Selected Range Module Mix</h2>
@@ -885,7 +945,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <article className="stat-card">
                   <span className="eyebrow">Cadence</span>
                   <strong>{settings?.mug_bet_frequency_days ?? 14} days</strong>
-                  <span>Settings-owned workbook cadence</span>
+                  <span>Set in profile settings</span>
                 </article>
               </section>
           )}
@@ -973,6 +1033,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               </div>
             </section>
           )}
+
+          </>
+          ) : null}
 
           {isReports && (
             <>
@@ -1126,7 +1189,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           )}
         </>
       ) : (
-        <LedgerLoadingIndicator label="Loading live tracker summaries" />
+        <LedgerLoadingIndicator label="Loading tracker summaries" />
       )}
     </section>
   );

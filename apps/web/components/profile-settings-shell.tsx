@@ -7,13 +7,14 @@ import { ExchangeCommissionSettings } from "@/components/exchange-commission-set
 import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
+import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
-  { id: "defaults", label: "Tracker Defaults" },
-  { id: "spreadsheet-transfer", label: "Spreadsheet Transfer" },
-  { id: "offer-lists", label: "Offer Lists" },
-  { id: "commission", label: "Exchange Commission" },
-  { id: "account-authorities", label: "Account Authorities" },
+  { id: "defaults", label: "Defaults" },
+  { id: "spreadsheet-transfer", label: "Spreadsheet" },
+  { id: "offer-lists", label: "Lists" },
+  { id: "commission", label: "Commission" },
+  { id: "account-authorities", label: "Accounts" },
 ] as const;
 
 type SettingsSection = (typeof settingsSections)[number]["id"];
@@ -24,6 +25,26 @@ function isSettingsSection(value: string): value is SettingsSection {
 
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
   const [activeSection, setActiveSection] = useState<SettingsSection>("defaults");
+  const [profileName, setProfileName] = useState(profileId);
+
+  useEffect(() => {
+    let isActive = true;
+    void fetch(`${apiBaseUrl}/profiles/${profileId}`, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load profile.");
+        return response.json() as Promise<{ display_name?: string }>;
+      })
+      .then((profile) => {
+        if (isActive) setProfileName(profile.display_name?.trim() || profileId);
+      })
+      .catch(() => {
+        if (isActive) setProfileName(profileId);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [profileId]);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -61,7 +82,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
     <section className="stack profile-settings-shell">
       <section className="content-panel stack sportsbook-page-shell">
         <div className="sportsbook-page-header">
-          <h1 className="sportsbook-page-title">Settings</h1>
+          <h1 className="sportsbook-page-title">Settings for {profileName} Profile</h1>
         </div>
         <div
           aria-label="Profile settings sections"

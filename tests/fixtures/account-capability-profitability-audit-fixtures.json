@@ -1,0 +1,310 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/account-health-intelligence-contract.md",
+  "cases": [
+    {
+      "case_id": "ACPI-001",
+      "scenario": "William Hill mixed capability",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-WH-DEMO",
+        "brand_name": "Bookmaker Mixed A",
+        "account_level_state": "Restricted",
+        "current_balance": "12.00"
+      },
+      "capabilities": [
+        {
+          "capability_type": "GeneralSportsbookPromotions",
+          "current_state": "Unavailable",
+          "commercial_state": "LowValue"
+        },
+        {
+          "capability_type": "PriceBoosts",
+          "current_state": "WorkingWithLimits",
+          "commercial_state": "WorthChecking",
+          "public_maximum_stake": "10.00",
+          "personal_maximum_stake": "1.00",
+          "expected_profit": "0.14",
+          "review_frequency": "Weekly"
+        },
+        {
+          "capability_type": "CasinoOffers",
+          "current_state": "Working",
+          "commercial_state": "WorthChecking",
+          "actual_profit": "0.67",
+          "review_frequency": "Monthly"
+        },
+        {
+          "capability_type": "StandardSportsbookBetting",
+          "current_state": "NotChecked",
+          "commercial_state": "NeedsReview",
+          "review_frequency": "Quarterly"
+        },
+        {
+          "capability_type": "ArbitrageBetting",
+          "current_state": "NotChecked",
+          "commercial_state": "NeedsReview",
+          "review_frequency": "Fortnightly"
+        },
+        {
+          "capability_type": "ExtraPlaces",
+          "current_state": "InsufficientTooling",
+          "commercial_state": "NeedsReview",
+          "review_frequency": "ManualOnly"
+        },
+        {
+          "capability_type": "DepositAccess",
+          "current_state": "Working",
+          "review_frequency": "SixMonthly"
+        },
+        {
+          "capability_type": "WithdrawalAccess",
+          "current_state": "NotChecked",
+          "review_frequency": "Monthly"
+        }
+      ],
+      "expected": {
+        "account_commercial_value": "WorthChecking",
+        "next_account_review_frequency": "Monthly",
+        "must_not_classify_as": "EffectivelyDead"
+      }
+    },
+    {
+      "case_id": "ACPI-002",
+      "scenario": "Bet365 partial audit",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-B365-DEMO",
+        "brand_name": "Bookmaker Standard A",
+        "account_level_state": "Active"
+      },
+      "audit_session": {
+        "state": "PartiallyCompleted"
+      },
+      "observations": [
+        {
+          "observation_type": "StandardStakeTest",
+          "requested_stake": "10.00",
+          "submitted_stake": "10.00",
+          "accepted_stake": "10.00"
+        },
+        {
+          "observation_type": "DepositPageCheck",
+          "access_outcome": "Working"
+        }
+      ],
+      "expected": {
+        "StandardSportsbookBetting": "Working",
+        "GeneralSportsbookPromotions": "Unavailable",
+        "PriceBoosts": "NotChecked",
+        "ArbitrageBetting": "NotChecked",
+        "WithdrawalAccess": "NotChecked",
+        "account_commercial_value": "NeedsReview"
+      }
+    },
+    {
+      "case_id": "ACPI-003",
+      "scenario": "standard betting works but ARBs rejected",
+      "profile_id": "PROFILE-A",
+      "observations": [
+        {
+          "capability_type": "StandardSportsbookBetting",
+          "observation_type": "StandardStakeTest",
+          "requested_stake": "10.00",
+          "accepted_stake": "10.00"
+        },
+        {
+          "capability_type": "ArbitrageBetting",
+          "observation_type": "ArbitrageStakeTest",
+          "requested_stake": "25.00",
+          "displayed_maximum_stake": "0.10",
+          "accepted_stake": "0.00"
+        }
+      ],
+      "expected": {
+        "StandardSportsbookBetting": "Working",
+        "ArbitrageBetting": "Rejected",
+        "arb_access_classification": "Rejected",
+        "commercial_value_rule": "remaining_capabilities_determine_value"
+      }
+    },
+    {
+      "case_id": "ACPI-004",
+      "scenario": "boost-only residual value",
+      "profile_id": "PROFILE-A",
+      "thresholds": {
+        "user_minimum_profit_threshold": "0.10",
+        "user_minimum_hourly_value_threshold": "5.00"
+      },
+      "capabilities": [
+        {
+          "capability_type": "GeneralSportsbookPromotions",
+          "current_state": "Unavailable"
+        },
+        {
+          "capability_type": "PriceBoosts",
+          "current_state": "WorkingWithLimits",
+          "personal_maximum_stake": "2.00",
+          "expected_profit": "0.22",
+          "estimated_minutes_required": 2,
+          "opportunity_frequency": "Weekly"
+        }
+      ],
+      "expected": {
+        "account_commercial_value": "WorthChecking",
+        "main_factor": "low_but_repeatable_boost_value"
+      }
+    },
+    {
+      "case_id": "ACPI-005",
+      "scenario": "casino-only residual value",
+      "profile_id": "PROFILE-A",
+      "capabilities": [
+        {
+          "capability_type": "StandardSportsbookBetting",
+          "current_state": "HeavilyRestricted"
+        },
+        {
+          "capability_type": "ArbitrageBetting",
+          "current_state": "Rejected"
+        },
+        {
+          "capability_type": "CasinoOffers",
+          "current_state": "Working",
+          "actual_profit": "0.67",
+          "last_profitable_use_at": "2026-08-03T09:00:00Z"
+        },
+        {
+          "capability_type": "FreeSpins",
+          "current_state": "Working",
+          "actual_profit": "0.67"
+        }
+      ],
+      "expected": {
+        "account_commercial_value": "WorthChecking",
+        "review_reason": "casino_only_residual_value"
+      }
+    },
+    {
+      "case_id": "ACPI-006",
+      "scenario": "insufficient tooling",
+      "profile_id": "PROFILE-A",
+      "capabilities": [
+        {
+          "capability_type": "ExtraPlaces",
+          "current_state": "InsufficientTooling",
+          "commercial_state": "NeedsReview",
+          "evidence_summary": "Extra Places visible but no approved matcher/catcher available"
+        }
+      ],
+      "expected": {
+        "ExtraPlaces": "InsufficientTooling",
+        "must_not_classify_as": "Unavailable"
+      }
+    },
+    {
+      "case_id": "ACPI-007",
+      "scenario": "stale evidence",
+      "profile_id": "PROFILE-A",
+      "as_of": "2026-08-03T00:00:00Z",
+      "capabilities": [
+        {
+          "capability_type": "PriceBoosts",
+          "current_state": "Working",
+          "last_checked_at": "2026-02-01T00:00:00Z",
+          "commercial_state": "StillProfitable"
+        }
+      ],
+      "expected": {
+        "confidence": "stale",
+        "due_for_review": true,
+        "review_priority": "High"
+      }
+    },
+    {
+      "case_id": "ACPI-008",
+      "scenario": "account with money and withdrawal concern",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-WITHDRAWAL-DEMO",
+        "current_balance": "120.00"
+      },
+      "capabilities": [
+        {
+          "capability_type": "LoginAccess",
+          "current_state": "Working"
+        },
+        {
+          "capability_type": "WithdrawalAccess",
+          "current_state": "WorkingWithLimits",
+          "commercial_state": "NeedsReview",
+          "evidence_summary": "Withdrawal delayed or KYC requested"
+        }
+      ],
+      "expected": {
+        "due_for_review": true,
+        "review_priority": "Critical",
+        "sorts_before_opportunity_checks": true
+      }
+    },
+    {
+      "case_id": "ACPI-009",
+      "scenario": "effectively dead",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-DEAD-DEMO",
+        "current_balance": "0.00"
+      },
+      "capabilities": [
+        {
+          "capability_type": "GeneralSportsbookPromotions",
+          "current_state": "Unavailable"
+        },
+        {
+          "capability_type": "StandardSportsbookBetting",
+          "current_state": "Rejected"
+        },
+        {
+          "capability_type": "ArbitrageBetting",
+          "current_state": "Rejected"
+        },
+        {
+          "capability_type": "CasinoOffers",
+          "current_state": "Unavailable"
+        }
+      ],
+      "expected": {
+        "account_commercial_value": "EffectivelyDead",
+        "review_frequency": "Yearly"
+      }
+    },
+    {
+      "case_id": "ACPI-010",
+      "scenario": "conflicting boost evidence",
+      "profile_id": "PROFILE-A",
+      "observations": [
+        {
+          "capability_type": "PriceBoosts",
+          "observation_type": "PriceBoostStakeTest",
+          "observed_at": "2026-08-02T12:00:00Z",
+          "accepted_stake": "2.00",
+          "expected_profit": "0.22"
+        },
+        {
+          "capability_type": "PriceBoosts",
+          "observation_type": "PriceBoostStakeTest",
+          "observed_at": "2026-08-03T12:00:00Z",
+          "requested_stake": "2.00",
+          "accepted_stake": "0.00",
+          "access_outcome": "Rejected"
+        }
+      ],
+      "expected": {
+        "PriceBoosts": "Unknown",
+        "confidence": "conflicting",
+        "review_required": true,
+        "StandardSportsbookBetting": "unchanged_if_separate_evidence_exists"
+      }
+    }
+  ]
+}

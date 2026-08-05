@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/extra-places-contract.md",
+  "cases": [
+    {
+      "case_id": "EP-001",
+      "scenario": "pending extra-place row",
+      "profile_id": "PROFILE-A",
+      "inputs": {
+        "status": "Placed",
+        "result": "Pending",
+        "each_way_stake_per_leg": "5.00",
+        "back_odds_win": "9.00",
+        "ordinary_place_count": 3,
+        "promotional_place_count": 4,
+        "place_terms": "1/4",
+        "win_lay_odds": "9.30",
+        "place_lay_odds": "3.10",
+        "commission_rate": "0.02"
+      },
+      "expected": {
+        "current_value_rule": "minimum_supported_scenario",
+        "final_value_rule": "unresolved_until_result",
+        "review_required": false
+      }
+    },
+    {
+      "case_id": "EP-002",
+      "scenario": "win branch",
+      "inputs": {
+        "status": "Settled",
+        "result": "Win"
+      },
+      "expected": {
+        "resolved_branch": "win",
+        "value_state": "final"
+      }
+    },
+    {
+      "case_id": "EP-003",
+      "scenario": "ordinary place branch",
+      "inputs": {
+        "status": "Settled",
+        "result": "Ordinary Place"
+      },
+      "expected": {
+        "resolved_branch": "ordinary_place",
+        "value_state": "final"
+      }
+    },
+    {
+      "case_id": "EP-004",
+      "scenario": "extra-place-only branch",
+      "inputs": {
+        "status": "Settled",
+        "result": "Extra Place Hit"
+      },
+      "expected": {
+        "resolved_branch": "extra_place_only",
+        "value_state": "final"
+      }
+    },
+    {
+      "case_id": "EP-005",
+      "scenario": "unplaced branch",
+      "inputs": {
+        "status": "Settled",
+        "result": "Unplaced"
+      },
+      "expected": {
+        "resolved_branch": "unplaced",
+        "value_state": "final"
+      }
+    },
+    {
+      "case_id": "EP-006",
+      "scenario": "non-runner",
+      "inputs": {
+        "status": "Settled",
+        "result": "Non Runner"
+      },
+      "expected": {
+        "draft_value": "0.00",
+        "review_required": true,
+        "review_reason": "non_runner_settlement_semantics"
+      }
+    },
+    {
+      "case_id": "EP-007",
+      "scenario": "Rule 4",
+      "inputs": {
+        "status": "Settled",
+        "result": "Rule 4 Adjustment",
+        "rule4_percent": "10.00"
+      },
+      "expected": {
+        "requires_rule4_adjustment": true,
+        "review_required": false
+      }
+    },
+    {
+      "case_id": "EP-008",
+      "scenario": "dead heat",
+      "inputs": {
+        "status": "Settled",
+        "result": "Dead Heat",
+        "dead_heat_factor": "0.50"
+      },
+      "expected": {
+        "requires_dead_heat_factor": true,
+        "review_required": false
+      }
+    },
+    {
+      "case_id": "EP-009",
+      "scenario": "partial exchange matching",
+      "inputs": {
+        "status": "Placed",
+        "result": "Pending",
+        "win_lay_actual": "3.00",
+        "win_lay_matched": "1.50"
+      },
+      "expected": {
+        "lay_state": "Part Laid",
+        "review_required": true
+      }
+    },
+    {
+      "case_id": "EP-010",
+      "scenario": "changed place terms",
+      "inputs": {
+        "status": "Settled",
+        "result": "Changed Place Terms"
+      },
+      "expected": {
+        "value_state": "blocked",
+        "review_required": true
+      }
+    },
+    {
+      "case_id": "EP-011",
+      "scenario": "unsupported branch",
+      "inputs": {
+        "status": "Settled",
+        "result": "Unsupported Result"
+      },
+      "expected": {
+        "value_state": "blocked",
+        "review_required": true
+      }
+    }
+  ]
+}

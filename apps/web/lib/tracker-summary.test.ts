@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countTrueOpenPositions,
   formatHumanDisplayDate,
+  formatResolvedDateRangeContext,
   formatTrackingTenure,
   resolveDateRange,
   summarizeTrackerData,
@@ -187,6 +188,39 @@ describe("resolveDateRange", () => {
 
     expect(localDateKey(resolved.start)).toBe("2026-06-29");
     expect(localDateKey(resolved.end)).toBe("2026-07-05");
+  });
+
+  it("resolves the current July 2026 fund-manager week as monday to sunday", () => {
+    const resolved = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2026-07-27");
+    expect(localDateKey(resolved.end)).toBe("2026-08-02");
+    expect(formatResolvedDateRangeContext(resolved)).toBe(
+      "Tracker range: Week (Mon-Sun) • Mon 27th Jul to Sun 2nd Aug"
+    );
+  });
+
+  it("resolves the current year for dashboard annual shortcuts", () => {
+    const resolved = resolveDateRange({
+      preset: "This Year",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2026-01-01");
+    expect(localDateKey(resolved.end)).toBe("2026-12-31");
+  });
+
+  it("resolves all dates as a broad tracker-safe window", () => {
+    const resolved = resolveDateRange({
+      preset: "All Dates",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2000-01-01");
+    expect(localDateKey(resolved.end)).toBe("2100-12-31");
   });
 });
 

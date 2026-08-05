@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { normalizeBonusRetentionPercentForUi } from "@/lib/tracker-settings";
 import {
-  formatDisplayDate,
+  normalizeDashboardDisplayMode,
+  type DashboardDisplayMode,
+  type DashboardTargetSettings,
+} from "@/lib/dashboard-analytics";
+import {
+  formatResolvedDateRange,
   getDatePresetOptions,
   resolveDateRange,
   type DatePreset,
@@ -26,9 +31,19 @@ type TrackerSettingsRecord = {
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
   default_exchange_name: string;
+  dashboard_view_mode: DashboardDisplayMode;
+  weekly_profit_target: string;
+  monthly_profit_target: string;
+  annual_profit_target: string;
   created_at: string;
   updated_at: string;
 };
+
+const dashboardViewModes: DashboardDisplayMode[] = [
+  "Compact",
+  "High-Density",
+  "Visual Comparison",
+];
 
 type Props = {
   profileId: string;
@@ -60,6 +75,10 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_overlay_factor: settings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: settings.default_bonus_retention_percent,
         default_exchange_name: settings.default_exchange_name,
+        dashboard_view_mode: settings.dashboard_view_mode,
+        weekly_profit_target: settings.weekly_profit_target,
+        monthly_profit_target: settings.monthly_profit_target,
+        annual_profit_target: settings.annual_profit_target,
       }) !==
       JSON.stringify({
         active_date_preset: pristineSettings.active_date_preset,
@@ -75,6 +94,10 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_overlay_factor: pristineSettings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: pristineSettings.default_bonus_retention_percent,
         default_exchange_name: pristineSettings.default_exchange_name,
+        dashboard_view_mode: pristineSettings.dashboard_view_mode,
+        weekly_profit_target: pristineSettings.weekly_profit_target,
+        monthly_profit_target: pristineSettings.monthly_profit_target,
+        annual_profit_target: pristineSettings.annual_profit_target,
       })
     );
   }, [pristineSettings, settings]);
@@ -159,6 +182,7 @@ export function TrackerDateSettings({ profileId }: Props) {
 
     setIsSaving(true);
     setErrorMessage("");
+    setStatusMessage("Saving changes...");
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -176,6 +200,10 @@ export function TrackerDateSettings({ profileId }: Props) {
         default_free_bet_overlay_factor: nextSettings.default_free_bet_overlay_factor,
         default_bonus_retention_percent: nextSettings.default_bonus_retention_percent,
         default_exchange_name: nextSettings.default_exchange_name,
+        dashboard_view_mode: nextSettings.dashboard_view_mode,
+        weekly_profit_target: nextSettings.weekly_profit_target,
+        monthly_profit_target: nextSettings.monthly_profit_target,
+        annual_profit_target: nextSettings.annual_profit_target,
       }),
     });
 
@@ -197,7 +225,7 @@ export function TrackerDateSettings({ profileId }: Props) {
   }
 
   async function saveSettings() {
-    if (!settings) {
+    if (!settings || !isDirty || isSaving) {
       return;
     }
 
@@ -234,50 +262,58 @@ export function TrackerDateSettings({ profileId }: Props) {
 
   return (
     <section className="content-subpanel stack" aria-label="Tracker date settings">
-      <div className="stack">
-        <span className="eyebrow">Tracker date settings</span>
-        <p className="lede">
-          Workbook parity: dashboard, profit tracker, and reports should read one
-          profile-scoped date-range setting rather than hosting separate controls.
-        </p>
+      <div className="section-heading-row">
+        <div className="stack">
+          <span className="eyebrow">Profile defaults</span>
+          <h2 className="section-title">Date Range and Tracker Defaults</h2>
+        </div>
+        {settings ? (
+          <span
+            className={`settings-save-state ${isSaving ? "is-saving" : isDirty ? "is-dirty" : "is-saved"}`}
+            data-pd-id="profile-settings.defaults.save-state"
+          >
+            {isSaving ? "Saving" : isDirty ? "Unsaved Changes" : "Saved"}
+          </span>
+        ) : null}
       </div>
       {settings ? (
         <section className="stat-strip" aria-label="Tracker date setting summary">
           <article className="stat-card">
-            <span className="eyebrow">Active preset</span>
+            <span className="eyebrow">Date range</span>
             <strong>{settings.active_date_preset}</strong>
-            <p className="lede">
-              Resolved: {formatDisplayDate(resolvedRange.start.toISOString())} to{" "}
-              {formatDisplayDate(resolvedRange.end.toISOString())}
-            </p>
+            <p className="lede">{formatResolvedDateRange(resolvedRange)}</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Range offsets</span>
             <strong>
               Back {settings.range_back_days} / Forward {settings.range_forward_days}
             </strong>
-            <p className="lede">These offsets expand the selected workbook summary window.</p>
+            <p className="lede">Applied to tracker summaries.</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Mug cadence</span>
             <strong>{settings.mug_bet_frequency_days} days</strong>
-            <p className="lede">
-              Profit Tracker account-health cues use this profile-scoped cadence.
-            </p>
+            <p className="lede">Account-health reminder cadence.</p>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Expiry alert + global toggle</span>
+            <span className="eyebrow">Expiry alert</span>
             <strong>{settings.free_bet_expiry_alert_window_days} days</strong>
-            <p className="lede">
-              Global range: {settings.use_global_date_range_toggle ? "Enabled" : "Disabled"}
-            </p>
+            <p className="lede">Free-bet warning window.</p>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Free-bet defaults</span>
+            <span className="eyebrow">Calculator defaults</span>
             <strong>
               Underlay {settings.default_free_bet_underlay_factor} / Overlay {settings.default_free_bet_overlay_factor}
             </strong>
             <p className="lede">Bonus retention {settings.default_bonus_retention_percent}%</p>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Dashboard targets</span>
+            <strong>{settings.dashboard_view_mode}</strong>
+            <p className="lede">
+              W {settings.weekly_profit_target || "Unset"} / M {settings.monthly_profit_target || "Unset"} / Y{" "}
+              {settings.annual_profit_target || "Unset"}
+            </p>
           </article>
         </section>
       ) : null}
@@ -290,238 +326,309 @@ export function TrackerDateSettings({ profileId }: Props) {
         </p>
       ) : null}
       {settings ? (
-        <div className="form-grid">
-          <label className="field-control">
-            <span>Active date preset</span>
-            <select
-              value={settings.active_date_preset}
-              onChange={(event) =>
-                void applyDropdownChange(
-                  (current) =>
-                    applyPresetDefaults(current, event.target.value as DatePreset),
-                  "Date preset change"
-                )
-              }
+        <div className="stack">
+          <section className="content-subpanel stack" aria-label="Date range controls">
+            <h3>Date Range</h3>
+            <div className="form-grid">
+              <label className="field-control">
+                <span>Active date preset</span>
+                <select
+                  value={settings.active_date_preset}
+                  onChange={(event) =>
+                    void applyDropdownChange(
+                      (current) =>
+                        applyPresetDefaults(current, event.target.value as DatePreset),
+                      "Date preset change"
+                    )
+                  }
+                >
+                  {getDatePresetOptions().map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-control">
+                <span>Custom start date</span>
+                <input
+                  type="date"
+                  value={settings.custom_start_date}
+                  disabled={settings.active_date_preset !== "Custom"}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({ ...current, custom_start_date: event.target.value }),
+                      "Custom start date change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Custom end date</span>
+                <input
+                  type="date"
+                  value={settings.custom_end_date}
+                  disabled={settings.active_date_preset !== "Custom"}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({ ...current, custom_end_date: event.target.value }),
+                      "Custom end date change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Range back days</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={settings.range_back_days}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        range_back_days: Number(event.target.value || "0"),
+                      }),
+                      "Range back days change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Range forward days</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={settings.range_forward_days}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        range_forward_days: Number(event.target.value || "0"),
+                      }),
+                      "Range forward days change"
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="content-subpanel stack" aria-label="Dashboard targets">
+            <h3>Dashboard Targets</h3>
+            <div className="form-grid">
+              <label className="field-control">
+                <span>Dashboard view mode</span>
+                <select
+                  value={settings.dashboard_view_mode}
+                  onChange={(event) =>
+                    void applyDropdownChange(
+                      (current) => ({
+                        ...current,
+                        dashboard_view_mode: normalizeDashboardDisplayMode(event.target.value),
+                      }),
+                      "Dashboard view mode change"
+                    )
+                  }
+                >
+                  {dashboardViewModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <DashboardTargetField
+                label="Weekly profit target"
+                value={settings.weekly_profit_target}
+                onChange={(value) =>
+                  void applyFieldChange(
+                    (current) => ({ ...current, weekly_profit_target: value }),
+                    "Weekly target change"
+                  )
+                }
+              />
+              <DashboardTargetField
+                label="Monthly profit target"
+                value={settings.monthly_profit_target}
+                onChange={(value) =>
+                  void applyFieldChange(
+                    (current) => ({ ...current, monthly_profit_target: value }),
+                    "Monthly target change"
+                  )
+                }
+              />
+              <DashboardTargetField
+                label="Annual profit target"
+                value={settings.annual_profit_target}
+                onChange={(value) =>
+                  void applyFieldChange(
+                    (current) => ({ ...current, annual_profit_target: value }),
+                    "Annual target change"
+                  )
+                }
+              />
+            </div>
+          </section>
+
+          <section className="content-subpanel stack" aria-label="Operational defaults">
+            <h3>Operational Defaults</h3>
+            <div className="form-grid">
+              <label className="field-control">
+                <span>Mug-bet cadence days</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={settings.mug_bet_frequency_days}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        mug_bet_frequency_days: Number(event.target.value || "14"),
+                      }),
+                      "Mug-bet cadence change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Free-bet expiry alert window days</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={settings.free_bet_expiry_alert_window_days}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        free_bet_expiry_alert_window_days: Number(event.target.value || "0"),
+                      }),
+                      "Expiry alert window change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>This-month mode</span>
+                <input
+                  type="text"
+                  value={settings.this_month_mode}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        this_month_mode: event.target.value,
+                      }),
+                      "This-month mode change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Default exchange</span>
+                <select
+                  onChange={(event) =>
+                    void applyDropdownChange(
+                      (current) => ({ ...current, default_exchange_name: event.target.value }),
+                      "Default exchange change"
+                    )
+                  }
+                  value={settings.default_exchange_name}
+                >
+                  <option value="">Most used active exchange</option>
+                  {exchangeOptions.map((exchange) => (
+                    <option key={exchange} value={exchange}>{exchange}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-control field-control-checkbox">
+                <span>Use global date-range toggle</span>
+                <input
+                  type="checkbox"
+                  checked={settings.use_global_date_range_toggle}
+                  onChange={(event) =>
+                    void applyDropdownChange(
+                      (current) => ({
+                        ...current,
+                        use_global_date_range_toggle: event.target.checked,
+                      }),
+                      "Global range toggle change"
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="content-subpanel stack" aria-label="Calculator defaults">
+            <h3>Calculator Defaults</h3>
+            <div className="form-grid">
+              <label className="field-control">
+                <span>Default free-bet underlay factor</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={settings.default_free_bet_underlay_factor}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        default_free_bet_underlay_factor: event.target.value,
+                      }),
+                      "Underlay default change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Default free-bet overlay factor</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={settings.default_free_bet_overlay_factor}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        default_free_bet_overlay_factor: event.target.value,
+                      }),
+                      "Overlay default change"
+                    )
+                  }
+                />
+              </label>
+              <label className="field-control">
+                <span>Default bonus retention percent</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={settings.default_bonus_retention_percent}
+                  onChange={(event) =>
+                    void applyFieldChange(
+                      (current) => ({
+                        ...current,
+                        default_bonus_retention_percent: event.target.value,
+                      }),
+                      "Bonus retention default change"
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
+          <div className="tracker-nav">
+            <button
+              className="modal-primary-button"
+              data-pd-id="profile-settings.defaults.save"
+              disabled={isSaving || !isDirty}
+              onClick={() => void saveSettings()}
+              type="button"
             >
-              {getDatePresetOptions().map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-control">
-            <span>Custom start date</span>
-            <input
-              type="date"
-              value={settings.custom_start_date}
-              disabled={settings.active_date_preset !== "Custom"}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({ ...current, custom_start_date: event.target.value }),
-                  "Custom start date change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Custom end date</span>
-            <input
-              type="date"
-              value={settings.custom_end_date}
-              disabled={settings.active_date_preset !== "Custom"}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({ ...current, custom_end_date: event.target.value }),
-                  "Custom end date change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Range back days</span>
-            <input
-              type="number"
-              min="0"
-              value={settings.range_back_days}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    range_back_days: Number(event.target.value || "0"),
-                  }),
-                  "Range back days change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Range forward days</span>
-            <input
-              type="number"
-              min="0"
-              value={settings.range_forward_days}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    range_forward_days: Number(event.target.value || "0"),
-                  }),
-                  "Range forward days change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Mug-bet cadence days</span>
-            <input
-              type="number"
-              min="1"
-              max="365"
-              value={settings.mug_bet_frequency_days}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    mug_bet_frequency_days: Number(event.target.value || "14"),
-                  }),
-                  "Mug-bet cadence change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Free-bet expiry alert window days</span>
-            <input
-              type="number"
-              min="0"
-              max="365"
-              value={settings.free_bet_expiry_alert_window_days}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    free_bet_expiry_alert_window_days: Number(event.target.value || "0"),
-                  }),
-                  "Expiry alert window change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control" style={{ justifyContent: "center" }}>
-            <span>Use global date-range toggle</span>
-            <input
-              type="checkbox"
-              checked={settings.use_global_date_range_toggle}
-              onChange={(event) =>
-                void applyDropdownChange(
-                  (current) => ({
-                    ...current,
-                    use_global_date_range_toggle: event.target.checked,
-                  }),
-                  "Global range toggle change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>This-month mode</span>
-            <input
-              type="text"
-              value={settings.this_month_mode}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    this_month_mode: event.target.value,
-                  }),
-                  "This-month mode change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Default exchange</span>
-            <select
-              onChange={(event) =>
-                void applyDropdownChange(
-                  (current) => ({ ...current, default_exchange_name: event.target.value }),
-                  "Default exchange change"
-                )
-              }
-              value={settings.default_exchange_name}
-            >
-              <option value="">Most used active exchange</option>
-              {exchangeOptions.map((exchange) => (
-                <option key={exchange} value={exchange}>{exchange}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field-control">
-            <span>Default free-bet underlay factor</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={settings.default_free_bet_underlay_factor}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    default_free_bet_underlay_factor: event.target.value,
-                  }),
-                  "Underlay default change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Default free-bet overlay factor</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={settings.default_free_bet_overlay_factor}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    default_free_bet_overlay_factor: event.target.value,
-                  }),
-                  "Overlay default change"
-                )
-              }
-            />
-          </label>
-          <label className="field-control">
-            <span>Default bonus retention percent</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={settings.default_bonus_retention_percent}
-              onChange={(event) =>
-                void applyFieldChange(
-                  (current) => ({
-                    ...current,
-                    default_bonus_retention_percent: event.target.value,
-                  }),
-                  "Bonus retention default change"
-                )
-              }
-            />
-          </label>
-          <div className="content-subpanel stack field-span-2">
-            <span className="eyebrow">Workbook control note</span>
-            <p className="lede">
-              Dashboard, Profit Tracker, and Reports should all inherit this setting. Later,
-              the same control may surface in top navigation, but Settings remains the source
-              authority.
-            </p>
-            <p className="lede">
-              Custom dates autosave immediately when the active preset is <strong>Custom</strong>.
-            </p>
-          </div>
-          <div className="tracker-nav field-span-2">
-            <button className="button-link" disabled={isSaving} onClick={() => void saveSettings()} type="button">
-              Save tracker date settings
+              {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
+              Save
             </button>
           </div>
         </div>
@@ -530,12 +637,44 @@ export function TrackerDateSettings({ profileId }: Props) {
   );
 }
 
+function DashboardTargetField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field-control">
+      <span>{label}</span>
+      <input
+        inputMode="decimal"
+        min="0"
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Unset"
+        type="number"
+        value={value}
+      />
+    </label>
+  );
+}
+
 function normalizeTrackerSettingsRecord(record: TrackerSettingsRecord): TrackerSettingsRecord {
   return {
     ...record,
+    dashboard_view_mode: normalizeDashboardDisplayMode(record.dashboard_view_mode),
+    weekly_profit_target: normalizeTargetSetting(record.weekly_profit_target),
+    monthly_profit_target: normalizeTargetSetting(record.monthly_profit_target),
+    annual_profit_target: normalizeTargetSetting(record.annual_profit_target),
     default_exchange_name: record.default_exchange_name ?? "",
     default_bonus_retention_percent: normalizeBonusRetentionPercentForUi(
       record.default_bonus_retention_percent
     ),
   };
+}
+
+function normalizeTargetSetting(value: DashboardTargetSettings[keyof DashboardTargetSettings]): string {
+  return typeof value === "string" ? value.trim() : "";
 }

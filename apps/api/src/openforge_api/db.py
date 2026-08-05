@@ -349,6 +349,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
                     default_free_bet_overlay_factor TEXT NOT NULL DEFAULT '1.3',
                     default_bonus_retention_percent TEXT NOT NULL DEFAULT '0.7',
                     default_exchange_name TEXT NOT NULL DEFAULT '',
+                    dashboard_view_mode TEXT NOT NULL DEFAULT 'High-Density',
+                    weekly_profit_target TEXT NOT NULL DEFAULT '',
+                    monthly_profit_target TEXT NOT NULL DEFAULT '',
+                    annual_profit_target TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
@@ -1106,6 +1110,30 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     )
     ensure_column(
         connection,
+        "profile_tracker_settings",
+        "dashboard_view_mode",
+        "TEXT NOT NULL DEFAULT 'High-Density'",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "weekly_profit_target",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "monthly_profit_target",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "annual_profit_target",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
         "multi_profile_opportunity_targets",
         "workflow_reasons_json",
         "TEXT NOT NULL DEFAULT '[]'",
@@ -1555,9 +1583,14 @@ def seed_database(connection: sqlite3.Connection) -> None:
                                     default_free_bet_underlay_factor,
                                     default_free_bet_overlay_factor,
                                     default_bonus_retention_percent,
+                                    default_exchange_name,
+                                    dashboard_view_mode,
+                                    weekly_profit_target,
+                                    monthly_profit_target,
+                                    annual_profit_target,
                   created_at,
                   updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile["profileId"],
@@ -1573,6 +1606,11 @@ def seed_database(connection: sqlite3.Connection) -> None:
                     "0.928",
                     "1.3",
                     "0.7",
+                    "",
+                    "High-Density",
+                    "",
+                    "",
+                    "",
                     timestamp,
                     timestamp,
                 ),
@@ -4186,6 +4224,10 @@ class ProfileTrackerSettingsRecord:
     default_free_bet_overlay_factor: str
     default_bonus_retention_percent: str
     default_exchange_name: str
+    dashboard_view_mode: str
+    weekly_profit_target: str
+    monthly_profit_target: str
+    annual_profit_target: str
     created_at: str
     updated_at: str
 
@@ -4761,9 +4803,13 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                                     default_free_bet_overlay_factor,
                                     default_bonus_retention_percent,
                                     default_exchange_name,
+                                    dashboard_view_mode,
+                                    weekly_profit_target,
+                                    monthly_profit_target,
+                                    annual_profit_target,
                   created_at,
                   updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile_id,
@@ -4779,6 +4825,10 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                     "0.928",
                     "1.3",
                     "0.7",
+                    "",
+                    "High-Density",
+                    "",
+                    "",
                     "",
                     timestamp,
                     timestamp,
@@ -4826,9 +4876,13 @@ def upsert_profile_tracker_settings(
                             default_free_bet_overlay_factor,
                             default_bonus_retention_percent,
                             default_exchange_name,
+                            dashboard_view_mode,
+                            weekly_profit_target,
+                            monthly_profit_target,
+                            annual_profit_target,
               created_at,
               updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
               active_date_preset = excluded.active_date_preset,
               custom_start_date = excluded.custom_start_date,
@@ -4847,6 +4901,10 @@ def upsert_profile_tracker_settings(
                             default_bonus_retention_percent =
                                 excluded.default_bonus_retention_percent,
                             default_exchange_name = excluded.default_exchange_name,
+                            dashboard_view_mode = excluded.dashboard_view_mode,
+                            weekly_profit_target = excluded.weekly_profit_target,
+                            monthly_profit_target = excluded.monthly_profit_target,
+                            annual_profit_target = excluded.annual_profit_target,
               updated_at = excluded.updated_at
             """,
             (
@@ -4864,6 +4922,10 @@ def upsert_profile_tracker_settings(
                 payload["default_free_bet_overlay_factor"],
                 payload["default_bonus_retention_percent"],
                 payload.get("default_exchange_name", ""),
+                payload.get("dashboard_view_mode", "High-Density"),
+                payload.get("weekly_profit_target", ""),
+                payload.get("monthly_profit_target", ""),
+                payload.get("annual_profit_target", ""),
                 created_at,
                 timestamp,
             ),

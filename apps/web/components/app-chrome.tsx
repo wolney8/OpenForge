@@ -17,7 +17,8 @@ import {
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
 import {
-  formatMoney,
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
   resolveDateRange,
   summarizeTrackerData,
   type CashAdjustmentSummaryRecord,
@@ -26,6 +27,7 @@ import {
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
 import { profileOverflowModules } from "@/lib/tracker-modules";
+import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
 import {
   confirmUnsavedTrackerChanges,
   useUnsavedChangesPromptController,
@@ -51,6 +53,8 @@ type TrackerSettingsRecord = {
     | "Fortnight"
     | "This Month"
     | "Last Month"
+    | "This Year"
+    | "All Dates"
     | "Custom";
   custom_start_date: string;
   custom_end_date: string;
@@ -62,10 +66,13 @@ type TrackerSettingsRecord = {
 type HeaderSummaryState = {
   profileId: string;
   profileName: string;
+  profileRangeDetail: string;
   profileRangeLabel: string;
   profileSubtitle: string;
   overallPnl: number | null;
 };
+
+type TrackerSummaryResult = ReturnType<typeof summarizeTrackerData>;
 
 function resolveProfileId(pathname: string): string | null {
   const match = pathname.match(/^\/profiles\/([^/]+)/);
@@ -73,32 +80,24 @@ function resolveProfileId(pathname: string): string | null {
   return profileId === "new" ? null : profileId;
 }
 
-function ordinalSuffix(day: number): string {
-  const remainder = day % 100;
-  if (remainder >= 11 && remainder <= 13) {
-    return "th";
+function resolveHeaderPnlForRoute(pathname: string, summary: TrackerSummaryResult): number {
+  if (pathname.includes("/tracker/sportsbook-bets")) {
+    return summary.profitQuickView.sportsbook.reportingValue;
   }
 
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
+  if (pathname.includes("/tracker/free-bets")) {
+    return summary.profitQuickView.freeBets.reportingValue;
   }
-}
 
-function formatHeaderDate(value: Date): string {
-  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(value);
-  const day = value.getDate();
-  return `${weekday} ${day}${ordinalSuffix(day)}`;
-}
+  if (pathname.includes("/tracker/casino-offers")) {
+    return summary.profitQuickView.casino.reportingValue;
+  }
 
-function buildResolvedRangeLabel(start: Date, end: Date): string {
-  return `${formatHeaderDate(start)} to ${formatHeaderDate(end)}`;
+  if (pathname.includes("/tracker/cash-adjustments")) {
+    return summary.betsQuickView.selectedRangeCashAdjustments;
+  }
+
+  return summary.profitQuickView.overallPnl;
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
@@ -112,6 +111,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [appMenuOpen, setAppMenuOpen] = useState(false);
   const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
+  const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
   const unsavedPrompt = useUnsavedChangesPromptController();
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
   const appMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -196,7 +196,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         window.cancelAnimationFrame(cachedFrame);
       }
     };
-  }, [activeProfileId, isInsideProfile]);
+  }, [activeProfileId, headerRefreshKey, isInsideProfile]);
+
+  useEffect(() => {
+    const handleTrackerSettingsUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ profileId?: string }>).detail;
+      if (detail?.profileId && detail.profileId !== activeProfileId) return;
+      setHeaderRefreshKey((current) => current + 1);
+    };
+
+    window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, handleTrackerSettingsUpdated);
+    return () => {
+      window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, handleTrackerSettingsUpdated);
+    };
+  }, [activeProfileId]);
 
   useEffect(() => {
     if (!isInsideProfile || !pathname) return;
@@ -243,18 +256,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           rangeBackDays: settings.range_back_days,
           rangeForwardDays: settings.range_forward_days,
         });
-        const rangeLabel = buildResolvedRangeLabel(resolvedRange.start, resolvedRange.end);
+        const rangeLabel = formatResolvedDateRange(resolvedRange);
+        const rangeDetail = formatResolvedDateRangeContext(resolvedRange);
 
-        setHeaderSummary({
+        setHeaderSummary((current) => ({
           profileId: activeProfileId,
           profileName: profile.display_name,
+          profileRangeDetail: rangeDetail,
           profileRangeLabel: rangeLabel,
-          profileSubtitle:
-            typeof overallPnl === "number"
-              ? `${rangeLabel} • ${formatMoney(overallPnl)}`
-              : rangeLabel,
-          overallPnl,
-        });
+          profileSubtitle: rangeLabel,
+          overallPnl:
+            overallPnl === null && current?.profileId === activeProfileId
+              ? current.overallPnl
+              : overallPnl,
+        }));
 
         return resolvedRange;
       };
@@ -314,7 +329,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           applyHeaderIdentity(
             cachedProfile,
             cachedSettings,
-            cachedSummary.profitQuickView.overallPnl
+            resolveHeaderPnlForRoute(pathname, cachedSummary)
           );
         }
       }
@@ -356,7 +371,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      applyHeaderIdentity(profile, settings, summary.profitQuickView.overallPnl);
+      applyHeaderIdentity(profile, settings, resolveHeaderPnlForRoute(pathname, summary));
     };
 
     void loadHeader().catch(() => {
@@ -366,6 +381,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       setHeaderSummary({
         profileId: activeProfileId,
         profileName: "Selected profile",
+        profileRangeDetail: "Header summary unavailable",
         profileRangeLabel: "Header summary unavailable",
         profileSubtitle: "Header summary unavailable",
         overallPnl: null,
@@ -375,7 +391,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, [activeProfileId, isInsideProfile]);
+  }, [activeProfileId, headerRefreshKey, isInsideProfile, pathname]);
 
   useEffect(() => {
     if (!trackerMenuOpen) {
@@ -421,20 +437,25 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? headerSummary.profileName
       : "Loading profile...";
   const profileSubtitle = !isInsideProfile
-    ? "Local-first profile-scoped tracker"
+    ? "Fund Manager dashboard"
     : headerSummary?.profileId === activeProfileId
       ? headerSummary.profileSubtitle
       : "Loading range and P&L...";
   const profileRangeLabel = !isInsideProfile
-    ? "Local-first profile-scoped tracker"
+    ? "Fund Manager dashboard"
     : headerSummary?.profileId === activeProfileId
       ? headerSummary.profileRangeLabel
+      : "Loading range and P&L...";
+  const profileRangeDetail = !isInsideProfile
+    ? "Fund Manager dashboard"
+    : headerSummary?.profileId === activeProfileId
+      ? headerSummary.profileRangeDetail
       : "Loading range and P&L...";
   const profileOverallPnl =
     isInsideProfile && headerSummary?.profileId === activeProfileId
       ? headerSummary.overallPnl
       : null;
-  const brandSubtitle = "Local-first tracker";
+  const brandSubtitle = "Tracker platform";
   const otherActiveProfiles = activeProfiles.filter(
     (profile) => profile.profile_id !== activeProfileId
   );
@@ -449,6 +470,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     setProfileSwitchOpen(false);
     setTrackerMenuOpen(false);
     router.push(`${nextPath}${query}`);
+  };
+
+  const openProfileDashboard = (profileId: string) => {
+    setProfileSwitchOpen(false);
+    setTrackerMenuOpen(false);
+    router.push(`/profiles/${profileId}/tracker/dashboard`);
   };
 
   return (
@@ -492,7 +519,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 <button
                   aria-expanded={trackerMenuOpen}
                   aria-haspopup="menu"
-                  aria-label="Open profile tracker menu"
+                  aria-label={`Open profile tracker menu for ${profileName}. ${profileRangeDetail}`}
                   className="summary-menu-button"
                   onClick={() =>
                     setTrackerMenuOpen((current) => {
@@ -500,6 +527,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                       return !current;
                     })
                   }
+                  title={profileRangeDetail}
                   type="button"
                 >
                   <span className="summary-menu-copy">
@@ -512,7 +540,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                           <FinancialValue
                             animate={false}
                             className="summary-menu-financial-value"
-                            label={`${profileName} overall P&L`}
+                            label={`${profileName} selected-range value`}
                             value={profileOverallPnl}
                           />
                         </>
@@ -566,6 +594,26 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  ) : null}
+                  {activeProfiles.length > 0 ? (
+                    <div className="profile-dashboard-picker" aria-label="Open profile dashboard">
+                      <span className="profile-dashboard-picker-label">Profile dashboards</span>
+                      {activeProfiles.map((profile) => (
+                        <button
+                          aria-current={profile.profile_id === activeProfileId ? "page" : undefined}
+                          aria-label={`Open ${profile.display_name} dashboard`}
+                          className={`nav-pill ${profile.profile_id === activeProfileId && pathname?.includes("/tracker/dashboard") ? "is-active" : ""}`}
+                          data-pd-id={`profile-menu.dashboard.${profile.profile_id}`}
+                          key={profile.profile_id}
+                          onClick={() => openProfileDashboard(profile.profile_id)}
+                          role="menuitem"
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+                          <span>{profile.display_name}</span>
+                        </button>
+                      ))}
                     </div>
                   ) : null}
                   {profileOverflowModules.map((route) => {

@@ -36,15 +36,15 @@ test("Settings exposes the workbook-owned profile authorities", async ({ page })
   await expect(page.getByLabel("Tracker date settings")).toBeVisible();
   await expect(page.getByText(/Underlay .* Overlay/)).toBeVisible();
 
-  await page.getByRole("tab", { name: "Offer Lists" }).click();
+  await page.getByRole("tab", { name: "Lists" }).click();
   await expect(page.getByText("Exchanges", { exact: true })).toBeVisible();
   await expect(page.getByText("Sportsbook and free-bet offer names", { exact: true })).toBeVisible();
   await expect(page.getByText("Casino offer names", { exact: true })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Exchange Commission" }).click();
+  await page.getByRole("tab", { name: "Commission" }).click();
   await expect(page.getByLabel("Exchange commission settings")).toBeVisible();
 
-  await page.getByRole("tab", { name: "Account Authorities" }).click();
+  await page.getByRole("tab", { name: "Accounts" }).click();
   await expect(page.getByLabel("Account authority settings")).toBeVisible();
 });
 
@@ -53,24 +53,41 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
 }) => {
   test.setTimeout(120_000);
   await page.goto(`/profiles/${primaryProfileId}/tracker/dashboard`);
-  await expect(page.getByText("Loading live tracker summaries")).toBeHidden({ timeout: 60_000 });
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await expect(
     page.locator('[data-access-tier="internal_operational"]', {
       hasText: "Fund Manager only",
     })
   ).toBeVisible();
-  await expect(page.getByText("Resolved range", { exact: true })).toBeVisible();
-  await expect(page.getByText("Selected Range P&L", { exact: true }).first()).toBeVisible({
-    timeout: 10_000,
+  const dashboardRangeCard = page.locator('[data-pd-id="tracker.range-card"]').first();
+  const dashboardRangeSelect = page.locator('[data-pd-id="tracker.range-card.select"]').first();
+  await expect(dashboardRangeCard).toBeVisible();
+  await expect(dashboardRangeSelect).toBeVisible();
+  await expect(dashboardRangeCard).toHaveAttribute("title", /Tracker range:/);
+  await dashboardRangeSelect.selectOption("This Month");
+  await expect(dashboardRangeCard).toHaveAttribute("title", /Tracker range: This Month/, {
+    timeout: 30_000,
   });
-  await expect(page.getByText("Open current / settled final", { exact: true })).toBeVisible();
+  const visualSummary = page.locator('[data-pd-id="dashboard.portfolio-view"]');
+  await expect(visualSummary).toBeVisible();
+  await expect(page.getByRole("img", { name: /Selected range P&L trend/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Selected Range Performance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where The Range Value Sits" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Action Load" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.target-progress"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.bookmaker-breakdown"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.recent-activity"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dashboard range shortcut 1M" })).toBeVisible();
+  const hasNoPageHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+  );
+  expect(hasNoPageHorizontalOverflow).toBeTruthy();
+  await expect(page.getByText("Open Current Value", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Current Account Cash", { exact: true }).first()).toBeVisible();
-  const ledgerAction = page.getByRole("link", { name: /^Open .+ in (Sportsbook|Free Bet|Casino)$/ }).first();
-  await expect(ledgerAction).toHaveAttribute("href", /\/tracker\/(sportsbook-bets|free-bets|casino-offers)\?search=.+/);
 
   await page.goto(`/profiles/${primaryProfileId}/tracker/reports`);
-  await expect(page.getByText("Loading live tracker summaries")).toBeHidden({ timeout: 60_000 });
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
   await expect(
     page.locator('[data-access-tier="internal_operational"]', {

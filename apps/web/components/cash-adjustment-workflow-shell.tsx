@@ -15,6 +15,7 @@ import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import {
   scrollToElementTopAfterRender,
   useDialogFocusLifecycle,
@@ -24,8 +25,14 @@ import {
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { formatFinancialValue } from "@/lib/financial-display";
-import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import {
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
+  resolveDateRange,
+  type DatePreset,
+} from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -86,6 +93,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name?: string;
   created_at: string;
   updated_at: string;
 };
@@ -490,6 +498,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -855,8 +864,23 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     [rows]
   );
 
+  const resolvedDateRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
+        customStart: trackerSettings?.custom_start_date,
+        customEnd: trackerSettings?.custom_end_date,
+        rangeBackDays: trackerSettings?.range_back_days,
+        rangeForwardDays: trackerSettings?.range_forward_days,
+      }),
+    [trackerSettings]
+  );
+
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (!isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)) {
+        return false;
+      }
       if (tableFilters.direction && row.direction !== tableFilters.direction) {
         return false;
       }
@@ -886,7 +910,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       }
       return true;
     });
-  }, [sortedReviewRows, tableFilters]);
+  }, [resolvedDateRange, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -942,16 +966,23 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
     return items;
   }, [hasInvalidAdjustmentCombination]);
-  const resolvedDateRange = useMemo(
-    () =>
-      resolveDateRange({
-        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
-        customStart: trackerSettings?.custom_start_date,
-        customEnd: trackerSettings?.custom_end_date,
-        rangeBackDays: trackerSettings?.range_back_days,
-        rangeForwardDays: trackerSettings?.range_forward_days,
-      }),
-    [trackerSettings]
+
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!trackerSettings || trackerSettings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
+        setTrackerSettings(savedSettings);
+        setStatusMessage(`Tracker range set to ${preset}.`);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, trackerSettings]
   );
   const quickView = useMemo(() => {
     const rangeRows = rows.filter((row) =>
@@ -983,6 +1014,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       signedTotal,
     };
   }, [resolvedDateRange, rows]);
+  const quickViewRangeContext = formatResolvedDateRange(resolvedDateRange);
+  const quickViewRangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
   async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
@@ -1264,6 +1297,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
         ) : null}
         <section className="stat-strip" aria-label="Cash-adjustment quick view">
+          <TrackerRangeCard
+            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={quickViewRangeDetail}
+            rangeContext={quickViewRangeContext}
+          />
           <article className="stat-card">
             <span className="eyebrow">Withdrawals</span>
             <strong>{quickView.withdrawalCount}</strong>

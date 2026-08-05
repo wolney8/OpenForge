@@ -23,6 +23,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
@@ -59,7 +60,13 @@ import {
 } from "@/lib/sportsbook-table-workflow";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { normalizeBonusRetentionPercentForUi } from "@/lib/tracker-settings";
-import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
+import {
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
+  resolveDateRange,
+  type DatePreset,
+} from "@/lib/tracker-summary";
 import {
   filterTrackerRows,
   getTrackerPageCount,
@@ -224,6 +231,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name?: string;
 };
 
 type CommonBetCombo = {
@@ -2577,6 +2585,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
   const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
@@ -2934,6 +2943,29 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       rangeForwardDays: trackerSettings?.range_forward_days,
     });
   }, [trackerSettings]);
+
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!trackerSettings || trackerSettings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
+        setTrackerSettings({
+          ...savedSettings,
+          default_bonus_retention_percent: normalizeBonusRetentionPercentForUi(
+            savedSettings.default_bonus_retention_percent
+          ),
+        });
+        setStatusMessage(`Tracker range set to ${preset}.`);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, trackerSettings]
+  );
 
   const bookmakerOptions = useMemo(
     () =>
@@ -3574,7 +3606,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }, [betSetupComplete, previewFormState, profileId]);
 
   const reviewRows = useMemo(() => {
-    const nextRows = [...rows];
+    const nextRows =
+      initialIssueFilter || feeReviewContext
+        ? [...rows]
+        : rows.filter((row) => isDateWithinResolvedRange(getSportsbookRangeAnchor(row), placedRange));
 
     if (feeReviewContext) {
       return nextRows.sort((left, right) =>
@@ -3652,7 +3687,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       const leftCreated = getComparableDate(left.created_at) ?? 0;
       return rightCreated - leftCreated;
     });
-  }, [feeReviewContext, placedRange.end, placedRange.start, rows, tableMode]);
+  }, [feeReviewContext, initialIssueFilter, placedRange, rows, tableMode]);
 
   const sortedReviewRows = useMemo(() => {
     return sortSportsbookRows(reviewRows, tableSort);
@@ -3765,9 +3800,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }, [placedRange, query, sportsbookFilteredReviewRows]);
 
   const quickView = useMemo(() => {
-    const rangeRows = rows.filter((row) =>
-      isDateWithinResolvedRange(getSportsbookRangeAnchor(row), placedRange)
-    );
+    const rangeRows = initialIssueFilter
+      ? rows
+      : rows.filter((row) => isDateWithinResolvedRange(getSportsbookRangeAnchor(row), placedRange));
     const totalReportingValue = rangeRows.reduce((sum, row) => {
       const value = parseNumericInput(
         row.reporting_value ?? row.final_net_pnl ?? row.projected_current_pnl ?? ""
@@ -3785,7 +3820,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       settlingCount: rangeRows.filter((row) => row.date_settled.trim()).length,
       totalReportingValue,
     };
-  }, [placedRange, rows]);
+  }, [initialIssueFilter, placedRange, rows]);
+  const quickViewRangeContext = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRange(placedRange);
+  const quickViewRangeDetail = initialIssueFilter
+    ? "Action filter: all dates"
+    : formatResolvedDateRangeContext(placedRange);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
@@ -5239,6 +5280,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
           <LedgerLoadingIndicator label="Loading sportsbook ledger" />
         ) : null}
         <section className="stat-strip" aria-label="Sportsbook quick view">
+          <TrackerRangeCard
+            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isActionView={Boolean(initialIssueFilter)}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={quickViewRangeDetail}
+            rangeContext={quickViewRangeContext}
+          />
           <article className="stat-card">
             <span className="eyebrow">Open / overdue</span>
             <strong>
