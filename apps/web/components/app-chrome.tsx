@@ -659,7 +659,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           >
             <header className="section-heading-row">
               <div>
-                <span className="eyebrow">{unsavedPrompt.request.eyebrow}</span>
+                {unsavedPrompt.request.eyebrow ? (
+                  <span className="eyebrow">{unsavedPrompt.request.eyebrow}</span>
+                ) : null}
                 <h2>{unsavedPrompt.request.title}</h2>
               </div>
               <button

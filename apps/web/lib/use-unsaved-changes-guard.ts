@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const defaultMessage =
-  "You have unsaved changes in this tracker form. Leave this page and discard them?";
+  "Unsaved changes will be discarded.";
 
 const activeUnsavedGuards = new Map<symbol, string>();
 
@@ -25,7 +25,7 @@ function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
     accessibleName: "Unsaved tracker changes",
     cancelLabel: "Keep Editing",
     confirmLabel: "Discard Changes",
-    eyebrow: "Unsaved Changes",
+    eyebrow: "",
     message,
     title: "Leave this tracker form?",
     variant: "discard",

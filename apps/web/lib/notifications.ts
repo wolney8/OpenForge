@@ -2,6 +2,8 @@ export const FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT =
   "plum-duff:fund-manager-notifications-refresh";
 export const FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY =
   "plum-duff:fund-manager-notifications:v1";
+export const FUND_MANAGER_LOCAL_NOTIFICATIONS_STORAGE_KEY =
+  "plum-duff:fund-manager-local-notifications:v1";
 
 export type NotificationAttentionStage =
   | "created"
@@ -27,8 +29,35 @@ export type FundManagerNotification = {
   created_at: string;
   href: string;
   completion_href: string;
-  tone: "warning" | "danger";
+  tone: "warning" | "danger" | "info" | "success";
 };
+
+export type LocalFundManagerNotificationInput = Pick<
+  FundManagerNotification,
+  | "notification_id"
+  | "notification_type"
+  | "title"
+  | "ledger_label"
+  | "bookmaker_label"
+  | "message"
+  | "profile_id"
+  | "profile_name"
+  | "record_id"
+  | "href"
+> &
+  Partial<
+    Pick<
+      FundManagerNotification,
+      | "audience"
+      | "kind"
+      | "task_state"
+      | "due_at"
+      | "settles_at"
+      | "created_at"
+      | "completion_href"
+      | "tone"
+    >
+  >;
 
 export type NotificationViewState = {
   readKeys: string[];
@@ -120,6 +149,105 @@ export function getUnreadNotificationCount(
 
 export function formatUnreadNotificationCount(count: number): string {
   return count > 9 ? "9+" : String(Math.max(0, count));
+}
+
+function normalizeLocalNotification(
+  notification: unknown
+): FundManagerNotification | null {
+  if (!notification || typeof notification !== "object") return null;
+  const candidate = notification as Partial<FundManagerNotification>;
+  if (
+    typeof candidate.notification_id !== "string" ||
+    typeof candidate.title !== "string" ||
+    typeof candidate.profile_id !== "string" ||
+    typeof candidate.record_id !== "string" ||
+    typeof candidate.href !== "string"
+  ) {
+    return null;
+  }
+  const nowIso = new Date().toISOString();
+  return {
+    audience: "fund_manager",
+    kind: candidate.kind === "task" ? "task" : "information",
+    task_state: candidate.task_state === "done" ? "done" : "new",
+    notification_id: candidate.notification_id,
+    notification_type: candidate.notification_type ?? "local_information",
+    title: candidate.title,
+    ledger_label: candidate.ledger_label ?? "Plum Duff",
+    bookmaker_label: candidate.bookmaker_label ?? "Local workflow",
+    message: candidate.message ?? candidate.record_id,
+    profile_id: candidate.profile_id,
+    profile_name: candidate.profile_name ?? candidate.profile_id,
+    record_id: candidate.record_id,
+    due_at: candidate.due_at ?? candidate.created_at ?? nowIso,
+    settles_at: candidate.settles_at ?? candidate.due_at ?? candidate.created_at ?? nowIso,
+    created_at: candidate.created_at ?? nowIso,
+    href: candidate.href,
+    completion_href: candidate.completion_href ?? "",
+    tone:
+      candidate.tone === "danger" ||
+      candidate.tone === "warning" ||
+      candidate.tone === "success" ||
+      candidate.tone === "info"
+        ? candidate.tone
+        : "info",
+  };
+}
+
+export function loadLocalFundManagerNotifications(): FundManagerNotification[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(FUND_MANAGER_LOCAL_NOTIFICATIONS_STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(normalizeLocalNotification)
+      .filter((item): item is FundManagerNotification => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
+export function addOrReplaceLocalFundManagerNotification(
+  input: LocalFundManagerNotificationInput
+): void {
+  if (typeof window === "undefined") return;
+  const createdAt = input.created_at ?? new Date().toISOString();
+  const notification: FundManagerNotification = {
+    audience: "fund_manager",
+    kind: input.kind ?? "information",
+    task_state: input.task_state ?? "new",
+    notification_id: input.notification_id,
+    notification_type: input.notification_type,
+    title: input.title,
+    ledger_label: input.ledger_label,
+    bookmaker_label: input.bookmaker_label,
+    message: input.message,
+    profile_id: input.profile_id,
+    profile_name: input.profile_name,
+    record_id: input.record_id,
+    due_at: input.due_at ?? createdAt,
+    settles_at: input.settles_at ?? input.due_at ?? createdAt,
+    created_at: createdAt,
+    href: input.href,
+    completion_href: input.completion_href ?? "",
+    tone: input.tone ?? "info",
+  };
+  const existing = loadLocalFundManagerNotifications();
+  const next = [
+    notification,
+    ...existing.filter((item) => item.notification_id !== notification.notification_id),
+  ].slice(0, 50);
+  try {
+    window.localStorage.setItem(
+      FUND_MANAGER_LOCAL_NOTIFICATIONS_STORAGE_KEY,
+      JSON.stringify(next)
+    );
+    window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+  } catch {
+    // Notifications are supplemental feedback; saving the row remains the source of truth.
+  }
 }
 
 export function markNotificationsRead(

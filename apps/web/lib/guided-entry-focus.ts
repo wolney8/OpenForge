@@ -15,7 +15,8 @@ export type GuidedEntryFieldKey =
   | "lay_actual"
   | "multi_lay_outcomes"
   | "multi_lay_placements"
-  | "settlement";
+  | "settlement"
+  | "free_bet_bridge";
 
 export type GuidedEntryState = "ready" | "review_required" | "complete";
 
@@ -55,6 +56,8 @@ export type SportsbookGuidedEntryInput = {
   status?: string;
   result?: string;
   settlementDate?: string;
+  canCreateFreeBet?: boolean;
+  freeBetCreated?: boolean;
   multiLayOutcomes?: Array<{
     label?: string;
     name?: string;
@@ -104,35 +107,37 @@ function getNextMissingFromCompletedFields(
 function fieldMessage(field: GuidedEntryFieldKey): string {
   switch (field) {
     case "offer":
-      return "Next required: add the offer shown in the workbook flow.";
+      return "Add The Offer Name As Shown.";
     case "bookmaker":
-      return "Next required: choose the bookmaker for this sportsbook row.";
+      return "Choose The Bookmaker.";
     case "bet_type":
-      return "Next required: choose the bet type.";
+      return "Choose The Bet Type.";
     case "offer_type":
-      return "Next required: choose the offer type.";
+      return "Choose The Offer Type.";
     case "offer_name":
-      return "Next required: choose or enter the offer name.";
+      return "Choose Or Enter The Offer Name.";
     case "fixture_type":
-      return "Next required: choose the fixture type.";
+      return "Choose The Fixture Type.";
     case "event_name":
-      return "Next required: enter the event name.";
+      return "Enter The Event Name.";
     case "back_stake":
-      return "Next required: enter the back stake.";
+      return "Enter The Back Stake.";
     case "back_odds":
-      return "Next required: enter the back odds.";
+      return "Enter The Back Odds.";
     case "exchange":
-      return "Next required: choose the exchange.";
+      return "Choose The Exchange.";
     case "lay_odds_1":
-      return "Next required: enter lay odds.";
+      return "Enter The Lay Odds.";
     case "lay_actual":
-      return "Next required: enter the actual lay stake.";
+      return "Confirm The Lay Actual.";
     case "multi_lay_outcomes":
-      return "Next required: complete the multi-lay outcome names and odds.";
+      return "Complete The Multi-Lay Outcome Names And Odds.";
     case "multi_lay_placements":
-      return "Next required: copy or confirm each multi-lay branch placement.";
+      return "Copy Or Confirm Each Multi-Lay Branch Placement.";
     case "settlement":
-      return "Next required: confirm the settlement date and outcome.";
+      return "Confirm The Settlement Date And Outcome.";
+    case "free_bet_bridge":
+      return "Create The Free Bet.";
   }
 }
 
@@ -222,6 +227,9 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
   }
 
   if (strategy === "No Lay") {
+    if (input.canCreateFreeBet && !input.freeBetCreated) {
+      return buildResult("ready", "free_bet_bridge", hiddenFields, fieldMessage("free_bet_bridge"));
+    }
     return buildResult("complete", null, hiddenFields, "Guided entry complete.");
   }
 
@@ -256,6 +264,15 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
         "multi_lay_placements"
       );
     }
+    if (input.canCreateFreeBet && !input.freeBetCreated) {
+      return buildResult(
+        "ready",
+        "free_bet_bridge",
+        hiddenFields,
+        fieldMessage("free_bet_bridge"),
+        "multi_lay_placements"
+      );
+    }
     return buildResult("complete", null, hiddenFields, "Guided entry complete.", "multi_lay_placements");
   }
 
@@ -263,8 +280,20 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
     return buildResult("ready", "lay_odds_1", hiddenFields, fieldMessage("lay_odds_1"));
   }
 
-  if ((strategy === "Custom" || strategy === "Partial Lay") && !isFilled(input.layActual)) {
+  if (
+    strategy !== "No Lay" &&
+    !isMultiLayStrategy(strategy) &&
+    !isFilled(input.layActual)
+  ) {
     return buildResult("ready", "lay_actual", hiddenFields, fieldMessage("lay_actual"));
+  }
+
+  if (!isFilled(input.settlementDate)) {
+    return buildResult("ready", "settlement", hiddenFields, fieldMessage("settlement"));
+  }
+
+  if (input.canCreateFreeBet && !input.freeBetCreated) {
+    return buildResult("ready", "free_bet_bridge", hiddenFields, fieldMessage("free_bet_bridge"));
   }
 
   return buildResult("complete", null, hiddenFields, "Guided entry complete.");

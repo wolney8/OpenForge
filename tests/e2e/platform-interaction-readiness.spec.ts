@@ -117,7 +117,8 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
   });
   const guardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   await expect(guardDialog).toBeVisible();
-  await expect(guardDialog).toContainText("You have unsaved changes");
+  await expect(guardDialog.getByRole("heading", { name: "Leave this tracker form?" })).toBeVisible();
+  await expect(guardDialog).toContainText("Unsaved changes will be discarded.");
   await expect(guardDialog).toHaveAttribute("aria-modal", "true");
   await expect(guardDialog.getByRole("button", { name: "Keep Editing", exact: true })).toBeFocused();
 
@@ -140,6 +141,7 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
   });
   const secondGuardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   await expect(secondGuardDialog).toBeVisible();
+  await expect(secondGuardDialog.getByRole("button", { name: "Discard Changes" })).toBeVisible();
   await secondGuardDialog.getByRole("button", { name: "Discard Changes" }).click();
   await expect(page).toHaveURL(new RegExp(`${freeBetRoute}$`));
 });

@@ -9,7 +9,10 @@ import {
   readCachedJson,
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
-import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
+import {
+  addOrReplaceLocalFundManagerNotification,
+  FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT,
+} from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   getSportsbookGuidedEntry,
@@ -21,6 +24,7 @@ import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
+import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
@@ -39,6 +43,7 @@ import {
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
+import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import {
   getSpecialOfferBookmakerSuggestion,
   resolveKnownBookmakerCoverage,
@@ -81,9 +86,9 @@ import {
   filterCampaignTagOptions,
   fixtureTypeOptions,
   freeBetRetentionModeOptions,
+  freeBetStatusOptions,
   getAllowedBetTypesForOfferType,
   getDefaultBetTypeForOfferType,
-  getOfferTypeDescriptor,
   getOfferTypeOptions,
   normalizeSportsbookBetType,
   sportsbookResultOptions,
@@ -95,6 +100,32 @@ const visibleSportsbookStrategyOptions = sportsbookStrategyOptions.filter(
   (option) => option !== "Multilay-Underlay"
 );
 const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
+const guidedFieldTabMap: Record<GuidedEntryFieldKey, SportsbookEditorTabId> = {
+  offer: "setup",
+  bookmaker: "setup",
+  bet_type: "setup",
+  offer_type: "setup",
+  offer_name: "setup",
+  fixture_type: "setup",
+  event_name: "setup",
+  back_stake: "matching",
+  back_odds: "matching",
+  exchange: "matching",
+  lay_odds_1: "matching",
+  lay_actual: "matching",
+  multi_lay_outcomes: "matching",
+  multi_lay_placements: "matching",
+  settlement: "settlement",
+  free_bet_bridge: "free_bet",
+};
+
+const guidedTabLabels: Record<SportsbookEditorTabId, string> = {
+  setup: "Bet Setup",
+  matching: "Matching",
+  placement: "Placement",
+  settlement: "Settlement",
+  free_bet: "Free Bet",
+};
 
 function isBonusLockInOfferType(value: string): boolean {
   return value === "Bonus Lock-In" || value === "Refund";
@@ -173,6 +204,20 @@ type SportsbookRecord = {
   profit_boost_source: string | null;
 };
 
+type LinkedFreeBetRecord = {
+  free_bet_id: string;
+  event_name: string;
+  offer_text: string;
+  bookmaker: string;
+  status: string;
+  result: string;
+  free_bet_value: string;
+  expiry_datetime: string;
+  origin_qual_bet_id: string;
+  source_award_split_index: number;
+  source_award_split_total: number;
+};
+
 type SportsbookFormState = {
   sportsbook_bet_id?: string;
   event_name: string;
@@ -210,6 +255,8 @@ type SportsbookFormState = {
   manual_override_value: string;
   manual_override_reason: string;
 };
+
+type SportsbookEditorTabId = "setup" | "matching" | "placement" | "settlement" | "free_bet";
 
 type ExchangeCommissionRecord = {
   profile_id: string;
@@ -408,13 +455,13 @@ type FreeBetBridgeModalState = {
   offer_name: string;
   bet_type: string;
   fixture_type: string;
-  event_name: string;
+  free_bet_status: string;
   free_bet_value: string;
   expiry_datetime: string;
   retention_mode: string;
-  award_timing: "placement" | "settlement";
   expected_award_value: string;
   variance_reason: string;
+  user_notes: string;
   splits: FreeBetBridgeSplitState[];
 };
 
@@ -511,25 +558,6 @@ function getDisplayedValueLabel(
     return "Final value";
   }
   return "Current value";
-}
-
-function getCalculationValueSource(
-  calculation: Pick<
-    SportsbookCalculationPreview,
-    "projected_current_pnl" | "final_net_pnl" | "reporting_value"
-  > | null,
-  fallback: Pick<
-    SportsbookRecord,
-    "projected_current_pnl" | "final_net_pnl" | "reporting_value"
-  > | null
-): string {
-  if (calculation?.final_net_pnl ?? fallback?.final_net_pnl) {
-    return "Settled/final or override-backed reporting value";
-  }
-  if (calculation?.projected_current_pnl ?? fallback?.projected_current_pnl) {
-    return "Cash-first projected/current value for an open row";
-  }
-  return "Awaiting contract-backed value";
 }
 
 const sportsbookTableColumns: TableColumn[] = [
@@ -780,33 +808,6 @@ function formatEditorSettlesDate(value: string): string {
   return `${weekday} ${day}${ordinalSuffix(day)} ${month}, ${time}`;
 }
 
-function formatSettlesCountdown(value: string): string {
-  if (!value.trim()) {
-    return "";
-  }
-
-  const settleDate = new Date(value);
-  if (Number.isNaN(settleDate.getTime())) {
-    return "";
-  }
-
-  const diffMs = settleDate.getTime() - Date.now();
-  const absDiffMs = Math.abs(diffMs);
-  const totalHours = Math.floor(absDiffMs / (1000 * 60 * 60));
-  const days = Math.floor(totalHours / 24);
-  const hours = totalHours % 24;
-
-  const dayPart = days > 0 ? `${days} day${days === 1 ? "" : "s"}` : "";
-  const hourPart = hours > 0 ? `${hours} hour${hours === 1 ? "" : "s"}` : "";
-  const compact = [dayPart, hourPart].filter(Boolean).join(" ");
-
-  if (!compact) {
-    return diffMs >= 0 ? "in less than 1 hour" : "less than 1 hour ago";
-  }
-
-  return diffMs >= 0 ? `in ${compact}` : `${compact} ago`;
-}
-
 function formatTableSettlesDate(value: string, range: { start: Date; end: Date }): string {
   if (!value.trim()) {
     return "Unscheduled";
@@ -995,6 +996,37 @@ function formatPreviewMoney(value: number): string {
   return value.toFixed(2);
 }
 
+function formatPreviewFinancialValue(value: number | string | null | undefined): string {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCurrencyLikeValue(value)
+        : null;
+  return parsed === null ? "—" : formatFinancialValue(parsed);
+}
+
+function renderPreviewFinancialValue(value: number | string | null | undefined) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCurrencyLikeValue(value)
+        : null;
+  return parsed === null ? (
+    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+      £ -
+    </span>
+  ) : (
+    <FinancialValue
+      animate={false}
+      className="projected-outcome-financial-value"
+      value={parsed}
+      zeroTone="neutral"
+    />
+  );
+}
+
 function formatSignedPreviewMoney(value: number): string {
   if (value > 0) {
     return `+${formatPreviewMoney(value)}`;
@@ -1102,6 +1134,18 @@ function createFreeBetBridgeSplit(options: {
   };
 }
 
+function createClearedFreeBetBridgeSplit(index = 1): FreeBetBridgeSplitState {
+  return createFreeBetBridgeSplit({
+    value: "",
+    offerName: "",
+    betType: "",
+    fixtureType: "",
+    expiry: "",
+    retentionMode: "SNR",
+    index,
+  });
+}
+
 function getFreeBetBridgeSplitTotal(splits: FreeBetBridgeSplitState[]): number {
   return splits.reduce((total, split) => {
     const parsedValue = parseNumericInput(split.free_bet_value);
@@ -1129,6 +1173,10 @@ function getFreeBetBridgeValidationMessage(state: FreeBetBridgeModalState): stri
 
   if (invalidSplit) {
     return "Each split needs a positive value, campaign tag, bet type, and fixture type.";
+  }
+
+  if (!state.free_bet_status.trim()) {
+    return "Choose the free-bet status.";
   }
 
   if (hasFreeBetBridgeVariance(state) && !state.variance_reason.trim()) {
@@ -2469,6 +2517,13 @@ function getMultiLayPlacementStatus(rows: MultiLayPlacementRow[]): "Not Laid" | 
   return "Fully Laid";
 }
 
+function canRemoveLinkedFreeBet(row: Pick<LinkedFreeBetRecord, "status" | "result">): boolean {
+  return (
+    row.result === "Pending" &&
+    ["Prospecting", "Available", "Not Yet Awarded"].includes(row.status)
+  );
+}
+
 function getMultiLayResultsGridRows(
   formState: SportsbookFormState,
   plannerSummary: MultiLayPlannerSummary | null
@@ -2591,8 +2646,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
   const [comboBookmakerCandidates, setComboBookmakerCandidates] = useState<string[]>([]);
+  const [comboCoveragePreference, setComboCoveragePreference] = useState<{
+    expanded: boolean;
+    key: string;
+  } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const [activeEditorTabId, setActiveEditorTabId] =
+    useState<SportsbookEditorTabId>("setup");
   const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
@@ -2661,6 +2722,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     null
   );
   const [pendingLegRemovalId, setPendingLegRemovalId] = useState<string | null>(null);
+  const [pendingBackPlacementRevert, setPendingBackPlacementRevert] = useState(false);
+  const [pendingLayPlacementRevert, setPendingLayPlacementRevert] = useState(false);
   const [customSliderMin, setCustomSliderMin] = useState("");
   const [customSliderMax, setCustomSliderMax] = useState("");
   const [lastRemovedPartialLayLeg, setLastRemovedPartialLayLeg] = useState<{
@@ -2669,6 +2732,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   } | null>(null);
   const [multiLayOutcome1Label, setMultiLayOutcome1Label] = useState("");
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
+  const [revertSnapshot, setRevertSnapshot] = useState<SportsbookFormState | null>(null);
   const [outcomeModalState, setOutcomeModalState] = useState<OutcomeModalState | null>(null);
   const [partialLayReminderEditorState, setPartialLayReminderEditorState] =
     useState<PartialLayReminderEditorState | null>(null);
@@ -2677,6 +2741,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
     null
   );
+  const [isFreeBetBridgeSubmitting, setIsFreeBetBridgeSubmitting] = useState(false);
+  const [freeBetBridgeSplitsExpanded, setFreeBetBridgeSplitsExpanded] = useState(false);
+  const [linkedFreeBetRows, setLinkedFreeBetRows] = useState<LinkedFreeBetRecord[]>([]);
+  const [isLinkedFreeBetsLoading, setIsLinkedFreeBetsLoading] = useState(false);
+  const [linkedFreeBetRemovalId, setLinkedFreeBetRemovalId] = useState<string | null>(null);
+  const [isLinkedFreeBetRemoving, setIsLinkedFreeBetRemoving] = useState(false);
   const [multiProfileCopySource, setMultiProfileCopySource] = useState<SportsbookRecord | null>(null);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -2820,8 +2890,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           setFormState(nextFormState);
           setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
+          setActiveEditorTabId("setup");
           setGuidedEntryDismissed(false);
           setSettledEditEnabled(false);
+          setRevertSnapshot(null);
           setFootballSettlesAssistUsed(false);
           setFootballSettlesOriginalValue(null);
         }
@@ -2839,15 +2911,53 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setFormState(blankForm);
         setPristineFormState(blankForm);
         setShowBetSetupValidation(false);
+        setActiveEditorTabId("setup");
         setGuidedEntryDismissed(false);
         setSettledEditEnabled(false);
+        setRevertSnapshot(null);
         setFootballSettlesAssistUsed(false);
         setFootballSettlesOriginalValue(null);
         setWorkflowVisible(false);
+        setLinkedFreeBetRows([]);
+        setLinkedFreeBetRemovalId(null);
       }
     },
     [profileId]
   );
+
+  const loadLinkedFreeBets = useCallback(
+    async (sourceRowId: string) => {
+      const url = `${apiBaseUrl}/profiles/${profileId}/free-bets`;
+      setIsLinkedFreeBetsLoading(true);
+      setLinkedFreeBetRemovalId(null);
+      try {
+        const cachedRows = readCachedJson<LinkedFreeBetRecord[]>(
+          url,
+          TRACKER_STALE_WHILE_REFRESH_MS
+        );
+        if (cachedRows) {
+          setLinkedFreeBetRows(
+            cachedRows.filter((row) => row.origin_qual_bet_id === sourceRowId)
+          );
+        }
+
+        const rowsFromApi = await fetchJsonAndCache<LinkedFreeBetRecord[]>(url);
+        setLinkedFreeBetRows(
+          rowsFromApi.filter((row) => row.origin_qual_bet_id === sourceRowId)
+        );
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load linked free-bet rows for this sportsbook row."
+        );
+      } finally {
+        setIsLinkedFreeBetsLoading(false);
+      }
+    },
+    [profileId]
+  );
+
 
   const loadExchangeSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
@@ -3112,11 +3222,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
   }
 
-  const offerTypeDescriptor = useMemo(
-    () => getOfferTypeDescriptor(formState.offer_type),
-    [formState.offer_type]
-  );
-
   const freeBetBridgeBetTypeOptions = useMemo(
     () =>
       freeBetBridgeModalState
@@ -3173,6 +3278,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [accountAuthorities, commonBetCombos, formState.bookmaker, formState.offer_type, formState.source_combo_preset_id]
   );
 
+  const comboCoverageKey = specialOfferBookmakerSuggestion
+    ? `${specialOfferBookmakerSuggestion.resolvedOfferKey}:${specialOfferBookmakerSuggestion.knownBookmakers.join("|")}`
+    : "";
+  const comboCoverageExpanded =
+    comboCoveragePreference?.key === comboCoverageKey
+      ? comboCoveragePreference.expanded
+      : Boolean(specialOfferBookmakerSuggestion?.availableBookmakers.length);
+
   const exchangeOptions = useMemo(() => {
     const options = dedupeOptions([
       ...exchangeSettings.map((row) => row.exchange_name),
@@ -3205,6 +3318,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ),
     [formState.bonus_trigger, formState.match_strategy, formState.offer_type]
   );
+  const quickSettlementOptions = useMemo(
+    () =>
+      resultOptions
+        .filter((option) => option.value !== "Pending" && option.value !== "Void")
+        .slice(0, 4),
+    [resultOptions]
+  );
 
   const isNoLayStrategy = formState.match_strategy === "No Lay";
   const usesMultiLayStrategy = isMultiLayStrategy(formState.match_strategy);
@@ -3222,6 +3342,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const betSetupComplete = useMemo(() => getBetSetupComplete(formState), [formState]);
   const missingBetSetupFields = useMemo(() => getMissingBetSetupFields(formState), [formState]);
   const hasPersistedDraft = Boolean(formState.sportsbook_bet_id ?? selectedId);
+  const canUseFreeBetBridge = isFreeBetAwardableRow && hasPersistedDraft;
+  const freeBetBridgeComplete = formState.status === "Free Bet Awarded";
   const calculatorUnlocked = betSetupComplete;
   const betSetupValidationActive = showBetSetupValidation;
 
@@ -3269,6 +3391,106 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     formState.status === "Settled" ||
     formState.status === "Free Bet Awarded" ||
     formState.result !== "Pending";
+  const editorTabs = useMemo<LedgerEditorTabDefinition[]>(
+    () => [
+      {
+        id: "setup",
+        label: "Bet Setup",
+        requiredIssueCount: missingBetSetupFields.length,
+        status:
+          betSetupValidationActive && missingBetSetupFields.length > 0
+            ? "invalid"
+            : betSetupComplete
+              ? "complete"
+              : "neutral",
+      },
+      {
+        id: "matching",
+        label: "Matching",
+        requiredIssueCount:
+          missingCalculatorFields.length +
+          (placementPlanRequired ? missingPlacementFields.length : 0),
+        status: !calculatorUnlocked
+          ? "locked"
+          : missingCalculatorFields.length > 0 ||
+              (placementPlanRequired && missingPlacementFields.length > 0)
+            ? "invalid"
+            : isPreviewReady
+              ? "complete"
+              : "neutral",
+      },
+      ...(showsPlacementSection
+        ? [
+            {
+              id: "placement",
+              label: "Placement",
+              requiredIssueCount: placementPlanRequired ? missingPlacementFields.length : 0,
+              status:
+                placementPlanRequired && missingPlacementFields.length > 0
+                  ? "invalid"
+                  : selectedSportsbookRow?.lay_status === "Fully Laid"
+                    ? "complete"
+                    : "neutral",
+            } satisfies LedgerEditorTabDefinition,
+          ]
+        : []),
+      {
+        id: "settlement",
+        label: "Settlement",
+        status:
+          formState.status === "Settled" && formState.result !== "Pending"
+            ? "complete"
+            : "neutral",
+      },
+      {
+        id: "free_bet",
+        label: "Free Bet",
+        status: !canUseFreeBetBridge
+          ? "locked"
+          : freeBetBridgeComplete
+            ? "complete"
+            : "warning",
+        warningIssueCount: canUseFreeBetBridge && !freeBetBridgeComplete ? 1 : 0,
+      },
+    ],
+    [
+      betSetupComplete,
+      betSetupValidationActive,
+      calculatorUnlocked,
+      canUseFreeBetBridge,
+      freeBetBridgeComplete,
+      formState.result,
+      formState.status,
+      isPreviewReady,
+      missingBetSetupFields.length,
+      missingCalculatorFields.length,
+      missingPlacementFields.length,
+      placementPlanRequired,
+      selectedSportsbookRow?.lay_status,
+      showsPlacementSection,
+    ]
+  );
+  const safeActiveEditorTabId = editorTabs.some(
+    (tab) => tab.id === activeEditorTabId && tab.status !== "locked"
+  )
+    ? activeEditorTabId
+    : (editorTabs.find((tab) => tab.status !== "locked")?.id as SportsbookEditorTabId | undefined) ??
+      "setup";
+  const showFreeBetBridgeFooterAction =
+    safeActiveEditorTabId === "free_bet" &&
+    canUseFreeBetBridge &&
+    Boolean(freeBetBridgeModalState);
+  const navigableEditorTabs = editorTabs.filter((tab) => tab.status !== "locked");
+  const activeEditorTabIndex = Math.max(
+    0,
+    navigableEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
+  );
+  const previousEditorTab =
+    activeEditorTabIndex > 0 ? navigableEditorTabs[activeEditorTabIndex - 1] : null;
+  const nextEditorTab =
+    activeEditorTabIndex >= 0 && activeEditorTabIndex < navigableEditorTabs.length - 1
+      ? navigableEditorTabs[activeEditorTabIndex + 1]
+      : null;
   const previewFormState = useMemo(
     () =>
       getPersistableSportsbookForm(formState, {
@@ -3330,9 +3552,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         status: formState.status,
         result: formState.result,
         settlementDate: formState.date_settled,
+        canCreateFreeBet: canUseFreeBetBridge,
+        freeBetCreated: freeBetBridgeComplete,
         multiLayOutcomes: guidedEntryOutcomes,
       }),
-    [formState, guidedEntryOutcomes]
+    [canUseFreeBetBridge, formState, freeBetBridgeComplete, guidedEntryOutcomes]
   );
   const guidedEntryVisible =
     workflowVisible && !guidedEntryDismissed && guidedEntry.state !== "complete";
@@ -3357,6 +3581,175 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         : undefined,
     [guidedEntry.nextRequiredField, guidedEntryVisible]
   );
+  const getGuidedFieldData = useCallback(
+    (field: GuidedEntryFieldKey) => ({
+      "data-guided-field": field,
+    }),
+    []
+  );
+  const guidedEntryTargetTabId = guidedEntry.nextRequiredField
+    ? guidedFieldTabMap[guidedEntry.nextRequiredField]
+    : null;
+  const guidedEntryNeedsTabJump =
+    guidedEntryTargetTabId !== null && guidedEntryTargetTabId !== safeActiveEditorTabId;
+  const guidedEntryTargetTabIndex = guidedEntryTargetTabId
+    ? editorTabs.findIndex((tab) => tab.id === guidedEntryTargetTabId)
+    : -1;
+  const guidedEntryTargetTabLabel = guidedEntryTargetTabId
+    ? guidedTabLabels[guidedEntryTargetTabId]
+    : "";
+  const guidedEntryActionMessage = guidedEntryNeedsTabJump
+    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntry.message}`
+    : guidedEntry.message;
+  const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
+    const settleDate = toDateTimeLocalValue(record.date_settled);
+    const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
+    const offerName = record.offer_name || record.offer_text || "Free bet from sportsbook";
+    const betType = record.bet_type || "Single";
+    const fixtureType = record.fixture_type || "Football";
+    const freeBetValue = "5";
+    setFreeBetBridgeModalState({
+      sourceRowId: record.sportsbook_bet_id,
+      bookmaker: record.bookmaker,
+      offer_type: record.offer_type,
+      offer_name: offerName,
+      bet_type: betType,
+      fixture_type: fixtureType,
+      free_bet_status: "Available",
+      free_bet_value: freeBetValue,
+      expiry_datetime: expiry,
+      retention_mode: "SNR",
+      expected_award_value: freeBetValue,
+      variance_reason: "",
+      user_notes: "",
+      splits: [
+        createFreeBetBridgeSplit({
+          value: freeBetValue,
+          offerName,
+          betType,
+          fixtureType,
+          expiry,
+          retentionMode: "SNR",
+        }),
+      ],
+    });
+    setFreeBetBridgeSplitsExpanded(false);
+  }, []);
+  const activateEditorTab = useCallback((tabId: SportsbookEditorTabId) => {
+    if (
+      tabId === "free_bet" &&
+      canUseFreeBetBridge &&
+      !freeBetBridgeModalState &&
+      selectedSportsbookRow
+    ) {
+      openFreeBetBridgeModal(selectedSportsbookRow);
+    }
+    if (tabId === "free_bet" && canUseFreeBetBridge) {
+      const sourceRowId =
+        selectedSportsbookRow?.sportsbook_bet_id ?? formState.sportsbook_bet_id ?? selectedId;
+      if (sourceRowId) {
+        void loadLinkedFreeBets(sourceRowId);
+      }
+    }
+    setActiveEditorTabId(tabId);
+  }, [
+    canUseFreeBetBridge,
+    freeBetBridgeModalState,
+    formState.sportsbook_bet_id,
+    loadLinkedFreeBets,
+    openFreeBetBridgeModal,
+    selectedId,
+    selectedSportsbookRow,
+  ]);
+  const focusGuidedEntryTarget = useCallback(() => {
+    const nextField = guidedEntry.nextRequiredField;
+    if (!nextField) {
+      return;
+    }
+    const nextTab = guidedFieldTabMap[nextField];
+    activateEditorTab(nextTab);
+    window.setTimeout(() => {
+      const target = editorRef.current?.querySelector<HTMLElement>(
+        `[data-guided-field="${nextField}"]`
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget =
+        target?.matches("input, select, textarea, button")
+          ? target
+          : target?.querySelector<HTMLElement>("input, select, textarea, button");
+      focusTarget?.focus({ preventScroll: true });
+    }, 80);
+  }, [activateEditorTab, guidedEntry.nextRequiredField]);
+  const renderGuidedEntryMessage = useCallback(
+    (message: string) => {
+      const targetTerms = [
+        "Settlement Date",
+        "Offer Name",
+        "Campaign Tag",
+        "Fixture Type",
+        "Event Name",
+        "Offer Type",
+        "Bet Type",
+        "Bookmaker",
+        "Exchange",
+        "Settlement",
+        "Outcome",
+        "Back",
+        "Lay",
+      ];
+      const pattern = new RegExp(`(${targetTerms.join("|")})`, "g");
+      const parts = message.split(pattern).filter(Boolean);
+      return (
+        <>
+          {parts.map((part, index) => {
+            const toneClass =
+              part === "Back"
+                ? "guided-entry-token-back"
+                : part === "Lay"
+                  ? "guided-entry-token-lay"
+                  : targetTerms.includes(part)
+                    ? "guided-entry-token-field"
+                    : "";
+            return toneClass ? (
+              <span className={`guided-entry-token ${toneClass}`} key={`${part}-${index}`}>
+                {part}
+              </span>
+            ) : (
+              <span key={`${part}-${index}`}>{part}</span>
+            );
+          })}
+        </>
+      );
+    },
+    []
+  );
+  const renderGuidedEntryInstruction = useCallback(() => {
+    if (!guidedEntryNeedsTabJump) {
+      return renderGuidedEntryMessage(guidedEntry.message);
+    }
+
+    return (
+      <>
+        <span>Go to </span>
+        <span className="guided-entry-step-reference">
+          {guidedEntryTargetTabIndex >= 0 ? (
+            <span aria-hidden="true" className="guided-entry-step-marker">
+              {guidedEntryTargetTabIndex + 1}
+            </span>
+          ) : null}
+          <span>{guidedEntryTargetTabLabel}</span>
+        </span>
+        <span> and </span>
+        {renderGuidedEntryMessage(guidedEntry.message)}
+      </>
+    );
+  }, [
+    guidedEntry.message,
+    guidedEntryNeedsTabJump,
+    guidedEntryTargetTabIndex,
+    guidedEntryTargetTabLabel,
+    renderGuidedEntryMessage,
+  ]);
   const scenarioBranchLabels = useMemo(
     () =>
       getScenarioBranchLabels(
@@ -3403,9 +3796,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => getMultiLayResultsGridRows(formState, multiLayPlannerSummary),
     [formState, multiLayPlannerSummary]
   );
-  const showCalculationSummary =
-    hasPersistedDraft ||
-    (activePreviewCalculation !== null && activePreviewCalculation.calculation_state !== "incomplete");
   const activeCalculationState =
     activePreviewCalculation?.calculation_state ?? selectedSportsbookRow?.calculation_state ?? null;
   const activeCalculationNotes =
@@ -3437,6 +3827,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     activeMatchRatingPercentValue === null
       ? null
       : getMatchRatingInterpretation(activeMatchRatingPercentValue);
+  const editorLayStatus =
+    activePreviewCalculation?.lay_status ?? selectedSportsbookRow?.lay_status ?? "Not Laid";
+  const editorMatchStrategyLabel = usesMultiLayStrategy
+    ? `Multi Lay ${formState.match_strategy === "Multilay-Underlay" ? "Underlay" : ""}`.trim()
+    : getCompactSportsbookLabel(formState.match_strategy || "Standard");
   const isCalculatedState = activeCalculationState === "resolved";
   const workflowRule = useMemo(
     () =>
@@ -3513,7 +3908,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
   const recommendedNextLayStakeValue = partialLayExecutionSummary.nextRecommendedStake;
   const recommendedNextLayStakeDisplay =
-    recommendedNextLayStakeValue === null ? "—" : formatPreviewMoney(recommendedNextLayStakeValue);
+    recommendedNextLayStakeValue === null ? "—" : formatPreviewFinancialValue(recommendedNextLayStakeValue);
   const canCopyRecommendedNextLayStake =
     recommendedNextLayStakeValue !== null && recommendedNextLayStakeValue > 0;
   const hasPartialLayShortfall =
@@ -3522,9 +3917,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const hasPartialLayOvermatch = partialLayExecutionSummary.exceededTarget;
 
   const editorHeaderFullTitle = useMemo(() => {
-    const offerText = formState.offer_text.trim();
-    if (offerText) {
-      return offerText;
+    const parts = [formState.offer_text, formState.offer_name, formState.offer_type]
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const uniqueParts = Array.from(new Set(parts));
+    if (uniqueParts.length > 0) {
+      return uniqueParts.join(" · ");
     }
 
     const eventName = formState.event_name.trim();
@@ -3533,29 +3931,31 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     return "New sportsbook row";
-  }, [formState.event_name, formState.offer_text]);
+  }, [formState.event_name, formState.offer_name, formState.offer_text, formState.offer_type]);
   const editorHeaderTitle = useMemo(
     () => truncateHeaderTitle(editorHeaderFullTitle, 75),
     [editorHeaderFullTitle]
-  );
-  const settlesDisplay = useMemo(
-    () => formatEditorSettlesDate(fromDateTimeLocalValue(formState.date_settled)),
-    [formState.date_settled]
-  );
-  const settlesCountdownDisplay = useMemo(
-    () => formatSettlesCountdown(fromDateTimeLocalValue(formState.date_settled)),
-    [formState.date_settled]
   );
   const backPlacementReady =
     parseNumericInput(formState.back_stake) !== null && parseNumericInput(formState.back_odds) !== null;
   const backPlacementConfirmed = ["Placed", "Settled", "Free Bet Awarded"].includes(
     formState.status
   );
+  const sourceBackPlacementRecorded =
+    ["Placed", "Settled"].includes(formState.status) ||
+    (formState.status === "Free Bet Awarded" &&
+      (parseNumericInput(formState.back_stake) !== null || parseNumericInput(formState.back_odds) !== null));
   const layPartiallyConfirmed =
     partialLayExecutionSummary.matchedTotal > 0 &&
     !partialLayExecutionSummary.hasReachedTarget;
   const layFullyConfirmed = partialLayExecutionSummary.hasReachedTarget;
   const layPlacementConfirmed = layPartiallyConfirmed || layFullyConfirmed;
+  const sourceLayPlacementRecorded =
+    layPlacementConfirmed ||
+    parseNumericInput(formState.lay_actual) !== null ||
+    parseNumericInput(formState.lay_matched_stake_1) !== null;
+  const partialLayPanelTitle =
+    partialLayLegs.length === 1 && layFullyConfirmed ? "Matched Lay" : "Partial Lay Legs";
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
@@ -4051,8 +4451,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setShowBetSetupValidation(false);
+    setActiveEditorTabId("setup");
     setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
+    setRevertSnapshot(null);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
@@ -4060,6 +4462,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setTableCollapsed(Boolean(options?.collapseTable));
     setStatusMessage(`Opened sportsbook bet ${rowId} for editing.`);
     revealEditor({ expandLedger: !options?.collapseTable });
+  }
+
+  async function openRowFreeBetBridge(record: SportsbookRecord) {
+    await selectRow(record.sportsbook_bet_id);
+    openFreeBetBridgeModal(record);
+    activateEditorTab("free_bet");
   }
 
   async function startNewRow() {
@@ -4079,8 +4487,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setShowBetSetupValidation(false);
+    setActiveEditorTabId("setup");
     setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
+    setRevertSnapshot(null);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
@@ -4096,6 +4506,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setGuidedEntryDismissed(false);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
+    setRevertSnapshot(null);
     setTableCollapsed(false);
     setStatusMessage("");
   }
@@ -4105,6 +4516,39 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       getBetSetupComplete(nextFormState) &&
       getMissingPlacementFields(nextFormState, resolvedCommission, multiLayOutcomes).length === 0
     );
+  }
+
+  function queueSportsbookSaveNotification(saved: SportsbookRecord): void {
+    const workflowStage =
+      saved.status === "Settled"
+        ? "settled"
+        : saved.status === "Placed" || saved.status === "Free Bet Awarded"
+          ? "placed"
+          : "draft";
+    const notificationTitle =
+      workflowStage === "settled"
+        ? "Sportsbook row settled"
+        : workflowStage === "placed"
+          ? "Sportsbook row placed"
+          : "Sportsbook draft saved";
+    const eventLabel =
+      saved.event_name || saved.offer_text || saved.offer_name || saved.sportsbook_bet_id;
+
+    addOrReplaceLocalFundManagerNotification({
+      notification_id: `sportsbook-save:${profileId}:${saved.sportsbook_bet_id}:${workflowStage}`,
+      notification_type: `sportsbook_${workflowStage}_saved`,
+      title: notificationTitle,
+      ledger_label: "Sportsbook Bets",
+      bookmaker_label: saved.bookmaker || "Bookmaker not set",
+      message: eventLabel,
+      profile_id: profileId,
+      profile_name: profileId,
+      record_id: saved.sportsbook_bet_id,
+      href: `/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(saved.sportsbook_bet_id)}`,
+      due_at: saved.date_settled || saved.updated_at || new Date().toISOString(),
+      settles_at: saved.date_settled || saved.updated_at || new Date().toISOString(),
+      tone: workflowStage === "draft" ? "info" : "success",
+    });
   }
 
   async function persistForm(
@@ -4226,6 +4670,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
     setShowBetSetupValidation(false);
     setSettledEditEnabled(false);
+    if (!options?.autosaveLabel) {
+      setRevertSnapshot(null);
+    }
     if (!isEditing && returnToLedger) {
       setQuery("");
       setCurrentPage(1);
@@ -4235,13 +4682,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       isCreatingDraftRef.current = false;
       setTableCollapsed(false);
     }
-    setStatusMessage(
-      options?.autosaveLabel
-        ? `${options.autosaveLabel} autosaved for ${saved.sportsbook_bet_id}.`
-        : isEditing
-          ? `Updated sportsbook bet ${saved.sportsbook_bet_id}.`
-          : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
-    );
+    if (workflowVisible) {
+      queueSportsbookSaveNotification(saved);
+      setStatusMessage("");
+    } else {
+      setStatusMessage(
+        options?.autosaveLabel
+          ? `${options.autosaveLabel} autosaved for ${saved.sportsbook_bet_id}.`
+          : isEditing
+            ? `Updated sportsbook bet ${saved.sportsbook_bet_id}.`
+            : `Created sportsbook bet ${saved.sportsbook_bet_id}.`
+      );
+    }
     return true;
     } finally {
       isPersistingRef.current = false;
@@ -4258,7 +4710,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     updater: (current: SportsbookFormState) => SportsbookFormState,
     autosaveLabel: string
   ) {
-    const nextFormState = updater(formState);
+    const previousFormState = formState;
+    const nextFormState = updater(previousFormState);
+    setRevertSnapshot(previousFormState);
     setFormState(nextFormState);
     if (!(selectedId ?? formState.sportsbook_bet_id)) {
       return;
@@ -4272,35 +4726,62 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     });
   }
 
-  function handleResetForm() {
+  function loadEditorFormState(
+    nextFormState: SportsbookFormState,
+    options?: { markPristine?: boolean }
+  ) {
+    const parsedMultiLay = parseMultiLayOutcomes(nextFormState.multi_lay_outcomes_json, {
+      outcome1Label: nextFormState.multi_lay_outcome_1_name,
+      layOdds1: nextFormState.lay_odds_1,
+      exchangeName: nextFormState.exchange_name,
+      layActual: nextFormState.lay_actual,
+    });
+    setPreviewCalculation(null);
+    setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
+    setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
+    setPartialLayLegs(
+      parsePartialLayLegs(nextFormState.multi_lay_outcomes_json, {
+        exchangeName: nextFormState.exchange_name,
+        layOdds: nextFormState.lay_odds_1,
+        matchedStake: nextFormState.lay_matched_stake_1,
+      })
+    );
+    setMultiLayOutcome1Label(getMultiLayOutcomeLabel(nextFormState.multi_lay_outcome_1_name));
+    setFormState(nextFormState);
+    if (options?.markPristine) {
+      setPristineFormState(nextFormState);
+    }
+    setShowBetSetupValidation(false);
+    setSettledEditEnabled(false);
+    setFootballSettlesAssistUsed(false);
+    setFootballSettlesOriginalValue(null);
+    setPendingBackPlacementRevert(false);
+    setPendingLayPlacementRevert(false);
+    setErrorMessage("");
+  }
+
+  async function handleResetForm() {
+    if (revertSnapshot) {
+      loadEditorFormState(revertSnapshot);
+      const rowId = revertSnapshot.sportsbook_bet_id ?? selectedId;
+      if (rowId && canPersistForm(revertSnapshot)) {
+        const reverted = await persistForm(revertSnapshot, {
+          autosaveLabel: "Revert sportsbook row",
+          returnToLedgerOnSuccess: false,
+          suppressMissingRequiredMessage: true,
+        });
+        if (!reverted) {
+          return;
+        }
+      }
+      setRevertSnapshot(null);
+      setStatusMessage("Reverted the last sportsbook change.");
+      return;
+    }
+
     if (selectedSportsbookRow) {
       const nextFormState = recordToForm(selectedSportsbookRow);
-      setPreviewCalculation(null);
-      const parsedMultiLay = parseMultiLayOutcomes(selectedSportsbookRow.multi_lay_outcomes_json, {
-        outcome1Label: selectedSportsbookRow.multi_lay_outcome_1_name,
-        layOdds1: selectedSportsbookRow.lay_odds_1,
-        exchangeName: selectedSportsbookRow.exchange_name,
-        layActual: selectedSportsbookRow.lay_actual,
-      });
-      setMultiLayOutcomes(parsedMultiLay.extraOutcomes);
-      setMultiLayPrimaryPlacement(parsedMultiLay.primaryPlacement);
-      setPartialLayLegs(
-        parsePartialLayLegs(selectedSportsbookRow.multi_lay_outcomes_json, {
-          exchangeName: selectedSportsbookRow.exchange_name,
-          layOdds: selectedSportsbookRow.lay_odds_1,
-          matchedStake: selectedSportsbookRow.lay_matched_stake_1,
-        })
-      );
-      setMultiLayOutcome1Label(
-        getMultiLayOutcomeLabel(selectedSportsbookRow.multi_lay_outcome_1_name)
-      );
-      setFormState(nextFormState);
-      setPristineFormState(nextFormState);
-      setShowBetSetupValidation(false);
-      setSettledEditEnabled(false);
-      setFootballSettlesAssistUsed(false);
-      setFootballSettlesOriginalValue(null);
-      setErrorMessage("");
+      loadEditorFormState(nextFormState, { markPristine: true });
       setStatusMessage(
         `Reverted unsaved changes for sportsbook bet ${selectedSportsbookRow.sportsbook_bet_id}.`
       );
@@ -4308,18 +4789,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     const blankForm = createBlankForm(defaultBonusRetentionRate);
-    setPreviewCalculation(null);
+    loadEditorFormState(blankForm, { markPristine: true });
     setMultiLayOutcomes(createDefaultMultiLayOutcomes());
     setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
     setPartialLayLegs([]);
     setMultiLayOutcome1Label("");
-    setFormState(blankForm);
-    setPristineFormState(blankForm);
-    setShowBetSetupValidation(false);
-    setSettledEditEnabled(false);
-    setFootballSettlesAssistUsed(false);
-    setFootballSettlesOriginalValue(null);
-    setErrorMessage("");
     setStatusMessage("Cleared the unsaved sportsbook bet draft.");
   }
 
@@ -4396,6 +4870,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     overrides: Partial<SportsbookFormState>,
     successMessage: string,
     options?: {
+      keepEditorOpen?: boolean;
       preserveTableView?: boolean;
     }
   ) {
@@ -4418,8 +4893,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
-    await loadRows(options?.preserveTableView ? null : record.sportsbook_bet_id);
-    if (options?.preserveTableView) {
+    await loadRows(
+      options?.preserveTableView && !options.keepEditorOpen ? null : record.sportsbook_bet_id
+    );
+    if (options?.preserveTableView && !options.keepEditorOpen) {
       setWorkflowVisible(false);
       setTableCollapsed(false);
     }
@@ -4510,39 +4987,27 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
   }
 
-function openFreeBetBridgeModal(record: SportsbookRecord) {
-  const settleDate = toDateTimeLocalValue(record.date_settled);
-  const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
-  const offerName = record.offer_name || record.offer_text || "Free bet from sportsbook";
-  const betType = record.bet_type || "Single";
-  const fixtureType = record.fixture_type || "Football";
-  const freeBetValue = "5";
-  setFreeBetBridgeModalState({
-    sourceRowId: record.sportsbook_bet_id,
-    bookmaker: record.bookmaker,
-    offer_type: record.offer_type,
-    offer_name: offerName,
-    bet_type: betType,
-    fixture_type: fixtureType,
-    event_name: record.event_name,
-    free_bet_value: freeBetValue,
-    expiry_datetime: expiry,
-    retention_mode: "SNR",
-    award_timing: record.status === "Free Bet Awarded" ? "placement" : "settlement",
-    expected_award_value: freeBetValue,
-    variance_reason: "",
-    splits: [
-      createFreeBetBridgeSplit({
-        value: freeBetValue,
-        offerName,
-        betType,
-        fixtureType,
-        expiry,
-        retentionMode: "SNR",
-      }),
-    ],
-  });
-}
+  function clearFreeBetBridgeDefaults() {
+    setFreeBetBridgeModalState((current) =>
+      current
+        ? {
+            ...current,
+            offer_name: "",
+            bet_type: "",
+            fixture_type: "",
+            free_bet_status: "Available",
+            free_bet_value: "",
+            expiry_datetime: "",
+            retention_mode: "SNR",
+            expected_award_value: "",
+            variance_reason: "",
+            user_notes: "",
+            splits: [createClearedFreeBetBridgeSplit()],
+          }
+        : current
+    );
+    setFreeBetBridgeSplitsExpanded(false);
+  }
 
   async function submitOutcomeModal() {
     if (!outcomeModalState) {
@@ -4578,7 +5043,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
   }
 
   async function submitFreeBetBridgeModal() {
-    if (!freeBetBridgeModalState) {
+    if (!freeBetBridgeModalState || isFreeBetBridgeSubmitting) {
       return;
     }
 
@@ -4595,98 +5060,208 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       return;
     }
 
-    const freeBetStatus =
-      freeBetBridgeModalState.award_timing === "placement" ? "Available" : "Not Yet Awarded";
+    const freeBetStatus = freeBetBridgeModalState.free_bet_status || "Available";
     const awardGroupId = `AWARD-${freeBetBridgeModalState.sourceRowId}-${Date.now()}`;
     const createdFreeBetIds: string[] = [];
 
-    for (const [index, split] of freeBetBridgeModalState.splits.entries()) {
-      const splitNotes = split.user_notes.trim();
-      const varianceNote = hasFreeBetBridgeVariance(freeBetBridgeModalState)
-        ? `Award split variance: ${freeBetBridgeModalState.variance_reason.trim()}`
-        : "";
-      const userNotes = [splitNotes, varianceNote].filter(Boolean).join("\n");
-      const freeBetCreateResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          event_name: freeBetBridgeModalState.event_name,
-          offer_text: sourceRow.offer_text || sourceRow.offer_name || "Free bet from sportsbook",
-          bookmaker: freeBetBridgeModalState.bookmaker,
-          offer_type: freeBetBridgeModalState.offer_type,
-          bet_type: split.bet_type,
-          offer_name: split.offer_name,
-          fixture_type: split.fixture_type,
-          status: freeBetStatus,
-          result: "Pending",
-          retention_mode: split.retention_mode,
-          free_bet_value: split.free_bet_value,
-          back_odds: "",
-          match_strategy: "Standard",
-          lay_odds_1: "",
-          lay_actual: "",
-          lay_matched_stake_1: "",
-          lay_commission_1: "",
-          exchange_name: "",
-          expiry_datetime: fromDateTimeLocalValue(split.expiry_datetime),
-          date_settled: "",
-          origin_qual_bet_id: freeBetBridgeModalState.sourceRowId,
-          offer_group_id: awardGroupId,
-          source_award_group_id: awardGroupId,
-          source_award_split_index: index + 1,
-          source_award_split_total: freeBetBridgeModalState.splits.length,
-          source_award_expected_value: freeBetBridgeModalState.expected_award_value,
-          source_award_variance_reason: freeBetBridgeModalState.variance_reason.trim(),
-          user_notes: userNotes,
-          manual_override_value: "",
-          manual_override_reason: "",
-        }),
+    setIsFreeBetBridgeSubmitting(true);
+    try {
+      for (const [index, split] of freeBetBridgeModalState.splits.entries()) {
+        const splitNotes = split.user_notes.trim();
+        const bridgeNotes = freeBetBridgeModalState.user_notes.trim();
+        const varianceNote = hasFreeBetBridgeVariance(freeBetBridgeModalState)
+          ? `Award split variance: ${freeBetBridgeModalState.variance_reason.trim()}`
+          : "";
+        const userNotes = [bridgeNotes, splitNotes, varianceNote].filter(Boolean).join("\n");
+        const freeBetCreateResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            event_name: sourceRow.event_name,
+            offer_text: sourceRow.offer_text || sourceRow.offer_name || "Free bet from sportsbook",
+            bookmaker: freeBetBridgeModalState.bookmaker,
+            offer_type: freeBetBridgeModalState.offer_type,
+            bet_type: split.bet_type,
+            offer_name: split.offer_name,
+            fixture_type: split.fixture_type,
+            status: freeBetStatus,
+            result: "Pending",
+            retention_mode: split.retention_mode,
+            free_bet_value: split.free_bet_value,
+            back_odds: "",
+            match_strategy: "Standard",
+            lay_odds_1: "",
+            lay_actual: "",
+            lay_matched_stake_1: "",
+            lay_commission_1: "",
+            exchange_name: "",
+            expiry_datetime: fromDateTimeLocalValue(split.expiry_datetime),
+            date_settled: "",
+            origin_qual_bet_id: freeBetBridgeModalState.sourceRowId,
+            offer_group_id: awardGroupId,
+            source_award_group_id: awardGroupId,
+            source_award_split_index: index + 1,
+            source_award_split_total: freeBetBridgeModalState.splits.length,
+            source_award_expected_value: freeBetBridgeModalState.expected_award_value,
+            source_award_variance_reason: freeBetBridgeModalState.variance_reason.trim(),
+            user_notes: userNotes,
+            manual_override_value: "",
+            manual_override_reason: "",
+          }),
+        });
+
+        if (!freeBetCreateResponse.ok) {
+          const detail = await freeBetCreateResponse.text();
+          setErrorMessage(detail || "Unable to create free bet from sportsbook row");
+          return;
+        }
+
+        const createdFreeBet = (await freeBetCreateResponse.json()) as { free_bet_id: string };
+        createdFreeBetIds.push(createdFreeBet.free_bet_id);
+      }
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+
+      if (sourceRow.status !== "Free Bet Awarded") {
+        const updated = await updateRowFromTable(
+          sourceRow,
+          {
+            status: "Free Bet Awarded",
+            result: sourceRow.result,
+          },
+          `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} and marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`,
+          { keepEditorOpen: true, preserveTableView: true }
+        );
+        if (!updated) {
+          return;
+        }
+        setFormState((current) => ({
+          ...current,
+          status: "Free Bet Awarded",
+        }));
+      } else {
+        invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+        await loadRows(null);
+      }
+
+      setStatusMessage(
+        `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} from ${sourceRow.sportsbook_bet_id}.`
+      );
+      await loadLinkedFreeBets(sourceRow.sportsbook_bet_id);
+      setFreeBetBridgeModalState((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const settleDate = toDateTimeLocalValue(sourceRow.date_settled);
+        const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
+        const freeBetValue = current.free_bet_value || "5";
+        const offerName = current.offer_name || sourceRow.offer_name || sourceRow.offer_text || "Free bet from sportsbook";
+        const betType = current.bet_type || sourceRow.bet_type || "Single";
+        const fixtureType = current.fixture_type || sourceRow.fixture_type || "Football";
+        const retentionMode = current.retention_mode || "SNR";
+
+        return {
+          ...current,
+          free_bet_status: current.free_bet_status || "Available",
+          free_bet_value: freeBetValue,
+          expected_award_value: freeBetValue,
+          expiry_datetime: expiry,
+          variance_reason: "",
+          user_notes: "",
+          splits: [
+            createFreeBetBridgeSplit({
+              value: freeBetValue,
+              offerName,
+              betType,
+              fixtureType,
+              expiry,
+              retentionMode,
+            }),
+          ],
+        };
+      });
+      setFreeBetBridgeSplitsExpanded(false);
+      setActiveEditorTabId("free_bet");
+    } finally {
+      setIsFreeBetBridgeSubmitting(false);
+    }
+  }
+
+  function getLinkedFreeBetRemovalBlockReason(row: LinkedFreeBetRecord): string {
+    if (sourceBackPlacementRecorded || sourceLayPlacementRecorded) {
+      return "Remove sportsbook back and lay placement first.";
+    }
+    if (!canRemoveLinkedFreeBet(row)) {
+      return "This free bet has already moved beyond an unplaced award state.";
+    }
+    return "";
+  }
+
+  async function removeLinkedFreeBet(row: LinkedFreeBetRecord) {
+    const blockReason = getLinkedFreeBetRemovalBlockReason(row);
+    if (blockReason || isLinkedFreeBetRemoving) {
+      if (blockReason) {
+        setStatusMessage(blockReason);
+      }
+      return;
+    }
+
+    setIsLinkedFreeBetRemoving(true);
+    setErrorMessage("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets/${row.free_bet_id}`, {
+        method: "DELETE",
       });
 
-      if (!freeBetCreateResponse.ok) {
-        const detail = await freeBetCreateResponse.text();
-        setErrorMessage(detail || "Unable to create free bet from sportsbook row");
+      if (!response.ok) {
+        const detail = await response.text();
+        setErrorMessage(detail || "Unable to remove linked free-bet row.");
         return;
       }
 
-      const createdFreeBet = (await freeBetCreateResponse.json()) as { free_bet_id: string };
-      createdFreeBetIds.push(createdFreeBet.free_bet_id);
-    }
-    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
-
-    if (
-      freeBetBridgeModalState.award_timing === "placement" &&
-      sourceRow.status !== "Free Bet Awarded"
-    ) {
-      const updated = await updateRowFromTable(
-        sourceRow,
-        {
-          status: "Free Bet Awarded",
-          result: sourceRow.result,
-        },
-        `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} and marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`,
-        { preserveTableView: true }
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+      const sourceRowId = formState.sportsbook_bet_id ?? selectedId;
+      const remainingRows = linkedFreeBetRows.filter(
+        (linkedRow) => linkedRow.free_bet_id !== row.free_bet_id
       );
-      if (!updated) {
-        return;
+      setLinkedFreeBetRows(remainingRows);
+      setLinkedFreeBetRemovalId(null);
+
+      if (sourceRowId && remainingRows.length === 0 && formState.status === "Free Bet Awarded") {
+        const sourceRow = rows.find((entry) => entry.sportsbook_bet_id === sourceRowId);
+        if (sourceRow) {
+          const updated = await updateRowFromTable(
+            sourceRow,
+            {
+              status: "Prospecting",
+              result: "Pending",
+            },
+            "Removed linked free-bet rows and reopened the sportsbook row as prospecting.",
+            { keepEditorOpen: true, preserveTableView: true }
+          );
+          if (updated) {
+            setFormState((current) => ({
+              ...current,
+              status: "Prospecting",
+              result: "Pending",
+            }));
+            setPristineFormState((current) => ({
+              ...current,
+              status: "Prospecting",
+              result: "Pending",
+            }));
+          }
+        }
+      } else if (sourceRowId) {
+        await loadLinkedFreeBets(sourceRowId);
       }
-      setStatusMessage(
-        `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} and marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`
-      );
-    } else {
-      setFreeBetBridgeModalState(null);
-      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
-      await loadRows(null);
-      setWorkflowVisible(false);
-      setTableCollapsed(false);
-      setStatusMessage(
-        `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} from ${sourceRow.sportsbook_bet_id} and kept the sportsbook row unchanged.`
-      );
-    }
 
-    setFreeBetBridgeModalState(null);
+      setStatusMessage(`Removed linked free bet ${row.free_bet_id}.`);
+    } finally {
+      setIsLinkedFreeBetRemoving(false);
+    }
   }
 
   async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
@@ -4707,36 +5282,47 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       return;
     }
 
+    const matchedLayLeg: PartialLayLegInput = {
+      id: createPartialLayLegId(1),
+      exchangeName: formState.exchange_name,
+      layOdds: formState.lay_odds_1,
+      matchedStake: nextSuggestedLay,
+      isFinal: true,
+    };
+
+    setPartialLayLegs([matchedLayLeg]);
+    setPendingLegRemovalId(null);
+    setLastRemovedPartialLayLeg(null);
+    setPendingLayPlacementRevert(false);
     setFormState((current) => ({
       ...current,
       lay_actual: nextSuggestedLay,
+      lay_matched_stake_1: nextSuggestedLay,
       match_strategy: mode,
+      status: current.status === "Prospecting" ? "Placed" : current.status,
+      result: current.result || "Pending",
     }));
 
     const copied = await copyToClipboard(nextSuggestedLay);
     setStatusMessage(
       copied
-        ? `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay}, switched strategy to ${mode}, and copied it to the clipboard.`
-        : `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay} and switched strategy to ${mode}.`
+        ? `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay}, marked the lay fully placed, and copied it to the clipboard.`
+        : `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay} and marked the lay fully placed.`
     );
   }
 
-  async function awardFreeBet() {
-    const rowId = formState.sportsbook_bet_id ?? selectedId;
-    if (!rowId) {
+  async function handleFreeBetBridgeFooterAction() {
+    if (!canUseFreeBetBridge) {
       setStatusMessage("Save this row first before creating a free bet from it.");
       return;
     }
 
-    const sourceRow =
-      rows.find((row) => row.sportsbook_bet_id === rowId) ??
-      selectedSportsbookRow;
-    if (!sourceRow) {
-      setStatusMessage("Sportsbook row could not be found for free-bet creation.");
+    if (safeActiveEditorTabId === "free_bet" && freeBetBridgeModalState) {
+      await submitFreeBetBridgeModal();
       return;
     }
 
-    openFreeBetBridgeModal(sourceRow);
+    setActiveEditorTabId("free_bet");
   }
 
   async function copyCustomSliderValue() {
@@ -4765,6 +5351,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
 
     if (result.nextFormState) {
       setFormState(result.nextFormState);
+      setPendingBackPlacementRevert(false);
     }
 
     if (result.statusMessage) {
@@ -4779,13 +5366,25 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
       status: "Prospecting",
       result: "Pending",
     }));
+    setPendingBackPlacementRevert(false);
     setStatusMessage("Back placement reopened. Save the sportsbook row to keep this correction.");
+  }
+
+  function requestRevertBackPlacement() {
+    if (isSettledReadOnly) return;
+    setPendingBackPlacementRevert(true);
+  }
+
+  function requestRevertLayPlacement() {
+    if (isSettledReadOnly) return;
+    setPendingLayPlacementRevert(true);
   }
 
   function revertLayPlacement() {
     if (isSettledReadOnly) return;
     setPartialLayLegs([]);
     setPendingLegRemovalId(null);
+    setPendingLayPlacementRevert(false);
     setLastRemovedPartialLayLeg(null);
     setFormState((current) => ({
       ...current,
@@ -5243,7 +5842,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
             <button
               aria-label={`Copy ${sourceRow.sportsbook_bet_id} to free bets`}
               className="icon-button table-action-button"
-              onClick={() => openFreeBetBridgeModal(sourceRow)}
+              onClick={() => void openRowFreeBetBridge(sourceRow)}
               type="button"
             >
               <span aria-hidden="true">💰+</span>
@@ -5296,7 +5895,9 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
           onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
         />
       ) : null}
-      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      {!workflowVisible ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
       <section
         aria-busy={isInitialLoading}
         className="content-panel stack sportsbook-page-shell"
@@ -5888,511 +6489,112 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
         </div>
       ) : null}
 
-      {freeBetBridgeModalState ? (
-        <div
-          className="modal-backdrop modal-backdrop-elevated"
-          onClick={() => setFreeBetBridgeModalState(null)}
-        >
-          <section
-            aria-label="Copy sportsbook row to free bets"
-            aria-modal="true"
-            className="modal-panel stack"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <div className="workflow-panel-header">
-              <div className="stack">
-                <span className="eyebrow">Free-bet bridge</span>
-                <strong>Copy to free bets</strong>
-              </div>
-              <button
-                aria-label="Close free-bet bridge modal"
-                className="modal-close-button"
-                onClick={() => setFreeBetBridgeModalState(null)}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-            <div className="form-grid">
-              <label className="field-control">
-                <span>Bookmaker</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current ? { ...current, bookmaker: event.target.value } : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.bookmaker}
-                >
-                  {bookmakerOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-control">
-                <span>Campaign tag (optional)</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            offer_name: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, offer_name: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.offer_name}
-                >
-                  {freeBetBridgeOfferNameOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-control">
-                <span>Bet type (bet shape / placement)</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            bet_type: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, bet_type: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.bet_type}
-                >
-                  {freeBetBridgeBetTypeOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-control">
-                <span>Fixture type</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            fixture_type: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, fixture_type: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.fixture_type}
-                >
-                  {fixtureTypeOptionsResolved.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-control field-span-2">
-                <span>Event</span>
-                <input
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current ? { ...current, event_name: event.target.value } : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.event_name}
-                />
-              </label>
-              <label className="field-control">
-                <span>Free-bet value</span>
-                <input
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            free_bet_value: event.target.value,
-                            expected_award_value: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, free_bet_value: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.free_bet_value}
-                />
-              </label>
-              <label className="field-control">
-                <span>Expiry</span>
-                <input
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            expiry_datetime: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, expiry_datetime: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  type="datetime-local"
-                  value={freeBetBridgeModalState.expiry_datetime}
-                />
-              </label>
-              <label className="field-control">
-                <span>Retention mode</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            retention_mode: event.target.value,
-                            splits: current.splits.map((split, index) =>
-                              index === 0 ? { ...split, retention_mode: event.target.value } : split
-                            ),
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.retention_mode}
-                >
-                  {freeBetRetentionModeOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-control">
-                <span>Free-bet award timing</span>
-                <select
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current
-                        ? {
-                            ...current,
-                            award_timing:
-                              event.target.value === "placement" ? "placement" : "settlement",
-                          }
-                        : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.award_timing}
-                >
-                  <option value="settlement">Award after settlement</option>
-                  <option value="placement">Award on placement</option>
-                </select>
-              </label>
-              <label className="field-control">
-                <span>Expected award value</span>
-                <input
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setFreeBetBridgeModalState((current) =>
-                      current ? { ...current, expected_award_value: event.target.value } : current
-                    )
-                  }
-                  value={freeBetBridgeModalState.expected_award_value}
-                />
-              </label>
-              {hasFreeBetBridgeVariance(freeBetBridgeModalState) ? (
-                <label className="field-control field-span-2">
-                  <span>Split variance reason</span>
-                  <input
-                    maxLength={500}
-                    onChange={(event) =>
-                      setFreeBetBridgeModalState((current) =>
-                        current ? { ...current, variance_reason: event.target.value } : current
-                      )
-                    }
-                    placeholder="Example: award split into football and racing free bets"
-                    value={freeBetBridgeModalState.variance_reason}
-                  />
-                </label>
-              ) : null}
-              <div className="field-span-2 bridge-split-panel stack" data-pd-id="sportsbook.free-bet-bridge.splits">
-                <div className="section-heading-row">
-                  <div className="stack">
-                    <strong>Free-bet awards</strong>
-                    <span className="field-help">
-                      Total {formatCurrencyValue(getFreeBetBridgeSplitTotal(freeBetBridgeModalState.splits))}
-                    </span>
-                  </div>
-                  <button
-                    aria-label="Add split free bet"
-                    className="button-link compact-action-button"
-                    onClick={() =>
-                      setFreeBetBridgeModalState((current) =>
-                        current
-                          ? {
-                              ...current,
-                              splits: [
-                                ...current.splits,
-                                createFreeBetBridgeSplit({
-                                  value: "",
-                                  offerName: current.offer_name,
-                                  betType: current.bet_type,
-                                  fixtureType: current.fixture_type,
-                                  expiry: current.expiry_datetime,
-                                  retentionMode: current.retention_mode,
-                                  index: current.splits.length + 1,
-                                }),
-                              ],
-                            }
-                          : current
-                      )
-                    }
-                    type="button"
-                  >
-                    <span aria-hidden="true" className="material-symbols-outlined">add</span>
-                    Add split
-                  </button>
-                </div>
-                <div className="bridge-split-list">
-                  {freeBetBridgeModalState.splits.map((split, index) => {
-                    const updateSplit = (changes: Partial<FreeBetBridgeSplitState>) =>
-                      setFreeBetBridgeModalState((current) =>
-                        current
-                          ? {
-                              ...current,
-                              splits: current.splits.map((entry) =>
-                                entry.split_id === split.split_id ? { ...entry, ...changes } : entry
-                              ),
-                            }
-                          : current
-                      );
-                    return (
-                      <div className="bridge-split-row" key={split.split_id}>
-                        <span className="bridge-split-index">{index + 1}</span>
-                        <label className="field-control bridge-split-value">
-                          <span>Split value</span>
-                          <input
-                            inputMode="decimal"
-                            onChange={(event) => updateSplit({ free_bet_value: event.target.value })}
-                            value={split.free_bet_value}
-                          />
-                        </label>
-                        <label className="field-control bridge-split-retention">
-                          <span>Split retention</span>
-                          <select
-                            onChange={(event) => updateSplit({ retention_mode: event.target.value })}
-                            value={split.retention_mode}
-                          >
-                            {freeBetRetentionModeOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="field-control bridge-split-deadline">
-                          <span>Award deadline</span>
-                          <input
-                            onChange={(event) => updateSplit({ expiry_datetime: event.target.value })}
-                            type="datetime-local"
-                            value={split.expiry_datetime}
-                          />
-                        </label>
-                        <label className="field-control bridge-split-bet-type">
-                          <span>Bet type</span>
-                          <select
-                            onChange={(event) => updateSplit({ bet_type: event.target.value })}
-                            value={split.bet_type}
-                          >
-                            {freeBetBridgeBetTypeOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="field-control bridge-split-fixture">
-                          <span>Fixture type</span>
-                          <select
-                            onChange={(event) => updateSplit({ fixture_type: event.target.value })}
-                            value={split.fixture_type}
-                          >
-                            {fixtureTypeOptionsResolved.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="field-control bridge-split-campaign">
-                          <span>Campaign tag</span>
-                          <select
-                            onChange={(event) => updateSplit({ offer_name: event.target.value })}
-                            value={split.offer_name}
-                          >
-                            {freeBetBridgeOfferNameOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="field-control bridge-split-note">
-                          <span>Restriction note</span>
-                          <input
-                            maxLength={500}
-                            onChange={(event) => updateSplit({ user_notes: event.target.value })}
-                            placeholder="Example: football bet builder only"
-                            value={split.user_notes}
-                          />
-                        </label>
-                        <button
-                          aria-label={`Remove split free bet ${index + 1}`}
-                          className="icon-button icon-button-destructive bridge-split-remove"
-                          disabled={freeBetBridgeModalState.splits.length === 1}
-                          onClick={() =>
-                            setFreeBetBridgeModalState((current) =>
-                              current && current.splits.length > 1
-                                ? {
-                                    ...current,
-                                    splits: current.splits.filter((entry) => entry.split_id !== split.split_id),
-                                  }
-                                : current
-                            )
-                          }
-                          title={
-                            freeBetBridgeModalState.splits.length === 1
-                              ? "At least one free-bet row is required"
-                              : "Remove this split free bet"
-                          }
-                          type="button"
-                        >
-                          <span aria-hidden="true" className="material-symbols-outlined">delete</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <span className="field-help field-span-2" role="status">
-                {getFreeBetBridgeValidationMessage(freeBetBridgeModalState)}
-              </span>
-            </div>
-            <div className="tracker-nav">
-              <button className="button-link" onClick={() => setFreeBetBridgeModalState(null)} type="button">
-                Close
-              </button>
-              <button
-                className="modal-primary-button"
-                disabled={Boolean(getFreeBetBridgeValidationMessage(freeBetBridgeModalState))}
-                onClick={submitFreeBetBridgeModal}
-                type="button"
-              >
-                Create {freeBetBridgeModalState.splits.length === 1 ? "free bet" : `${freeBetBridgeModalState.splits.length} free bets`}
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
       {workflowVisible ? (
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
           <section
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
             aria-modal="true"
-            className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+            className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal sportsbook-tabbed-editor-modal"
             data-pd-id="sportsbook.editor.dialog"
             onClick={(event) => event.stopPropagation()}
             ref={editorRef}
             role="dialog"
           >
             <div className="workflow-panel-header workflow-editor-header" data-pd-id="sportsbook.editor.header">
-              <div className="stack">
+              <div className="stack workflow-editor-title-stack">
                 <span className="eyebrow">
                   {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
                 </span>
                 <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
               </div>
-              <div className="tracker-nav">
-                {isSettledReadOnly ? (
+              <section
+                aria-label="Sportsbook editor context"
+                className="editor-compact-summary"
+                data-pd-id="sportsbook.editor.compact-summary"
+              >
+                <span className="table-chip">{formState.status || "Prospecting"}</span>
+                {showMatchRatingPill && activeMatchRatingDisplay ? (
+                  <span
+                    className={`table-chip calculator-match-rating-pill calculator-match-rating-pill-${activeMatchRatingTone ?? "neutral"}`}
+                    title={activeMatchRatingInterpretation ?? "Match rating"}
+                  >
+                    Match {activeMatchRatingDisplay}%
+                  </span>
+                ) : null}
+                <span className={`table-chip${getStrategyToneClass(formState.match_strategy)}`}>
+                  {editorMatchStrategyLabel || "Standard"}
+                </span>
+                <span
+                  className={`table-chip${
+                    editorLayStatus === "Fully Laid"
+                      ? " table-chip-lay-full"
+                      : editorLayStatus === "Part Laid"
+                        ? " table-chip-lay-partial"
+                        : " table-chip-muted"
+                  }`}
+                >
+                  {editorLayStatus}
+                </span>
+              </section>
+              <div className="tracker-nav workflow-editor-header-actions">
+                <div
+                  aria-label="Editor tab navigation"
+                  className="workflow-editor-header-nav"
+                  data-pd-id="sportsbook.editor.tab-actions"
+                  role="group"
+                >
                   <button
-                    className="button-link"
-                    onClick={() => setSettledEditEnabled(true)}
+                    className="review-chip review-chip-action-previous"
+                    disabled={!previousEditorTab}
+                    onClick={() => {
+                      if (previousEditorTab) {
+                        activateEditorTab(previousEditorTab.id as SportsbookEditorTabId);
+                      }
+                    }}
                     type="button"
                   >
-                    Edit settled row
+                    Previous
                   </button>
-                ) : null}
-                <button aria-label="Close sportsbook editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
-                  Close
-                </button>
+                  <button
+                    className="review-chip review-chip-action-next"
+                    disabled={!nextEditorTab}
+                    onClick={() => {
+                      if (nextEditorTab) {
+                        activateEditorTab(nextEditorTab.id as SportsbookEditorTabId);
+                      }
+                    }}
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
+              <LedgerEditorTabRail
+                activeTabId={safeActiveEditorTabId}
+                ariaLabel="Sportsbook editor sections"
+                guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
+                onActiveTabChange={(tabId) => activateEditorTab(tabId as SportsbookEditorTabId)}
+                tabs={editorTabs}
+              />
             </div>
-          {showCalculationSummary ? (
-            <section className="stat-strip" aria-label="Sportsbook editor overview">
-              <article className="stat-card">
-                <span className="eyebrow">
-                  {getDisplayedValueLabel(activePreviewCalculation, selectedSportsbookRow)}
-                </span>
-                <strong>{getDisplayedValue(activePreviewCalculation, selectedSportsbookRow)}</strong>
-                <span>Status: {formState.status || "—"}</span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Settles</span>
-                <strong>{settlesDisplay}</strong>
-                <span>
-                  {formState.result || "Pending"}
-                  {settlesCountdownDisplay ? ` • ${settlesCountdownDisplay}` : ""}
-                </span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Lay and matching</span>
-                <strong>
-                  {usesMultiLayStrategy
-                    ? `Multi Lay • ${formState.match_strategy === "Multilay-Underlay" ? "Underlay on" : "Underlay off"}`
-                    : formState.match_strategy || "—"}
-                </strong>
-                <span>
-                  Lay status: {activePreviewCalculation?.lay_status ?? selectedSportsbookRow?.lay_status ?? "—"}
-                </span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Offer path</span>
-                <strong>{formState.offer_type || "Offer type pending"}</strong>
-                <span>
-                  {offerTypeDescriptor
-                    ? `${offerTypeDescriptor.calculatorFamily} • ${offerTypeDescriptor.summary}`
-                    : [formState.bookmaker, formState.fixture_type].filter(Boolean).join(" • ") || "—"}
-                </span>
-              </article>
-            </section>
-          ) : null}
           {guidedEntryVisible ? (
             <section
               aria-label="Sportsbook guided entry"
               className={`guided-entry-banner guided-entry-banner-${guidedEntry.state}`}
               data-pd-id="sportsbook.guided-entry"
+              key={`${guidedEntry.state}:${guidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
               role="status"
             >
-              <span className="eyebrow">
-                {guidedEntry.state === "review_required" ? "Review required" : "Next required"}
-              </span>
-              <strong id={guidedEntryMessageId}>{guidedEntry.message}</strong>
+              <button
+                className="guided-entry-action"
+                onClick={focusGuidedEntryTarget}
+                type="button"
+              >
+                <span className="eyebrow">
+                  {guidedEntry.state === "review_required" ? "Review required" : "Next required"}
+                </span>
+                <strong id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+              </button>
               <button
                 aria-label="Dismiss sportsbook guided entry"
                 className="icon-button guided-entry-dismiss"
@@ -6405,14 +6607,25 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 </span>
               </button>
             </section>
+          ) : guidedEntryDismissed && guidedEntry.state !== "complete" ? (
+            <button
+              className="button-link guided-entry-restore"
+              data-pd-id="sportsbook.guided-entry.restore"
+              onClick={() => setGuidedEntryDismissed(false)}
+              type="button"
+            >
+              Show guide
+            </button>
           ) : null}
           <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+            <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
             <EditorSection
+              collapsible={false}
               headerAside={
                 isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
               }
               invalid={betSetupValidationActive && missingBetSetupFields.length > 0}
-              title="Bet setup"
+              title="Bet Setup"
             >
               {betSetupValidationActive && missingBetSetupFields.length > 0 ? (
                 <EditorValidationBanner
@@ -6426,7 +6639,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
               <div className="form-grid">
                 {!formState.sportsbook_bet_id && !selectedId ? (
                   <div className="field-span-2 stack-tight">
-                  <label className="field-control">
+	                  <label className="field-control">
                     <span>Common combo (optional)</span>
                     <select
                       aria-label="Apply common bet combo to new sportsbook draft"
@@ -6445,7 +6658,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
                   </div>
                 ) : null}
-                <label className={getGuidedFieldClass("offer")}>
+                <label className={getGuidedFieldClass("offer")} {...getGuidedFieldData("offer")}>
                   <span>Offer</span>
                   <input
                     aria-describedby={getGuidedDescribedBy("offer")}
@@ -6459,6 +6672,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   className={`${getGuidedFieldClass("bookmaker")}${
                     betSetupValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
                   }`}
+                  {...getGuidedFieldData("bookmaker")}
                 >
                   <span>Bookmaker</span>
                   <select
@@ -6480,138 +6694,192 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     ))}
                   </select>
                 </label>
-                {specialOfferBookmakerSuggestion ? (
-                  <div className="field-span-2 special-offer-suggestion-panel">
-                    <div className="section-heading-row">
-                      <div className="stack stack-tight">
-                        <span className="eyebrow">Common combo bookmaker coverage</span>
-                        <span className="field-help-text">
-                          Profile availability from the Fund Manager common-combo list.
-                        </span>
-                      </div>
-                      <span className="table-chip">
-                        {getCompactSportsbookLabel(specialOfferBookmakerSuggestion.resolvedOfferKey)}
-                      </span>
-                    </div>
-                    <div className="review-chip-row" aria-label="Known bookmaker coverage summary">
-                      <span className="review-chip review-chip-action-positive">
-                        Available {specialOfferBookmakerSuggestion.availableBookmakers.length}
-                      </span>
-                      <span className="review-chip review-chip-state-unavailable">
-                        Unavailable {specialOfferBookmakerSuggestion.unavailableBookmakers.length}
-                      </span>
-                      <span className="review-chip review-chip-state-warning">
-                        Warning {specialOfferBookmakerSuggestion.warningBookmakers.length}
-                      </span>
-                      <span className="review-chip review-chip-state-muted">
-                        Missing {specialOfferBookmakerSuggestion.missingKnownBookmakers.length}
-                      </span>
-                    </div>
-                    <div
-                      className="special-offer-suggestion-groups"
-                      aria-label="Known bookmakers for this offer"
-                      role="group"
-                    >
-                      {specialOfferBookmakerSuggestion.availableBookmakers.length > 0 ? (
-                        <div className="special-offer-chip-group">
-                          <span className="field-help-text">Available on this profile</span>
-                          <div className="review-chip-row">
-                            {specialOfferBookmakerSuggestion.availableBookmakers.map((option) => (
-                              <button
-                                aria-pressed={formState.bookmaker === option}
-                                className={`review-chip review-chip-action-positive${
-                                  formState.bookmaker === option ? " is-active" : ""
-                                }`}
-                                key={option}
-                                onClick={() =>
-                                  void applyDropdownChange(
-                                    (current) => ({ ...current, bookmaker: option }),
-                                    "Bookmaker suggestion"
-                                  )
-                                }
-                                type="button"
-                              >
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {specialOfferBookmakerSuggestion.unavailableBookmakers.length > 0 ? (
-                        <div className="special-offer-chip-group">
-                          <span className="field-help-text">Unavailable on this profile</span>
-                          <div className="review-chip-row">
-                            {specialOfferBookmakerSuggestion.unavailableBookmakers.map((option) => (
-                              <span className="review-chip review-chip-state-unavailable" key={option}>
-                                {option}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {specialOfferBookmakerSuggestion.warningBookmakers.length > 0 ? (
-                        <div className="special-offer-chip-group">
-                          <span className="field-help-text">Needs attention on this profile</span>
-                          <div className="review-chip-row">
-                            {specialOfferBookmakerSuggestion.warningBookmakers.map((option) =>
-                              option.selectable ? (
-                                <button
-                                  aria-label={`${option.bookmaker}: ${option.reason}`}
-                                  className="review-chip review-chip-state-warning"
-                                  key={option.bookmaker}
-                                  onClick={() => void applyDropdownChange((current) => ({ ...current, bookmaker: option.bookmaker }), "Bookmaker suggestion")}
-                                  title={option.reason}
-                                  type="button"
-                                >
-                                  <span aria-hidden="true" className="material-symbols-outlined">warning</span>{option.bookmaker}
-                                </button>
-                              ) : (
-                                <span aria-label={`${option.bookmaker}: ${option.reason}`} className="review-chip review-chip-state-warning" key={option.bookmaker} title={option.reason}><span aria-hidden="true" className="material-symbols-outlined">warning</span>{option.bookmaker}</span>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                      {specialOfferBookmakerSuggestion.missingKnownBookmakers.length > 0 ? (
-                        <div className="special-offer-chip-group">
-                          <span className="field-help-text">Not yet linked on this profile</span>
-                          <div className="review-chip-row">
-                            {specialOfferBookmakerSuggestion.missingKnownBookmakers.map((option) => (
-                              <span className="review-chip review-chip-state-info" key={option}>
-                                <span aria-hidden="true" className="material-symbols-outlined">info</span>{option}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                    {specialOfferBookmakerSuggestion.profileKnownBookmakers.length === 0 ? (
-                      <p className="field-help-text" role="status">
-                        Add one of these bookmakers in Settings before using this offer on this profile.
-                      </p>
-                    ) : null}
-                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "blocked" ? (
-                      <p className="field-validation-text" role="status">
-                        The selected bookmaker is known for this offer but unavailable on this profile.
-                      </p>
-                    ) : null}
-                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "not_signed_up" ? (
-                      <p className="field-help-text" role="status">
-                        The selected bookmaker is known for this offer family but is not currently linked on this profile.
-                      </p>
-                    ) : null}
-                    {specialOfferBookmakerSuggestion.allKnownBookmakersUnavailableOnProfile ? (
-                      <p className="field-validation-text" role="status">
-                        All known bookmakers for this special offer are unavailable on this profile.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-                <label
-                  className={`${getGuidedFieldClass("bet_type")}${
-                    betSetupValidationActive && !formState.bet_type.trim() ? " is-invalid" : ""
-                  }`}
-                >
+	                {specialOfferBookmakerSuggestion ? (
+	                  <div className="field-span-2 special-offer-suggestion-panel">
+	                    <div className="section-heading-row">
+	                      <span className="eyebrow">Common combo bookmaker coverage</span>
+	                      <button
+	                        aria-expanded={comboCoverageExpanded}
+	                        className="review-chip special-offer-suggestion-toggle"
+	                        onClick={() =>
+	                          setComboCoveragePreference({
+	                            expanded: !comboCoverageExpanded,
+	                            key: comboCoverageKey,
+	                          })
+	                        }
+	                        type="button"
+	                      >
+	                        <span className="table-chip">
+	                          {getCompactSportsbookLabel(specialOfferBookmakerSuggestion.resolvedOfferKey)}
+	                        </span>
+	                        <span
+	                          aria-label={`${specialOfferBookmakerSuggestion.availableBookmakers.length} available, ${specialOfferBookmakerSuggestion.unavailableBookmakers.length} unavailable, ${specialOfferBookmakerSuggestion.warningBookmakers.length} warning`}
+	                          className="coverage-notification-indicators"
+	                        >
+	                          {specialOfferBookmakerSuggestion.availableBookmakers.length > 0 ? (
+	                            <span className="notification-count notification-count-positive">
+	                              {specialOfferBookmakerSuggestion.availableBookmakers.length}
+	                            </span>
+	                          ) : null}
+	                          {specialOfferBookmakerSuggestion.warningBookmakers.length > 0 ? (
+	                            <span className="notification-count notification-count-warning">
+	                              {specialOfferBookmakerSuggestion.warningBookmakers.length}
+	                            </span>
+	                          ) : null}
+	                          {specialOfferBookmakerSuggestion.unavailableBookmakers.length > 0 ? (
+	                            <span className="notification-count notification-count-danger">
+	                              {specialOfferBookmakerSuggestion.unavailableBookmakers.length}
+	                            </span>
+	                          ) : null}
+	                        </span>
+	                        <span aria-hidden="true" className="material-symbols-outlined">
+	                          {comboCoverageExpanded ? "expand_less" : "expand_more"}
+	                        </span>
+	                      </button>
+	                    </div>
+	                    {comboCoverageExpanded ? (
+	                      <div
+	                        aria-label="Known bookmakers for this offer"
+	                        className="special-offer-suggestion-groups"
+	                        role="group"
+	                      >
+	                        <div className="review-chip-row" aria-label="Known bookmaker coverage summary">
+	                          <span className="review-chip review-chip-action-positive">
+	                            Available {specialOfferBookmakerSuggestion.availableBookmakers.length}
+	                          </span>
+	                          <span className="review-chip review-chip-state-unavailable">
+	                            Unavailable {specialOfferBookmakerSuggestion.unavailableBookmakers.length}
+	                          </span>
+	                          <span className="review-chip review-chip-state-warning">
+	                            Warning {specialOfferBookmakerSuggestion.warningBookmakers.length}
+	                          </span>
+	                          <span className="review-chip review-chip-state-muted">
+	                            Missing {specialOfferBookmakerSuggestion.missingKnownBookmakers.length}
+	                          </span>
+	                        </div>
+	                        {specialOfferBookmakerSuggestion.availableBookmakers.length > 0 ? (
+	                          <div className="special-offer-chip-group">
+	                            <span className="field-help-text">Available on this profile</span>
+	                            <div className="review-chip-row">
+	                              {specialOfferBookmakerSuggestion.availableBookmakers.map((option) => (
+	                                <button
+	                                  aria-pressed={formState.bookmaker === option}
+	                                  className={`review-chip review-chip-action-positive${
+	                                    formState.bookmaker === option ? " is-active" : ""
+	                                  }`}
+	                                  key={option}
+	                                  onClick={() =>
+	                                    void applyDropdownChange(
+	                                      (current) => ({ ...current, bookmaker: option }),
+	                                      "Bookmaker suggestion"
+	                                    )
+	                                  }
+	                                  type="button"
+	                                >
+	                                  {option}
+	                                </button>
+	                              ))}
+	                            </div>
+	                          </div>
+	                        ) : null}
+	                        {specialOfferBookmakerSuggestion.unavailableBookmakers.length > 0 ? (
+	                          <div className="special-offer-chip-group">
+	                            <span className="field-help-text">Unavailable on this profile</span>
+	                            <div className="review-chip-row">
+	                              {specialOfferBookmakerSuggestion.unavailableBookmakers.map((option) => (
+	                                <span className="review-chip review-chip-state-unavailable" key={option}>
+	                                  {option}
+	                                </span>
+	                              ))}
+	                            </div>
+	                          </div>
+	                        ) : null}
+	                        {specialOfferBookmakerSuggestion.warningBookmakers.length > 0 ? (
+	                          <div className="special-offer-chip-group">
+	                            <span className="field-help-text">Needs attention on this profile</span>
+	                            <div className="review-chip-row">
+	                              {specialOfferBookmakerSuggestion.warningBookmakers.map((option) =>
+	                                option.selectable ? (
+	                                  <button
+	                                    aria-label={`${option.bookmaker}: ${option.reason}`}
+	                                    className="review-chip review-chip-state-warning"
+	                                    key={option.bookmaker}
+	                                    onClick={() =>
+	                                      void applyDropdownChange(
+	                                        (current) => ({ ...current, bookmaker: option.bookmaker }),
+	                                        "Bookmaker suggestion"
+	                                      )
+	                                    }
+	                                    title={option.reason}
+	                                    type="button"
+	                                  >
+	                                    <span aria-hidden="true" className="material-symbols-outlined">
+	                                      warning
+	                                    </span>
+	                                    {option.bookmaker}
+	                                  </button>
+	                                ) : (
+	                                  <span
+	                                    aria-label={`${option.bookmaker}: ${option.reason}`}
+	                                    className="review-chip review-chip-state-warning"
+	                                    key={option.bookmaker}
+	                                    title={option.reason}
+	                                  >
+	                                    <span aria-hidden="true" className="material-symbols-outlined">
+	                                      warning
+	                                    </span>
+	                                    {option.bookmaker}
+	                                  </span>
+	                                )
+	                              )}
+	                            </div>
+	                          </div>
+	                        ) : null}
+	                        {specialOfferBookmakerSuggestion.missingKnownBookmakers.length > 0 ? (
+	                          <div className="special-offer-chip-group">
+	                            <span className="field-help-text">Not yet linked on this profile</span>
+	                            <div className="review-chip-row">
+	                              {specialOfferBookmakerSuggestion.missingKnownBookmakers.map((option) => (
+	                                <span className="review-chip review-chip-state-info" key={option}>
+	                                  <span aria-hidden="true" className="material-symbols-outlined">
+	                                    info
+	                                  </span>
+	                                  {option}
+	                                </span>
+	                              ))}
+	                            </div>
+	                          </div>
+	                        ) : null}
+	                      </div>
+	                    ) : null}
+	                    {specialOfferBookmakerSuggestion.profileKnownBookmakers.length === 0 ? (
+	                      <p className="field-help-text" role="status">
+	                        Add one of these bookmakers in Settings before using this offer on this profile.
+	                      </p>
+	                    ) : null}
+	                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "blocked" ? (
+	                      <p className="field-validation-text" role="status">
+	                        The selected bookmaker is known for this offer but unavailable on this profile.
+	                      </p>
+	                    ) : null}
+	                    {specialOfferBookmakerSuggestion.selectedBookmakerState === "not_signed_up" ? (
+	                      <p className="field-help-text" role="status">
+	                        The selected bookmaker is known for this offer family but is not currently linked on this profile.
+	                      </p>
+	                    ) : null}
+	                    {specialOfferBookmakerSuggestion.allKnownBookmakersUnavailableOnProfile ? (
+	                      <p className="field-validation-text" role="status">
+	                        All known bookmakers for this special offer are unavailable on this profile.
+	                      </p>
+	                    ) : null}
+	                  </div>
+	                ) : null}
+                  <label
+                    className={`${getGuidedFieldClass("bet_type")}${
+                      betSetupValidationActive && !formState.bet_type.trim() ? " is-invalid" : ""
+                    }`}
+                    {...getGuidedFieldData("bet_type")}
+                  >
                   <span>Bet type (bet shape / placement)</span>
                   <select
                     aria-describedby={getGuidedDescribedBy("bet_type")}
@@ -6636,11 +6904,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     Use bet type for wager shape or placement context, for example Single, In Play + Single, Bet Builder, Correct Score, or First Goalscorer.
                   </p>
                 </label>
-                <label
-                  className={`${getGuidedFieldClass("offer_type")}${
-                    betSetupValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
-                  }`}
-                >
+                  <label
+                    className={`${getGuidedFieldClass("offer_type")}${
+                      betSetupValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
+                    }`}
+                    {...getGuidedFieldData("offer_type")}
+                  >
                   <span>Offer type (promotion mechanism)</span>
                   <select
                     aria-describedby={getGuidedDescribedBy("offer_type")}
@@ -6684,11 +6953,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     value={formState.offer_name}
                   />
                 </label>
-                <label
-                  className={`${getGuidedFieldClass("fixture_type")}${
-                    betSetupValidationActive && !formState.fixture_type.trim() ? " is-invalid" : ""
-                  }`}
-                >
+                  <label
+                    className={`${getGuidedFieldClass("fixture_type")}${
+                      betSetupValidationActive && !formState.fixture_type.trim() ? " is-invalid" : ""
+                    }`}
+                    {...getGuidedFieldData("fixture_type")}
+                  >
                   <span>Fixture type</span>
                   <select
                     aria-describedby={getGuidedDescribedBy("fixture_type")}
@@ -6731,11 +7001,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                       ))}
                   </div>
                 </label>
-                <label
-                  className={`${getGuidedFieldClass("event_name")}${
-                    betSetupValidationActive && !formState.event_name.trim() ? " is-invalid" : ""
-                  }`}
-                >
+                  <label
+                    className={`${getGuidedFieldClass("event_name")}${
+                      betSetupValidationActive && !formState.event_name.trim() ? " is-invalid" : ""
+                    }`}
+                    {...getGuidedFieldData("event_name")}
+                  >
                   <span>Event name</span>
                   <input
                     aria-describedby={getGuidedDescribedBy("event_name")}
@@ -6755,90 +7026,14 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     value={formState.market}
                   />
                 </label>
-                <label className="field-control">
-                  <span>Status</span>
-                  <select
-                    onChange={(event) =>
-                      void applyDropdownChange(
-                        (current) => applyStatusDefaults(current, event.target.value),
-                        "Status change"
-                      )
-                    }
-                    value={formState.status}
-                  >
-                    {sportsbookStatusOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                      ))}
-                    </select>
-                  </label>
-                <label className="field-control">
-                  <span>Settles</span>
-                  <input
-                    aria-invalid={betSetupValidationActive && missingPlacementFields.includes("Settles")}
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                          ...current,
-                          date_settled: event.target.value,
-                        }))
-                      }
-                      type="datetime-local"
-                      value={formState.date_settled}
-                    />
-                    {formState.fixture_type === "Football" ? (
-                      <div className="tracker-nav">
-                        <button
-                          className="button-link"
-                          disabled={!canUseFootballSettlesAssist || footballSettlesAssistUsed}
-                          onClick={applyFootballSettlesAssist}
-                          type="button"
-                        >
-                          +90m Football
-                        </button>
-                        {footballSettlesAssistUsed ? (
-                          <button
-                            className="button-link"
-                            onClick={resetFootballSettlesAssist}
-                            type="button"
-                          >
-                            Reset
-                          </button>
-                        ) : null}
-                        {footballSettlesAssistUsed ? (
-                          <span className="table-chip">Football +90m Applied</span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </label>
               </div>
               </fieldset>
-              {isFreeBetAwardableRow && hasPersistedDraft ? (
-                <div className="field-span-2 review-chip-row" role="group" aria-label="Free-bet bridge actions">
-                  <span className="action-tooltip-wrap">
-                    <button
-                      aria-describedby="create-free-bet-tooltip"
-                      className="review-chip review-chip-action-bridge"
-                      onClick={() => void awardFreeBet()}
-                      title="Copies bookmaker, offer type, bet type, fixture type, event, and source row ID."
-                      type="button"
-                    >
-                      Create Free Bet
-                    </button>
-                    <span className="action-tooltip" id="create-free-bet-tooltip" role="tooltip">
-                      Copies bookmaker, offer type, bet type, fixture type, event, and source row ID.
-                    </span>
-                  </span>
-                </div>
-              ) : null}
-              {isFreeBetAwardableRow && !hasPersistedDraft ? (
-                <p className="field-help-text field-span-2">
-                  Save this row first to enable the &ldquo;Create Free Bet&rdquo; action.
-                </p>
-              ) : null}
             </EditorSection>
+            </LedgerEditorTabPanel>
 
+            <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
             <EditorSection
+              collapsible={false}
               headerAside={
                 isSettledReadOnly ? (
                   <span className="section-lock-chip">Settled row locked</span>
@@ -6944,6 +7139,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                   ? " is-invalid"
                                   : ""
                               }`}
+                              {...getGuidedFieldData("back_stake")}
                             >
                               <span>Back stake</span>
                               <input
@@ -6965,6 +7161,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                     ? " is-invalid"
                                     : ""
                                 }`}
+                                {...getGuidedFieldData("back_odds")}
                               >
                                 <span>{isProfitBoostOffer ? "Boosted back odds" : "Back odds"}</span>
                                 <input
@@ -7074,19 +7271,75 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             >
                               Back Bet Placed
                             </button>
-                            {backPlacementConfirmed && !isSettledReadOnly ? (
+                            {backPlacementConfirmed && !isSettledReadOnly && !pendingBackPlacementRevert ? (
                               <button
                                 aria-label="Revert back bet placement"
                                 className="icon-button"
                                 data-pd-id="sportsbook.placement.revert-back"
-                                onClick={revertBackPlacement}
+                                onClick={requestRevertBackPlacement}
                                 title="Revert back bet placement"
                                 type="button"
                               >
                                 <span aria-hidden="true" className="material-symbols-outlined">undo</span>
                               </button>
                             ) : null}
+                            {pendingBackPlacementRevert ? (
+                              <>
+                                <button
+                                  className="review-chip review-chip-danger"
+                                  onClick={revertBackPlacement}
+                                  type="button"
+                                >
+                                  Remove Back Placement
+                                </button>
+                                <button
+                                  className="review-chip review-chip-action-previous"
+                                  onClick={() => setPendingBackPlacementRevert(false)}
+                                  type="button"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : null}
                           </div>
+                          {pendingBackPlacementRevert ? (
+                            <p className="placement-confirmation-text" role="alert">
+                              Are you sure? back bet has been recorded.
+                            </p>
+                          ) : null}
+                          {backPlacementConfirmed && !formState.date_settled.trim() ? (
+                            <div className="placement-settlement-inline">
+                              <label className="field-control" {...getGuidedFieldData("settlement")}>
+                                <span>Settles</span>
+                                <input
+                                  aria-invalid={betSetupValidationActive && missingPlacementFields.includes("Settles")}
+                                  onChange={(event) =>
+                                    setFormState((current) => ({
+                                      ...current,
+                                      date_settled: event.target.value,
+                                      status: current.status === "Prospecting" ? "Placed" : current.status,
+                                      result: current.result || "Pending",
+                                    }))
+                                  }
+                                  type="datetime-local"
+                                  value={formState.date_settled}
+                                />
+                              </label>
+                              {formState.fixture_type === "Football" ? (
+                                <button
+                                  aria-label="Add 90 minutes to football settlement time"
+                                  className="review-chip review-chip-action-previous placement-settlement-assist"
+                                  disabled={!canUseFootballSettlesAssist || footballSettlesAssistUsed}
+                                  onClick={applyFootballSettlesAssist}
+                                  title="Add 90 minutes to football settlement time"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="material-symbols-outlined">timer</span>
+                                  <span>+90m</span>
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
 
                         <div className="field-span-2 calculator-segment calculator-segment-lay">
@@ -7119,6 +7372,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                     ? " is-invalid"
                                     : ""
                                 }`}
+                                {...getGuidedFieldData("exchange")}
                               >
                                 <span>Exchange</span>
                                 <select
@@ -7148,6 +7402,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                     ? " is-invalid"
                                     : ""
                                 }`}
+                                {...getGuidedFieldData("lay_odds_1")}
                               >
                                 <span>Lay odds 1</span>
                                 <input
@@ -7170,6 +7425,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                     ? " is-invalid"
                                     : ""
                                 }`}
+                                {...getGuidedFieldData("lay_actual")}
                               >
                                 <span>Lay actual</span>
                                 <input
@@ -7355,38 +7611,65 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                           ) : null}
 
                           {!isNoLayStrategy && !usesMultiLayStrategy ? (
-                            <div className="review-chip-row" role="group" aria-label="Lay placement actions">
-                              <button
-                                aria-pressed={layPartiallyConfirmed}
-                                className="review-chip review-chip-action-negative"
-                                disabled={!layPlacementReady || layPlacementConfirmed}
-                                onClick={() => addPartialLayLeg({ isFinal: false })}
-                                type="button"
-                              >
-                                Lay Placed but Partially Matched
-                              </button>
-                              <button
-                                aria-pressed={layFullyConfirmed}
-                                className="review-chip review-chip-action-positive"
-                                disabled={!layPlacementReady || layFullyConfirmed}
-                                onClick={() => addPartialLayLeg({ isFinal: true })}
-                                type="button"
-                              >
-                                Lay Fully Placed
-                              </button>
-                              {layPlacementConfirmed && !isSettledReadOnly ? (
+                            <>
+                              <div className="review-chip-row" role="group" aria-label="Lay placement actions">
                                 <button
-                                  aria-label="Revert lay placement"
-                                  className="icon-button"
-                                  data-pd-id="sportsbook.placement.revert-lay"
-                                  onClick={revertLayPlacement}
-                                  title="Revert lay placement"
+                                  aria-pressed={layPartiallyConfirmed}
+                                  className="review-chip review-chip-action-negative"
+                                  disabled={!layPlacementReady || layPlacementConfirmed}
+                                  onClick={() => addPartialLayLeg({ isFinal: false })}
                                   type="button"
                                 >
-                                  <span aria-hidden="true" className="material-symbols-outlined">undo</span>
+                                  Lay Placed but Partially Matched
                                 </button>
+                                <button
+                                  aria-pressed={layFullyConfirmed}
+                                  className="review-chip review-chip-action-positive"
+                                  disabled={!layPlacementReady || layFullyConfirmed}
+                                  onClick={() => addPartialLayLeg({ isFinal: true })}
+                                  type="button"
+                                >
+                                  Lay Fully Placed
+                                </button>
+                                {layPlacementConfirmed && !isSettledReadOnly && !pendingLayPlacementRevert ? (
+                                  <button
+                                    aria-label="Revert lay placement"
+                                    className="icon-button"
+                                    data-pd-id="sportsbook.placement.revert-lay"
+                                    onClick={requestRevertLayPlacement}
+                                    title="Revert lay placement"
+                                    type="button"
+                                  >
+                                    <span aria-hidden="true" className="material-symbols-outlined">
+                                      undo
+                                    </span>
+                                  </button>
+                                ) : null}
+                                {pendingLayPlacementRevert ? (
+                                  <>
+                                    <button
+                                      className="review-chip review-chip-danger"
+                                      onClick={revertLayPlacement}
+                                      type="button"
+                                    >
+                                      Remove Lay
+                                    </button>
+                                    <button
+                                      className="review-chip review-chip-action-previous"
+                                      onClick={() => setPendingLayPlacementRevert(false)}
+                                      type="button"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : null}
+                              </div>
+                              {pendingLayPlacementRevert ? (
+                                <p className="placement-confirmation-text" role="alert">
+                                  Are you sure? lay has been entered.
+                                </p>
                               ) : null}
-                            </div>
+                            </>
                           ) : null}
                           {!isNoLayStrategy && !usesMultiLayStrategy ? (
                             <p className="field-help-text">
@@ -7396,11 +7679,11 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                         </div>
 
                         {!isNoLayStrategy && !usesMultiLayStrategy && partialLayLegs.length > 0 ? (
-                          <div className="field-span-2 content-subpanel stack partial-lay-panel" aria-label="Partial lay legs">
-                            <div className="section-heading-row">
-                              <span className="eyebrow">Partial lay legs</span>
-                              <span className="table-chip">{partialLayLegs.length} legs</span>
-                            </div>
+	                          <div className="field-span-2 content-subpanel stack partial-lay-panel" aria-label={partialLayPanelTitle}>
+	                            <div className="section-heading-row">
+	                              <span className="eyebrow">{partialLayPanelTitle}</span>
+	                              <span className="table-chip">{partialLayLegs.length} legs</span>
+	                            </div>
                             <div className="stack">
                               {partialLayLegs.map((leg, index) => (
                                 <div className="partial-lay-leg-item" key={leg.id}>
@@ -7439,20 +7722,22 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                           }
                                           value={leg.matchedStake}
                                         />
-                                        <button
-                                          aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
-                                          className="icon-button icon-button-destructive table-action-button"
-                                          onClick={() => requestRemovePartialLayLeg(leg.id)}
-                                          title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
-                                          type="button"
-                                        >
-                                          <span
-                                            aria-hidden="true"
-                                            className="material-symbols-outlined"
-                                          >
-                                            delete
-                                          </span>
-                                        </button>
+	                                        {partialLayLegs.length > 1 && index > 0 ? (
+	                                          <button
+	                                            aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
+	                                            className="icon-button icon-button-destructive table-action-button"
+	                                            onClick={() => requestRemovePartialLayLeg(leg.id)}
+	                                            title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
+	                                            type="button"
+	                                          >
+	                                            <span
+	                                              aria-hidden="true"
+	                                              className="material-symbols-outlined"
+	                                            >
+	                                              delete
+	                                            </span>
+	                                          </button>
+	                                        ) : null}
                                       </div>
                                     </label>
                                   </div>
@@ -7494,26 +7779,26 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                               ) : null}
                             </div>
                             <div className="summary-list">
-                              <p className="lede">
-                                <span className="summary-label">Matched so Far</span>
-                                <strong>{formatPreviewMoney(partialLayExecutionSummary.matchedTotal)}</strong>
-                              </p>
+	                              <p className="lede">
+	                                <span className="summary-label">Matched so Far</span>
+	                                <strong>{formatPreviewFinancialValue(partialLayExecutionSummary.matchedTotal)}</strong>
+	                              </p>
                               <p className="lede">
                                 <span className="summary-label">Target Lay</span>
                                 <strong>
-                                  {partialLayExecutionSummary.targetLayStake === null
-                                    ? "—"
-                                    : formatPreviewMoney(partialLayExecutionSummary.targetLayStake)}
-                                </strong>
-                              </p>
+	                                  {partialLayExecutionSummary.targetLayStake === null
+	                                    ? "—"
+	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.targetLayStake)}
+	                                </strong>
+	                              </p>
                               <p className="lede">
                                 <span className="summary-label">Remaining to Match</span>
                                 <strong>
-                                  {partialLayExecutionSummary.remainingToMatch === null
-                                    ? "—"
-                                    : formatPreviewMoney(partialLayExecutionSummary.remainingToMatch)}
-                                </strong>
-                              </p>
+	                                  {partialLayExecutionSummary.remainingToMatch === null
+	                                    ? "—"
+	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.remainingToMatch)}
+	                                </strong>
+	                              </p>
                               <p className="lede">
                                 <span className="summary-label">Recommended Next Lay Stake</span>
                                 <span className="summary-value-with-action">
@@ -7556,7 +7841,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                   </div>
                                 ) : null}
                                 <strong>
-                                  Best-value lay suggestion ({layStakePreview.modeLabel}): {layStakePreview.suggested}
+	                                  Best-value lay suggestion ({layStakePreview.modeLabel}): {formatPreviewFinancialValue(layStakePreview.suggested)}
                                 </strong>
                                 <p className="field-help-text">
                                   Current best-value suggestion from contract-backed lay references.
@@ -7574,9 +7859,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       onClick={() => void applySuggestedLayValue("Standard")}
                                       type="button"
                                     >
-                                      {activePreviewCalculation?.reference_lay_stake_standard ??
-                                        selectedSportsbookRow?.reference_lay_stake_standard ??
-                                        "—"}
+	                                      {formatPreviewFinancialValue(
+	                                        activePreviewCalculation?.reference_lay_stake_standard ??
+	                                          selectedSportsbookRow?.reference_lay_stake_standard
+	                                      )}
                                     </button>
                                   </p>
                                   <p className="lede">
@@ -7591,9 +7877,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       onClick={() => void applySuggestedLayValue("Underlay")}
                                       type="button"
                                     >
-                                      {activePreviewCalculation?.reference_lay_stake_underlay ??
-                                        selectedSportsbookRow?.reference_lay_stake_underlay ??
-                                        "—"}
+	                                      {formatPreviewFinancialValue(
+	                                        activePreviewCalculation?.reference_lay_stake_underlay ??
+	                                          selectedSportsbookRow?.reference_lay_stake_underlay
+	                                      )}
                                     </button>
                                   </p>
                                   <p className="lede">
@@ -7608,9 +7895,10 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       onClick={() => void applySuggestedLayValue("Overlay")}
                                       type="button"
                                     >
-                                      {activePreviewCalculation?.reference_lay_stake_overlay ??
-                                        selectedSportsbookRow?.reference_lay_stake_overlay ??
-                                        "—"}
+	                                      {formatPreviewFinancialValue(
+	                                        activePreviewCalculation?.reference_lay_stake_overlay ??
+	                                          selectedSportsbookRow?.reference_lay_stake_overlay
+	                                      )}
                                     </button>
                                   </p>
                                 </div>
@@ -7643,7 +7931,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                             <div className="stack">
                               <strong>
                                 {getDisplayedValueLabel(activePreviewCalculation, null)}:{" "}
-                                {getDisplayedValue(activePreviewCalculation, null)}
+	                                {renderPreviewFinancialValue(getDisplayedValue(activePreviewCalculation, null))}
                               </strong>
                               <div className="summary-list">
                                 <p className="lede">
@@ -7655,7 +7943,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       scenarioBranchLabels.backWinLabel,
                                       formState.result
                                     )}
-                                    : {activePreviewCalculation.scenario_pnl_if_back_wins ?? "—"}
+	                                    : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_back_wins)}
                                   </span>
                                 </p>
                                 <p className="lede">
@@ -7667,7 +7955,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                       scenarioBranchLabels.layWinLabel,
                                       formState.result
                                     )}
-                                    : {activePreviewCalculation.scenario_pnl_if_lay_wins ?? "—"}
+	                                    : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_lay_wins)}
                                   </span>
                                 </p>
                                 {scenarioBranchLabels.outcome2Label &&
@@ -7683,7 +7971,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                         scenarioBranchLabels.outcome2Label,
                                         formState.result
                                       ) ?? "Outcome 2"}
-                                      : {activePreviewCalculation.scenario_pnl_if_outcome_2_wins ?? "—"}
+	                                      : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_outcome_2_wins)}
                                     </span>
                                   </p>
                                 ) : null}
@@ -7700,7 +7988,7 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                                         scenarioBranchLabels.outcome3Label,
                                         formState.result
                                       ) ?? "Outcome 3"}
-                                      : {activePreviewCalculation.scenario_pnl_if_outcome_3_wins ?? "—"}
+	                                      : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_outcome_3_wins)}
                                     </span>
                                   </p>
                                 ) : null}
@@ -8021,9 +8309,12 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                 </div>
               </fieldset>
             </EditorSection>
+            </LedgerEditorTabPanel>
 
             {showsPlacementSection ? (
+              <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="placement">
               <EditorSection
+                collapsible={false}
                 headerAside={
                   isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
                 }
@@ -8307,15 +8598,99 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                   </section>
                 ) : null}
               </EditorSection>
+              </LedgerEditorTabPanel>
             ) : null}
 
+            <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
             <EditorSection
+              collapsible={false}
               defaultOpen={Boolean(selectedId)}
               key={selectedId ?? "sportsbook-settlement-new"}
               title="Settlement"
             >
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                 <div className="form-grid">
+                  <label className="field-control">
+                    <span>Status</span>
+                    <select
+                      onChange={(event) =>
+                        void applyDropdownChange(
+                          (current) => applyStatusDefaults(current, event.target.value),
+                          "Status change"
+                        )
+                      }
+                      value={formState.status}
+                    >
+                      {sportsbookStatusOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-control" {...getGuidedFieldData("settlement")}>
+                    <span>Settles</span>
+                    <input
+                      aria-invalid={betSetupValidationActive && missingPlacementFields.includes("Settles")}
+                      onChange={(event) =>
+                        setFormState((current) => ({
+                          ...current,
+                          date_settled: event.target.value,
+                        }))
+                      }
+                      type="datetime-local"
+                      value={formState.date_settled}
+                    />
+                    {formState.fixture_type === "Football" ? (
+                      <div className="tracker-nav">
+                        <button
+                          className="button-link"
+                          disabled={!canUseFootballSettlesAssist || footballSettlesAssistUsed}
+                          onClick={applyFootballSettlesAssist}
+                          type="button"
+                        >
+                          +90m Football
+                        </button>
+                        {footballSettlesAssistUsed ? (
+                          <button
+                            className="button-link"
+                            onClick={resetFootballSettlesAssist}
+                            type="button"
+                          >
+                            Reset
+                          </button>
+                        ) : null}
+                        {footballSettlesAssistUsed ? (
+                          <span className="table-chip">Football +90m Applied</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </label>
+                  {quickSettlementOptions.length > 0 ? (
+                    <div
+                      aria-label="Quick settlement outcomes"
+                      className="settlement-quick-actions field-span-2"
+                      role="group"
+                    >
+                      {quickSettlementOptions.map((option) => (
+                        <button
+                          className={`review-chip settlement-quick-action${
+                            formState.result === option.value ? " is-active" : ""
+                          }`}
+                          key={option.value}
+                          onClick={() =>
+                            void applyDropdownChange(
+                              (current) => applyResultDefaults(current, option.value),
+                              "Settlement quick action"
+                            )
+                          }
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <label className="field-control">
                     <span>Result</span>
                     <select
@@ -8341,128 +8716,667 @@ function openFreeBetBridgeModal(record: SportsbookRecord) {
                     </label>
                   ) : null}
                 </div>
-              </fieldset>
-            </EditorSection>
-
-            <EditorSection defaultOpen={false} title="Advanced controls">
-              {(
-                selectedSportsbookRow?.calculation_notes.length ||
-                (showCalculationSummary && activePreviewCalculation?.calculation_notes.length)
-              ) ? (
-                <section className="stack">
-                  <span className="eyebrow">Calculation notes</span>
-                  {(activePreviewCalculation?.calculation_notes.length
-                    ? activePreviewCalculation.calculation_notes
-                    : selectedSportsbookRow?.calculation_notes ?? []).map((note) => (
-                      <p className="lede" key={note}>
-                        {note}
-                      </p>
-                    ))}
-                </section>
-              ) : null}
-              {showCalculationSummary ? (
-                <section className="stack">
-                  <span className="eyebrow">Contract trace</span>
-                  <div className="meta-grid">
-                    <dl>
-                      <dt>Calculation state</dt>
-                      <dd>
-                        {activePreviewCalculation?.calculation_state ??
-                          selectedSportsbookRow?.calculation_state ??
-                          "—"}
-                      </dd>
-                    </dl>
-                    <dl>
-                      <dt>Displayed value source</dt>
-                      <dd>
-                        {getCalculationValueSource(
-                          activePreviewCalculation,
-                          selectedSportsbookRow
-                        )}
-                      </dd>
-                    </dl>
-                    <dl>
-                      <dt>Reporting figure shown</dt>
-                      <dd>
-                        {getDisplayedValue(activePreviewCalculation, selectedSportsbookRow)}
-                      </dd>
-                    </dl>
-                    <dl>
-                      <dt>Override audit</dt>
-                      <dd>
-                        {formState.manual_override_value.trim()
-                          ? formState.manual_override_reason.trim()
-                            ? "Manual override includes an audit reason."
-                            : "Manual override now requires a reason and will stay review-required without one."
-                          : "No manual override is active for this row."}
-                      </dd>
-                    </dl>
+                <details className="settlement-advanced-controls field-span-2">
+                  <summary>Advanced controls</summary>
+                  <div className="form-grid">
+                    <label className="field-control field-span-2">
+                      <span>Manual override value</span>
+                      <input
+                        onChange={(event) =>
+                          setFormState((current) => ({
+                            ...current,
+                            manual_override_value: event.target.value,
+                          }))
+                        }
+                        value={formState.manual_override_value}
+                      />
+                    </label>
+                    <label className="field-control field-span-2">
+                      <span>Manual override reason</span>
+                      <input
+                        onChange={(event) =>
+                          setFormState((current) => ({
+                            ...current,
+                            manual_override_reason: event.target.value,
+                          }))
+                        }
+                        value={formState.manual_override_reason}
+                      />
+                    </label>
+                    <label className="field-control field-span-2">
+                      <span>Notes</span>
+                      <textarea
+                        onChange={(event) =>
+                          setFormState((current) => ({ ...current, user_notes: event.target.value }))
+                        }
+                        rows={5}
+                        value={formState.user_notes}
+                      />
+                    </label>
                   </div>
-                </section>
-              ) : null}
-              <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
-              <div className="form-grid">
-                <label className="field-control field-span-2">
-                  <span>Manual override value</span>
-                  <input
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        manual_override_value: event.target.value,
-                      }))
-                    }
-                    value={formState.manual_override_value}
-                  />
-                </label>
-                <label className="field-control field-span-2">
-                  <span>Manual override reason</span>
-                  <input
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        manual_override_reason: event.target.value,
-                      }))
-                    }
-                    value={formState.manual_override_reason}
-                  />
-                </label>
-                <label className="field-control field-span-2">
-                  <span>Notes</span>
-                  <textarea
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, user_notes: event.target.value }))
-                    }
-                    rows={5}
-                    value={formState.user_notes}
-                  />
-                </label>
-              </div>
+                </details>
               </fieldset>
             </EditorSection>
-            <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
-              <button
-                className="review-chip review-chip-copy"
-                disabled={isInitialLoading || isSettledReadOnly || isPersisting}
-                type="submit"
+            </LedgerEditorTabPanel>
+            <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="free_bet">
+              <EditorSection
+                collapsible={false}
+                defaultOpen
+                key={`${selectedId ?? "sportsbook-free-bet-new"}-bridge`}
+                title="Free-Bet Bridge"
               >
-                {isPersisting ? "Saving" : "Save"}
-              </button>
-              {selectedId ? (
-                <button
-                  className="review-chip review-chip-danger"
-                  onClick={() => void handleDeleteSelectedRow()}
-                  type="button"
-                >
-                  Delete
-                </button>
-              ) : null}
-              <button className="review-chip" onClick={handleResetForm} type="button">
-                Revert
-              </button>
-              <button aria-label="Close sportsbook editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
-                Close
-              </button>
-            </div>
+                {!canUseFreeBetBridge ? (
+                  <div className="empty-state compact-empty-state" data-pd-id="sportsbook.free-bet-bridge.locked">
+                    {isFreeBetAwardableRow
+                      ? "Save this sportsbook row before creating free-bet award rows."
+                      : "This sportsbook workflow does not create a free bet."}
+                  </div>
+                ) : freeBetBridgeModalState ? (
+                  <div
+                    className="free-bet-bridge-inline form-grid"
+                    data-guided-field="free_bet_bridge"
+                    data-pd-id="sportsbook.free-bet-bridge.inline"
+                  >
+                    <label className="field-control">
+                      <span>Bookmaker</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current ? { ...current, bookmaker: event.target.value } : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.bookmaker}
+                      >
+                        {bookmakerOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Campaign tag</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  offer_name: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, offer_name: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.offer_name}
+                      >
+                        {freeBetBridgeOfferNameOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Bet type</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  bet_type: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, bet_type: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.bet_type}
+                      >
+                        {freeBetBridgeBetTypeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Fixture type</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  fixture_type: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, fixture_type: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.fixture_type}
+                      >
+                        {fixtureTypeOptionsResolved.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Status</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current ? { ...current, free_bet_status: event.target.value } : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.free_bet_status}
+                      >
+                        {freeBetStatusOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Free-bet value</span>
+                      <input
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  free_bet_value: event.target.value,
+                                  expected_award_value: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, free_bet_value: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.free_bet_value}
+                      />
+                    </label>
+                    <label className="field-control">
+                      <span>Expiry</span>
+                      <input
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  expiry_datetime: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, expiry_datetime: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        type="datetime-local"
+                        value={freeBetBridgeModalState.expiry_datetime}
+                      />
+                    </label>
+                    <label className="field-control">
+                      <span>Retention mode</span>
+                      <select
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  retention_mode: event.target.value,
+                                  splits: current.splits.map((split, index) =>
+                                    index === 0 ? { ...split, retention_mode: event.target.value } : split
+                                  ),
+                                }
+                              : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.retention_mode}
+                      >
+                        {freeBetRetentionModeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-control">
+                      <span>Expected award value</span>
+                      <input
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current ? { ...current, expected_award_value: event.target.value } : current
+                          )
+                        }
+                        value={freeBetBridgeModalState.expected_award_value}
+                      />
+                    </label>
+                    <label className="field-control field-span-2">
+                      <span>Notes</span>
+                      <textarea
+                        maxLength={1000}
+                        onChange={(event) =>
+                          setFreeBetBridgeModalState((current) =>
+                            current ? { ...current, user_notes: event.target.value } : current
+                          )
+                        }
+                        rows={3}
+                        value={freeBetBridgeModalState.user_notes}
+                      />
+                    </label>
+                    {hasFreeBetBridgeVariance(freeBetBridgeModalState) ? (
+                      <label className="field-control field-span-2">
+                        <span>Split variance reason</span>
+                        <input
+                          maxLength={500}
+                          onChange={(event) =>
+                            setFreeBetBridgeModalState((current) =>
+                              current ? { ...current, variance_reason: event.target.value } : current
+                            )
+                          }
+                          placeholder="Example: award split into football and racing free bets"
+                          value={freeBetBridgeModalState.variance_reason}
+                        />
+                      </label>
+                    ) : null}
+                    <div className="field-span-2 bridge-split-panel stack" data-pd-id="sportsbook.free-bet-bridge.splits">
+                      <div className="bridge-split-panel-header">
+                        <div className="stack">
+                          <strong>Free-bet awards</strong>
+                          <span className="field-help">
+                            {freeBetBridgeModalState.splits.length} award{freeBetBridgeModalState.splits.length === 1 ? "" : "s"} · Total{" "}
+                            {formatCurrencyValue(getFreeBetBridgeSplitTotal(freeBetBridgeModalState.splits))}
+                          </span>
+                        </div>
+                        <div className="bridge-split-panel-actions">
+                          <button
+                            aria-expanded={freeBetBridgeSplitsExpanded}
+                            aria-label={
+                              freeBetBridgeSplitsExpanded
+                                ? "Collapse free-bet award splits"
+                                : "Expand free-bet award splits"
+                            }
+                            className="button-link compact-action-button"
+                            onClick={() => setFreeBetBridgeSplitsExpanded((current) => !current)}
+                            type="button"
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined">
+                              {freeBetBridgeSplitsExpanded ? "expand_less" : "expand_more"}
+                            </span>
+                            {freeBetBridgeSplitsExpanded ? "Collapse" : "Expand"}
+                          </button>
+                          <button
+                            aria-label="Clear free-bet bridge defaults"
+                            className="button-link compact-action-button"
+                            onClick={clearFreeBetBridgeDefaults}
+                            type="button"
+                          >
+                            Clear defaults
+                          </button>
+                          <button
+                            aria-label="Add split free bet"
+                            className="button-link compact-action-button"
+                            onClick={() => {
+                              setFreeBetBridgeSplitsExpanded(true);
+                              setFreeBetBridgeModalState((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      splits: [
+                                        ...current.splits,
+                                        createFreeBetBridgeSplit({
+                                          value: "",
+                                          offerName: current.offer_name,
+                                          betType: current.bet_type,
+                                          fixtureType: current.fixture_type,
+                                          expiry: current.expiry_datetime,
+                                          retentionMode: current.retention_mode,
+                                          index: current.splits.length + 1,
+                                        }),
+                                      ],
+                                    }
+                                  : current
+                              );
+                            }}
+                            type="button"
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined">add</span>
+                            Add split
+                          </button>
+                        </div>
+                      </div>
+                      {freeBetBridgeSplitsExpanded ? (
+                      <div className="bridge-split-list">
+                        {freeBetBridgeModalState.splits.map((split, index) => {
+                          const updateSplit = (changes: Partial<FreeBetBridgeSplitState>) =>
+                            setFreeBetBridgeModalState((current) =>
+                              current
+                                ? {
+                                    ...current,
+                                    splits: current.splits.map((entry) =>
+                                      entry.split_id === split.split_id ? { ...entry, ...changes } : entry
+                                    ),
+                                  }
+                                : current
+                            );
+                          const hasMultipleSplits = freeBetBridgeModalState.splits.length > 1;
+                          return (
+                            <div
+                              className={`bridge-split-row${
+                                hasMultipleSplits ? " bridge-split-row-multiple" : " bridge-split-row-single"
+                              }`}
+                              key={split.split_id}
+                            >
+                              {hasMultipleSplits ? (
+                                <span className="bridge-split-index">{index + 1}</span>
+                              ) : null}
+                              <label className="field-control bridge-split-value">
+                                <span>Split value</span>
+                                <input
+                                  inputMode="decimal"
+                                  onChange={(event) => updateSplit({ free_bet_value: event.target.value })}
+                                  value={split.free_bet_value}
+                                />
+                              </label>
+                              <label className="field-control bridge-split-retention">
+                                <span>Retention</span>
+                                <select
+                                  onChange={(event) => updateSplit({ retention_mode: event.target.value })}
+                                  value={split.retention_mode}
+                                >
+                                  {freeBetRetentionModeOptions.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="field-control bridge-split-deadline">
+                                <span>Award deadline</span>
+                                <input
+                                  onChange={(event) => updateSplit({ expiry_datetime: event.target.value })}
+                                  type="datetime-local"
+                                  value={split.expiry_datetime}
+                                />
+                              </label>
+                              <label className="field-control bridge-split-bet-type">
+                                <span>Bet type</span>
+                                <select
+                                  onChange={(event) => updateSplit({ bet_type: event.target.value })}
+                                  value={split.bet_type}
+                                >
+                                  {freeBetBridgeBetTypeOptions.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="field-control bridge-split-fixture">
+                                <span>Fixture type</span>
+                                <select
+                                  onChange={(event) => updateSplit({ fixture_type: event.target.value })}
+                                  value={split.fixture_type}
+                                >
+                                  {fixtureTypeOptionsResolved.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="field-control bridge-split-campaign">
+                                <span>Campaign tag</span>
+                                <select
+                                  onChange={(event) => updateSplit({ offer_name: event.target.value })}
+                                  value={split.offer_name}
+                                >
+                                  {freeBetBridgeOfferNameOptions.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="field-control bridge-split-note">
+                                <span>Restriction note</span>
+                                <input
+                                  maxLength={500}
+                                  onChange={(event) => updateSplit({ user_notes: event.target.value })}
+                                  placeholder="Example: football bet builder only"
+                                  value={split.user_notes}
+                                />
+                              </label>
+                              {hasMultipleSplits ? (
+                                <button
+                                  aria-label={`Remove split free bet ${index + 1}`}
+                                  className="icon-button icon-button-destructive bridge-split-remove"
+                                  onClick={() =>
+                                    setFreeBetBridgeModalState((current) =>
+                                      current && current.splits.length > 1
+                                        ? {
+                                            ...current,
+                                            splits: current.splits.filter(
+                                              (entry) => entry.split_id !== split.split_id
+                                            ),
+                                          }
+                                        : current
+                                    )
+                                  }
+                                  title="Remove this split free bet"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      ) : null}
+                    </div>
+                    <span className="field-help field-span-2" role="status">
+                      {getFreeBetBridgeValidationMessage(freeBetBridgeModalState)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="empty-state compact-empty-state" data-pd-id="sportsbook.free-bet-bridge.ready">
+                    Use the footer action to prepare the free-bet bridge for this sportsbook row.
+                  </div>
+                )}
+                {canUseFreeBetBridge ? (
+                  <section
+                    className="linked-free-bets-panel field-span-2 stack"
+                    data-pd-id="sportsbook.free-bet-bridge.linked-free-bets"
+                  >
+                    <div className="section-heading-row">
+                      <div>
+                        <span className="eyebrow">Linked Free Bets</span>
+                        <h3>Created From This Sportsbook Row</h3>
+                      </div>
+                      <span className="table-chip">{linkedFreeBetRows.length}</span>
+                    </div>
+                    {isLinkedFreeBetsLoading ? (
+                      <LedgerLoadingIndicator label="Loading linked free bets" />
+                    ) : linkedFreeBetRows.length > 0 ? (
+                      <div className="linked-free-bets-list">
+                        {linkedFreeBetRows.map((linkedFreeBet) => {
+                          const blockReason = getLinkedFreeBetRemovalBlockReason(linkedFreeBet);
+                          const removalPending = linkedFreeBetRemovalId === linkedFreeBet.free_bet_id;
+                          return (
+                            <article className="linked-free-bet-row" key={linkedFreeBet.free_bet_id}>
+                              <div className="linked-free-bet-main">
+                                <strong>{linkedFreeBet.offer_text || linkedFreeBet.event_name || linkedFreeBet.free_bet_id}</strong>
+                                <span>
+                                  {linkedFreeBet.bookmaker || "Bookmaker not set"} · {linkedFreeBet.status}
+                                  {linkedFreeBet.source_award_split_total > 1
+                                    ? ` · Split ${linkedFreeBet.source_award_split_index}/${linkedFreeBet.source_award_split_total}`
+                                    : ""}
+                                </span>
+                              </div>
+                              <FinancialValue value={linkedFreeBet.free_bet_value} />
+                              <div className="linked-free-bet-actions">
+                                {removalPending ? (
+                                  <>
+                                    <span className="placement-confirmation-text" role="alert">
+                                      Remove linked free bet?
+                                    </span>
+                                    <button
+                                      className="review-chip review-chip-danger"
+                                      disabled={isLinkedFreeBetRemoving}
+                                      onClick={() => void removeLinkedFreeBet(linkedFreeBet)}
+                                      type="button"
+                                    >
+                                      Remove
+                                    </button>
+                                    <button
+                                      className="review-chip review-chip-action-previous"
+                                      disabled={isLinkedFreeBetRemoving}
+                                      onClick={() => setLinkedFreeBetRemovalId(null)}
+                                      type="button"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    aria-label={`Remove linked free bet ${linkedFreeBet.free_bet_id}`}
+                                    className="icon-button icon-button-destructive"
+                                    disabled={Boolean(blockReason)}
+                                    onClick={() => setLinkedFreeBetRemovalId(linkedFreeBet.free_bet_id)}
+                                    title={blockReason || "Remove this linked free bet"}
+                                    type="button"
+                                  >
+                                    <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                                  </button>
+                                )}
+                              </div>
+                              {blockReason ? (
+                                <span className="field-help linked-free-bet-reason">{blockReason}</span>
+                              ) : null}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="empty-state compact-empty-state">
+                        {freeBetBridgeComplete
+                          ? "No linked free-bet rows were found for this sportsbook row."
+                          : "No free-bet rows have been created from this sportsbook row yet."}
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+              </EditorSection>
+            </LedgerEditorTabPanel>
+		            <div className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
+	              <div className="tracker-nav workflow-editor-footer-primary">
+	                {isSettledReadOnly ? (
+	                  <button
+	                    className="review-chip review-chip-copy"
+	                    onClick={() => setSettledEditEnabled(true)}
+	                    type="button"
+	                  >
+	                    Edit
+	                  </button>
+	                ) : (
+	                  <button
+	                    className="review-chip review-chip-copy"
+	                    disabled={isInitialLoading || isPersisting || !isDirty}
+	                    type="submit"
+	                  >
+	                    {isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
+	                  </button>
+	                )}
+	                {selectedId ? (
+	                  <button
+	                    className="review-chip review-chip-danger"
+	                    onClick={() => void handleDeleteSelectedRow()}
+	                    type="button"
+	                  >
+	                    Delete
+	                  </button>
+	                ) : null}
+	                <button className="review-chip" onClick={() => void handleResetForm()} type="button">
+	                  Revert
+	                </button>
+		                <button aria-label="Close sportsbook editor" className="review-chip" onClick={() => void closeEditor()} type="button">
+		                  Close
+		                </button>
+		                {showFreeBetBridgeFooterAction ? (
+		                  <>
+		                    <span aria-hidden="true" className="workflow-editor-footer-divider" />
+		                    <button
+		                      aria-label="Create free bet from sportsbook row"
+		                      className="review-chip review-chip-action-bridge"
+		                      disabled={
+		                        isFreeBetBridgeSubmitting ||
+		                        Boolean(
+		                          freeBetBridgeModalState
+		                            ? getFreeBetBridgeValidationMessage(freeBetBridgeModalState)
+		                            : null
+		                        )
+		                      }
+		                      onClick={() => void handleFreeBetBridgeFooterAction()}
+		                      type="button"
+		                    >
+		                      {isFreeBetBridgeSubmitting ? <span aria-hidden="true" className="button-spinner" /> : null}
+		                      {isFreeBetBridgeSubmitting
+		                        ? "Creating Free Bet"
+		                        : freeBetBridgeComplete
+		                          ? "Create Another Free Bet"
+		                          : freeBetBridgeModalState?.splits.length === 1
+		                            ? "Create Free Bet"
+		                            : `Create ${freeBetBridgeModalState?.splits.length ?? 0} Free Bets`}
+		                    </button>
+		                  </>
+		                ) : null}
+		              </div>
+	              <div
+	                aria-label="Editor tab navigation"
+	                className="tracker-nav workflow-editor-footer-nav"
+	                data-pd-id="sportsbook.editor.footer-tab-actions"
+	                role="group"
+	              >
+	                <button
+	                  className="review-chip review-chip-action-previous"
+	                  disabled={!previousEditorTab}
+	                  onClick={() => {
+	                    if (previousEditorTab) {
+	                      activateEditorTab(previousEditorTab.id as SportsbookEditorTabId);
+	                    }
+	                  }}
+	                  type="button"
+	                >
+	                  Previous
+	                </button>
+	                <button
+	                  className="review-chip review-chip-action-next"
+	                  disabled={!nextEditorTab}
+	                  onClick={() => {
+	                    if (nextEditorTab) {
+	                      activateEditorTab(nextEditorTab.id as SportsbookEditorTabId);
+	                    }
+	                  }}
+	                  type="button"
+	                >
+	                  Next
+	                </button>
+	              </div>
+	            </div>
           </form>
           </section>
         </div>

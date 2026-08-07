@@ -216,6 +216,17 @@ cause, prevention rule and regression test.
   to the requested route, and row deletion opens an in-app destructive confirmation without a native
   browser dialog.
 
+## 2026-08-06: Ledger editor tab and footer controls drifted
+
+- Area: sportsbook tabbed add/edit modal.
+- Root cause: the footer navigation used a different content gutter from the sticky header
+  navigation, and helper-pill field rows did not reserve a consistent under-control row.
+- Prevention: tabbed ledger editor headers, sticky tabs and footer navigation share explicit slots;
+  controls with helper pills reserve helper-row space; collapsed advisory panels use compact
+  indicators instead of leaking full chip rows.
+- Test added: `tests/e2e/sportsbook-editor-modal.spec.ts` asserts top/bottom tab navigation
+  alignment and sticky tab visibility after editor scroll.
+
 ## 2026-07-20: Fund Manager settings modals diverged
 
 - Area: Common Bet Combos and Tracker Lists in Fund Manager Settings.
@@ -293,7 +304,10 @@ cause, prevention rule and regression test.
 - Prevention: editor validation states use the shared rounded banner treatment and destructive
   icon-button semantics; dismiss actions explicitly own square/circle geometry, zero padding,
   centred Material Symbols and enough spacing from neighbouring borders. Section headings retain
-  a minimum hit area and content starts below the header with a consistent gutter.
+  a minimum hit area and content starts below the header with a consistent gutter. Sticky editor
+  headers must start flush with the modal's top edge, use named slots for compact summary, title,
+  navigation actions and tabs, and never let an independently sticky tab rail overlap the title,
+  summary or Previous/Next controls.
 - Test added: pending Issue 61 editor-flow refactor must include computed geometry checks for
   validation banners, dismiss buttons and section heading spacing across all ledger editors.
 

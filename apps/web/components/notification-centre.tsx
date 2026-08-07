@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
+  loadLocalFundManagerNotifications,
   dismissNotificationIds,
   emptyNotificationViewState,
   formatUnreadNotificationCount,
@@ -68,10 +69,13 @@ export function NotificationCentre() {
         if (!response.ok) throw new Error("Unable to load notifications");
         const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
-        setNotifications(payload);
+        setNotifications([...loadLocalFundManagerNotifications(), ...payload]);
         setLoadFailed(false);
       } catch {
-        if (isActive) setLoadFailed(true);
+        if (!isActive) return;
+        const localNotifications = loadLocalFundManagerNotifications();
+        setNotifications(localNotifications);
+        setLoadFailed(localNotifications.length === 0);
       } finally {
         if (isActive) setIsLoading(false);
       }

@@ -82,7 +82,7 @@ describe("getSportsbookGuidedEntry", () => {
 
     expect(guidance.requiredGroup).toBe("multi_lay_placements");
     expect(guidance.nextRequiredField).toBe("multi_lay_placements");
-    expect(guidance.message).toContain("branch placement");
+    expect(guidance.message).toContain("Branch Placement");
   });
 
   it("GUIDE-003 completes multi-lay rows when all named branches are placed", () => {
@@ -128,7 +128,7 @@ describe("getSportsbookGuidedEntry", () => {
     });
 
     expect(guidance.firstInvalidField).toBe("bookmaker");
-    expect(guidance.message).toContain("bookmaker");
+    expect(guidance.message).toContain("Bookmaker");
     expect(guidance.textCuePresent).toBe(true);
   });
 
@@ -170,7 +170,7 @@ describe("getSportsbookGuidedEntry", () => {
     });
 
     expect(guidance.nextRequiredField).toBe("lay_actual");
-    expect(guidance.message).toContain("actual lay stake");
+    expect(guidance.message).toContain("Lay Actual");
   });
 
   it("GUIDE-009 requires settlement details for settled rows", () => {
@@ -192,7 +192,7 @@ describe("getSportsbookGuidedEntry", () => {
     });
 
     expect(guidance.nextRequiredField).toBe("settlement");
-    expect(guidance.message).toContain("settlement date");
+    expect(guidance.message).toContain("Settlement Date");
   });
 
   it("GUIDE-009 requires an outcome when status is settled but result is still pending", () => {
@@ -215,7 +215,7 @@ describe("getSportsbookGuidedEntry", () => {
     });
 
     expect(guidance.nextRequiredField).toBe("settlement");
-    expect(guidance.message).toContain("settlement date");
+    expect(guidance.message).toContain("Settlement Date");
   });
 
   it("GUIDE-009 keeps no-lay settled rows incomplete until settlement details are present", () => {
@@ -264,5 +264,32 @@ describe("getSportsbookGuidedEntry", () => {
     expect(guidance.nextRequiredField).toBe("back_stake");
     expect(guidance.pulsingAnimation).toBe(false);
     expect(guidance.textCuePresent).toBe(true);
+  });
+
+  it("GUIDE-010 routes eligible completed rows to the free-bet bridge", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      offer: "Demo Bet 10 Get 5",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+      layOdds1: "2.10",
+      layActual: "9.52",
+      strategy: "Standard",
+      status: "Settled",
+      result: "Lay Won",
+      settlementDate: "2026-07-20T18:00",
+      canCreateFreeBet: true,
+      freeBetCreated: false,
+    });
+
+    expect(guidance.state).toBe("ready");
+    expect(guidance.nextRequiredField).toBe("free_bet_bridge");
+    expect(guidance.message).toContain("Free Bet");
   });
 });
