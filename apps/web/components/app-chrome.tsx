@@ -597,6 +597,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                       closeTrackerMenu();
                       return;
                     }
+                    setSelectedCommandProfileId(activeProfileId ?? null);
                     openTrackerMenu();
                   }}
                   ref={trackerMenuTriggerRef}

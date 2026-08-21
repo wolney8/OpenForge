@@ -2827,7 +2827,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => JSON.stringify(currentDirtyState) !== JSON.stringify(pristineDirtyState),
     [currentDirtyState, pristineDirtyState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
+  const hasPendingEditorChanges = workflowVisible && isDirty;
+  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -3698,6 +3699,26 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
         : guidedEntryMessageText
     ).trim() || "Add The Offer Name As Shown.";
+  const fallbackGuidedInstruction =
+    guidedFieldFallbackMessages[safeGuidedEntry.nextRequiredField ?? "offer"] ||
+    "Add The Offer Name As Shown.";
+  const guidedEntryVisibleInstruction = useMemo(() => {
+    if (!guidedEntryNeedsTabJump) {
+      return guidedEntryResolvedInstruction;
+    }
+    const tabPrefix = `Go to ${guidedEntryTargetTabLabel} and `;
+    const strippedInstruction = guidedEntryResolvedInstruction.startsWith(tabPrefix)
+      ? guidedEntryResolvedInstruction.slice(tabPrefix.length).trim()
+      : guidedEntryMessageText.trim();
+
+    return strippedInstruction || fallbackGuidedInstruction;
+  }, [
+    fallbackGuidedInstruction,
+    guidedEntryMessageText,
+    guidedEntryNeedsTabJump,
+    guidedEntryResolvedInstruction,
+    guidedEntryTargetTabLabel,
+  ]);
   const guidedEntryActionMessage = guidedEntryResolvedInstruction;
   const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
@@ -3828,7 +3849,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     []
   );
   const renderGuidedEntryInstruction = useCallback(() => {
-    const safeInstruction = guidedEntryResolvedInstruction.trim() || "Add The Offer Name As Shown.";
+    const safeInstruction = guidedEntryVisibleInstruction.trim() || fallbackGuidedInstruction;
 
     if (!guidedEntryNeedsTabJump) {
       return (
@@ -3848,12 +3869,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ) : null}
           <span>{guidedEntryTargetTabLabel}</span>
         </span>
-        <span>{safeInstruction.replace(`Go to ${guidedEntryTargetTabLabel} and `, "")}</span>
+        <span>{safeInstruction}</span>
       </span>
     );
   }, [
+    fallbackGuidedInstruction,
+    guidedEntryVisibleInstruction,
     guidedEntryNeedsTabJump,
-    guidedEntryResolvedInstruction,
     guidedEntryTargetTabIndex,
     guidedEntryTargetTabLabel,
   ]);
@@ -4679,7 +4701,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   async function startNewRow() {
-    if (workflowVisible && isDirty && !(await confirmDiscardChanges())) {
+    if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -4709,7 +4731,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   async function closeEditor() {
-    if (isDirty && !(await confirmDiscardChanges())) {
+    if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -5149,7 +5171,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setErrorMessage("");
     setIsPartialLayReminderSaving(true);
     try {
-      if (isDirty) {
+      if (hasPendingEditorChanges) {
         const rowSaved = await persistForm(formState, {
           autosaveLabel: "Partial-lay reminder row",
           returnToLedgerOnSuccess: false,
