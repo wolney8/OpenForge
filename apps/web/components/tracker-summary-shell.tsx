@@ -245,6 +245,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loadRevision, setLoadRevision] = useState(0);
 
   const loadData = useCallback(async () => {
     const urls = {
@@ -358,7 +359,21 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadData]);
+  }, [loadData, loadRevision]);
+
+  useEffect(() => {
+    if (!errorMessage) {
+      return;
+    }
+
+    const retry = () => setLoadRevision((current) => current + 1);
+    const intervalId = window.setInterval(retry, 10_000);
+    window.addEventListener("focus", retry);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", retry);
+    };
+  }, [errorMessage]);
 
   const resolvedRange = useMemo(
     () => {

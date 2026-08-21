@@ -426,6 +426,7 @@ export function CrossProfileAnalytics({
     key: string;
     label: string;
   } | null>(null);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [balanceSnapshotRange, setBalanceSnapshotRange] = useState("all");
   const [balanceSnapshotType, setBalanceSnapshotType] = useState("all");
   const [reportFilterAsOf] = useState(() => Date.now());
@@ -517,7 +518,21 @@ export function CrossProfileAnalytics({
         window.cancelAnimationFrame(cachedFrame);
       }
     };
-  }, [profiles]);
+  }, [profiles, loadRevision]);
+
+  useEffect(() => {
+    if (!isLoading && failures.length === 0) {
+      return;
+    }
+
+    const retry = () => setLoadRevision((current) => current + 1);
+    const intervalId = window.setInterval(retry, 10_000);
+    window.addEventListener("focus", retry);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", retry);
+    };
+  }, [failures.length, isLoading]);
 
   const resolvedRange = useMemo(
     () => resolveDateRange({ preset, customStart, customEnd }),

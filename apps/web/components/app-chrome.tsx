@@ -638,8 +638,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                         aria-label="Find profile"
                         data-pd-id="profile-command.search"
                         onChange={(event) => {
-                          setProfileSearch(event.target.value);
-                          setSelectedCommandProfileId(null);
+                          const nextValue = event.target.value;
+                          setProfileSearch(nextValue);
+                          if (!nextValue.trim()) {
+                            setSelectedCommandProfileId(activeProfileId ?? null);
+                          } else {
+                            setSelectedCommandProfileId(null);
+                          }
                         }}
                         placeholder="Find profile..."
                         ref={profileSearchRef}
