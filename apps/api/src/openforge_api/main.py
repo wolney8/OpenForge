@@ -26,7 +26,8 @@ from openforge_api.tracker_settings import router as tracker_settings_router
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3010", "http://127.0.0.1:3010"],
+    allow_origins=settings.cors_origins,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,8 +64,12 @@ def config_summary() -> dict[str, str]:
     return {
         "environment": settings.environment,
         "database_mode": settings.database_mode,
+        "runtime_adapter": "sqlite-only",
         "database_url_scheme": settings.database_url.split(":", 1)[0],
         "neon_configured": str(bool(settings.neon_database_url.strip())).lower(),
         "backup_directory": settings.backup_directory,
         "account_catalogue_source": settings.account_catalogue_source,
+        "hosted_api_mount_prefix": "/api",
+        "cors_origin_count": str(len(settings.cors_origins)),
+        "cors_origin_regex_configured": str(bool(settings.cors_origin_regex)).lower(),
     }
