@@ -186,33 +186,15 @@ Short version:
 8. Report changed files and results.
 9. Stop for review.
 
-## Response status mini-table
-
-Every substantive project-work reply must include a compact status mini-table so the active
-direction is clear when multiple Codex windows or projects are open:
-
-| Track | Previous | Current | Next | Completion | GitHub |
-| --- | --- | --- | --- | ---: | --- |
-| Plum Duff | previous track or branch | current stage | next planned stage | pragmatic percent | issue/milestone or `GitHub not verified` |
-
-Rules for this table:
-
-- Keep the table short and update it in every substantive response.
-- Treat completion percentages as practical delivery estimates, not guarantees.
-- Follow the table with simple reasoning in plain language: what changed, why it matters,
-  and what happens next.
-- If live GitHub state was not checked, say so explicitly instead of guessing.
-- When asked for roadmap or issue hygiene, identify closure candidates and gaps with
-  copy-pasteable issue titles/bodies where new tracking is needed.
-
 ## Response style
 
 - Keep responses direct, concise, and forward-looking.
-- Start with the required mini-table, then give only the key points.
+- Do not use a status table unless the user explicitly asks for one.
 - In every substantive reply, explicitly note in short:
   - what we are working on now
   - what is on hold if we were sidetracked
   - what happens next
+- When useful, include a short completion estimate and GitHub issue reference in prose.
 - Avoid long recaps unless the user asks for them.
 - When a repo change is made for active work, commit and push promptly so connected deployment workflows can pick it up, unless the user says not to.
 

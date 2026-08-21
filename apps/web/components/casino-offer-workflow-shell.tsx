@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -15,9 +15,11 @@ import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
+import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import type { CommonBetCombo } from "@/components/common-bet-combo-settings";
@@ -26,13 +28,39 @@ import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  isGuidedAccessEnabled,
+  useBodyScrollLock,
   useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
+  useProfileGuidedAccessMode,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
+import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+import {
+  casinoOfferTypeUsesFieldGroup,
+  casinoOfferTypeUsesTab,
+  getCasinoOfferCapabilities,
+  getCasinoOfferTypeDisplayLabel,
+  getCasinoOfferTypeHelpText,
+  getCasinoOfferRequiredFields,
+  getCasinoOfferResultOptions,
+  getCasinoOfferTypeOptions,
+  normalizeCasinoOfferType,
+  type CasinoEditorTabId,
+} from "@/lib/casino-offer-types";
+import {
+  calculateCasinoSettlementNetResult,
+  calculateRewardWagerTarget,
+  calculateSpinsRequired,
+  calculateWagerTarget,
+  type CasinoCalculationMoneyResult,
+  type CasinoSpinCalculationResult,
+  type CasinoWagerBase,
+} from "@/lib/casino-calculations";
+import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import {
@@ -49,8 +77,6 @@ import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import { resolveCasinoBookmakerCoverage } from "@/lib/casino-offer-knowledge";
 import { getCasinoOperationalIssueBadges } from "@/lib/operational-actions";
 import {
-  casinoOfferTypeOptions,
-  casinoOfferResultOptions,
   casinoOfferStatusOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
@@ -75,6 +101,24 @@ type CasinoOfferRecord = {
   spin_stake: string;
   free_spins_awarded: string;
   free_spins_value: string;
+  wagering_base: string;
+  custom_wager_base: string;
+  wagering_completed: string;
+  rtp_percent: string;
+  reward_type: string;
+  reward_wager_multiplier: string;
+  reward_wager_target: string;
+  reward_required_spins: string;
+  reward_wagering_completed: string;
+  reward_rtp_percent: string;
+  expected_reward_cash_value: string;
+  qualifying_expected_loss: string;
+  reward_expected_loss: string;
+  other_expected_costs: string;
+  campaign_ev: string;
+  own_cash_committed: string;
+  cash_returned: string;
+  settlement_other_costs: string;
   status: string;
   result: string;
   calc_net_pnl: string;
@@ -109,11 +153,115 @@ type CasinoOfferFormState = {
   spin_stake: string;
   free_spins_awarded: string;
   free_spins_value: string;
+  wagering_base: string;
+  custom_wager_base: string;
+  wagering_completed: string;
+  rtp_percent: string;
+  reward_type: string;
+  reward_wager_multiplier: string;
+  reward_wager_target: string;
+  reward_required_spins: string;
+  reward_wagering_completed: string;
+  reward_rtp_percent: string;
+  expected_reward_cash_value: string;
+  qualifying_expected_loss: string;
+  reward_expected_loss: string;
+  other_expected_costs: string;
+  campaign_ev: string;
+  own_cash_committed: string;
+  cash_returned: string;
+  settlement_other_costs: string;
   status: string;
   result: string;
   calc_net_pnl: string;
   final_net_pnl: string;
   user_notes: string;
+};
+
+type CasinoGuidedFieldKey =
+  | "date_started"
+  | "bookmaker"
+  | "offer_name"
+  | "offer_type"
+  | "cash_stake"
+  | "credit_amount"
+  | "bonus_amount"
+  | "wager_multiplier"
+  | "wager_target"
+  | "required_spins"
+  | "spin_stake"
+  | "free_spins_awarded"
+  | "free_spins_value"
+  | "result"
+  | "final_net_pnl";
+
+type CasinoGuidedEntry = {
+  message: string;
+  nextRequiredField: CasinoGuidedFieldKey | null;
+  state: "ready" | "review_required" | "complete";
+};
+
+type CasinoMoneyFieldKey =
+  | "cash_stake"
+  | "credit_amount"
+  | "bonus_amount"
+  | "wager_multiplier"
+  | "wager_target"
+  | "required_spins"
+  | "spin_stake"
+  | "free_spins_awarded"
+  | "free_spins_value"
+  | "own_cash_committed"
+  | "cash_returned"
+  | "settlement_other_costs"
+  | "calc_net_pnl"
+  | "final_net_pnl";
+
+const casinoCurrencyKeypadFields = new Set<CasinoMoneyFieldKey>([
+  "cash_stake",
+  "credit_amount",
+  "bonus_amount",
+  "wager_target",
+  "spin_stake",
+  "free_spins_value",
+  "own_cash_committed",
+  "cash_returned",
+  "settlement_other_costs",
+  "calc_net_pnl",
+  "final_net_pnl",
+]);
+
+const casinoGuidedFieldTabMap: Record<CasinoGuidedFieldKey, CasinoEditorTabId> = {
+  bonus_amount: "campaign",
+  bookmaker: "setup",
+  cash_stake: "campaign",
+  credit_amount: "campaign",
+  date_started: "setup",
+  final_net_pnl: "settlement",
+  free_spins_awarded: "reward",
+  free_spins_value: "reward",
+  offer_name: "setup",
+  offer_type: "setup",
+  required_spins: "reward",
+  result: "settlement",
+  spin_stake: "reward",
+  wager_multiplier: "campaign",
+  wager_target: "campaign",
+};
+
+function getCasinoGuidedFieldTab(formState: CasinoOfferFormState, field: CasinoGuidedFieldKey): CasinoEditorTabId {
+  if (field === "spin_stake" && casinoOfferTypeUsesFieldGroup(formState.offer_type, "wagering")) {
+    return "campaign";
+  }
+  return casinoGuidedFieldTabMap[field];
+}
+
+const casinoGuidedTabLabels: Record<CasinoEditorTabId, string> = {
+  advanced: "Advanced",
+  campaign: "Wagering",
+  reward: "Reward",
+  setup: "Offer Setup",
+  settlement: "Settlement",
 };
 
 type CasinoOutcomeModalState = {
@@ -194,7 +342,7 @@ const casinoTableColumns: TableColumn[] = [
   { key: "date_settling", label: "Settles" },
   { key: "expiry_datetime", label: "Expiry" },
   { key: "bookmaker", label: "Bookmaker" },
-  { key: "offer_name", label: "Campaign Tag" },
+  { key: "offer_name", label: "Offer Name" },
   { key: "game", label: "Game" },
   { key: "offer_type", label: "Offer type" },
   { key: "status", label: "Status" },
@@ -332,6 +480,24 @@ function createBlankForm(): CasinoOfferFormState {
     spin_stake: "",
     free_spins_awarded: "",
     free_spins_value: "",
+    wagering_base: "",
+    custom_wager_base: "",
+    wagering_completed: "",
+    rtp_percent: "",
+    reward_type: "",
+    reward_wager_multiplier: "",
+    reward_wager_target: "",
+    reward_required_spins: "",
+    reward_wagering_completed: "",
+    reward_rtp_percent: "",
+    expected_reward_cash_value: "",
+    qualifying_expected_loss: "",
+    reward_expected_loss: "",
+    other_expected_costs: "",
+    campaign_ev: "",
+    own_cash_committed: "",
+    cash_returned: "",
+    settlement_other_costs: "",
     status: "Prospecting",
     result: "Pending",
     calc_net_pnl: "",
@@ -360,6 +526,24 @@ function recordToForm(record: CasinoOfferRecord): CasinoOfferFormState {
     spin_stake: record.spin_stake,
     free_spins_awarded: record.free_spins_awarded,
     free_spins_value: record.free_spins_value,
+    wagering_base: record.wagering_base ?? "",
+    custom_wager_base: record.custom_wager_base ?? "",
+    wagering_completed: record.wagering_completed ?? "",
+    rtp_percent: record.rtp_percent ?? "",
+    reward_type: record.reward_type ?? "",
+    reward_wager_multiplier: record.reward_wager_multiplier ?? "",
+    reward_wager_target: record.reward_wager_target ?? "",
+    reward_required_spins: record.reward_required_spins ?? "",
+    reward_wagering_completed: record.reward_wagering_completed ?? "",
+    reward_rtp_percent: record.reward_rtp_percent ?? "",
+    expected_reward_cash_value: record.expected_reward_cash_value ?? "",
+    qualifying_expected_loss: record.qualifying_expected_loss ?? "",
+    reward_expected_loss: record.reward_expected_loss ?? "",
+    other_expected_costs: record.other_expected_costs ?? "",
+    campaign_ev: record.campaign_ev ?? "",
+    own_cash_committed: record.own_cash_committed ?? "",
+    cash_returned: record.cash_returned ?? "",
+    settlement_other_costs: record.settlement_other_costs ?? "",
     status: record.status,
     result: record.result,
     calc_net_pnl: record.calc_net_pnl,
@@ -368,104 +552,88 @@ function recordToForm(record: CasinoOfferRecord): CasinoOfferFormState {
   };
 }
 
-type CasinoOutcomeCardState = "possible" | "hit" | "missed" | "void" | "review";
+const wageringCampaignOfferTypes = new Set([
+  "Wager To Earn Reward",
+  "Deposit And Bonus Wagering",
+  "No-Deposit Bonus / Bonus Credit",
+  "Wager To Earn Free Spins",
+  "Wagering / Turnover Challenge",
+  "Fixed Wagering Requirement",
+  "Daily / Recurring Casino Reward",
+]);
+const rewardCampaignOfferTypes = new Set([
+  "Free Spins",
+  "Fixed Spins Or Free Play",
+  "Risk-Free / Refund",
+  "Wager To Earn Reward",
+  "Deposit And Bonus Wagering",
+  "No-Deposit Bonus / Bonus Credit",
+  "Wager To Earn Free Spins",
+  "Deposit To Receive Free Spins",
+  "Daily / Recurring Casino Reward",
+  "Prize / Mystery Reward",
+]);
 
-const cashlessCasinoOfferTypes = new Set(["Free Spins"]);
-const freeSpinCampaignTypes = new Set(["Free Spins", "Free Play", "Risk Free"]);
-const wageringCampaignTypes = new Set(["Wager", "Deposit Bonus"]);
+const commonCasinoWagerMultipliers = ["1", "5", "10", "20", "30", "40"];
+const commonCasinoSpinStakes = ["0.10", "0.20", "0.25", "0.50", "1.00"];
+const commonCasinoOfferTypeChips = [
+  "Free Spins",
+  "Wager To Earn Free Spins",
+  "Deposit And Bonus Wagering",
+  "Cashback / Loss Back",
+  "Daily / Recurring Casino Reward",
+];
 
 function getCasinoResultOptions(offerType: string): string[] {
-  if (offerType === "Cashback") {
-    return ["Pending", "Win", "Lose", "Void"];
-  }
-
-  if (freeSpinCampaignTypes.has(offerType)) {
-    return ["Pending", "Win", "Lose", "Mixed", "Void"];
-  }
-
-  return [...casinoOfferResultOptions];
+  return getCasinoOfferResultOptions(offerType);
 }
 
 function applyCasinoOfferTypeDefaults(
   current: CasinoOfferFormState,
   nextOfferType: string
 ): CasinoOfferFormState {
-  const nextResultValues = new Set(getCasinoResultOptions(nextOfferType));
-  const nextState: CasinoOfferFormState = {
+  const normalizedOfferType = normalizeCasinoOfferType(nextOfferType);
+  const nextState = {
     ...current,
-    offer_type: nextOfferType,
-    result: nextResultValues.has(current.result) ? current.result : "Pending",
+    offer_type: normalizedOfferType,
+    cash_stake: "",
+    credit_amount: "",
+    bonus_amount: "",
+    wager_multiplier: "",
+    wager_target: "",
+    required_spins: "",
+    spin_stake: "",
+    free_spins_awarded: "",
+    free_spins_value: "",
+    wagering_base: "",
+    custom_wager_base: "",
+    wagering_completed: "",
+    rtp_percent: "",
+    reward_type: "",
+    reward_wager_multiplier: "",
+    reward_wager_target: "",
+    reward_required_spins: "",
+    reward_wagering_completed: "",
+    reward_rtp_percent: "",
+    expected_reward_cash_value: "",
+    qualifying_expected_loss: "",
+    reward_expected_loss: "",
+    other_expected_costs: "",
+    campaign_ev: "",
+    own_cash_committed: "",
+    cash_returned: "",
+    settlement_other_costs: "",
+    status: "Prospecting",
+    result: "Pending",
+    calc_net_pnl: "",
+    final_net_pnl: "",
+    user_notes: "",
   };
-
-  if (nextOfferType === "Free Spins") {
-    return {
-      ...nextState,
-      cash_stake: "",
-      credit_amount: "",
-      bonus_amount: "",
-      wager_multiplier: "",
-      wager_target: "",
-    };
-  }
-
-  if (nextOfferType === "Risk Free") {
-    return {
-      ...nextState,
-      bonus_amount: "",
-      wager_multiplier: "",
-      wager_target: "",
-    };
-  }
-
-  if (nextOfferType === "Free Play") {
-    return {
-      ...nextState,
-      credit_amount: "",
-      bonus_amount: "",
-      wager_multiplier: "",
-      wager_target: "",
-    };
-  }
-
-  if (nextOfferType === "Cashback") {
-    return {
-      ...nextState,
-      bonus_amount: "",
-      wager_multiplier: "",
-      wager_target: "",
-      required_spins: "",
-      spin_stake: "",
-      free_spins_awarded: "",
-      free_spins_value: "",
-    };
-  }
-
-  if (wageringCampaignTypes.has(nextOfferType)) {
-    return {
-      ...nextState,
-      credit_amount: "",
-      required_spins: "",
-      spin_stake: "",
-      free_spins_awarded: "",
-      free_spins_value: "",
-    };
-  }
-
-  if (nextOfferType === "None") {
-    return {
-      ...nextState,
-      credit_amount: "",
-      bonus_amount: "",
-      wager_multiplier: "",
-      wager_target: "",
-      required_spins: "",
-      spin_stake: "",
-      free_spins_awarded: "",
-      free_spins_value: "",
-    };
-  }
-
-  return nextState;
+  const ownCashSuggestion = getCasinoOwnCashCommittedSuggestion(nextState);
+  return {
+    ...nextState,
+    own_cash_committed: ownCashSuggestion.value ?? "",
+  };
 }
 
 function applyCasinoResultDefaults(
@@ -481,10 +649,23 @@ function applyCasinoResultDefaults(
         ? "Settled"
         : "Settled";
 
+  const rewardValue = formatCasinoMoneyInput(current.free_spins_value);
+  const shouldUseRewardValue =
+    !current.final_net_pnl.trim() &&
+    rewardValue &&
+    (nextResult === "Win" || nextResult === "Mixed");
+  const shouldUseZeroValue =
+    !current.final_net_pnl.trim() && (nextResult === "Lose" || nextResult === "Void");
+
   return {
     ...current,
     result: nextResult,
     status: nextStatus,
+    final_net_pnl: shouldUseRewardValue
+      ? rewardValue
+      : shouldUseZeroValue
+        ? "0.00"
+        : current.final_net_pnl,
   };
 }
 
@@ -504,6 +685,143 @@ function applyCasinoStatusDefaults(
     ...current,
     status: nextStatus,
   };
+}
+
+function applyCasinoZeroRewardValue(current: CasinoOfferFormState): CasinoOfferFormState {
+  return applyCasinoRewardValueChange(current, "0.00");
+}
+
+function applyCasinoRewardValueChange(
+  current: CasinoOfferFormState,
+  nextRewardValue: string
+): CasinoOfferFormState {
+  const finalValue = current.final_net_pnl.trim();
+  const finalWasFollowingReward = Boolean(finalValue) && finalValue === current.free_spins_value;
+  const shouldMirrorToSettlement =
+    (!finalValue && (current.status === "Settled" || current.result === "Win" || current.result === "Mixed")) ||
+    finalWasFollowingReward;
+
+  const nextState = {
+    ...current,
+    free_spins_value: nextRewardValue,
+    final_net_pnl: shouldMirrorToSettlement ? nextRewardValue : current.final_net_pnl,
+  };
+
+  return casinoOfferTypeUsesFieldGroup(current.offer_type, "wagering")
+    ? nextState
+    : applyDerivedRewardWagerTarget(nextState);
+}
+
+type CasinoOwnCashCommittedSuggestion = {
+  value: string | null;
+  sourceLabel: string;
+};
+
+function getCasinoOwnCashCommittedSuggestion(
+  formState: CasinoOfferFormState
+): CasinoOwnCashCommittedSuggestion {
+  const normalizedOfferType = normalizeCasinoOfferType(formState.offer_type);
+  const cashStake = formatCasinoMoneyInput(formState.cash_stake);
+  if (cashStake) {
+    return {
+      value: cashStake,
+      sourceLabel: casinoOfferTypeUsesFieldGroup(normalizedOfferType, "wagering")
+        ? "Suggested from Wagering cash stake"
+        : "Suggested from cash stake",
+    };
+  }
+
+  const hasNoCashCommitment =
+    !casinoOfferTypeUsesFieldGroup(normalizedOfferType, "cashStake") &&
+    normalizedOfferType !== "Other / Custom";
+  if (hasNoCashCommitment) {
+    return {
+      value: "0.00",
+      sourceLabel: "Suggested as no own cash required",
+    };
+  }
+
+  return {
+    value: null,
+    sourceLabel: "No cash suggestion available",
+  };
+}
+
+function applySuggestedOwnCashCommitted(
+  current: CasinoOfferFormState,
+  next: CasinoOfferFormState
+): CasinoOfferFormState {
+  const previousSuggestion = getCasinoOwnCashCommittedSuggestion(current).value;
+  const currentCommitted = formatCasinoMoneyInput(current.own_cash_committed);
+  const shouldFollowSuggestion =
+    !current.own_cash_committed.trim() ||
+    (Boolean(previousSuggestion) && currentCommitted === previousSuggestion);
+
+  if (!shouldFollowSuggestion) {
+    return next;
+  }
+
+  return {
+    ...next,
+    own_cash_committed: getCasinoOwnCashCommittedSuggestion(next).value ?? "",
+  };
+}
+
+function getCasinoGuidedMessage(field: CasinoGuidedFieldKey, formState: CasinoOfferFormState): string {
+  switch (field) {
+    case "date_started":
+      return "Add The Start Date.";
+    case "bookmaker":
+      return "Choose The Bookmaker.";
+    case "offer_name":
+      return "Add The Offer Name.";
+    case "offer_type":
+      return "Choose The Offer Type.";
+    case "cash_stake":
+      return "Add The Cash Stake.";
+    case "credit_amount":
+      return `Add The ${getCreditAmountLabel(formState.offer_type)}.`;
+    case "bonus_amount":
+      return "Add The Bonus Amount.";
+    case "wager_multiplier":
+      return "Add The Wager Multiplier.";
+    case "wager_target":
+      return "Add The Wager Target.";
+    case "required_spins":
+      return "Add The Required Spins.";
+    case "spin_stake":
+      return "Add The Spin Stake.";
+    case "free_spins_awarded":
+      return "Add The Free Spins Awarded.";
+    case "free_spins_value":
+      return `Add The ${getRewardValueLabel(formState.offer_type)}.`;
+    case "result":
+      return "Choose The Outcome.";
+    case "final_net_pnl":
+      return "Add The Net Result.";
+    default:
+      return "Complete The Required Field.";
+  }
+}
+
+function getCasinoSummaryStatusChipClass(status: string): string {
+  if (status === "Settled") return "table-chip table-chip-status-settled";
+  if (status === "Started" || status === "In Progress") return "table-chip table-chip-status-placed";
+  if (status === "Prospecting") return "table-chip table-chip-muted";
+  return "table-chip";
+}
+
+function getCasinoSummaryResultChipClass(result: string): string {
+  if (result === "Pending") return "table-chip table-chip-warning";
+  if (result === "Lose" || result === "Loss") return "table-chip table-chip-danger";
+  if (result === "Void") return "table-chip table-chip-muted";
+  return "table-chip table-chip-status-placed";
+}
+
+function getCasinoMoneyToneClass(value: string): string {
+  const parsed = Number(value.replace(/,/g, "").trim());
+  if (!Number.isFinite(parsed) || parsed === 0) return "casino-money-field-neutral";
+  return parsed > 0 ? "casino-money-field-positive" : "casino-money-field-negative";
 }
 
 function applyCasinoOutcomeModalResultDefaults(
@@ -566,48 +884,240 @@ function getDisplayedCasinoValueLabelForRow(row: CasinoOfferRecord): string {
 
 function getDisplayedCasinoValueForForm(formState: CasinoOfferFormState): string {
   const finalValue = formState.final_net_pnl.trim();
-  if (finalValue) {
+  if (parseCasinoDisplayValue(finalValue) !== null) {
     return finalValue;
   }
 
   const currentValue = formState.calc_net_pnl.trim();
-  if (currentValue) {
+  if (parseCasinoDisplayValue(currentValue) !== null) {
     return currentValue;
+  }
+
+  const rewardValue = formState.free_spins_value.trim();
+  if (rewardValue) {
+    return rewardValue;
   }
 
   return "—";
 }
 
 function getDisplayedCasinoValueLabelForForm(formState: CasinoOfferFormState): string {
-  if (casinoPlaceholderStatuses.has(formState.status) && !formState.calc_net_pnl.trim()) {
-    return "Current value pending";
-  }
   if (formState.status === "Settled" || formState.result !== "Pending") {
     return "Net result";
   }
   if (formState.calc_net_pnl.trim()) {
     return "Reference net value";
   }
+  if (formState.free_spins_value.trim()) {
+    return getRewardValueLabel(formState.offer_type);
+  }
+  if (casinoPlaceholderStatuses.has(formState.status)) {
+    return "Current value pending";
+  }
   return "Value";
 }
 
-function getCasinoPlaceholderGuidance(status: string, offerType: string): string {
-  if (status === "Prospecting") {
-    return offerType.trim()
-      ? "Prospecting row only. Capture the campaign shell now and enter a current value once the offer is active."
-      : "Prospecting row only. Set the offer family before entering campaign economics.";
+function parseCasinoDisplayValue(value: string | null | undefined): number | null {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "—" || normalized === "-") {
+    return null;
   }
-  return "Enter campaign values once the offer is active.";
+
+  const isAccountingNegative = normalized.includes("(") && normalized.includes(")");
+  const parsed = Number(
+    normalized
+      .replace(/[£,\s()]/g, "")
+      .replace(/^−/, "-")
+  );
+  if (isAccountingNegative && Number.isFinite(parsed)) {
+    return -Math.abs(parsed);
+  }
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getCasinoSettlesSummary(formState: CasinoOfferFormState): string {
-  if (formState.date_settling.trim()) {
-    return formatDisplayDate(formState.date_settling);
+function renderCasinoFinancialValue(
+  value: number | string | null | undefined,
+  options: { zeroAsNumeric?: boolean } = {}
+) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCasinoDisplayValue(value)
+        : null;
+
+  if (parsed === 0 && options.zeroAsNumeric) {
+    return (
+      <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+        £ 0
+      </span>
+    );
   }
-  if (formState.date_started.trim()) {
-    return `${formatDisplayDate(formState.date_started)} (defaults from start)`;
+
+  return parsed === null ? (
+    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+      £ -
+    </span>
+  ) : (
+    <FinancialValue
+      animate={false}
+      className="projected-outcome-financial-value"
+      value={parsed}
+      zeroTone="neutral"
+    />
+  );
+}
+
+function renderCasinoPlanningAmount(value: number | string | null | undefined) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCasinoDisplayValue(value)
+        : null;
+
+  return (
+    <span className="casino-planning-money-value">
+      {parsed === null ? "£ -" : `£ ${Math.abs(parsed).toFixed(2)}`}
+    </span>
+  );
+}
+
+function formatCasinoSpinCount(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "Set target";
   }
-  return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function getCasinoGuidedFieldFromLabel(label: string): CasinoGuidedFieldKey | null {
+  switch (label) {
+    case "Offer name":
+      return "offer_name";
+    case "Date started":
+      return "date_started";
+    case "Bookmaker":
+      return "bookmaker";
+    case "Offer type":
+      return "offer_type";
+    case "Cash stake":
+      return "cash_stake";
+    case "Bonus amount":
+      return "bonus_amount";
+    case "Wager multiplier":
+      return "wager_multiplier";
+    case "Wager target":
+      return "wager_target";
+    case "Cashback amount":
+    case "Refund / credit amount":
+    case "Free-play amount":
+    case "Credit amount":
+      return "credit_amount";
+    case "Required spins":
+      return "required_spins";
+    case "Spin stake":
+      return "spin_stake";
+    case "Free spins awarded":
+      return "free_spins_awarded";
+    case "Converted win amount":
+    case "Converted free-play amount":
+    case "Returned credit amount":
+    case "Converted reward amount":
+      return "free_spins_value";
+    case "Result":
+      return "result";
+    case "Net Result":
+      return "final_net_pnl";
+    default:
+      return null;
+  }
+}
+
+function getMissingCasinoSettlementFields(formState: CasinoOfferFormState): string[] {
+  if (formState.status !== "Settled") {
+    return [];
+  }
+
+  const missing: string[] = [];
+  if (formState.result === "Pending") {
+    missing.push("Result");
+  }
+  if (!formState.final_net_pnl.trim() && !formState.calc_net_pnl.trim()) {
+    missing.push("Net Result");
+  }
+
+  return missing;
+}
+
+function getCasinoGuidedEntry({
+  formState,
+  missingCampaignFields,
+  missingOfferIdentityFields,
+  missingRewardFields,
+  missingSettlementFields,
+}: {
+  formState: CasinoOfferFormState;
+  missingCampaignFields: string[];
+  missingOfferIdentityFields: string[];
+  missingRewardFields: string[];
+  missingSettlementFields: string[];
+}): CasinoGuidedEntry {
+  const missingOfferField = missingOfferIdentityFields
+    .map(getCasinoGuidedFieldFromLabel)
+    .find((field): field is CasinoGuidedFieldKey => Boolean(field));
+  if (missingOfferField) {
+    return {
+      message: getCasinoGuidedMessage(missingOfferField, formState),
+      nextRequiredField: missingOfferField,
+      state: "ready",
+    };
+  }
+
+  const missingCampaignField = missingCampaignFields
+    .map(getCasinoGuidedFieldFromLabel)
+    .find((field): field is CasinoGuidedFieldKey => Boolean(field));
+  if (missingCampaignField) {
+    return {
+      message: getCasinoGuidedMessage(missingCampaignField, formState),
+      nextRequiredField: missingCampaignField,
+      state: "ready",
+    };
+  }
+
+  const missingRewardField = missingRewardFields
+    .map(getCasinoGuidedFieldFromLabel)
+    .find((field): field is CasinoGuidedFieldKey => Boolean(field));
+  if (missingRewardField) {
+    return {
+      message: getCasinoGuidedMessage(missingRewardField, formState),
+      nextRequiredField: missingRewardField,
+      state: "ready",
+    };
+  }
+
+  const missingSettlementField = missingSettlementFields
+    .map(getCasinoGuidedFieldFromLabel)
+    .find((field): field is CasinoGuidedFieldKey => Boolean(field));
+  if (missingSettlementField) {
+    return {
+      message: getCasinoGuidedMessage(missingSettlementField, formState),
+      nextRequiredField: missingSettlementField,
+      state: "review_required",
+    };
+  }
+
+  if (formState.status === "Settled" && formState.result === "Pending") {
+    return { message: "Choose The Outcome.", nextRequiredField: "result", state: "ready" };
+  }
+  if (formState.status === "Settled" && !formState.final_net_pnl.trim() && !formState.calc_net_pnl.trim()) {
+    return {
+      message: getCasinoGuidedMessage("final_net_pnl", formState),
+      nextRequiredField: "final_net_pnl",
+      state: "review_required",
+    };
+  }
+
+  return { message: "Casino row is ready.", nextRequiredField: null, state: "complete" };
 }
 
 function getComparableDate(value: string): number | null {
@@ -649,41 +1159,70 @@ function getCasinoRangeAnchor(row: CasinoOfferRecord): Date | null {
 }
 
 function getCasinoCampaignHeading(offerType: string): string {
-  if (wageringCampaignTypes.has(offerType)) {
-    return "Qualifying and wagering";
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  if (normalizedOfferType === "Deposit And Bonus Wagering") {
+    return "Deposit & Wager";
   }
-  if (offerType === "Cashback") {
+  if (normalizedOfferType === "Wager To Earn Free Spins") {
+    return "Wager & Earn Spins";
+  }
+  if (normalizedOfferType === "Wager To Earn Reward") {
+    return "Wager & Earn Reward";
+  }
+  if (normalizedOfferType === "Deposit To Receive Free Spins") {
+    return "Deposit & Claim Spins";
+  }
+  if (normalizedOfferType === "Wagering / Turnover Challenge") {
+    return "Turnover Challenge";
+  }
+  if (normalizedOfferType === "Fixed Wagering Requirement") {
+    return "Fixed Wagering Target";
+  }
+  if (normalizedOfferType === "No-Deposit Bonus / Bonus Credit") {
+    return "No-Deposit Bonus";
+  }
+  if (normalizedOfferType === "Daily / Recurring Casino Reward") {
+    return "Daily Reward";
+  }
+  if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
+    return "Wagering Plan";
+  }
+  if (normalizedOfferType === "Cashback / Loss Back") {
     return "Cashback economics";
   }
-  if (offerType === "Risk Free") {
+  if (normalizedOfferType === "Risk-Free / Refund") {
     return "Qualifying and refund path";
   }
-  if (offerType === "Free Spins") {
-    return "Free-spin campaign";
+  if (normalizedOfferType === "Free Spins") {
+    return "Free Spins Plan";
   }
-  if (offerType === "Free Play") {
-    return "Free-play campaign";
+  if (normalizedOfferType === "Fixed Spins Or Free Play") {
+    return "Free Play Plan";
   }
-  if (offerType === "None") {
+  if (normalizedOfferType === "Other / Custom") {
     return "Casino stake details";
   }
-  if (freeSpinCampaignTypes.has(offerType)) {
-    return "Campaign and reward details";
+  if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
+    return "Reward Details";
   }
-  return "Campaign values";
+  return "Campaign Values";
 }
 
 function getCasinoRewardHeading(offerType: string): string {
-  if (offerType === "Risk Free") {
-    return "Risk-free return";
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  if (normalizedOfferType === "Risk-Free / Refund") {
+    return "Refund Return";
   }
-  if (offerType === "Free Play") {
-    return "Free-play return";
+  if (normalizedOfferType === "Fixed Spins Or Free Play") {
+    return "Free Play Conversion";
   }
-  if (offerType === "Free Spins") {
-    return "Spin and conversion";
+  if (normalizedOfferType === "Free Spins") {
+    return "Spin Conversion";
   }
-  return "Spin and reward";
+  if (normalizedOfferType === "Wager To Earn Free Spins" || normalizedOfferType === "Deposit To Receive Free Spins") {
+    return "Free Spins Award";
+  }
+  return "Reward Conversion";
 }
 
 function getCasinoCampaignLockReason(formState: CasinoOfferFormState): string {
@@ -707,103 +1246,252 @@ function getCasinoRewardLockReason(formState: CasinoOfferFormState): string {
 }
 
 function getCreditAmountLabel(offerType: string): string {
-  if (offerType === "Cashback") {
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  if (normalizedOfferType === "Cashback / Loss Back") {
     return "Cashback amount";
   }
-  if (offerType === "Free Play") {
+  if (normalizedOfferType === "Fixed Spins Or Free Play") {
     return "Free-play amount";
   }
-  if (offerType === "Risk Free") {
+  if (normalizedOfferType === "Risk-Free / Refund") {
     return "Refund / credit amount";
   }
   return "Credit amount";
 }
 
 function getRewardValueLabel(offerType: string): string {
-  if (offerType === "Free Play") {
-    return "Free-play value";
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  const capabilities = getCasinoOfferCapabilities(normalizedOfferType);
+  if (normalizedOfferType === "Fixed Spins Or Free Play") {
+    return "Converted free-play amount";
   }
-  if (offerType === "Risk Free") {
-    return "Returned credit value";
+  if (normalizedOfferType === "Risk-Free / Refund") {
+    return "Returned credit amount";
   }
-  return "Free spins value";
+  if (capabilities.rewardType === "free_spins") {
+    return "Converted win amount";
+  }
+  return "Converted reward amount";
 }
 
-function getDerivedRequiredSpins(wagerTarget: string, spinStake: string): string {
-  const normalizedWagerTarget = wagerTarget.trim();
-  const normalizedSpinStake = spinStake.trim();
-  if (!normalizedWagerTarget || !normalizedSpinStake) {
-    return "";
+function getCasinoEffectiveWagerTargetForSpins(formState: CasinoOfferFormState): string | number {
+  if (casinoOfferTypeUsesFieldGroup(formState.offer_type, "wagering")) {
+    const derivedTarget = getCasinoWagerTargetResult(formState);
+    return derivedTarget.value ?? formState.wager_target;
   }
 
-  const targetValue = Number(normalizedWagerTarget);
-  const stakeValue = Number(normalizedSpinStake);
-  if (!Number.isFinite(targetValue) || !Number.isFinite(stakeValue) || stakeValue <= 0) {
-    return "";
+  const rewardWageringApplies =
+    getCasinoOfferCapabilities(formState.offer_type).hasRewardWagering &&
+    casinoOfferTypeUsesFieldGroup(formState.offer_type, "rewardValue") &&
+    casinoOfferTypeUsesFieldGroup(formState.offer_type, "spinStake") &&
+    !casinoOfferTypeUsesFieldGroup(formState.offer_type, "wagering");
+
+  if (rewardWageringApplies) {
+    const derivedTarget = getCasinoRewardWagerTargetResult(formState);
+    return derivedTarget.value ?? formState.wager_target;
   }
 
-  return String(Math.ceil(targetValue / stakeValue));
+  return formState.wager_target;
+}
+
+function getDerivedRequiredSpins(formState: CasinoOfferFormState): string {
+  const result = calculateSpinsRequired({
+    wagerTarget: getCasinoEffectiveWagerTargetForSpins(formState),
+    spinStake: formState.spin_stake,
+  });
+  return result.actionableSpins === null ? "" : String(result.actionableSpins);
+}
+
+function getCasinoWagerBase(formState: CasinoOfferFormState): CasinoWagerBase {
+  const normalizedOfferType = normalizeCasinoOfferType(formState.offer_type);
+  if (normalizedOfferType === "Fixed Wagering Requirement" || normalizedOfferType === "Wagering / Turnover Challenge") {
+    return "fixed_amount";
+  }
+  if (normalizedOfferType === "Deposit And Bonus Wagering") {
+    return formState.cash_stake.trim() ? "deposit_plus_bonus" : "bonus";
+  }
+  if (normalizedOfferType === "Wager To Earn Reward") {
+    return formState.bonus_amount.trim() ? "bonus" : "cash_stake";
+  }
+  if (normalizedOfferType === "No-Deposit Bonus / Bonus Credit") {
+    return "bonus";
+  }
+  return formState.bonus_amount.trim() ? "bonus" : "cash_stake";
+}
+
+function getStoredCasinoWagerBase(formState: CasinoOfferFormState): string {
+  const base = getCasinoWagerBase(formState);
+  switch (base) {
+    case "bonus":
+      return "Bonus";
+    case "deposit":
+      return "Deposit";
+    case "deposit_plus_bonus":
+      return "DepositPlusBonus";
+    case "cash_stake":
+      return "CashStake";
+    case "fixed_amount":
+      return "FixedAmount";
+    case "custom":
+      return "Custom";
+    case "converted_reward":
+      return "ConvertedReward";
+  }
+}
+
+function getStoredCasinoRewardType(formState: CasinoOfferFormState): string {
+  const rewardType = getCasinoOfferCapabilities(formState.offer_type).rewardType;
+  switch (rewardType) {
+    case "bonus_credit":
+      return "BonusCredit";
+    case "free_spins":
+      return "FreeSpins";
+    case "free_play":
+      return "FreePlay";
+    case "cashback":
+      return "Cashback";
+    case "refund":
+      return "Refund";
+    case "cash":
+      return "Cash";
+    case "mystery":
+      return "Mystery";
+    case "custom":
+      return "Custom";
+    case "none":
+      return "";
+  }
+}
+
+function getCasinoWagerTargetResult(formState: CasinoOfferFormState): CasinoCalculationMoneyResult {
+  const base = getCasinoWagerBase(formState);
+  return calculateWagerTarget({
+    base,
+    bonusAmount: formState.bonus_amount,
+    cashStake: formState.cash_stake,
+    depositAmount: formState.cash_stake,
+    fixedAmount: formState.wager_target,
+    multiplier: formState.wager_multiplier,
+  });
+}
+
+function getCasinoRewardWagerTargetResult(formState: CasinoOfferFormState): CasinoCalculationMoneyResult {
+  return calculateRewardWagerTarget({
+    rewardAmount: formState.free_spins_value,
+    multiplier: formState.wager_multiplier,
+  });
+}
+
+function getCasinoSpinsRequiredResult(formState: CasinoOfferFormState): CasinoSpinCalculationResult {
+  return calculateSpinsRequired({
+    wagerTarget: getCasinoEffectiveWagerTargetForSpins(formState),
+    spinStake: formState.spin_stake,
+  });
+}
+
+function getCasinoRewardSpinsRequiredResult(formState: CasinoOfferFormState): CasinoSpinCalculationResult {
+  const derivedRewardTarget = getCasinoRewardWagerTargetResult(formState);
+  return calculateSpinsRequired({
+    wagerTarget: derivedRewardTarget.value ?? formState.wager_target,
+    spinStake: formState.spin_stake,
+  });
+}
+
+function getDerivedWagerTarget(formState: CasinoOfferFormState): string {
+  const result = getCasinoWagerTargetResult(formState);
+  return result.value === null ? "" : result.value.toFixed(2);
+}
+
+function getDerivedRewardWagerTarget(formState: CasinoOfferFormState): string {
+  const result = getCasinoRewardWagerTargetResult(formState);
+  return result.value === null ? "" : result.value.toFixed(2);
+}
+
+function applyDerivedRewardWagerTarget(current: CasinoOfferFormState): CasinoOfferFormState {
+  const derivedTarget = getDerivedRewardWagerTarget(current);
+  if (!derivedTarget) {
+    return current;
+  }
+
+  return {
+    ...current,
+    wager_target: derivedTarget,
+  };
+}
+
+function applyDerivedWagerTarget(current: CasinoOfferFormState): CasinoOfferFormState {
+  const derivedTarget = getDerivedWagerTarget(current);
+  if (!derivedTarget) {
+    return current;
+  }
+
+  return {
+    ...current,
+    wager_target: derivedTarget,
+  };
 }
 
 function getCasinoPositiveOutcomeLabel(
   offerType: string,
   result: string
 ): string {
-  if (freeSpinCampaignTypes.has(offerType)) {
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
     return result === "Pending" ? "Spins convert well" : "Spins converted well";
   }
-  if (offerType === "Cashback") {
+  if (normalizedOfferType === "Cashback / Loss Back") {
     return result === "Pending" ? "Cashback lands" : "Cashback landed";
   }
-  if (offerType === "Deposit Bonus" || offerType === "Wager") {
+  if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
     return result === "Pending" ? "Offer converts well" : "Offer converted well";
   }
   return result === "Pending" ? "Campaign ends positive" : "Campaign ended positive";
 }
 
 function getCasinoResultLabel(offerType: string, result: string): string {
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
   if (result === "Pending") {
-    if (offerType === "Cashback") {
+    if (normalizedOfferType === "Cashback / Loss Back") {
       return "Pending cashback";
     }
-    if (offerType === "Risk Free") {
+    if (normalizedOfferType === "Risk-Free / Refund") {
       return "Pending risk-free outcome";
     }
-    if (freeSpinCampaignTypes.has(offerType)) {
+    if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
       return "Pending reward outcome";
     }
-    if (offerType === "Deposit Bonus" || offerType === "Wager") {
+    if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
       return "Pending offer outcome";
     }
     return "Pending";
   }
 
   if (result === "Win") {
-    if (offerType === "Cashback") {
+    if (normalizedOfferType === "Cashback / Loss Back") {
       return "Cashback landed";
     }
-    if (offerType === "Risk Free") {
+    if (normalizedOfferType === "Risk-Free / Refund") {
       return "Refund returned";
     }
-    if (freeSpinCampaignTypes.has(offerType)) {
+    if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
       return "Reward converted";
     }
-    if (offerType === "Deposit Bonus" || offerType === "Wager") {
+    if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
       return "Offer converted";
     }
   }
 
   if (result === "Lose") {
-    if (offerType === "Cashback") {
+    if (normalizedOfferType === "Cashback / Loss Back") {
       return "Cashback missed";
     }
-    if (offerType === "Risk Free") {
+    if (normalizedOfferType === "Risk-Free / Refund") {
       return "Refund missed";
     }
-    if (freeSpinCampaignTypes.has(offerType)) {
+    if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
       return "Reward missed";
     }
-    if (offerType === "Deposit Bonus" || offerType === "Wager") {
+    if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
       return "Offer missed";
     }
   }
@@ -819,39 +1507,24 @@ function getCasinoNegativeOutcomeLabel(
   offerType: string,
   result: string
 ): string {
-  if (freeSpinCampaignTypes.has(offerType)) {
+  const normalizedOfferType = normalizeCasinoOfferType(offerType);
+  if (rewardCampaignOfferTypes.has(normalizedOfferType)) {
     return result === "Pending" ? "Spins underperform" : "Spins underperformed";
   }
-  if (offerType === "Cashback") {
+  if (normalizedOfferType === "Cashback / Loss Back") {
     return result === "Pending" ? "Cashback misses" : "Cashback missed";
   }
-  if (offerType === "Deposit Bonus" || offerType === "Wager") {
+  if (wageringCampaignOfferTypes.has(normalizedOfferType)) {
     return result === "Pending" ? "Offer underperforms" : "Offer underperformed";
   }
   return result === "Pending" ? "Campaign ends negative" : "Campaign ended negative";
 }
 
-function getCasinoOutcomeCardState(result: string, key: "positive" | "negative"): CasinoOutcomeCardState {
-  if (result === "Pending") {
-    return "possible";
-  }
-  if (result === "Void") {
-    return "void";
-  }
-  if (result === "Mixed") {
-    return "review";
-  }
-  if (result === "Win") {
-    return key === "positive" ? "hit" : "missed";
-  }
-  if (result === "Lose") {
-    return key === "negative" ? "hit" : "missed";
-  }
-  return "possible";
-}
-
 function getMissingRequiredFields(formState: CasinoOfferFormState): string[] {
   const missing: string[] = [];
+  if (!formState.offer_name.trim()) {
+    missing.push("Offer name");
+  }
   if (!formState.date_started.trim()) {
     missing.push("Date started");
   }
@@ -864,100 +1537,163 @@ function getMissingRequiredFields(formState: CasinoOfferFormState): string[] {
   return missing;
 }
 
-function getMissingCampaignFields(formState: CasinoOfferFormState): string[] {
-  if (casinoPlaceholderStatuses.has(formState.status)) {
+function getMissingCampaignFields(
+  formState: CasinoOfferFormState,
+  options: { includeDraftFields?: boolean } = {}
+): string[] {
+  if (!options.includeDraftFields && casinoPlaceholderStatuses.has(formState.status)) {
     return [];
   }
 
   const missing: string[] = [];
+  const requiredFields = new Set(getCasinoOfferRequiredFields(formState.offer_type));
 
-  if (
-    !cashlessCasinoOfferTypes.has(formState.offer_type) &&
-    formState.offer_type.trim().length > 0 &&
-    !formState.cash_stake.trim()
-  ) {
+  if (requiredFields.has("cash_stake") && !formState.cash_stake.trim()) {
     missing.push("Cash stake");
   }
 
-  if (wageringCampaignTypes.has(formState.offer_type)) {
-    if (!formState.bonus_amount.trim()) {
-      missing.push("Bonus amount");
-    }
-    if (!formState.wager_multiplier.trim()) {
-      missing.push("Wager multiplier");
-    }
-    if (!formState.wager_target.trim()) {
-      missing.push("Wager target");
-    }
+  if (requiredFields.has("credit_amount") && !formState.credit_amount.trim()) {
+    missing.push(getCreditAmountLabel(formState.offer_type));
   }
 
-  if (formState.offer_type === "Cashback" && !formState.credit_amount.trim()) {
-    missing.push("Cashback amount");
+  if (requiredFields.has("bonus_amount") && !formState.bonus_amount.trim()) {
+    missing.push("Bonus amount");
   }
 
-  if (formState.offer_type === "Risk Free" && !formState.credit_amount.trim()) {
-    missing.push("Refund / credit amount");
+  if (requiredFields.has("wager_multiplier") && !formState.wager_multiplier.trim()) {
+    missing.push("Wager multiplier");
   }
 
-  if (formState.offer_type === "Free Play" && !formState.credit_amount.trim()) {
-    missing.push("Free-play amount");
+  if (requiredFields.has("wager_target") && !formState.wager_target.trim()) {
+    missing.push("Wager target");
+  }
+
+  if (
+    requiredFields.has("spin_stake") &&
+    isCasinoFieldInTab(formState, "spin_stake", "campaign") &&
+    !formState.spin_stake.trim()
+  ) {
+    missing.push("Spin stake");
   }
 
   return missing;
 }
 
-function getMissingRewardFields(formState: CasinoOfferFormState): string[] {
-  if (casinoPlaceholderStatuses.has(formState.status)) {
+function isCasinoRequiredFieldFilled(
+  formState: CasinoOfferFormState,
+  field: ReturnType<typeof getCasinoOfferRequiredFields>[number]
+): boolean {
+  switch (field) {
+    case "cash_stake":
+      return Boolean(formState.cash_stake.trim());
+    case "credit_amount":
+      return Boolean(formState.credit_amount.trim());
+    case "bonus_amount":
+      return Boolean(formState.bonus_amount.trim());
+    case "wager_multiplier":
+      return Boolean(formState.wager_multiplier.trim());
+    case "wager_target":
+      return Boolean(formState.wager_target.trim());
+    case "required_spins":
+      return Boolean(
+        formState.required_spins.trim() ||
+          getDerivedRequiredSpins(formState)
+      );
+    case "spin_stake":
+      return Boolean(formState.spin_stake.trim());
+    case "free_spins_awarded":
+      return Boolean(formState.free_spins_awarded.trim());
+    case "free_spins_value":
+      return Boolean(formState.free_spins_value.trim());
+    default:
+      return false;
+  }
+}
+
+function isCasinoFieldInTab(
+  formState: CasinoOfferFormState,
+  field: ReturnType<typeof getCasinoOfferRequiredFields>[number],
+  tabId: "campaign" | "reward"
+): boolean {
+  const campaignFields = new Set([
+    "cash_stake",
+    "credit_amount",
+    "bonus_amount",
+    "wager_multiplier",
+    "wager_target",
+  ]);
+  if (field === "spin_stake" && casinoOfferTypeUsesFieldGroup(formState.offer_type, "wagering")) {
+    return tabId === "campaign";
+  }
+  const rewardFields = new Set([
+    "required_spins",
+    "spin_stake",
+    "free_spins_awarded",
+    "free_spins_value",
+  ]);
+
+  return tabId === "campaign" ? campaignFields.has(field) : rewardFields.has(field);
+}
+
+function getCasinoTabRequiredFields(
+  formState: CasinoOfferFormState,
+  tabId: "campaign" | "reward"
+): ReturnType<typeof getCasinoOfferRequiredFields> {
+  return getCasinoOfferRequiredFields(formState.offer_type).filter((field) =>
+    isCasinoFieldInTab(formState, field, tabId)
+  );
+}
+
+function isCasinoRequiredTabComplete(
+  formState: CasinoOfferFormState,
+  tabId: "campaign" | "reward"
+): boolean {
+  const tabFields = getCasinoTabRequiredFields(formState, tabId);
+  if (tabFields.length > 0) {
+    return tabFields.every((field) => isCasinoRequiredFieldFilled(formState, field));
+  }
+
+  if (tabId === "reward" && casinoOfferTypeUsesTab(formState.offer_type, "reward")) {
+    return Boolean(formState.free_spins_value.trim());
+  }
+
+  return false;
+}
+
+function getMissingRewardFields(
+  formState: CasinoOfferFormState,
+  options: { includeDraftFields?: boolean } = {}
+): string[] {
+  if (!options.includeDraftFields && casinoPlaceholderStatuses.has(formState.status)) {
     return [];
   }
 
   const missing: string[] = [];
+  const requiredFields = new Set(getCasinoOfferRequiredFields(formState.offer_type));
 
-  if (formState.offer_type === "Free Spins") {
-    if (!formState.spin_stake.trim()) {
-      missing.push("Spin stake");
-    }
-    if (!formState.free_spins_awarded.trim()) {
-      missing.push("Free spins awarded");
-    }
-    if (!formState.free_spins_value.trim()) {
-      missing.push("Free spins value");
-    }
-  }
-
-  if (formState.offer_type === "Free Play") {
-    if (!formState.spin_stake.trim()) {
-      missing.push("Spin stake");
-    }
-    if (!formState.required_spins.trim() && !getDerivedRequiredSpins(formState.wager_target, formState.spin_stake)) {
+  if (requiredFields.has("required_spins")) {
+    if (!formState.required_spins.trim() && !getDerivedRequiredSpins(formState)) {
       missing.push("Required spins");
     }
-    if (!formState.free_spins_value.trim()) {
-      missing.push("Free-play value");
-    }
   }
 
-  if (formState.offer_type === "Risk Free" && !formState.free_spins_value.trim()) {
-    missing.push("Returned credit value");
+  if (
+    requiredFields.has("spin_stake") &&
+    isCasinoFieldInTab(formState, "spin_stake", "reward") &&
+    !formState.spin_stake.trim()
+  ) {
+    missing.push("Spin stake");
+  }
+
+  if (requiredFields.has("free_spins_awarded") && !formState.free_spins_awarded.trim()) {
+    missing.push("Free spins awarded");
+  }
+
+  if (requiredFields.has("free_spins_value") && !formState.free_spins_value.trim()) {
+    missing.push(getRewardValueLabel(formState.offer_type));
   }
 
   return missing;
-}
-
-function getOutcomeCardLabel(state: CasinoOutcomeCardState): string {
-  if (state === "hit") {
-    return "Outcome hit";
-  }
-  if (state === "missed") {
-    return "Outcome missed";
-  }
-  if (state === "void") {
-    return "Outcome void";
-  }
-  if (state === "review") {
-    return "Review required";
-  }
-  return "Possible outcome";
 }
 
 function parseCasinoAmount(value: string | null | undefined): number {
@@ -967,6 +1703,24 @@ function parseCasinoAmount(value: string | null | undefined): number {
 
   const parsed = Number(value.replace(/,/g, "").trim());
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatCasinoMoneyInput(value: string): string {
+  const normalized = value.replace(/,/g, "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : value;
+}
+
+function getCurrentDateTimeLocalValue(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(
+    now.getHours()
+  )}:${pad(now.getMinutes())}`;
 }
 
 function truncateHeaderTitle(value: string, maxLength: number): string {
@@ -979,6 +1733,8 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
 export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
+  const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
+  const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
@@ -1039,18 +1795,27 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [errorMessage, setErrorMessage] = useState("");
   const [showOfferIdentityValidation, setShowOfferIdentityValidation] = useState(false);
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
+  const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
+  const [settledDeleteReason, setSettledDeleteReason] = useState("");
+  const [activeEditorTabId, setActiveEditorTabId] = useState<CasinoEditorTabId>("setup");
+  const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
+  const [activeMoneyKeypadField, setActiveMoneyKeypadField] = useState<CasinoMoneyFieldKey | null>(null);
+  const [moneyKeypadPrimedField, setMoneyKeypadPrimedField] = useState<CasinoMoneyFieldKey | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+  const isPersistingRef = useRef(false);
   const pageSize = 8;
+
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -1078,7 +1843,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
+  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+
   useToastDismiss(statusMessage, clearStatusMessage);
+  useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
@@ -1135,6 +1903,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         setSelectedId(selected);
         if (selected) {
           isCreatingDraftRef.current = false;
+          setActiveEditorTabId("setup");
           const activeRecord = nextRows.find((row) => row.casino_offer_id === selected);
           if (activeRecord) {
             const nextFormState = recordToForm(activeRecord);
@@ -1225,24 +1994,33 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   );
   const isSettledRow = selectedRow?.status === "Settled";
   const isSettledReadOnly = Boolean(isSettledRow && !settledEditEnabled);
-  const isPlaceholderStatus = casinoPlaceholderStatuses.has(formState.status);
-  const showsCashStake =
-    formState.offer_type.trim().length > 0 && !cashlessCasinoOfferTypes.has(formState.offer_type);
-  const showsWagerFields = wageringCampaignTypes.has(formState.offer_type);
-  const showsCreditAmountField = new Set(["Cashback", "Free Play", "Risk Free"]).has(
-    formState.offer_type
+  const normalizedOfferType = normalizeCasinoOfferType(formState.offer_type);
+  const offerCapabilities = useMemo(
+    () => getCasinoOfferCapabilities(normalizedOfferType),
+    [normalizedOfferType]
   );
-  const showsRewardSection = freeSpinCampaignTypes.has(formState.offer_type);
-  const showsRequiredSpinFields = formState.offer_type === "Free Play";
-  const showsSpinStakeField = new Set(["Free Spins", "Free Play"]).has(formState.offer_type);
-  const showsAwardedSpinsField = formState.offer_type === "Free Spins";
-  const showsRewardValueField = new Set(["Free Spins", "Free Play", "Risk Free"]).has(
-    formState.offer_type
+  const showsCampaignSection = casinoOfferTypeUsesTab(normalizedOfferType, "campaign");
+  const showsRewardSection = casinoOfferTypeUsesTab(normalizedOfferType, "reward");
+  const showsCashStake = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "cashStake");
+  const showsWagerFields = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "wagering");
+  const showsBonusAmountField = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "bonusAmount");
+  const showsCreditAmountField = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "creditAmount");
+  const showsRequiredSpinFields = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "requiredSpins");
+  const showsSpinStakeField = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "spinStake");
+  const showsAwardedSpinsField = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "awardedSpins");
+  const showsRewardValueField = casinoOfferTypeUsesFieldGroup(normalizedOfferType, "rewardValue");
+  const casinoRequiredFields = useMemo(
+    () => new Set(getCasinoOfferRequiredFields(normalizedOfferType)),
+    [normalizedOfferType]
   );
-  const derivedRequiredSpins = useMemo(
-    () => getDerivedRequiredSpins(formState.wager_target, formState.spin_stake),
-    [formState.spin_stake, formState.wager_target]
-  );
+  const showsWagerMultiplierField = showsWagerFields && casinoRequiredFields.has("wager_multiplier");
+  const showsRewardWageringControls =
+    offerCapabilities.hasRewardWagering && showsRewardValueField && showsSpinStakeField && !showsWagerFields;
+  const derivedWagerTargetResult = getCasinoWagerTargetResult(formState);
+  const derivedRewardWagerTargetResult = getCasinoRewardWagerTargetResult(formState);
+  const derivedSpinsRequiredResult = getCasinoSpinsRequiredResult(formState);
+  const derivedRewardSpinsRequiredResult = getCasinoRewardSpinsRequiredResult(formState);
+  const derivedRequiredSpins = getDerivedRequiredSpins(formState);
   const resultOptions = useMemo(
     () => getCasinoResultOptions(formState.offer_type),
     [formState.offer_type]
@@ -1250,13 +2028,409 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const missingOfferIdentityFields = useMemo(() => getMissingRequiredFields(formState), [formState]);
   const missingCampaignFields = useMemo(() => getMissingCampaignFields(formState), [formState]);
   const missingRewardFields = useMemo(() => getMissingRewardFields(formState), [formState]);
+  const missingSettlementFields = useMemo(() => getMissingCasinoSettlementFields(formState), [formState]);
+  const guidedCampaignFields = useMemo(
+    () => getMissingCampaignFields(formState, { includeDraftFields: true }),
+    [formState]
+  );
+  const guidedRewardFields = useMemo(
+    () => getMissingRewardFields(formState, { includeDraftFields: true }),
+    [formState]
+  );
   const offerSetupComplete = missingOfferIdentityFields.length === 0;
-  const campaignUnlocked = offerSetupComplete && Boolean(formState.offer_type.trim());
-  const rewardUnlocked = campaignUnlocked && showsRewardSection;
+  const campaignUnlocked = offerSetupComplete && Boolean(formState.offer_type.trim()) && showsCampaignSection;
+  const rewardUnlocked = offerSetupComplete && Boolean(formState.offer_type.trim()) && showsRewardSection;
+  const campaignStepComplete = isCasinoRequiredTabComplete(formState, "campaign");
+  const rewardStepComplete = isCasinoRequiredTabComplete(formState, "reward");
   const offerIdentityValidationActive = showOfferIdentityValidation;
   const displayedValue = getDisplayedCasinoValueForForm(formState);
   const displayedValueLabel = getDisplayedCasinoValueLabelForForm(formState);
   const hasResolvedCasinoValue = Boolean(formState.calc_net_pnl.trim() || formState.final_net_pnl.trim());
+  const hasAdvancedCasinoContent = Boolean(
+    formState.calc_net_pnl.trim() ||
+      formState.user_notes.trim() ||
+      selectedRow?.calculation_notes.length
+  );
+  const showsAdvancedEditorTab =
+    hasAdvancedCasinoContent || normalizeCasinoOfferType(formState.offer_type) === "Other / Custom";
+  const quickSettlementOptions = useMemo(
+    () => resultOptions.filter((option) => option !== "Pending"),
+    [resultOptions]
+  );
+  const casinoEditorTabs = useMemo<LedgerEditorTabDefinition[]>(
+    () => {
+      const tabs: LedgerEditorTabDefinition[] = [
+      {
+        id: "setup",
+        label: "Offer Setup",
+        requiredIssueCount: offerIdentityValidationActive ? missingOfferIdentityFields.length : 0,
+        status:
+          offerIdentityValidationActive && missingOfferIdentityFields.length > 0
+            ? "invalid"
+            : offerSetupComplete
+              ? "complete"
+              : "neutral",
+      },
+      ];
+
+      if (showsCampaignSection) {
+        tabs.push({
+          id: "campaign",
+          label: "Wagering",
+          requiredIssueCount:
+            offerIdentityValidationActive && campaignUnlocked ? missingCampaignFields.length : 0,
+          status: !campaignUnlocked
+            ? "locked"
+            : offerIdentityValidationActive && missingCampaignFields.length > 0
+              ? "invalid"
+              : campaignStepComplete
+                ? "complete"
+                : "neutral",
+        });
+      }
+
+      if (showsRewardSection) {
+        tabs.push({
+          id: "reward",
+          label: "Reward",
+          requiredIssueCount:
+            offerIdentityValidationActive && rewardUnlocked ? missingRewardFields.length : 0,
+          status: !rewardUnlocked
+            ? "locked"
+            : offerIdentityValidationActive && missingRewardFields.length > 0
+              ? "invalid"
+              : rewardStepComplete
+                ? "complete"
+                : "neutral",
+        });
+      }
+
+      tabs.push({
+        id: "settlement",
+        label: "Settlement",
+        attentionState: getSettlementTabAttentionState({
+          result: formState.result,
+          settlementDate: formState.date_started,
+          status: formState.status,
+        }),
+        requiredIssueCount: offerIdentityValidationActive ? missingSettlementFields.length : 0,
+        status:
+          offerIdentityValidationActive && missingSettlementFields.length > 0
+            ? "invalid"
+            : formState.status === "Settled" && missingSettlementFields.length === 0
+              ? "complete"
+              : "neutral",
+      });
+
+      if (showsAdvancedEditorTab) {
+        tabs.push({
+          id: "advanced",
+          label: "Advanced",
+          status: "neutral",
+        });
+      }
+
+      return tabs;
+    },
+    [
+      campaignUnlocked,
+      campaignStepComplete,
+      formState.date_started,
+      formState.result,
+      formState.status,
+      missingCampaignFields.length,
+      missingOfferIdentityFields.length,
+      missingRewardFields.length,
+      missingSettlementFields.length,
+      offerIdentityValidationActive,
+      offerSetupComplete,
+      rewardUnlocked,
+      rewardStepComplete,
+      showsCampaignSection,
+      showsAdvancedEditorTab,
+      showsRewardSection,
+    ]
+  );
+  const safeActiveEditorTabId = casinoEditorTabs.some(
+    (tab) => tab.id === activeEditorTabId && tab.status !== "locked"
+  )
+    ? activeEditorTabId
+    : (casinoEditorTabs.find((tab) => tab.status !== "locked")?.id as
+        | CasinoEditorTabId
+        | undefined) ?? "setup";
+  const navigableCasinoEditorTabs = casinoEditorTabs.filter((tab) => tab.status !== "locked");
+  const activeCasinoEditorTabIndex = Math.max(
+    0,
+    navigableCasinoEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
+  );
+  const previousCasinoEditorTab =
+    activeCasinoEditorTabIndex > 0
+      ? navigableCasinoEditorTabs[activeCasinoEditorTabIndex - 1]
+      : null;
+  const nextCasinoEditorTab =
+    activeCasinoEditorTabIndex >= 0 &&
+    activeCasinoEditorTabIndex < navigableCasinoEditorTabs.length - 1
+      ? navigableCasinoEditorTabs[activeCasinoEditorTabIndex + 1]
+      : null;
+  const activateCasinoEditorTab = useCallback((tabId: CasinoEditorTabId) => {
+    setActiveEditorTabId(tabId);
+  }, []);
+  const displayedNumericValue =
+    parseCasinoDisplayValue(displayedValue) ??
+    (displayedValueLabel === getRewardValueLabel(formState.offer_type)
+      ? parseCasinoDisplayValue(formState.free_spins_value)
+      : null);
+  const settlementNetSuggestion = useMemo(
+    () =>
+      calculateCasinoSettlementNetResult({
+        cashReturned: formState.cash_returned,
+        ownCashCommitted: formState.own_cash_committed,
+        otherCosts: formState.settlement_other_costs,
+        rewardConverted: formState.free_spins_value,
+      }),
+    [
+      formState.cash_returned,
+      formState.free_spins_value,
+      formState.own_cash_committed,
+      formState.settlement_other_costs,
+    ]
+  );
+  const ownCashCommittedSuggestion = getCasinoOwnCashCommittedSuggestion(formState);
+  const guidedEntry = useMemo(
+    () =>
+      getCasinoGuidedEntry({
+        formState,
+        missingCampaignFields: guidedCampaignFields,
+        missingOfferIdentityFields,
+        missingRewardFields: guidedRewardFields,
+        missingSettlementFields,
+      }),
+    [formState, guidedCampaignFields, guidedRewardFields, missingOfferIdentityFields, missingSettlementFields]
+  );
+  const casinoGuidedFallbackMessages = useMemo<Record<CasinoGuidedFieldKey, string>>(
+    () => ({
+      bonus_amount: "Enter The Bonus Amount.",
+      bookmaker: "Choose The Bookmaker.",
+      cash_stake: "Enter The Cash Stake.",
+      credit_amount: "Enter The Credit Amount.",
+      date_started: "Choose The Start Date.",
+      final_net_pnl: "Confirm The Net Result.",
+      free_spins_awarded: "Enter The Free Spins Awarded.",
+      free_spins_value: "Enter The Free-Spin Value.",
+      offer_name: "Add The Offer Name As Shown.",
+      offer_type: "Choose The Offer Type.",
+      required_spins: "Enter The Required Spins.",
+      result: "Confirm The Outcome.",
+      spin_stake: "Enter The Spin Stake.",
+      wager_multiplier: "Enter The Wager Multiplier.",
+      wager_target: "Enter The Wager Target.",
+    }),
+    []
+  );
+  const safeGuidedEntry = useMemo(() => {
+    if (guidedEntry.state === "complete") {
+      return guidedEntry;
+    }
+    const nextRequiredField = guidedEntry.nextRequiredField ?? "offer_name";
+    return {
+      ...guidedEntry,
+      nextRequiredField,
+      message:
+        guidedEntry.message.trim() ||
+        casinoGuidedFallbackMessages[nextRequiredField] ||
+        "Continue The Guided Workflow.",
+    };
+  }, [casinoGuidedFallbackMessages, guidedEntry]);
+  const guidedEntryVisible =
+    workflowVisible && guidedAccessEnabled && !guidedEntryDismissed && safeGuidedEntry.state !== "complete";
+  const guidedEntryMessageId = "casino-guided-entry-message";
+  const guidedEntryTargetTabId = safeGuidedEntry.nextRequiredField
+    ? getCasinoGuidedFieldTab(formState, safeGuidedEntry.nextRequiredField)
+    : null;
+  const guidedEntryNeedsTabJump =
+    guidedEntryTargetTabId !== null && guidedEntryTargetTabId !== safeActiveEditorTabId;
+  const guidedEntryTargetTabIndex = guidedEntryTargetTabId
+    ? casinoEditorTabs.findIndex((tab) => tab.id === guidedEntryTargetTabId)
+    : -1;
+  const guidedEntryTargetTabLabel = guidedEntryTargetTabId
+    ? casinoGuidedTabLabels[guidedEntryTargetTabId]
+    : "";
+  const guidedEntryMessageText =
+    safeGuidedEntry.message.trim() ||
+    (safeGuidedEntry.nextRequiredField
+      ? casinoGuidedFallbackMessages[safeGuidedEntry.nextRequiredField]
+      : "Continue The Guided Workflow.");
+  const guidedEntryResolvedInstruction =
+    (
+      guidedEntryNeedsTabJump
+        ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+        : guidedEntryMessageText
+    ).trim() || "Add The Offer Name As Shown.";
+  const guidedEntryActionMessage = guidedEntryNeedsTabJump
+    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+    : guidedEntryMessageText;
+  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
+  const getGuidedFieldClass = useCallback(
+    (field: CasinoGuidedFieldKey, extraClass = "") => {
+      const classes = ["field-control"];
+      if (extraClass) {
+        classes.push(extraClass);
+      }
+      if (guidedEntryVisible && safeGuidedEntry.nextRequiredField === field) {
+        classes.push("is-guided-next");
+      }
+      return classes.join(" ");
+    },
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const getGuidedFieldData = useCallback(
+    (field: CasinoGuidedFieldKey) => ({
+      "data-guided-field": field,
+    }),
+    []
+  );
+  const getGuidedDescribedBy = useCallback(
+    (field: CasinoGuidedFieldKey, existing?: string) => {
+      const ids = [
+        existing,
+        guidedEntryVisible && safeGuidedEntry.nextRequiredField === field ? guidedEntryMessageId : undefined,
+      ].filter(Boolean);
+      return ids.length ? ids.join(" ") : undefined;
+    },
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const focusGuidedEntryTarget = useCallback(() => {
+    const nextField = safeGuidedEntry.nextRequiredField;
+    if (!nextField) return;
+    const nextTab = getCasinoGuidedFieldTab(formState, nextField);
+    activateCasinoEditorTab(nextTab);
+    window.setTimeout(() => {
+      const target = editorRef.current?.querySelector<HTMLElement>(
+        `[data-guided-field="${nextField}"]`
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget =
+        target?.matches("input, select, textarea, button")
+          ? target
+          : target?.querySelector<HTMLElement>("input, select, textarea, button");
+      focusTarget?.focus({ preventScroll: true });
+    }, 80);
+  }, [activateCasinoEditorTab, formState, safeGuidedEntry.nextRequiredField]);
+  const renderGuidedEntryMessage = useCallback((message: string) => {
+    const safeMessage = message.trim() || "Continue The Guided Workflow.";
+    const targetTerms = [
+      "Start Date",
+      "Offer Name",
+      "Settlement Date",
+      "Offer Type",
+      "Bookmaker",
+      "Campaign",
+      "Wagering",
+      "Reward",
+      "Outcome",
+      "Net Result",
+      "Cash Stake",
+      "Bonus Amount",
+      "Wager Multiplier",
+      "Wager Target",
+      "Required Spins",
+      "Spin Stake",
+      "Free Spins Awarded",
+      "Converted Win Amount",
+      "Converted Free-Play Amount",
+      "Returned Credit Amount",
+      "Converted Reward Amount",
+      "Cashback Amount",
+      "Refund / Credit Amount",
+      "Free-Play Amount",
+      "Credit Amount",
+    ];
+    const pattern = new RegExp(`(${targetTerms.join("|")})`, "g");
+    const parts = safeMessage.split(pattern).filter(Boolean);
+    if (parts.length === 0) {
+      return <>{safeMessage}</>;
+    }
+    return (
+      <>
+        {parts.map((part, index) =>
+          targetTerms.includes(part) ? (
+            <span className="guided-entry-token guided-entry-token-field" key={`${part}-${index}`}>
+              {part}
+            </span>
+          ) : (
+            <span key={`${part}-${index}`}>{part}</span>
+          )
+        )}
+      </>
+    );
+  }, []);
+  const renderSettledLockAction = useCallback(
+    (sectionId: CasinoEditorTabId) => {
+      if (!selectedId) {
+        return null;
+      }
+
+      return isSettledReadOnly ? (
+        <button
+          className="section-lock-chip section-lock-chip-action"
+          data-pd-id={`casino-offers.editor.${sectionId}.edit-settled-row`}
+          onClick={() => setSettledEditEnabled(true)}
+          type="button"
+        >
+          EDIT
+        </button>
+      ) : (
+        <span className="section-lock-chip" data-pd-id={`casino-offers.editor.${sectionId}.editing-state`}>
+          EDITING
+        </span>
+      );
+    },
+    [isSettledReadOnly, selectedId]
+  );
+  const renderEditorSectionAside = useCallback(
+    (sectionId: CasinoEditorTabId, extra?: ReactNode) => {
+      const editState = renderSettledLockAction(sectionId);
+      if (!editState && !extra) {
+        return null;
+      }
+
+      return (
+        <>
+          {editState}
+          {extra}
+        </>
+      );
+    },
+    [renderSettledLockAction]
+  );
+  const renderGuidedEntryInstruction = useCallback(() => {
+    if (!guidedEntryNeedsTabJump) {
+      return <span className="guided-entry-instruction-text">{renderGuidedEntryMessage(guidedEntryResolvedInstruction)}</span>;
+    }
+
+    return (
+      <span className="guided-entry-instruction-text">
+        <span>Go to </span>
+        <span className="guided-entry-step-reference">
+          {guidedEntryTargetTabIndex >= 0 ? (
+            <span aria-hidden="true" className="guided-entry-step-marker">
+              {guidedEntryTargetTabIndex + 1}
+            </span>
+          ) : null}
+          <span>{guidedEntryTargetTabLabel}</span>
+        </span>
+        <span> and </span>
+        {renderGuidedEntryMessage(guidedEntryMessageText || guidedEntryResolvedInstruction)}
+      </span>
+    );
+  }, [
+    guidedEntryMessageText,
+    guidedEntryNeedsTabJump,
+    guidedEntryResolvedInstruction,
+    guidedEntryTargetTabIndex,
+    guidedEntryTargetTabLabel,
+    renderGuidedEntryMessage,
+  ]);
   const resolvedDateRange = useMemo(
     () =>
       resolveDateRange({
@@ -1292,9 +2466,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       : rows.filter((row) =>
           isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
         );
-    const rewardLedRows = rangeRows.filter((row) => freeSpinCampaignTypes.has(row.offer_type));
-    const wageringRows = rangeRows.filter((row) => wageringCampaignTypes.has(row.offer_type));
-    const cashbackRows = rangeRows.filter((row) => row.offer_type === "Cashback");
+    const rewardLedRows = rangeRows.filter((row) => casinoOfferTypeUsesTab(row.offer_type, "reward"));
+    const wageringRows = rangeRows.filter((row) => casinoOfferTypeUsesTab(row.offer_type, "campaign"));
+    const cashbackRows = rangeRows.filter((row) => normalizeCasinoOfferType(row.offer_type) === "Cashback / Loss Back");
     const prospectingRows = rangeRows.filter((row) => casinoPlaceholderStatuses.has(row.status));
     const settlingRows = rangeRows.filter((row) => row.date_settling.trim());
     const totalResolvedValue = rangeRows.reduce(
@@ -1371,64 +2545,148 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
     const nextBookmaker = selectable.length === 1 ? selectable[0].bookmaker : "";
     setErrorMessage("");
-    setFormState((current) => ({
-      ...applyCasinoOfferTypeDefaults(current, combo.offer_type || current.offer_type),
-      bookmaker: nextBookmaker || (knownCount > 0 ? "" : current.bookmaker),
-      offer_name: combo.offer_name || current.offer_name,
-      game: combo.game || current.game,
-      cash_stake: combo.cash_stake || current.cash_stake,
-      credit_amount: combo.credit_amount || current.credit_amount,
-      bonus_amount: combo.bonus_amount || current.bonus_amount,
-      wager_multiplier: combo.wager_multiplier || current.wager_multiplier,
-      required_spins: combo.required_spins || current.required_spins,
-      spin_stake: combo.spin_stake || current.spin_stake,
-      free_spins_awarded: combo.free_spins_awarded || current.free_spins_awarded,
-      free_spins_value: combo.free_spins_value || current.free_spins_value,
-    }));
+    setFormState((current) => {
+      const nextState = {
+        ...applyCasinoOfferTypeDefaults(current, combo.offer_type || current.offer_type),
+        bookmaker: nextBookmaker || (knownCount > 0 ? "" : current.bookmaker),
+        offer_name: combo.offer_name || current.offer_name,
+        game: combo.game || current.game,
+        cash_stake: combo.cash_stake || current.cash_stake,
+        credit_amount: combo.credit_amount || current.credit_amount,
+        bonus_amount: combo.bonus_amount || current.bonus_amount,
+        wager_multiplier: combo.wager_multiplier || current.wager_multiplier,
+        required_spins: combo.required_spins || current.required_spins,
+        spin_stake: combo.spin_stake || current.spin_stake,
+        free_spins_awarded: combo.free_spins_awarded || current.free_spins_awarded,
+        free_spins_value: combo.free_spins_value || current.free_spins_value,
+      };
+      return applySuggestedOwnCashCommitted(current, applyDerivedWagerTarget(nextState));
+    });
     const choice = selectable.length > 1 ? ` Choose one of ${selectable.length} eligible bookmakers.` : "";
     const warning = selectable.find((row) => row.state === "warning");
     setStatusMessage(`${combo.name} applied to this unsaved casino draft.${choice}${warning ? ` ${warning.reason}.` : ""}`);
   }
 
   const offerTypeOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...casinoOfferTypeOptions,
-        ...rows.map((row) => row.offer_type),
-        formState.offer_type,
-      ]),
-    [formState.offer_type, rows]
+    () => getCasinoOfferTypeOptions(formState.offer_type),
+    [formState.offer_type]
   );
-
-  const offerNameOptions = useMemo(() => {
-    const casinoOfferNames = getLookupValuesByType(lookupValues, "casino_offer_name");
-    if (casinoOfferNames.length > 0) {
-      return dedupeOptions([...casinoOfferNames, formState.offer_name]);
+  const normalizeMoneyField = (field: CasinoMoneyFieldKey) => {
+    if (!casinoCurrencyKeypadFields.has(field)) {
+      return;
     }
-
-    const scopedRows = rows.filter((row) => {
-      if (!row.offer_name.trim()) {
-        return false;
+    setFormState((current) => {
+      const nextValue = formatCasinoMoneyInput(current[field]);
+      if (field === "free_spins_value") {
+        return applyCasinoRewardValueChange(current, nextValue);
+      }
+      if (field === "cash_stake") {
+        return applySuggestedOwnCashCommitted(
+          current,
+          applyDerivedWagerTarget({ ...current, cash_stake: nextValue })
+        );
+      }
+      if (field === "bonus_amount") {
+        return applyDerivedWagerTarget({ ...current, bonus_amount: nextValue });
       }
 
-      const bookmakerMatches = formState.bookmaker.trim()
-        ? row.bookmaker === formState.bookmaker
-        : true;
-      const offerTypeMatches = formState.offer_type.trim()
-        ? row.offer_type === formState.offer_type
-        : true;
-
-      return bookmakerMatches && offerTypeMatches;
+      return {
+        ...current,
+        [field]: nextValue,
+      };
     });
-    const fallbackRows = rows.filter((row) => row.offer_name.trim());
-    const fallbackRowOfferNames = fallbackRows.map((row) => row.offer_name);
-    const sourceRows = scopedRows.length > 0 ? scopedRows : fallbackRows;
-    return dedupeOptions([
-      ...sourceRows.map((row) => row.offer_name),
-      ...fallbackRowOfferNames,
-      formState.offer_name,
-    ]);
-  }, [formState.bookmaker, formState.offer_name, formState.offer_type, lookupValues, rows]);
+  };
+  const applyMoneyKeypadInput = (field: CasinoMoneyFieldKey, value: string) => {
+    const shouldClearOnFirstEntry =
+      moneyKeypadPrimedField === field && value !== "clear" && value !== "toggle-sign";
+    setMoneyKeypadPrimedField(null);
+    setFormState((current) => {
+      const applyNextFieldValue = (nextValue: string): CasinoOfferFormState => {
+        if (field === "free_spins_value") {
+          return applyCasinoRewardValueChange(current, nextValue);
+        }
+        if (field === "cash_stake") {
+          return applySuggestedOwnCashCommitted(
+            current,
+            applyDerivedWagerTarget({ ...current, cash_stake: nextValue })
+          );
+        }
+        if (field === "bonus_amount") {
+          return applyDerivedWagerTarget({ ...current, bonus_amount: nextValue });
+        }
+        if (field === "wager_multiplier") {
+          const nextState = { ...current, wager_multiplier: nextValue };
+          return casinoOfferTypeUsesFieldGroup(current.offer_type, "wagering")
+            ? applyDerivedWagerTarget(nextState)
+            : applyDerivedRewardWagerTarget(nextState);
+        }
+        return { ...current, [field]: nextValue };
+      };
+      const existing = shouldClearOnFirstEntry ? "" : current[field] ?? "";
+      if (value === "clear") {
+        return applyNextFieldValue("");
+      }
+      if (value === "toggle-sign") {
+        const trimmed = existing.trim();
+        const nextValue = trimmed.startsWith("-") ? trimmed.slice(1) : trimmed ? `-${trimmed}` : "-";
+        return applyNextFieldValue(nextValue);
+      }
+      if (value === "." && existing.includes(".")) {
+        return current;
+      }
+      const nextValue = `${existing}${value}`;
+      return applyNextFieldValue(nextValue);
+    });
+  };
+  const toggleMoneyKeypad = (field: CasinoMoneyFieldKey) => {
+    const nextField = activeMoneyKeypadField === field ? null : field;
+    setActiveMoneyKeypadField(nextField);
+    setMoneyKeypadPrimedField(nextField);
+  };
+  const renderMoneyKeypad = (field: CasinoMoneyFieldKey) => (
+    <div className="casino-money-keypad" data-pd-id={`casino-offers.money-keypad.${field}`}>
+      {["7", "8", "9", "4", "5", "6", "1", "2", "3", "toggle-sign", "0", "."].map((key) => (
+        <button
+          aria-label={key === "toggle-sign" ? "Toggle amount sign" : `Enter ${key}`}
+          className="casino-money-keypad-button"
+          key={key}
+          onClick={() => applyMoneyKeypadInput(field, key)}
+          type="button"
+        >
+          {key === "toggle-sign" ? "±" : key}
+        </button>
+      ))}
+      <button
+        className="casino-money-keypad-button casino-money-keypad-wide"
+        onClick={() => applyMoneyKeypadInput(field, "clear")}
+        type="button"
+      >
+        Clear
+      </button>
+      <button
+        className="casino-money-keypad-button casino-money-keypad-wide"
+        onClick={() => {
+          if (casinoCurrencyKeypadFields.has(field)) {
+            normalizeMoneyField(field);
+          }
+          setActiveMoneyKeypadField(null);
+        }}
+        type="button"
+      >
+        Done
+      </button>
+    </div>
+  );
+  const normalizeOutcomeMoneyField = () => {
+    setOutcomeModalState((current) =>
+      current
+        ? {
+            ...current,
+            final_net_pnl: formatCasinoMoneyInput(current.final_net_pnl),
+          }
+        : current
+    );
+  };
 
   const reviewRows = useMemo(() => {
     const nextRows = [...rows];
@@ -1472,7 +2730,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
     if (tableMode === "free-spins") {
       return nextRows
-        .filter((row) => freeSpinCampaignTypes.has(row.offer_type))
+        .filter((row) => casinoOfferTypeUsesTab(row.offer_type, "reward"))
         .sort((left, right) => {
           if (left.counts_as_open !== right.counts_as_open) {
             return left.counts_as_open ? -1 : 1;
@@ -1485,7 +2743,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
     if (tableMode === "wagering") {
       return nextRows
-        .filter((row) => wageringCampaignTypes.has(row.offer_type))
+        .filter((row) => casinoOfferTypeUsesTab(row.offer_type, "campaign"))
         .sort((left, right) => {
           if (left.counts_as_open !== right.counts_as_open) {
             return left.counts_as_open ? -1 : 1;
@@ -1498,7 +2756,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
     if (tableMode === "cashback") {
       return nextRows
-        .filter((row) => row.offer_type === "Cashback")
+        .filter((row) => normalizeCasinoOfferType(row.offer_type) === "Cashback / Loss Back")
         .sort((left, right) => {
           if (left.counts_as_open !== right.counts_as_open) {
             return left.counts_as_open ? -1 : 1;
@@ -1799,6 +3057,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
     setSelectedId(rowId);
+    setActiveEditorTabId("setup");
     setSelectedComboId("");
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
@@ -1808,7 +3067,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage(`Opened casino offer ${rowId} for editing.`);
+    setActiveMoneyKeypadField(null);
+    setMoneyKeypadPrimedField(null);
+    setStatusMessage("");
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
   }
@@ -1818,6 +3079,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       return;
     }
     setSelectedId(null);
+    selectedIdRef.current = null;
+    setActiveEditorTabId("setup");
     setSelectedComboId("");
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
@@ -1828,25 +3091,58 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage("New casino offer ready. Complete the required fields, then save.");
+    setActiveMoneyKeypadField(null);
+    setMoneyKeypadPrimedField(null);
+    setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
 
   async function closeEditor() {
+    if (isPersistingRef.current) {
+      return;
+    }
     if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
+    setActiveMoneyKeypadField(null);
+    setMoneyKeypadPrimedField(null);
     setStatusMessage("");
   }
 
   function buildPersistForm(nextFormState: CasinoOfferFormState): CasinoOfferFormState {
+    const capabilities = getCasinoOfferCapabilities(nextFormState.offer_type);
+    const rewardTarget = getDerivedRewardWagerTarget(nextFormState);
+    const requiredSpins = getDerivedRequiredSpins(nextFormState);
+    const rewardRequiredSpins =
+      capabilities.hasRewardWagering && rewardTarget
+        ? calculateSpinsRequired({
+            wagerTarget: rewardTarget,
+            spinStake: nextFormState.spin_stake,
+          }).actionableSpins
+        : null;
     return {
       ...nextFormState,
-      date_settling: nextFormState.date_settling || nextFormState.date_started,
+      date_settling: nextFormState.date_started,
+      wagering_base: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "wagering")
+        ? getStoredCasinoWagerBase(nextFormState)
+        : nextFormState.wagering_base,
+      required_spins: requiredSpins || nextFormState.required_spins,
+      reward_type: getStoredCasinoRewardType(nextFormState),
+      reward_wager_multiplier: capabilities.hasRewardWagering
+        ? nextFormState.wager_multiplier
+        : nextFormState.reward_wager_multiplier,
+      reward_wager_target: rewardTarget || nextFormState.reward_wager_target,
+      reward_required_spins:
+        rewardRequiredSpins === null ? nextFormState.reward_required_spins : String(rewardRequiredSpins),
+      expected_reward_cash_value: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "rewardValue")
+        ? nextFormState.free_spins_value
+        : nextFormState.expected_reward_cash_value,
     };
   }
 
@@ -1854,7 +3150,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     return (
       getMissingRequiredFields(nextFormState).length === 0 &&
       getMissingCampaignFields(nextFormState).length === 0 &&
-      getMissingRewardFields(nextFormState).length === 0
+      getMissingRewardFields(nextFormState).length === 0 &&
+      getMissingCasinoSettlementFields(nextFormState).length === 0
     );
   }
 
@@ -1867,6 +3164,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       skipWorkflowValidation?: boolean;
     }
   ): Promise<boolean> {
+    if (isPersistingRef.current) {
+      return false;
+    }
+
     setErrorMessage("");
     const resolvedFormState = buildPersistForm(nextFormState);
     if (!options?.skipWorkflowValidation && !canPersistForm(resolvedFormState)) {
@@ -1876,58 +3177,74 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           ...getMissingRequiredFields(resolvedFormState),
           ...getMissingCampaignFields(resolvedFormState),
           ...getMissingRewardFields(resolvedFormState),
+          ...getMissingCasinoSettlementFields(resolvedFormState),
         ];
         setStatusMessage(`Complete required casino-offer fields before saving: ${missingFields.join(", ")}.`);
       }
       return false;
     }
 
-    const activeRowId = resolvedFormState.casino_offer_id ?? selectedId;
-    const isEditing = Boolean(activeRowId);
-    const url = isEditing
-      ? `${apiBaseUrl}/profiles/${profileId}/casino-offers/${activeRowId}`
-      : `${apiBaseUrl}/profiles/${profileId}/casino-offers`;
-    const method = isEditing ? "PUT" : "POST";
+    isPersistingRef.current = true;
+    setIsPersisting(true);
 
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...resolvedFormState,
-        date_started: fromDateTimeLocalValue(resolvedFormState.date_started),
-        date_settling: fromDateTimeLocalValue(resolvedFormState.date_settling),
-        expiry_datetime: fromDateTimeLocalValue(resolvedFormState.expiry_datetime),
-      }),
-    });
+    try {
+      const activeRowId = resolvedFormState.casino_offer_id ?? selectedId;
+      const isEditing = Boolean(activeRowId);
+      const url = isEditing
+        ? `${apiBaseUrl}/profiles/${profileId}/casino-offers/${activeRowId}`
+        : `${apiBaseUrl}/profiles/${profileId}/casino-offers`;
+      const method = isEditing ? "PUT" : "POST";
 
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      return false;
-    }
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...resolvedFormState,
+          date_started: fromDateTimeLocalValue(resolvedFormState.date_started),
+          date_settling: fromDateTimeLocalValue(resolvedFormState.date_settling),
+          expiry_datetime: fromDateTimeLocalValue(resolvedFormState.expiry_datetime),
+        }),
+      });
 
-    const saved = (await response.json()) as CasinoOfferRecord;
-    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/casino-offers`);
-    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
-    if (returnToLedger) {
-      ignoreInitialRecordIdRef.current = true;
+      if (!response.ok) {
+        setErrorMessage(await response.text());
+        return false;
+      }
+
+      const saved = (await response.json()) as CasinoOfferRecord;
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/casino-offers`);
+      dispatchTrackerDataUpdated({ ledger: "casino-offers", profileId });
+      const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+      const savedFormState = recordToForm(saved);
+      if (returnToLedger) {
+        ignoreInitialRecordIdRef.current = true;
+      }
+      await loadRows(returnToLedger ? null : saved.casino_offer_id);
+      setShowOfferIdentityValidation(false);
+      setSettledEditEnabled(false);
+      if (returnToLedger) {
+        const blankFormState = createBlankForm();
+        setSelectedId(null);
+        selectedIdRef.current = null;
+        setFormState(blankFormState);
+        setPristineFormState(blankFormState);
+        setWorkflowVisible(false);
+        setTableCollapsed(false);
+        setStatusMessage("");
+      } else {
+        setFormState(savedFormState);
+        setPristineFormState(savedFormState);
+        setStatusMessage(
+          options?.autosaveLabel && !workflowVisible
+            ? `${options.autosaveLabel} autosaved for ${saved.casino_offer_id}.`
+            : ""
+        );
+      }
+      return true;
+    } finally {
+      isPersistingRef.current = false;
+      setIsPersisting(false);
     }
-    await loadRows(returnToLedger ? null : saved.casino_offer_id);
-    setShowOfferIdentityValidation(false);
-    setSettledEditEnabled(false);
-    if (returnToLedger) {
-      setSelectedId(null);
-      selectedIdRef.current = null;
-      setWorkflowVisible(false);
-      setTableCollapsed(false);
-    }
-    setStatusMessage(
-      options?.autosaveLabel
-        ? `${options.autosaveLabel} autosaved for ${saved.casino_offer_id}.`
-        : isEditing
-          ? `Updated casino offer ${saved.casino_offer_id}.`
-          : `Created casino offer ${saved.casino_offer_id}.`
-    );
-    return true;
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1996,39 +3313,83 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   }
 
   function handleResetForm() {
+    if (isPersistingRef.current) {
+      return;
+    }
     if (selectedRow) {
       const nextFormState = recordToForm(selectedRow);
+      setActiveEditorTabId("setup");
       setFormState(nextFormState);
       setPristineFormState(nextFormState);
       setErrorMessage("");
       setShowOfferIdentityValidation(false);
       setSettledEditEnabled(false);
+      setSettledDeleteGuardRowId(null);
+      setSettledDeleteReason("");
+      setActiveMoneyKeypadField(null);
+      setMoneyKeypadPrimedField(null);
       setStatusMessage(`Reverted unsaved changes for casino offer ${selectedRow.casino_offer_id}.`);
       return;
     }
 
     const blankForm = createBlankForm();
+    setActiveEditorTabId("setup");
     setSelectedComboId("");
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setActiveMoneyKeypadField(null);
+    setMoneyKeypadPrimedField(null);
     setStatusMessage("Cleared the unsaved casino-offer draft.");
   }
 
-  async function handleDeleteSelectedRow(rowId = selectedId) {
+  function handleCancelSettledEdit() {
+    setFormState(pristineFormState);
+    setErrorMessage("");
+    setShowOfferIdentityValidation(false);
+    setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setActiveMoneyKeypadField(null);
+    setMoneyKeypadPrimedField(null);
+    setStatusMessage("");
+  }
+
+  async function handleDeleteSelectedRow(
+    rowId = selectedId,
+    options?: { confirmedSettledReason?: string }
+  ) {
     if (!rowId) {
       return;
     }
 
-    const confirmed = await confirmDestructiveAction({
-      confirmLabel: "Delete Row",
-      message: `Delete casino row ${rowId}? This will remove it from this profile tracker.`,
-      title: "Delete casino row?",
-    });
-    if (!confirmed) {
+    const rowForDelete =
+      selectedRow?.casino_offer_id === rowId
+        ? selectedRow
+        : rows.find((row) => row.casino_offer_id === rowId);
+    const isSettledDelete = rowForDelete ? rowForDelete.status === "Settled" : formState.status === "Settled";
+    const settledReason = options?.confirmedSettledReason?.trim() ?? "";
+
+    if (isSettledDelete && !settledReason) {
+      setSettledDeleteGuardRowId(rowId);
+      setSettledDeleteReason("");
+      setErrorMessage("");
       return;
+    }
+
+    if (!isSettledDelete) {
+      const confirmed = await confirmDestructiveAction({
+        confirmLabel: "Delete Row",
+        message: `Delete casino row ${rowId}? This will remove it from this profile tracker.`,
+        title: "Delete casino row?",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
 
     setErrorMessage("");
@@ -2042,6 +3403,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/casino-offers`);
+    dispatchTrackerDataUpdated({ ledger: "casino-offers", profileId });
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted casino offer ${rowId}.`);
@@ -2151,7 +3513,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
         />
       ) : null}
-      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      {!workflowVisible ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
       <section
         aria-busy={isInitialLoading}
         className="content-panel stack sportsbook-page-shell"
@@ -2610,7 +3974,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                     ? getCasinoResultOptions(
                         rows.find((row) => row.casino_offer_id === outcomeModalState.rowId)?.offer_type ?? ""
                       )
-                    : casinoOfferResultOptions
+                    : getCasinoResultOptions("")
                   ).map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -2635,6 +3999,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 <input
                   aria-describedby="casino-outcome-net-result-help"
                   inputMode="decimal"
+                  onBlur={normalizeOutcomeMoneyField}
                   onChange={(event) =>
                     setOutcomeModalState((current) =>
                       current ? { ...current, final_net_pnl: event.target.value } : current
@@ -2685,115 +4050,157 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit casino row" : "Create casino row"}
+        aria-busy={isPersisting}
         aria-modal="true"
-        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal casino-tabbed-editor-modal"
         data-pd-id="casino-offers.editor.dialog"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}
         role="dialog"
       >
         <div className="workflow-panel-header workflow-editor-header" data-pd-id="casino-offers.editor.header">
-          <div className="stack">
+          <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit casino row" : "Create casino row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
           </div>
-          <div className="tracker-nav">
-            {isSettledReadOnly ? (
+          <section
+            aria-label="Casino editor context"
+            className="editor-compact-summary"
+            data-pd-id="casino-offers.editor.compact-summary"
+          >
+            <span
+              className="table-chip editor-summary-value-chip"
+              title={`${displayedValueLabel}: ${displayedValue}`}
+            >
+              {displayedNumericValue === null ? (
+                <span className="ledger-financial-value ledger-financial-value-unavailable">
+                  £ -
+                </span>
+              ) : (
+                <FinancialValue
+                  animate={false}
+                  className="ledger-financial-value editor-summary-financial-value"
+                  label={displayedValueLabel}
+                  value={displayedNumericValue}
+                  zeroTone="neutral"
+                />
+              )}
+            </span>
+            <span className={getCasinoSummaryStatusChipClass(formState.status || "Prospecting")}>
+              {formState.status || "Prospecting"}
+            </span>
+            <span className={getCasinoSummaryResultChipClass(formState.result || "Pending")}>
+              {formState.result || "Pending"}
+            </span>
+            <span className="table-chip table-chip-offer">
+              {formState.offer_type
+                ? getCasinoOfferTypeDisplayLabel(formState.offer_type)
+                : "Offer type pending"}
+            </span>
+            <span className="table-chip table-chip-muted">{formState.game || "Game unknown"}</span>
+          </section>
+          <div className="tracker-nav workflow-editor-header-actions">
+            <div
+              aria-label="Casino editor tab navigation"
+              className="workflow-editor-header-nav"
+              data-pd-id="casino-offers.editor.tab-actions"
+              role="group"
+            >
               <button
-                className="button-link"
-                onClick={() => setSettledEditEnabled(true)}
+                className="review-chip review-chip-action-previous"
+                disabled={!previousCasinoEditorTab}
+                onClick={() => {
+                  if (previousCasinoEditorTab) {
+                    activateCasinoEditorTab(previousCasinoEditorTab.id as CasinoEditorTabId);
+                  }
+                }}
                 type="button"
               >
-                Edit settled row
+                Previous
               </button>
-            ) : null}
-            <button aria-label="Close casino-offer editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
-              Close
+              <button
+                className="review-chip review-chip-action-next"
+                disabled={!nextCasinoEditorTab}
+                onClick={() => {
+                  if (nextCasinoEditorTab) {
+                    activateCasinoEditorTab(nextCasinoEditorTab.id as CasinoEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+            <button
+              aria-label="Close casino editor"
+              className="workflow-editor-cancel-button"
+              disabled={isPersisting}
+              onClick={() => void closeEditor()}
+              title="Close editor"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">close</span>
             </button>
           </div>
+          <LedgerEditorTabRail
+            activeTabId={safeActiveEditorTabId}
+            ariaLabel="Casino editor sections"
+            guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
+            onActiveTabChange={(tabId) => activateCasinoEditorTab(tabId as CasinoEditorTabId)}
+            tabs={casinoEditorTabs}
+          />
         </div>
+        {guidedEntryVisible ? (
+          <section
+            aria-label="Casino guided entry"
+            className={`guided-entry-banner guided-entry-banner-${safeGuidedEntry.state}`}
+            data-pd-id="casino-offers.guided-entry"
+            key={`${safeGuidedEntry.state}:${safeGuidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
+            role="status"
+          >
+            <button className="guided-entry-action" onClick={focusGuidedEntryTarget} type="button">
+              <span className="eyebrow">
+                {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
+              </span>
+              <strong aria-label={guidedEntryPlainInstruction} id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+            </button>
+            <button
+              aria-label="Dismiss casino guided entry"
+              className="icon-button guided-entry-dismiss"
+              onClick={() => setGuidedEntryDismissed(true)}
+              title="Dismiss guided entry"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">
+                close
+              </span>
+            </button>
+          </section>
+        ) : guidedAccessEnabled && guidedEntryDismissed && safeGuidedEntry.state !== "complete" ? (
+          <button
+            className="button-link guided-entry-restore"
+            data-pd-id="casino-offers.guided-entry.restore"
+            onClick={() => setGuidedEntryDismissed(false)}
+            type="button"
+          >
+            Show guide
+          </button>
+        ) : null}
         <div className="workflow-editor-body">
         {initialRecordId === selectedId && !hasResolvedCasinoValue ? (
-          <div className="validation-message" role="status">
-            Final value required. Select <strong>Edit settled row</strong>, then enter the
-            confirmed result under <strong>Net Result (Profit/Loss)</strong> in Advanced controls.
-          </div>
+          <EditorValidationBanner
+            dismissKey={`casino-fee-review-final-value:${selectedId ?? "unknown"}`}
+            id="casino-offer.editor.fee-review-final-value"
+            message="Select Edit, then enter the confirmed Net Result in Settlement."
+            title="Final value required"
+          />
         ) : null}
-        <section className="stat-strip" aria-label="Casino-offer summary">
-          <article className="stat-card">
-            <span className="eyebrow">{displayedValueLabel}</span>
-            <strong>{displayedValue}</strong>
-            <span>Status: {formState.status || "—"}</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Settles</span>
-            <strong>{getCasinoSettlesSummary(formState)}</strong>
-            <span>
-              Open:{" "}
-              {formState.status === "Prospecting" ||
-              formState.status === "Started" ||
-              formState.status === "In Progress"
-                ? "Yes"
-                : "No"}
-            </span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Expiry</span>
-            <strong>{formState.expiry_datetime ? formatDisplayDate(formState.expiry_datetime) : "—"}</strong>
-            <span>{isPlaceholderStatus ? "Fill offer setup first" : formState.result || "Result pending"}</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Offer path</span>
-            <strong>{formState.offer_type || "Offer type pending"}</strong>
-            <span>
-              {[
-                formState.bookmaker,
-                formState.game,
-              ]
-                .filter(Boolean)
-                .join(" • ") ||
-                "Bookmaker and game pending"}
-            </span>
-          </article>
-        </section>
-        {isPlaceholderStatus && !hasResolvedCasinoValue ? (
-          <section className="stat-strip" aria-label="Casino setup guidance">
-            <article className="stat-card">
-              <span className="eyebrow">Current bankroll value</span>
-              <strong>{displayedValue}</strong>
-              <span>{displayedValueLabel}</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Next step</span>
-              <strong>{formState.offer_type || "Choose offer type"}</strong>
-              <span>{getCasinoPlaceholderGuidance(formState.status, formState.offer_type)}</span>
-            </article>
-          </section>
-        ) : (
-          <section
-            className="stat-strip"
-            aria-label={formState.result === "Pending" ? "Casino possible outcomes" : "Casino outcome review"}
-          >
-            <article className="stat-card">
-              <span className="eyebrow">{getOutcomeCardLabel(getCasinoOutcomeCardState(formState.result, "positive"))}</span>
-              <strong>{getCasinoPositiveOutcomeLabel(formState.offer_type, formState.result)}</strong>
-              <span>
-                {displayedValueLabel}: {displayedValue}
-              </span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">{getOutcomeCardLabel(getCasinoOutcomeCardState(formState.result, "negative"))}</span>
-              <strong>{getCasinoNegativeOutcomeLabel(formState.offer_type, formState.result)}</strong>
-              <span>
-                {displayedValueLabel}: {displayedValue}
-              </span>
-            </article>
-          </section>
-        )}
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
           <EditorSection
+            collapsible={false}
             headerAside={
-              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+              renderEditorSectionAside("setup")
             }
             invalid={offerIdentityValidationActive && missingOfferIdentityFields.length > 0}
             title="Offer setup"
@@ -2845,43 +4252,74 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
               <label
-                className={`field-control${
-                  offerIdentityValidationActive && !formState.date_started.trim() ? " is-invalid" : ""
-                }`}
+                className={`${getGuidedFieldClass("offer_name")}${
+                  offerIdentityValidationActive && !formState.offer_name.trim() ? " is-invalid" : ""
+                } field-span-2`}
+                {...getGuidedFieldData("offer_name")}
               >
-                <span>Date started</span>
+                <span>Offer name</span>
                 <input
-                  aria-invalid={offerIdentityValidationActive && !formState.date_started.trim()}
-                  type="datetime-local"
+                  aria-describedby={getGuidedDescribedBy("offer_name")}
+                  aria-invalid={offerIdentityValidationActive && !formState.offer_name.trim()}
                   onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      date_started: event.target.value,
-                      date_settling:
-                        current.date_settling.trim().length > 0 ? current.date_settling : event.target.value,
-                    }))
+                    void applyDropdownChange(
+                      (current) => ({ ...current, offer_name: event.target.value }),
+                      "Offer name change"
+                    )
                   }
+                  placeholder="Enter the casino offer name"
                   required
-                  value={formState.date_started}
-                />
-              </label>
-              <label className="field-control">
-                <span>Date settling</span>
-                <input
-                  type="datetime-local"
-                  onChange={(event) =>
-                    setFormState((current) => ({ ...current, date_settling: event.target.value }))
-                  }
-                  value={formState.date_settling}
+                  value={formState.offer_name}
                 />
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("date_started")}${
+                  offerIdentityValidationActive && !formState.date_started.trim() ? " is-invalid" : ""
+                }`}
+                {...getGuidedFieldData("date_started")}
+              >
+                <span>Date started</span>
+                <div className="inline-field-action">
+                  <input
+                    aria-describedby={getGuidedDescribedBy("date_started")}
+                    aria-invalid={offerIdentityValidationActive && !formState.date_started.trim()}
+                    type="datetime-local"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        date_started: event.target.value,
+                        date_settling: event.target.value,
+                      }))
+                    }
+                    required
+                    value={formState.date_started}
+                  />
+                  <button
+                    aria-label="Set casino start date to now"
+                    className="date-offset-pill"
+                    onClick={() => {
+                      const nowValue = getCurrentDateTimeLocalValue();
+                      setFormState((current) => ({
+                        ...current,
+                        date_started: nowValue,
+                        date_settling: nowValue,
+                      }));
+                    }}
+                    type="button"
+                  >
+                    Now
+                  </button>
+                </div>
+              </label>
+              <label
+                className={`${getGuidedFieldClass("bookmaker")}${
                   offerIdentityValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("bookmaker")}
               >
                 <span>Bookmaker</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("bookmaker")}
                   aria-invalid={offerIdentityValidationActive && !formState.bookmaker.trim()}
                   onChange={(event) =>
                     void applyDropdownChange(
@@ -2900,9 +4338,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   ))}
                 </select>
               </label>
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("offer_type")}
+                {...getGuidedFieldData("offer_type")}
+              >
                 <span>Offer type</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("offer_type")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => applyCasinoOfferTypeDefaults(current, event.target.value),
@@ -2914,29 +4356,38 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   <option value="">Select offer type</option>
                   {offerTypeOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {getCasinoOfferTypeDisplayLabel(option)}
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="field-control field-span-2">
-                <span>Campaign tag (optional)</span>
-                <select
-                  onChange={(event) =>
-                    void applyDropdownChange(
-                      (current) => ({ ...current, offer_name: event.target.value }),
-                      "Campaign tag change"
-                    )
-                  }
-                  value={formState.offer_name}
+                <small className="field-help-text" data-pd-id="casino-offers.editor.offer-type-help">
+                  {formState.offer_type
+                    ? getCasinoOfferTypeHelpText(formState.offer_type)
+                    : "Choose the casino workflow that matches how the reward is earned."}
+                </small>
+                <span
+                  aria-label="Common casino workflow suggestions"
+                  className="casino-field-quick-chip-row"
+                  data-pd-id="casino-offers.editor.offer-type-chips"
                 >
-                  <option value="">Select campaign tag (optional)</option>
-                  {offerNameOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
+                  {commonCasinoOfferTypeChips.map((offerType) => (
+                    <button
+                      className={`review-chip review-chip-action${
+                        normalizeCasinoOfferType(formState.offer_type) === offerType ? " is-active" : ""
+                      }`}
+                      key={offerType}
+                      onClick={() =>
+                        void applyDropdownChange(
+                          (current) => applyCasinoOfferTypeDefaults(current, offerType),
+                          "Offer type change"
+                        )
+                      }
+                      type="button"
+                    >
+                      {getCasinoOfferTypeDisplayLabel(offerType)}
+                    </button>
                   ))}
-                </select>
+                </span>
               </label>
               <label className="field-control">
                 <span>Game / slot</span>
@@ -2960,14 +4411,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </div>
             </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="campaign">
           <EditorSection
-            headerAside={
-              isSettledReadOnly ? (
-                <span className="section-lock-chip">Settled row locked</span>
-              ) : !campaignUnlocked ? (
+            collapsible={false}
+            headerAside={renderEditorSectionAside(
+              "campaign",
+              !isSettledReadOnly && !campaignUnlocked ? (
                 <span className="section-lock-chip">{getCasinoCampaignLockReason(formState)}</span>
               ) : null
-            }
+            )}
             invalid={
               offerIdentityValidationActive && campaignUnlocked && missingCampaignFields.length > 0
             }
@@ -2983,149 +4436,356 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly || !campaignUnlocked}>
             <div className="form-grid">
-          {formState.offer_type === "Free Spins" ? (
-            <label className="field-control field-span-2">
-              <span>Cash stake</span>
-              <input
-                readOnly
-                value="Not used on Free Spins rows."
-              />
-            </label>
-          ) : null}
-          {formState.offer_type === "Risk Free" ? (
-            <label className="field-control field-span-2">
-              <span>Risk-free path</span>
-              <input
-                readOnly
-                value="Keep the qualifying cash stake and record the refund separately."
-              />
-            </label>
-          ) : null}
-          {formState.offer_type === "Cashback" ? (
-            <label className="field-control field-span-2">
-              <span>Cashback path</span>
-              <input
-                readOnly
-                value="Record the qualifying stake first, then the cashback amount."
-              />
-            </label>
-          ) : null}
           {showsCashStake ? (
             <label
-              className={`field-control${
+              className={`${getGuidedFieldClass("cash_stake", `casino-money-field ${getCasinoMoneyToneClass(formState.cash_stake)}`)}${
                 offerIdentityValidationActive && missingCampaignFields.includes("Cash stake")
                   ? " is-invalid"
                   : ""
               }`}
+              {...getGuidedFieldData("cash_stake")}
             >
-              <span>{formState.offer_type === "Wager" ? "Qualifying cash stake" : "Cash stake"}</span>
-              <input
-                aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Cash stake")}
-                inputMode="decimal"
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, cash_stake: event.target.value }))
-                }
-                value={formState.cash_stake}
-              />
+              <span>{normalizedOfferType === "Wager To Earn Reward" ? "Qualifying cash stake" : "Cash stake"}</span>
+              <span className="casino-money-field-input-wrap">
+                <span className="casino-money-field-prefix">£</span>
+                  <input
+                  aria-describedby={getGuidedDescribedBy("cash_stake")}
+                  aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Cash stake")}
+                  inputMode="decimal"
+                  onBlur={() => normalizeMoneyField("cash_stake")}
+                  onChange={(event) =>
+                    setFormState((current) =>
+                      applySuggestedOwnCashCommitted(
+                        current,
+                        applyDerivedWagerTarget({ ...current, cash_stake: event.target.value })
+                      )
+                    )
+                  }
+                  value={formState.cash_stake}
+                />
+                <button
+                  aria-label="Open cash stake keypad"
+                  className="casino-money-keypad-toggle"
+                  onClick={() => toggleMoneyKeypad("cash_stake")}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                </button>
+              </span>
+              {activeMoneyKeypadField === "cash_stake" ? renderMoneyKeypad("cash_stake") : null}
             </label>
           ) : null}
           {showsCreditAmountField ? (
             <label
-              className={`field-control${
+              className={`${getGuidedFieldClass("credit_amount", `casino-money-field ${getCasinoMoneyToneClass(formState.credit_amount)}`)}${
                 offerIdentityValidationActive &&
                 (missingCampaignFields.includes("Cashback amount") ||
                   missingCampaignFields.includes("Refund / credit amount") ||
-                  missingCampaignFields.includes("Free-play amount"))
+                  missingCampaignFields.includes("Free-play amount") ||
+                  missingCampaignFields.includes("Credit amount"))
                   ? " is-invalid"
                   : ""
               }`}
+              {...getGuidedFieldData("credit_amount")}
             >
               <span>{getCreditAmountLabel(formState.offer_type)}</span>
-              <input
-                aria-invalid={
-                  offerIdentityValidationActive &&
-                  (missingCampaignFields.includes("Cashback amount") ||
-                    missingCampaignFields.includes("Refund / credit amount") ||
-                    missingCampaignFields.includes("Free-play amount"))
-                }
-                inputMode="decimal"
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, credit_amount: event.target.value }))
-                }
-                value={formState.credit_amount}
-              />
+              <span className="casino-money-field-input-wrap">
+                <span className="casino-money-field-prefix">£</span>
+                <input
+                  aria-describedby={getGuidedDescribedBy("credit_amount")}
+                  aria-invalid={
+                    offerIdentityValidationActive &&
+                    (missingCampaignFields.includes("Cashback amount") ||
+                      missingCampaignFields.includes("Refund / credit amount") ||
+                      missingCampaignFields.includes("Free-play amount") ||
+                      missingCampaignFields.includes("Credit amount"))
+                  }
+                  inputMode="decimal"
+                  onBlur={() => normalizeMoneyField("credit_amount")}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, credit_amount: event.target.value }))
+                  }
+                  value={formState.credit_amount}
+                />
+                <button
+                  aria-label="Open credit amount keypad"
+                  className="casino-money-keypad-toggle"
+                  onClick={() => toggleMoneyKeypad("credit_amount")}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                </button>
+              </span>
+              {activeMoneyKeypadField === "credit_amount" ? renderMoneyKeypad("credit_amount") : null}
             </label>
           ) : null}
           {showsWagerFields ? (
             <>
-              <label
-                className={`field-control${
-                  offerIdentityValidationActive && missingCampaignFields.includes("Bonus amount")
-                    ? " is-invalid"
-                    : ""
-                }`}
-              >
+              {showsBonusAmountField ? (
+                <label
+                  className={`${getGuidedFieldClass("bonus_amount", `casino-money-field ${getCasinoMoneyToneClass(formState.bonus_amount)}`)}${
+                    offerIdentityValidationActive && missingCampaignFields.includes("Bonus amount")
+                      ? " is-invalid"
+                      : ""
+                  }`}
+                  {...getGuidedFieldData("bonus_amount")}
+                >
                 <span>Bonus amount</span>
-                <input
-                  aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Bonus amount")}
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setFormState((current) => ({ ...current, bonus_amount: event.target.value }))
-                  }
-                  value={formState.bonus_amount}
-                />
-              </label>
+                  <span className="casino-money-field-input-wrap">
+                    <span className="casino-money-field-prefix">£</span>
+                    <input
+                      aria-describedby={getGuidedDescribedBy("bonus_amount")}
+                      aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Bonus amount")}
+                      inputMode="decimal"
+                      onBlur={() => normalizeMoneyField("bonus_amount")}
+                      onChange={(event) =>
+                        setFormState((current) =>
+                          applyDerivedWagerTarget({ ...current, bonus_amount: event.target.value })
+                        )
+                      }
+                      value={formState.bonus_amount}
+                    />
+                    <button
+                      aria-label="Open bonus amount keypad"
+                      className="casino-money-keypad-toggle"
+                      onClick={() => toggleMoneyKeypad("bonus_amount")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                    </button>
+                  </span>
+                  {activeMoneyKeypadField === "bonus_amount" ? renderMoneyKeypad("bonus_amount") : null}
+                </label>
+              ) : null}
+              {showsWagerMultiplierField ? (
+                <>
+                  <label
+                    className={`${getGuidedFieldClass("wager_multiplier")}${
+                      offerIdentityValidationActive && missingCampaignFields.includes("Wager multiplier")
+                        ? " is-invalid"
+                        : ""
+                    }`}
+                    {...getGuidedFieldData("wager_multiplier")}
+                  >
+                    <span>Wager multiplier</span>
+                    <span className="casino-money-field-input-wrap casino-number-field-input-wrap">
+                      <input
+                        aria-describedby={getGuidedDescribedBy("wager_multiplier")}
+                        aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Wager multiplier")}
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setFormState((current) =>
+                            applyDerivedWagerTarget({
+                              ...current,
+                              wager_multiplier: event.target.value,
+                            })
+                          )
+                        }
+                        value={formState.wager_multiplier}
+                      />
+                      <button
+                        aria-label="Open wager multiplier keypad"
+                        className="casino-money-keypad-toggle"
+                        onClick={() => toggleMoneyKeypad("wager_multiplier")}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                      </button>
+                    </span>
+                    {activeMoneyKeypadField === "wager_multiplier" ? renderMoneyKeypad("wager_multiplier") : null}
+                  </label>
+                  <div
+                    aria-label="Common wagering multipliers"
+                    className="field-span-2 casino-quick-chip-row"
+                    data-pd-id="casino-offers.editor.wager-multiplier-chips"
+                  >
+                    {commonCasinoWagerMultipliers.map((multiplier) => (
+                      <button
+                        className={`review-chip review-chip-action${
+                          formState.wager_multiplier === multiplier ? " is-active" : ""
+                        }`}
+                        key={multiplier}
+                        onClick={() =>
+                          setFormState((current) =>
+                            applyDerivedWagerTarget({
+                              ...current,
+                              wager_multiplier: multiplier,
+                            })
+                          )
+                        }
+                        type="button"
+                      >
+                        x {multiplier}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
               <label
-                className={`field-control${
-                  offerIdentityValidationActive && missingCampaignFields.includes("Wager multiplier")
-                    ? " is-invalid"
-                    : ""
-                }`}
-              >
-                <span>Wager multiplier</span>
-                <input
-                  aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Wager multiplier")}
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      wager_multiplier: event.target.value,
-                    }))
-                  }
-                  value={formState.wager_multiplier}
-                />
-              </label>
-              <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("wager_target", `casino-money-field ${getCasinoMoneyToneClass(formState.wager_target)}`)}${
                   offerIdentityValidationActive && missingCampaignFields.includes("Wager target")
                     ? " is-invalid"
                     : ""
                 }`}
+                {...getGuidedFieldData("wager_target")}
               >
-                <span>Wager target</span>
-                <input
-                  aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Wager target")}
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setFormState((current) => ({ ...current, wager_target: event.target.value }))
-                  }
-                  value={formState.wager_target}
-                />
+              <span>Wager target</span>
+                <span className="casino-money-field-input-wrap">
+                  <span className="casino-money-field-prefix">£</span>
+                  <input
+                    aria-describedby={getGuidedDescribedBy("wager_target")}
+                    aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Wager target")}
+                    inputMode="decimal"
+                    onBlur={() => normalizeMoneyField("wager_target")}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, wager_target: event.target.value }))
+                    }
+                    value={formState.wager_target}
+                  />
+                  <button
+                    aria-label="Open wager target keypad"
+                    className="casino-money-keypad-toggle"
+                    onClick={() => toggleMoneyKeypad("wager_target")}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                  </button>
+                </span>
+                {activeMoneyKeypadField === "wager_target" ? renderMoneyKeypad("wager_target") : null}
               </label>
+              {showsSpinStakeField ? (
+                <>
+                  <label
+                    className={`${getGuidedFieldClass("spin_stake", "casino-money-field casino-money-field-prominent casino-money-field-neutral")}${
+                      offerIdentityValidationActive && missingCampaignFields.includes("Spin stake")
+                        ? " is-invalid"
+                        : ""
+                    }`}
+                    {...getGuidedFieldData("spin_stake")}
+                  >
+                    <span>Spin stake</span>
+                    <span className="casino-money-field-input-wrap">
+                      <span className="casino-money-field-prefix">£</span>
+                      <input
+                        aria-describedby={getGuidedDescribedBy("spin_stake")}
+                        aria-invalid={offerIdentityValidationActive && missingCampaignFields.includes("Spin stake")}
+                        inputMode="decimal"
+                        onBlur={() => normalizeMoneyField("spin_stake")}
+                        onChange={(event) =>
+                          setFormState((current) => ({ ...current, spin_stake: event.target.value }))
+                        }
+                        value={formState.spin_stake}
+                      />
+                      <button
+                        aria-label="Open spin stake keypad"
+                        className="casino-money-keypad-toggle"
+                        onClick={() => toggleMoneyKeypad("spin_stake")}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                      </button>
+                    </span>
+                    {activeMoneyKeypadField === "spin_stake" ? renderMoneyKeypad("spin_stake") : null}
+                    <span
+                      aria-label="Common spin stakes"
+                      className="casino-field-quick-chip-row"
+                      data-pd-id="casino-offers.editor.wagering-spin-stake-chips"
+                    >
+                      {commonCasinoSpinStakes.map((stake) => (
+                        <button
+                          className={`review-chip review-chip-action${
+                            formState.spin_stake === stake ? " is-active" : ""
+                          }`}
+                          key={stake}
+                          onClick={() =>
+                            setFormState((current) => ({
+                              ...current,
+                              spin_stake: stake,
+                            }))
+                          }
+                          type="button"
+                        >
+                          £ {stake}
+                        </button>
+                      ))}
+                    </span>
+                  </label>
+                </>
+              ) : null}
+              <section
+                aria-label="Casino wagering helper"
+                className="field-span-2 casino-wagering-helper"
+                data-pd-id="casino-offers.editor.wagering-helper"
+              >
+                <span className="eyebrow">Wagering helper</span>
+                <div className="casino-wagering-helper-grid">
+                  {normalizedOfferType === "Deposit And Bonus Wagering" ? (
+                    <span data-pd-id="casino-offers.editor.wagering-helper.deposit">
+                      <small>Deposit</small>
+                      <strong>{renderCasinoPlanningAmount(parseCasinoAmount(formState.cash_stake))}</strong>
+                    </span>
+                  ) : null}
+                  {showsBonusAmountField ? (
+                  <span data-pd-id="casino-offers.editor.wagering-helper.bonus">
+                    <small>Bonus</small>
+                    <strong>{renderCasinoPlanningAmount(parseCasinoAmount(formState.bonus_amount))}</strong>
+                  </span>
+                  ) : null}
+                  {showsWagerMultiplierField ? (
+                  <span data-pd-id="casino-offers.editor.wagering-helper.multiplier">
+                    <small>Multiplier</small>
+                    <strong>
+                      {formState.wager_multiplier
+                        ? `x ${formState.wager_multiplier.replace(/^x\s*/i, "")}`
+                      : "Set multiplier"}
+                    </strong>
+                  </span>
+                  ) : null}
+                  <span data-pd-id="casino-offers.editor.wagering-helper.target">
+                    <small>Target</small>
+                    <strong>
+                      {derivedWagerTargetResult.value === null
+                        ? renderCasinoPlanningAmount(parseCasinoAmount(formState.wager_target))
+                        : renderCasinoPlanningAmount(derivedWagerTargetResult.value)}
+                    </strong>
+                    <em>{derivedWagerTargetResult.formulaLabel}</em>
+                  </span>
+                  <span data-pd-id="casino-offers.editor.wagering-helper.spin-stake">
+                    <small>Spin stake</small>
+                    <strong>{renderCasinoPlanningAmount(parseCasinoAmount(formState.spin_stake))}</strong>
+                  </span>
+                  <span data-pd-id="casino-offers.editor.wagering-helper.spins-needed">
+                    <small>Spins needed</small>
+                    <strong>{derivedSpinsRequiredResult.actionableSpins ?? "Set stake"}</strong>
+                    <em>
+                      {derivedSpinsRequiredResult.actionableSpins === null
+                        ? derivedSpinsRequiredResult.reason ?? "Enter target and stake."
+                        : `${derivedSpinsRequiredResult.formulaLabel}`}
+                    </em>
+                  </span>
+                  <span data-pd-id="casino-offers.editor.wagering-helper.exact-spins">
+                    <small>Exact spins</small>
+                    <strong>{formatCasinoSpinCount(derivedSpinsRequiredResult.exactSpins)}</strong>
+                    <em>Rounded up for action</em>
+                  </span>
+                </div>
+              </section>
             </>
           ) : null}
             </div>
             </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="reward">
           {showsRewardSection ? (
           <EditorSection
-            headerAside={
-              isSettledReadOnly ? (
-                <span className="section-lock-chip">Settled row locked</span>
-              ) : !rewardUnlocked ? (
+            collapsible={false}
+            headerAside={renderEditorSectionAside(
+              "reward",
+              !isSettledReadOnly && !rewardUnlocked ? (
                 <span className="section-lock-chip">{getCasinoRewardLockReason(formState)}</span>
               ) : null
-            }
+            )}
             invalid={
               offerIdentityValidationActive && rewardUnlocked && missingRewardFields.length > 0
             }
@@ -3146,21 +4806,34 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               {showsRequiredSpinFields ? (
                 <>
                   <label
-                    className={`field-control${
+                    className={`${getGuidedFieldClass("required_spins")}${
                       offerIdentityValidationActive && missingRewardFields.includes("Required spins")
                         ? " is-invalid"
                         : ""
                     }`}
+                    {...getGuidedFieldData("required_spins")}
                   >
                     <span>Required spins</span>
-                    <input
-                      aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Required spins")}
-                      inputMode="numeric"
-                      onChange={(event) =>
-                        setFormState((current) => ({ ...current, required_spins: event.target.value }))
-                      }
-                      value={formState.required_spins}
-                    />
+                    <span className="casino-money-field-input-wrap casino-number-field-input-wrap">
+                      <input
+                        aria-describedby={getGuidedDescribedBy("required_spins")}
+                        aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Required spins")}
+                        inputMode="numeric"
+                        onChange={(event) =>
+                          setFormState((current) => ({ ...current, required_spins: event.target.value }))
+                        }
+                        value={formState.required_spins}
+                      />
+                      <button
+                        aria-label="Open required spins keypad"
+                        className="casino-money-keypad-toggle"
+                        onClick={() => toggleMoneyKeypad("required_spins")}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                      </button>
+                    </span>
+                    {activeMoneyKeypadField === "required_spins" ? renderMoneyKeypad("required_spins") : null}
                   </label>
                   <label className="field-control">
                     <span>Derived required spins</span>
@@ -3168,70 +4841,289 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   </label>
                 </>
               ) : null}
-              {showsSpinStakeField ? (
+              {showsSpinStakeField && !showsWagerFields ? (
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("spin_stake", "casino-money-field casino-money-field-prominent casino-money-field-neutral")}${
                     offerIdentityValidationActive && missingRewardFields.includes("Spin stake")
                       ? " is-invalid"
                       : ""
                   }`}
+                  {...getGuidedFieldData("spin_stake")}
                 >
                   <span>Spin stake</span>
-                  <input
-                    aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Spin stake")}
-                    inputMode="decimal"
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, spin_stake: event.target.value }))
-                    }
-                    value={formState.spin_stake}
-                  />
+                  <span className="casino-money-field-input-wrap">
+                    <span className="casino-money-field-prefix">£</span>
+                    <input
+                      aria-describedby={getGuidedDescribedBy("spin_stake")}
+                      aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Spin stake")}
+                      inputMode="decimal"
+                      onBlur={() => normalizeMoneyField("spin_stake")}
+                      onChange={(event) =>
+                        setFormState((current) => ({ ...current, spin_stake: event.target.value }))
+                      }
+                      value={formState.spin_stake}
+                    />
+                    <button
+                      aria-label="Open spin stake keypad"
+                      className="casino-money-keypad-toggle"
+                      onClick={() => toggleMoneyKeypad("spin_stake")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                    </button>
+                  </span>
+                  {activeMoneyKeypadField === "spin_stake" ? renderMoneyKeypad("spin_stake") : null}
+                  <span
+                    aria-label="Common spin stakes"
+                    className="casino-field-quick-chip-row"
+                    data-pd-id="casino-offers.editor.spin-stake-chips"
+                  >
+                    {commonCasinoSpinStakes.map((stake) => (
+                      <button
+                        className={`review-chip review-chip-action${
+                          formState.spin_stake === stake ? " is-active" : ""
+                        }`}
+                        key={stake}
+                        onClick={() =>
+                          setFormState((current) => ({
+                            ...current,
+                            spin_stake: stake,
+                          }))
+                        }
+                        type="button"
+                      >
+                        £ {stake}
+                      </button>
+                    ))}
+                  </span>
                 </label>
               ) : null}
               {showsAwardedSpinsField ? (
                 <label
-                  className={`field-control${
+                  className={`${getGuidedFieldClass("free_spins_awarded")}${
                     offerIdentityValidationActive && missingRewardFields.includes("Free spins awarded")
                       ? " is-invalid"
                       : ""
                   }`}
+                  {...getGuidedFieldData("free_spins_awarded")}
                 >
                   <span>Free spins awarded</span>
-                  <input
-                    aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Free spins awarded")}
-                    inputMode="numeric"
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, free_spins_awarded: event.target.value }))
-                    }
-                    value={formState.free_spins_awarded}
-                  />
+                  <span className="casino-money-field-input-wrap casino-number-field-input-wrap">
+                    <input
+                      aria-describedby={getGuidedDescribedBy("free_spins_awarded")}
+                      aria-invalid={offerIdentityValidationActive && missingRewardFields.includes("Free spins awarded")}
+                      inputMode="numeric"
+                      onChange={(event) =>
+                        setFormState((current) => ({ ...current, free_spins_awarded: event.target.value }))
+                      }
+                      value={formState.free_spins_awarded}
+                    />
+                    <button
+                      aria-label="Open free spins awarded keypad"
+                      className="casino-money-keypad-toggle"
+                      onClick={() => toggleMoneyKeypad("free_spins_awarded")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                    </button>
+                  </span>
+                  {activeMoneyKeypadField === "free_spins_awarded" ? renderMoneyKeypad("free_spins_awarded") : null}
                 </label>
               ) : null}
               {showsRewardValueField ? (
                 <label
-                  className={`field-control${
-                    offerIdentityValidationActive &&
-                    (missingRewardFields.includes("Free spins value") ||
-                      missingRewardFields.includes("Free-play value") ||
-                      missingRewardFields.includes("Returned credit value"))
+                  className={`${getGuidedFieldClass("free_spins_value", `casino-money-field casino-money-field-prominent ${getCasinoMoneyToneClass(formState.free_spins_value)}`)}${
+                    offerIdentityValidationActive && missingRewardFields.includes(getRewardValueLabel(formState.offer_type))
                       ? " is-invalid"
                       : ""
                   }`}
+                  {...getGuidedFieldData("free_spins_value")}
                 >
                   <span>{getRewardValueLabel(formState.offer_type)}</span>
-                  <input
-                    aria-invalid={
-                      offerIdentityValidationActive &&
-                      (missingRewardFields.includes("Free spins value") ||
-                        missingRewardFields.includes("Free-play value") ||
-                        missingRewardFields.includes("Returned credit value"))
-                    }
-                    inputMode="decimal"
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, free_spins_value: event.target.value }))
-                    }
-                    value={formState.free_spins_value}
-                  />
+                  <span className="casino-money-field-input-wrap">
+                    <span className="casino-money-field-prefix">£</span>
+                    <input
+                      aria-describedby={getGuidedDescribedBy("free_spins_value")}
+                      aria-invalid={
+                        offerIdentityValidationActive &&
+                        missingRewardFields.includes(getRewardValueLabel(formState.offer_type))
+                      }
+                      inputMode="decimal"
+                      onBlur={() => normalizeMoneyField("free_spins_value")}
+                      onChange={(event) =>
+                        setFormState((current) => applyCasinoRewardValueChange(current, event.target.value))
+                      }
+                      value={formState.free_spins_value}
+                    />
+                    <button
+                      aria-label="Open converted value keypad"
+                      className="casino-money-keypad-toggle"
+                      onClick={() => toggleMoneyKeypad("free_spins_value")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                    </button>
+                  </span>
+                  {activeMoneyKeypadField === "free_spins_value" ? renderMoneyKeypad("free_spins_value") : null}
+                  <span
+                    aria-label="Reward value quick actions"
+                    className="casino-field-quick-chip-row"
+                    data-pd-id="casino-offers.editor.reward-value-chips"
+                  >
+                    <button
+                      className={`review-chip review-chip-action${
+                        formState.free_spins_value === "0.00" ? " is-active" : ""
+                      }`}
+                      onClick={() => setFormState((current) => applyCasinoZeroRewardValue(current))}
+                      type="button"
+                    >
+                      £ 0.00
+                    </button>
+                  </span>
                 </label>
+              ) : null}
+              {showsRewardWageringControls ? (
+                <>
+                  <label
+                    className={getGuidedFieldClass("wager_multiplier")}
+                    {...getGuidedFieldData("wager_multiplier")}
+                  >
+                    <span>Reward wagering multiplier</span>
+                    <span className="casino-money-field-input-wrap casino-number-field-input-wrap">
+                      <input
+                        aria-describedby={getGuidedDescribedBy("wager_multiplier")}
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          setFormState((current) =>
+                            applyDerivedRewardWagerTarget({
+                              ...current,
+                              wager_multiplier: event.target.value,
+                            })
+                          )
+                        }
+                        value={formState.wager_multiplier}
+                      />
+                      <button
+                        aria-label="Open reward wagering multiplier keypad"
+                        className="casino-money-keypad-toggle"
+                        onClick={() => toggleMoneyKeypad("wager_multiplier")}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                      </button>
+                    </span>
+                    {activeMoneyKeypadField === "wager_multiplier" ? renderMoneyKeypad("wager_multiplier") : null}
+                  </label>
+                  <label
+                    className={`casino-money-field ${getCasinoMoneyToneClass(formState.wager_target)}`}
+                  >
+                    <span>Reward wager target</span>
+                    <span className="casino-money-field-input-wrap">
+                      <span className="casino-money-field-prefix">£</span>
+                      <input
+                        aria-describedby={getGuidedDescribedBy("wager_target")}
+                        inputMode="decimal"
+                        onBlur={() => normalizeMoneyField("wager_target")}
+                        onChange={(event) =>
+                          setFormState((current) => ({ ...current, wager_target: event.target.value }))
+                        }
+                        value={formState.wager_target}
+                      />
+                      <button
+                        aria-label="Open reward wager target keypad"
+                        className="casino-money-keypad-toggle"
+                        onClick={() => toggleMoneyKeypad("wager_target")}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                      </button>
+                    </span>
+                    {activeMoneyKeypadField === "wager_target" ? renderMoneyKeypad("wager_target") : null}
+                  </label>
+                  <div
+                    aria-label="Common reward multiplier chips"
+                    className="field-span-2 casino-quick-chip-row"
+                    data-pd-id="casino-offers.editor.reward-wager-multiplier-chips"
+                  >
+                    {commonCasinoWagerMultipliers.map((multiplier) => (
+                      <button
+                        className={`review-chip review-chip-action${
+                          formState.wager_multiplier === multiplier ? " is-active" : ""
+                        }`}
+                        key={multiplier}
+                        onClick={() =>
+                          setFormState((current) =>
+                            applyDerivedRewardWagerTarget({
+                              ...current,
+                              wager_multiplier: multiplier,
+                            })
+                          )
+                        }
+                        type="button"
+                      >
+                        x {multiplier}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+              {(showsWagerFields || showsRequiredSpinFields || showsRewardWageringControls) && showsSpinStakeField ? (
+                <section
+                  aria-label="Casino spins needed helper"
+                  className="field-span-2 casino-wagering-helper casino-wagering-helper-reward"
+                  data-pd-id="casino-offers.editor.reward-spins-helper"
+                >
+                  <span className="eyebrow">Spins helper</span>
+                  <div className="casino-wagering-helper-grid">
+                    {showsRewardWageringControls ? (
+                      <>
+                        <span data-pd-id="casino-offers.editor.reward-spins-helper.reward">
+                          <small>Reward</small>
+                          <strong>{renderCasinoPlanningAmount(parseCasinoAmount(formState.free_spins_value))}</strong>
+                        </span>
+                        <span data-pd-id="casino-offers.editor.reward-spins-helper.multiplier">
+                          <small>Multiplier</small>
+                          <strong>
+                            {formState.wager_multiplier
+                              ? `x ${formState.wager_multiplier.replace(/^x\s*/i, "")}`
+                              : "Optional"}
+                          </strong>
+                        </span>
+                      </>
+                    ) : null}
+                    <span data-pd-id="casino-offers.editor.reward-spins-helper.target">
+                      <small>Target</small>
+                      <strong>
+                        {showsRewardWageringControls && derivedRewardWagerTargetResult.value !== null
+                          ? renderCasinoPlanningAmount(derivedRewardWagerTargetResult.value)
+                          : renderCasinoPlanningAmount(parseCasinoAmount(formState.wager_target))}
+                      </strong>
+                      <em>
+                        {showsRewardWageringControls
+                          ? derivedRewardWagerTargetResult.formulaLabel
+                          : "Saved wager target"}
+                      </em>
+                    </span>
+                    <span data-pd-id="casino-offers.editor.reward-spins-helper.spin-stake">
+                      <small>Spin stake</small>
+                      <strong>{renderCasinoPlanningAmount(parseCasinoAmount(formState.spin_stake))}</strong>
+                    </span>
+                    <span data-pd-id="casino-offers.editor.reward-spins-helper.spins-needed">
+                      <small>Spins needed</small>
+                      <strong>{derivedRewardSpinsRequiredResult.actionableSpins ?? "Set target"}</strong>
+                      <em>
+                        {derivedRewardSpinsRequiredResult.actionableSpins === null
+                          ? derivedRewardSpinsRequiredResult.reason ?? "Enter target and stake."
+                          : derivedRewardSpinsRequiredResult.formulaLabel}
+                      </em>
+                    </span>
+                    <span data-pd-id="casino-offers.editor.reward-spins-helper.exact-spins">
+                      <small>Exact spins</small>
+                      <strong>{formatCasinoSpinCount(derivedRewardSpinsRequiredResult.exactSpins)}</strong>
+                      <em>Rounded up for action</em>
+                    </span>
+                  </div>
+                </section>
               ) : null}
             </>
           ) : null}
@@ -3239,22 +5131,31 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </fieldset>
           </EditorSection>
           ) : null}
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
           <EditorSection
+            collapsible={false}
             headerAside={
-              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+              renderEditorSectionAside("settlement")
             }
+            invalid={offerIdentityValidationActive && missingSettlementFields.length > 0}
             title="Status and settlement"
           >
+            {offerIdentityValidationActive && missingSettlementFields.length > 0 ? (
+              <EditorValidationBanner
+                dismissKey={`casino-offer-settlement:${selectedId ?? formState.casino_offer_id ?? "new"}:${missingSettlementFields.join("|")}`}
+                id="casino-offer.editor.settlement-validation"
+                message={`Complete these settlement fields: ${missingSettlementFields.join(", ")}.`}
+                title="Settlement incomplete"
+              />
+            ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
           <label className="field-control">
             <span>Status</span>
             <select
               onChange={(event) =>
-                void applyDropdownChange(
-                  (current) => applyCasinoStatusDefaults(current, event.target.value),
-                  "Status change"
-                )
+                setFormState((current) => applyCasinoStatusDefaults(current, event.target.value))
               }
               value={formState.status}
             >
@@ -3265,14 +5166,20 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               ))}
             </select>
           </label>
-          <label className="field-control">
+          <label
+            className={`${getGuidedFieldClass("result")}${
+              offerIdentityValidationActive && missingSettlementFields.includes("Result")
+                ? " is-invalid"
+                : ""
+            }`}
+            {...getGuidedFieldData("result")}
+          >
             <span>Result</span>
             <select
+              aria-describedby={getGuidedDescribedBy("result")}
+              aria-invalid={offerIdentityValidationActive && missingSettlementFields.includes("Result")}
               onChange={(event) =>
-                void applyDropdownChange(
-                  (current) => applyCasinoResultDefaults(current, event.target.value),
-                  "Result change"
-                )
+                setFormState((current) => applyCasinoResultDefaults(current, event.target.value))
               }
               value={formState.result}
             >
@@ -3283,11 +5190,264 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               ))}
             </select>
           </label>
+          {quickSettlementOptions.length ? (
+            <div
+              aria-label="Casino quick settlement actions"
+              className="field-span-2 tracker-nav quick-settlement-actions"
+              data-pd-id="casino-offers.editor.quick-settlement-actions"
+            >
+              {quickSettlementOptions.map((option) => (
+                <button
+                  className="review-chip review-chip-action"
+                  key={option}
+                  onClick={() =>
+                    setFormState((current) =>
+                      applyCasinoResultDefaults(
+                        applyCasinoStatusDefaults(current, "Settled"),
+                        option
+                      )
+                    )
+                  }
+                  type="button"
+                >
+                  {getCasinoResultLabel(formState.offer_type, option)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <section
+            aria-label="Casino settlement cash helper"
+            className="casino-settlement-helper field-span-2"
+            data-pd-id="casino-offers.editor.settlement-cash-helper"
+          >
+            <div className="casino-settlement-helper-header">
+              <div>
+                <span className="eyebrow">Settlement helper</span>
+                <h4>Cash In Versus Cash Out</h4>
+              </div>
+              <div className="casino-settlement-suggestion">
+                <span className="summary-label">Suggested net result</span>
+                <strong>
+                  {settlementNetSuggestion.value === null
+                    ? renderCasinoFinancialValue(null, { zeroAsNumeric: true })
+                    : renderCasinoFinancialValue(settlementNetSuggestion.value, { zeroAsNumeric: true })}
+                </strong>
+              </div>
+            </div>
+            <div className="casino-settlement-helper-grid">
+              <label className={`casino-money-field ${getCasinoMoneyToneClass(formState.own_cash_committed)}`}>
+                <span>Own Cash Committed</span>
+                <span className="casino-money-field-input-wrap">
+                  <span className="casino-money-field-prefix">£</span>
+                  <input
+                    inputMode="decimal"
+                    onBlur={() => normalizeMoneyField("own_cash_committed")}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, own_cash_committed: event.target.value }))
+                    }
+                    value={formState.own_cash_committed}
+                  />
+                  <button
+                    aria-label="Open own cash committed keypad"
+                    className="casino-money-keypad-toggle"
+                    onClick={() => toggleMoneyKeypad("own_cash_committed")}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                  </button>
+                </span>
+                {activeMoneyKeypadField === "own_cash_committed" ? renderMoneyKeypad("own_cash_committed") : null}
+                <small className="casino-money-field-hint">
+                  {ownCashCommittedSuggestion.sourceLabel}
+                </small>
+              </label>
+              <label className={`casino-money-field ${getCasinoMoneyToneClass(formState.cash_returned)}`}>
+                <span>Cash Returned</span>
+                <span className="casino-money-field-input-wrap">
+                  <span className="casino-money-field-prefix">£</span>
+                  <input
+                    inputMode="decimal"
+                    onBlur={() => normalizeMoneyField("cash_returned")}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, cash_returned: event.target.value }))
+                    }
+                    value={formState.cash_returned}
+                  />
+                  <button
+                    aria-label="Open cash returned keypad"
+                    className="casino-money-keypad-toggle"
+                    onClick={() => toggleMoneyKeypad("cash_returned")}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                  </button>
+                </span>
+                {activeMoneyKeypadField === "cash_returned" ? renderMoneyKeypad("cash_returned") : null}
+              </label>
+              <label className={`casino-money-field ${getCasinoMoneyToneClass(formState.free_spins_value)}`}>
+                <span>Reward Converted</span>
+                <span className="casino-money-field-input-wrap">
+                  <span className="casino-money-field-prefix">£</span>
+                  <input
+                    inputMode="decimal"
+                    onBlur={() => normalizeMoneyField("free_spins_value")}
+                    onChange={(event) =>
+                      setFormState((current) => applyCasinoRewardValueChange(current, event.target.value))
+                    }
+                    value={formState.free_spins_value}
+                  />
+                  <button
+                    aria-label="Open reward converted keypad"
+                    className="casino-money-keypad-toggle"
+                    onClick={() => toggleMoneyKeypad("free_spins_value")}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                  </button>
+                </span>
+                {activeMoneyKeypadField === "free_spins_value" ? renderMoneyKeypad("free_spins_value") : null}
+              </label>
+              <label className={`casino-money-field ${getCasinoMoneyToneClass(formState.settlement_other_costs)}`}>
+                <span>Other Costs</span>
+                <span className="casino-money-field-input-wrap">
+                  <span className="casino-money-field-prefix">£</span>
+                  <input
+                    inputMode="decimal"
+                    onBlur={() => normalizeMoneyField("settlement_other_costs")}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, settlement_other_costs: event.target.value }))
+                    }
+                    value={formState.settlement_other_costs}
+                  />
+                  <button
+                    aria-label="Open other settlement costs keypad"
+                    className="casino-money-keypad-toggle"
+                    onClick={() => toggleMoneyKeypad("settlement_other_costs")}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+                  </button>
+                </span>
+                {activeMoneyKeypadField === "settlement_other_costs" ? renderMoneyKeypad("settlement_other_costs") : null}
+              </label>
+            </div>
+            <div className="casino-settlement-helper-footer">
+              <span className="summary-label">{settlementNetSuggestion.formulaLabel}</span>
+              <button
+                className="review-chip review-chip-copy"
+                disabled={!ownCashCommittedSuggestion.value}
+                onClick={() => {
+                  const suggestedValue = ownCashCommittedSuggestion.value;
+                  if (suggestedValue) {
+                    setFormState((current) => ({
+                      ...current,
+                      own_cash_committed: suggestedValue,
+                    }));
+                  }
+                }}
+                type="button"
+              >
+                Use Suggested Cash
+              </button>
+              <button
+                className="review-chip review-chip-copy"
+                disabled={settlementNetSuggestion.state !== "calculable"}
+                onClick={() => {
+                  const suggestedValue = settlementNetSuggestion.value;
+                  if (suggestedValue !== null) {
+                    setFormState((current) => ({
+                      ...current,
+                      final_net_pnl: suggestedValue.toFixed(2),
+                    }));
+                  }
+                }}
+                type="button"
+              >
+                Use Suggested Net Result
+              </button>
+            </div>
+          </section>
+          <label
+            className={`${getGuidedFieldClass("final_net_pnl", `casino-money-field ${getCasinoMoneyToneClass(formState.final_net_pnl)}`)}${
+              offerIdentityValidationActive && missingSettlementFields.includes("Net Result")
+                ? " is-invalid"
+                : ""
+            } field-span-2`}
+            {...getGuidedFieldData("final_net_pnl")}
+          >
+            <span>Net Result</span>
+            <span className="casino-money-field-input-wrap">
+              <span className="casino-money-field-prefix">£</span>
+              <input
+                aria-describedby={getGuidedDescribedBy("final_net_pnl", "casino-editor-net-result-help")}
+                aria-invalid={offerIdentityValidationActive && missingSettlementFields.includes("Net Result")}
+                inputMode="decimal"
+                onBlur={() => normalizeMoneyField("final_net_pnl")}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, final_net_pnl: event.target.value }))
+                }
+                value={formState.final_net_pnl}
+              />
+              <button
+                aria-label="Open net result keypad"
+                className="casino-money-keypad-toggle"
+                onClick={() => toggleMoneyKeypad("final_net_pnl")}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">calculate</span>
+              </button>
+            </span>
+            {activeMoneyKeypadField === "final_net_pnl" ? renderMoneyKeypad("final_net_pnl") : null}
+            <small id="casino-editor-net-result-help">
+              Enter 0.00 for break-even or a negative amount for a loss.
+            </small>
+          </label>
+          <section
+            aria-label={
+              formState.result === "Pending"
+                ? "Casino current value"
+                : "Casino final outcome"
+            }
+            className={`settlement-outcome-panel field-span-2${
+              formState.result !== "Pending" || formState.status === "Settled"
+                ? " settlement-outcome-panel-final"
+                : ""
+            }`}
+            data-pd-id="casino-offers.editor.settlement-outcomes"
+          >
+            <div className="settlement-outcome-primary">
+              <span className="summary-label">{displayedValueLabel}</span>
+              <strong>{renderCasinoFinancialValue(displayedNumericValue, { zeroAsNumeric: true })}</strong>
+            </div>
+            {formState.result === "Pending" ? (
+              <div className="settlement-outcome-grid">
+                <article className="settlement-outcome-card">
+                  <span className="summary-label">Possible outcome</span>
+                  <strong>{getCasinoPositiveOutcomeLabel(formState.offer_type, formState.result)}</strong>
+                  {renderCasinoFinancialValue(displayedNumericValue, { zeroAsNumeric: true })}
+                </article>
+                <article className="settlement-outcome-card">
+                  <span className="summary-label">Possible outcome</span>
+                  <strong>{getCasinoNegativeOutcomeLabel(formState.offer_type, formState.result)}</strong>
+                  {renderCasinoFinancialValue(displayedNumericValue, { zeroAsNumeric: true })}
+                </article>
+              </div>
+            ) : (
+              <div className="settlement-outcome-status">
+                <span className="table-chip table-chip-success">Outcome hit</span>
+                <strong>{getCasinoResultLabel(formState.offer_type, formState.result)}</strong>
+              </div>
+            )}
+          </section>
             </div>
             </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          {showsAdvancedEditorTab ? (
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="advanced">
           <EditorSection
-            defaultOpen={Boolean(initialRecordId === selectedId && !hasResolvedCasinoValue)}
+            collapsible={false}
+            headerAside={renderEditorSectionAside("advanced")}
             title="Advanced controls"
           >
             {selectedRow?.calculation_notes.length ? (
@@ -3306,25 +5466,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 <span>Reference net value</span>
                 <input
                   inputMode="decimal"
+                  onBlur={() => normalizeMoneyField("calc_net_pnl")}
                   onChange={(event) =>
                     setFormState((current) => ({ ...current, calc_net_pnl: event.target.value }))
                   }
                   value={formState.calc_net_pnl}
                 />
-              </label>
-              <label className="field-control">
-                <span>Net Result (Profit/Loss)</span>
-                <input
-                  aria-describedby="casino-editor-net-result-help"
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setFormState((current) => ({ ...current, final_net_pnl: event.target.value }))
-                  }
-                  value={formState.final_net_pnl}
-                />
-                <small id="casino-editor-net-result-help">
-                  Settled bankroll result. Enter 0 for break-even or a negative amount for a loss.
-                </small>
               </label>
               <label className="field-control field-span-2">
                 <span>Notes</span>
@@ -3339,21 +5486,105 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </div>
             </fieldset>
           </EditorSection>
-          <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="casino-offers.editor.actions">
-            <button className="review-chip review-chip-copy" disabled={isPending || isSettledReadOnly} type="submit">
-              Save
-            </button>
-            {selectedId ? (
-              <button className="review-chip review-chip-danger" onClick={() => void handleDeleteSelectedRow()} type="button">
-                Delete
-              </button>
+          </LedgerEditorTabPanel>
+          ) : null}
+          <div className="field-span-2 workflow-editor-footer" data-pd-id="casino-offers.editor.actions">
+            {selectedId && settledDeleteGuardRowId === selectedId ? (
+              <LedgerSettledDeleteGuard
+                disabled={isPersisting}
+                ledgerLabel="casino-offers"
+                onCancel={() => {
+                  setSettledDeleteGuardRowId(null);
+                  setSettledDeleteReason("");
+                }}
+                onConfirm={() =>
+                  void handleDeleteSelectedRow(selectedId, {
+                    confirmedSettledReason: settledDeleteReason,
+                  })
+                }
+                onReasonChange={setSettledDeleteReason}
+                reason={settledDeleteReason}
+                rowLabel={selectedId}
+              />
             ) : null}
-            <button className="review-chip" onClick={handleResetForm} type="button">
-              Revert
-            </button>
-            <button aria-label="Close casino-offer editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
-              Close
-            </button>
+            <div className="tracker-nav workflow-editor-footer-primary">
+              {isSettledReadOnly ? (
+                <button
+                  aria-label="Close casino editor"
+                  className="review-chip"
+                  disabled={isPersisting}
+                  onClick={() => void closeEditor()}
+                  type="button"
+                >
+                  Close
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="review-chip review-chip-copy"
+                    disabled={isPending || isPersisting || !isDirty}
+                    type="submit"
+                  >
+                    {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                    {isPending || isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
+                  </button>
+                  {settledEditEnabled ? (
+                    <button
+                      className="review-chip"
+                      disabled={isPersisting}
+                      onClick={handleCancelSettledEdit}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                  {selectedId ? (
+                    <button
+                      className="review-chip review-chip-danger"
+                      disabled={isPersisting}
+                      onClick={() => void handleDeleteSelectedRow()}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                  <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">
+                    Revert
+                  </button>
+                </>
+              )}
+            </div>
+            <div
+              aria-label="Casino editor footer tab navigation"
+              className="tracker-nav workflow-editor-footer-nav"
+              data-pd-id="casino-offers.editor.footer-tab-actions"
+              role="group"
+            >
+              <button
+                className="review-chip review-chip-action-previous"
+                disabled={!previousCasinoEditorTab}
+                onClick={() => {
+                  if (previousCasinoEditorTab) {
+                    activateCasinoEditorTab(previousCasinoEditorTab.id as CasinoEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                className="review-chip review-chip-action-next"
+                disabled={!nextCasinoEditorTab}
+                onClick={() => {
+                  if (nextCasinoEditorTab) {
+                    activateCasinoEditorTab(nextCasinoEditorTab.id as CasinoEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </form>
         </div>

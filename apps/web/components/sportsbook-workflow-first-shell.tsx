@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
   fetchJsonAndCache,
@@ -9,11 +9,22 @@ import {
   readCachedJson,
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
+import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import {
   addOrReplaceLocalFundManagerNotification,
   FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT,
 } from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
+import {
+  getCalculatorModeForLayWorkflowMode,
+  getLayWorkflowModeForStrategy,
+  getSingleLayResultModes,
+  getStrategyForLayWorkflowMode,
+  isDecimalCalculatorInput,
+  sportsbookLayWorkflowModeOptions,
+  type LayWorkflowMode,
+  type SingleLayResultMode,
+} from "@/lib/ledger-calculator";
 import {
   getSportsbookGuidedEntry,
   type GuidedEntryFieldKey,
@@ -28,6 +39,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -36,14 +48,17 @@ import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  isGuidedAccessEnabled,
+  useBodyScrollLock,
   useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
+  useProfileGuidedAccessMode,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
-import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import {
   getSpecialOfferBookmakerSuggestion,
   resolveKnownBookmakerCoverage,
@@ -91,14 +106,19 @@ import {
   getDefaultBetTypeForOfferType,
   getOfferTypeOptions,
   normalizeSportsbookBetType,
-  sportsbookResultOptions,
   sportsbookStatusOptions,
-  sportsbookStrategyOptions,
 } from "@/lib/workbook-options";
 
-const visibleSportsbookStrategyOptions = sportsbookStrategyOptions.filter(
-  (option) => option !== "Multilay-Underlay"
-);
+const validSportsbookStrategyValues = new Set([
+  "Standard",
+  "Underlay",
+  "Overlay",
+  "Custom",
+  "No Lay",
+  "Partial Lay",
+  "Multilay",
+  "Multilay-Underlay",
+]);
 const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
 const guidedFieldTabMap: Record<GuidedEntryFieldKey, SportsbookEditorTabId> = {
   offer: "setup",
@@ -125,6 +145,25 @@ const guidedTabLabels: Record<SportsbookEditorTabId, string> = {
   placement: "Placement",
   settlement: "Settlement",
   free_bet: "Free Bet",
+};
+
+const guidedFieldFallbackMessages: Record<GuidedEntryFieldKey, string> = {
+  offer: "Add The Offer Name As Shown.",
+  bookmaker: "Choose The Bookmaker.",
+  bet_type: "Choose The Bet Type.",
+  offer_type: "Choose The Offer Type.",
+  offer_name: "Choose Or Enter The Offer Name.",
+  fixture_type: "Choose The Fixture Type.",
+  event_name: "Enter The Event Name.",
+  back_stake: "Enter The Back Stake.",
+  back_odds: "Enter The Back Odds.",
+  exchange: "Choose The Exchange.",
+  lay_odds_1: "Enter The Lay Odds.",
+  lay_actual: "Confirm The Lay Actual.",
+  multi_lay_outcomes: "Complete The Multi-Lay Outcome Names And Odds.",
+  multi_lay_placements: "Copy Or Confirm Each Multi-Lay Branch Placement.",
+  settlement: "Confirm The Settlement Date And Outcome.",
+  free_bet_bridge: "Create The Free Bet.",
 };
 
 function isBonusLockInOfferType(value: string): boolean {
@@ -317,8 +356,6 @@ type ScenarioBranchLabels = {
   outcome3Label: ScenarioBranchLabel | null;
 };
 
-type OutcomeCardState = "possible" | "hit" | "missed" | "void" | "review";
-
 type MultiLayPlacementState = "pending" | "placed";
 
 type MultiLayOutcomeInput = {
@@ -352,6 +389,8 @@ type PartialLayLegInput = {
 type MultiLayPlannerLeg = {
   key: string;
   label: string;
+  exchangeName: string;
+  commissionRate: string;
   layOdds: number;
   standardLay: string;
   underlayLay: string;
@@ -396,6 +435,8 @@ type MultiLayResultsGridRow = {
   branchValues: Record<string, string>;
   profit: string;
 };
+
+type ExchangeCommissionLookup = Record<string, string>;
 
 type SportsbookCalculationPreview = {
   lay_commission_1: string | null;
@@ -1027,6 +1068,24 @@ function renderPreviewFinancialValue(value: number | string | null | undefined) 
   );
 }
 
+function renderNeutralPreviewFinancialValue(value: number | string | null | undefined) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCurrencyLikeValue(value)
+        : null;
+  return parsed === null ? (
+    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+      £ -
+    </span>
+  ) : (
+    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+      {formatFinancialValue(parsed)}
+    </span>
+  );
+}
+
 function formatSignedPreviewMoney(value: number): string {
   if (value > 0) {
     return `+${formatPreviewMoney(value)}`;
@@ -1548,7 +1607,7 @@ function getSportsbookResultOptions(
     }));
   }
 
-  return sportsbookResultOptions.map((option) => ({
+  return ["Pending", "Back Won", "Lay Won", "Void"].map((option) => ({
     value: option,
     label: getSportsbookResultLabel(option, offerType, strategy, bonusTrigger),
   }));
@@ -1722,71 +1781,6 @@ function getScenarioBranchText(
     return null;
   }
   return result === "Pending" ? label.possible : label.settled;
-}
-
-function getOutcomeCardState(
-  result: string,
-  key: "back" | "lay" | "outcome2" | "outcome3"
-): OutcomeCardState {
-  if (result === "Pending") {
-    return "possible";
-  }
-  if (result === "Void") {
-    return "void";
-  }
-  if (result === "Mixed") {
-    return "review";
-  }
-
-  const hitKey =
-    result === "Back Won" || result === "Win" || result === "Outcome 1 Won"
-      ? "back"
-      : result === "Lay Won" || result === "Lose" || result === "No Selection Won"
-        ? "lay"
-        : result === "Back Won + Cashback"
-          ? "outcome2"
-          : result === "Lay Won + Cashback"
-            ? "outcome2"
-            : result === "Outcome 2 Won"
-              ? "outcome2"
-              : result === "Outcome 3 Won"
-                ? "outcome3"
-                : null;
-
-  if (hitKey === null) {
-    return "possible";
-  }
-
-  return hitKey === key ? "hit" : "missed";
-}
-
-function getOutcomeCardLabel(state: OutcomeCardState): string {
-  if (state === "hit") {
-    return "Outcome hit";
-  }
-  if (state === "missed") {
-    return "Outcome missed";
-  }
-  if (state === "void") {
-    return "Outcome void";
-  }
-  if (state === "review") {
-    return "Review required";
-  }
-  return "Possible outcome";
-}
-
-function getCalculationStateLabel(state: string | null | undefined): string {
-  if (state === "review_required") {
-    return "Review required";
-  }
-  if (state === "incomplete") {
-    return "Incomplete";
-  }
-  if (state === "resolved") {
-    return "Resolved";
-  }
-  return "Draft";
 }
 
 function applyOfferTypeDefaults(
@@ -2237,34 +2231,6 @@ function getCalculatorGuidance(
   return "Contract-backed sportsbook preview is ready.";
 }
 
-function getSportsbookWorkflowRule(
-  offerType: string,
-  strategy: string,
-  bonusTrigger: string
-): string | null {
-  if (offerType === "Double Delight / Hat-trick Heaven") {
-    return "DD/HH rows track four branches: player does not score first, scores first only, scores first and again, or scores first and gets a hat-trick.";
-  }
-
-  if (isBonusLockInOfferType(offerType)) {
-    return `Refund rows keep the qualifying loss as the current value and use the ${bonusTrigger === "Back Wins" ? "back-win" : "lay-win"} trigger plus retained bonus percentage for the extra branch.`;
-  }
-
-  if (offerType === "Cashback") {
-    return `Cashback rows keep the qualifying path first and only use the ${bonusTrigger === "Back Wins" ? "back-win" : "lay-win"} cashback branch when that trigger is actually hit.`;
-  }
-
-  if (offerType === "Mug Bet" || strategy === "No Lay") {
-    return "No-lay rows behave as pure back-side positions. Exchange fields stay out of scope and current value follows the back-win versus back-lose cash path. Workbook caveat: Mug Bet and None win-path treatment remains flagged for review.";
-  }
-
-  if (strategy === "Multilay" || strategy === "Multilay-Underlay") {
-    return "Multi-lay rows use named outcome branches. Each extra lay leg needs its own outcome label and lay odds so the current value can stay conservative.";
-  }
-
-  return null;
-}
-
 function getSettlementReviewRule(
   offerType: string,
   result: string,
@@ -2311,7 +2277,9 @@ function getMultiLayPlannerSummary(
   formState: SportsbookFormState,
   resolvedCommission: string,
   outcome1Label: string,
-  extraOutcomes: MultiLayOutcomeInput[]
+  extraOutcomes: MultiLayOutcomeInput[],
+  primaryPlacement: MultiLayPrimaryPlacementState,
+  exchangeCommissionLookup: ExchangeCommissionLookup
 ): MultiLayPlannerSummary | null {
   if (
     formState.match_strategy !== "Multilay" &&
@@ -2323,37 +2291,54 @@ function getMultiLayPlannerSummary(
   const backStake = parseNumericInput(formState.back_stake);
   const backOdds = parseNumericInput(formState.back_odds);
   const layOdds1 = parseNumericInput(formState.lay_odds_1);
-  const commission = parseNumericInput(resolvedCommission);
 
-  if (backStake === null || backOdds === null || layOdds1 === null || commission === null) {
+  if (backStake === null || backOdds === null || layOdds1 === null) {
     return null;
   }
+
+  const resolveBranchCommission = (exchangeName: string) => {
+    const exchangeCommission = exchangeName
+      ? exchangeCommissionLookup[exchangeName] ?? resolvedCommission
+      : resolvedCommission;
+    return parseNumericInput(exchangeCommission);
+  };
 
   const activeOdds = [
     {
       key: "outcome1",
       label: outcome1Label.trim() || "Outcome 1",
+      exchangeName: primaryPlacement.placedExchange || formState.exchange_name,
       layOdds: layOdds1,
     },
     ...extraOutcomes
       .map((outcome) => ({
         key: outcome.id,
         label: outcome.label.trim() || outcome.id.replace("outcome", "Outcome "),
+        exchangeName: outcome.placedExchange || formState.exchange_name,
         layOdds: parseNumericInput(outcome.layOdds),
       }))
       .filter((outcome) => outcome.layOdds !== null)
       .map((outcome) => ({
         key: outcome.key,
         label: outcome.label,
+        exchangeName: outcome.exchangeName,
         layOdds: outcome.layOdds as number,
       })),
-  ];
+  ].map((outcome) => ({
+    ...outcome,
+    commission: resolveBranchCommission(outcome.exchangeName),
+  }));
 
   if (activeOdds.length < 2) {
     return null;
   }
 
+  if (activeOdds.some((outcome) => outcome.commission === null)) {
+    return null;
+  }
+
   const standardStakes = activeOdds.map((outcome) => {
+    const commission = Number(outcome.commission);
     const denominator = outcome.layOdds - commission;
     if (denominator === 0) {
       return null;
@@ -2362,6 +2347,7 @@ function getMultiLayPlannerSummary(
   });
 
   const underlayDenominator = activeOdds.reduce((sum, outcome) => {
+    const commission = Number(outcome.commission);
     const branchDenominator = outcome.layOdds - commission;
     if (branchDenominator === 0) {
       return Number.NaN;
@@ -2371,6 +2357,7 @@ function getMultiLayPlannerSummary(
   const underlayStakes =
     Number.isFinite(underlayDenominator) && underlayDenominator !== 0
       ? activeOdds.map((outcome) => {
+          const commission = Number(outcome.commission);
           const branchDenominator = outcome.layOdds - commission;
           return (backStake / underlayDenominator) / branchDenominator;
         })
@@ -2391,12 +2378,15 @@ function getMultiLayPlannerSummary(
     const standardStake = Number(standardStakes[index]);
     const underlayStake = Number(underlayStakes[index]);
     const selectedStake = Number(effectiveStakes[index]);
+    const commission = Number(outcome.commission);
     const liability = selectedStake * (outcome.layOdds - 1);
     const layReturnsAfterCommission = selectedStake * (1 - commission);
 
     return {
       key: outcome.key,
       label: outcome.label,
+      exchangeName: outcome.exchangeName,
+      commissionRate: formatPreviewMoney(commission),
       layOdds: outcome.layOdds,
       standardLay: formatPreviewMoney(standardStake),
       underlayLay: formatPreviewMoney(underlayStake),
@@ -2502,19 +2492,38 @@ function getMultiLayPlacementStatus(rows: MultiLayPlacementRow[]): "Not Laid" | 
     return "Not Laid";
   }
 
-  const placedCount = rows.filter(
-    (row) => row.placementState === "placed" && parseNumericInput(row.placedMatchedStake) !== null
-  ).length;
+  const matchedRows = rows.filter((row) => parseNumericInput(row.placedMatchedStake) !== null);
 
-  if (placedCount === 0) {
+  if (matchedRows.length === 0) {
     return "Not Laid";
   }
 
-  if (placedCount < rows.length) {
-    return "Part Laid";
-  }
+  const fullyMatchedRows = rows.filter((row) => {
+    const matchedStake = parseNumericInput(row.placedMatchedStake);
+    const targetStake = parseNumericInput(row.effectiveStake);
+    return (
+      row.placementState === "placed" &&
+      matchedStake !== null &&
+      targetStake !== null &&
+      matchedStake >= targetStake - 0.005
+    );
+  });
 
-  return "Fully Laid";
+  return fullyMatchedRows.length === rows.length ? "Fully Laid" : "Part Laid";
+}
+
+function hasActualMultiLayPartialMatch(rows: MultiLayPlacementRow[]): boolean {
+  return rows.some((row) => {
+    const matchedStake = parseNumericInput(row.placedMatchedStake);
+    const targetStake = parseNumericInput(row.effectiveStake);
+
+    return (
+      row.placementState === "placed" &&
+      matchedStake !== null &&
+      targetStake !== null &&
+      matchedStake < targetStake - 0.005
+    );
+  });
 }
 
 function canRemoveLinkedFreeBet(row: Pick<LinkedFreeBetRecord, "status" | "result">): boolean {
@@ -2578,6 +2587,7 @@ function getPersistableSportsbookForm(
   formState: SportsbookFormState,
   options: {
     resolvedCommission: string;
+    exchangeCommissionLookup: ExchangeCommissionLookup;
     outcome1Label: string;
     extraOutcomes: MultiLayOutcomeInput[];
     partialLayLegs: PartialLayLegInput[];
@@ -2588,7 +2598,9 @@ function getPersistableSportsbookForm(
     formState,
     options.resolvedCommission,
     options.outcome1Label,
-    options.extraOutcomes
+    options.extraOutcomes,
+    options.primaryPlacement,
+    options.exchangeCommissionLookup
   );
   const serializedMatchingData = isMultiLayStrategy(formState.match_strategy)
     ? serializeMultiLayOutcomes(
@@ -2637,6 +2649,8 @@ function getPersistableSportsbookForm(
 export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
+  const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
+  const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
@@ -2716,6 +2730,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [multiLayPrimaryPlacement, setMultiLayPrimaryPlacement] = useState<MultiLayPrimaryPlacementState>(
     createDefaultMultiLayPrimaryPlacementState
   );
+  const [partialMultiLayBranches, setPartialMultiLayBranches] = useState<Set<string>>(
+    () => new Set()
+  );
   const [partialLayLegs, setPartialLayLegs] = useState<PartialLayLegInput[]>([]);
   const [footballSettlesAssistUsed, setFootballSettlesAssistUsed] = useState(false);
   const [footballSettlesOriginalValue, setFootballSettlesOriginalValue] = useState<string | null>(
@@ -2724,14 +2741,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [pendingLegRemovalId, setPendingLegRemovalId] = useState<string | null>(null);
   const [pendingBackPlacementRevert, setPendingBackPlacementRevert] = useState(false);
   const [pendingLayPlacementRevert, setPendingLayPlacementRevert] = useState(false);
+  const [selectedLayWorkflowMode, setSelectedLayWorkflowMode] =
+    useState<LayWorkflowMode>("Standard");
+  const [calculatorCopyFeedback, setCalculatorCopyFeedback] = useState("");
   const [customSliderMin, setCustomSliderMin] = useState("");
   const [customSliderMax, setCustomSliderMax] = useState("");
+  const [customSliderDraftValue, setCustomSliderDraftValue] = useState("");
   const [lastRemovedPartialLayLeg, setLastRemovedPartialLayLeg] = useState<{
     leg: PartialLayLegInput;
     index: number;
   } | null>(null);
   const [multiLayOutcome1Label, setMultiLayOutcome1Label] = useState("");
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
+  const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
+  const [settledDeleteReason, setSettledDeleteReason] = useState("");
   const [revertSnapshot, setRevertSnapshot] = useState<SportsbookFormState | null>(null);
   const [outcomeModalState, setOutcomeModalState] = useState<OutcomeModalState | null>(null);
   const [partialLayReminderEditorState, setPartialLayReminderEditorState] =
@@ -2743,6 +2766,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
   const [isFreeBetBridgeSubmitting, setIsFreeBetBridgeSubmitting] = useState(false);
   const [freeBetBridgeSplitsExpanded, setFreeBetBridgeSplitsExpanded] = useState(false);
+  const [freeBetBridgeCreatedCount, setFreeBetBridgeCreatedCount] = useState(0);
   const [linkedFreeBetRows, setLinkedFreeBetRows] = useState<LinkedFreeBetRecord[]>([]);
   const [isLinkedFreeBetsLoading, setIsLinkedFreeBetsLoading] = useState(false);
   const [linkedFreeBetRemovalId, setLinkedFreeBetRemovalId] = useState<string | null>(null);
@@ -2768,6 +2792,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   useEffect(() => {
     defaultBonusRetentionRateRef.current = defaultBonusRetentionRate;
   }, [defaultBonusRetentionRate]);
+
   const currentDirtyState = useMemo(
     () =>
       getComparableDirtyState(
@@ -2805,7 +2830,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => JSON.stringify(currentDirtyState) !== JSON.stringify(pristineDirtyState),
     [currentDirtyState, pristineDirtyState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -2815,7 +2840,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [visibleColumnKeys]
   );
 
+  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+
   useToastDismiss(statusMessage, clearStatusMessage);
+  useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
@@ -2887,6 +2915,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               matchedStake: activeRecord.lay_matched_stake_1,
             })
           );
+          setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(nextFormState.match_strategy));
           setFormState(nextFormState);
           setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
@@ -2908,6 +2937,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setMultiLayPrimaryPlacement(createDefaultMultiLayPrimaryPlacementState());
         setPartialLayLegs([]);
         setMultiLayOutcome1Label("");
+        setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(blankForm.match_strategy));
         setFormState(blankForm);
         setPristineFormState(blankForm);
         setShowBetSetupValidation(false);
@@ -2918,6 +2948,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setFootballSettlesAssistUsed(false);
         setFootballSettlesOriginalValue(null);
         setWorkflowVisible(false);
+        setFreeBetBridgeCreatedCount(0);
         setLinkedFreeBetRows([]);
         setLinkedFreeBetRemovalId(null);
       }
@@ -3181,9 +3212,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? formState.bookmaker
         : "";
 
-    const preferredStrategy = visibleSportsbookStrategyOptions.find(
-      (option) => option === combo.default_strategy
-    );
+    const preferredStrategy = validSportsbookStrategyValues.has(combo.default_strategy ?? "")
+      ? combo.default_strategy
+      : "";
+    if (preferredStrategy) {
+      setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(preferredStrategy));
+    }
     setErrorMessage("");
     setFormState((current) => ({
       ...current,
@@ -3302,6 +3336,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     return options.filter((option) => option.toLowerCase() !== "no exchange");
   }, [accountAuthorities, exchangeSettings, formState.exchange_name, formState.offer_type, lookupValues, rows]);
 
+  const exchangeCommissionLookup = useMemo(
+    () =>
+      Object.fromEntries(
+        exchangeSettings.map((row) => [row.exchange_name, row.commission_rate])
+      ),
+    [exchangeSettings]
+  );
+
   const resolvedCommission = useMemo(() => {
     return (
       exchangeSettings.find((row) => row.exchange_name === formState.exchange_name)?.commission_rate ??
@@ -3309,15 +3351,28 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
   }, [exchangeSettings, formState.exchange_name]);
 
-  const resultOptions = useMemo(
-    () =>
-      getSportsbookResultOptions(
-        formState.offer_type,
-        formState.match_strategy,
-        formState.bonus_trigger
-      ),
-    [formState.bonus_trigger, formState.match_strategy, formState.offer_type]
-  );
+  const resultOptions = useMemo(() => {
+    const options = getSportsbookResultOptions(
+      formState.offer_type,
+      formState.match_strategy,
+      formState.bonus_trigger
+    );
+    if (formState.result && !options.some((option) => option.value === formState.result)) {
+      return [
+        ...options,
+        {
+          value: formState.result,
+          label: getSportsbookResultLabel(
+            formState.result,
+            formState.offer_type,
+            formState.match_strategy,
+            formState.bonus_trigger
+          ),
+        },
+      ];
+    }
+    return options;
+  }, [formState.bonus_trigger, formState.match_strategy, formState.offer_type, formState.result]);
   const quickSettlementOptions = useMemo(
     () =>
       resultOptions
@@ -3330,10 +3385,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const usesMultiLayStrategy = isMultiLayStrategy(formState.match_strategy);
   const canUseFootballSettlesAssist =
     formState.fixture_type === "Football" && formState.date_settled.trim().length > 0;
-  const showsLayMatchedStake =
-    formState.match_strategy === "Partial Lay" || usesMultiLayStrategy;
+  const showsLayMatchedStake = formState.match_strategy === "Partial Lay";
   const showsPlacementSection = !isNoLayStrategy && showsLayMatchedStake;
-  const isDdhhOffer = formState.offer_type === "Double Delight / Hat-trick Heaven";
   const isCashbackOffer =
     formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type);
   const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
@@ -3343,7 +3396,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const missingBetSetupFields = useMemo(() => getMissingBetSetupFields(formState), [formState]);
   const hasPersistedDraft = Boolean(formState.sportsbook_bet_id ?? selectedId);
   const canUseFreeBetBridge = isFreeBetAwardableRow && hasPersistedDraft;
-  const freeBetBridgeComplete = formState.status === "Free Bet Awarded";
+  const freeBetBridgeComplete =
+    formState.status === "Free Bet Awarded" ||
+    linkedFreeBetRows.length > 0 ||
+    freeBetBridgeCreatedCount > 0;
   const calculatorUnlocked = betSetupComplete;
   const betSetupValidationActive = showBetSetupValidation;
 
@@ -3357,7 +3413,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [rows, selectedId]
   );
   const isSettledBet = selectedSportsbookRow?.status === "Settled";
-  const isSettledReadOnly = Boolean(isSettledBet && !settledEditEnabled);
+  const isSettledReadOnly = Boolean(
+    isSettledBet && !settledEditEnabled && !isDirty && !revertSnapshot
+  );
   const isPreviewReady = useMemo(
     () => hasPreviewInputsReady(formState, resolvedCommission),
     [formState, resolvedCommission]
@@ -3437,21 +3495,30 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       {
         id: "settlement",
         label: "Settlement",
+        attentionState: getSettlementTabAttentionState({
+          result: formState.result,
+          settlementDate: formState.date_settled,
+          status: formState.status,
+        }),
         status:
           formState.status === "Settled" && formState.result !== "Pending"
             ? "complete"
             : "neutral",
       },
-      {
-        id: "free_bet",
-        label: "Free Bet",
-        status: !canUseFreeBetBridge
-          ? "locked"
-          : freeBetBridgeComplete
-            ? "complete"
-            : "warning",
-        warningIssueCount: canUseFreeBetBridge && !freeBetBridgeComplete ? 1 : 0,
-      },
+      ...(isFreeBetAwardableRow
+        ? [
+            {
+              id: "free_bet",
+              label: "Free Bet",
+              status: !canUseFreeBetBridge
+                ? "locked"
+                : freeBetBridgeComplete
+                  ? "complete"
+                  : "warning",
+              warningIssueCount: canUseFreeBetBridge && !freeBetBridgeComplete ? 1 : 0,
+            } satisfies LedgerEditorTabDefinition,
+          ]
+        : []),
     ],
     [
       betSetupComplete,
@@ -3459,8 +3526,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       calculatorUnlocked,
       canUseFreeBetBridge,
       freeBetBridgeComplete,
+      formState.date_settled,
       formState.result,
       formState.status,
+      isFreeBetAwardableRow,
       isPreviewReady,
       missingBetSetupFields.length,
       missingCalculatorFields.length,
@@ -3495,12 +3564,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () =>
       getPersistableSportsbookForm(formState, {
         resolvedCommission,
+        exchangeCommissionLookup,
         outcome1Label: multiLayOutcome1Label,
         extraOutcomes: multiLayOutcomes,
         partialLayLegs,
         primaryPlacement: multiLayPrimaryPlacement,
       }),
-    [formState, multiLayOutcome1Label, multiLayOutcomes, partialLayLegs, multiLayPrimaryPlacement, resolvedCommission]
+    [
+      exchangeCommissionLookup,
+      formState,
+      multiLayOutcome1Label,
+      multiLayOutcomes,
+      partialLayLegs,
+      multiLayPrimaryPlacement,
+      resolvedCommission,
+    ]
   );
   const calculatorGuidance = useMemo(
     () => getCalculatorGuidance(formState, resolvedCommission),
@@ -3558,8 +3636,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }),
     [canUseFreeBetBridge, formState, freeBetBridgeComplete, guidedEntryOutcomes]
   );
+  const safeGuidedEntry = useMemo(() => {
+    if (guidedEntry.state === "complete") {
+      return guidedEntry;
+    }
+    const nextRequiredField = guidedEntry.nextRequiredField ?? "offer";
+    return {
+      ...guidedEntry,
+      nextRequiredField,
+      message:
+        guidedEntry.message.trim() ||
+        guidedFieldFallbackMessages[nextRequiredField] ||
+        "Continue The Guided Workflow.",
+    };
+  }, [guidedEntry]);
   const guidedEntryVisible =
-    workflowVisible && !guidedEntryDismissed && guidedEntry.state !== "complete";
+    workflowVisible && guidedAccessEnabled && !guidedEntryDismissed && safeGuidedEntry.state !== "complete";
   const guidedEntryMessageId = "sportsbook-guided-entry-message";
   const getGuidedFieldClass = useCallback(
     (field: GuidedEntryFieldKey, extraClass = "") => {
@@ -3567,19 +3659,19 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       if (extraClass) {
         classes.push(extraClass);
       }
-      if (guidedEntryVisible && guidedEntry.nextRequiredField === field) {
+      if (guidedEntryVisible && safeGuidedEntry.nextRequiredField === field) {
         classes.push("is-guided-next");
       }
       return classes.join(" ");
     },
-    [guidedEntry.nextRequiredField, guidedEntryVisible]
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
   );
   const getGuidedDescribedBy = useCallback(
     (field: GuidedEntryFieldKey) =>
-      guidedEntryVisible && guidedEntry.nextRequiredField === field
+      guidedEntryVisible && safeGuidedEntry.nextRequiredField === field
         ? guidedEntryMessageId
         : undefined,
-    [guidedEntry.nextRequiredField, guidedEntryVisible]
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
   );
   const getGuidedFieldData = useCallback(
     (field: GuidedEntryFieldKey) => ({
@@ -3587,8 +3679,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }),
     []
   );
-  const guidedEntryTargetTabId = guidedEntry.nextRequiredField
-    ? guidedFieldTabMap[guidedEntry.nextRequiredField]
+  const guidedEntryTargetTabId = safeGuidedEntry.nextRequiredField
+    ? guidedFieldTabMap[safeGuidedEntry.nextRequiredField]
     : null;
   const guidedEntryNeedsTabJump =
     guidedEntryTargetTabId !== null && guidedEntryTargetTabId !== safeActiveEditorTabId;
@@ -3598,9 +3690,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const guidedEntryTargetTabLabel = guidedEntryTargetTabId
     ? guidedTabLabels[guidedEntryTargetTabId]
     : "";
+  const guidedEntryMessageText =
+    safeGuidedEntry.message.trim() ||
+    (safeGuidedEntry.nextRequiredField
+      ? guidedFieldFallbackMessages[safeGuidedEntry.nextRequiredField]
+      : "Continue The Guided Workflow.");
+  const guidedEntryResolvedInstruction =
+    (
+      guidedEntryNeedsTabJump
+        ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+        : guidedEntryMessageText
+    ).trim() || "Add The Offer Name As Shown.";
   const guidedEntryActionMessage = guidedEntryNeedsTabJump
-    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntry.message}`
-    : guidedEntry.message;
+    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+    : guidedEntryMessageText;
+  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
     const settleDate = toDateTimeLocalValue(record.date_settled);
     const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
@@ -3633,6 +3737,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         }),
       ],
     });
+    setFreeBetBridgeCreatedCount(0);
     setFreeBetBridgeSplitsExpanded(false);
   }, []);
   const activateEditorTab = useCallback((tabId: SportsbookEditorTabId) => {
@@ -3662,7 +3767,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     selectedSportsbookRow,
   ]);
   const focusGuidedEntryTarget = useCallback(() => {
-    const nextField = guidedEntry.nextRequiredField;
+    const nextField = safeGuidedEntry.nextRequiredField;
     if (!nextField) {
       return;
     }
@@ -3679,9 +3784,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           : target?.querySelector<HTMLElement>("input, select, textarea, button");
       focusTarget?.focus({ preventScroll: true });
     }, 80);
-  }, [activateEditorTab, guidedEntry.nextRequiredField]);
+  }, [activateEditorTab, safeGuidedEntry.nextRequiredField]);
   const renderGuidedEntryMessage = useCallback(
     (message: string) => {
+      const safeMessage = message.trim() || "Continue The Guided Workflow.";
       const targetTerms = [
         "Settlement Date",
         "Offer Name",
@@ -3698,7 +3804,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         "Lay",
       ];
       const pattern = new RegExp(`(${targetTerms.join("|")})`, "g");
-      const parts = message.split(pattern).filter(Boolean);
+      const parts = safeMessage.split(pattern).filter(Boolean);
+      if (parts.length === 0) {
+        return <>{safeMessage}</>;
+      }
       return (
         <>
           {parts.map((part, index) => {
@@ -3725,11 +3834,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
   const renderGuidedEntryInstruction = useCallback(() => {
     if (!guidedEntryNeedsTabJump) {
-      return renderGuidedEntryMessage(guidedEntry.message);
+      return <span className="guided-entry-instruction-text">{renderGuidedEntryMessage(guidedEntryResolvedInstruction)}</span>;
     }
 
     return (
-      <>
+      <span className="guided-entry-instruction-text">
         <span>Go to </span>
         <span className="guided-entry-step-reference">
           {guidedEntryTargetTabIndex >= 0 ? (
@@ -3740,16 +3849,56 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           <span>{guidedEntryTargetTabLabel}</span>
         </span>
         <span> and </span>
-        {renderGuidedEntryMessage(guidedEntry.message)}
-      </>
+        {renderGuidedEntryMessage(guidedEntryMessageText || guidedEntryResolvedInstruction)}
+      </span>
     );
   }, [
-    guidedEntry.message,
+    guidedEntryMessageText,
     guidedEntryNeedsTabJump,
+    guidedEntryResolvedInstruction,
     guidedEntryTargetTabIndex,
     guidedEntryTargetTabLabel,
     renderGuidedEntryMessage,
   ]);
+  const renderSettledLockAction = useCallback(
+    () => {
+      if (!selectedId) {
+        return null;
+      }
+
+      return isSettledReadOnly ? (
+        <button
+          className="section-lock-chip section-lock-chip-action"
+          data-pd-id="sportsbook.editor.edit-settled-row"
+          onClick={() => setSettledEditEnabled(true)}
+          type="button"
+        >
+          EDIT
+        </button>
+      ) : (
+        <span className="section-lock-chip" data-pd-id="sportsbook.editor.editing-state">
+          EDITING
+        </span>
+      );
+    },
+    [isSettledReadOnly, selectedId]
+  );
+  const renderEditorSectionAside = useCallback(
+    (extra?: ReactNode) => {
+      const editState = renderSettledLockAction();
+      if (!editState && !extra) {
+        return null;
+      }
+
+      return (
+        <>
+          {editState}
+          {extra}
+        </>
+      );
+    },
+    [renderSettledLockAction]
+  );
   const scenarioBranchLabels = useMemo(
     () =>
       getScenarioBranchLabels(
@@ -3774,9 +3923,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         formState,
         resolvedCommission,
         multiLayOutcome1Label,
-        multiLayOutcomes
+        multiLayOutcomes,
+        multiLayPrimaryPlacement,
+        exchangeCommissionLookup
       ),
-    [formState, resolvedCommission, multiLayOutcome1Label, multiLayOutcomes]
+    [
+      exchangeCommissionLookup,
+      formState,
+      resolvedCommission,
+      multiLayOutcome1Label,
+      multiLayOutcomes,
+      multiLayPrimaryPlacement,
+    ]
   );
   const multiLayPlacementRows = useMemo(
     () =>
@@ -3792,19 +3950,49 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => getMultiLayPlacementStatus(multiLayPlacementRows),
     [multiLayPlacementRows]
   );
+  const hasMultiLayPartialMatch = useMemo(
+    () => hasActualMultiLayPartialMatch(multiLayPlacementRows),
+    [multiLayPlacementRows]
+  );
+  const visibleMultiLayPlacementStatus =
+    multiLayPlacementStatus === "Part Laid" && !hasMultiLayPartialMatch
+      ? "Not Laid"
+      : multiLayPlacementStatus;
   const multiLayResultsGridRows = useMemo(
     () => getMultiLayResultsGridRows(formState, multiLayPlannerSummary),
     [formState, multiLayPlannerSummary]
   );
-  const activeCalculationState =
-    activePreviewCalculation?.calculation_state ?? selectedSportsbookRow?.calculation_state ?? null;
-  const activeCalculationNotes =
-    activePreviewCalculation?.calculation_notes.length
-      ? activePreviewCalculation.calculation_notes
-      : selectedSportsbookRow?.calculation_notes ?? [];
-  const visibleCalculationNotes = activeCalculationNotes.filter(
-    (note) => note !== "Pending row uses projected current value until settlement."
+  const multiLayPrimaryLeg = multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1");
+  const multiLayPrimaryEffectiveStake = multiLayPrimaryLeg
+    ? getEffectiveMultiLayStakeForLeg(formState.match_strategy, multiLayPrimaryLeg)
+    : undefined;
+  const multiLayPrimaryPartialOpen = isMultiLayPartialEntryOpen(
+    "outcome1",
+    multiLayPrimaryPlacement.placedMatchedStake,
+    multiLayPrimaryEffectiveStake
   );
+  const activeDisplayedValueLabel = activePreviewCalculation
+    ? getDisplayedValueLabel(activePreviewCalculation, null)
+    : selectedSportsbookRow
+      ? getDisplayedValueLabel(null, selectedSportsbookRow)
+      : "Current value";
+  const activeDisplayedValue = activePreviewCalculation
+    ? getDisplayedValue(activePreviewCalculation, null)
+    : selectedSportsbookRow
+      ? getDisplayedValue(null, selectedSportsbookRow)
+      : "—";
+  const activeDisplayedNumericValue = parseCurrencyLikeValue(activeDisplayedValue);
+  const settlementHasFinalOutcome =
+    formState.status === "Settled" && formState.result !== "Pending";
+  const settlementPrimaryValue = activePreviewCalculation
+    ? settlementHasFinalOutcome
+      ? activePreviewCalculation.final_net_pnl ??
+        activePreviewCalculation.reporting_value ??
+        activePreviewCalculation.projected_current_pnl
+      : activePreviewCalculation.projected_current_pnl ??
+        activePreviewCalculation.reporting_value ??
+        activePreviewCalculation.final_net_pnl
+    : null;
   const activeMatchRating =
     activePreviewCalculation !== null
       ? activePreviewCalculation.match_rating
@@ -3827,21 +4015,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     activeMatchRatingPercentValue === null
       ? null
       : getMatchRatingInterpretation(activeMatchRatingPercentValue);
-  const editorLayStatus =
-    activePreviewCalculation?.lay_status ?? selectedSportsbookRow?.lay_status ?? "Not Laid";
+  const editorLayStatus = isNoLayStrategy
+    ? "Fully Laid"
+    : usesMultiLayStrategy
+      ? visibleMultiLayPlacementStatus
+      : activePreviewCalculation?.lay_status ?? selectedSportsbookRow?.lay_status ?? "Not Laid";
   const editorMatchStrategyLabel = usesMultiLayStrategy
     ? `Multi Lay ${formState.match_strategy === "Multilay-Underlay" ? "Underlay" : ""}`.trim()
     : getCompactSportsbookLabel(formState.match_strategy || "Standard");
-  const isCalculatedState = activeCalculationState === "resolved";
-  const workflowRule = useMemo(
-    () =>
-      getSportsbookWorkflowRule(
-        formState.offer_type,
-        formState.match_strategy,
-        formState.bonus_trigger
-      ),
-    [formState.bonus_trigger, formState.match_strategy, formState.offer_type]
-  );
   const settlementReviewRule = useMemo(
     () =>
       getSettlementReviewRule(
@@ -3851,50 +4032,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ),
     [formState.match_strategy, formState.offer_type, formState.result]
   );
-  const calculatorRuleItems = useMemo(() => {
-    const items: string[] = [];
-
-    if (workflowRule) {
-      items.push(workflowRule);
-    }
-
-    if (isDdhhOffer) {
-      items.push("DD/HH branches: first scorer only, scores again, hat-trick, or lay wins.");
-    }
-
-    if (isRefundOffer) {
-      items.push(
-        `Refund trigger ${formState.bonus_trigger || "Lay Wins"} • Max bonus ${formState.maximum_bonus || "—"} • Retention ${formState.bonus_retention_rate || defaultBonusRetentionRate}%`
-      );
-    }
-
-    if (isCashbackOffer && !isRefundOffer) {
-      items.push(
-        `Cashback trigger ${formState.bonus_trigger || "Lay Wins"} • Cap ${formState.maximum_bonus || "—"}`
-      );
-    }
-
-    if (isNoLayStrategy) {
-      items.push("No lay: current value stays on the back-side cash path.");
-    }
-
-    if (usesMultiLayStrategy) {
-      items.push("Multi-lay: each named outcome needs its own lay odds branch.");
-    }
-
-    return items;
-  }, [
-    formState.bonus_retention_rate,
-    formState.bonus_trigger,
-    formState.maximum_bonus,
-    defaultBonusRetentionRate,
-    isCashbackOffer,
-    isDdhhOffer,
-    isNoLayStrategy,
-    isRefundOffer,
-    usesMultiLayStrategy,
-    workflowRule,
-  ]);
   const partialLayExecutionSummary = useMemo(
     () =>
       getPartialLayExecutionSummary({
@@ -3917,7 +4054,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const hasPartialLayOvermatch = partialLayExecutionSummary.exceededTarget;
 
   const editorHeaderFullTitle = useMemo(() => {
-    const parts = [formState.offer_text, formState.offer_name, formState.offer_type]
+    const parts = [formState.offer_text, formState.offer_name]
       .map((part) => part.trim())
       .filter(Boolean);
     const uniqueParts = Array.from(new Set(parts));
@@ -3931,7 +4068,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     return "New sportsbook row";
-  }, [formState.event_name, formState.offer_name, formState.offer_text, formState.offer_type]);
+  }, [formState.event_name, formState.offer_name, formState.offer_text]);
   const editorHeaderTitle = useMemo(
     () => truncateHeaderTitle(editorHeaderFullTitle, 75),
     [editorHeaderFullTitle]
@@ -3956,52 +4093,125 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     parseNumericInput(formState.lay_matched_stake_1) !== null;
   const partialLayPanelTitle =
     partialLayLegs.length === 1 && layFullyConfirmed ? "Matched Lay" : "Partial Lay Legs";
+  const shouldShowLayPlacementLegDetails =
+    partialLayLegs.length > 0 &&
+    !usesMultiLayStrategy &&
+    (formState.match_strategy === "Partial Lay" || partialLayLegs.length > 1);
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
     (usesMultiLayStrategy || parseNumericInput(formState.lay_odds_1) !== null);
 
-  const isCustomStrategy = formState.match_strategy === "Custom";
+  const layWorkflowMode = selectedLayWorkflowMode;
+  const singleLayCalculatorMode = getCalculatorModeForLayWorkflowMode(layWorkflowMode);
 
-  const customSliderBackStake = parseNumericInput(formState.back_stake) ?? 10;
+  function updateDecimalFormField(field: keyof SportsbookFormState, value: string) {
+    if (!isDecimalCalculatorInput(value)) {
+      return;
+    }
+    setFormState((current) => ({ ...current, [field]: value }));
+  }
+
+  function applyLayWorkflowMode(mode: LayWorkflowMode) {
+    setSelectedLayWorkflowMode(mode);
+    setFormState((current) =>
+      applyStrategyDefaults(current, getStrategyForLayWorkflowMode(mode, current.match_strategy))
+    );
+  }
+
+  const customSliderSuggestedLayStake =
+    parseNumericInput(
+      activePreviewCalculation?.reference_lay_stake_standard ??
+        selectedSportsbookRow?.reference_lay_stake_standard ??
+        ""
+    ) ??
+    parseNumericInput(formState.lay_actual) ??
+    parseNumericInput(formState.back_stake) ??
+    10;
   const customSliderEffectiveMin = parseNumericInput(customSliderMin)
-    ?? Math.max(0.01, Number((customSliderBackStake - 1).toFixed(2)));
+    ?? Math.max(0.01, Number((customSliderSuggestedLayStake - 1).toFixed(2)));
   const customSliderEffectiveMax = parseNumericInput(customSliderMax)
-    ?? Number((customSliderBackStake + 1).toFixed(2));
-  const customSliderCurrentFloat =
-    parseNumericInput(formState.lay_actual) ?? customSliderEffectiveMin;
+    ?? Number((customSliderSuggestedLayStake + 1).toFixed(2));
+  const customSliderBoundedMax = Math.max(
+    Number((customSliderEffectiveMin + 0.01).toFixed(2)),
+    customSliderEffectiveMax
+  );
+  const customSliderDraftFloat = parseNumericInput(customSliderDraftValue);
+  const customSliderCurrentFloat = Math.min(
+    customSliderBoundedMax,
+    Math.max(
+      customSliderEffectiveMin,
+      customSliderDraftFloat ??
+        parseNumericInput(formState.lay_actual) ??
+        customSliderSuggestedLayStake
+    )
+  );
 
-  const customSliderFeedback = useMemo(() => {
-    if (!isCustomStrategy) {
-      return null;
-    }
-    const layStake = parseNumericInput(formState.lay_actual);
-    const layOdds = parseNumericInput(formState.lay_odds_1);
+  const singleLayResultCards = useMemo(() => {
     const backStake = parseNumericInput(formState.back_stake);
-    const backOdds = parseNumericInput(formState.back_odds);
+    const effectiveBackOdds = parseNumericInput(
+      activePreviewCalculation?.effective_back_odds ?? formState.back_odds
+    );
+    const layOdds = parseNumericInput(formState.lay_odds_1);
     const commission = parseNumericInput(resolvedCommission) ?? 0;
+    const stakeByMode: Record<SingleLayResultMode, string | null | undefined> = {
+      Underlay:
+        activePreviewCalculation?.reference_lay_stake_underlay ??
+        selectedSportsbookRow?.reference_lay_stake_underlay,
+      Standard:
+        activePreviewCalculation?.reference_lay_stake_standard ??
+        selectedSportsbookRow?.reference_lay_stake_standard,
+      Overlay:
+        activePreviewCalculation?.reference_lay_stake_overlay ??
+        selectedSportsbookRow?.reference_lay_stake_overlay,
+      Custom: formatPreviewMoney(customSliderCurrentFloat),
+    };
 
-    if (layStake === null || layOdds === null || backStake === null || backOdds === null) {
-      return null;
+    return getSingleLayResultModes(singleLayCalculatorMode).map((mode) => {
+      const layStake = parseNumericInput(stakeByMode[mode] ?? "");
+      const hasCalculation =
+        backStake !== null && effectiveBackOdds !== null && layOdds !== null && layStake !== null;
+      const liability =
+        hasCalculation && layOdds !== null && layStake !== null ? layStake * (layOdds - 1) : null;
+      const backWin =
+        hasCalculation && backStake !== null && effectiveBackOdds !== null && liability !== null
+          ? backStake * (effectiveBackOdds - 1) - liability
+          : null;
+      const layWin =
+        hasCalculation && layStake !== null && backStake !== null
+          ? layStake * (1 - commission) - backStake
+          : null;
+      return {
+        mode,
+        layStake,
+        liability,
+        backWin,
+        layWin,
+        canCopy: layStake !== null && layStake > 0 && formState.lay_odds_1.trim().length > 0,
+      };
+    });
+  }, [
+    activePreviewCalculation,
+    formState.back_odds,
+    formState.back_stake,
+    formState.lay_odds_1,
+    resolvedCommission,
+    selectedSportsbookRow,
+    customSliderCurrentFloat,
+    singleLayCalculatorMode,
+  ]);
+
+  useEffect(() => {
+    if (!calculatorCopyFeedback) {
+      return;
     }
 
-    const liability = layStake * (layOdds - 1);
-    const backWinsPnl = backStake * (backOdds - 1) - liability;
-    const layWinsPnl = layStake * (1 - commission) - backStake;
+    const timeoutId = window.setTimeout(() => {
+      setCalculatorCopyFeedback("");
+    }, 2200);
 
-    return {
-      liability: formatPreviewMoney(liability),
-      backWinsPnl: formatPreviewMoney(backWinsPnl),
-      layWinsPnl: formatPreviewMoney(layWinsPnl),
-    };
-  }, [
-    isCustomStrategy,
-    formState.lay_actual,
-    formState.lay_odds_1,
-    formState.back_stake,
-    formState.back_odds,
-    resolvedCommission,
-  ]);
+    return () => window.clearTimeout(timeoutId);
+  }, [calculatorCopyFeedback]);
 
   useEffect(() => {
     if (!betSetupComplete) {
@@ -4447,6 +4657,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         matchedStake: record.lay_matched_stake_1,
       })
     );
+    setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(nextFormState.match_strategy));
     setMultiLayOutcome1Label(getMultiLayOutcomeLabel(record.multi_lay_outcome_1_name));
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
@@ -4460,7 +4671,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setErrorMessage("");
     setWorkflowVisible(true);
     setTableCollapsed(Boolean(options?.collapseTable));
-    setStatusMessage(`Opened sportsbook bet ${rowId} for editing.`);
+    setStatusMessage("");
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
@@ -4475,6 +4686,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     setSelectedId(null);
+    selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
     setTableCollapsed(false);
@@ -4484,6 +4696,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setPartialLayLegs([]);
     setMultiLayOutcome1Label("");
     const blankForm = createBlankForm(defaultBonusRetentionRate);
+    setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(blankForm.match_strategy));
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setShowBetSetupValidation(false);
@@ -4494,7 +4707,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
-    setStatusMessage("New sportsbook bet ready. Complete the required fields, then save.");
+    setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
 
@@ -4503,6 +4716,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
     setGuidedEntryDismissed(false);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
@@ -4573,6 +4788,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const resolvedPartialLayLegs = options?.partialLayLegsOverride ?? partialLayLegs;
     const persistableFormState = getPersistableSportsbookForm(nextFormState, {
       resolvedCommission,
+      exchangeCommissionLookup,
       outcome1Label: multiLayOutcome1Label,
       extraOutcomes: resolvedMultiLayOutcomes,
       partialLayLegs: resolvedPartialLayLegs,
@@ -4633,6 +4849,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     const saved = (await response.json()) as SportsbookRecord;
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+    dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
     const savedFormState = recordToForm(saved);
     const savedMultiLay = parseMultiLayOutcomes(saved.multi_lay_outcomes_json, {
       outcome1Label: saved.multi_lay_outcome_1_name,
@@ -4748,11 +4965,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
     setMultiLayOutcome1Label(getMultiLayOutcomeLabel(nextFormState.multi_lay_outcome_1_name));
     setFormState(nextFormState);
+    setCustomSliderDraftValue("");
     if (options?.markPristine) {
       setPristineFormState(nextFormState);
     }
     setShowBetSetupValidation(false);
     setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setPendingBackPlacementRevert(false);
@@ -4797,6 +5017,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setStatusMessage("Cleared the unsaved sportsbook bet draft.");
   }
 
+  function handleCancelSettledEdit() {
+    loadEditorFormState(pristineFormState, { markPristine: true });
+    setRevertSnapshot(null);
+    setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setStatusMessage("");
+  }
+
   function applyFootballSettlesAssist() {
     if (!canUseFootballSettlesAssist || footballSettlesAssistUsed) {
       return;
@@ -4832,18 +5061,37 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setStatusMessage("Football settles helper reset. You can apply +90m again.");
   }
 
-  async function handleDeleteSelectedRow(rowId = selectedId) {
+  async function handleDeleteSelectedRow(
+    rowId = selectedId,
+    options?: { confirmedSettledReason?: string }
+  ) {
     if (!rowId) {
       return;
     }
 
-    const confirmed = await confirmDestructiveAction({
-      confirmLabel: "Delete Row",
-      message: `Delete sportsbook row ${rowId}? This will remove it from this profile tracker.`,
-      title: "Delete sportsbook row?",
-    });
-    if (!confirmed) {
+    const rowForDelete =
+      selectedSportsbookRow?.sportsbook_bet_id === rowId
+        ? selectedSportsbookRow
+        : rows.find((row) => row.sportsbook_bet_id === rowId);
+    const isSettledDelete = rowForDelete ? rowForDelete.status === "Settled" : formState.status === "Settled";
+    const settledReason = options?.confirmedSettledReason?.trim() ?? "";
+
+    if (isSettledDelete && !settledReason) {
+      setSettledDeleteGuardRowId(rowId);
+      setSettledDeleteReason("");
+      setErrorMessage("");
       return;
+    }
+
+    if (!isSettledDelete) {
+      const confirmed = await confirmDestructiveAction({
+        confirmLabel: "Delete Row",
+        message: `Delete sportsbook row ${rowId}? This will remove it from this profile tracker.`,
+        title: "Delete sportsbook row?",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
 
     setErrorMessage("");
@@ -4858,6 +5106,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+    dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     isCreatingDraftRef.current = false;
@@ -4893,6 +5142,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+    dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
     await loadRows(
       options?.preserveTableView && !options.keepEditorOpen ? null : record.sportsbook_bet_id
     );
@@ -4968,6 +5218,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
       const updatedRecord = (await response.json()) as SportsbookRecord;
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+      dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
       setRows((current) =>
         current.map((row) =>
           row.sportsbook_bet_id === updatedRecord.sportsbook_bet_id ? updatedRecord : row
@@ -5122,6 +5373,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         createdFreeBetIds.push(createdFreeBet.free_bet_id);
       }
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+      dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
+      setFreeBetBridgeCreatedCount((count) => count + createdFreeBetIds.length);
 
       if (sourceRow.status !== "Free Bet Awarded") {
         const updated = await updateRowFromTable(
@@ -5142,13 +5395,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         }));
       } else {
         invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+        dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
         await loadRows(null);
       }
 
       setStatusMessage(
         `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} from ${sourceRow.sportsbook_bet_id}.`
       );
-      await loadLinkedFreeBets(sourceRow.sportsbook_bet_id);
+      void loadLinkedFreeBets(sourceRow.sportsbook_bet_id);
       setFreeBetBridgeModalState((current) => {
         if (!current) {
           return current;
@@ -5222,6 +5476,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }
 
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+      dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
       const sourceRowId = formState.sportsbook_bet_id ?? selectedId;
       const remainingRows = linkedFreeBetRows.filter(
         (linkedRow) => linkedRow.free_bet_id !== row.free_bet_id
@@ -5304,10 +5559,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }));
 
     const copied = await copyToClipboard(nextSuggestedLay);
-    setStatusMessage(
+    setCalculatorCopyFeedback(
       copied
-        ? `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay}, marked the lay fully placed, and copied it to the clipboard.`
-        : `Applied ${mode.toLowerCase()} suggested lay ${nextSuggestedLay} and marked the lay fully placed.`
+        ? `${mode} lay copied and marked fully placed.`
+        : `${mode} lay applied and marked fully placed.`
     );
   }
 
@@ -5325,17 +5580,58 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setActiveEditorTabId("free_bet");
   }
 
-  async function copyCustomSliderValue() {
-    const value = formState.lay_actual.trim();
+  async function applyCustomLayValue() {
+    const value =
+      customSliderDraftValue.trim() ||
+      formState.lay_actual.trim() ||
+      formatPreviewMoney(customSliderCurrentFloat);
     if (!value) {
       return;
     }
+
+    const matchedLayLeg: PartialLayLegInput = {
+      id: createPartialLayLegId(1),
+      exchangeName: formState.exchange_name,
+      layOdds: formState.lay_odds_1,
+      matchedStake: value,
+      isFinal: true,
+    };
+
+    setPartialLayLegs([matchedLayLeg]);
+    setPendingLegRemovalId(null);
+    setLastRemovedPartialLayLeg(null);
+    setPendingLayPlacementRevert(false);
+    setFormState((current) => ({
+      ...current,
+      lay_actual: value,
+      lay_matched_stake_1: value,
+      match_strategy: "Custom",
+      status: current.status === "Prospecting" ? "Placed" : current.status,
+      result: current.result || "Pending",
+    }));
+
     const copied = await copyToClipboard(value);
-    setStatusMessage(
+    setCalculatorCopyFeedback(
       copied
-        ? `Copied custom lay stake ${value} to clipboard.`
-        : `Custom lay stake is ${value}.`
+        ? "Custom lay copied and marked fully placed."
+        : "Custom lay applied and marked fully placed."
     );
+  }
+
+  function commitCustomSliderValue(value?: string) {
+    const nextValue = formatPreviewMoney(
+      parseNumericInput(value ?? customSliderDraftValue) ?? customSliderCurrentFloat
+    );
+    setCustomSliderDraftValue("");
+    setFormState((current) => {
+      if (current.lay_actual === nextValue) {
+        return current;
+      }
+      return {
+        ...current,
+        lay_actual: nextValue,
+      };
+    });
   }
 
   function applyPlacementAction(action: PlacementAction) {
@@ -5641,10 +5937,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       status: "Placed",
       result: "Pending",
     };
+    setPartialMultiLayBranches((current) => {
+      const next = new Set(current);
+      next.delete(leg.key);
+      return next;
+    });
 
     if (leg.key === "outcome1") {
       const nextPrimaryPlacement: MultiLayPrimaryPlacementState = {
-        placedExchange: formState.exchange_name,
+        placedExchange: leg.exchangeName || formState.exchange_name,
         placedLayOdds: formState.lay_odds_1,
         placedMatchedStake: effectiveStake,
         placementState: "placed",
@@ -5681,7 +5982,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             standardLayStake: leg.standardLay,
             underlayStake: leg.underlayLay,
             liability: leg.liability,
-            placedExchange: formState.exchange_name,
+            placedExchange: leg.exchangeName || formState.exchange_name,
             placedLayOdds: outcome.layOdds,
             placedMatchedStake: effectiveStake,
             placementState: "placed" as const,
@@ -5699,6 +6000,97 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     });
   }
 
+  function updatePrimaryMultiLayOutcomeLabel(value: string) {
+    const nextLabel = sanitizeMultiLayOutcomeLabel(value);
+    setMultiLayOutcome1Label(nextLabel);
+    setFormState((current) => ({
+      ...current,
+      multi_lay_outcome_1_name: nextLabel,
+    }));
+  }
+
+  function isMultiLayPartialEntryOpen(
+    branchKey: string,
+    matchedStake: string,
+    targetStake: string | undefined
+  ) {
+    if (partialMultiLayBranches.has(branchKey)) {
+      return true;
+    }
+
+    const matched = parseNumericInput(matchedStake);
+    const target = targetStake ? parseNumericInput(targetStake) : null;
+    return matched !== null && target !== null && matched < target - 0.005;
+  }
+
+  function setMultiLayPartialEntry(branchKey: string, enabled: boolean, targetStake: string | undefined) {
+    setPartialMultiLayBranches((current) => {
+      const next = new Set(current);
+      if (enabled) {
+        next.add(branchKey);
+      } else {
+        next.delete(branchKey);
+      }
+      return next;
+    });
+
+    const nextMatchedStake = targetStake || "";
+    const nextPlacementState = targetStake ? "placed" : "pending";
+
+    if (branchKey === "outcome1") {
+      setMultiLayPrimaryPlacement((current) => ({
+        ...current,
+        placedMatchedStake: nextMatchedStake,
+        placementState: nextPlacementState,
+      }));
+      return;
+    }
+
+    setMultiLayOutcomes((current) =>
+      current.map((entry) =>
+        entry.id === branchKey
+          ? {
+              ...entry,
+              placedMatchedStake: nextMatchedStake,
+              placementState: nextPlacementState,
+            }
+          : entry
+      )
+    );
+  }
+
+  function resetMultiLayPartialEntry(branchKey: string, targetStake: string | undefined) {
+    setPartialMultiLayBranches((current) => {
+      const next = new Set(current);
+      next.delete(branchKey);
+      return next;
+    });
+
+    const nextMatchedStake = targetStake || "";
+    const nextPlacementState = targetStake ? "placed" : "pending";
+
+    if (branchKey === "outcome1") {
+      setMultiLayPrimaryPlacement((current) => ({
+        ...current,
+        placedMatchedStake: nextMatchedStake,
+        placementState: nextPlacementState,
+      }));
+      return;
+    }
+
+    setMultiLayOutcomes((current) =>
+      current.map((entry) =>
+        entry.id === branchKey
+          ? {
+              ...entry,
+              placedMatchedStake: nextMatchedStake,
+              placementState: nextPlacementState,
+            }
+          : entry
+      )
+    );
+  }
+
   function addMultiLayOutcome() {
     setMultiLayOutcomes((current) => {
       const nextIndex = current.length + 2;
@@ -5708,12 +6100,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           id: createMultiLayOutcomeId(nextIndex),
           label: "",
           layOdds: "",
+          placedExchange: formState.exchange_name || exchangeOptions[0] || "",
+          placedLayOdds: "",
+          placedMatchedStake: "",
+          placementState: "pending",
         },
       ];
     });
   }
 
   function removeMultiLayOutcome(outcomeId: string) {
+    setPartialMultiLayBranches((current) => {
+      const next = new Set(current);
+      next.delete(outcomeId);
+      return next;
+    });
     setMultiLayOutcomes((current) => {
       if (current.length <= 1) {
         return current;
@@ -6448,7 +6849,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         rows.find((row) => row.sportsbook_bet_id === outcomeModalState.rowId)?.match_strategy ?? "",
                         rows.find((row) => row.sportsbook_bet_id === outcomeModalState.rowId)?.bonus_trigger ?? ""
                       )
-                    : sportsbookResultOptions.map((option) => ({ value: option, label: option }))).map((option) => (
+                    : getSportsbookResultOptions("", "", "")).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -6512,6 +6913,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 className="editor-compact-summary"
                 data-pd-id="sportsbook.editor.compact-summary"
               >
+                <span
+                  className="table-chip editor-summary-value-chip"
+                  title={`${activeDisplayedValueLabel}: ${formatPreviewFinancialValue(activeDisplayedValue)}`}
+                >
+                  {activeDisplayedNumericValue === null ? (
+                    <span className="ledger-financial-value ledger-financial-value-unavailable">
+                      £ -
+                    </span>
+                  ) : (
+                    <FinancialValue
+                      animate={false}
+                      className="ledger-financial-value editor-summary-financial-value"
+                      label={activeDisplayedValueLabel}
+                      value={activeDisplayedNumericValue}
+                    />
+                  )}
+                </span>
                 <span className="table-chip">{formState.status || "Prospecting"}</span>
                 {showMatchRatingPill && activeMatchRatingDisplay ? (
                   <span
@@ -6568,6 +6986,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     Next
                   </button>
                 </div>
+                <button
+                  aria-label="Close sportsbook editor"
+                  className="workflow-editor-cancel-button"
+                  onClick={() => void closeEditor()}
+                  title="Close editor"
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                </button>
               </div>
               <LedgerEditorTabRail
                 activeTabId={safeActiveEditorTabId}
@@ -6577,12 +7004,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 tabs={editorTabs}
               />
             </div>
+            <div className="workflow-editor-body">
           {guidedEntryVisible ? (
             <section
               aria-label="Sportsbook guided entry"
-              className={`guided-entry-banner guided-entry-banner-${guidedEntry.state}`}
+              className={`guided-entry-banner guided-entry-banner-${safeGuidedEntry.state}`}
               data-pd-id="sportsbook.guided-entry"
-              key={`${guidedEntry.state}:${guidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
+              key={`${safeGuidedEntry.state}:${safeGuidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
               role="status"
             >
               <button
@@ -6590,10 +7018,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 onClick={focusGuidedEntryTarget}
                 type="button"
               >
-                <span className="eyebrow">
-                  {guidedEntry.state === "review_required" ? "Review required" : "Next required"}
-                </span>
-                <strong id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+                    <span className="eyebrow">
+                      {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
+                    </span>
+                <strong
+                  aria-label={guidedEntryPlainInstruction}
+                  id={guidedEntryMessageId}
+                >
+                  {renderGuidedEntryInstruction()}
+                </strong>
               </button>
               <button
                 aria-label="Dismiss sportsbook guided entry"
@@ -6607,7 +7040,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 </span>
               </button>
             </section>
-          ) : guidedEntryDismissed && guidedEntry.state !== "complete" ? (
+          ) : guidedAccessEnabled && guidedEntryDismissed && safeGuidedEntry.state !== "complete" ? (
             <button
               className="button-link guided-entry-restore"
               data-pd-id="sportsbook.guided-entry.restore"
@@ -6622,7 +7055,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <EditorSection
               collapsible={false}
               headerAside={
-                isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+                renderEditorSectionAside()
               }
               invalid={betSetupValidationActive && missingBetSetupFields.length > 0}
               title="Bet Setup"
@@ -7034,13 +7467,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
             <EditorSection
               collapsible={false}
-              headerAside={
-                isSettledReadOnly ? (
-                  <span className="section-lock-chip">Settled row locked</span>
-                ) : !calculatorUnlocked ? (
+              headerAside={renderEditorSectionAside(
+                !isSettledReadOnly && !calculatorUnlocked ? (
                   <span className="section-lock-chip">Complete bet setup</span>
                 ) : null
-              }
+              )}
               invalid={
                 (calculatorUnlocked && missingCalculatorFields.length > 0) ||
                 (betSetupValidationActive &&
@@ -7094,23 +7525,40 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       {calculatorUnlocked &&
                       !isPreviewReady &&
                       missingCalculatorFields.length > 0 ? (
-                        <EditorValidationBanner
-                          dismissKey={calculatorValidationBannerKey}
-                          id="sportsbook.editor.calculator-validation"
-                          message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
-                          title="Calculator inputs incomplete"
-                        />
-                      ) : null}
-                      <div className="form-grid calculator-input-grid">
-                        {calculatorRuleItems.length > 0 ? (
-                          <div className="calculator-rule-row field-span-2" role="list" aria-label="Calculator branch rules">
-                            {calculatorRuleItems.map((item) => (
-                              <span className="calculator-rule-chip" key={item} role="listitem">
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+	                        <EditorValidationBanner
+	                          dismissKey={calculatorValidationBannerKey}
+	                          id="sportsbook.editor.calculator-validation"
+	                          message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
+	                          title="Calculator inputs incomplete"
+	                        />
+	                      ) : null}
+	                      <div className="ledger-calculator-mode-bar" data-pd-id="sportsbook.matching.calculator-mode">
+	                        <label className="field-control ledger-calculator-mode-field">
+	                          <span>Calculator Type</span>
+	                          <input
+	                            aria-label="Sportsbook calculator bet type"
+	                            readOnly
+	                            value={isFreeBetAwardableRow ? "Qualifying" : formState.offer_type || "Normal"}
+	                          />
+	                        </label>
+	                        <label className="field-control ledger-calculator-mode-field">
+	                          <span>Lay mode</span>
+	                          <select
+	                            aria-label="Sportsbook lay workflow mode"
+	                            onChange={(event) =>
+	                              applyLayWorkflowMode(event.target.value as LayWorkflowMode)
+	                            }
+	                            value={layWorkflowMode}
+	                          >
+                              {sportsbookLayWorkflowModeOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option === "Multilay" ? "Multi Lay" : option}
+                                </option>
+                              ))}
+	                          </select>
+	                        </label>
+	                      </div>
+	                      <div className="form-grid calculator-input-grid">
                         <div className="field-span-2 calculator-segment calculator-segment-back">
                           <div className="calculator-segment-heading">
                             <span className="eyebrow">Back bet</span>
@@ -7144,12 +7592,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               <span>Back stake</span>
                               <input
                                 aria-describedby={getGuidedDescribedBy("back_stake")}
-                                aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back stake")}
-                                onChange={(event) =>
-                                  setFormState((current) => ({ ...current, back_stake: event.target.value }))
-                                }
-                                value={formState.back_stake}
-                              />
+	                                aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back stake")}
+	                                inputMode="decimal"
+	                                onChange={(event) => updateDecimalFormField("back_stake", event.target.value)}
+	                                value={formState.back_stake}
+	                              />
                             </label>
                             {!isProfitBoostOffer || formState.profit_boost_mode === "displayed_odds" ? (
                               <label
@@ -7172,14 +7619,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                       field === "Back odds" || field === "Boosted back odds"
                                     )
                                   }
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      back_odds: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.back_odds}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("back_odds", event.target.value)}
+	                                  value={formState.back_odds}
+	                                />
                               </label>
                             ) : (
                               <>
@@ -7192,14 +7635,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 >
                                   <span>Base back odds</span>
                                   <input
-                                    onChange={(event) =>
-                                      setFormState((current) => ({
-                                        ...current,
-                                        base_back_odds: event.target.value,
-                                      }))
-                                    }
-                                    value={formState.base_back_odds}
-                                  />
+	                                    inputMode="decimal"
+	                                    onChange={(event) => updateDecimalFormField("base_back_odds", event.target.value)}
+	                                    value={formState.base_back_odds}
+	                                  />
                                 </label>
                                 <label
                                   className={`field-control${
@@ -7210,26 +7649,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 >
                                   <span>Profit boost %</span>
                                   <input
-                                    onChange={(event) =>
-                                      setFormState((current) => ({
-                                        ...current,
-                                        profit_boost_percent: event.target.value,
-                                      }))
-                                    }
-                                    value={formState.profit_boost_percent}
-                                  />
+	                                    inputMode="decimal"
+	                                    onChange={(event) => updateDecimalFormField("profit_boost_percent", event.target.value)}
+	                                    value={formState.profit_boost_percent}
+	                                  />
                                 </label>
                                 <label className="field-control">
                                   <span>Maximum boost winnings</span>
                                   <input
-                                    onChange={(event) =>
-                                      setFormState((current) => ({
-                                        ...current,
-                                        maximum_boost_winnings: event.target.value,
-                                      }))
-                                    }
-                                    value={formState.maximum_boost_winnings}
-                                  />
+	                                    inputMode="decimal"
+	                                    onChange={(event) => updateDecimalFormField("maximum_boost_winnings", event.target.value)}
+	                                    value={formState.maximum_boost_winnings}
+	                                  />
                                 </label>
                               </>
                             )}
@@ -7237,14 +7668,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               <label className="field-control">
                                 <span>Actual accepted back odds</span>
                                 <input
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      actual_accepted_back_odds: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.actual_accepted_back_odds}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("actual_accepted_back_odds", event.target.value)}
+	                                  value={formState.actual_accepted_back_odds}
+	                                />
                               </label>
                             ) : null}
                             {isProfitBoostOffer && previewCalculation?.effective_back_odds ? (
@@ -7342,29 +7769,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           ) : null}
                         </div>
 
+                        {!isNoLayStrategy && !usesMultiLayStrategy ? (
                         <div className="field-span-2 calculator-segment calculator-segment-lay">
                           <div className="calculator-segment-heading">
                             <span className="eyebrow">Lay / exchange</span>
+                            <span
+                              className={`table-chip${
+                                editorLayStatus === "Fully Laid"
+                                  ? " table-chip-lay-full"
+                                  : editorLayStatus === "Part Laid"
+                                    ? " table-chip-lay-partial"
+                                    : " table-chip-muted"
+                              }`}
+                            >
+                              {editorLayStatus}
+                            </span>
                           </div>
                           <div className="calculator-segment-grid calculator-segment-grid-lay">
-                            <label className="field-control">
-                              <span>Strategy</span>
-                              <select
-                                onChange={(event) =>
-                                  void applyDropdownChange(
-                                    (current) => applyStrategyDefaults(current, event.target.value),
-                                    "Strategy change"
-                                  )
-                                }
-                                value={usesMultiLayStrategy ? "Multilay" : formState.match_strategy}
-                              >
-                                {visibleSportsbookStrategyOptions.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option === "Multilay" ? "Multi Lay" : option}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
                             {!isNoLayStrategy ? (
                               <label
                                 className={`${getGuidedFieldClass("exchange")}${
@@ -7408,14 +7829,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <input
                                   aria-describedby={getGuidedDescribedBy("lay_odds_1")}
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      lay_odds_1: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.lay_odds_1}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("lay_odds_1", event.target.value)}
+	                                  value={formState.lay_odds_1}
+	                                />
                               </label>
                             ) : null}
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
@@ -7431,14 +7848,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <input
                                   aria-describedby={getGuidedDescribedBy("lay_actual")}
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      lay_actual: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.lay_actual}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("lay_actual", event.target.value)}
+	                                  value={formState.lay_actual}
+	                                />
                               </label>
                             ) : null}
                             {isCashbackOffer ? (
@@ -7486,14 +7899,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <span>Maximum bonus</span>
                                 <input
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Maximum bonus")}
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      maximum_bonus: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.maximum_bonus}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("maximum_bonus", event.target.value)}
+	                                  value={formState.maximum_bonus}
+	                                />
                               </label>
                             ) : null}
                             {isRefundOffer ? (
@@ -7507,108 +7916,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <span>Bonus retention %</span>
                                 <input
                                   aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Bonus retention %")}
-                                  onChange={(event) =>
-                                    setFormState((current) => ({
-                                      ...current,
-                                      bonus_retention_rate: event.target.value,
-                                    }))
-                                  }
-                                  value={formState.bonus_retention_rate}
-                                />
+	                                  inputMode="decimal"
+	                                  onChange={(event) => updateDecimalFormField("bonus_retention_rate", event.target.value)}
+	                                  value={formState.bonus_retention_rate}
+	                                />
                               </label>
                             ) : null}
                           </div>
-
-                          {isCustomStrategy && !usesMultiLayStrategy ? (
-                            <div className="content-subpanel stack custom-slider-panel" aria-label="Custom lay slider">
-                              <div className="section-heading-row">
-                                <span className="eyebrow">Custom lay slider</span>
-                                {formState.lay_actual.trim() ? (
-                                  <span className="table-chip">
-                                    {formState.lay_actual}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="custom-slider-row">
-                                <label className="field-control custom-slider-range-label">
-                                  <span>Min</span>
-                                  <input
-                                    min="0.01"
-                                    onChange={(event) => setCustomSliderMin(event.target.value)}
-                                    step="0.01"
-                                    type="number"
-                                    value={
-                                      customSliderMin ||
-                                      String(customSliderEffectiveMin)
-                                    }
-                                  />
-                                </label>
-                                <div className="custom-slider-track-wrap">
-                                  <input
-                                    aria-label="Lay stake slider"
-                                    aria-valuemax={customSliderEffectiveMax}
-                                    aria-valuemin={customSliderEffectiveMin}
-                                    aria-valuenow={customSliderCurrentFloat}
-                                    className="custom-slider-track"
-                                    max={customSliderEffectiveMax}
-                                    min={customSliderEffectiveMin}
-                                    onChange={(event) =>
-                                      setFormState((current) => ({
-                                        ...current,
-                                        lay_actual: event.target.value,
-                                      }))
-                                    }
-                                    step="0.01"
-                                    type="range"
-                                    value={customSliderCurrentFloat}
-                                  />
-                                </div>
-                                <label className="field-control custom-slider-range-label">
-                                  <span>Max</span>
-                                  <input
-                                    min="0.01"
-                                    onChange={(event) => setCustomSliderMax(event.target.value)}
-                                    step="0.01"
-                                    type="number"
-                                    value={
-                                      customSliderMax ||
-                                      String(customSliderEffectiveMax)
-                                    }
-                                  />
-                                </label>
-                              </div>
-                              {customSliderFeedback ? (
-                                <div className="summary-list">
-                                  <p className="lede">
-                                    <span className="summary-label">Liability</span>
-                                    <strong>{customSliderFeedback.liability}</strong>
-                                  </p>
-                                  <p className="lede">
-                                    <span className="summary-label">If back wins</span>
-                                    <strong>{customSliderFeedback.backWinsPnl}</strong>
-                                  </p>
-                                  <p className="lede">
-                                    <span className="summary-label">If lay wins</span>
-                                    <strong>{customSliderFeedback.layWinsPnl}</strong>
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="lede">
-                                  Complete back stake, back odds, and lay odds to see live feedback.
-                                </p>
-                              )}
-                              <div className="tracker-nav">
-                                <button
-                                  className="review-chip review-chip-copy"
-                                  disabled={!formState.lay_actual.trim()}
-                                  onClick={() => void copyCustomSliderValue()}
-                                  type="button"
-                                >
-                                  Copy {formState.lay_actual || "—"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : null}
 
                           {!isNoLayStrategy && !usesMultiLayStrategy ? (
                             <>
@@ -7677,8 +7991,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             </p>
                           ) : null}
                         </div>
+                        ) : null}
 
-                        {!isNoLayStrategy && !usesMultiLayStrategy && partialLayLegs.length > 0 ? (
+                        {shouldShowLayPlacementLegDetails ? (
 	                          <div className="field-span-2 content-subpanel stack partial-lay-panel" aria-label={partialLayPanelTitle}>
 	                            <div className="section-heading-row">
 	                              <span className="eyebrow">{partialLayPanelTitle}</span>
@@ -7830,202 +8145,152 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
                     {!usesMultiLayStrategy ? (
                       <div className="calculator-band calculator-band-secondary sportsbook-calculator-grid">
-                        {!isNoLayStrategy ? (
-                          <div className="calculator-panel-card">
-                            <span className="eyebrow">Suggested lay</span>
-                            {layStakePreview ? (
-                              <div className="stack">
-                                {isCalculatedState ? (
-                                  <div className="tracker-nav">
-                                    <span className="table-chip table-chip-lay-full">Calculated</span>
-                                  </div>
-                                ) : null}
-                                <strong>
-	                                  Best-value lay suggestion ({layStakePreview.modeLabel}): {formatPreviewFinancialValue(layStakePreview.suggested)}
-                                </strong>
-                                <p className="field-help-text">
-                                  Current best-value suggestion from contract-backed lay references.
-                                </p>
-                                <div className="summary-list">
-                                  <p className="lede">
-                                    <span className="summary-label">Standard</span>
-                                    <button
-                                      className="button-link"
-                                      disabled={
-                                        (activePreviewCalculation?.reference_lay_stake_standard ??
-                                          selectedSportsbookRow?.reference_lay_stake_standard ??
-                                          "—") === "—"
-                                      }
-                                      onClick={() => void applySuggestedLayValue("Standard")}
-                                      type="button"
-                                    >
-	                                      {formatPreviewFinancialValue(
-	                                        activePreviewCalculation?.reference_lay_stake_standard ??
-	                                          selectedSportsbookRow?.reference_lay_stake_standard
-	                                      )}
-                                    </button>
-                                  </p>
-                                  <p className="lede">
-                                    <span className="summary-label">Underlay</span>
-                                    <button
-                                      className="button-link"
-                                      disabled={
-                                        (activePreviewCalculation?.reference_lay_stake_underlay ??
-                                          selectedSportsbookRow?.reference_lay_stake_underlay ??
-                                          "—") === "—"
-                                      }
-                                      onClick={() => void applySuggestedLayValue("Underlay")}
-                                      type="button"
-                                    >
-	                                      {formatPreviewFinancialValue(
-	                                        activePreviewCalculation?.reference_lay_stake_underlay ??
-	                                          selectedSportsbookRow?.reference_lay_stake_underlay
-	                                      )}
-                                    </button>
-                                  </p>
-                                  <p className="lede">
-                                    <span className="summary-label">Overlay</span>
-                                    <button
-                                      className="button-link"
-                                      disabled={
-                                        (activePreviewCalculation?.reference_lay_stake_overlay ??
-                                          selectedSportsbookRow?.reference_lay_stake_overlay ??
-                                          "—") === "—"
-                                      }
-                                      onClick={() => void applySuggestedLayValue("Overlay")}
-                                      type="button"
-                                    >
-	                                      {formatPreviewFinancialValue(
-	                                        activePreviewCalculation?.reference_lay_stake_overlay ??
-	                                          selectedSportsbookRow?.reference_lay_stake_overlay
-	                                      )}
-                                    </button>
-                                  </p>
-                                </div>
-                                {visibleCalculationNotes.length > 0 ? (
-                                  <div className="summary-list">
-                                    {visibleCalculationNotes.slice(0, 2).map((note) => (
-                                      <p className="lede" key={note}>
-                                        {note}
-                                      </p>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <p className="lede">{calculatorGuidance}</p>
-                            )}
-                          </div>
-                        ) : null}
-                        <div className="calculator-panel-card">
-                          <span className="eyebrow">
-                            {isDdhhOffer
-                              ? "DD/HH results"
-                              : isCashbackOffer
-                                ? isRefundOffer
-                                  ? "Bonus lock-in results"
-                                  : "Cashback results"
-                                : "Projected outcomes"}
-                          </span>
-                          {isPreviewReady && activePreviewCalculation ? (
-                            <div className="stack">
-                              <strong>
-                                {getDisplayedValueLabel(activePreviewCalculation, null)}:{" "}
-	                                {renderPreviewFinancialValue(getDisplayedValue(activePreviewCalculation, null))}
-                              </strong>
-                              <div className="summary-list">
-                                <p className="lede">
-                                  <span className="summary-label">
-                                    {getOutcomeCardLabel(getOutcomeCardState(formState.result, "back"))}
-                                  </span>
-                                  <span>
-                                    {getScenarioBranchText(
-                                      scenarioBranchLabels.backWinLabel,
-                                      formState.result
-                                    )}
-	                                    : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_back_wins)}
-                                  </span>
-                                </p>
-                                <p className="lede">
-                                  <span className="summary-label">
-                                    {getOutcomeCardLabel(getOutcomeCardState(formState.result, "lay"))}
-                                  </span>
-                                  <span>
-                                    {getScenarioBranchText(
-                                      scenarioBranchLabels.layWinLabel,
-                                      formState.result
-                                    )}
-	                                    : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_lay_wins)}
-                                  </span>
-                                </p>
-                                {scenarioBranchLabels.outcome2Label &&
-                                activePreviewCalculation.scenario_pnl_if_outcome_2_wins !== null ? (
-                                  <p className="lede">
-                                    <span className="summary-label">
-                                      {getOutcomeCardLabel(
-                                        getOutcomeCardState(formState.result, "outcome2")
-                                      )}
-                                    </span>
-                                    <span>
-                                      {getScenarioBranchText(
-                                        scenarioBranchLabels.outcome2Label,
-                                        formState.result
-                                      ) ?? "Outcome 2"}
-	                                      : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_outcome_2_wins)}
-                                    </span>
-                                  </p>
-                                ) : null}
-                                {scenarioBranchLabels.outcome3Label &&
-                                activePreviewCalculation.scenario_pnl_if_outcome_3_wins !== null ? (
-                                  <p className="lede">
-                                    <span className="summary-label">
-                                      {getOutcomeCardLabel(
-                                        getOutcomeCardState(formState.result, "outcome3")
-                                      )}
-                                    </span>
-                                    <span>
-                                      {getScenarioBranchText(
-                                        scenarioBranchLabels.outcome3Label,
-                                        formState.result
-                                      ) ?? "Outcome 3"}
-	                                      : {renderPreviewFinancialValue(activePreviewCalculation.scenario_pnl_if_outcome_3_wins)}
-                                    </span>
-                                  </p>
-                                ) : null}
-                              </div>
-                              {isRefundOffer ? (
-                                <p className="lede">
-                                  Retained bonus assumption:{" "}
-                                  <strong>
-                                    {formState.bonus_retention_rate || defaultBonusRetentionRate}% of{" "}
-                                    {formState.maximum_bonus || formState.back_stake || "0.00"}
-                                  </strong>
-                                </p>
-                              ) : null}
-                              {visibleCalculationNotes.length > 0 ? (
-                                <div className="summary-list">
-                                  {visibleCalculationNotes.slice(0, 2).map((note) => (
-                                    <p className="lede" key={note}>
-                                      {note}
-                                    </p>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <p className="lede">{calculatorGuidance}</p>
-                          )}
-                        </div>
+	                        {!isNoLayStrategy ? (
+	                          <div className="calculator-panel-card calculator-result-panel">
+	                            {layStakePreview ? (
+	                              <div
+	                                className={`calculator-result-card-grid calculator-result-card-grid-${singleLayCalculatorMode.toLowerCase()}`}
+	                                data-pd-id="sportsbook.matching.result-cards"
+	                              >
+	                                {singleLayResultCards.map((card) => (
+	                                  <article
+	                                    className={`calculator-result-card calculator-result-card-${card.mode.toLowerCase()}`}
+	                                    key={card.mode}
+	                                  >
+	                                    <div className="calculator-result-card-heading">
+	                                      <strong>{card.mode}</strong>
+	                                    </div>
+	                                    <dl className="calculator-result-card-values">
+	                                      <div>
+	                                        <dt>Lay Stake</dt>
+	                                        <dd>{formatPreviewFinancialValue(card.layStake)}</dd>
+	                                      </div>
+	                                      <div>
+	                                        <dt>Liability</dt>
+	                                        <dd>{formatPreviewFinancialValue(card.liability)}</dd>
+	                                      </div>
+	                                      <div>
+	                                        <dt>Back Win</dt>
+	                                        <dd>{renderPreviewFinancialValue(card.backWin)}</dd>
+	                                      </div>
+	                                      <div>
+	                                        <dt>Lay Win</dt>
+	                                        <dd>{renderPreviewFinancialValue(card.layWin)}</dd>
+	                                      </div>
+	                                    </dl>
+	                                    {card.mode === "Custom" ? (
+	                                      <div className="custom-slider-card-controls">
+	                                        <div className="custom-slider-row">
+	                                          <label className="field-control custom-slider-range-label">
+	                                            <span>Min</span>
+	                                            <input
+	                                              inputMode="decimal"
+	                                              min="0.01"
+	                                              onChange={(event) => {
+	                                                if (isDecimalCalculatorInput(event.target.value)) {
+	                                                  setCustomSliderMin(event.target.value);
+	                                                }
+	                                              }}
+	                                              step="0.01"
+	                                              type="number"
+	                                              value={customSliderMin || formatPreviewMoney(customSliderEffectiveMin)}
+	                                            />
+	                                          </label>
+	                                          <div className="custom-slider-track-wrap">
+	                                            <input
+	                                              aria-label="Custom lay stake slider"
+	                                              aria-valuemax={customSliderBoundedMax}
+	                                              aria-valuemin={customSliderEffectiveMin}
+	                                              aria-valuenow={customSliderCurrentFloat}
+	                                              className="custom-slider-track"
+	                                              max={customSliderBoundedMax}
+	                                              min={customSliderEffectiveMin}
+	                                              onBlur={(event) => commitCustomSliderValue(event.target.value)}
+	                                              onChange={(event) => {
+	                                                setCustomSliderDraftValue(
+	                                                  formatPreviewMoney(Number(event.target.value))
+	                                                );
+	                                              }}
+	                                              onKeyUp={(event) => {
+	                                                if (
+	                                                  [
+	                                                    "ArrowLeft",
+	                                                    "ArrowRight",
+	                                                    "Home",
+	                                                    "End",
+	                                                    "PageUp",
+	                                                    "PageDown",
+	                                                  ].includes(event.key)
+	                                                ) {
+	                                                  commitCustomSliderValue(event.currentTarget.value);
+	                                                }
+	                                              }}
+	                                              onPointerUp={(event) =>
+	                                                commitCustomSliderValue(event.currentTarget.value)
+	                                              }
+	                                              step="0.01"
+	                                              type="range"
+	                                              value={customSliderCurrentFloat}
+	                                            />
+	                                          </div>
+	                                          <label className="field-control custom-slider-range-label">
+	                                            <span>Max</span>
+	                                            <input
+	                                              inputMode="decimal"
+	                                              min="0.01"
+	                                              onChange={(event) => {
+	                                                if (isDecimalCalculatorInput(event.target.value)) {
+	                                                  setCustomSliderMax(event.target.value);
+	                                                }
+	                                              }}
+	                                              step="0.01"
+	                                              type="number"
+	                                              value={customSliderMax || formatPreviewMoney(customSliderBoundedMax)}
+	                                            />
+	                                          </label>
+	                                        </div>
+	                                      </div>
+	                                    ) : null}
+	                                    <button
+	                                      className="review-chip review-chip-copy calculator-result-copy"
+	                                      disabled={!card.canCopy || layFullyConfirmed}
+	                                      onClick={() =>
+	                                        card.mode === "Custom"
+	                                          ? void applyCustomLayValue()
+	                                          : void applySuggestedLayValue(card.mode)
+	                                      }
+	                                      type="button"
+	                                    >
+	                                      <span aria-hidden="true" className="material-symbols-outlined">
+	                                        copy_all
+	                                      </span>
+	                                      <span>Copy</span>
+	                                    </button>
+	                                  </article>
+	                                ))}
+	                              </div>
+	                            ) : (
+	                              <p className="lede">{calculatorGuidance}</p>
+	                            )}
+	                            {calculatorCopyFeedback ? (
+	                              <p className="calculator-copy-feedback" role="status">
+	                                <span aria-hidden="true" className="material-symbols-outlined">
+	                                  check_circle
+	                                </span>
+	                                <span>{calculatorCopyFeedback}</span>
+	                              </p>
+	                            ) : null}
+	                          </div>
+	                        ) : null}
                       </div>
                     ) : (
-                      <div className="calculator-band calculator-band-secondary calculator-band-single">
-                        <div className="calculator-panel-card">
-                          <span className="eyebrow">Multi-lay planner</span>
+                      <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
+                        <div className="calculator-panel-card calculator-panel-card-multilay">
+                          <div className="multi-lay-calculator-title-row">
+                            <span className="eyebrow">Multi-Lay Calculator</span>
+                          </div>
                           <div className="stack">
-                            <div className="tracker-nav">
-                              <span className="table-chip">
-                                {getCalculationStateLabel(activeCalculationState)}
-                              </span>
+                            <div className="multi-lay-planner-toolbar">
                               <button
                                 aria-checked={formState.match_strategy === "Multilay-Underlay"}
                                 className={`material-switch${
@@ -8051,7 +8316,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 </span>
                                 <span>Underlay</span>
                               </button>
-                              <span className="table-chip">{multiLayPlacementStatus}</span>
+                              <span
+                                className={`table-chip${
+                                  visibleMultiLayPlacementStatus === "Fully Laid"
+                                    ? " table-chip-lay-full"
+                                    : visibleMultiLayPlacementStatus === "Part Laid"
+                                      ? " table-chip-lay-partial"
+                                      : ""
+                                }`}
+                              >
+                                {visibleMultiLayPlacementStatus}
+                              </span>
                             </div>
                             <div
                               aria-describedby={getGuidedDescribedBy("multi_lay_outcomes")}
@@ -8061,15 +8336,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                   : ""
                               }`}
                             >
+                              <div className="multi-lay-table-heading">Outcome Table</div>
                               <table className="data-table multi-lay-planner-grid">
                                 <thead>
                                   <tr>
                                     <th>#</th>
                                     <th>Outcome</th>
+                                    <th>Exchange</th>
                                     <th>Odds</th>
-                                    <th>Comm %</th>
-                                    <th>Lay Stake</th>
-                                    {formState.match_strategy === "Multilay-Underlay" ? <th>Underlay Stake</th> : null}
+                                    <th>
+                                      <span className="multi-lay-column-label">
+                                        {formState.match_strategy === "Multilay-Underlay"
+                                          ? "Underlay Stake"
+                                          : "Lay Stake"}
+                                      </span>
+                                    </th>
                                     <th>Liability</th>
                                     <th>Actions</th>
                                   </tr>
@@ -8083,13 +8364,30 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                         <input
                                           placeholder="Outcome 1 name"
                                           onChange={(event) =>
-                                            setMultiLayOutcome1Label(
-                                              sanitizeMultiLayOutcomeLabel(event.target.value)
-                                            )
+                                            updatePrimaryMultiLayOutcomeLabel(event.target.value)
                                           }
                                           maxLength={20}
                                           value={multiLayOutcome1Label}
                                         />
+                                      </label>
+                                    </td>
+                                    <td>
+                                      <label className={`${getGuidedFieldClass("exchange")} multi-lay-branch-exchange`}>
+                                        <span className="sr-only">Outcome 1 exchange</span>
+                                        <select
+                                          aria-describedby={getGuidedDescribedBy("exchange")}
+                                          onChange={(event) =>
+                                            updateMultiLayPlacementField("outcome1", "placedExchange", event.target.value)
+                                          }
+                                          value={multiLayPrimaryPlacement.placedExchange || formState.exchange_name}
+                                        >
+                                          <option value="">Select exchange</option>
+                                          {exchangeOptions.map((option) => (
+                                            <option key={option} value={option}>
+                                              {option}
+                                            </option>
+                                          ))}
+                                        </select>
                                       </label>
                                     </td>
                                     <td>
@@ -8112,28 +8410,72 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                         />
                                       </label>
                                     </td>
-                                    <td>{resolvedCommission || "—"}</td>
                                     <td>
-                                      {multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")?.standardLay ?? "—"}
+                                      <div className="multi-lay-stake-cell">
+                                        {multiLayPrimaryPartialOpen ? (
+                                          <div className="multi-lay-partial-edit">
+                                            <label className="field-control multi-lay-partial-input">
+                                              <span className="sr-only">Outcome 1 currently matched lay stake</span>
+                                              <input
+                                                inputMode="decimal"
+                                                onChange={(event) => {
+                                                  updateMultiLayPlacementField(
+                                                    "outcome1",
+                                                    "placedMatchedStake",
+                                                    event.target.value
+                                                  );
+                                                  updateMultiLayPlacementField(
+                                                    "outcome1",
+                                                    "placementState",
+                                                    parseNumericInput(event.target.value) !== null ? "placed" : "pending"
+                                                  );
+                                                }}
+                                                value={multiLayPrimaryPlacement.placedMatchedStake}
+                                              />
+                                            </label>
+                                            <button
+                                              aria-label="Reset outcome 1 partial lay to calculated stake"
+                                              className="icon-button multi-lay-partial-reset"
+                                              onClick={() => resetMultiLayPartialEntry("outcome1", multiLayPrimaryEffectiveStake)}
+                                              title="Reset partial lay"
+                                              type="button"
+                                            >
+                                              <span aria-hidden="true" className="material-symbols-outlined">
+                                                restart_alt
+                                              </span>
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          renderNeutralPreviewFinancialValue(multiLayPrimaryEffectiveStake)
+                                        )}
+                                        <label className="multi-lay-partial-control">
+                                          <input
+                                            checked={multiLayPrimaryPartialOpen}
+                                            onChange={(event) => {
+                                              setMultiLayPartialEntry(
+                                                "outcome1",
+                                                event.target.checked,
+                                                multiLayPrimaryEffectiveStake
+                                              );
+                                            }}
+                                            type="checkbox"
+                                          />
+                                          <span>Partial</span>
+                                        </label>
+                                      </div>
                                     </td>
-                                    {formState.match_strategy === "Multilay-Underlay" ? (
-                                      <td>
-                                        {multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")?.underlayLay ?? "—"}
-                                      </td>
-                                    ) : null}
                                     <td>
-                                      {multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")?.liability ?? "—"}
+                                      {renderNeutralPreviewFinancialValue(multiLayPrimaryLeg?.liability)}
                                     </td>
                                     <td>
                                       <div className="multi-lay-row-actions">
                                         <button
                                           aria-label="Copy lay for outcome 1 and mark placed"
                                           className="icon-button multi-lay-action-button"
-                                          disabled={!multiLayPlannerSummary?.legs.find((leg) => leg.key === "outcome1")}
+                                          disabled={!multiLayPrimaryLeg}
                                           onClick={() => {
-                                            const leg = multiLayPlannerSummary?.legs.find((entry) => entry.key === "outcome1");
-                                            if (leg) {
-                                              void copyMultiLayStake(leg);
+                                            if (multiLayPrimaryLeg) {
+                                              void copyMultiLayStake(multiLayPrimaryLeg);
                                             }
                                           }}
                                           title="Copy lay and mark placed"
@@ -8149,6 +8491,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                   </tr>
                                   {multiLayOutcomes.map((outcome, index) => {
                                     const leg = multiLayPlannerSummary?.legs.find((entry) => entry.key === outcome.id);
+                                    const effectiveStake = leg
+                                      ? getEffectiveMultiLayStakeForLeg(formState.match_strategy, leg)
+                                      : undefined;
+                                    const partialEntryOpen = isMultiLayPartialEntryOpen(
+                                      outcome.id,
+                                      outcome.placedMatchedStake || "",
+                                      effectiveStake
+                                    );
                                     return (
                                       <tr key={outcome.id}>
                                         <td>{index + 2}</td>
@@ -8175,6 +8525,31 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                           </label>
                                         </td>
                                         <td>
+                                          <label className={`${getGuidedFieldClass("exchange")} multi-lay-branch-exchange`}>
+                                            <span className="sr-only">{`Outcome ${index + 2} exchange`}</span>
+                                            <select
+                                              aria-describedby={getGuidedDescribedBy("exchange")}
+                                              onChange={(event) =>
+                                                setMultiLayOutcomes((current) =>
+                                                  current.map((entry) =>
+                                                    entry.id === outcome.id
+                                                      ? { ...entry, placedExchange: event.target.value }
+                                                      : entry
+                                                  )
+                                                )
+                                              }
+                                              value={outcome.placedExchange || formState.exchange_name}
+                                            >
+                                              <option value="">Select exchange</option>
+                                              {exchangeOptions.map((option) => (
+                                                <option key={option} value={option}>
+                                                  {option}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </label>
+                                        </td>
+                                        <td>
                                           <label className="field-control">
                                             <span className="sr-only">{`Outcome ${index + 2} lay odds`}</span>
                                             <input
@@ -8194,16 +8569,69 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                                   )
                                                 )
                                               }
-                                              value={outcome.layOdds}
-                                            />
-                                          </label>
+                                            value={outcome.layOdds}
+                                          />
+                                        </label>
+                                      </td>
+                                        <td>
+                                          <div className="multi-lay-stake-cell">
+                                            {partialEntryOpen ? (
+                                              <div className="multi-lay-partial-edit">
+                                                <label className="field-control multi-lay-partial-input">
+                                                  <span className="sr-only">{`Outcome ${index + 2} currently matched lay stake`}</span>
+                                                  <input
+                                                    inputMode="decimal"
+                                                    onChange={(event) =>
+                                                      setMultiLayOutcomes((current) =>
+                                                        current.map((entry) =>
+                                                          entry.id === outcome.id
+                                                            ? {
+                                                                ...entry,
+                                                                placedMatchedStake: event.target.value,
+                                                                placementState:
+                                                                  parseNumericInput(event.target.value) !== null
+                                                                    ? "placed"
+                                                                    : "pending",
+                                                              }
+                                                            : entry
+                                                        )
+                                                      )
+                                                    }
+                                                    value={outcome.placedMatchedStake || ""}
+                                                  />
+                                                </label>
+                                                <button
+                                                  aria-label={`Reset ${outcome.label || `outcome ${index + 2}`} partial lay to calculated stake`}
+                                                  className="icon-button multi-lay-partial-reset"
+                                                  onClick={() => resetMultiLayPartialEntry(outcome.id, effectiveStake)}
+                                                  title="Reset partial lay"
+                                                  type="button"
+                                                >
+                                                  <span aria-hidden="true" className="material-symbols-outlined">
+                                                    restart_alt
+                                                  </span>
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              renderNeutralPreviewFinancialValue(effectiveStake)
+                                            )}
+                                            <label className="multi-lay-partial-control">
+                                              <input
+                                                checked={partialEntryOpen}
+                                                onChange={(event) =>
+                                                  setMultiLayPartialEntry(
+                                                    outcome.id,
+                                                    event.target.checked,
+                                                    effectiveStake
+                                                  )
+                                                }
+                                                type="checkbox"
+                                              />
+                                              <span>Partial</span>
+                                            </label>
+                                          </div>
                                         </td>
-                                        <td>{resolvedCommission || "—"}</td>
-                                        <td>{leg?.standardLay ?? "—"}</td>
-                                        {formState.match_strategy === "Multilay-Underlay" ? (
-                                          <td>{leg?.underlayLay ?? "—"}</td>
-                                        ) : null}
-                                        <td>{leg?.liability ?? "—"}</td>
+                                        <td>{renderNeutralPreviewFinancialValue(leg?.liability)}</td>
                                         <td>
                                           <div className="multi-lay-row-actions">
                                             <button
@@ -8245,7 +8673,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 </tbody>
                               </table>
                             </div>
-                            <div className="tracker-nav">
+                            <div className="tracker-nav multi-lay-add-row">
                               <button className="button-link" onClick={addMultiLayOutcome} type="button">
                                 Add outcome
                               </button>
@@ -8253,15 +8681,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           </div>
                           {multiLayPlannerSummary ? (
                             <div className="stack">
-                              <p className="lede">
-                                Your total liability is{" "}
-                                <strong>{multiLayPlannerSummary.totalLiability}</strong>.
-                              </p>
-                              <p className="lede">
-                                Conservative current value:{" "}
-                                <strong>{multiLayPlannerSummary.currentValue}</strong>.
-                              </p>
                               <div className="multi-lay-grid-wrap">
+                                <div className="multi-lay-table-heading">Result Table</div>
                                 <table className="data-table multi-lay-results-grid">
                                   <thead>
                                     <tr>
@@ -8277,27 +8698,29 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                     {multiLayResultsGridRows.map((row) => (
                                       <tr key={row.key}>
                                         <td>{row.outcomeLabel}</td>
-                                        <td>{row.bookmakerValue}</td>
+                                        <td>{renderPreviewFinancialValue(row.bookmakerValue)}</td>
                                         {multiLayPlannerSummary.legs.map((leg) => (
                                           <td key={`${row.key}-${leg.key}`}>
-                                            {row.branchValues[leg.key] ?? "—"}
+                                            {renderPreviewFinancialValue(row.branchValues[leg.key])}
                                           </td>
                                         ))}
-                                        <td>{row.profit}</td>
+                                        <td>{renderPreviewFinancialValue(row.profit)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
+                                  <tfoot>
+                                    <tr>
+                                      <td colSpan={multiLayPlannerSummary.legs.length + 3}>
+                                        <span className="multi-lay-heading-values">
+                                          Liability {renderNeutralPreviewFinancialValue(multiLayPlannerSummary.totalLiability)}
+                                          <span aria-hidden="true"> · </span>
+                                          Current {renderPreviewFinancialValue(multiLayPlannerSummary.currentValue)}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  </tfoot>
                                 </table>
                               </div>
-                              {activeCalculationNotes.length > 0 ? (
-                                <div className="summary-list">
-                                  {activeCalculationNotes.slice(0, 2).map((note) => (
-                                    <p className="lede" key={note}>
-                                      {note}
-                                    </p>
-                                  ))}
-                                </div>
-                              ) : null}
                             </div>
                           ) : (
                             <p className="lede">{calculatorGuidance}</p>
@@ -8316,7 +8739,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               <EditorSection
                 collapsible={false}
                 headerAside={
-                  isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+                  renderEditorSectionAside()
                 }
                 invalid={
                   betSetupValidationActive &&
@@ -8605,6 +9028,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <EditorSection
               collapsible={false}
               defaultOpen={Boolean(selectedId)}
+              headerAside={renderEditorSectionAside()}
               key={selectedId ?? "sportsbook-settlement-new"}
               title="Settlement"
             >
@@ -8666,6 +9090,24 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       </div>
                     ) : null}
                   </label>
+                  <label className="field-control">
+                    <span>Result</span>
+                    <select
+                      onChange={(event) =>
+                        void applyDropdownChange(
+                          (current) => applyResultDefaults(current, event.target.value),
+                          "Result change"
+                        )
+                      }
+                      value={formState.result}
+                    >
+                      {resultOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   {quickSettlementOptions.length > 0 ? (
                     <div
                       aria-label="Quick settlement outcomes"
@@ -8691,24 +9133,102 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       ))}
                     </div>
                   ) : null}
-                  <label className="field-control">
-                    <span>Result</span>
-                    <select
-                      onChange={(event) =>
-                        void applyDropdownChange(
-                          (current) => applyResultDefaults(current, event.target.value),
-                          "Result change"
-                        )
+                  {isPreviewReady && activePreviewCalculation ? (
+                    <section
+                      aria-label={
+                        settlementHasFinalOutcome
+                          ? "Final settlement value"
+                          : "Potential settlement outcomes"
                       }
-                      value={formState.result}
+                      className={`settlement-outcome-panel field-span-2${
+                        settlementHasFinalOutcome ? " settlement-outcome-panel-final" : ""
+                      }`}
+                      data-pd-id="sportsbook.settlement.outcomes"
                     >
-                      {resultOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      <div className="settlement-outcome-primary">
+                        <span className="eyebrow">
+                          {settlementHasFinalOutcome ? "Final value" : "Current value"}
+                        </span>
+                        <strong>{renderPreviewFinancialValue(settlementPrimaryValue)}</strong>
+                      </div>
+                      {settlementHasFinalOutcome ? (
+                        <div className="settlement-outcome-status">
+                          <span className="summary-label">Outcome</span>
+                          <strong>{formState.result}</strong>
+                        </div>
+                      ) : usesMultiLayStrategy && multiLayPlannerSummary ? (
+                        <div className="settlement-outcome-grid" aria-label="Potential multi-lay outcomes">
+                          {multiLayResultsGridRows.map((row) => (
+                            <div className="settlement-outcome-card" key={row.key}>
+                              <span className="summary-label">{row.outcomeLabel}</span>
+                              <strong>{renderPreviewFinancialValue(row.profit)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="settlement-outcome-grid" aria-label="Potential outcomes">
+                          <div className="settlement-outcome-card">
+                            <span className="summary-label">
+                              {getScenarioBranchText(
+                                scenarioBranchLabels.backWinLabel,
+                                formState.result
+                              )}
+                            </span>
+                            <strong>
+                              {renderPreviewFinancialValue(
+                                activePreviewCalculation.scenario_pnl_if_back_wins
+                              )}
+                            </strong>
+                          </div>
+                          <div className="settlement-outcome-card">
+                            <span className="summary-label">
+                              {getScenarioBranchText(
+                                scenarioBranchLabels.layWinLabel,
+                                formState.result
+                              )}
+                            </span>
+                            <strong>
+                              {renderPreviewFinancialValue(
+                                activePreviewCalculation.scenario_pnl_if_lay_wins
+                              )}
+                            </strong>
+                          </div>
+                          {scenarioBranchLabels.outcome2Label &&
+                          activePreviewCalculation.scenario_pnl_if_outcome_2_wins !== null ? (
+                            <div className="settlement-outcome-card">
+                              <span className="summary-label">
+                                {getScenarioBranchText(
+                                  scenarioBranchLabels.outcome2Label,
+                                  formState.result
+                                )}
+                              </span>
+                              <strong>
+                                {renderPreviewFinancialValue(
+                                  activePreviewCalculation.scenario_pnl_if_outcome_2_wins
+                                )}
+                              </strong>
+                            </div>
+                          ) : null}
+                          {scenarioBranchLabels.outcome3Label &&
+                          activePreviewCalculation.scenario_pnl_if_outcome_3_wins !== null ? (
+                            <div className="settlement-outcome-card">
+                              <span className="summary-label">
+                                {getScenarioBranchText(
+                                  scenarioBranchLabels.outcome3Label,
+                                  formState.result
+                                )}
+                              </span>
+                              <strong>
+                                {renderPreviewFinancialValue(
+                                  activePreviewCalculation.scenario_pnl_if_outcome_3_wins
+                                )}
+                              </strong>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </section>
+                  ) : null}
                   {settlementReviewRule ? (
                     <label className="field-control field-span-2">
                       <span>Settlement review</span>
@@ -8762,6 +9282,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               <EditorSection
                 collapsible={false}
                 defaultOpen
+                headerAside={renderEditorSectionAside()}
                 key={`${selectedId ?? "sportsbook-free-bet-new"}-bridge`}
                 title="Free-Bet Bridge"
               >
@@ -9283,39 +9804,66 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               </EditorSection>
             </LedgerEditorTabPanel>
 		            <div className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
+              {selectedId && settledDeleteGuardRowId === selectedId ? (
+                <LedgerSettledDeleteGuard
+                  disabled={isPersisting}
+                  ledgerLabel="sportsbook"
+                  onCancel={() => {
+                    setSettledDeleteGuardRowId(null);
+                    setSettledDeleteReason("");
+                  }}
+                  onConfirm={() =>
+                    void handleDeleteSelectedRow(selectedId, {
+                      confirmedSettledReason: settledDeleteReason,
+                    })
+                  }
+                  onReasonChange={setSettledDeleteReason}
+                  reason={settledDeleteReason}
+                  rowLabel={selectedId}
+                />
+              ) : null}
 	              <div className="tracker-nav workflow-editor-footer-primary">
 	                {isSettledReadOnly ? (
 	                  <button
-	                    className="review-chip review-chip-copy"
-	                    onClick={() => setSettledEditEnabled(true)}
+	                    aria-label="Close sportsbook editor"
+	                    className="review-chip"
+	                    onClick={() => void closeEditor()}
 	                    type="button"
 	                  >
-	                    Edit
+	                    Close
 	                  </button>
 	                ) : (
-	                  <button
-	                    className="review-chip review-chip-copy"
-	                    disabled={isInitialLoading || isPersisting || !isDirty}
-	                    type="submit"
-	                  >
-	                    {isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
-	                  </button>
-	                )}
-	                {selectedId ? (
-	                  <button
-	                    className="review-chip review-chip-danger"
-	                    onClick={() => void handleDeleteSelectedRow()}
-	                    type="button"
-	                  >
-	                    Delete
-	                  </button>
-	                ) : null}
-	                <button className="review-chip" onClick={() => void handleResetForm()} type="button">
-	                  Revert
-	                </button>
-		                <button aria-label="Close sportsbook editor" className="review-chip" onClick={() => void closeEditor()} type="button">
-		                  Close
-		                </button>
+	                  <>
+	                    <button
+	                      className="review-chip review-chip-copy"
+	                      disabled={isInitialLoading || isPersisting || !isDirty}
+	                      type="submit"
+	                    >
+	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+	                      {isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
+	                    </button>
+                      {settledEditEnabled ? (
+                        <button
+                          className="review-chip"
+                          disabled={isPersisting}
+                          onClick={handleCancelSettledEdit}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+	                    {selectedId ? (
+	                      <button
+	                        className="review-chip review-chip-danger"
+	                        onClick={() => void handleDeleteSelectedRow()}
+	                        type="button"
+	                      >
+	                        Delete
+	                      </button>
+	                    ) : null}
+	                    <button className="review-chip" onClick={() => void handleResetForm()} type="button">
+	                      Revert
+	                    </button>
 		                {showFreeBetBridgeFooterAction ? (
 		                  <>
 		                    <span aria-hidden="true" className="workflow-editor-footer-divider" />
@@ -9344,6 +9892,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 		                    </button>
 		                  </>
 		                ) : null}
+	                  </>
+	                )}
 		              </div>
 	              <div
 	                aria-label="Editor tab navigation"
@@ -9378,6 +9928,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	              </div>
 	            </div>
           </form>
+            </div>
           </section>
         </div>
       ) : null}

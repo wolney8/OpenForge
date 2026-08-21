@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -9,15 +9,19 @@ import {
   readCachedJson,
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
+import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
+import { formatFinancialValue } from "@/lib/financial-display";
+import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
@@ -27,19 +31,34 @@ import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  isGuidedAccessEnabled,
+  useBodyScrollLock,
   useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
+  useProfileGuidedAccessMode,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
+import {
+  calculateFreeBetResultCardPreview,
+  getCalculatorModeForLayWorkflowMode,
+  getLayWorkflowModeForStrategy,
+  getSingleLayResultModes,
+  getMatchRatingInterpretation,
+  getMatchRatingPillTone,
+  getStrategyForLayWorkflowMode,
+  isDecimalCalculatorInput,
+  type LayWorkflowMode,
+  type SingleLayResultMode,
+} from "@/lib/ledger-calculator";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import {
   formatDisplayDate,
   formatHumanDisplayDate,
-  formatMoney,
   formatResolvedDateRange,
   formatResolvedDateRangeContext,
   resolveDateRange,
@@ -55,15 +74,59 @@ import {
   freeBetResultOptions,
   freeBetRetentionModeOptions,
   freeBetStatusOptions,
-  freeBetStrategyOptions,
   getAllowedBetTypesForOfferType,
   getDefaultBetTypeForOfferType,
-  getOfferTypeDescriptor,
   getOfferTypeOptions,
   normalizeSportsbookBetType,
 } from "@/lib/workbook-options";
 
-type FreeBetOutcomeCardState = "possible" | "hit" | "missed" | "void";
+const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
+
+type FreeBetEditorTabId = "setup" | "matching" | "settlement";
+type FreeBetGuidedFieldKey =
+  | "offer"
+  | "bookmaker"
+  | "offer_type"
+  | "free_bet_value"
+  | "bet_type"
+  | "fixture_type"
+  | "event_name"
+  | "back_odds"
+  | "exchange"
+  | "lay_odds_1"
+  | "lay_actual"
+  | "settles"
+  | "result";
+
+type FreeBetGuidedEntry = {
+  message: string;
+  nextRequiredField: FreeBetGuidedFieldKey | null;
+  state: "ready" | "review_required" | "complete";
+};
+
+const freeBetGuidedFieldTabMap: Record<FreeBetGuidedFieldKey, FreeBetEditorTabId> = {
+  back_odds: "matching",
+  bet_type: "setup",
+  bookmaker: "setup",
+  event_name: "setup",
+  exchange: "matching",
+  fixture_type: "setup",
+  free_bet_value: "matching",
+  lay_actual: "matching",
+  lay_odds_1: "matching",
+  offer: "setup",
+  offer_type: "setup",
+  result: "settlement",
+  settles: "settlement",
+};
+
+const freeBetGuidedTabLabels: Record<FreeBetEditorTabId, string> = {
+  matching: "Matching",
+  setup: "Bet Setup",
+  settlement: "Settlement",
+};
+
+const freeBetLayWorkflowModeOptions: LayWorkflowMode[] = ["No Lay", "Standard", "Advanced"];
 
 type FreeBetCalculationPreview = {
   lay_commission_1: string | null;
@@ -279,6 +342,41 @@ function parseNumericInput(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function formatPreviewMoney(value: number): string {
+  return value.toFixed(2);
+}
+
+function formatPreviewFinancialValue(value: number | string | null | undefined): string {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseCurrencyLikeValue(value)
+        : null;
+  return parsed === null ? "—" : formatFinancialValue(parsed);
+}
+
+function renderPreviewFinancialValue(value: number | string | null | undefined) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseNumericInput(value)
+        : null;
+  return parsed === null ? (
+    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
+      £ -
+    </span>
+  ) : (
+    <FinancialValue
+      animate={false}
+      className="projected-outcome-financial-value"
+      value={parsed}
+      zeroTone="neutral"
+    />
+  );
+}
+
 function getDisplayedValue(
   calculation: Pick<
     FreeBetCalculationPreview,
@@ -316,6 +414,74 @@ function getDisplayedValueLabel(
   return "Current value";
 }
 
+function getFreeBetGuidedEntry({
+  calculatorUnlocked,
+  formState,
+  isNoLayStrategy,
+  missingCalculatorFields,
+  missingOfferIdentityFields,
+  missingPlacementFields,
+}: {
+  calculatorUnlocked: boolean;
+  formState: FreeBetFormState;
+  isNoLayStrategy: boolean;
+  missingCalculatorFields: string[];
+  missingOfferIdentityFields: string[];
+  missingPlacementFields: string[];
+}): FreeBetGuidedEntry {
+  if (missingOfferIdentityFields.includes("Offer")) {
+    return { message: "Add The Offer Name As Shown.", nextRequiredField: "offer", state: "ready" };
+  }
+  if (missingOfferIdentityFields.includes("Bookmaker")) {
+    return { message: "Choose The Bookmaker.", nextRequiredField: "bookmaker", state: "ready" };
+  }
+  if (missingOfferIdentityFields.includes("Offer type")) {
+    return { message: "Choose The Offer Type.", nextRequiredField: "offer_type", state: "ready" };
+  }
+  if (missingOfferIdentityFields.includes("Bet type")) {
+    return { message: "Choose The Bet Type.", nextRequiredField: "bet_type", state: "ready" };
+  }
+  if (missingOfferIdentityFields.includes("Fixture type")) {
+    return { message: "Choose The Fixture Type.", nextRequiredField: "fixture_type", state: "ready" };
+  }
+  if (missingOfferIdentityFields.includes("Event name")) {
+    return { message: "Add The Event Name.", nextRequiredField: "event_name", state: "ready" };
+  }
+  if (!calculatorUnlocked) {
+    return {
+      message: "Move The Free Bet To Available Before Matching.",
+      nextRequiredField: "result",
+      state: "review_required",
+    };
+  }
+  if (missingCalculatorFields.includes("Free-bet value")) {
+    return { message: "Add The Free-Bet Value.", nextRequiredField: "free_bet_value", state: "ready" };
+  }
+  if (missingCalculatorFields.includes("Back odds")) {
+    return { message: "Enter The Back Odds.", nextRequiredField: "back_odds", state: "ready" };
+  }
+  if (!isNoLayStrategy && missingCalculatorFields.includes("Exchange")) {
+    return { message: "Choose The Lay Exchange.", nextRequiredField: "exchange", state: "ready" };
+  }
+  if (!isNoLayStrategy && missingCalculatorFields.includes("Lay odds 1")) {
+    return { message: "Enter The Lay Odds.", nextRequiredField: "lay_odds_1", state: "ready" };
+  }
+  if (!isNoLayStrategy && missingCalculatorFields.includes("Lay actual")) {
+    return { message: "Confirm The Lay Actual.", nextRequiredField: "lay_actual", state: "ready" };
+  }
+  if (missingPlacementFields.includes("Settles")) {
+    return {
+      message: "Confirm The Settlement Date And Outcome.",
+      nextRequiredField: "settles",
+      state: "review_required",
+    };
+  }
+  if (formState.status === "Settled" && formState.result === "Pending") {
+    return { message: "Choose The Outcome.", nextRequiredField: "result", state: "review_required" };
+  }
+  return { message: "Free Bet Ready.", nextRequiredField: null, state: "complete" };
+}
+
 function getDisplayedValueForRow(
   row: Pick<FreeBetRecord, "projected_current_pnl" | "final_net_pnl" | "reporting_value">
 ): string {
@@ -329,60 +495,6 @@ function getComparableDate(value: string): number | null {
 
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : null;
-}
-
-function getCalculationValueSource(
-  calculation: Pick<
-    FreeBetCalculationPreview,
-    "projected_current_pnl" | "final_net_pnl" | "reporting_value"
-  > | null,
-  fallback: Pick<
-    FreeBetRecord,
-    "projected_current_pnl" | "final_net_pnl" | "reporting_value"
-  > | null
-): string {
-  if (calculation?.final_net_pnl ?? fallback?.final_net_pnl) {
-    return "Settled/final or override-backed reporting value";
-  }
-  if (calculation?.projected_current_pnl ?? fallback?.projected_current_pnl) {
-    return "Cash-first projected/current value for an open row";
-  }
-  return "Awaiting contract-backed value";
-}
-
-function hasFreeBetAwardSource(formState: Pick<FreeBetFormState, "origin_qual_bet_id" | "source_award_group_id">): boolean {
-  return Boolean(formState.origin_qual_bet_id.trim() || formState.source_award_group_id.trim());
-}
-
-function getFreeBetAwardSourceTitle(
-  formState: Pick<FreeBetFormState, "source_award_split_index" | "source_award_split_total">
-): string {
-  if (formState.source_award_split_total > 1 && formState.source_award_split_index > 0) {
-    return `Split ${formState.source_award_split_index} of ${formState.source_award_split_total}`;
-  }
-  return "Single award";
-}
-
-function getFreeBetAwardSourceDetail(
-  formState: Pick<
-    FreeBetFormState,
-    "origin_qual_bet_id" | "source_award_expected_value" | "source_award_variance_reason"
-  >
-): string {
-  const details = [];
-
-  if (formState.origin_qual_bet_id.trim()) {
-    details.push(`Source ${formState.origin_qual_bet_id.trim()}`);
-  }
-  const expectedAwardValue = parseNumericInput(formState.source_award_expected_value);
-  if (expectedAwardValue !== null) {
-    details.push(`Expected award ${formatMoney(expectedAwardValue)}`);
-  }
-  if (formState.source_award_variance_reason.trim()) {
-    details.push("Variance noted");
-  }
-
-  return details.join(" • ") || "Award source retained";
 }
 
 function getFreeBetBackLabel(result: string): string {
@@ -412,16 +524,6 @@ function getFreeBetResultLabel(result: string, isNoLayStrategy: boolean): string
   return result;
 }
 
-function getPlaceholderGuidance(status: string): string {
-  if (status === "Not Yet Awarded") {
-    return "Await award before planning the conversion.";
-  }
-  if (status === "Prospecting") {
-    return "Row is prospecting only; no bankroll value is carried yet.";
-  }
-  return "Add a matching plan when the free bet is ready to convert.";
-}
-
 function parseDateValue(value: string): Date | null {
   if (!value.trim()) {
     return null;
@@ -447,70 +549,32 @@ function getFreeBetRangeAnchor(
   );
 }
 
-function getOutcomeCardState(
-  result: string,
-  key: "back" | "lay"
-): FreeBetOutcomeCardState {
-  if (result === "Pending") {
-    return "possible";
-  }
-  if (result === "Void") {
-    return "void";
-  }
-  const hitKey =
-    result === "Back Won" || result === "Win"
-      ? "back"
-      : result === "Lay Won" || result === "Lose"
-        ? "lay"
-        : null;
-  if (hitKey === null) {
-    return "possible";
-  }
-  return hitKey === key ? "hit" : "missed";
-}
-
-function getOutcomeCardLabel(state: FreeBetOutcomeCardState): string {
-  if (state === "hit") {
-    return "Outcome hit";
-  }
-  if (state === "missed") {
-    return "Outcome missed";
-  }
-  if (state === "void") {
-    return "Outcome void";
-  }
-  return "Possible outcome";
-}
-
-function getCalculationStateLabel(state: string | null | undefined): string {
-  if (state === "review_required") {
-    return "Review required";
-  }
-  if (state === "incomplete") {
-    return "Incomplete";
-  }
-  if (state === "resolved") {
-    return "Calculated";
-  }
-  return "Draft";
-}
-
-function getCalculationStateChipClassName(state: string | null | undefined): string {
-  if (state === "resolved") {
-    return "table-chip table-chip-lay-full";
-  }
-  if (state === "review_required" || state === "incomplete") {
-    return "table-chip table-chip-warning";
-  }
-  return "table-chip";
-}
-
 function getFreeBetResultOptions(strategy: string): string[] {
   if (strategy === "No Lay") {
-    return ["Pending", "Back Won", "Win", "Lose", "Void"];
+    return ["Pending", "Win", "Lose", "Void"];
   }
 
-  return [...freeBetResultOptions];
+  return ["Pending", "Back Won", "Lay Won", "Void"];
+}
+
+function normalizeFreeBetResultOption(result: string, isNoLayStrategy: boolean): string {
+  if (isNoLayStrategy) {
+    if (result === "Back Won") {
+      return "Win";
+    }
+    if (result === "Lay Won") {
+      return "Lose";
+    }
+    return result;
+  }
+
+  if (result === "Win") {
+    return "Back Won";
+  }
+  if (result === "Lose") {
+    return "Lay Won";
+  }
+  return result;
 }
 
 function getFreeBetCalculatorMissingFields(
@@ -1139,6 +1203,8 @@ export function FreeBetWorkflowShell({
 }) {
   const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
     useBookmakerCatalogue(profileId);
+  const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
+  const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<FreeBetRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
@@ -1204,18 +1270,30 @@ export function FreeBetWorkflowShell({
   const [previewCalculation, setPreviewCalculation] = useState<FreeBetCalculationPreview | null>(null);
   const [showOfferIdentityValidation, setShowOfferIdentityValidation] = useState(false);
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
+  const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
+  const [settledDeleteReason, setSettledDeleteReason] = useState("");
+  const [activeEditorTabId, setActiveEditorTabId] = useState<FreeBetEditorTabId>("setup");
+  const [freeBetLayWorkflowModeOverride, setFreeBetLayWorkflowModeOverride] =
+    useState<LayWorkflowMode | null>(null);
+  const [freeBetCustomSliderMin, setFreeBetCustomSliderMin] = useState("");
+  const [freeBetCustomSliderMax, setFreeBetCustomSliderMax] = useState("");
+  const [freeBetCustomSliderDraftValue, setFreeBetCustomSliderDraftValue] = useState("");
+  const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+
+  const isPersistingRef = useRef(false);
   const pageSize = 8;
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -1243,7 +1321,10 @@ export function FreeBetWorkflowShell({
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
+  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+
   useToastDismiss(statusMessage, clearStatusMessage);
+  useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
@@ -1293,9 +1374,19 @@ export function FreeBetWorkflowShell({
         nextRows.some((row) => row.free_bet_id === nextSelectedCandidate)
           ? nextSelectedCandidate
           : null;
+      const shouldPreserveEditorStep = Boolean(
+        selected && selected === selectedIdRef.current && workflowVisible
+      );
       setSelectedId(selected);
       if (selected) {
         isCreatingDraftRef.current = false;
+        if (!shouldPreserveEditorStep) {
+          setActiveEditorTabId("setup");
+          setFreeBetLayWorkflowModeOverride(null);
+          setFreeBetCustomSliderMin("");
+          setFreeBetCustomSliderMax("");
+          setFreeBetCustomSliderDraftValue("");
+        }
         const activeRecord = nextRows.find((row) => row.free_bet_id === selected);
         if (activeRecord) {
           const nextFormState = recordToForm(activeRecord);
@@ -1318,7 +1409,7 @@ export function FreeBetWorkflowShell({
         setWorkflowVisible(false);
       }
     });
-  }, [profileId, startTransition]);
+  }, [profileId, startTransition, workflowVisible]);
 
   const loadExchangeSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
@@ -1404,6 +1495,7 @@ export function FreeBetWorkflowShell({
     };
 
     setSelectedId(null);
+    setActiveEditorTabId("setup");
     setFormState(nextForm);
     setPristineFormState(nextForm);
     setShowOfferIdentityValidation(false);
@@ -1465,11 +1557,6 @@ export function FreeBetWorkflowShell({
 
   const offerTypeOptions = useMemo(
     () => getOfferTypeOptions(formState.offer_type),
-    [formState.offer_type]
-  );
-
-  const offerTypeDescriptor = useMemo(
-    () => getOfferTypeDescriptor(formState.offer_type),
     [formState.offer_type]
   );
 
@@ -1537,9 +1624,12 @@ export function FreeBetWorkflowShell({
   );
 
   const isNoLayStrategy = formState.match_strategy === "No Lay";
+  const layWorkflowMode = getLayWorkflowModeForStrategy(formState.match_strategy);
+  const freeBetLayWorkflowMode =
+    freeBetLayWorkflowModeOverride ?? (layWorkflowMode === "Multilay" ? "Advanced" : layWorkflowMode);
+  const freeBetCalculatorMode = getCalculatorModeForLayWorkflowMode(freeBetLayWorkflowMode);
   const showsLayMatchedStake =
     formState.match_strategy === "Partial Lay" || formState.match_strategy === "Custom";
-  const isPlaceholderStatus = freeBetPlaceholderStatuses.has(formState.status);
   const selectedRow = useMemo(
     () => rows.find((row) => row.free_bet_id === selectedId) ?? null,
     [rows, selectedId]
@@ -1563,6 +1653,9 @@ export function FreeBetWorkflowShell({
       formState.bookmaker.trim()
   );
   const activePreviewCalculation = previewReady ? previewCalculation : null;
+  const editorLayStatus = isNoLayStrategy
+    ? "Fully Laid"
+    : activePreviewCalculation?.lay_status ?? selectedRow?.lay_status ?? "Not Laid";
 
   const missingOfferIdentityFields = useMemo(
     () => getMissingRequiredFields(formState),
@@ -1573,6 +1666,11 @@ export function FreeBetWorkflowShell({
     () => getFreeBetResultOptions(formState.match_strategy),
     [formState.match_strategy]
   );
+  const resultSelectValue = normalizeFreeBetResultOption(formState.result, isNoLayStrategy);
+  const quickSettlementOptions = useMemo(
+    () => resultOptions.filter((option) => option !== "Pending" && option !== "Void").slice(0, 4),
+    [resultOptions]
+  );
   const missingPlacementFields = useMemo(
     () => getMissingPlacementFields(formState, resolvedCommission),
     [formState, resolvedCommission]
@@ -1581,58 +1679,438 @@ export function FreeBetWorkflowShell({
     () => getFreeBetCalculatorMissingFields(formState, resolvedCommission),
     [formState, resolvedCommission]
   );
-  const hasOutcomePreview = Boolean(
-    activePreviewCalculation?.scenario_pnl_if_back_wins ??
-      selectedRow?.scenario_pnl_if_back_wins ??
-      activePreviewCalculation?.scenario_pnl_if_lay_wins ??
-      selectedRow?.scenario_pnl_if_lay_wins
+  const freeBetEditorTabs = useMemo<LedgerEditorTabDefinition[]>(
+    () => [
+      {
+        id: "setup",
+        label: "Bet Setup",
+        requiredIssueCount: offerIdentityValidationActive ? missingOfferIdentityFields.length : 0,
+        status:
+          offerIdentityValidationActive && missingOfferIdentityFields.length > 0
+            ? "invalid"
+            : offerSetupComplete
+              ? "complete"
+              : "neutral",
+      },
+      {
+        id: "matching",
+        label: "Matching",
+        requiredIssueCount:
+          calculatorUnlocked && !previewReady ? missingCalculatorFields.length : 0,
+        status: !calculatorUnlocked
+          ? "locked"
+          : calculatorUnlocked && !previewReady && missingCalculatorFields.length > 0
+            ? "invalid"
+            : previewReady
+              ? "complete"
+              : "neutral",
+      },
+      {
+        id: "settlement",
+        label: "Settlement",
+        attentionState: getSettlementTabAttentionState({
+          activeStatuses: ["Placed"],
+          result: formState.result,
+          settlementDate: formState.date_settled,
+          status: formState.status,
+        }),
+        requiredIssueCount:
+          offerIdentityValidationActive && missingPlacementFields.includes("Settles") ? 1 : 0,
+        warningIssueCount:
+          formState.manual_override_value.trim() && !formState.manual_override_reason.trim()
+            ? 1
+            : selectedRow?.follow_up_reminder_state === "Active"
+              ? 1
+              : 0,
+        status:
+          offerIdentityValidationActive && missingPlacementFields.includes("Settles")
+            ? "invalid"
+            : formState.manual_override_value.trim() && !formState.manual_override_reason.trim()
+              ? "warning"
+              : selectedRow?.follow_up_reminder_state === "Active"
+                ? "warning"
+                : formState.result !== "Pending" || formState.status === "Settled"
+                  ? "complete"
+                  : "neutral",
+      },
+    ],
+    [
+      calculatorUnlocked,
+      formState.manual_override_reason,
+      formState.manual_override_value,
+      formState.date_settled,
+      formState.result,
+      formState.status,
+      missingCalculatorFields.length,
+      missingOfferIdentityFields.length,
+      missingPlacementFields,
+      offerIdentityValidationActive,
+      offerSetupComplete,
+      previewReady,
+      selectedRow,
+    ]
   );
-  const activeSuggestedLay =
-    formState.match_strategy === "Underlay"
-      ? activePreviewCalculation?.underlay_reference_lay_stake ??
-        selectedRow?.underlay_reference_lay_stake ??
-        "—"
-      : formState.match_strategy === "Overlay"
-        ? activePreviewCalculation?.overlay_reference_lay_stake ??
-          selectedRow?.overlay_reference_lay_stake ??
-          "—"
-        : activePreviewCalculation?.base_reference_lay_stake ??
-          selectedRow?.base_reference_lay_stake ??
-          "—";
-  const activeCalculationState =
-    activePreviewCalculation?.calculation_state ?? selectedRow?.calculation_state ?? null;
-  const activeCalculationNotes =
-    activePreviewCalculation?.calculation_notes.length
-      ? activePreviewCalculation.calculation_notes
-      : selectedRow?.calculation_notes ?? [];
-  const visibleCalculationNotes = activeCalculationNotes.filter(
-    (note) => note !== "Pending row uses projected current value until settlement."
+  const safeActiveEditorTabId = freeBetEditorTabs.some(
+    (tab) => tab.id === activeEditorTabId && tab.status !== "locked"
+  )
+    ? activeEditorTabId
+    : (freeBetEditorTabs.find((tab) => tab.status !== "locked")?.id as
+        | FreeBetEditorTabId
+        | undefined) ?? "setup";
+  const navigableFreeBetEditorTabs = freeBetEditorTabs.filter((tab) => tab.status !== "locked");
+  const activeFreeBetEditorTabIndex = Math.max(
+    0,
+    navigableFreeBetEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
   );
-  const isCalculatedState = activeCalculationState === "resolved";
-  const calculatorRuleItems = useMemo(() => {
-    const items: string[] = [];
+  const previousFreeBetEditorTab =
+    activeFreeBetEditorTabIndex > 0
+      ? navigableFreeBetEditorTabs[activeFreeBetEditorTabIndex - 1]
+      : null;
+  const nextFreeBetEditorTab =
+    activeFreeBetEditorTabIndex >= 0 &&
+    activeFreeBetEditorTabIndex < navigableFreeBetEditorTabs.length - 1
+      ? navigableFreeBetEditorTabs[activeFreeBetEditorTabIndex + 1]
+      : null;
+  const activateFreeBetEditorTab = useCallback((tabId: FreeBetEditorTabId) => {
+    setActiveEditorTabId(tabId);
+  }, []);
+  const activeDisplayedValue = getDisplayedValue(activePreviewCalculation, selectedRow);
+  const activeDisplayedValueLabel = getDisplayedValueLabel(activePreviewCalculation, selectedRow);
+  const activeDisplayedNumericValue = parseNumericInput(activeDisplayedValue);
+  const freeBetStandardSuggestedLayStake =
+    parseNumericInput(
+      activePreviewCalculation?.base_reference_lay_stake ??
+        selectedRow?.base_reference_lay_stake ??
+        ""
+    ) ??
+    parseNumericInput(formState.lay_actual) ??
+    parseNumericInput(formState.free_bet_value) ??
+    5;
+  const freeBetCustomSliderEffectiveMin =
+    parseNumericInput(freeBetCustomSliderMin) ??
+    Math.max(0.01, Number((freeBetStandardSuggestedLayStake - 1).toFixed(2)));
+  const freeBetCustomSliderEffectiveMax =
+    parseNumericInput(freeBetCustomSliderMax) ??
+    Number((freeBetStandardSuggestedLayStake + 1).toFixed(2));
+  const freeBetCustomSliderBoundedMax = Math.max(
+    Number((freeBetCustomSliderEffectiveMin + 0.01).toFixed(2)),
+    freeBetCustomSliderEffectiveMax
+  );
+  const freeBetCustomSliderDraftFloat = parseNumericInput(freeBetCustomSliderDraftValue);
+  const freeBetCustomSliderCurrentFloat = Math.min(
+    freeBetCustomSliderBoundedMax,
+    Math.max(
+      freeBetCustomSliderEffectiveMin,
+      freeBetCustomSliderDraftFloat ??
+        parseNumericInput(formState.lay_actual) ??
+        freeBetStandardSuggestedLayStake
+    )
+  );
+  const freeBetLaySuggestionCards = useMemo(
+    () => {
+      const stakeByMode: Record<SingleLayResultMode, string | null | undefined> = {
+        Custom: formatPreviewMoney(freeBetCustomSliderCurrentFloat),
+        Overlay:
+          activePreviewCalculation?.overlay_reference_lay_stake ??
+          selectedRow?.overlay_reference_lay_stake,
+        Standard:
+          activePreviewCalculation?.base_reference_lay_stake ??
+          selectedRow?.base_reference_lay_stake,
+        Underlay:
+          activePreviewCalculation?.underlay_reference_lay_stake ??
+          selectedRow?.underlay_reference_lay_stake,
+      };
 
-    if (formState.status === "Not Yet Awarded") {
-      items.push("Not Yet Awarded: wait until the free bet is issued before planning conversion.");
+      return getSingleLayResultModes(freeBetCalculatorMode)
+        .map((mode) => ({
+          mode,
+          stake: stakeByMode[mode] ?? "—",
+        }))
+        .filter((card) => card.stake !== "—");
+    },
+    [
+      activePreviewCalculation,
+      freeBetCalculatorMode,
+      freeBetCustomSliderCurrentFloat,
+      selectedRow,
+    ]
+  );
+  const freeBetOutcomeCardFields = useMemo(
+    () =>
+      freeBetLaySuggestionCards.map((card) => ({
+        ...card,
+        preview: calculateFreeBetResultCardPreview({
+          retentionMode: formState.retention_mode,
+          freeBetValue: formState.free_bet_value,
+          backOdds: formState.back_odds,
+          layOdds: formState.lay_odds_1,
+          layCommission: formState.lay_commission_1 || "0",
+          layStake: card.stake,
+        }),
+      })),
+    [
+      formState.back_odds,
+      formState.free_bet_value,
+      formState.lay_commission_1,
+      formState.lay_odds_1,
+      formState.retention_mode,
+      freeBetLaySuggestionCards,
+    ]
+  );
+  const activeMatchRatingValue = useMemo(() => {
+    if (isNoLayStrategy) {
+      return null;
     }
-
-    if (formState.match_strategy === "No Lay") {
-      items.push("No lay: exchange inputs stay hidden and the row resolves from back-win versus back-loss only.");
-    } else if (formState.match_strategy === "Custom" || formState.match_strategy === "Partial Lay") {
-      items.push("Manual lay path: confirm the lay side explicitly instead of relying only on the suggestion.");
-    } else {
-      items.push("Standard conversion: current value stays conservative while suggested lays guide the matching choice.");
+    const backOdds = parseNumericInput(formState.back_odds);
+    const layOdds = parseNumericInput(formState.lay_odds_1);
+    if (backOdds === null || layOdds === null || layOdds <= 0) {
+      return null;
     }
-
-    items.push(`Retention mode ${formState.retention_mode || "pending"}.`);
-    if (trackerSettings) {
-      items.push(
-        `Profile defaults: underlay ${trackerSettings.default_free_bet_underlay_factor} • overlay ${trackerSettings.default_free_bet_overlay_factor}.`
+    return (backOdds / layOdds) * 100;
+  }, [formState.back_odds, formState.lay_odds_1, isNoLayStrategy]);
+  const activeMatchRatingDisplay =
+    activeMatchRatingValue === null ? null : activeMatchRatingValue.toFixed(2);
+  const activeMatchRatingTone =
+    activeMatchRatingValue === null ? null : getMatchRatingPillTone(activeMatchRatingValue);
+  const activeMatchRatingInterpretation =
+    activeMatchRatingValue === null ? null : getMatchRatingInterpretation(activeMatchRatingValue);
+  const freeBetCalculatorTitle = `Free Bet + ${formState.retention_mode || "Mode pending"} ${
+    formState.bet_type || "Single"
+  }`;
+  const guidedEntry = useMemo(
+    () =>
+      getFreeBetGuidedEntry({
+        calculatorUnlocked,
+        formState,
+        isNoLayStrategy,
+        missingCalculatorFields,
+        missingOfferIdentityFields,
+        missingPlacementFields,
+      }),
+    [
+      calculatorUnlocked,
+      formState,
+      isNoLayStrategy,
+      missingCalculatorFields,
+      missingOfferIdentityFields,
+      missingPlacementFields,
+    ]
+  );
+  const freeBetGuidedFallbackMessages = useMemo<Record<FreeBetGuidedFieldKey, string>>(
+    () => ({
+      back_odds: "Enter The Back Odds.",
+      bet_type: "Choose The Bet Type.",
+      bookmaker: "Choose The Bookmaker.",
+      event_name: "Add The Event Name.",
+      exchange: "Choose The Exchange.",
+      fixture_type: "Choose The Fixture Type.",
+      free_bet_value: "Enter The Free-Bet Value.",
+      lay_actual: "Enter The Lay Stake.",
+      lay_odds_1: "Enter The Lay Odds.",
+      offer: "Add The Offer Name As Shown.",
+      offer_type: "Choose The Offer Type.",
+      result: "Confirm The Outcome.",
+      settles: "Confirm The Settlement Date.",
+    }),
+    []
+  );
+  const safeGuidedEntry = useMemo(() => {
+    if (guidedEntry.state === "complete") {
+      return guidedEntry;
+    }
+    const nextRequiredField = guidedEntry.nextRequiredField ?? "offer";
+    return {
+      ...guidedEntry,
+      nextRequiredField,
+      message:
+        guidedEntry.message.trim() ||
+        freeBetGuidedFallbackMessages[nextRequiredField] ||
+        "Continue The Guided Workflow.",
+    };
+  }, [freeBetGuidedFallbackMessages, guidedEntry]);
+  const guidedEntryVisible =
+    workflowVisible && guidedAccessEnabled && !guidedEntryDismissed && safeGuidedEntry.state !== "complete";
+  const guidedEntryMessageId = "free-bet-guided-entry-message";
+  const guidedEntryTargetTabId = safeGuidedEntry.nextRequiredField
+    ? freeBetGuidedFieldTabMap[safeGuidedEntry.nextRequiredField]
+    : null;
+  const guidedEntryNeedsTabJump =
+    guidedEntryTargetTabId !== null && guidedEntryTargetTabId !== safeActiveEditorTabId;
+  const guidedEntryTargetTabIndex = guidedEntryTargetTabId
+    ? freeBetEditorTabs.findIndex((tab) => tab.id === guidedEntryTargetTabId)
+    : -1;
+  const guidedEntryTargetTabLabel = guidedEntryTargetTabId
+    ? freeBetGuidedTabLabels[guidedEntryTargetTabId]
+    : "";
+  const guidedEntryMessageText =
+    safeGuidedEntry.message.trim() ||
+    (safeGuidedEntry.nextRequiredField
+      ? freeBetGuidedFallbackMessages[safeGuidedEntry.nextRequiredField]
+      : "Continue The Guided Workflow.");
+  const guidedEntryResolvedInstruction =
+    (
+      guidedEntryNeedsTabJump
+        ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+        : guidedEntryMessageText
+    ).trim() || "Add The Offer Name As Shown.";
+  const guidedEntryActionMessage = guidedEntryNeedsTabJump
+    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+    : guidedEntryMessageText;
+  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
+  const getGuidedFieldClass = useCallback(
+    (field: FreeBetGuidedFieldKey, extraClass = "") => {
+      const classes = ["field-control"];
+      if (extraClass) {
+        classes.push(extraClass);
+      }
+      if (guidedEntryVisible && safeGuidedEntry.nextRequiredField === field) {
+        classes.push("is-guided-next");
+      }
+      return classes.join(" ");
+    },
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const getGuidedFieldData = useCallback(
+    (field: FreeBetGuidedFieldKey) => ({
+      "data-guided-field": field,
+    }),
+    []
+  );
+  const getGuidedDescribedBy = useCallback(
+    (field: FreeBetGuidedFieldKey) =>
+      guidedEntryVisible && safeGuidedEntry.nextRequiredField === field
+        ? guidedEntryMessageId
+        : undefined,
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const focusGuidedEntryTarget = useCallback(() => {
+    const nextField = safeGuidedEntry.nextRequiredField;
+    if (!nextField) return;
+    const nextTab = freeBetGuidedFieldTabMap[nextField];
+    activateFreeBetEditorTab(nextTab);
+    window.setTimeout(() => {
+      const target = editorRef.current?.querySelector<HTMLElement>(
+        `[data-guided-field="${nextField}"]`
       );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget =
+        target?.matches("input, select, textarea, button")
+          ? target
+          : target?.querySelector<HTMLElement>("input, select, textarea, button");
+      focusTarget?.focus({ preventScroll: true });
+    }, 80);
+  }, [activateFreeBetEditorTab, safeGuidedEntry.nextRequiredField]);
+  const renderGuidedEntryMessage = useCallback((message: string) => {
+    const safeMessage = message.trim() || "Continue The Guided Workflow.";
+    const targetTerms = [
+      "Settlement Date",
+      "Offer Name",
+      "Free-Bet Value",
+      "Fixture Type",
+      "Event Name",
+      "Offer Type",
+      "Bet Type",
+      "Bookmaker",
+      "Exchange",
+      "Settlement",
+      "Outcome",
+      "Back",
+      "Lay",
+    ];
+    const pattern = new RegExp(`(${targetTerms.join("|")})`, "g");
+    const parts = safeMessage.split(pattern).filter(Boolean);
+    if (parts.length === 0) {
+      return <>{safeMessage}</>;
+    }
+    return (
+      <>
+        {parts.map((part, index) => {
+          const toneClass =
+            part === "Back"
+              ? "guided-entry-token-back"
+              : part === "Lay"
+                ? "guided-entry-token-lay"
+                : targetTerms.includes(part)
+                  ? "guided-entry-token-field"
+                  : "";
+          return toneClass ? (
+            <span className={`guided-entry-token ${toneClass}`} key={`${part}-${index}`}>
+              {part}
+            </span>
+          ) : (
+            <span key={`${part}-${index}`}>{part}</span>
+          );
+        })}
+      </>
+    );
+  }, []);
+  const renderGuidedEntryInstruction = useCallback(() => {
+    if (!guidedEntryNeedsTabJump) {
+      return <span className="guided-entry-instruction-text">{renderGuidedEntryMessage(guidedEntryResolvedInstruction)}</span>;
     }
 
-    return items;
-  }, [formState.match_strategy, formState.retention_mode, formState.status, trackerSettings]);
+    return (
+      <span className="guided-entry-instruction-text">
+        <span>Go to </span>
+        <span className="guided-entry-step-reference">
+          {guidedEntryTargetTabIndex >= 0 ? (
+            <span aria-hidden="true" className="guided-entry-step-marker">
+              {guidedEntryTargetTabIndex + 1}
+            </span>
+          ) : null}
+          <span>{guidedEntryTargetTabLabel}</span>
+        </span>
+        <span> and </span>
+        {renderGuidedEntryMessage(guidedEntryMessageText || guidedEntryResolvedInstruction)}
+      </span>
+    );
+  }, [
+    guidedEntryMessageText,
+    guidedEntryNeedsTabJump,
+    guidedEntryResolvedInstruction,
+    guidedEntryTargetTabIndex,
+    guidedEntryTargetTabLabel,
+    renderGuidedEntryMessage,
+  ]);
+  const renderSettledLockAction = useCallback(
+    () => {
+      if (!selectedId) {
+        return null;
+      }
+
+      return isSettledReadOnly ? (
+        <button
+          className="section-lock-chip section-lock-chip-action"
+          data-pd-id="free-bets.editor.edit-settled-row"
+          onClick={() => setSettledEditEnabled(true)}
+          type="button"
+        >
+          EDIT
+        </button>
+      ) : (
+        <span className="section-lock-chip" data-pd-id="free-bets.editor.editing-state">
+          EDITING
+        </span>
+      );
+    },
+    [isSettledReadOnly, selectedId]
+  );
+  const renderEditorSectionAside = useCallback(
+    (extra?: ReactNode) => {
+      const editState = renderSettledLockAction();
+      if (!editState && !extra) {
+        return null;
+      }
+
+      return (
+        <>
+          {editState}
+          {extra}
+        </>
+      );
+    },
+    [renderSettledLockAction]
+  );
 
   useEffect(() => {
     if (!previewReady) {
@@ -2118,6 +2596,11 @@ export function FreeBetWorkflowShell({
       return;
     }
     setSelectedId(rowId);
+    setActiveEditorTabId("setup");
+    setFreeBetLayWorkflowModeOverride(null);
+    setFreeBetCustomSliderMin("");
+    setFreeBetCustomSliderMax("");
+    setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = false;
     setPreviewCalculation(null);
@@ -2129,7 +2612,7 @@ export function FreeBetWorkflowShell({
     setSettledEditEnabled(false);
     setWorkflowVisible(true);
     setTableCollapsed(Boolean(options?.collapseTable));
-    setStatusMessage(`Opened free bet ${rowId} for editing.`);
+    setStatusMessage("");
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
@@ -2138,6 +2621,12 @@ export function FreeBetWorkflowShell({
       return;
     }
     setSelectedId(null);
+    selectedIdRef.current = null;
+    setActiveEditorTabId("setup");
+    setFreeBetLayWorkflowModeOverride(null);
+    setFreeBetCustomSliderMin("");
+    setFreeBetCustomSliderMax("");
+    setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
@@ -2149,15 +2638,20 @@ export function FreeBetWorkflowShell({
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
-    setStatusMessage("New free bet ready. Complete the required fields, then save.");
+    setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
 
   async function closeEditor() {
+    if (isPersistingRef.current) {
+      return;
+    }
     if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
     setFollowUpReminderEditorState(null);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
@@ -2189,6 +2683,10 @@ export function FreeBetWorkflowShell({
       returnToLedgerOnSuccess?: boolean;
     }
   ): Promise<boolean> {
+    if (isPersistingRef.current) {
+      return false;
+    }
+
     setErrorMessage("");
     const nextResolvedCommission = getResolvedExchangeCommission(
       exchangeSettings,
@@ -2208,52 +2706,80 @@ export function FreeBetWorkflowShell({
       return false;
     }
 
-    const activeRowId = nextFormState.free_bet_id ?? selectedId;
-    const isEditing = Boolean(activeRowId);
-    const url = isEditing
-      ? `${apiBaseUrl}/profiles/${profileId}/free-bets/${activeRowId}`
-      : `${apiBaseUrl}/profiles/${profileId}/free-bets`;
-    const method = isEditing ? "PUT" : "POST";
+    isPersistingRef.current = true;
+    setIsPersisting(true);
 
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...nextFormState,
-        lay_commission_1: "",
-        expiry_datetime: fromDateTimeLocalValue(nextFormState.expiry_datetime),
-        date_settled: fromDateTimeLocalValue(nextFormState.date_settled),
-      })
-    });
+    try {
+      const activeRowId = nextFormState.free_bet_id ?? selectedId;
+      const isEditing = Boolean(activeRowId);
+      const url = isEditing
+        ? `${apiBaseUrl}/profiles/${profileId}/free-bets/${activeRowId}`
+        : `${apiBaseUrl}/profiles/${profileId}/free-bets`;
+      const method = isEditing ? "PUT" : "POST";
 
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      return false;
-    }
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...nextFormState,
+          lay_commission_1: "",
+          expiry_datetime: fromDateTimeLocalValue(nextFormState.expiry_datetime),
+          date_settled: fromDateTimeLocalValue(nextFormState.date_settled),
+        })
+      });
 
-    const saved = (await response.json()) as FreeBetRecord;
-    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
-    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
-    if (returnToLedger) {
-      ignoreInitialRecordIdRef.current = true;
+      if (!response.ok) {
+        setErrorMessage(await response.text());
+        return false;
+      }
+
+      const saved = (await response.json()) as FreeBetRecord;
+      const savedFormState = recordToForm(saved);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+      dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
+      setRows((current) => {
+        const rowExists = current.some((row) => row.free_bet_id === saved.free_bet_id);
+        return rowExists
+          ? current.map((row) => (row.free_bet_id === saved.free_bet_id ? saved : row))
+          : [saved, ...current];
+      });
+      const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+      if (returnToLedger) {
+        ignoreInitialRecordIdRef.current = true;
+      }
+      setSelectedId(returnToLedger ? null : saved.free_bet_id);
+      selectedIdRef.current = returnToLedger ? null : saved.free_bet_id;
+      setFormState(savedFormState);
+      setPristineFormState(savedFormState);
+      await loadRows(returnToLedger ? null : saved.free_bet_id);
+      setShowOfferIdentityValidation(false);
+      setSettledEditEnabled(false);
+      if (returnToLedger) {
+        const blankFormState = createBlankForm();
+        setSelectedId(null);
+        selectedIdRef.current = null;
+        setFormState(blankFormState);
+        setPristineFormState(blankFormState);
+        setWorkflowVisible(false);
+        setTableCollapsed(false);
+        isCreatingDraftRef.current = false;
+        setStatusMessage("");
+      } else if (!workflowVisible) {
+        setStatusMessage(
+          options?.autosaveLabel
+            ? `${options.autosaveLabel} autosaved for ${saved.free_bet_id}.`
+            : isEditing
+              ? `Updated free bet ${saved.free_bet_id}.`
+              : `Created free bet ${saved.free_bet_id}.`
+        );
+      } else {
+        setStatusMessage("");
+      }
+      return true;
+    } finally {
+      isPersistingRef.current = false;
+      setIsPersisting(false);
     }
-    await loadRows(returnToLedger ? null : saved.free_bet_id);
-    setShowOfferIdentityValidation(false);
-    setSettledEditEnabled(false);
-    if (returnToLedger) {
-      setSelectedId(null);
-      selectedIdRef.current = null;
-      setWorkflowVisible(false);
-      setTableCollapsed(false);
-    }
-    setStatusMessage(
-      options?.autosaveLabel
-        ? `${options.autosaveLabel} autosaved for ${saved.free_bet_id}.`
-        : isEditing
-          ? `Updated free bet ${saved.free_bet_id}.`
-          : `Created free bet ${saved.free_bet_id}.`
-    );
-    return true;
   }
 
   async function applyDropdownChange(
@@ -2274,41 +2800,108 @@ export function FreeBetWorkflowShell({
     });
   }
 
+  function applyFreeBetLayWorkflowMode(mode: LayWorkflowMode) {
+    if (!freeBetLayWorkflowModeOptions.includes(mode)) {
+      return;
+    }
+    setFreeBetLayWorkflowModeOverride(mode);
+    setFormState((current) =>
+      applyStrategyDefaults(
+        current,
+        mode === "Advanced" && current.match_strategy === "No Lay"
+          ? "Standard"
+          : getStrategyForLayWorkflowMode(mode, current.match_strategy)
+      )
+    );
+  }
+
   function handleResetForm() {
+    if (isPersistingRef.current) {
+      return;
+    }
+
     if (selectedRow) {
       const nextFormState = recordToForm(selectedRow);
       setPreviewCalculation(null);
+      setActiveEditorTabId("setup");
+      setFreeBetLayWorkflowModeOverride(null);
+      setFreeBetCustomSliderMin("");
+      setFreeBetCustomSliderMax("");
+      setFreeBetCustomSliderDraftValue("");
       setFormState(nextFormState);
       setPristineFormState(nextFormState);
       setErrorMessage("");
       setShowOfferIdentityValidation(false);
       setSettledEditEnabled(false);
+      setSettledDeleteGuardRowId(null);
+      setSettledDeleteReason("");
       setStatusMessage(`Reverted unsaved changes for free bet ${selectedRow.free_bet_id}.`);
       return;
     }
 
     const blankForm = createBlankForm();
     setPreviewCalculation(null);
+    setActiveEditorTabId("setup");
+    setFreeBetLayWorkflowModeOverride(null);
+    setFreeBetCustomSliderMin("");
+    setFreeBetCustomSliderMax("");
+    setFreeBetCustomSliderDraftValue("");
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
     setStatusMessage("Cleared the unsaved free-bet draft.");
   }
 
-  async function handleDeleteSelectedRow(rowId = selectedId) {
+  function handleCancelSettledEdit() {
+    setPreviewCalculation(null);
+    setFreeBetLayWorkflowModeOverride(null);
+    setFreeBetCustomSliderMin("");
+    setFreeBetCustomSliderMax("");
+    setFreeBetCustomSliderDraftValue("");
+    setFormState(pristineFormState);
+    setErrorMessage("");
+    setShowOfferIdentityValidation(false);
+    setSettledEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setStatusMessage("");
+  }
+
+  async function handleDeleteSelectedRow(
+    rowId = selectedId,
+    options?: { confirmedSettledReason?: string }
+  ) {
     if (!rowId) {
       return;
     }
 
-    const confirmed = await confirmDestructiveAction({
-      confirmLabel: "Delete Row",
-      message: `Delete free-bet row ${rowId}? This will remove it from this profile tracker.`,
-      title: "Delete free-bet row?",
-    });
-    if (!confirmed) {
+    const rowForDelete =
+      selectedRow?.free_bet_id === rowId
+        ? selectedRow
+        : rows.find((row) => row.free_bet_id === rowId);
+    const isSettledDelete = rowForDelete ? rowForDelete.status === "Settled" : formState.status === "Settled";
+    const settledReason = options?.confirmedSettledReason?.trim() ?? "";
+
+    if (isSettledDelete && !settledReason) {
+      setSettledDeleteGuardRowId(rowId);
+      setSettledDeleteReason("");
+      setErrorMessage("");
       return;
+    }
+
+    if (!isSettledDelete) {
+      const confirmed = await confirmDestructiveAction({
+        confirmLabel: "Delete Row",
+        message: `Delete free-bet row ${rowId}? This will remove it from this profile tracker.`,
+        title: "Delete free-bet row?",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
 
     setErrorMessage("");
@@ -2323,6 +2916,7 @@ export function FreeBetWorkflowShell({
     }
 
     invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+    dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setPreviewCalculation(null);
@@ -2330,7 +2924,7 @@ export function FreeBetWorkflowShell({
     if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
   }
 
-  async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
+  async function applySuggestedLayValue(mode: Exclude<SingleLayResultMode, "Custom">) {
     const suggested =
       mode === "Underlay"
         ? activePreviewCalculation?.underlay_reference_lay_stake ??
@@ -2349,6 +2943,9 @@ export function FreeBetWorkflowShell({
       ...current,
       match_strategy: mode,
       lay_actual: suggested,
+      lay_matched_stake_1: suggested,
+      status: current.status === "Available" || current.status === "Prospecting" ? "Placed" : current.status,
+      result: current.result || "Pending",
     }));
 
     const copied = await copyToClipboard(suggested);
@@ -2357,6 +2954,49 @@ export function FreeBetWorkflowShell({
         ? `Applied ${mode.toLowerCase()} best-value lay ${suggested}, switched strategy to ${mode}, and copied it to the clipboard.`
         : `Applied ${mode.toLowerCase()} best-value lay ${suggested} and switched strategy to ${mode}.`
     );
+  }
+
+  async function applyCustomLayValue() {
+    const value =
+      freeBetCustomSliderDraftValue.trim() ||
+      formState.lay_actual.trim() ||
+      formatPreviewMoney(freeBetCustomSliderCurrentFloat);
+    if (!value) {
+      return;
+    }
+
+    setFormState((current) => ({
+      ...current,
+      lay_actual: value,
+      lay_matched_stake_1: value,
+      match_strategy: "Custom",
+      result: current.result || "Pending",
+      status: current.status === "Available" || current.status === "Prospecting" ? "Placed" : current.status,
+    }));
+
+    const copied = await copyToClipboard(value);
+    setStatusMessage(
+      copied
+        ? "Applied custom lay, marked it fully placed, and copied it to the clipboard."
+        : "Applied custom lay and marked it fully placed."
+    );
+  }
+
+  function commitFreeBetCustomSliderValue(value?: string) {
+    const nextValue = formatPreviewMoney(
+      parseNumericInput(value ?? freeBetCustomSliderDraftValue) ??
+        freeBetCustomSliderCurrentFloat
+    );
+    setFreeBetCustomSliderDraftValue("");
+    setFormState((current) => {
+      if (current.lay_actual === nextValue) {
+        return current;
+      }
+      return {
+        ...current,
+        lay_actual: nextValue,
+      };
+    });
   }
 
   function openFollowUpReminderEditor(record: FreeBetRecord) {
@@ -2409,6 +3049,7 @@ export function FreeBetWorkflowShell({
 
       const updatedRecord = (await response.json()) as FreeBetRecord;
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
+      dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
       setRows((current) =>
         current.map((row) =>
           row.free_bet_id === updatedRecord.free_bet_id ? updatedRecord : row
@@ -2619,7 +3260,9 @@ export function FreeBetWorkflowShell({
           onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
         />
       ) : null}
-      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      {!workflowVisible ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
       <section
         aria-busy={isInitialLoading}
         className="content-panel stack sportsbook-page-shell"
@@ -3257,6 +3900,7 @@ export function FreeBetWorkflowShell({
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
+        aria-busy={isPersisting}
         aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
         data-pd-id="free-bets.editor.dialog"
@@ -3265,89 +3909,144 @@ export function FreeBetWorkflowShell({
         role="dialog"
       >
         <div className="workflow-panel-header workflow-editor-header" data-pd-id="free-bets.editor.header">
-          <div className="stack">
+          <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit free-bet row" : "Create free-bet row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
           </div>
-          <div className="tracker-nav">
-            {isSettledReadOnly ? (
+          <section
+            aria-label="Free-bet editor context"
+            className="editor-compact-summary"
+            data-pd-id="free-bets.editor.compact-summary"
+          >
+            <span
+              className="table-chip editor-summary-value-chip"
+              title={`${activeDisplayedValueLabel}: ${activeDisplayedValue}`}
+            >
+              {activeDisplayedNumericValue === null ? (
+                <span className="ledger-financial-value ledger-financial-value-unavailable">
+                  £ -
+                </span>
+              ) : (
+                <FinancialValue
+                  animate={false}
+                  className="ledger-financial-value editor-summary-financial-value"
+                  label={activeDisplayedValueLabel}
+                  value={activeDisplayedNumericValue}
+                  zeroTone="neutral"
+                />
+              )}
+            </span>
+            <span className="table-chip">{formState.status || "Available"}</span>
+            <span className={`table-chip${getFreeBetStrategyToneClass(formState.match_strategy)}`}>
+              {formState.match_strategy || "Standard"}
+            </span>
+            <span
+              className={`table-chip${
+                editorLayStatus === "Fully Laid"
+                  ? " table-chip-lay-full"
+                  : editorLayStatus === "Part Laid"
+                    ? " table-chip-lay-partial"
+                    : " table-chip-muted"
+              }`}
+            >
+              {editorLayStatus}
+            </span>
+            <span className="table-chip">{formState.retention_mode || "SNR"}</span>
+          </section>
+          <div className="tracker-nav workflow-editor-header-actions">
+            <div
+              aria-label="Free-bet editor tab navigation"
+              className="workflow-editor-header-nav"
+              data-pd-id="free-bets.editor.tab-actions"
+              role="group"
+            >
               <button
-                className="button-link"
-                onClick={() => setSettledEditEnabled(true)}
+                className="review-chip review-chip-action-previous"
+                disabled={!previousFreeBetEditorTab}
+                onClick={() => {
+                  if (previousFreeBetEditorTab) {
+                    activateFreeBetEditorTab(previousFreeBetEditorTab.id as FreeBetEditorTabId);
+                  }
+                }}
                 type="button"
               >
-                Edit settled row
+                Previous
               </button>
-            ) : null}
-            <button aria-label="Close free-bet editor" className="button-link" data-initial-focus="" onClick={() => void closeEditor()} type="button">
-              Close
+              <button
+                className="review-chip review-chip-action-next"
+                disabled={!nextFreeBetEditorTab}
+                onClick={() => {
+                  if (nextFreeBetEditorTab) {
+                    activateFreeBetEditorTab(nextFreeBetEditorTab.id as FreeBetEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+            <button
+              aria-label="Close free-bet editor"
+              className="workflow-editor-cancel-button"
+              disabled={isPersisting}
+              onClick={() => void closeEditor()}
+              title="Close editor"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">close</span>
             </button>
           </div>
+          <LedgerEditorTabRail
+            activeTabId={safeActiveEditorTabId}
+            ariaLabel="Free-bet editor sections"
+            guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
+            onActiveTabChange={(tabId) => activateFreeBetEditorTab(tabId as FreeBetEditorTabId)}
+            tabs={freeBetEditorTabs}
+          />
         </div>
-        <div className="workflow-editor-body">
-        {selectedRow || activePreviewCalculation ? (
-          <section className="stat-strip" aria-label="Free-bet editor overview">
-            <article className="stat-card">
-              <span className="eyebrow">
-                {getDisplayedValueLabel(activePreviewCalculation, selectedRow)}
-              </span>
-              <strong>{getDisplayedValue(activePreviewCalculation, selectedRow)}</strong>
-              <span>Status: {formState.status || "—"}</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Expiry</span>
-              <strong>
-                {formState.expiry_datetime
-                  ? formatDisplayDate(fromDateTimeLocalValue(formState.expiry_datetime))
-                  : "—"}
-              </strong>
-              <span>{getPlaceholderGuidance(formState.status)}</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Lay and matching</span>
-              <strong>{formState.match_strategy || "—"}</strong>
-              <span>Lay status: {activePreviewCalculation?.lay_status ?? selectedRow?.lay_status ?? "—"}</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">Offer path</span>
-              <strong>{formState.offer_type || "Offer type pending"}</strong>
-              <span>
-                {offerTypeDescriptor
-                  ? `${offerTypeDescriptor.calculatorFamily} • ${offerTypeDescriptor.summary}`
-                  : [formState.bookmaker, formState.retention_mode].filter(Boolean).join(" • ") ||
-                    "Bookmaker and mode pending"}
-              </span>
-            </article>
-            {hasFreeBetAwardSource(formState) ? (
-              <article className="stat-card" data-pd-id="free-bets.editor.award-source-card">
-                <span className="eyebrow">Award source</span>
-                <strong>{getFreeBetAwardSourceTitle(formState)}</strong>
-                <span>{getFreeBetAwardSourceDetail(formState)}</span>
-              </article>
-            ) : null}
-          </section>
-        ) : null}
-        {!isPlaceholderStatus || hasOutcomePreview ? (
+        {guidedEntryVisible ? (
           <section
-            className="stat-strip"
-            aria-label={formState.result === "Pending" ? "Free-bet possible outcomes" : "Free-bet outcome review"}
+            aria-label="Free-bet guided entry"
+            className={`guided-entry-banner guided-entry-banner-${safeGuidedEntry.state}`}
+            data-pd-id="free-bets.guided-entry"
+            key={`${safeGuidedEntry.state}:${safeGuidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
+            role="status"
           >
-            <article className="stat-card">
-              <span className="eyebrow">{getOutcomeCardLabel(getOutcomeCardState(formState.result, "back"))}</span>
-              <strong>{getFreeBetBackLabel(formState.result)}</strong>
-              <span>{activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins ?? "—"}</span>
-            </article>
-            <article className="stat-card">
-              <span className="eyebrow">{getOutcomeCardLabel(getOutcomeCardState(formState.result, "lay"))}</span>
-              <strong>{getFreeBetLayLabel(formState.result, isNoLayStrategy)}</strong>
-              <span>{activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins ?? "—"}</span>
-            </article>
+            <button className="guided-entry-action" onClick={focusGuidedEntryTarget} type="button">
+              <span className="eyebrow">
+                {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
+              </span>
+              <strong aria-label={guidedEntryPlainInstruction} id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+            </button>
+            <button
+              aria-label="Dismiss free-bet guided entry"
+              className="icon-button guided-entry-dismiss"
+              onClick={() => setGuidedEntryDismissed(true)}
+              title="Dismiss guided entry"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">
+                close
+              </span>
+            </button>
           </section>
+        ) : guidedAccessEnabled && guidedEntryDismissed && safeGuidedEntry.state !== "complete" ? (
+          <button
+            className="button-link guided-entry-restore"
+            data-pd-id="free-bets.guided-entry.restore"
+            onClick={() => setGuidedEntryDismissed(false)}
+            type="button"
+          >
+            Show guide
+          </button>
         ) : null}
+        <div className="workflow-editor-body">
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
           <EditorSection
+            collapsible={false}
             headerAside={
-              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+              renderEditorSectionAside()
             }
             invalid={offerIdentityValidationActive && missingOfferIdentityFields.length > 0}
             title="Offer setup"
@@ -3362,9 +4061,13 @@ export function FreeBetWorkflowShell({
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("offer")}
+                {...getGuidedFieldData("offer")}
+              >
                 <span>Offer</span>
                 <input
+                  aria-describedby={getGuidedDescribedBy("offer")}
                   onChange={(event) =>
                     setFormState((current) => ({ ...current, offer_text: event.target.value }))
                   }
@@ -3372,12 +4075,14 @@ export function FreeBetWorkflowShell({
                 />
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("bookmaker")}${
                   offerIdentityValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("bookmaker")}
               >
                 <span>Bookmaker</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("bookmaker")}
                   aria-invalid={offerIdentityValidationActive && !formState.bookmaker.trim()}
                   onChange={(event) =>
                     void applyDropdownChange(
@@ -3394,11 +4099,15 @@ export function FreeBetWorkflowShell({
                   ))}
                 </select>
               </label>
-              <label className={`field-control${
+              <label
+                className={`${getGuidedFieldClass("offer_type")}${
                 offerIdentityValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
-              }`}>
+                }`}
+                {...getGuidedFieldData("offer_type")}
+              >
                 <span>Offer type (promotion mechanism)</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("offer_type")}
                   aria-invalid={offerIdentityValidationActive && !formState.offer_type.trim()}
                   onChange={(event) =>
                     void applyDropdownChange(
@@ -3432,9 +4141,13 @@ export function FreeBetWorkflowShell({
                   value={formState.offer_name}
                 />
               </label>
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("bet_type")}
+                {...getGuidedFieldData("bet_type")}
+              >
                 <span>Bet type (bet shape / placement)</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("bet_type")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => applyBetTypeDefaults(current, event.target.value),
@@ -3452,9 +4165,13 @@ export function FreeBetWorkflowShell({
                   Use bet type for wager shape or placement context, for example Single, In Play + Single, or Bet Builder.
                 </p>
               </label>
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("fixture_type")}
+                {...getGuidedFieldData("fixture_type")}
+              >
                 <span>Fixture type</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("fixture_type")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => ({ ...current, fixture_type: event.target.value }),
@@ -3468,14 +4185,43 @@ export function FreeBetWorkflowShell({
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
+                <div
+                  aria-label="Common fixture shortcuts"
+                  className="field-choice-pills"
+                  data-pd-id="free-bets.editor.fixture-type-picks"
+                  role="group"
+                >
+                  {commonFixtureQuickPicks
+                    .filter((option) => fixtureTypeOptionsResolved.includes(option))
+                    .map((option) => (
+                      <button
+                        aria-pressed={formState.fixture_type === option}
+                        className={`field-choice-pill${
+                          formState.fixture_type === option ? " is-selected" : ""
+                        }`}
+                        key={option}
+                        onClick={() =>
+                          void applyDropdownChange(
+                            (current) => ({ ...current, fixture_type: option }),
+                            "Fixture type quick pick"
+                          )
+                        }
+                        type="button"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                </div>
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("event_name")}${
                   offerIdentityValidationActive && !formState.event_name.trim() ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("event_name")}
               >
                 <span>Event name</span>
                 <input
+                  aria-describedby={getGuidedDescribedBy("event_name")}
                   aria-invalid={offerIdentityValidationActive && !formState.event_name.trim()}
                   onChange={(event) => setFormState((current) => ({ ...current, event_name: event.target.value }))}
                   required
@@ -3485,15 +4231,422 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
-
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
           <EditorSection
+            collapsible={false}
+            headerAside={renderEditorSectionAside(
+              !isSettledReadOnly && !calculatorUnlocked ? (
+                <span className="section-lock-chip">{calculatorLockReason}</span>
+              ) : null
+            )}
+            invalid={offerIdentityValidationActive && missingPlacementFields.length > 0}
+            title="Matching"
+          >
+            {offerIdentityValidationActive && missingPlacementFields.length > 0 ? (
+              <EditorValidationBanner
+                dismissKey={`free-bet-placement:${selectedId ?? formState.free_bet_id ?? "new"}:${missingPlacementFields.join("|")}`}
+                id="free-bet.editor.placement-validation"
+                message={`Complete these placed/settled fields: ${missingPlacementFields.join(", ")}.`}
+                title="Placement incomplete"
+              />
+            ) : null}
+            <fieldset className="section-fieldset" disabled={isSettledReadOnly || !calculatorUnlocked}>
+            <div className="calculator-panel-shell">
+              <div className="calculator-panel-heading">
+                <div className="calculator-panel-heading-row">
+                  <strong>{freeBetCalculatorTitle}</strong>
+                  {activeMatchRatingDisplay && activeMatchRatingTone ? (
+                    <span
+                      className={`table-chip calculator-match-rating-pill calculator-match-rating-pill-${activeMatchRatingTone}`}
+                      data-pd-id="free-bets.matching.match-rating"
+                    >
+                      Match Rating {activeMatchRatingDisplay}% · {activeMatchRatingInterpretation}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="calculator-shell">
+                <div className="calculator-band calculator-band-primary">
+                  <span className="eyebrow">Calculator</span>
+                  {calculatorUnlocked && !previewReady && missingCalculatorFields.length > 0 ? (
+                    <EditorValidationBanner
+                      dismissKey={`free-bet-calculator:${selectedId ?? formState.free_bet_id ?? "new"}:${missingCalculatorFields.join("|")}`}
+                      id="free-bet.editor.calculator-validation"
+                      message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
+                      title="Calculator inputs incomplete"
+                    />
+                  ) : null}
+                  <div className="ledger-calculator-mode-bar" data-pd-id="free-bets.matching.calculator-mode">
+                    <label className="field-control ledger-calculator-mode-field">
+                      <span>Calc Type</span>
+                      <input
+                        aria-label="Free-bet calculator type"
+                        readOnly
+                        value={`${formState.retention_mode || "SNR"} ${formState.bet_type || "Single"}`}
+                      />
+                    </label>
+                    <label className="field-control ledger-calculator-mode-field">
+                      <span>Lay Mode</span>
+                      <select
+                        aria-label="Free-bet lay mode"
+                        onChange={(event) =>
+                          applyFreeBetLayWorkflowMode(event.target.value as LayWorkflowMode)
+                        }
+                        value={freeBetLayWorkflowMode}
+                      >
+                        {freeBetLayWorkflowModeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="form-grid calculator-input-grid">
+                    <div className="field-span-2 calculator-segment calculator-segment-back">
+                      <div className="calculator-segment-heading">
+                        <span className="eyebrow">Back Bet</span>
+                      </div>
+                      <div className="calculator-segment-grid calculator-segment-grid-back">
+                        <label
+                          className={`${getGuidedFieldClass("free_bet_value")}${
+                            calculatorUnlocked && missingCalculatorFields.includes("Free-bet value")
+                              ? " is-invalid"
+                              : ""
+                          }`}
+                          {...getGuidedFieldData("free_bet_value")}
+                        >
+                          <span>Free-bet value</span>
+                          <input
+                            aria-describedby={getGuidedDescribedBy("free_bet_value")}
+                            aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Free-bet value")}
+                            onChange={(event) =>
+                              setFormState((current) => ({ ...current, free_bet_value: event.target.value }))
+                            }
+                            value={formState.free_bet_value}
+                          />
+                        </label>
+                        <label
+                          className={`${getGuidedFieldClass("back_odds")}${
+                            calculatorUnlocked && missingCalculatorFields.includes("Back odds")
+                              ? " is-invalid"
+                              : ""
+                          }`}
+                          {...getGuidedFieldData("back_odds")}
+                        >
+                          <span>Back odds</span>
+                          <input
+                            aria-describedby={getGuidedDescribedBy("back_odds")}
+                            aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back odds")}
+                            onChange={(event) =>
+                              setFormState((current) => ({ ...current, back_odds: event.target.value }))
+                            }
+                            value={formState.back_odds}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    {!isNoLayStrategy ? (
+                      <div className="field-span-2 calculator-segment calculator-segment-lay">
+                        <div className="calculator-segment-heading">
+                          <span className="eyebrow">Lay / Exchange</span>
+                          <span
+                            className={`table-chip${
+                              editorLayStatus === "Fully Laid"
+                                ? " table-chip-lay-full"
+                                : editorLayStatus === "Part Laid"
+                                  ? " table-chip-lay-partial"
+                                  : " table-chip-muted"
+                            }`}
+                          >
+                            {editorLayStatus}
+                          </span>
+                        </div>
+                        <div className="calculator-segment-grid calculator-segment-grid-lay">
+                          <label
+                            className={`${getGuidedFieldClass("exchange")}${
+                              calculatorUnlocked && missingCalculatorFields.includes("Exchange")
+                                ? " is-invalid"
+                                : ""
+                            }`}
+                            {...getGuidedFieldData("exchange")}
+                          >
+                            <span>Exchange</span>
+                            <select
+                              aria-describedby={getGuidedDescribedBy("exchange")}
+                              aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Exchange")}
+                              onChange={(event) =>
+                                void applyDropdownChange(
+                                  (current) => ({ ...current, exchange_name: event.target.value }),
+                                  "Exchange change"
+                                )
+                              }
+                              value={formState.exchange_name}
+                            >
+                              <option value="">Select exchange</option>
+                              {exchangeOptions.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label
+                            className={`${getGuidedFieldClass("lay_odds_1")}${
+                              calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")
+                                ? " is-invalid"
+                                : ""
+                            }`}
+                            {...getGuidedFieldData("lay_odds_1")}
+                          >
+                            <span>Lay odds 1</span>
+                            <input
+                              aria-describedby={getGuidedDescribedBy("lay_odds_1")}
+                              aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
+                              onChange={(event) =>
+                                setFormState((current) => ({ ...current, lay_odds_1: event.target.value }))
+                              }
+                              value={formState.lay_odds_1}
+                            />
+                          </label>
+                          <label
+                            className={`${getGuidedFieldClass("lay_actual")}${
+                              calculatorUnlocked && missingCalculatorFields.includes("Lay actual")
+                                ? " is-invalid"
+                                : ""
+                            }`}
+                            {...getGuidedFieldData("lay_actual")}
+                          >
+                            <span>Lay actual</span>
+                            <input
+                              aria-describedby={getGuidedDescribedBy("lay_actual")}
+                              aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
+                              onChange={(event) =>
+                                setFormState((current) => ({ ...current, lay_actual: event.target.value }))
+                              }
+                              value={formState.lay_actual}
+                            />
+                          </label>
+                          {showsLayMatchedStake ? (
+                            <label className="field-control">
+                              <span>Lay matched stake 1</span>
+                              <input
+                                onChange={(event) =>
+                                  setFormState((current) => ({ ...current, lay_matched_stake_1: event.target.value }))
+                                }
+                                value={formState.lay_matched_stake_1}
+                              />
+                            </label>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <div className={`calculator-band calculator-band-secondary${isNoLayStrategy ? " calculator-band-single" : ""}`}>
+                  {!isNoLayStrategy ? (
+                    <div className="calculator-panel-card calculator-result-panel">
+                      {previewReady && freeBetLaySuggestionCards.length > 0 ? (
+                        <div
+                          className={`calculator-result-card-grid calculator-result-card-grid-${freeBetCalculatorMode.toLowerCase()}`}
+                          data-pd-id="free-bets.matching.result-cards"
+                        >
+                          {freeBetOutcomeCardFields.map((card) => (
+                            <article
+                              className={`calculator-result-card calculator-result-card-${card.mode.toLowerCase()}`}
+                              key={card.mode}
+                            >
+                              <div className="calculator-result-card-heading">
+                                <strong>{card.mode}</strong>
+                              </div>
+                              <dl className="calculator-result-card-values">
+                                <div>
+                                  <dt>Lay Stake</dt>
+                                  <dd>{formatPreviewFinancialValue(card.preview?.layStake ?? card.stake)}</dd>
+                                </div>
+                                <div>
+                                  <dt>Liability</dt>
+                                  <dd>{formatPreviewFinancialValue(card.preview?.liability)}</dd>
+                                </div>
+                                <div>
+                                  <dt>Back Win</dt>
+                                  <dd>{renderPreviewFinancialValue(card.preview?.backWin)}</dd>
+                                </div>
+                                <div>
+                                  <dt>Lay Win</dt>
+                                  <dd>{renderPreviewFinancialValue(card.preview?.layWin)}</dd>
+                                </div>
+                              </dl>
+                              {card.mode === "Custom" ? (
+                                <div className="custom-slider-card-controls">
+                                  <div className="custom-slider-row">
+                                    <label className="field-control custom-slider-range-label">
+                                      <span>Min</span>
+                                      <input
+                                        inputMode="decimal"
+                                        min="0.01"
+                                        onChange={(event) => {
+                                          if (isDecimalCalculatorInput(event.target.value)) {
+                                            setFreeBetCustomSliderMin(event.target.value);
+                                          }
+                                        }}
+                                        step="0.01"
+                                        type="number"
+                                        value={
+                                          freeBetCustomSliderMin ||
+                                          formatPreviewMoney(freeBetCustomSliderEffectiveMin)
+                                        }
+                                      />
+                                    </label>
+                                    <div className="custom-slider-track-wrap">
+                                      <input
+                                        aria-label="Custom free-bet lay stake slider"
+                                        aria-valuemax={freeBetCustomSliderBoundedMax}
+                                        aria-valuemin={freeBetCustomSliderEffectiveMin}
+                                        aria-valuenow={freeBetCustomSliderCurrentFloat}
+                                        className="custom-slider-track"
+                                        max={freeBetCustomSliderBoundedMax}
+                                        min={freeBetCustomSliderEffectiveMin}
+                                        onBlur={(event) =>
+                                          commitFreeBetCustomSliderValue(event.target.value)
+                                        }
+                                        onChange={(event) => {
+                                          setFreeBetCustomSliderDraftValue(
+                                            formatPreviewMoney(Number(event.target.value))
+                                          );
+                                        }}
+                                        onKeyUp={(event) => {
+                                          if (
+                                            [
+                                              "ArrowLeft",
+                                              "ArrowRight",
+                                              "Home",
+                                              "End",
+                                              "PageUp",
+                                              "PageDown",
+                                            ].includes(event.key)
+                                          ) {
+                                            commitFreeBetCustomSliderValue(event.currentTarget.value);
+                                          }
+                                        }}
+                                        onPointerUp={(event) =>
+                                          commitFreeBetCustomSliderValue(event.currentTarget.value)
+                                        }
+                                        step="0.01"
+                                        type="range"
+                                        value={freeBetCustomSliderCurrentFloat}
+                                      />
+                                    </div>
+                                    <label className="field-control custom-slider-range-label">
+                                      <span>Max</span>
+                                      <input
+                                        inputMode="decimal"
+                                        min="0.01"
+                                        onChange={(event) => {
+                                          if (isDecimalCalculatorInput(event.target.value)) {
+                                            setFreeBetCustomSliderMax(event.target.value);
+                                          }
+                                        }}
+                                        step="0.01"
+                                        type="number"
+                                        value={
+                                          freeBetCustomSliderMax ||
+                                          formatPreviewMoney(freeBetCustomSliderBoundedMax)
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              ) : null}
+                              <button
+                                className="review-chip review-chip-copy calculator-result-copy"
+                                disabled={card.stake === "—"}
+                                onClick={() =>
+                                  card.mode === "Custom"
+                                    ? void applyCustomLayValue()
+                                    : void applySuggestedLayValue(card.mode)
+                                }
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="material-symbols-outlined">
+                                  copy_all
+                                </span>
+                                <span>Copy</span>
+                              </button>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="lede">
+                          {calculatorUnlocked
+                            ? `Complete calculator inputs: ${missingCalculatorFields.join(", ")}.`
+                            : isAwaitingAwardStatus
+                              ? "Free bet not yet issued. Move to Available before planning conversion."
+                              : "Complete offer setup first."}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                  {isNoLayStrategy ? (
+                  <div className="calculator-panel-card calculator-result-panel">
+                    {previewReady ? (
+                      <div className="calculator-result-card-grid calculator-result-card-grid-simple">
+                        <article className="calculator-result-card">
+                          <div className="calculator-result-card-heading">
+                            <strong>Current Scenario</strong>
+                          </div>
+                          <dl className="calculator-result-card-values">
+                            <div>
+                              <dt>{activeDisplayedValueLabel}</dt>
+                              <dd>{renderPreviewFinancialValue(activeDisplayedNumericValue)}</dd>
+                            </div>
+                            <div>
+                              <dt>{getFreeBetBackLabel(formState.result)}</dt>
+                              <dd>
+                                {renderPreviewFinancialValue(
+                                  activePreviewCalculation?.scenario_pnl_if_back_wins ??
+                                    selectedRow?.scenario_pnl_if_back_wins
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{getFreeBetLayLabel(formState.result, isNoLayStrategy)}</dt>
+                              <dd>
+                                {renderPreviewFinancialValue(
+                                  activePreviewCalculation?.scenario_pnl_if_lay_wins ??
+                                    selectedRow?.scenario_pnl_if_lay_wins
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      </div>
+                    ) : (
+                      <p className="lede">
+                        {calculatorUnlocked
+                          ? `Complete calculator inputs: ${missingCalculatorFields.join(", ")}.`
+                          : isAwaitingAwardStatus
+                            ? "Free bet not yet issued. Move to Available before planning conversion."
+                            : "Complete offer setup first."}
+                      </p>
+                    )}
+                  </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+            </fieldset>
+          </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
+          <EditorSection
+            collapsible={false}
             headerAside={
-              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
+              renderEditorSectionAside()
             }
             invalid={
               offerIdentityValidationActive && missingPlacementFields.includes("Settles")
             }
-            title="Award and settlement"
+            title="Settlement"
           >
             {offerIdentityValidationActive && missingPlacementFields.includes("Settles") ? (
               <EditorValidationBanner
@@ -3554,9 +4707,13 @@ export function FreeBetWorkflowShell({
                   value={formState.expiry_datetime}
                 />
               </label>
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("settles")}
+                {...getGuidedFieldData("settles")}
+              >
                 <span>Settles</span>
                 <input
+                  aria-describedby={getGuidedDescribedBy("settles")}
                   aria-invalid={offerIdentityValidationActive && missingPlacementFields.includes("Settles")}
                   type="datetime-local"
                   onChange={(event) => setFormState((current) => ({ ...current, date_settled: event.target.value }))}
@@ -3567,274 +4724,25 @@ export function FreeBetWorkflowShell({
             </fieldset>
           </EditorSection>
           <EditorSection
-            headerAside={
-              isSettledReadOnly ? (
-                <span className="section-lock-chip">Settled row locked</span>
-              ) : !calculatorUnlocked ? (
-                <span className="section-lock-chip">{calculatorLockReason}</span>
-              ) : null
-            }
-            invalid={offerIdentityValidationActive && missingPlacementFields.length > 0}
-            title="Calculator panel"
-          >
-            {offerIdentityValidationActive && missingPlacementFields.length > 0 ? (
-              <EditorValidationBanner
-                dismissKey={`free-bet-placement:${selectedId ?? formState.free_bet_id ?? "new"}:${missingPlacementFields.join("|")}`}
-                id="free-bet.editor.placement-validation"
-                message={`Complete these placed/settled fields: ${missingPlacementFields.join(", ")}.`}
-                title="Placement incomplete"
-              />
-            ) : null}
-            <fieldset className="section-fieldset" disabled={isSettledReadOnly || !calculatorUnlocked}>
-            <div className="calculator-panel-shell">
-              <div className="calculator-panel-heading">
-                <strong>{`${formState.offer_type || "Offer type pending"} + ${formState.retention_mode || "Mode pending"} + ${formState.match_strategy || "Strategy pending"}`}</strong>
-              </div>
-              <div className="calculator-shell">
-                <div className="calculator-band calculator-band-primary">
-                  <span className="eyebrow">Matching plan</span>
-                  {calculatorUnlocked && !previewReady && missingCalculatorFields.length > 0 ? (
-                    <EditorValidationBanner
-                      dismissKey={`free-bet-calculator:${selectedId ?? formState.free_bet_id ?? "new"}:${missingCalculatorFields.join("|")}`}
-                      id="free-bet.editor.calculator-validation"
-                      message={`Complete these calculator inputs: ${missingCalculatorFields.join(", ")}.`}
-                      title="Calculator inputs incomplete"
-                    />
-                  ) : null}
-                  <div className="form-grid calculator-input-grid">
-                    {calculatorRuleItems.length > 0 ? (
-                      <div className="calculator-rule-row field-span-2" role="list" aria-label="Free-bet workflow rules">
-                        {calculatorRuleItems.map((item) => (
-                          <span className="calculator-rule-chip" key={item} role="listitem">
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    <label
-                      className={`field-control${
-                        calculatorUnlocked && missingCalculatorFields.includes("Free-bet value")
-                          ? " is-invalid"
-                          : ""
-                      }`}
-                    >
-                      <span>Free-bet value</span>
-                      <input
-                        aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Free-bet value")}
-                        onChange={(event) =>
-                          setFormState((current) => ({ ...current, free_bet_value: event.target.value }))
-                        }
-                        value={formState.free_bet_value}
-                      />
-                    </label>
-                    <label
-                      className={`field-control${
-                        calculatorUnlocked && missingCalculatorFields.includes("Back odds")
-                          ? " is-invalid"
-                          : ""
-                      }`}
-                    >
-                      <span>Back odds</span>
-                      <input
-                        aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back odds")}
-                        onChange={(event) =>
-                          setFormState((current) => ({ ...current, back_odds: event.target.value }))
-                        }
-                        value={formState.back_odds}
-                      />
-                    </label>
-                    <label className="field-control">
-                      <span>Strategy</span>
-                      <select
-                        onChange={(event) =>
-                          void applyDropdownChange(
-                            (current) => applyStrategyDefaults(current, event.target.value),
-                            "Strategy change"
-                          )
-                        }
-                        value={formState.match_strategy}
-                      >
-                        {freeBetStrategyOptions.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </label>
-                    {!isNoLayStrategy ? (
-                      <label
-                        className={`field-control${
-                          calculatorUnlocked && missingCalculatorFields.includes("Exchange")
-                            ? " is-invalid"
-                            : ""
-                        }`}
-                      >
-                        <span>Exchange</span>
-                        <select
-                          aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Exchange")}
-                          onChange={(event) =>
-                            void applyDropdownChange(
-                              (current) => ({ ...current, exchange_name: event.target.value }),
-                              "Exchange change"
-                            )
-                          }
-                          value={formState.exchange_name}
-                        >
-                          <option value="">Select exchange</option>
-                          {exchangeOptions.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-                  </div>
-                </div>
-                {!isNoLayStrategy ? (
-                  <div className="calculator-band calculator-band-primary">
-                  <label
-                    className={`field-control${
-                      calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")
-                        ? " is-invalid"
-                        : ""
-                    }`}
-                  >
-                    <span>Lay odds 1</span>
-                    <input
-                      aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
-                      onChange={(event) => setFormState((current) => ({ ...current, lay_odds_1: event.target.value }))}
-                      value={formState.lay_odds_1}
-                    />
-                  </label>
-                  <label
-                    className={`field-control${
-                      calculatorUnlocked && missingCalculatorFields.includes("Lay actual")
-                        ? " is-invalid"
-                        : ""
-                    }`}
-                  >
-                    <span>Lay actual</span>
-                    <input
-                      aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
-                      onChange={(event) => setFormState((current) => ({ ...current, lay_actual: event.target.value }))}
-                      value={formState.lay_actual}
-                    />
-                  </label>
-                  {showsLayMatchedStake ? (
-                    <label className="field-control">
-                      <span>Lay matched stake 1</span>
-                      <input
-                        onChange={(event) =>
-                          setFormState((current) => ({ ...current, lay_matched_stake_1: event.target.value }))
-                        }
-                        value={formState.lay_matched_stake_1}
-                      />
-                    </label>
-                  ) : null}
-                  </div>
-                ) : null}
-                <div
-                  className={`calculator-band calculator-band-secondary${
-                    isNoLayStrategy ? " calculator-band-single" : ""
-                  }`}
-                >
-                  {!isNoLayStrategy ? (
-                  <div className="calculator-panel-card">
-                    <span className="eyebrow">Suggested lay</span>
-                    {previewReady ? (
-                      <div className="stack">
-                        {isCalculatedState ? (
-                          <div className="tracker-nav">
-                            <span className={getCalculationStateChipClassName(activeCalculationState)}>
-                              {getCalculationStateLabel(activeCalculationState)}
-                            </span>
-                          </div>
-                        ) : null}
-                        <strong>
-                          Best-value lay suggestion ({formState.match_strategy}): {activeSuggestedLay}
-                        </strong>
-                        <p className="field-help-text">
-                          Current best-value suggestion from contract-backed lay references.
-                        </p>
-                        <div className="summary-list">
-                          <p className="lede"><span className="summary-label">Standard</span><button className="button-link button-link-lay" disabled={(activePreviewCalculation?.base_reference_lay_stake ?? selectedRow?.base_reference_lay_stake ?? "—") === "—"} onClick={() => void applySuggestedLayValue("Standard")} type="button">{activePreviewCalculation?.base_reference_lay_stake ?? selectedRow?.base_reference_lay_stake ?? "—"}</button></p>
-                          <p className="lede"><span className="summary-label">Underlay</span><button className="button-link button-link-lay" disabled={(activePreviewCalculation?.underlay_reference_lay_stake ?? selectedRow?.underlay_reference_lay_stake ?? "—") === "—"} onClick={() => void applySuggestedLayValue("Underlay")} type="button">{activePreviewCalculation?.underlay_reference_lay_stake ?? selectedRow?.underlay_reference_lay_stake ?? "—"}</button></p>
-                          <p className="lede"><span className="summary-label">Overlay</span><button className="button-link button-link-lay" disabled={(activePreviewCalculation?.overlay_reference_lay_stake ?? selectedRow?.overlay_reference_lay_stake ?? "—") === "—"} onClick={() => void applySuggestedLayValue("Overlay")} type="button">{activePreviewCalculation?.overlay_reference_lay_stake ?? selectedRow?.overlay_reference_lay_stake ?? "—"}</button></p>
-                        </div>
-                        {visibleCalculationNotes.length > 0 ? (
-                          <div className="summary-list">
-                            {visibleCalculationNotes.slice(0, 2).map((note) => (
-                              <p className="lede" key={note}>
-                                {note}
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <p className="lede">
-                        {calculatorUnlocked
-                          ? `Complete calculator inputs: ${missingCalculatorFields.join(", ")}.`
-                          : isAwaitingAwardStatus
-                            ? "Free bet not yet issued. Move to Available before planning conversion."
-                            : "Complete offer setup first."}
-                      </p>
-                    )}
-                  </div>
-                  ) : null}
-                  <div className="calculator-panel-card">
-                    <span className="eyebrow">Projected PnL</span>
-                    {previewReady ? (
-                      <div className="stack">
-                        <strong>
-                          {getDisplayedValueLabel(activePreviewCalculation, selectedRow)}: {getDisplayedValue(activePreviewCalculation, selectedRow)}
-                        </strong>
-                        <p className="lede">
-                          {getFreeBetBackLabel(formState.result)}: {activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins ?? "—"}
-                        </p>
-                        <p className="lede">
-                          {getFreeBetLayLabel(formState.result, isNoLayStrategy)}: {activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins ?? "—"}
-                        </p>
-                        {visibleCalculationNotes.length > 0 ? (
-                          <div className="summary-list">
-                            {visibleCalculationNotes.slice(0, 2).map((note) => (
-                              <p className="lede" key={note}>
-                                {note}
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <p className="lede">
-                        {calculatorUnlocked
-                          ? `Complete calculator inputs: ${missingCalculatorFields.join(", ")}.`
-                          : isAwaitingAwardStatus
-                            ? "Free bet not yet issued. Move to Available before planning conversion."
-                            : "Complete offer setup first."}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            </fieldset>
-          </EditorSection>
-          <EditorSection
-            headerAside={
-              isSettledReadOnly ? <span className="section-lock-chip">Settled row locked</span> : null
-            }
+            collapsible={false}
             title="Result"
           >
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
             <div className="form-grid">
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("result")}
+                {...getGuidedFieldData("result")}
+              >
                 <span>Result</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("result")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => applyResultDefaults(current, event.target.value),
                       "Result change"
                     )
                   }
-                  value={formState.result}
+                  value={resultSelectValue}
                 >
                   {resultOptions.map((option) => (
                     <option key={option} value={option}>
@@ -3843,30 +4751,102 @@ export function FreeBetWorkflowShell({
                   ))}
                 </select>
               </label>
+              {quickSettlementOptions.length > 0 ? (
+                <div
+                  aria-label="Free-bet quick settlement outcomes"
+                  className="settlement-quick-actions field-span-2"
+                  data-pd-id="free-bets.editor.quick-settlement-actions"
+                  role="group"
+                >
+                  {quickSettlementOptions.map((option) => (
+                    <button
+                      aria-pressed={resultSelectValue === option}
+                      className={`review-chip settlement-quick-action${
+                        resultSelectValue === option ? " is-active" : ""
+                      }`}
+                      key={option}
+                      onClick={() =>
+                        void applyDropdownChange(
+                          (current) => applyResultDefaults(current, option),
+                          "Settlement quick action"
+                        )
+                      }
+                      type="button"
+                    >
+                      {getFreeBetResultLabel(option, isNoLayStrategy)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <section
+                aria-label={
+                  formState.result === "Pending"
+                    ? "Free-bet possible outcomes"
+                    : "Free-bet final outcome"
+                }
+                className={`settlement-outcome-panel field-span-2${
+                  formState.result !== "Pending" || formState.status === "Settled"
+                    ? " settlement-outcome-panel-final"
+                    : ""
+                }`}
+                data-pd-id="free-bets.editor.settlement-outcomes"
+              >
+                <div className="settlement-outcome-primary">
+                  <span className="summary-label">{activeDisplayedValueLabel}</span>
+                  <strong>{renderPreviewFinancialValue(activeDisplayedNumericValue)}</strong>
+                </div>
+                {formState.result === "Pending" ? (
+                  <div className="settlement-outcome-grid">
+                    <article className="settlement-outcome-card">
+                      <span className="summary-label">Possible outcome</span>
+                      <strong>{getFreeBetBackLabel(formState.result)}</strong>
+                      {renderPreviewFinancialValue(
+                        activePreviewCalculation?.scenario_pnl_if_back_wins ??
+                          selectedRow?.scenario_pnl_if_back_wins
+                      )}
+                    </article>
+                    <article className="settlement-outcome-card">
+                      <span className="summary-label">Possible outcome</span>
+                      <strong>{getFreeBetLayLabel(formState.result, isNoLayStrategy)}</strong>
+                      {renderPreviewFinancialValue(
+                        activePreviewCalculation?.scenario_pnl_if_lay_wins ??
+                          selectedRow?.scenario_pnl_if_lay_wins
+                      )}
+                    </article>
+                  </div>
+                ) : (
+                  <div className="settlement-outcome-status">
+                    <span className="table-chip table-chip-success">Outcome hit</span>
+                    <strong>{getFreeBetResultLabel(formState.result, isNoLayStrategy)}</strong>
+                  </div>
+                )}
+              </section>
             </div>
             </fieldset>
           </EditorSection>
           {selectedRow &&
           (!freeBetTerminalStatuses.has(selectedRow.status) ||
             selectedRow.follow_up_reminder_state === "Active") ? (
-            <EditorSection defaultOpen={false} title="Follow-up">
+            <EditorSection
+              collapsible={false}
+              headerAside={
+                <span
+                  className={`table-chip${
+                    selectedRow.follow_up_reminder_state === "Active"
+                      ? " table-chip-lay-partial"
+                      : ""
+                  }`}
+                >
+                  {selectedRow.follow_up_reminder_state}
+                </span>
+              }
+              title="Follow-up"
+            >
               <section
                 aria-label="Free-bet follow-up reminder"
                 className="stack"
                 data-pd-id="free-bets.follow-up-reminder.summary"
               >
-                <div className="section-heading-row">
-                  <span className="eyebrow">Follow-up task</span>
-                  <span
-                    className={`table-chip${
-                      selectedRow.follow_up_reminder_state === "Active"
-                        ? " table-chip-lay-partial"
-                        : ""
-                    }`}
-                  >
-                    {selectedRow.follow_up_reminder_state}
-                  </span>
-                </div>
                 {selectedRow.follow_up_reminder_state === "Active" ? (
                   <div className="summary-list">
                     <p className="lede">
@@ -4019,7 +4999,11 @@ export function FreeBetWorkflowShell({
                 ) : null}
               </section>
             </EditorSection>
-          ) : null}
+          ) : (
+            <EditorSection collapsible={false} title="Follow-up">
+              <p className="lede">Save the free-bet row before adding a follow-up reminder.</p>
+            </EditorSection>
+          )}
           <EditorSection defaultOpen={false} title="Advanced controls">
             {(activePreviewCalculation?.calculation_notes.length || selectedRow?.calculation_notes.length) ? (
               <section className="stack">
@@ -4029,35 +5013,6 @@ export function FreeBetWorkflowShell({
                   : selectedRow?.calculation_notes ?? []).map((note) => (
                   <p className="lede" key={note}>{note}</p>
                 ))}
-              </section>
-            ) : null}
-            {selectedRow || activePreviewCalculation ? (
-              <section className="stack">
-                <span className="eyebrow">Contract trace</span>
-                <div className="meta-grid">
-                  <dl>
-                    <dt>Calculation state</dt>
-                    <dd>{activePreviewCalculation?.calculation_state ?? selectedRow?.calculation_state ?? "—"}</dd>
-                  </dl>
-                  <dl>
-                    <dt>Displayed value source</dt>
-                    <dd>{getCalculationValueSource(activePreviewCalculation, selectedRow)}</dd>
-                  </dl>
-                  <dl>
-                    <dt>Reporting figure shown</dt>
-                    <dd>{getDisplayedValue(activePreviewCalculation, selectedRow)}</dd>
-                  </dl>
-                  <dl>
-                    <dt>Override audit</dt>
-                    <dd>
-                      {formState.manual_override_value.trim()
-                        ? formState.manual_override_reason.trim()
-                          ? "Manual override includes an audit reason."
-                          : "Manual override now requires a reason and will stay review-required without one."
-                        : "No manual override is active for this row."}
-                    </dd>
-                  </dl>
-                </div>
               </section>
             ) : null}
             <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
@@ -4109,21 +5064,104 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
-          <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
-            <button className="review-chip review-chip-copy" disabled={isPending || isSettledReadOnly} type="submit">
-              Save
-            </button>
-            {selectedId ? (
-              <button className="review-chip review-chip-danger" onClick={() => void handleDeleteSelectedRow()} type="button">
-                Delete
-              </button>
+          </LedgerEditorTabPanel>
+          <div className="field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
+            {selectedId && settledDeleteGuardRowId === selectedId ? (
+              <LedgerSettledDeleteGuard
+                disabled={isPersisting}
+                ledgerLabel="free-bets"
+                onCancel={() => {
+                  setSettledDeleteGuardRowId(null);
+                  setSettledDeleteReason("");
+                }}
+                onConfirm={() =>
+                  void handleDeleteSelectedRow(selectedId, {
+                    confirmedSettledReason: settledDeleteReason,
+                  })
+                }
+                onReasonChange={setSettledDeleteReason}
+                reason={settledDeleteReason}
+                rowLabel={selectedId}
+              />
             ) : null}
-            <button className="review-chip" onClick={handleResetForm} type="button">
-              Revert
-            </button>
-            <button aria-label="Close free-bet editor" className="button-link tracker-nav-right-action" onClick={() => void closeEditor()} type="button">
-              Close
-            </button>
+            <div className="tracker-nav workflow-editor-footer-primary">
+              {isSettledReadOnly ? (
+                <button
+                  aria-label="Close free-bet editor"
+                  className="review-chip"
+                  disabled={isPersisting}
+                  onClick={() => void closeEditor()}
+                  type="button"
+                >
+                  Close
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="review-chip review-chip-copy"
+                    disabled={isPending || isPersisting || !isDirty}
+                    type="submit"
+                  >
+                    {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                    {isPending || isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
+                  </button>
+                  {settledEditEnabled ? (
+                    <button
+                      className="review-chip"
+                      disabled={isPersisting}
+                      onClick={handleCancelSettledEdit}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                  {selectedId ? (
+                    <button
+                      className="review-chip review-chip-danger"
+                      disabled={isPersisting}
+                      onClick={() => void handleDeleteSelectedRow()}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                  <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">
+                    Revert
+                  </button>
+                </>
+              )}
+            </div>
+            <div
+              aria-label="Free-bet editor footer tab navigation"
+              className="tracker-nav workflow-editor-footer-nav"
+              data-pd-id="free-bets.editor.footer-tab-actions"
+              role="group"
+            >
+              <button
+                className="review-chip review-chip-action-previous"
+                disabled={!previousFreeBetEditorTab}
+                onClick={() => {
+                  if (previousFreeBetEditorTab) {
+                    activateFreeBetEditorTab(previousFreeBetEditorTab.id as FreeBetEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                className="review-chip review-chip-action-next"
+                disabled={!nextFreeBetEditorTab}
+                onClick={() => {
+                  if (nextFreeBetEditorTab) {
+                    activateFreeBetEditorTab(nextFreeBetEditorTab.id as FreeBetEditorTabId);
+                  }
+                }}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </form>
         </div>
