@@ -10,10 +10,7 @@ import {
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
-import {
-  addOrReplaceLocalFundManagerNotification,
-  FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT,
-} from "@/lib/notifications";
+import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   getCalculatorModeForLayWorkflowMode,
@@ -3701,9 +3698,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
         : guidedEntryMessageText
     ).trim() || "Add The Offer Name As Shown.";
-  const guidedEntryActionMessage = guidedEntryNeedsTabJump
-    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
-    : guidedEntryMessageText;
+  const guidedEntryActionMessage = guidedEntryResolvedInstruction;
   const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
     const settleDate = toDateTimeLocalValue(record.date_settled);
@@ -3833,13 +3828,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     []
   );
   const renderGuidedEntryInstruction = useCallback(() => {
+    const safeInstruction = guidedEntryResolvedInstruction.trim() || "Add The Offer Name As Shown.";
+
     if (!guidedEntryNeedsTabJump) {
-      return <span className="guided-entry-instruction-text">{renderGuidedEntryMessage(guidedEntryResolvedInstruction)}</span>;
+      return (
+        <span className="guided-entry-instruction-text">
+          {safeInstruction}
+        </span>
+      );
     }
 
     return (
       <span className="guided-entry-instruction-text">
-        <span>Go to </span>
         <span className="guided-entry-step-reference">
           {guidedEntryTargetTabIndex >= 0 ? (
             <span aria-hidden="true" className="guided-entry-step-marker">
@@ -3848,17 +3848,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ) : null}
           <span>{guidedEntryTargetTabLabel}</span>
         </span>
-        <span> and </span>
-        {renderGuidedEntryMessage(guidedEntryMessageText || guidedEntryResolvedInstruction)}
+        <span>{safeInstruction.replace(`Go to ${guidedEntryTargetTabLabel} and `, "")}</span>
       </span>
     );
   }, [
-    guidedEntryMessageText,
     guidedEntryNeedsTabJump,
     guidedEntryResolvedInstruction,
     guidedEntryTargetTabIndex,
     guidedEntryTargetTabLabel,
-    renderGuidedEntryMessage,
   ]);
   const renderSettledLockAction = useCallback(
     () => {
@@ -4733,39 +4730,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
   }
 
-  function queueSportsbookSaveNotification(saved: SportsbookRecord): void {
-    const workflowStage =
-      saved.status === "Settled"
-        ? "settled"
-        : saved.status === "Placed" || saved.status === "Free Bet Awarded"
-          ? "placed"
-          : "draft";
-    const notificationTitle =
-      workflowStage === "settled"
-        ? "Sportsbook row settled"
-        : workflowStage === "placed"
-          ? "Sportsbook row placed"
-          : "Sportsbook draft saved";
-    const eventLabel =
-      saved.event_name || saved.offer_text || saved.offer_name || saved.sportsbook_bet_id;
-
-    addOrReplaceLocalFundManagerNotification({
-      notification_id: `sportsbook-save:${profileId}:${saved.sportsbook_bet_id}:${workflowStage}`,
-      notification_type: `sportsbook_${workflowStage}_saved`,
-      title: notificationTitle,
-      ledger_label: "Sportsbook Bets",
-      bookmaker_label: saved.bookmaker || "Bookmaker not set",
-      message: eventLabel,
-      profile_id: profileId,
-      profile_name: profileId,
-      record_id: saved.sportsbook_bet_id,
-      href: `/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(saved.sportsbook_bet_id)}`,
-      due_at: saved.date_settled || saved.updated_at || new Date().toISOString(),
-      settles_at: saved.date_settled || saved.updated_at || new Date().toISOString(),
-      tone: workflowStage === "draft" ? "info" : "success",
-    });
-  }
-
   async function persistForm(
     nextFormState: SportsbookFormState,
     options?: {
@@ -4900,7 +4864,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       setTableCollapsed(false);
     }
     if (workflowVisible) {
-      queueSportsbookSaveNotification(saved);
       setStatusMessage("");
     } else {
       setStatusMessage(

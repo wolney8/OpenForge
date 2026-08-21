@@ -178,5 +178,12 @@ export function useUnsavedChangesGuard(
     };
   }, [isDirty, message]);
 
+  useEffect(() => {
+    const activeGuardId = guardId.current;
+    return () => {
+      activeUnsavedGuards.delete(activeGuardId);
+    };
+  }, []);
+
   return confirmDiscardChanges;
 }

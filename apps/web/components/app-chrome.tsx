@@ -26,6 +26,7 @@ import {
   type FreeBetSummaryRecord,
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
+import { TRACKER_DATA_UPDATED_EVENT } from "@/lib/tracker-data-events";
 import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
 import {
   confirmUnsavedTrackerChanges,
@@ -119,14 +120,35 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [headerSummary, setHeaderSummary] = useState<HeaderSummaryState | null>(null);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
-  const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
+  const [profileSearch, setProfileSearch] = useState("");
+  const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
   const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
   const unsavedPrompt = useUnsavedChangesPromptController();
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
+  const trackerMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const profileSearchRef = useRef<HTMLInputElement | null>(null);
   const appMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const unsavedKeepEditingRef = useRef<HTMLButtonElement | null>(null);
   const closeAppMenu = useCallback(() => setAppMenuOpen(false), []);
+  const closeTrackerMenu = useCallback(() => {
+    setTrackerMenuOpen(false);
+    setProfileSearch("");
+    setSelectedCommandProfileId(null);
+    window.requestAnimationFrame(() => trackerMenuTriggerRef.current?.focus());
+  }, []);
+  const openTrackerMenu = useCallback(() => {
+    setProfileSearch("");
+    setSelectedCommandProfileId(isInsideProfile ? activeProfileId : null);
+    setTrackerMenuOpen(true);
+  }, [activeProfileId, isInsideProfile]);
+
+  useEffect(() => {
+    if (!trackerMenuOpen || profileSearch.trim() || !isInsideProfile || !activeProfileId) {
+      return;
+    }
+    setSelectedCommandProfileId(activeProfileId);
+  }, [activeProfileId, isInsideProfile, profileSearch, trackerMenuOpen]);
 
   useEffect(() => {
     router.prefetch("/profiles");
@@ -206,17 +228,34 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [headerRefreshKey]);
 
   useEffect(() => {
-    const handleTrackerSettingsUpdated = (event: Event) => {
+    const refreshHeaderForProfile = (event: Event) => {
       const detail = (event as CustomEvent<{ profileId?: string }>).detail;
       if (detail?.profileId && detail.profileId !== activeProfileId) return;
       setHeaderRefreshKey((current) => current + 1);
     };
 
-    window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, handleTrackerSettingsUpdated);
+    window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
+    window.addEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
     return () => {
-      window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, handleTrackerSettingsUpdated);
+      window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
+      window.removeEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
     };
   }, [activeProfileId]);
+
+  useEffect(() => {
+    if (!isInsideProfile) {
+      return;
+    }
+
+    const refreshHeader = () => setHeaderRefreshKey((current) => current + 1);
+    const interval = window.setInterval(refreshHeader, 30_000);
+    window.addEventListener("focus", refreshHeader);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshHeader);
+    };
+  }, [isInsideProfile]);
 
   useEffect(() => {
     if (!isInsideProfile || !pathname) return;
@@ -405,25 +444,25 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const focusFrame = window.requestAnimationFrame(() => profileSearchRef.current?.focus());
+
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
 
       if (trackerMenuOpen && trackerMenuRef.current && !trackerMenuRef.current.contains(target)) {
-        setTrackerMenuOpen(false);
-        setProfileSwitchOpen(false);
+        closeTrackerMenu();
       }
 
     };
 
     const handleScroll = () => {
-      setTrackerMenuOpen(false);
-      setProfileSwitchOpen(false);
+      closeTrackerMenu();
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setTrackerMenuOpen(false);
-        setProfileSwitchOpen(false);
+        event.preventDefault();
+        closeTrackerMenu();
       }
     };
 
@@ -432,11 +471,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", handleEscape);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [trackerMenuOpen]);
+  }, [closeTrackerMenu, trackerMenuOpen]);
 
   const profileName = !isInsideProfile
     ? platformBrand.name
@@ -463,20 +503,48 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? headerSummary.overallPnl
       : null;
   const brandSubtitle = "Tracker platform";
-  const otherActiveProfiles = activeProfiles.filter(
-    (profile) => profile.profile_id !== activeProfileId
+  const filteredActiveProfiles = activeProfiles.filter((profile) =>
+    profile.display_name.toLocaleLowerCase().includes(profileSearch.trim().toLocaleLowerCase())
   );
+  const trimmedProfileSearch = profileSearch.trim();
+  const fallbackCurrentProfileOption =
+    isInsideProfile && activeProfileId
+      ? ({
+          profile_id: activeProfileId,
+          display_name: profileName,
+          status: "active",
+        } satisfies ProfileHeaderRecord)
+      : null;
+  const singleSearchProfile =
+    trimmedProfileSearch && filteredActiveProfiles.length === 1 ? filteredActiveProfiles[0] : null;
+  const currentProfileOption =
+    isInsideProfile && activeProfileId
+      ? activeProfiles.find((profile) => profile.profile_id === activeProfileId) ??
+        fallbackCurrentProfileOption
+      : null;
+  const selectedProfileOption = selectedCommandProfileId
+    ? activeProfiles.find((profile) => profile.profile_id === selectedCommandProfileId) ??
+      (fallbackCurrentProfileOption?.profile_id === selectedCommandProfileId
+        ? fallbackCurrentProfileOption
+        : null)
+      : null;
+  const selectedCommandProfile =
+    selectedProfileOption ??
+    singleSearchProfile ??
+    (!trimmedProfileSearch ? currentProfileOption : null) ??
+    null;
+  const commandProfileForRoutes = selectedCommandProfile ?? currentProfileOption ?? singleSearchProfile;
 
-  const switchToProfile = async (profileId: string) => {
+  const selectProfileInCommandMenu = (profileId: string) => {
+    setSelectedCommandProfileId(profileId);
+  };
+
+  const navigateFromProfileCommand = async (href: string) => {
     if (!(await confirmUnsavedTrackerChanges())) return;
-    const nextPath = (pathname ?? "/profiles").replace(
-      `/profiles/${activeProfileId}`,
-      `/profiles/${profileId}`
-    );
-    const query = typeof window === "undefined" ? "" : window.location.search;
-    setProfileSwitchOpen(false);
+    setProfileSearch("");
+    setSelectedCommandProfileId(null);
     setTrackerMenuOpen(false);
-    router.push(`${nextPath}${query}`);
+    router.push(href);
   };
 
   return (
@@ -497,7 +565,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 data-pd-id="app-navigation.trigger"
                 onClick={() => {
                   setTrackerMenuOpen(false);
-                  setProfileSwitchOpen(false);
+                  setProfileSearch("");
                   setAppMenuOpen(true);
                 }}
                 ref={appMenuTriggerRef}
@@ -519,15 +587,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <button
                   aria-expanded={trackerMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label={`Open profile tracker menu for ${profileName}. ${profileRangeDetail}`}
+                  aria-controls="profile-command-popover"
+                  aria-haspopup="dialog"
+                  aria-label={`Open profile navigation for ${profileName}. ${profileRangeDetail}`}
                   className="summary-menu-button"
-                  onClick={() =>
-                    setTrackerMenuOpen((current) => {
-                      if (current) setProfileSwitchOpen(false);
-                      return !current;
-                    })
-                  }
+                  data-pd-id="profile-command.trigger"
+                  onClick={() => {
+                    if (trackerMenuOpen) {
+                      closeTrackerMenu();
+                      return;
+                    }
+                    openTrackerMenu();
+                  }}
+                  ref={trackerMenuTriggerRef}
                   title={profileRangeDetail}
                   type="button"
                 >
@@ -549,77 +621,116 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                     </span>
                   </span>
                   <span aria-hidden="true" className="summary-menu-icon">
-                    ⋯
+                    <span className="material-symbols-outlined">unfold_more</span>
                   </span>
                 </button>
                 <div
                   className={`app-menu-panel app-menu-panel-right profile-summary-menu-panel ${trackerMenuOpen ? "is-open" : ""}`}
-                  role="menu"
+                  aria-label="Profile navigation"
+                  data-pd-id="profile-command.popover"
+                  id="profile-command-popover"
+                  role="dialog"
                 >
-                  {otherActiveProfiles.length === 1 ? (
-                    <button
-                      aria-label={`Switch to ${otherActiveProfiles[0].display_name} in the current tracker section`}
-                      className="nav-pill profile-switch-action"
-                      data-pd-id="profile-menu.switch"
-                      onClick={() => void switchToProfile(otherActiveProfiles[0].profile_id)}
-                      role="menuitem"
-                      type="button"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
-                      <span>Switch</span>
-                    </button>
-                  ) : otherActiveProfiles.length > 1 ? (
-                    <div className="profile-switch-group">
+                  <div className="profile-command-search-row">
+                    <div className="profile-command-search-field" data-pd-id="profile-command.search-field">
+                      <span aria-hidden="true" className="material-symbols-outlined">search</span>
+                      <input
+                        aria-label="Find profile"
+                        data-pd-id="profile-command.search"
+                        onChange={(event) => {
+                          setProfileSearch(event.target.value);
+                          setSelectedCommandProfileId(null);
+                        }}
+                        placeholder="Find profile..."
+                        ref={profileSearchRef}
+                        type="search"
+                        value={profileSearch}
+                      />
                       <button
-                        aria-expanded={profileSwitchOpen}
-                        aria-label="Choose an active profile and keep the current tracker section"
-                        className="nav-pill profile-switch-action"
-                        data-pd-id="profile-menu.switch"
-                        onClick={() => setProfileSwitchOpen((current) => !current)}
-                        role="menuitem"
+                        aria-label="Close profile navigation"
+                        className="profile-command-escape-button"
+                        data-pd-id="profile-command.close"
+                        onClick={closeTrackerMenu}
                         type="button"
                       >
-                        <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
-                        <span>Switch</span>
+                        Esc
                       </button>
-                      <div className={`profile-switch-list${profileSwitchOpen ? " is-open" : ""}`}>
-                        {otherActiveProfiles.map((profile) => (
+                    </div>
+                  </div>
+                  <div className="profile-command-profile-list" aria-label="Active profiles">
+                    {filteredActiveProfiles.length > 0 ? (
+                      filteredActiveProfiles.map((profile) => {
+                        const isCurrentProfile = profile.profile_id === activeProfileId;
+                        const isSelectedProfile =
+                          selectedCommandProfile?.profile_id === profile.profile_id;
+                        return (
                           <button
-                            className="nav-pill"
+                            aria-current={isCurrentProfile ? "page" : undefined}
+                            aria-label={
+                              isCurrentProfile
+                                ? `${profile.display_name}, current profile`
+                                : `Select ${profile.display_name}`
+                            }
+                            className={`profile-command-profile-row${
+                              isSelectedProfile ? " is-active" : ""
+                            }`}
+                            data-pd-id={`profile-command.profile.${profile.profile_id}`}
                             key={profile.profile_id}
-                            onClick={() => void switchToProfile(profile.profile_id)}
-                            role="menuitem"
+                            onClick={() => selectProfileInCommandMenu(profile.profile_id)}
                             type="button"
                           >
-                            {profile.display_name}
+                            <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+                            <span>{profile.display_name}</span>
+                            {isSelectedProfile ? (
+                              <span
+                                aria-hidden="true"
+                                className="material-symbols-outlined profile-command-check"
+                              >
+                                check
+                              </span>
+                            ) : null}
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })
+                    ) : (
+                      <p className="profile-command-empty">No active profiles match this search.</p>
+                    )}
+                  </div>
+                  {commandProfileForRoutes ? (
+                    <div
+                      className="profile-summary-route-group"
+                      aria-label={`${commandProfileForRoutes.display_name} tracker routes`}
+                    >
+                    {profileTrackerMenuRoutes.map((route) => {
+                      const href = `/profiles/${commandProfileForRoutes.profile_id}/tracker/${route.href}`;
+                      const isActive = pathname === href;
+
+                      return (
+                        <button
+                          aria-current={isActive ? "page" : undefined}
+                          className={`profile-command-route-card ${isActive ? "is-active" : ""}`}
+                          data-pd-id={`profile-command.route.${route.href}`}
+                          key={route.href}
+                          onClick={() => void navigateFromProfileCommand(href)}
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined">{route.icon}</span>
+                          <span>{route.title}</span>
+                        </button>
+                      );
+                    })}
                     </div>
                   ) : null}
-                  <div className="profile-summary-route-group" aria-label={`${profileName} tracker routes`}>
-                    {profileTrackerMenuRoutes.map((route) => {
-                    const href = `/profiles/${activeProfileId}/tracker/${route.href}`;
-                    const isActive = pathname === href;
-
-                    return (
-                      <Link
-                        aria-current={isActive ? "page" : undefined}
-                        className={`nav-pill ${isActive ? "is-active" : ""}`}
-                        data-pd-id={`profile-menu.route.${route.href}`}
-                        href={href}
-                        key={route.href}
-                        onClick={() => {
-                          setTrackerMenuOpen(false);
-                          setProfileSwitchOpen(false);
-                        }}
-                        role="menuitem"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined">{route.icon}</span>
-                        <span>{route.title}</span>
-                      </Link>
-                    );
-                  })}
+                  <div className="profile-command-footer">
+                    <button
+                      className="profile-command-add-action"
+                      data-pd-id="profile-command.add-profile"
+                      onClick={() => void navigateFromProfileCommand("/profiles/new")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">add</span>
+                      <span>Add profile</span>
+                    </button>
                   </div>
                 </div>
               </div>
