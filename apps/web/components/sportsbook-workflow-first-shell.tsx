@@ -3849,18 +3849,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     []
   );
   const renderGuidedEntryInstruction = useCallback(() => {
-    const safeInstruction = guidedEntryVisibleInstruction.trim() || fallbackGuidedInstruction;
-
     if (!guidedEntryNeedsTabJump) {
       return (
         <span className="guided-entry-instruction-text">
-          {safeInstruction}
+          {renderGuidedEntryMessage(guidedEntryResolvedInstruction)}
         </span>
       );
     }
 
     return (
       <span className="guided-entry-instruction-text">
+        <span>Go to </span>
         <span className="guided-entry-step-reference">
           {guidedEntryTargetTabIndex >= 0 ? (
             <span aria-hidden="true" className="guided-entry-step-marker">
@@ -3869,15 +3868,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ) : null}
           <span>{guidedEntryTargetTabLabel}</span>
         </span>
-        <span>{safeInstruction}</span>
+        <span> and </span>
+        {renderGuidedEntryMessage(guidedEntryMessageText || guidedEntryResolvedInstruction)}
       </span>
     );
   }, [
-    fallbackGuidedInstruction,
-    guidedEntryVisibleInstruction,
+    guidedEntryMessageText,
     guidedEntryNeedsTabJump,
     guidedEntryTargetTabIndex,
     guidedEntryTargetTabLabel,
+    guidedEntryResolvedInstruction,
+    renderGuidedEntryMessage,
   ]);
   const renderSettledLockAction = useCallback(
     () => {
