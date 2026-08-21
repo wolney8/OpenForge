@@ -631,6 +631,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const [errorMessage, setErrorMessage] = useState("");
   const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
   const [settledDeleteReason, setSettledDeleteReason] = useState("");
+  const [resolvedEditEnabled, setResolvedEditEnabled] = useState(false);
   const [showAdjustmentValidation, setShowAdjustmentValidation] = useState(false);
   const [activeEditorTabId, setActiveEditorTabId] =
     useState<CashAdjustmentEditorTabId>("details");
@@ -809,6 +810,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const selectedRow = useMemo(
     () => rows.find((row) => row.cash_adjustment_id === selectedId) ?? null,
     [rows, selectedId]
+  );
+  const isResolvedReadOnly = Boolean(
+    selectedRow?.calculation_state?.toLowerCase() === "resolved" && !resolvedEditEnabled
   );
 
   const accountOptions = useMemo(
@@ -1404,6 +1408,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setErrorMessage("");
     setShowAdjustmentValidation(false);
     setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
     setActiveEditorTabId("details");
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
@@ -1425,6 +1430,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setErrorMessage("");
     setShowAdjustmentValidation(false);
     setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
     setActiveEditorTabId("details");
     revealEditor({ expandLedger: true });
     setStatusMessage("");
@@ -1441,6 +1447,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setSelectedId(null);
     selectedIdRef.current = null;
     isCreatingDraftRef.current = false;
+    setResolvedEditEnabled(false);
     setTableCollapsed(false);
     setStatusMessage("");
   }
@@ -1511,6 +1518,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
       setFormState(savedFormState);
       setPristineFormState(savedFormState);
+      setResolvedEditEnabled(false);
       await loadRows(returnToLedger ? null : saved.cash_adjustment_id);
       setShowAdjustmentValidation(false);
       if (returnToLedger) {
@@ -1574,6 +1582,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       setErrorMessage("");
       setShowAdjustmentValidation(false);
       setGuidedEntryDismissed(false);
+      setResolvedEditEnabled(false);
       setSettledDeleteGuardRowId(null);
       setSettledDeleteReason("");
       setActiveEditorTabId("details");
@@ -1589,6 +1598,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setErrorMessage("");
     setShowAdjustmentValidation(false);
     setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
     setSettledDeleteGuardRowId(null);
     setSettledDeleteReason("");
     setActiveEditorTabId("details");
@@ -1646,6 +1656,24 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted cash adjustment ${rowId}.`);
+  }
+
+  function handleCancelResolvedEdit() {
+    if (!selectedRow) {
+      setResolvedEditEnabled(false);
+      return;
+    }
+
+    const nextFormState = recordToForm(selectedRow);
+    setFormState(nextFormState);
+    setPristineFormState(nextFormState);
+    setResolvedEditEnabled(false);
+    setErrorMessage("");
+    setShowAdjustmentValidation(false);
+    setGuidedEntryDismissed(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setStatusMessage(`Restored cash adjustment ${selectedRow.cash_adjustment_id}.`);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -2261,6 +2289,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             }
             title="Adjustment setup"
           >
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             {adjustmentValidationActive && missingAdjustmentFields.length > 0 ? (
               <EditorValidationBanner
                 dismissKey={`cash-adjustment-setup:${selectedId ?? formState.cash_adjustment_id ?? "new"}:${missingAdjustmentFields.join("|")}`}
@@ -2376,10 +2405,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 ))}
               </div>
             </div>
+            </fieldset>
           </EditorSection>
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="scope">
           <EditorSection title="Reporting scope">
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             <div className="form-grid">
               <label
                 className={getGuidedFieldClass("linked_account")}
@@ -2447,10 +2478,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 <input readOnly value={signedAmountPreview} />
               </label>
             </div>
+            </fieldset>
           </EditorSection>
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="notes">
           <EditorSection title="Audit note">
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             <label className="field-control">
               <span>Description</span>
               <textarea
@@ -2461,6 +2494,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 value={formState.description}
               />
             </label>
+            </fieldset>
           </EditorSection>
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="advanced">
@@ -2497,27 +2531,51 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   />
                 ) : null}
                 <div className="tracker-nav workflow-editor-footer-primary">
-                  <button
-                    className="review-chip review-chip-copy"
-                    disabled={isPending || isPersisting || !isDirty}
-                    type="submit"
-                  >
-                    {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
-                    {isPending || isPersisting ? "Saving" : "Save"}
-                  </button>
-                  {selectedId ? (
+                  {isResolvedReadOnly ? (
                     <button
-                      className="review-chip review-chip-danger"
+                      aria-label="Edit cash-adjustment row"
+                      className="review-chip"
                       disabled={isPersisting}
-                      onClick={() => void handleDeleteSelectedRow()}
+                      onClick={() => setResolvedEditEnabled(true)}
                       type="button"
                     >
-                      Delete
+                      Edit
                     </button>
-                  ) : null}
-                  <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">
-                    Revert
-                  </button>
+                  ) : (
+                    <>
+                      <button
+                        className="review-chip review-chip-copy"
+                        disabled={isPending || isPersisting || !isDirty}
+                        type="submit"
+                      >
+                        {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                        {isPending || isPersisting ? "Saving" : resolvedEditEnabled ? "Save Edits" : "Save"}
+                      </button>
+                      {resolvedEditEnabled ? (
+                        <button
+                          className="review-chip"
+                          disabled={isPersisting}
+                          onClick={handleCancelResolvedEdit}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                      {selectedId ? (
+                        <button
+                          className="review-chip review-chip-danger"
+                          disabled={isPersisting}
+                          onClick={() => void handleDeleteSelectedRow()}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                      <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">
+                        Revert
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div
                   className="tracker-nav workflow-editor-footer-nav"
