@@ -945,7 +945,8 @@ textarea {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   min-height: var(--field-control-min-height, 3.55rem);
-  overflow: hidden;
+  /* The shared surface owns focus so its ring includes the currency prefix. */
+  overflow: visible;
   border: 1px solid var(--outline);
   border-radius: var(--field-control-radius, 1.35rem);
   background: var(--surface-strong);
@@ -968,6 +969,7 @@ textarea {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  outline: 0;
 }
 
 .financial-text-input:focus-within {
@@ -975,36 +977,22 @@ textarea {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 58%, transparent);
 }
 
-.financial-text-input-positive {
-  border-color: color-mix(in srgb, var(--success) 54%, var(--outline));
-  background: color-mix(in srgb, var(--success) 10%, var(--surface-strong));
-}
-
-.financial-text-input-positive > span,
 .financial-text-input-positive input {
   color: var(--bet-ledger-value-positive-text);
   font-weight: 800;
 }
 
-.financial-text-input-negative {
-  border-color: color-mix(in srgb, var(--danger) 56%, var(--outline));
-  background: color-mix(in srgb, var(--danger) 10%, var(--surface-strong));
-}
-
-.financial-text-input-negative > span,
 .financial-text-input-negative input {
   color: var(--bet-ledger-value-negative-text);
   font-weight: 800;
 }
 
-.field-control .financial-text-input-positive input,
-.field-control .financial-text-input-positive .financial-text-input-prefix {
+.field-control .financial-text-input-positive input {
   color: var(--bet-ledger-value-positive-text);
   font-weight: 800;
 }
 
-.field-control .financial-text-input-negative input,
-.field-control .financial-text-input-negative .financial-text-input-prefix {
+.field-control .financial-text-input-negative input {
   color: var(--bet-ledger-value-negative-text);
   font-weight: 800;
 }
@@ -4560,8 +4548,16 @@ html[data-theme="dark"] .notification-count-badge {
 .field-control .financial-text-input input {
   min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
   border: 0;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
+  outline: 0;
+}
+
+.field-control .financial-text-input input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: 0;
 }
 
 .inline-field-action {

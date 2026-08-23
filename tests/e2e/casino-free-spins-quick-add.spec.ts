@@ -103,11 +103,29 @@ test("Casino Free Spins Quick Add keeps the close control circular and financial
   const convertedWin = dialog.getByLabel("Quick add Free Spins converted win amount");
   await convertedWin.fill("-0.20");
   await convertedWin.blur();
-  await expect(convertedWin.locator("xpath=..")).toHaveClass(/financial-text-input-negative/);
+  const financialSurface = convertedWin.locator("xpath=..");
+  await expect(financialSurface).toHaveClass(/financial-text-input-negative/);
   const inputSurface = await convertedWin.evaluate((element) => {
     const style = getComputedStyle(element);
     return { background: style.backgroundColor, borderTopWidth: style.borderTopWidth };
   });
   expect(inputSurface.borderTopWidth).toBe("0px");
   expect(inputSurface.background).toBe("rgba(0, 0, 0, 0)");
+
+  const valueAndPrefix = await financialSurface.evaluate((element) => {
+    const input = element.querySelector("input");
+    const prefix = element.querySelector(".financial-text-input-prefix");
+    if (!input || !prefix) {
+      throw new Error("Expected financial input and currency prefix");
+    }
+    return {
+      inputColor: getComputedStyle(input).color,
+      prefixColor: getComputedStyle(prefix).color,
+    };
+  });
+  expect(valueAndPrefix.inputColor).not.toBe(valueAndPrefix.prefixColor);
+
+  await convertedWin.focus();
+  const focusSurface = await financialSurface.evaluate((element) => getComputedStyle(element).boxShadow);
+  expect(focusSurface).not.toBe("none");
 });
