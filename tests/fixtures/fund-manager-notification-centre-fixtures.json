@@ -181,6 +181,20 @@
       "expected": {
         "visible": false
       }
+    },
+    {
+      "case_id": "FNC-008",
+      "description": "Approved source metadata declares its trigger timing and Fund Manager-only delivery policy.",
+      "source": {
+        "notification_type": "partial_lay_reminder",
+        "audience": "fund_manager",
+        "security_tag": "fund_manager_only"
+      },
+      "expected": {
+        "settings_visible": true,
+        "timing_visible": true,
+        "subscriber_visible": false
+      }
     }
   ]
 }

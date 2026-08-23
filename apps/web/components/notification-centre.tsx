@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
-  filterNotificationsByPreferences,
+  filterFundManagerNotificationsForViewer,
   loadLocalFundManagerNotifications,
   dismissNotificationIds,
   emptyNotificationViewState,
@@ -72,7 +72,7 @@ export function NotificationCentre() {
         const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
         setNotifications(
-          filterNotificationsByPreferences(
+          filterFundManagerNotificationsForViewer(
             [...loadLocalFundManagerNotifications(), ...payload],
             loadFundManagerNotificationPreferences()
           )
@@ -80,7 +80,7 @@ export function NotificationCentre() {
         setLoadFailed(false);
       } catch {
         if (!isActive) return;
-        const localNotifications = filterNotificationsByPreferences(
+        const localNotifications = filterFundManagerNotificationsForViewer(
           loadLocalFundManagerNotifications(),
           loadFundManagerNotificationPreferences()
         );
@@ -260,7 +260,7 @@ export function NotificationCentre() {
         await new Promise((resolve) => window.setTimeout(resolve, completionExitDurationMs));
       }
       setNotifications(
-        filterNotificationsByPreferences(
+        filterFundManagerNotificationsForViewer(
           refreshedNotifications,
           loadFundManagerNotificationPreferences()
         )

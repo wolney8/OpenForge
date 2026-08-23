@@ -5,7 +5,9 @@ import {
   dismissNotificationIds,
   emptyNotificationViewState,
   filterNotificationsByPreferences,
+  filterFundManagerNotificationsForViewer,
   formatUnreadNotificationCount,
+  fundManagerNotificationTypes,
   getNotificationAttentionStage,
   getUnreadNotificationCount,
   getVisibleNotifications,
@@ -214,5 +216,28 @@ describe("fund manager notification view state", () => {
         }
       ).map((notification) => notification.notification_id)
     ).toEqual(["NOTICE-FUTURE"]);
+  });
+
+  it("keeps the Fund Manager view scoped even if an invalid subscriber item reaches the client", () => {
+    const invalidSubscriberNotice = {
+      ...notifications[0],
+      audience: "subscriber" as const,
+      security_tag: "subscriber_allowed" as const,
+      notification_id: "NOTICE-SUBSCRIBER",
+    } as unknown as FundManagerNotification;
+
+    expect(
+      filterFundManagerNotificationsForViewer(
+        [notifications[0], invalidSubscriberNotice],
+        defaultFundManagerNotificationPreferences
+      )
+    ).toEqual([notifications[0]]);
+  });
+
+  it("documents timing and Fund Manager-only delivery for every approved source", () => {
+    expect(fundManagerNotificationTypes).toHaveLength(3);
+    for (const notificationType of fundManagerNotificationTypes) {
+      expect(notificationType.timing.length).toBeGreaterThan(20);
+    }
   });
 });

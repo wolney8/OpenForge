@@ -90,6 +90,9 @@ export function FundManagerNotificationSettings() {
                 >
                   {notificationType.description}
                 </span>
+                <span className="notification-preference-card-description">
+                  {notificationType.timing} Fund Manager only.
+                </span>
               </span>
               <span
                 aria-hidden="true"
