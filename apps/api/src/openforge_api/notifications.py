@@ -19,6 +19,7 @@ BACKUP_REMINDER_ROW_THRESHOLD = 25
 
 class FundManagerNotificationResponse(BaseModel):
     audience: str
+    security_tag: str
     kind: str
     task_state: str
     notification_id: str
@@ -58,6 +59,7 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
         tracker_row_count = count_tracker_rows_created_after(None)
         return FundManagerNotificationResponse(
             audience="fund_manager",
+            security_tag="fund_manager_only",
             kind="information",
             task_state="new",
             notification_id="backup-reminder:no-verified-backup",
@@ -98,6 +100,7 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
         reasons.append(f"{rows_since_backup} tracker rows changed since the latest verified backup")
     return FundManagerNotificationResponse(
         audience="fund_manager",
+        security_tag="fund_manager_only",
         kind="information",
         task_state="new",
         notification_id=f"backup-reminder:{latest.backup_snapshot_id}",
@@ -147,6 +150,7 @@ def list_fund_manager_notifications() -> list[FundManagerNotificationResponse]:
         notifications.append(
             FundManagerNotificationResponse(
                 audience="fund_manager",
+                security_tag="fund_manager_only",
                 kind="task",
                 task_state=task_state,
                 notification_id=(f"partial-lay:{profile_id}:{record_id}:{reminder_changed_at}"),
@@ -200,6 +204,7 @@ def list_fund_manager_notifications() -> list[FundManagerNotificationResponse]:
         notifications.append(
             FundManagerNotificationResponse(
                 audience="fund_manager",
+                security_tag="fund_manager_only",
                 kind="task",
                 task_state=task_state,
                 notification_id=(

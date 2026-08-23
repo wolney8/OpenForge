@@ -15,7 +15,7 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Area | Recommended milestone | Local contract evidence | Fixture evidence | GitHub state |
 |---|---|---|---|---|
 | Ledger modal parity and guided access | M15 Platform Experience | `docs/agent-contracts/plum-duff-ledger-modal-parity-contract.md`, `docs/workflows/guided-entry-focus-workflow-contract.md` | `tests/fixtures/guided-entry-focus-fixtures.json`, modal Playwright specs | #61 implementation, automated checks and Fund Manager smoke test passed 2026-08-23; public issue remains open pending authenticated closure |
-| Notification consistency | M15 Platform Experience | `docs/workflows/fund-manager-notification-centre-workflow-contract.md` | `tests/fixtures/fund-manager-notification-centre-fixtures.json` | Live public GitHub checked 2026-08-23: no dedicated issue; #39 only mentions notifications within Sequential Lay. Keep the dedicated M15 issue pending authenticated creation. |
+| Notification consistency | M15 Platform Experience | `docs/workflows/fund-manager-notification-centre-workflow-contract.md` | `tests/fixtures/fund-manager-notification-centre-fixtures.json` | Current Fund Manager sources are security-tagged `fund_manager_only`; subscriber delivery needs a separate authenticated issue. Live public GitHub checked 2026-08-23: no dedicated issue; #39 only mentions notifications within Sequential Lay. |
 | Full financial report review | M7 Reporting and Import/Export, M10 Fee Visibility | `docs/contracts/cross-profile-reporting-contract.md`, `docs/contracts/dashboard-selected-range-pnl-contract.md`, `docs/contracts/retained-profit-reporting-contract.md`, `docs/contracts/fund-manager-fee-calculation-and-withdrawal-contract.md` | reporting and fee fixture packs under `tests/fixtures/` | Needs issue verification |
 | Standalone calculator workspace | M14 Calculator Workspace | `docs/workflows/calculator-workspace-ledger-bridge-workflow-contract.md`, sportsbook/free-bet/casino calculation contracts | `tests/fixtures/calculator-workspace-ledger-bridge-fixtures.json`, calculator fixture packs | Needs issue verification |
 | Subscriber registration and funding review | M9 Subscriber Access | `docs/contracts/subscriber-registration-and-funding-review-contract.md` | `tests/fixtures/subscriber-registration-and-funding-review-fixtures.json` | Needs issue verification |
@@ -73,6 +73,47 @@ routes.
 - Done tasks remain in Done until their related lifecycle cutoff.
 - Preferences hide disabled notification sources without mutating source ledger data.
 - Playwright coverage confirms routing, unread badge, Done/New toggle, preferences and viewport fit.
+```
+
+### Role-scoped notification security and subscriber delivery
+
+Title:
+
+`Deliver Role-Scoped Notifications to Subscriber Profiles`
+
+Milestone:
+
+`M9 Subscriber Access`
+
+Body:
+
+```md
+## Objective
+
+Add subscriber-safe notifications without exposing Fund Manager operational work or another
+profile's records.
+
+## Scope
+
+- Add authenticated subscriber notification delivery scoped to the signed-in profile only.
+- Enforce `audience` and `security_tag` server-side for every notification source.
+- Permit a subscriber item only when it is `subscriber_allowed` and belongs to that profile.
+- Add subscriber notification preferences separate from Fund Manager preferences.
+- Define subscriber-safe source copy and links; Fund Manager-only tasks such as backup and
+  partial-lay management remain excluded.
+
+## Contract and fixtures
+
+- `docs/workflows/fund-manager-notification-centre-workflow-contract.md`
+- `docs/fixture-specs/fund-manager-notification-centre-fixture-spec.md`
+- `tests/fixtures/fund-manager-notification-centre-fixtures.json`
+
+## Acceptance criteria
+
+- Cross-profile and Fund Manager-only notifications cannot be returned by any subscriber endpoint.
+- Server-side authorization is tested; client filtering is not the authorization mechanism.
+- Subscriber preferences do not affect Fund Manager notifications or source ledger data.
+- Notification templates disclose only subscriber-approved fields.
 ```
 
 ### Full financial reports review

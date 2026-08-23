@@ -1,6 +1,6 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-08-17_
+_Last updated: 2026-08-23_
 
 ## 1. Workflow name
 
@@ -70,8 +70,13 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 ## 5. Data boundaries
 
 - source records remain profile-scoped in their owning ledger table
-- every response carries `audience = fund_manager`; this feed must never be returned to a future
-  subscriber session
+- every notification carries an immutable `audience` and `security_tag`
+- current sources use `audience = fund_manager` and `security_tag = fund_manager_only`; this feed
+  must never be returned to a future subscriber session
+- a future subscriber delivery is permitted only when `audience = subscriber`,
+  `security_tag = subscriber_allowed`, and the authenticated subscriber's `profile_id` exactly
+  matches the notification. This decision is enforced by the server; client filtering is defence
+  in depth only.
 - the feed endpoint returns only presentation-safe operational metadata and profile-scoped links
 - notification identity includes profile, ledger row and latest reminder action timestamp
 - each task exposes a source-specific completion endpoint; the notification UI must not hard-code
@@ -142,5 +147,7 @@ requires its own workflow contract, deterministic fixture and Fund Manager prefe
 it can enter this shared feed.
 
 Subscriber notifications are a separate deferred product surface. They require a subscriber-only,
-profile-scoped endpoint, separate view state and explicit visibility contract; they must not reuse or
-expose this cross-profile Fund Manager feed.
+profile-scoped endpoint, separate view state, server-side session enforcement and explicit
+visibility contract; they must not reuse or expose this cross-profile Fund Manager feed. The
+required security tags are now reserved so new sources cannot be introduced without a visibility
+decision.

@@ -37,7 +37,10 @@ or any financial output.
 - a refreshed/reopened reminder has a new identity and becomes unread
 - unread counts above nine display as `9+`
 - links retain both `profile_id` and sportsbook record identity
-- every feed item is explicitly scoped to the `fund_manager` audience
+- every Fund Manager feed item is explicitly scoped to `audience = fund_manager` and
+  `security_tag = fund_manager_only`
+- a future subscriber feed rejects Fund Manager-only items and rejects subscriber items belonging
+  to another profile
 - the bell remains available through shared application chrome on login, Fund Manager and tracker
   routes
 - a future subscriber consumer cannot read the cross-profile Fund Manager feed
