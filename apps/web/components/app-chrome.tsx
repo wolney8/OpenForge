@@ -144,13 +144,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [activeProfileId, isInsideProfile]);
 
   useEffect(() => {
-    if (!trackerMenuOpen || profileSearch.trim() || !isInsideProfile || !activeProfileId) {
-      return;
-    }
-    setSelectedCommandProfileId(activeProfileId);
-  }, [activeProfileId, isInsideProfile, profileSearch, trackerMenuOpen]);
-
-  useEffect(() => {
     router.prefetch("/profiles");
     router.prefetch("/login");
   }, [router]);

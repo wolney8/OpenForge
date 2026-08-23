@@ -2269,7 +2269,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const guidedEntryActionMessage = guidedEntryNeedsTabJump
     ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
     : guidedEntryMessageText;
-  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const getGuidedFieldClass = useCallback(
     (field: CasinoGuidedFieldKey, extraClass = "") => {
       const classes = ["field-control"];
@@ -4162,7 +4161,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               <span className="eyebrow">
                 {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
               </span>
-              <strong aria-label={guidedEntryPlainInstruction} id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+              <strong id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
             </button>
             <button
               aria-label="Dismiss casino guided entry"

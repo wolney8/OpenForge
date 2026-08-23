@@ -3699,28 +3699,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
         : guidedEntryMessageText
     ).trim() || "Add The Offer Name As Shown.";
-  const fallbackGuidedInstruction =
-    guidedFieldFallbackMessages[safeGuidedEntry.nextRequiredField ?? "offer"] ||
-    "Add The Offer Name As Shown.";
-  const guidedEntryVisibleInstruction = useMemo(() => {
-    if (!guidedEntryNeedsTabJump) {
-      return guidedEntryResolvedInstruction;
-    }
-    const tabPrefix = `Go to ${guidedEntryTargetTabLabel} and `;
-    const strippedInstruction = guidedEntryResolvedInstruction.startsWith(tabPrefix)
-      ? guidedEntryResolvedInstruction.slice(tabPrefix.length).trim()
-      : guidedEntryMessageText.trim();
-
-    return strippedInstruction || fallbackGuidedInstruction;
-  }, [
-    fallbackGuidedInstruction,
-    guidedEntryMessageText,
-    guidedEntryNeedsTabJump,
-    guidedEntryResolvedInstruction,
-    guidedEntryTargetTabLabel,
-  ]);
   const guidedEntryActionMessage = guidedEntryResolvedInstruction;
-  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
     const settleDate = toDateTimeLocalValue(record.date_settled);
     const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
@@ -7007,10 +6986,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     <span className="eyebrow">
                       {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
                     </span>
-                <strong
-                  aria-label={guidedEntryPlainInstruction}
-                  id={guidedEntryMessageId}
-                >
+                <strong id={guidedEntryMessageId}>
                   {renderGuidedEntryInstruction()}
                 </strong>
               </button>

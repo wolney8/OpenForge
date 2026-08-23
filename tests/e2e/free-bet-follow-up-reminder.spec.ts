@@ -64,6 +64,7 @@ test("Free Bet follow-up stays inline and completes through Fund Manager notific
     await expect(editor).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("dialog")).toHaveCount(1);
 
+    await editor.locator('[data-pd-id="ledger-editor.tab.settlement"]').click();
     await editor.getByRole("button", { name: "Follow-up" }).click();
     await editor
       .getByRole("button", { name: "Set free-bet follow-up reminder" })

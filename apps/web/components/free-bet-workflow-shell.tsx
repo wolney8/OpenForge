@@ -958,6 +958,42 @@ function recordToForm(record: FreeBetRecord): FreeBetFormState {
   };
 }
 
+function getComparableFreeBetDirtyState(formState: FreeBetFormState) {
+  return {
+    free_bet_id: formState.free_bet_id ?? "",
+    event_name: formState.event_name ?? "",
+    offer_text: formState.offer_text ?? "",
+    bookmaker: formState.bookmaker ?? "",
+    offer_type: formState.offer_type ?? "",
+    bet_type: formState.bet_type ?? "",
+    offer_name: formState.offer_name ?? "",
+    fixture_type: formState.fixture_type ?? "",
+    status: formState.status ?? "Prospecting",
+    result: formState.result ?? "Pending",
+    retention_mode: formState.retention_mode ?? "SNR",
+    free_bet_value: formState.free_bet_value ?? "",
+    back_odds: formState.back_odds ?? "",
+    match_strategy: formState.match_strategy ?? "Standard",
+    lay_odds_1: formState.lay_odds_1 ?? "",
+    lay_actual: formState.lay_actual ?? "",
+    lay_matched_stake_1: formState.lay_matched_stake_1 ?? "",
+    lay_commission_1: formState.lay_commission_1 ?? "",
+    exchange_name: formState.exchange_name ?? "",
+    expiry_datetime: formState.expiry_datetime ?? "",
+    date_settled: formState.date_settled ?? "",
+    origin_qual_bet_id: formState.origin_qual_bet_id ?? "",
+    offer_group_id: formState.offer_group_id ?? "",
+    source_award_group_id: formState.source_award_group_id ?? "",
+    source_award_split_index: formState.source_award_split_index ?? 0,
+    source_award_split_total: formState.source_award_split_total ?? 0,
+    source_award_expected_value: formState.source_award_expected_value ?? "",
+    source_award_variance_reason: formState.source_award_variance_reason ?? "",
+    user_notes: formState.user_notes ?? "",
+    manual_override_value: formState.manual_override_value ?? "",
+    manual_override_reason: formState.manual_override_reason ?? "",
+  };
+}
+
 async function copyToClipboard(value: string): Promise<boolean> {
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
     return false;
@@ -1289,11 +1325,20 @@ export function FreeBetWorkflowShell({
 
   const isPersistingRef = useRef(false);
   const pageSize = 8;
-  const isDirty = useMemo(
-    () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
-    [formState, pristineFormState]
+  const currentDirtyState = useMemo(
+    () => getComparableFreeBetDirtyState(formState),
+    [formState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
+  const pristineDirtyState = useMemo(
+    () => getComparableFreeBetDirtyState(pristineFormState),
+    [pristineFormState]
+  );
+  const isDirty = useMemo(
+    () => JSON.stringify(currentDirtyState) !== JSON.stringify(pristineDirtyState),
+    [currentDirtyState, pristineDirtyState]
+  );
+  const hasPendingEditorChanges = workflowVisible && isDirty;
+  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -1956,7 +2001,6 @@ export function FreeBetWorkflowShell({
   const guidedEntryActionMessage = guidedEntryNeedsTabJump
     ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
     : guidedEntryMessageText;
-  const guidedEntryPlainInstruction = guidedEntryResolvedInstruction;
   const getGuidedFieldClass = useCallback(
     (field: FreeBetGuidedFieldKey, extraClass = "") => {
       const classes = ["field-control"];
@@ -2588,7 +2632,7 @@ export function FreeBetWorkflowShell({
   );
 
   async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
+    if (rowId !== selectedId && hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.free_bet_id === rowId);
@@ -2617,7 +2661,7 @@ export function FreeBetWorkflowShell({
   }
 
   async function startNewRow() {
-    if (isDirty && !(await confirmDiscardChanges())) {
+    if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -2646,7 +2690,7 @@ export function FreeBetWorkflowShell({
     if (isPersistingRef.current) {
       return;
     }
-    if (isDirty && !(await confirmDiscardChanges())) {
+    if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
@@ -3019,7 +3063,7 @@ export function FreeBetWorkflowShell({
     setErrorMessage("");
     setIsFollowUpReminderSaving(true);
     try {
-      if (isDirty) {
+      if (hasPendingEditorChanges) {
         const rowSaved = await persistForm(formState, {
           autosaveLabel: "Free-bet reminder row",
           returnToLedgerOnSuccess: false,
@@ -4016,7 +4060,7 @@ export function FreeBetWorkflowShell({
               <span className="eyebrow">
                 {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
               </span>
-              <strong aria-label={guidedEntryPlainInstruction} id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
+              <strong id={guidedEntryMessageId}>{renderGuidedEntryInstruction()}</strong>
             </button>
             <button
               aria-label="Dismiss free-bet guided entry"

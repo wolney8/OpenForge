@@ -1230,9 +1230,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const guidedEntryActionMessage = guidedEntryNeedsTabJump
     ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
     : guidedEntryMessageText;
-  const guidedEntryPlainInstruction = guidedEntryNeedsTabJump
-    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
-    : guidedEntryMessageText;
   const getGuidedFieldClass = useCallback(
     (field: CashAdjustmentGuidedFieldKey, extraClass = "") => {
       const classes = ["field-control"];
@@ -1307,7 +1304,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     if (!guidedEntryNeedsTabJump) {
       return (
         <span className="guided-entry-instruction-text">
-          {renderGuidedEntryMessage(guidedEntryPlainInstruction)}
+          {renderGuidedEntryMessage(guidedEntryMessageText)}
         </span>
       );
     }
@@ -1329,7 +1326,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   }, [
     guidedEntryMessageText,
     guidedEntryNeedsTabJump,
-    guidedEntryPlainInstruction,
     guidedEntryTargetTabIndex,
     guidedEntryTargetTabLabel,
     renderGuidedEntryMessage,
@@ -2253,7 +2249,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               <span className="eyebrow">
                 {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
               </span>
-              <strong aria-label={guidedEntryPlainInstruction} id={guidedEntryMessageId}>
+              <strong id={guidedEntryMessageId}>
                 {renderGuidedEntryInstruction()}
               </strong>
             </button>

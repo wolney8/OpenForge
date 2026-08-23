@@ -113,6 +113,9 @@ Read `docs/codex/data-safety-rules.md` before handling workbook-derived data.
 - Any new or changed financial calculation must have a contract first.
 - Use `docs/templates/calculation-contract.md`.
 - If a contract conflicts with the current workbook source pack, stop and surface the contradiction.
+- When the user introduces a new feature idea, workflow, ledger, calculator, or operational rule,
+  record it in the appropriate contract, fixture spec, planning note, and GitHub issue coverage
+  before treating it as durable roadmap scope.
 
 ## Fixture rule
 
@@ -196,7 +199,21 @@ Short version:
   - what happens next
 - When useful, include a short completion estimate and GitHub issue reference in prose.
 - Avoid long recaps unless the user asks for them.
+- Before asking the user to smoke test, provide a brief, concrete checklist with the routes,
+  actions and expected outcomes for the changed workflow.
 - When a repo change is made for active work, commit and push promptly so connected deployment workflows can pick it up, unless the user says not to.
+
+## Durable feature parity
+
+- A durable Plum Duff feature is not complete when only UI/code exists. Where applicable, its
+  implementation, contracts/schemas, representative fixtures, tests, documentation and GitHub
+  issue/milestone state must remain consistent.
+- Apply this proportionately: a small visual adjustment does not require all artefacts, but a
+  workflow, persisted-data, calculation, public-interface, or domain-rule change does.
+- When live GitHub state matters, try an authenticated integration, browser access, securely
+  available API credentials, then `gh`; only then use a clearly labelled local fallback.
+  Missing `gh` is not missing GitHub. Never request or print credentials. Record a concise
+  pending-sync note when live mutation is unavailable and reconcile it when access returns.
 
 ## Branch baseline rule
 
