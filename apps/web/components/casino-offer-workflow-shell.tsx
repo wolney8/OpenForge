@@ -1747,6 +1747,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddReturnValues, setQuickAddReturnValues] =
+    useState<CasinoFreeSpinsQuickAddValues | null>(null);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:casino-offers`,
     false
@@ -3129,6 +3131,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     const nextForm = buildFreeSpinsQuickAddForm(values);
     const saved = await persistForm(nextForm, { returnToLedgerOnSuccess: true });
     if (saved) {
+      setQuickAddReturnValues(null);
       setIsQuickAddOpen(false);
     }
     return saved;
@@ -3136,6 +3139,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   function openFreeSpinsQuickAddDetails(values: CasinoFreeSpinsQuickAddValues) {
     const nextForm = buildFreeSpinsQuickAddForm(values);
+    setQuickAddReturnValues(values);
     setIsQuickAddOpen(false);
     setSelectedId(null);
     selectedIdRef.current = null;
@@ -3147,6 +3151,23 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setTableCollapsed(false);
     setErrorMessage("");
     revealEditor({ expandLedger: true });
+  }
+
+  function returnToFreeSpinsQuickAdd() {
+    setQuickAddReturnValues({
+      bookmaker: formState.bookmaker,
+      offerName: formState.offer_name,
+      game: formState.game,
+      spinCount: formState.free_spins_awarded,
+      spinStake: formState.spin_stake,
+      convertedWin: formState.free_spins_value,
+    });
+    setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    isCreatingDraftRef.current = false;
+    setTableCollapsed(false);
+    setIsQuickAddOpen(true);
   }
 
   async function closeEditor() {
@@ -3622,6 +3643,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             data-pd-id="casino-quick-add.open"
             onClick={() => {
               setErrorMessage("");
+              setQuickAddReturnValues(null);
               setIsQuickAddOpen(true);
             }}
             title="Quick add Free Spins"
@@ -5574,6 +5596,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               />
             ) : null}
             <div className="tracker-nav workflow-editor-footer-primary">
+              {quickAddReturnValues && !selectedId ? (
+                <button
+                  className="review-chip"
+                  disabled={isPersisting}
+                  onClick={returnToFreeSpinsQuickAdd}
+                  type="button"
+                >
+                  Back To Quick Add
+                </button>
+              ) : null}
               {isSettledReadOnly ? (
                 <button
                   aria-label="Close casino editor"
@@ -5663,13 +5695,17 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <CasinoFreeSpinsQuickAdd
               bookmakerOptions={quickAddBookmakerOptions}
               errorMessage={errorMessage}
+              initialValues={quickAddReturnValues}
               isSaving={isPersisting}
+              key={profileId}
               onClose={() => {
                 setErrorMessage("");
+                setQuickAddReturnValues(null);
                 setIsQuickAddOpen(false);
               }}
               onMoreDetails={openFreeSpinsQuickAddDetails}
               onSave={saveFreeSpinsQuickAdd}
+              profileId={profileId}
             />
           </div>
         </div>
