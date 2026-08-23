@@ -895,6 +895,7 @@ textarea {
 }
 
 .casino-quick-add-grid {
+  align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
@@ -911,6 +912,13 @@ textarea {
   margin-top: 0.55rem;
 }
 
+.casino-quick-add-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: -0.2rem;
+}
+
 .casino-quick-add-chip {
   min-height: 2rem;
   padding: 0.35rem 0.65rem;
@@ -922,6 +930,14 @@ textarea {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 18%, var(--surface-strong));
   color: var(--primary-strong);
+}
+
+.casino-quick-add-bookmaker-chip {
+  border-color: color-mix(in srgb, currentColor 26%, var(--outline));
+}
+
+.casino-quick-add-bookmaker-chip[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 66%, transparent);
 }
 
 .casino-quick-add-money-input {
@@ -4499,6 +4515,28 @@ html[data-theme="dark"] .notification-count-badge {
 
 .field-control input::placeholder {
   color: var(--muted);
+}
+
+/* Keep Quick Add currency adornments as one field, not a nested generic input surface. */
+.field-control .casino-quick-add-money-input input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
+  padding: 0.7rem 0.95rem 0.7rem 0.55rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.field-control .casino-quick-add-money-input-positive input,
+.field-control .casino-quick-add-money-input-positive > span {
+  color: var(--bet-ledger-value-positive-text);
+}
+
+.field-control .casino-quick-add-money-input-negative input,
+.field-control .casino-quick-add-money-input-negative > span {
+  color: var(--bet-ledger-value-negative-text);
 }
 
 .inline-field-action {
@@ -10683,6 +10721,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .modal-close-button {
   width: 2.5rem;
   height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  flex: 0 0 2.5rem;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
@@ -10692,6 +10734,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.modal-close-button .material-symbols-outlined {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .modal-close-button:hover {

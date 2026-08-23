@@ -76,5 +76,33 @@ test("Casino Free Spins Quick Add normalizes decimal shorthand and shows quick-s
   await expect(dialog.locator("[data-pd-id='casino-quick-add.game-chips']").getByRole("button", { name: "Big Bass Bonanza" })).toBeVisible();
   await dialog.getByRole("button", { name: "Big Bass Bonanza" }).click();
   await expect(dialog.getByLabel("Quick add Free Spins game or slot")).toHaveValue("Big Bass Bonanza");
+  await dialog.getByRole("button", { name: /Daily FS 1$/ }).click();
+  await expect(dialog.getByLabel("Quick add Free Spins number of spins")).toHaveValue("1");
+  await expect(dialog.getByLabel("Quick add Free Spins spin stake")).toHaveValue("0.10");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+});
+
+test("Casino Free Spins Quick Add keeps the close control circular and financial input singular", async ({ page }) => {
+  await page.goto("/profiles/profile-demo-001/tracker/casino-offers");
+  await page.getByRole("button", { name: "Quick add Free Spins" }).click();
+  const dialog = page.getByRole("dialog", { name: "Free Spins" });
+  const close = dialog.getByRole("button", { name: "Close Free Spins quick add" });
+  const bounds = await close.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return { height: rect.height, padding: style.padding, width: rect.width };
+  });
+  expect(Math.abs(bounds.width - bounds.height)).toBeLessThanOrEqual(1);
+  expect(bounds.padding).toBe("0px");
+
+  const convertedWin = dialog.getByLabel("Quick add Free Spins converted win amount");
+  await convertedWin.fill("-0.20");
+  await convertedWin.blur();
+  await expect(convertedWin.locator("xpath=..")).toHaveClass(/casino-quick-add-money-input-negative/);
+  const inputSurface = await convertedWin.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, borderTopWidth: style.borderTopWidth };
+  });
+  expect(inputSurface.borderTopWidth).toBe("0px");
+  expect(inputSurface.background).toBe("rgba(0, 0, 0, 0)");
 });

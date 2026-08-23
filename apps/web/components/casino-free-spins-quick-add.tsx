@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { findBookmakerCatalogueEntry, type BookmakerCatalogueRecord } from "@/lib/bookmaker-catalogue";
 
 export type CasinoFreeSpinsQuickAddValues = {
   bookmaker: string;
@@ -13,6 +14,7 @@ export type CasinoFreeSpinsQuickAddValues = {
 
 type CasinoFreeSpinsQuickAddProps = {
   bookmakerOptions: string[];
+  bookmakerCatalogue: BookmakerCatalogueRecord[];
   errorMessage: string;
   initialValues?: CasinoFreeSpinsQuickAddValues | null;
   isSaving: boolean;
@@ -85,6 +87,7 @@ function getChipValues(usage: Record<string, number>, defaults: string[]) {
 
 export function CasinoFreeSpinsQuickAdd({
   bookmakerOptions,
+  bookmakerCatalogue,
   errorMessage,
   initialValues,
   isSaving,
@@ -102,6 +105,14 @@ export function CasinoFreeSpinsQuickAdd({
   );
   const effectiveBookmaker = values.bookmaker || bookmakerOptions[0] || "";
   const effectiveValues = { ...values, bookmaker: effectiveBookmaker };
+  const quickPresets = useMemo(() => {
+    const bookmaker = bookmakerOptions.find((option) => option.toLocaleLowerCase("en-GB") === "sky bet") ?? bookmakerOptions[0] ?? "";
+    if (!bookmaker) return [];
+    return [
+      { label: `${bookmaker} Daily FS 1`, values: { bookmaker, offerName: "Daily Free Spins", game: "", spinCount: "1", spinStake: "0.10", convertedWin: "0.00" } },
+      { label: `${bookmaker} Daily FS 10`, values: { bookmaker, offerName: "Daily Free Spins", game: "", spinCount: "10", spinStake: "0.10", convertedWin: "0.00" } },
+    ];
+  }, [bookmakerOptions]);
 
   const validationMessage = useMemo(() => {
     if (!effectiveBookmaker) return "Choose a profile bookmaker to continue.";
@@ -170,6 +181,21 @@ export function CasinoFreeSpinsQuickAdd({
         </button>
       </header>
       <p className="field-hint">Record a no-deposit free-spins result. Use the full editor for wagering or bonus offers.</p>
+      {quickPresets.length ? (
+        <div aria-label="Free Spins quick presets" className="casino-quick-add-presets" data-pd-id="casino-quick-add.presets">
+          {quickPresets.map((preset) => (
+            <button
+              aria-pressed={values.bookmaker === preset.values.bookmaker && values.offerName === preset.values.offerName && values.spinCount === preset.values.spinCount && normaliseMoney(values.spinStake) === preset.values.spinStake}
+              className="review-chip casino-quick-add-chip casino-quick-add-preset"
+              key={preset.label}
+              onClick={() => setValues(preset.values)}
+              type="button"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="form-grid casino-quick-add-grid">
         <label className="field-control">
           <span>Bookmaker</span>
@@ -178,7 +204,21 @@ export function CasinoFreeSpinsQuickAdd({
             {bookmakerOptions.map((bookmaker) => <option key={bookmaker} value={bookmaker}>{bookmaker}</option>)}
           </select>
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.bookmaker-chips">
-            {getChipValues(usage.bookmaker, bookmakerOptions).map((bookmaker) => <button aria-pressed={effectiveBookmaker === bookmaker} className="review-chip casino-quick-add-chip" key={bookmaker} onClick={() => update("bookmaker", bookmaker)} type="button">{bookmaker}</button>)}
+            {getChipValues(usage.bookmaker, bookmakerOptions).map((bookmaker) => {
+              const catalogueEntry = findBookmakerCatalogueEntry(bookmakerCatalogue, bookmaker);
+              return (
+                <button
+                  aria-pressed={effectiveBookmaker === bookmaker}
+                  className="review-chip casino-quick-add-chip casino-quick-add-bookmaker-chip"
+                  key={bookmaker}
+                  onClick={() => update("bookmaker", bookmaker)}
+                  style={catalogueEntry ? { backgroundColor: catalogueEntry.background_colour, color: catalogueEntry.foreground_colour } : undefined}
+                  type="button"
+                >
+                  {catalogueEntry?.brand_name ?? bookmaker}
+                </button>
+              );
+            })}
           </span>
         </label>
         <label className="field-control">

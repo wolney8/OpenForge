@@ -5693,6 +5693,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !isPersisting) setIsQuickAddOpen(false); }}>
           <div ref={quickAddRef}>
             <CasinoFreeSpinsQuickAdd
+              bookmakerCatalogue={bookmakerCatalogue}
               bookmakerOptions={quickAddBookmakerOptions}
               errorMessage={errorMessage}
               initialValues={quickAddReturnValues}

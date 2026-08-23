@@ -62,6 +62,16 @@ use the canonical primitive and computed styling.
 - No dialog child may enlarge the browser viewport or cause page-level horizontal scrolling.
 - Icon-only controls use the established Material Symbol, a context-specific accessible name and
   the same target dimensions as sibling actions.
+- A modal close control must be a true square/circle after all shared button rules apply: assert
+  computed width equals height, zero internal padding, centred Material Symbol glyph, and no
+  inherited minimum size that turns it into an oval.
+- Composite monetary inputs must have exactly one visible field surface. Prefix/suffix adornments
+  belong inside that surface; generic input borders, radius, padding and backgrounds must be
+  explicitly reset so they cannot create a second overlapping control.
+- In a grid, chip-heavy fields must not stretch neighbouring fields vertically. Use `align-items:
+  start` and compare every field's input height and top alignment with its adjacent field.
+- Quick-select chips must be visibly actionable, preserve semantic financial colour states, and
+  use the existing account-brand foreground/background pair when they represent a bookmaker.
 - Destructive actions use the shared danger treatment in every state; local selector specificity
   must not override their red border, surface or icon colour.
 - Equivalent actions occupy stable slots so rows align when an optional action is absent.
