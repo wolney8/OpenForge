@@ -841,6 +841,7 @@ export function FeePeriodReviewDialog({
           onClick={() => void runPrimaryAction()}
           type="button"
         >
+          {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
           {isSaving
             ? "Saving"
             : existingPeriod?.state === "ready_to_crystallise"

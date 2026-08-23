@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, cast
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
@@ -17,6 +17,7 @@ from zipfile import ZipFile
 from openforge_api.config import settings
 
 database_operation_lock = threading.RLock()
+SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 
 
 def utc_now() -> str:
@@ -242,6 +243,14 @@ def parse_seed_bool(value: Any) -> bool:
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     with database_operation_lock:
+        database_mode = settings.database_mode.strip().lower() or "local"
+        if database_mode not in SUPPORTED_SQLITE_RUNTIME_MODES:
+            raise RuntimeError(
+                "Database mode "
+                f"{settings.database_mode!r} is not supported by the current SQLite runtime "
+                "adapter. Neon/PostgreSQL cutover must use an explicit runtime adapter before "
+                "writes are allowed, to prevent split-brain data."
+            )
         database_path = settings.database_path
         database_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(database_path)
@@ -340,6 +349,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
                     default_free_bet_overlay_factor TEXT NOT NULL DEFAULT '1.3',
                     default_bonus_retention_percent TEXT NOT NULL DEFAULT '0.7',
                     default_exchange_name TEXT NOT NULL DEFAULT '',
+                    dashboard_view_mode TEXT NOT NULL DEFAULT 'High-Density',
+                    weekly_profit_target TEXT NOT NULL DEFAULT '',
+                    monthly_profit_target TEXT NOT NULL DEFAULT '',
+                    annual_profit_target TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
@@ -839,6 +852,24 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           spin_stake TEXT NOT NULL,
           free_spins_awarded TEXT NOT NULL,
           free_spins_value TEXT NOT NULL,
+          wagering_base TEXT NOT NULL DEFAULT '',
+          custom_wager_base TEXT NOT NULL DEFAULT '',
+          wagering_completed TEXT NOT NULL DEFAULT '',
+          rtp_percent TEXT NOT NULL DEFAULT '',
+          reward_type TEXT NOT NULL DEFAULT '',
+          reward_wager_multiplier TEXT NOT NULL DEFAULT '',
+          reward_wager_target TEXT NOT NULL DEFAULT '',
+          reward_required_spins TEXT NOT NULL DEFAULT '',
+          reward_wagering_completed TEXT NOT NULL DEFAULT '',
+          reward_rtp_percent TEXT NOT NULL DEFAULT '',
+          expected_reward_cash_value TEXT NOT NULL DEFAULT '',
+          qualifying_expected_loss TEXT NOT NULL DEFAULT '',
+          reward_expected_loss TEXT NOT NULL DEFAULT '',
+          other_expected_costs TEXT NOT NULL DEFAULT '',
+          campaign_ev TEXT NOT NULL DEFAULT '',
+          own_cash_committed TEXT NOT NULL DEFAULT '',
+          cash_returned TEXT NOT NULL DEFAULT '',
+          settlement_other_costs TEXT NOT NULL DEFAULT '',
           status TEXT NOT NULL,
           result TEXT NOT NULL,
           calc_net_pnl TEXT NOT NULL,
@@ -1029,8 +1060,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "free_bets", "source_award_group_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "source_award_split_index", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(connection, "free_bets", "source_award_split_total", "INTEGER NOT NULL DEFAULT 0")
-    ensure_column(connection, "free_bets", "source_award_expected_value", "TEXT NOT NULL DEFAULT ''")
-    ensure_column(connection, "free_bets", "source_award_variance_reason", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection, "free_bets", "source_award_expected_value", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection, "free_bets", "source_award_variance_reason", "TEXT NOT NULL DEFAULT ''"
+    )
     ensure_column(
         connection,
         "free_bets",
@@ -1089,6 +1124,30 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         connection,
         "profile_tracker_settings",
         "default_exchange_name",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "dashboard_view_mode",
+        "TEXT NOT NULL DEFAULT 'High-Density'",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "weekly_profit_target",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "monthly_profit_target",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "annual_profit_target",
         "TEXT NOT NULL DEFAULT ''",
     )
     ensure_column(
@@ -1152,6 +1211,27 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "default_bonus_retention_percent",
         "TEXT NOT NULL DEFAULT '0.7'",
     )
+    for column_name in (
+        "wagering_base",
+        "custom_wager_base",
+        "wagering_completed",
+        "rtp_percent",
+        "reward_type",
+        "reward_wager_multiplier",
+        "reward_wager_target",
+        "reward_required_spins",
+        "reward_wagering_completed",
+        "reward_rtp_percent",
+        "expected_reward_cash_value",
+        "qualifying_expected_loss",
+        "reward_expected_loss",
+        "other_expected_costs",
+        "campaign_ev",
+        "own_cash_committed",
+        "cash_returned",
+        "settlement_other_costs",
+    ):
+        ensure_column(connection, "casino_offers", column_name, "TEXT NOT NULL DEFAULT ''")
     seed_database(connection)
     seed_bookmaker_catalogue_from_existing(connection)
 
@@ -1536,15 +1616,23 @@ def seed_database(connection: sqlite3.Connection) -> None:
                   range_back_days,
                   range_forward_days,
                   mug_bet_frequency_days,
-                                    free_bet_expiry_alert_window_days,
-                                    use_global_date_range_toggle,
-                                    this_month_mode,
-                                    default_free_bet_underlay_factor,
-                                    default_free_bet_overlay_factor,
-                                    default_bonus_retention_percent,
+                  free_bet_expiry_alert_window_days,
+                  use_global_date_range_toggle,
+                  this_month_mode,
+                  default_free_bet_underlay_factor,
+                  default_free_bet_overlay_factor,
+                  default_bonus_retention_percent,
+                  default_exchange_name,
+                  dashboard_view_mode,
+                  weekly_profit_target,
+                  monthly_profit_target,
+                  annual_profit_target,
                   created_at,
                   updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
                 """,
                 (
                     profile["profileId"],
@@ -1560,6 +1648,11 @@ def seed_database(connection: sqlite3.Connection) -> None:
                     "0.928",
                     "1.3",
                     "0.7",
+                    "",
+                    "High-Density",
+                    "",
+                    "",
+                    "",
                     timestamp,
                     timestamp,
                 ),
@@ -2196,6 +2289,24 @@ class CasinoOfferRecord:
     spin_stake: str
     free_spins_awarded: str
     free_spins_value: str
+    wagering_base: str
+    custom_wager_base: str
+    wagering_completed: str
+    rtp_percent: str
+    reward_type: str
+    reward_wager_multiplier: str
+    reward_wager_target: str
+    reward_required_spins: str
+    reward_wagering_completed: str
+    reward_rtp_percent: str
+    expected_reward_cash_value: str
+    qualifying_expected_loss: str
+    reward_expected_loss: str
+    other_expected_costs: str
+    campaign_ev: str
+    own_cash_committed: str
+    cash_returned: str
+    settlement_other_costs: str
     status: str
     result: str
     calc_net_pnl: str
@@ -3361,14 +3472,15 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
             """,
             tuple(record.values()),
         )
+        created_free_bet_id = cast(str, record["free_bet_id"])
         write_free_bet_audit_entry(
             connection=connection,
-            free_bet_id=record["free_bet_id"],
+            free_bet_id=created_free_bet_id,
             profile_id=profile_id,
             action="created",
             payload=record,
         )
-    created = get_free_bet(profile_id, record["free_bet_id"])
+    created = get_free_bet(profile_id, created_free_bet_id)
     assert created is not None
     return created
 
@@ -3405,9 +3517,15 @@ def update_free_bet(
         "date_settled": payload["date_settled"],
         "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
         "offer_group_id": payload.get("offer_group_id", ""),
-        "source_award_group_id": payload.get("source_award_group_id", existing.source_award_group_id),
-        "source_award_split_index": payload.get("source_award_split_index", existing.source_award_split_index),
-        "source_award_split_total": payload.get("source_award_split_total", existing.source_award_split_total),
+        "source_award_group_id": payload.get(
+            "source_award_group_id", existing.source_award_group_id
+        ),
+        "source_award_split_index": payload.get(
+            "source_award_split_index", existing.source_award_split_index
+        ),
+        "source_award_split_total": payload.get(
+            "source_award_split_total", existing.source_award_split_total
+        ),
         "source_award_expected_value": payload.get(
             "source_award_expected_value", existing.source_award_expected_value
         ),
@@ -3900,6 +4018,24 @@ def create_casino_offer(
         "spin_stake": payload["spin_stake"],
         "free_spins_awarded": payload["free_spins_awarded"],
         "free_spins_value": payload["free_spins_value"],
+        "wagering_base": payload.get("wagering_base", ""),
+        "custom_wager_base": payload.get("custom_wager_base", ""),
+        "wagering_completed": payload.get("wagering_completed", ""),
+        "rtp_percent": payload.get("rtp_percent", ""),
+        "reward_type": payload.get("reward_type", ""),
+        "reward_wager_multiplier": payload.get("reward_wager_multiplier", ""),
+        "reward_wager_target": payload.get("reward_wager_target", ""),
+        "reward_required_spins": payload.get("reward_required_spins", ""),
+        "reward_wagering_completed": payload.get("reward_wagering_completed", ""),
+        "reward_rtp_percent": payload.get("reward_rtp_percent", ""),
+        "expected_reward_cash_value": payload.get("expected_reward_cash_value", ""),
+        "qualifying_expected_loss": payload.get("qualifying_expected_loss", ""),
+        "reward_expected_loss": payload.get("reward_expected_loss", ""),
+        "other_expected_costs": payload.get("other_expected_costs", ""),
+        "campaign_ev": payload.get("campaign_ev", ""),
+        "own_cash_committed": payload.get("own_cash_committed", ""),
+        "cash_returned": payload.get("cash_returned", ""),
+        "settlement_other_costs": payload.get("settlement_other_costs", ""),
         "status": payload["status"],
         "result": payload["result"],
         "calc_net_pnl": payload["calc_net_pnl"],
@@ -3931,6 +4067,24 @@ def create_casino_offer(
               spin_stake,
               free_spins_awarded,
               free_spins_value,
+              wagering_base,
+              custom_wager_base,
+              wagering_completed,
+              rtp_percent,
+              reward_type,
+              reward_wager_multiplier,
+              reward_wager_target,
+              reward_required_spins,
+              reward_wagering_completed,
+              reward_rtp_percent,
+              expected_reward_cash_value,
+              qualifying_expected_loss,
+              reward_expected_loss,
+              other_expected_costs,
+              campaign_ev,
+              own_cash_committed,
+              cash_returned,
+              settlement_other_costs,
               status,
               result,
               calc_net_pnl,
@@ -3938,7 +4092,10 @@ def create_casino_offer(
               user_notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
             """,
             tuple(record.values()),
         )
@@ -3981,6 +4138,24 @@ def update_casino_offer(
         "spin_stake": payload["spin_stake"],
         "free_spins_awarded": payload["free_spins_awarded"],
         "free_spins_value": payload["free_spins_value"],
+        "wagering_base": payload.get("wagering_base", ""),
+        "custom_wager_base": payload.get("custom_wager_base", ""),
+        "wagering_completed": payload.get("wagering_completed", ""),
+        "rtp_percent": payload.get("rtp_percent", ""),
+        "reward_type": payload.get("reward_type", ""),
+        "reward_wager_multiplier": payload.get("reward_wager_multiplier", ""),
+        "reward_wager_target": payload.get("reward_wager_target", ""),
+        "reward_required_spins": payload.get("reward_required_spins", ""),
+        "reward_wagering_completed": payload.get("reward_wagering_completed", ""),
+        "reward_rtp_percent": payload.get("reward_rtp_percent", ""),
+        "expected_reward_cash_value": payload.get("expected_reward_cash_value", ""),
+        "qualifying_expected_loss": payload.get("qualifying_expected_loss", ""),
+        "reward_expected_loss": payload.get("reward_expected_loss", ""),
+        "other_expected_costs": payload.get("other_expected_costs", ""),
+        "campaign_ev": payload.get("campaign_ev", ""),
+        "own_cash_committed": payload.get("own_cash_committed", ""),
+        "cash_returned": payload.get("cash_returned", ""),
+        "settlement_other_costs": payload.get("settlement_other_costs", ""),
         "status": payload["status"],
         "result": payload["result"],
         "calc_net_pnl": payload["calc_net_pnl"],
@@ -4010,6 +4185,24 @@ def update_casino_offer(
               spin_stake = ?,
               free_spins_awarded = ?,
               free_spins_value = ?,
+              wagering_base = ?,
+              custom_wager_base = ?,
+              wagering_completed = ?,
+              rtp_percent = ?,
+              reward_type = ?,
+              reward_wager_multiplier = ?,
+              reward_wager_target = ?,
+              reward_required_spins = ?,
+              reward_wagering_completed = ?,
+              reward_rtp_percent = ?,
+              expected_reward_cash_value = ?,
+              qualifying_expected_loss = ?,
+              reward_expected_loss = ?,
+              other_expected_costs = ?,
+              campaign_ev = ?,
+              own_cash_committed = ?,
+              cash_returned = ?,
+              settlement_other_costs = ?,
               status = ?,
               result = ?,
               calc_net_pnl = ?,
@@ -4036,6 +4229,24 @@ def update_casino_offer(
                 updated["spin_stake"],
                 updated["free_spins_awarded"],
                 updated["free_spins_value"],
+                updated["wagering_base"],
+                updated["custom_wager_base"],
+                updated["wagering_completed"],
+                updated["rtp_percent"],
+                updated["reward_type"],
+                updated["reward_wager_multiplier"],
+                updated["reward_wager_target"],
+                updated["reward_required_spins"],
+                updated["reward_wagering_completed"],
+                updated["reward_rtp_percent"],
+                updated["expected_reward_cash_value"],
+                updated["qualifying_expected_loss"],
+                updated["reward_expected_loss"],
+                updated["other_expected_costs"],
+                updated["campaign_ev"],
+                updated["own_cash_committed"],
+                updated["cash_returned"],
+                updated["settlement_other_costs"],
                 updated["status"],
                 updated["result"],
                 updated["calc_net_pnl"],
@@ -4166,6 +4377,10 @@ class ProfileTrackerSettingsRecord:
     default_free_bet_overlay_factor: str
     default_bonus_retention_percent: str
     default_exchange_name: str
+    dashboard_view_mode: str
+    weekly_profit_target: str
+    monthly_profit_target: str
+    annual_profit_target: str
     created_at: str
     updated_at: str
 
@@ -4734,16 +4949,23 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                   range_back_days,
                   range_forward_days,
                   mug_bet_frequency_days,
-                                    free_bet_expiry_alert_window_days,
-                                    use_global_date_range_toggle,
-                                    this_month_mode,
-                                    default_free_bet_underlay_factor,
-                                    default_free_bet_overlay_factor,
-                                    default_bonus_retention_percent,
-                                    default_exchange_name,
+                  free_bet_expiry_alert_window_days,
+                  use_global_date_range_toggle,
+                  this_month_mode,
+                  default_free_bet_underlay_factor,
+                  default_free_bet_overlay_factor,
+                  default_bonus_retention_percent,
+                  default_exchange_name,
+                  dashboard_view_mode,
+                  weekly_profit_target,
+                  monthly_profit_target,
+                  annual_profit_target,
                   created_at,
                   updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
                 """,
                 (
                     profile_id,
@@ -4759,6 +4981,10 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                     "0.928",
                     "1.3",
                     "0.7",
+                    "",
+                    "High-Density",
+                    "",
+                    "",
                     "",
                     timestamp,
                     timestamp,
@@ -4806,9 +5032,13 @@ def upsert_profile_tracker_settings(
                             default_free_bet_overlay_factor,
                             default_bonus_retention_percent,
                             default_exchange_name,
+                            dashboard_view_mode,
+                            weekly_profit_target,
+                            monthly_profit_target,
+                            annual_profit_target,
               created_at,
               updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
               active_date_preset = excluded.active_date_preset,
               custom_start_date = excluded.custom_start_date,
@@ -4827,6 +5057,10 @@ def upsert_profile_tracker_settings(
                             default_bonus_retention_percent =
                                 excluded.default_bonus_retention_percent,
                             default_exchange_name = excluded.default_exchange_name,
+                            dashboard_view_mode = excluded.dashboard_view_mode,
+                            weekly_profit_target = excluded.weekly_profit_target,
+                            monthly_profit_target = excluded.monthly_profit_target,
+                            annual_profit_target = excluded.annual_profit_target,
               updated_at = excluded.updated_at
             """,
             (
@@ -4844,6 +5078,10 @@ def upsert_profile_tracker_settings(
                 payload["default_free_bet_overlay_factor"],
                 payload["default_bonus_retention_percent"],
                 payload.get("default_exchange_name", ""),
+                payload.get("dashboard_view_mode", "High-Density"),
+                payload.get("weekly_profit_target", ""),
+                payload.get("monthly_profit_target", ""),
+                payload.get("annual_profit_target", ""),
                 created_at,
                 timestamp,
             ),

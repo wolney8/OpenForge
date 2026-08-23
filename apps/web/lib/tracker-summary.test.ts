@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countTrueOpenPositions,
   formatHumanDisplayDate,
+  formatResolvedDateRangeContext,
   formatTrackingTenure,
   resolveDateRange,
   summarizeTrackerData,
@@ -188,6 +189,39 @@ describe("resolveDateRange", () => {
     expect(localDateKey(resolved.start)).toBe("2026-06-29");
     expect(localDateKey(resolved.end)).toBe("2026-07-05");
   });
+
+  it("resolves the current July 2026 fund-manager week as monday to sunday", () => {
+    const resolved = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2026-07-27");
+    expect(localDateKey(resolved.end)).toBe("2026-08-02");
+    expect(formatResolvedDateRangeContext(resolved)).toBe(
+      "Tracker range: Week (Mon-Sun) • Mon 27th Jul to Sun 2nd Aug"
+    );
+  });
+
+  it("resolves the current year for dashboard annual shortcuts", () => {
+    const resolved = resolveDateRange({
+      preset: "This Year",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2026-01-01");
+    expect(localDateKey(resolved.end)).toBe("2026-12-31");
+  });
+
+  it("resolves all dates as a broad tracker-safe window", () => {
+    const resolved = resolveDateRange({
+      preset: "All Dates",
+      today: new Date("2026-07-29T12:00:00"),
+    });
+
+    expect(localDateKey(resolved.start)).toBe("2000-01-01");
+    expect(localDateKey(resolved.end)).toBe("2100-12-31");
+  });
 });
 
 describe("formatHumanDisplayDate", () => {
@@ -265,6 +299,56 @@ describe("summarizeTrackerData", () => {
     expect(summary.activityQuickView.latestActivityDate).toBe("2026-07-03T00:00:00");
     expect(summary.moduleBreakdown).toHaveLength(4);
     expect(summary.moduleBreakdown[0]?.label).toBe("Sportsbook");
+  });
+
+  it("uses ledger display-value fallbacks when reporting value is blank", () => {
+    const range = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-01T10:00:00Z"),
+    });
+    const fallbackDataset: TrackerSummaryDataset = {
+      ...dataset,
+      sportsbookBets: [
+        {
+          ...dataset.sportsbookBets[0]!,
+          sportsbook_bet_id: "SB-FALLBACK-FINAL",
+          reporting_value: "",
+          final_net_pnl: "4.25",
+          projected_current_pnl: "99.00",
+        },
+        {
+          ...dataset.sportsbookBets[1]!,
+          sportsbook_bet_id: "SB-FALLBACK-CURRENT",
+          reporting_value: "",
+          final_net_pnl: "",
+          projected_current_pnl: "-1.75",
+        },
+      ],
+      freeBets: [
+        {
+          ...dataset.freeBets[0]!,
+          reporting_value: "",
+          final_net_pnl: "",
+          projected_current_pnl: "2.50",
+        },
+      ],
+      casinoOffers: [],
+      cashAdjustments: [],
+    };
+
+    const summary = summarizeTrackerData(fallbackDataset, range, new Date("2026-07-01T10:00:00Z"));
+
+    expect(summary.profitQuickView.sportsbook.reportingValue).toBeCloseTo(2.5, 6);
+    expect(summary.profitQuickView.freeBets.reportingValue).toBeCloseTo(2.5, 6);
+    expect(summary.profitQuickView.overallPnl).toBeCloseTo(5, 6);
+    expect(summary.moduleBreakdown.find((row) => row.moduleKey === "sportsbook")?.reportingValue).toBeCloseTo(
+      2.5,
+      6
+    );
+    expect(summary.bookmakerBreakdown.find((row) => row.bookmaker === "Bookie A")?.sportsbookPnl).toBeCloseTo(
+      4.25,
+      6
+    );
   });
 
   it("keeps selected-range operational counts and liability inside the resolved range", () => {

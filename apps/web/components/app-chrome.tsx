@@ -6,12 +6,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
+import { FinancialValue } from "@/components/financial-value";
 import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
 import {
-  formatMoney,
+  fetchJsonAndCache,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
+import {
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
   resolveDateRange,
   summarizeTrackerData,
   type CashAdjustmentSummaryRecord,
@@ -19,8 +26,12 @@ import {
   type FreeBetSummaryRecord,
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
-import { profileOverflowModules } from "@/lib/tracker-modules";
-import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
+import { TRACKER_DATA_UPDATED_EVENT } from "@/lib/tracker-data-events";
+import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
+import {
+  confirmUnsavedTrackerChanges,
+  useUnsavedChangesPromptController,
+} from "@/lib/use-unsaved-changes-guard";
 
 const defaultProfileId = "profile-demo-001";
 
@@ -42,6 +53,8 @@ type TrackerSettingsRecord = {
     | "Fortnight"
     | "This Month"
     | "Last Month"
+    | "This Year"
+    | "All Dates"
     | "Custom";
   custom_start_date: string;
   custom_end_date: string;
@@ -53,8 +66,24 @@ type TrackerSettingsRecord = {
 type HeaderSummaryState = {
   profileId: string;
   profileName: string;
+  profileRangeDetail: string;
+  profileRangeLabel: string;
   profileSubtitle: string;
+  overallPnl: number | null;
 };
+
+type TrackerSummaryResult = ReturnType<typeof summarizeTrackerData>;
+
+const profileTrackerMenuRoutes = [
+  { href: "dashboard", title: "Dashboard", icon: "dashboard" },
+  { href: "sportsbook-bets", title: "Sportsbook Bets", icon: "sports" },
+  { href: "free-bets", title: "Free Bets", icon: "award_star" },
+  { href: "casino-offers", title: "Casino Offers", icon: "playing_cards" },
+  { href: "cash-adjustments", title: "Cash Adjustments", icon: "payments" },
+  { href: "accounts", title: "Accounts", icon: "account_balance_wallet" },
+  { href: "reports", title: "Reports", icon: "summarize" },
+  { href: "settings", title: "Settings", icon: "settings" },
+] as const;
 
 function resolveProfileId(pathname: string): string | null {
   const match = pathname.match(/^\/profiles\/([^/]+)/);
@@ -62,32 +91,24 @@ function resolveProfileId(pathname: string): string | null {
   return profileId === "new" ? null : profileId;
 }
 
-function ordinalSuffix(day: number): string {
-  const remainder = day % 100;
-  if (remainder >= 11 && remainder <= 13) {
-    return "th";
+function resolveHeaderPnlForRoute(pathname: string, summary: TrackerSummaryResult): number {
+  if (pathname.includes("/tracker/sportsbook-bets")) {
+    return summary.profitQuickView.sportsbook.reportingValue;
   }
 
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
+  if (pathname.includes("/tracker/free-bets")) {
+    return summary.profitQuickView.freeBets.reportingValue;
   }
-}
 
-function formatHeaderDate(value: Date): string {
-  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(value);
-  const day = value.getDate();
-  return `${weekday} ${day}${ordinalSuffix(day)}`;
-}
+  if (pathname.includes("/tracker/casino-offers")) {
+    return summary.profitQuickView.casino.reportingValue;
+  }
 
-function buildResolvedRangeLabel(start: Date, end: Date): string {
-  return `${formatHeaderDate(start)} to ${formatHeaderDate(end)}`;
+  if (pathname.includes("/tracker/cash-adjustments")) {
+    return summary.betsQuickView.selectedRangeCashAdjustments;
+  }
+
+  return summary.profitQuickView.overallPnl;
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
@@ -99,11 +120,28 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [headerSummary, setHeaderSummary] = useState<HeaderSummaryState | null>(null);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
-  const [profileSwitchOpen, setProfileSwitchOpen] = useState(false);
+  const [profileSearch, setProfileSearch] = useState("");
+  const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
+  const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
+  const unsavedPrompt = useUnsavedChangesPromptController();
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
+  const trackerMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const profileSearchRef = useRef<HTMLInputElement | null>(null);
   const appMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const unsavedKeepEditingRef = useRef<HTMLButtonElement | null>(null);
   const closeAppMenu = useCallback(() => setAppMenuOpen(false), []);
+  const closeTrackerMenu = useCallback(() => {
+    setTrackerMenuOpen(false);
+    setProfileSearch("");
+    setSelectedCommandProfileId(null);
+    window.requestAnimationFrame(() => trackerMenuTriggerRef.current?.focus());
+  }, []);
+  const openTrackerMenu = useCallback(() => {
+    setProfileSearch("");
+    setSelectedCommandProfileId(isInsideProfile ? activeProfileId : null);
+    setTrackerMenuOpen(true);
+  }, [activeProfileId, isInsideProfile]);
 
   useEffect(() => {
     router.prefetch("/profiles");
@@ -129,15 +167,42 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [activeProfileId, isInsideProfile, router]);
 
   useEffect(() => {
-    if (!isInsideProfile) {
+    if (!unsavedPrompt.request) {
       return;
     }
+
+    const frame = window.requestAnimationFrame(() => {
+      unsavedKeepEditingRef.current?.focus();
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        unsavedPrompt.respond(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [unsavedPrompt]);
+
+  useEffect(() => {
     let isActive = true;
-    void fetch(`${apiBaseUrl}/profiles`, { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load active profiles");
-        return (await response.json()) as ProfileHeaderRecord[];
-      })
+    const profilesUrl = `${apiBaseUrl}/profiles`;
+    const cachedProfiles = readCachedJson<ProfileHeaderRecord[]>(profilesUrl);
+    let cachedFrame: number | null = null;
+    if (cachedProfiles) {
+      cachedFrame = window.requestAnimationFrame(() => {
+        if (!isActive) return;
+        setActiveProfiles(
+          cachedProfiles.filter((item) => (item.status ?? "active").trim().toLowerCase() === "active")
+        );
+      });
+    }
+    void fetchJsonAndCache<ProfileHeaderRecord[]>(profilesUrl)
       .then((profiles) => {
         if (!isActive) return;
         setActiveProfiles(
@@ -149,8 +214,41 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       });
     return () => {
       isActive = false;
+      if (cachedFrame !== null) {
+        window.cancelAnimationFrame(cachedFrame);
+      }
     };
-  }, [activeProfileId, isInsideProfile]);
+  }, [headerRefreshKey]);
+
+  useEffect(() => {
+    const refreshHeaderForProfile = (event: Event) => {
+      const detail = (event as CustomEvent<{ profileId?: string }>).detail;
+      if (detail?.profileId && detail.profileId !== activeProfileId) return;
+      setHeaderRefreshKey((current) => current + 1);
+    };
+
+    window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
+    window.addEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
+    return () => {
+      window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
+      window.removeEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
+    };
+  }, [activeProfileId]);
+
+  useEffect(() => {
+    if (!isInsideProfile) {
+      return;
+    }
+
+    const refreshHeader = () => setHeaderRefreshKey((current) => current + 1);
+    const interval = window.setInterval(refreshHeader, 30_000);
+    window.addEventListener("focus", refreshHeader);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshHeader);
+    };
+  }, [isInsideProfile]);
 
   useEffect(() => {
     if (!isInsideProfile || !pathname) return;
@@ -170,41 +268,128 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     let isActive = true;
 
     const loadHeader = async () => {
-      const [profileResponse, settingsResponse, sportsbookResponse, freeBetResponse, casinoResponse, cashResponse] =
-        await Promise.all([
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/tracker-settings`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/free-bets`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`, { cache: "no-store" }),
-          fetch(`${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`, { cache: "no-store" }),
-        ]);
+      const profileUrl = `${apiBaseUrl}/profiles/${activeProfileId}`;
+      const settingsUrl = `${apiBaseUrl}/profiles/${activeProfileId}/tracker-settings`;
+      const sportsbookUrl = `${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`;
+      const freeBetUrl = `${apiBaseUrl}/profiles/${activeProfileId}/free-bets`;
+      const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
+      const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
 
-      if (
-        !profileResponse.ok ||
-        !settingsResponse.ok ||
-        !sportsbookResponse.ok ||
-        !freeBetResponse.ok ||
-        !casinoResponse.ok ||
-        !cashResponse.ok
-      ) {
-        throw new Error("Unable to load profile header summary");
+      const cachedProfile = readCachedJson<ProfileHeaderRecord>(
+        profileUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedSettings = readCachedJson<TrackerSettingsRecord>(
+        settingsUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const applyHeaderIdentity = (
+        profile: ProfileHeaderRecord,
+        settings: TrackerSettingsRecord,
+        overallPnl: number | null
+      ) => {
+        const resolvedRange = resolveDateRange({
+          preset: settings.active_date_preset,
+          customStart: settings.custom_start_date,
+          customEnd: settings.custom_end_date,
+          rangeBackDays: settings.range_back_days,
+          rangeForwardDays: settings.range_forward_days,
+        });
+        const rangeLabel = formatResolvedDateRange(resolvedRange);
+        const rangeDetail = formatResolvedDateRangeContext(resolvedRange);
+
+        setHeaderSummary((current) => ({
+          profileId: activeProfileId,
+          profileName: profile.display_name,
+          profileRangeDetail: rangeDetail,
+          profileRangeLabel: rangeLabel,
+          profileSubtitle: rangeLabel,
+          overallPnl:
+            overallPnl === null && current?.profileId === activeProfileId
+              ? current.overallPnl
+              : overallPnl,
+        }));
+
+        return resolvedRange;
+      };
+
+      if (cachedProfile && cachedSettings && isActive) {
+        applyHeaderIdentity(cachedProfile, cachedSettings, null);
       }
 
-      const profile = (await profileResponse.json()) as ProfileHeaderRecord;
-      const settings = (await settingsResponse.json()) as TrackerSettingsRecord;
-      const sportsbookBets = (await sportsbookResponse.json()) as SportsbookSummaryRecord[];
-      const freeBets = (await freeBetResponse.json()) as FreeBetSummaryRecord[];
-      const casinoOffers = (await casinoResponse.json()) as CasinoSummaryRecord[];
-      const cashAdjustments = (await cashResponse.json()) as CashAdjustmentSummaryRecord[];
+      const cachedSportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(
+        sportsbookUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedFreeBets = readCachedJson<FreeBetSummaryRecord[]>(
+        freeBetUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedCasinoOffers = readCachedJson<CasinoSummaryRecord[]>(
+        casinoUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(
+        cashUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
 
-      const resolvedRange = resolveDateRange({
-        preset: settings.active_date_preset,
-        customStart: settings.custom_start_date,
-        customEnd: settings.custom_end_date,
-        rangeBackDays: settings.range_back_days,
-        rangeForwardDays: settings.range_forward_days,
-      });
+      if (
+        cachedProfile &&
+        cachedSettings &&
+        cachedSportsbookBets &&
+        cachedFreeBets &&
+        cachedCasinoOffers &&
+        cachedCashAdjustments
+      ) {
+        const cachedRange = resolveDateRange({
+          preset: cachedSettings.active_date_preset,
+          customStart: cachedSettings.custom_start_date,
+          customEnd: cachedSettings.custom_end_date,
+          rangeBackDays: cachedSettings.range_back_days,
+          rangeForwardDays: cachedSettings.range_forward_days,
+        });
+        const cachedSummary = summarizeTrackerData(
+          {
+            accounts: [],
+            sportsbookBets: cachedSportsbookBets,
+            freeBets: cachedFreeBets,
+            casinoOffers: cachedCasinoOffers,
+            cashAdjustments: cachedCashAdjustments,
+          },
+          cachedRange,
+          undefined,
+          {
+            mugBetFrequencyDays: cachedSettings.mug_bet_frequency_days,
+          }
+        );
+
+        if (isActive) {
+          applyHeaderIdentity(
+            cachedProfile,
+            cachedSettings,
+            resolveHeaderPnlForRoute(pathname, cachedSummary)
+          );
+        }
+      }
+
+      const [profile, settings] = await Promise.all([
+        fetchJsonAndCache<ProfileHeaderRecord>(profileUrl),
+        fetchJsonAndCache<TrackerSettingsRecord>(settingsUrl),
+      ]);
+
+      if (!isActive) {
+        return;
+      }
+
+      const resolvedRange = applyHeaderIdentity(profile, settings, null);
+
+      const [sportsbookBets, freeBets, casinoOffers, cashAdjustments] = await Promise.all([
+        fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
+        fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
+        fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
+        fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
+      ]);
 
       const summary = summarizeTrackerData(
         {
@@ -225,14 +410,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setHeaderSummary({
-        profileId: activeProfileId,
-        profileName: profile.display_name,
-        profileSubtitle: `${buildResolvedRangeLabel(
-          resolvedRange.start,
-          resolvedRange.end
-        )} • ${formatMoney(summary.profitQuickView.overallPnl)}`,
-      });
+      applyHeaderIdentity(profile, settings, resolveHeaderPnlForRoute(pathname, summary));
     };
 
     void loadHeader().catch(() => {
@@ -242,39 +420,42 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       setHeaderSummary({
         profileId: activeProfileId,
         profileName: "Selected profile",
+        profileRangeDetail: "Header summary unavailable",
+        profileRangeLabel: "Header summary unavailable",
         profileSubtitle: "Header summary unavailable",
+        overallPnl: null,
       });
     });
 
     return () => {
       isActive = false;
     };
-  }, [activeProfileId, isInsideProfile]);
+  }, [activeProfileId, headerRefreshKey, isInsideProfile, pathname]);
 
   useEffect(() => {
     if (!trackerMenuOpen) {
       return;
     }
 
+    const focusFrame = window.requestAnimationFrame(() => profileSearchRef.current?.focus());
+
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
 
       if (trackerMenuOpen && trackerMenuRef.current && !trackerMenuRef.current.contains(target)) {
-        setTrackerMenuOpen(false);
-        setProfileSwitchOpen(false);
+        closeTrackerMenu();
       }
 
     };
 
     const handleScroll = () => {
-      setTrackerMenuOpen(false);
-      setProfileSwitchOpen(false);
+      closeTrackerMenu();
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setTrackerMenuOpen(false);
-        setProfileSwitchOpen(false);
+        event.preventDefault();
+        closeTrackerMenu();
       }
     };
 
@@ -283,11 +464,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", handleEscape);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [trackerMenuOpen]);
+  }, [closeTrackerMenu, trackerMenuOpen]);
 
   const profileName = !isInsideProfile
     ? platformBrand.name
@@ -295,25 +477,67 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? headerSummary.profileName
       : "Loading profile...";
   const profileSubtitle = !isInsideProfile
-    ? "Local-first profile-scoped tracker"
+    ? "Fund Manager dashboard"
     : headerSummary?.profileId === activeProfileId
       ? headerSummary.profileSubtitle
       : "Loading range and P&L...";
-  const brandSubtitle = "Local-first tracker";
-  const otherActiveProfiles = activeProfiles.filter(
-    (profile) => profile.profile_id !== activeProfileId
+  const profileRangeLabel = !isInsideProfile
+    ? "Fund Manager dashboard"
+    : headerSummary?.profileId === activeProfileId
+      ? headerSummary.profileRangeLabel
+      : "Loading range and P&L...";
+  const profileRangeDetail = !isInsideProfile
+    ? "Fund Manager dashboard"
+    : headerSummary?.profileId === activeProfileId
+      ? headerSummary.profileRangeDetail
+      : "Loading range and P&L...";
+  const profileOverallPnl =
+    isInsideProfile && headerSummary?.profileId === activeProfileId
+      ? headerSummary.overallPnl
+      : null;
+  const brandSubtitle = "Tracker platform";
+  const filteredActiveProfiles = activeProfiles.filter((profile) =>
+    profile.display_name.toLocaleLowerCase().includes(profileSearch.trim().toLocaleLowerCase())
   );
+  const trimmedProfileSearch = profileSearch.trim();
+  const fallbackCurrentProfileOption =
+    isInsideProfile && activeProfileId
+      ? ({
+          profile_id: activeProfileId,
+          display_name: profileName,
+          status: "active",
+        } satisfies ProfileHeaderRecord)
+      : null;
+  const singleSearchProfile =
+    trimmedProfileSearch && filteredActiveProfiles.length === 1 ? filteredActiveProfiles[0] : null;
+  const currentProfileOption =
+    isInsideProfile && activeProfileId
+      ? activeProfiles.find((profile) => profile.profile_id === activeProfileId) ??
+        fallbackCurrentProfileOption
+      : null;
+  const selectedProfileOption = selectedCommandProfileId
+    ? activeProfiles.find((profile) => profile.profile_id === selectedCommandProfileId) ??
+      (fallbackCurrentProfileOption?.profile_id === selectedCommandProfileId
+        ? fallbackCurrentProfileOption
+        : null)
+      : null;
+  const selectedCommandProfile =
+    selectedProfileOption ??
+    singleSearchProfile ??
+    (!trimmedProfileSearch ? currentProfileOption : null) ??
+    null;
+  const commandProfileForRoutes = selectedCommandProfile ?? currentProfileOption ?? singleSearchProfile;
 
-  const switchToProfile = (profileId: string) => {
-    if (!confirmUnsavedTrackerChanges()) return;
-    const nextPath = (pathname ?? "/profiles").replace(
-      `/profiles/${activeProfileId}`,
-      `/profiles/${profileId}`
-    );
-    const query = typeof window === "undefined" ? "" : window.location.search;
-    setProfileSwitchOpen(false);
+  const selectProfileInCommandMenu = (profileId: string) => {
+    setSelectedCommandProfileId(profileId);
+  };
+
+  const navigateFromProfileCommand = async (href: string) => {
+    if (!(await confirmUnsavedTrackerChanges())) return;
+    setProfileSearch("");
+    setSelectedCommandProfileId(null);
     setTrackerMenuOpen(false);
-    router.push(`${nextPath}${query}`);
+    router.push(href);
   };
 
   return (
@@ -334,7 +558,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 data-pd-id="app-navigation.trigger"
                 onClick={() => {
                   setTrackerMenuOpen(false);
-                  setProfileSwitchOpen(false);
+                  setProfileSearch("");
                   setAppMenuOpen(true);
                 }}
                 ref={appMenuTriggerRef}
@@ -356,89 +580,157 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <button
                   aria-expanded={trackerMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label="Open profile tracker menu"
+                  aria-controls="profile-command-popover"
+                  aria-haspopup="dialog"
+                  aria-label={`Open profile navigation for ${profileName}. ${profileRangeDetail}`}
                   className="summary-menu-button"
-                  onClick={() =>
-                    setTrackerMenuOpen((current) => {
-                      if (current) setProfileSwitchOpen(false);
-                      return !current;
-                    })
-                  }
+                  data-pd-id="profile-command.trigger"
+                  onClick={() => {
+                    if (trackerMenuOpen) {
+                      closeTrackerMenu();
+                      return;
+                    }
+                    setSelectedCommandProfileId(activeProfileId ?? null);
+                    openTrackerMenu();
+                  }}
+                  ref={trackerMenuTriggerRef}
+                  title={profileRangeDetail}
                   type="button"
                 >
                   <span className="summary-menu-copy">
                     <strong>{profileName}</strong>
-                    <span>{profileSubtitle}</span>
+                    <span className="summary-menu-subtitle">
+                      <span>{profileRangeLabel}</span>
+                      {typeof profileOverallPnl === "number" ? (
+                        <>
+                          <span aria-hidden="true" className="summary-menu-separator">•</span>
+                          <FinancialValue
+                            animate={false}
+                            className="summary-menu-financial-value"
+                            label={`${profileName} selected-range value`}
+                            value={profileOverallPnl}
+                          />
+                        </>
+                      ) : null}
+                    </span>
                   </span>
                   <span aria-hidden="true" className="summary-menu-icon">
-                    ⋯
+                    <span className="material-symbols-outlined">unfold_more</span>
                   </span>
                 </button>
                 <div
                   className={`app-menu-panel app-menu-panel-right profile-summary-menu-panel ${trackerMenuOpen ? "is-open" : ""}`}
-                  role="menu"
+                  aria-label="Profile navigation"
+                  data-pd-id="profile-command.popover"
+                  id="profile-command-popover"
+                  role="dialog"
                 >
-                  {otherActiveProfiles.length === 1 ? (
-                    <button
-                      aria-label={`Switch to ${otherActiveProfiles[0].display_name} in the current tracker section`}
-                      className="nav-pill profile-switch-action"
-                      data-pd-id="profile-menu.switch"
-                      onClick={() => switchToProfile(otherActiveProfiles[0].profile_id)}
-                      role="menuitem"
-                      type="button"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
-                      <span>Switch</span>
-                    </button>
-                  ) : otherActiveProfiles.length > 1 ? (
-                    <div className="profile-switch-group">
+                  <div className="profile-command-search-row">
+                    <div className="profile-command-search-field" data-pd-id="profile-command.search-field">
+                      <span aria-hidden="true" className="material-symbols-outlined">search</span>
+                      <input
+                        aria-label="Find profile"
+                        data-pd-id="profile-command.search"
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setProfileSearch(nextValue);
+                          if (!nextValue.trim()) {
+                            setSelectedCommandProfileId(activeProfileId ?? null);
+                          } else {
+                            setSelectedCommandProfileId(null);
+                          }
+                        }}
+                        placeholder="Find profile..."
+                        ref={profileSearchRef}
+                        type="search"
+                        value={profileSearch}
+                      />
                       <button
-                        aria-expanded={profileSwitchOpen}
-                        aria-label="Choose an active profile and keep the current tracker section"
-                        className="nav-pill profile-switch-action"
-                        data-pd-id="profile-menu.switch"
-                        onClick={() => setProfileSwitchOpen((current) => !current)}
-                        role="menuitem"
+                        aria-label="Close profile navigation"
+                        className="profile-command-escape-button"
+                        data-pd-id="profile-command.close"
+                        onClick={closeTrackerMenu}
                         type="button"
                       >
-                        <span aria-hidden="true" className="material-symbols-outlined">swap_horiz</span>
-                        <span>Switch</span>
+                        Esc
                       </button>
-                      <div className={`profile-switch-list${profileSwitchOpen ? " is-open" : ""}`}>
-                        {otherActiveProfiles.map((profile) => (
+                    </div>
+                  </div>
+                  <div className="profile-command-profile-list" aria-label="Active profiles">
+                    {filteredActiveProfiles.length > 0 ? (
+                      filteredActiveProfiles.map((profile) => {
+                        const isCurrentProfile = profile.profile_id === activeProfileId;
+                        const isSelectedProfile =
+                          selectedCommandProfile?.profile_id === profile.profile_id;
+                        return (
                           <button
-                            className="nav-pill"
+                            aria-current={isCurrentProfile ? "page" : undefined}
+                            aria-label={
+                              isCurrentProfile
+                                ? `${profile.display_name}, current profile`
+                                : `Select ${profile.display_name}`
+                            }
+                            className={`profile-command-profile-row${
+                              isSelectedProfile ? " is-active" : ""
+                            }`}
+                            data-pd-id={`profile-command.profile.${profile.profile_id}`}
                             key={profile.profile_id}
-                            onClick={() => switchToProfile(profile.profile_id)}
-                            role="menuitem"
+                            onClick={() => selectProfileInCommandMenu(profile.profile_id)}
                             type="button"
                           >
-                            {profile.display_name}
+                            <span aria-hidden="true" className="material-symbols-outlined">dashboard</span>
+                            <span>{profile.display_name}</span>
+                            {isSelectedProfile ? (
+                              <span
+                                aria-hidden="true"
+                                className="material-symbols-outlined profile-command-check"
+                              >
+                                check
+                              </span>
+                            ) : null}
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })
+                    ) : (
+                      <p className="profile-command-empty">No active profiles match this search.</p>
+                    )}
+                  </div>
+                  {commandProfileForRoutes ? (
+                    <div
+                      className="profile-summary-route-group"
+                      aria-label={`${commandProfileForRoutes.display_name} tracker routes`}
+                    >
+                    {profileTrackerMenuRoutes.map((route) => {
+                      const href = `/profiles/${commandProfileForRoutes.profile_id}/tracker/${route.href}`;
+                      const isActive = pathname === href;
+
+                      return (
+                        <button
+                          aria-current={isActive ? "page" : undefined}
+                          className={`profile-command-route-card ${isActive ? "is-active" : ""}`}
+                          data-pd-id={`profile-command.route.${route.href}`}
+                          key={route.href}
+                          onClick={() => void navigateFromProfileCommand(href)}
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined">{route.icon}</span>
+                          <span>{route.title}</span>
+                        </button>
+                      );
+                    })}
                     </div>
                   ) : null}
-                  {profileOverflowModules.map((route) => {
-                    const href = `/profiles/${activeProfileId}/tracker/${route.href}`;
-                    const isActive = pathname === href;
-
-                    return (
-                      <Link
-                        aria-current={isActive ? "page" : undefined}
-                        className={`nav-pill ${isActive ? "is-active" : ""}`}
-                        href={href}
-                        key={route.href}
-                        onClick={() => {
-                          setTrackerMenuOpen(false);
-                          setProfileSwitchOpen(false);
-                        }}
-                      >
-                        {route.title}
-                      </Link>
-                    );
-                  })}
+                  <div className="profile-command-footer">
+                    <button
+                      className="profile-command-add-action"
+                      data-pd-id="profile-command.add-profile"
+                      onClick={() => void navigateFromProfileCommand("/profiles/new")}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined">add</span>
+                      <span>Add profile</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -449,6 +741,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         </header>
         <AppNavigationDrawer
           activeProfileId={activeProfileId}
+          activeProfiles={activeProfiles}
           isInsideProfile={isInsideProfile}
           isOpen={appMenuOpen}
           onClose={closeAppMenu}
@@ -460,6 +753,61 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      {unsavedPrompt.request ? (
+        <div
+          className="modal-backdrop modal-backdrop-elevated unsaved-changes-backdrop"
+          data-pd-id="unsaved-changes.backdrop"
+          onClick={() => unsavedPrompt.respond(false)}
+        >
+          <section
+            aria-label={unsavedPrompt.request.accessibleName}
+            aria-modal="true"
+            className="modal-panel unsaved-changes-dialog"
+            data-pd-id="unsaved-changes.dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="section-heading-row">
+              <div>
+                {unsavedPrompt.request.eyebrow ? (
+                  <span className="eyebrow">{unsavedPrompt.request.eyebrow}</span>
+                ) : null}
+                <h2>{unsavedPrompt.request.title}</h2>
+              </div>
+              <button
+                aria-label={`Close confirmation and ${unsavedPrompt.request.cancelLabel.toLocaleLowerCase()}`}
+                className="dialog-close-button"
+                data-pd-id="unsaved-changes.keep-editing-icon"
+                onClick={() => unsavedPrompt.respond(false)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <p>{unsavedPrompt.request.message}</p>
+            <footer className="workflow-editor-modal-footer">
+              <button
+                className="button-link"
+                data-pd-id="unsaved-changes.keep-editing"
+                onClick={() => unsavedPrompt.respond(false)}
+                ref={unsavedKeepEditingRef}
+                type="button"
+              >
+                {unsavedPrompt.request.cancelLabel}
+              </button>
+              <button
+                className="icon-button icon-button-destructive"
+                data-pd-id="unsaved-changes.discard"
+                onClick={() => unsavedPrompt.respond(true)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                <span>{unsavedPrompt.request.confirmLabel}</span>
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }

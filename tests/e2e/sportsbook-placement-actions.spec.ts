@@ -37,7 +37,7 @@ test("Sportsbook placement actions progress a draft row into back-placed and lay
       lay_matched_stake_1: "",
       lay_commission_1: "",
       exchange_name: "Matchbook",
-      date_settled: "2026-07-20T18:00",
+      date_settled: "2026-08-06T18:00",
       user_notes: "",
       manual_override_value: "",
       manual_override_reason: "",
@@ -53,10 +53,12 @@ test("Sportsbook placement actions progress a draft row into back-placed and lay
 
   const editor = page.locator(".workflow-editor-panel");
   await expect(editor).toBeVisible();
+  await editor.getByRole("tab", { name: /Matching/ }).click();
+  await expect(editor.locator('[data-pd-id="ledger-editor.panel.matching"]')).toBeVisible();
 
   const backPlacedButton = editor.getByRole("button", { name: "Back Bet Placed" });
   await backPlacedButton.click();
-  await expect(editor.locator(".stat-card").first()).toContainText("Status: Placed");
+  await expect(editor.locator('[data-pd-id="sportsbook.editor.compact-summary"]')).toContainText("Placed");
   await expect(backPlacedButton).toBeDisabled();
   await expect(backPlacedButton).toHaveAttribute("aria-pressed", "true");
   expect(
@@ -80,7 +82,7 @@ test("Sportsbook placement actions progress a draft row into back-placed and lay
       opacity: getComputedStyle(element).opacity,
     }))
   ).toEqual({ cursor: "not-allowed", opacity: "0.72" });
-  const partialLayPanel = editor.locator('[aria-label="Partial lay legs"]');
+  const partialLayPanel = editor.locator('[aria-label="Matched Lay"]');
   await expect(partialLayPanel).toBeVisible();
   await expect(partialLayPanel).toContainText("1 legs");
   await expect(partialLayPanel.getByLabel(/Final leg 1|Partial leg 1/)).toBeVisible();

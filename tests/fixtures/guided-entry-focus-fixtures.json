@@ -3,9 +3,16 @@
     {"case_id": "GUIDE-001", "inputs": {"ledger": "sportsbook", "completed_fields": []}, "expected": {"next_required_field": "offer", "auto_focus": false}},
     {"case_id": "GUIDE-002", "inputs": {"ledger": "sportsbook", "strategy": "No Lay"}, "expected": {"hidden_fields": ["exchange", "lay_odds_1", "lay_actual"], "required_hidden_fields": []}},
     {"case_id": "GUIDE-003", "inputs": {"ledger": "sportsbook", "strategy": "Multilay"}, "expected": {"required_group": "multi_lay_outcomes", "hidden_fields": ["lay_odds_1"], "generic_partial_lay_controls_visible": false}},
+    {"case_id": "GUIDE-003B", "inputs": {"ledger": "sportsbook", "strategy": "Multilay", "multi_lay_outcomes": [{"label": "Player A", "lay_odds": "6.00", "placed_matched_stake": "4.20", "placement_state": "placed"}, {"label": "Player B", "lay_odds": "7.00", "placed_matched_stake": "", "placement_state": "pending"}]}, "expected": {"required_group": "multi_lay_placements", "next_required_field": "multi_lay_placements"}},
     {"case_id": "GUIDE-004", "inputs": {"action": "save", "required_fields": ["offer", "bookmaker"], "completed_fields": ["offer"]}, "expected": {"first_invalid_field": "bookmaker", "text_error_present": true, "colour_only": false}},
     {"case_id": "GUIDE-005", "inputs": {"active_field": "back_odds", "interaction": "typing", "newly_resolved_next_field": "lay_odds_1"}, "expected": {"focus_remains": "back_odds"}},
     {"case_id": "GUIDE-006", "inputs": {"offer_type": "Mug Bet", "strategy": "Multilay"}, "expected": {"guidance_state": "review_required", "auto_correction": false}},
-    {"case_id": "GUIDE-007", "inputs": {"prefers_reduced_motion": true, "next_required_field": "back_stake"}, "expected": {"pulsing_animation": false, "text_cue_present": true}}
+    {"case_id": "GUIDE-007", "inputs": {"prefers_reduced_motion": true, "next_required_field": "back_stake"}, "expected": {"pulsing_animation": false, "text_cue_present": true}},
+    {"case_id": "GUIDE-008", "inputs": {"ledger": "sportsbook", "strategy": "Partial Lay", "lay_odds_1": "2.10", "lay_actual": ""}, "expected": {"next_required_field": "lay_actual"}},
+    {"case_id": "GUIDE-009", "inputs": {"ledger": "sportsbook", "status": "Settled", "result": "Back Won", "settlement_date": ""}, "expected": {"next_required_field": "settlement"}},
+    {"case_id": "GUIDE-009A", "inputs": {"ledger": "sportsbook", "status": "Settled", "result": "Pending", "settlement_date": "2026-07-20T18:00"}, "expected": {"next_required_field": "settlement"}},
+    {"case_id": "GUIDE-009B", "inputs": {"ledger": "sportsbook", "strategy": "No Lay", "status": "Settled", "result": "Pending"}, "expected": {"next_required_field": "settlement", "hidden_fields": ["exchange", "lay_odds_1", "lay_actual"]}},
+    {"case_id": "GUIDE-011", "inputs": {"ledger": "sportsbook", "strategy": "Standard", "offer": "Demo Offer", "bookmaker": "Bookmaker A", "bet_type": "Single", "offer_type": "Bet & Get", "fixture_type": "Football", "event_name": "Demo Event", "back_stake": "10.00", "back_odds": "2.00", "exchange": "Exchange A"}, "expected": {"next_required_field": "lay_odds_1", "hidden_fields": []}},
+    {"case_id": "GUIDE-012", "inputs": {"ledger": "sportsbook", "strategy": "Underlay", "offer": "Demo Offer", "bookmaker": "Bookmaker A", "bet_type": "Single", "offer_type": "Bet & Get", "fixture_type": "Football", "event_name": "Demo Event", "back_stake": "10.00", "back_odds": "2.00", "exchange": "Exchange A", "lay_odds_1": "2.10"}, "expected": {"next_required_field": "lay_actual", "hidden_fields": []}}
   ]
 }

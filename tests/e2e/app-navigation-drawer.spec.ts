@@ -15,10 +15,18 @@ test.describe("Global application navigation drawer", () => {
     await trigger.click();
     await expect(drawer).toBeVisible();
     await expect(closeButton).toBeFocused();
+    await expect(page.locator('[data-pd-id="app-navigation.fund-manager-dashboard"]')).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    await expect(page.locator('[data-pd-id="app-navigation.fund-manager-dashboard"]')).toContainText("Home");
     await expect(page.locator('[data-pd-id="app-navigation.profiles"]')).toHaveAttribute(
       "aria-current",
       "page"
     );
+    await page.locator('[data-pd-id="app-navigation.profiles"]').click();
+    await expect(page.locator('[data-pd-id^="app-navigation.profile."]').first()).toBeVisible();
+    await expect(page.locator('[data-pd-id^="app-navigation.profile."]')).toHaveCount(2);
 
     const openState = await page.evaluate(() => ({
       appFrameInert: document.querySelector(".app-frame")?.hasAttribute("inert"),
@@ -30,7 +38,11 @@ test.describe("Global application navigation drawer", () => {
     expect(openState.bodyOverflow).toBe("hidden");
     expect(openState.scrollWidth).toBeLessThanOrEqual(openState.clientWidth + 1);
 
-    await page.locator('[data-pd-id="app-navigation.settings"]').focus();
+    await expect(page.locator('[data-pd-id="app-navigation.registration-requests"]')).toContainText(
+      "Registration requests"
+    );
+    await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toContainText("Logout");
+    await page.locator('[data-pd-id="app-navigation.logout"]').focus();
     await page.keyboard.press("Tab");
     await expect(closeButton).toBeFocused();
 
@@ -55,10 +67,7 @@ test.describe("Global application navigation drawer", () => {
 
     await trigger.click();
     await expect(drawer).toBeVisible();
-    await expect(page.locator('[data-pd-id="app-navigation.tracker"]')).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
+    await expect(page.locator('[data-pd-id="app-navigation.tracker"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="app-navigation.profile-context"]')).toBeVisible();
 
     const firstGeometry = await drawer.evaluate((element) => {

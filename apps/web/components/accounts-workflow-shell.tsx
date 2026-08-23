@@ -189,7 +189,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
 
   useToastDismiss(statusMessage, clearStatusMessage);
@@ -419,8 +419,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     [effectivePage, filteredRows]
   );
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.account_id === rowId);
@@ -440,8 +440,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setStatusMessage(`Opened account ${rowId} for editing.`);
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -519,7 +519,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Accounts</h1>
           <div className="tracker-nav">
-            <button className="button-link" onClick={startNewRow} type="button">
+            <button className="button-link" onClick={() => void startNewRow()} type="button">
               Add account row
             </button>
             <button
@@ -624,8 +624,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                         <tr
                           className={selectedId === rowId ? "is-selected-row" : undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td

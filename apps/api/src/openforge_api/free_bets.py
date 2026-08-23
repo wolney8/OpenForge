@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Callable, Literal
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, model_validator
@@ -227,9 +227,17 @@ def build_calculation_input(
 
 
 def build_response(
-    row: FreeBetRecord, *, tracker_settings: ProfileTrackerSettingsRecord
+    row: FreeBetRecord,
+    *,
+    tracker_settings: ProfileTrackerSettingsRecord,
+    commission_lookup: Callable[[str], str] | None = None,
 ) -> FreeBetResponse:
     record = row.__dict__
+    resolved_commission = (
+        commission_lookup(record["exchange_name"])
+        if commission_lookup
+        else get_profile_exchange_commission(record["profile_id"], record["exchange_name"])
+    )
     calculation = calculate_free_bet_current_value(
         build_calculation_input(row, tracker_settings=tracker_settings),
         as_of_datetime=datetime.now(),
@@ -237,10 +245,7 @@ def build_response(
     return FreeBetResponse.model_validate(
         {
             **record,
-            "lay_commission_1": get_profile_exchange_commission(
-                record["profile_id"],
-                record["exchange_name"],
-            ),
+            "lay_commission_1": resolved_commission,
             **serialize_calculation(calculation),
         }
     )
@@ -249,8 +254,21 @@ def build_response(
 @router.get("", response_model=list[FreeBetResponse])
 def list_profile_free_bets(profile_id: str) -> list[FreeBetResponse]:
     tracker_settings = get_profile_tracker_settings(profile_id)
+    commission_cache: dict[str, str] = {}
+
+    def resolve_commission(exchange_name: str) -> str:
+        if exchange_name not in commission_cache:
+            commission_cache[exchange_name] = get_profile_exchange_commission(
+                profile_id, exchange_name
+            )
+        return commission_cache[exchange_name]
+
     return [
-        build_response(row, tracker_settings=tracker_settings)
+        build_response(
+            row,
+            tracker_settings=tracker_settings,
+            commission_lookup=resolve_commission,
+        )
         for row in list_free_bets(profile_id)
     ]
 

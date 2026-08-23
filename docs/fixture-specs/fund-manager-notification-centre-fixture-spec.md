@@ -1,6 +1,6 @@
 # Fixture Spec: Fund Manager Notification Centre
 
-_Last updated: 2026-07-21_
+_Last updated: 2026-08-23_
 
 ## Purpose
 

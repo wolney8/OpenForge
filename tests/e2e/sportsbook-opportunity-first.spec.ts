@@ -532,7 +532,7 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
   expect(
     financialSemantics.every(({ text, tone }) => {
       if (tone === "positive") return /^(\+)?£ \d+\.\d{2}$/.test(text);
-      if (tone === "negative") return /^\(£ \d+\.\d{2}\)$/.test(text);
+      if (tone === "negative") return /^\(\s*£ \d+\.\d{2}\s*\)$/.test(text);
       return text === "Unavailable";
     })
   ).toBeTruthy();

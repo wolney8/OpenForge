@@ -37,7 +37,8 @@ test("primary routes contain horizontal overflow at a narrow viewport", async ({
 test("ledger editor remains within the mobile viewport with reachable actions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
-  await page.waitForLoadState("networkidle");
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 60_000 });
+  await expect(page.locator(".data-table tbody tr").first()).toBeVisible({ timeout: 60_000 });
   await page.locator(".data-table tbody tr").first().click();
 
   const dialog = page.getByRole("dialog", { name: "Edit sportsbook row" });

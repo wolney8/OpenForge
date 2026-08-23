@@ -1,5 +1,17 @@
 import { expect, test } from "@playwright/test";
 
+test.setTimeout(90_000);
+
+function rgbChannels(value: string) {
+  const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) throw new Error(`Could not parse rgb colour: ${value}`);
+  return {
+    r: Number(match[1]),
+    g: Number(match[2]),
+    b: Number(match[3]),
+  };
+}
+
 async function expectLedgerToolbarAfterStats(
   page: import("@playwright/test").Page,
   statLabel: string,
@@ -14,19 +26,42 @@ async function expectLedgerToolbarAfterStats(
   expect(toolbarBox!.y).toBeGreaterThan(statsBox!.y + statsBox!.height - 1);
   const addButton = toolbar.getByRole("button", { name: addAction });
   const filterButton = toolbar.getByRole("button", { name: /filter and column controls/i });
+  const filterIcon = filterButton.locator(".table-filter-icon");
   await expect(addButton).toBeVisible();
   await expect(addButton.locator(".material-symbols-outlined")).toHaveText("add");
-  const [addBox, filterBox] = await Promise.all([addButton.boundingBox(), filterButton.boundingBox()]);
+  await expect(addButton).toContainText("Add Row");
+  const [addBox, filterBox, filterIconBox] = await Promise.all([
+    addButton.boundingBox(),
+    filterButton.boundingBox(),
+    filterIcon.boundingBox(),
+  ]);
   expect(addBox).not.toBeNull();
   expect(filterBox).not.toBeNull();
+  expect(filterIconBox).not.toBeNull();
   expect(addBox!.x + addBox!.width).toBeLessThanOrEqual(filterBox!.x + 1);
-  expect(Math.abs(addBox!.width - filterBox!.width)).toBeLessThan(2);
+  expect(addBox!.width).toBeGreaterThan(filterBox!.width * 2);
+  expect(Math.abs(addBox!.height - filterBox!.height)).toBeLessThanOrEqual(3);
+  const filterCentreX = filterBox!.x + filterBox!.width / 2;
+  const filterCentreY = filterBox!.y + filterBox!.height / 2;
+  const iconCentreX = filterIconBox!.x + filterIconBox!.width / 2;
+  const iconCentreY = filterIconBox!.y + filterIconBox!.height / 2;
+  expect(Math.abs(iconCentreX - filterCentreX)).toBeLessThanOrEqual(2);
+  expect(Math.abs(iconCentreY - filterCentreY)).toBeLessThanOrEqual(2);
+  const addBackground = rgbChannels(
+    await addButton.evaluate((element) => getComputedStyle(element).backgroundColor)
+  );
+  expect(addBackground.g).toBeGreaterThan(addBackground.r);
+  expect(addBackground.g).toBeGreaterThan(addBackground.b);
   await expect(page.getByRole("button", { name: /Collapse ledger|Expand ledger/ })).toHaveCount(0);
+}
+
+async function waitForLedgerReady(page: import("@playwright/test").Page, loadingText: string) {
+  await expect(page.getByText(loadingText)).toBeHidden({ timeout: 90_000 });
 }
 
 test("Sportsbook places its shared controls after the stat cards", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
-  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+  await waitForLedgerReady(page, "Loading sportsbook ledger");
   await expectLedgerToolbarAfterStats(
     page,
     "Sportsbook quick view",
@@ -37,7 +72,7 @@ test("Sportsbook places its shared controls after the stat cards", async ({ page
 
 test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/free-bets");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading free-bet ledger");
 
   await expect(page.getByRole("columnheader", { name: "Expiry" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Lay Bet" })).toBeVisible();
@@ -57,7 +92,7 @@ test("Free Bets mirrors sportsbook-style table controls", async ({ page }) => {
 
 test("Casino Offers exposes consistent filter controls and actions column", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/casino-offers");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading casino-offer ledger");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Delete casino-offer row / }).first()).toBeVisible();
@@ -74,7 +109,7 @@ test("Casino Offers exposes consistent filter controls and actions column", asyn
 
 test("Cash Adjustments exposes consistent filter controls and actions column", async ({ page }) => {
   await page.goto("/profiles/profile-demo-001/tracker/cash-adjustments");
-  await page.waitForLoadState("networkidle");
+  await waitForLedgerReady(page, "Loading cash-adjustment ledger");
 
   await expect(page.getByRole("columnheader", { name: "Actions" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Delete cash-adjustment row / }).first()).toBeVisible();

@@ -1,0 +1,191 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/fund-manager-platform-finance-contract.md",
+  "cases": [
+    {
+      "case_id": "FMF-001",
+      "scenario": "monthly subscription payment",
+      "input": {
+        "entry_type": "subscription_payment",
+        "billing_period": "monthly",
+        "amount": "30.00",
+        "state": "settled"
+      },
+      "expected": {
+        "recognised_revenue": "30.00",
+        "profile_pnl_delta": "0.00"
+      }
+    },
+    {
+      "case_id": "FMF-002",
+      "scenario": "annual subscription deferred recognition",
+      "input": {
+        "entry_type": "subscription_payment",
+        "billing_period": "annual",
+        "amount": "240.00",
+        "service_months": 12,
+        "state": "settled"
+      },
+      "expected": {
+        "monthly_recognised_revenue": "20.00",
+        "deferred_revenue_required": true
+      }
+    },
+    {
+      "case_id": "FMF-003",
+      "scenario": "discount",
+      "input": {
+        "entry_type": "subscription_payment",
+        "gross_amount": "30.00",
+        "discount_amount": "5.00",
+        "state": "settled"
+      },
+      "expected": {
+        "recognised_revenue": "25.00"
+      }
+    },
+    {
+      "case_id": "FMF-004",
+      "scenario": "refund",
+      "input": {
+        "entry_type": "refund",
+        "amount": "30.00",
+        "state": "settled"
+      },
+      "expected": {
+        "recognised_revenue_delta": "-30.00"
+      }
+    },
+    {
+      "case_id": "FMF-005",
+      "scenario": "chargeback",
+      "input": {
+        "entry_type": "chargeback",
+        "amount": "30.00",
+        "state": "settled"
+      },
+      "expected": {
+        "recognised_revenue_delta": "-30.00",
+        "action_required": true
+      }
+    },
+    {
+      "case_id": "FMF-006",
+      "scenario": "processor fee",
+      "input": {
+        "entry_type": "processor_fee",
+        "amount": "1.20",
+        "state": "settled"
+      },
+      "expected": {
+        "platform_net_revenue_delta": "-1.20",
+        "profile_pnl_delta": "0.00"
+      }
+    },
+    {
+      "case_id": "FMF-007",
+      "scenario": "failed payment",
+      "input": {
+        "entry_type": "subscription_payment",
+        "amount": "30.00",
+        "state": "failed"
+      },
+      "expected": {
+        "recognised_revenue": "0.00",
+        "action_required": true
+      }
+    },
+    {
+      "case_id": "FMF-008",
+      "scenario": "owner contribution",
+      "input": {
+        "entry_type": "owner_contribution",
+        "amount": "500.00",
+        "direction": "in"
+      },
+      "expected": {
+        "revenue_delta": "0.00",
+        "equity_delta": "500.00"
+      }
+    },
+    {
+      "case_id": "FMF-009",
+      "scenario": "owner drawing",
+      "input": {
+        "entry_type": "owner_drawing",
+        "amount": "100.00",
+        "direction": "out"
+      },
+      "expected": {
+        "expense_delta": "0.00",
+        "equity_delta": "-100.00"
+      }
+    },
+    {
+      "case_id": "FMF-010",
+      "scenario": "recurring expense",
+      "input": {
+        "entry_type": "recurring_expense",
+        "amount": "12.00",
+        "state": "settled"
+      },
+      "expected": {
+        "platform_expense_delta": "12.00",
+        "profile_pnl_delta": "0.00"
+      }
+    },
+    {
+      "case_id": "FMF-011",
+      "scenario": "unreconciled settlement",
+      "input": {
+        "entry_type": "processor_settlement",
+        "expected_amount": "100.00",
+        "observed_amount": "98.80",
+        "state": "unreconciled"
+      },
+      "expected": {
+        "variance": "-1.20",
+        "action_required": true
+      }
+    },
+    {
+      "case_id": "FMF-012",
+      "scenario": "correction reversal",
+      "input": {
+        "entry_type": "correction",
+        "amount": "5.00",
+        "reverses_entry_id": "FINANCE-DEMO-001"
+      },
+      "expected": {
+        "audit_required": true,
+        "original_entry_retained": true
+      }
+    },
+    {
+      "case_id": "FMF-013",
+      "scenario": "subscriber denied platform finance",
+      "input": {
+        "actor_role": "Subscriber",
+        "route": "/fund-manager/finance"
+      },
+      "expected": {
+        "access_allowed": false
+      }
+    },
+    {
+      "case_id": "FMF-014",
+      "scenario": "profile P&L unchanged by platform finance",
+      "input": {
+        "linked_profile_id": "PROFILE-A",
+        "entry_type": "subscription_payment",
+        "amount": "30.00"
+      },
+      "expected": {
+        "sportsbook_pnl_delta": "0.00",
+        "free_bet_pnl_delta": "0.00",
+        "casino_pnl_delta": "0.00",
+        "cash_adjustment_delta": "0.00"
+      }
+    }
+  ]
+}

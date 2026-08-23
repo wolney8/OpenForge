@@ -1,0 +1,206 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/account-health-intelligence-contract.md",
+  "cases": [
+    {
+      "case_id": "AHI-001",
+      "scenario": "healthy active account",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-A",
+        "brand_name": "Bookmaker A",
+        "status": "Active",
+        "restrictions": []
+      },
+      "observations": [
+        {
+          "observation_type": "successful_offer_use",
+          "observed_at": "2026-07-20T12:00:00Z",
+          "confidence": "verified"
+        }
+      ],
+      "expected": {
+        "can_login": true,
+        "can_take_bonus": true,
+        "can_place_sportsbook": true,
+        "can_arb": true,
+        "commercial_viability_state": "good",
+        "review_required": false
+      }
+    },
+    {
+      "case_id": "AHI-002",
+      "scenario": "soft restricted account",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-B",
+        "brand_name": "Bookmaker B",
+        "status": "Limited",
+        "restrictions": ["Soft Limited"]
+      },
+      "observations": [
+        {
+          "observation_type": "stake_limit_observed",
+          "observed_at": "2026-07-21T12:00:00Z",
+          "amount_limit": "10.00",
+          "confidence": "verified"
+        }
+      ],
+      "expected": {
+        "can_place_sportsbook": true,
+        "stake_limit_band": "soft",
+        "commercial_viability_state": "caution",
+        "review_required": false
+      }
+    },
+    {
+      "case_id": "AHI-003",
+      "scenario": "ARB stake limited to 0.50",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-C",
+        "brand_name": "Bookmaker C",
+        "status": "Limited",
+        "restrictions": ["Soft Limited"]
+      },
+      "observations": [
+        {
+          "observation_type": "arb_stake_limit_observed",
+          "observed_at": "2026-07-22T12:00:00Z",
+          "amount_limit": "0.50",
+          "confidence": "verified"
+        }
+      ],
+      "expected": {
+        "can_arb": false,
+        "stake_limit_band": "severe",
+        "commercial_viability_state": "poor",
+        "warning": "ARB not viable at observed stake limit"
+      }
+    },
+    {
+      "case_id": "AHI-004",
+      "scenario": "login restricted account",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-D",
+        "brand_name": "Bookmaker D",
+        "status": "Blocked",
+        "restrictions": ["Login Restricted"]
+      },
+      "observations": [
+        {
+          "observation_type": "login_blocked",
+          "observed_at": "2026-07-22T15:00:00Z",
+          "confidence": "verified"
+        }
+      ],
+      "expected": {
+        "can_login": false,
+        "can_place_sportsbook": false,
+        "can_withdraw": false,
+        "commercial_viability_state": "blocked",
+        "review_required": true
+      }
+    },
+    {
+      "case_id": "AHI-005",
+      "scenario": "delayed withdrawal",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-E",
+        "brand_name": "Bookmaker E",
+        "status": "Active",
+        "restrictions": ["Withdrawal Restricted"]
+      },
+      "observations": [
+        {
+          "observation_type": "withdrawal_delayed",
+          "observed_at": "2026-07-23T09:00:00Z",
+          "amount_limit": "120.00",
+          "confidence": "likely"
+        }
+      ],
+      "expected": {
+        "can_place_sportsbook": true,
+        "can_withdraw": true,
+        "withdrawal_state": "delayed",
+        "pnl_adjustment": "0.00"
+      }
+    },
+    {
+      "case_id": "AHI-006",
+      "scenario": "stale evidence",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-F",
+        "brand_name": "Bookmaker F",
+        "status": "Active",
+        "restrictions": []
+      },
+      "as_of": "2026-08-03T00:00:00Z",
+      "observations": [
+        {
+          "observation_type": "successful_offer_use",
+          "observed_at": "2026-05-01T12:00:00Z",
+          "confidence": "verified"
+        }
+      ],
+      "expected": {
+        "confidence": "stale",
+        "review_required": true,
+        "task_type": "refresh_account_evidence"
+      }
+    },
+    {
+      "case_id": "AHI-007",
+      "scenario": "conflicting observations",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-G",
+        "brand_name": "Bookmaker G",
+        "status": "Active",
+        "restrictions": []
+      },
+      "observations": [
+        {
+          "observation_type": "bonus_available",
+          "observed_at": "2026-07-24T09:00:00Z",
+          "confidence": "likely"
+        },
+        {
+          "observation_type": "bonus_restricted",
+          "observed_at": "2026-07-24T10:00:00Z",
+          "confidence": "likely"
+        }
+      ],
+      "expected": {
+        "bonus_restriction_state": "conflicting",
+        "review_required": true
+      }
+    },
+    {
+      "case_id": "AHI-008",
+      "scenario": "profile isolation",
+      "profile_id": "PROFILE-A",
+      "account": {
+        "account_id": "ACC-H-A",
+        "brand_name": "Bookmaker H",
+        "status": "Active",
+        "restrictions": []
+      },
+      "other_profile_observations": [
+        {
+          "profile_id": "PROFILE-B",
+          "account_id": "ACC-H-B",
+          "observation_type": "login_blocked",
+          "observed_at": "2026-07-24T12:00:00Z"
+        }
+      ],
+      "expected": {
+        "can_login": true,
+        "ignored_observation_count": 1
+      }
+    }
+  ]
+}

@@ -11,6 +11,8 @@ export type DatePreset =
   | "Fortnight"
   | "This Month"
   | "Last Month"
+  | "This Year"
+  | "All Dates"
   | "Custom";
 
 export type AccountSummaryRecord = {
@@ -44,6 +46,7 @@ export type SportsbookSummaryRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  created_at?: string | null;
   partial_lay_reminder_state?: string;
   partial_lay_reminder_due_at?: string;
 };
@@ -65,6 +68,7 @@ export type FreeBetSummaryRecord = {
   lay_status: string;
   counts_as_open: boolean;
   is_overdue: boolean;
+  created_at?: string | null;
 };
 
 export type CasinoSummaryRecord = {
@@ -368,6 +372,19 @@ function parseMoney(value: string | null | undefined): number {
   return Number.isFinite(normalized) ? normalized : 0;
 }
 
+function firstMoneyValue(...values: Array<string | null | undefined>): number {
+  const firstValue = values.find((value) => value != null && value.trim() !== "");
+  return parseMoney(firstValue);
+}
+
+function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
+  return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
+}
+
+function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
+  return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
+}
+
 function parseDateInput(value: string | null | undefined): Date | null {
   if (!value?.trim()) {
     return null;
@@ -444,6 +461,24 @@ export function formatHumanDisplayDate(value: string, includeTime = false): stri
   return formatHumanDate(parsed, includeTime);
 }
 
+function formatCompactRangeDate(value: Date): string {
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(value);
+  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(value);
+  const day = value.getDate();
+  return `${weekday} ${day}${ordinalSuffix(day)} ${month}`;
+}
+
+export function formatResolvedDateRange(range: ResolvedDateRange): string {
+  return `${formatCompactRangeDate(range.start)} to ${formatCompactRangeDate(range.end)}`;
+}
+
+export function formatResolvedDateRangeContext(
+  range: ResolvedDateRange,
+  label = "Tracker range"
+): string {
+  return `${label}: ${range.preset} • ${formatResolvedDateRange(range)}`;
+}
+
 export function getDatePresetOptions(): DatePreset[] {
   return [
     "Today",
@@ -456,6 +491,8 @@ export function getDatePresetOptions(): DatePreset[] {
     "Fortnight",
     "This Month",
     "Last Month",
+    "This Year",
+    "All Dates",
     "Custom",
   ];
 }
@@ -523,6 +560,14 @@ export function resolveDateRange({
       baseEnd = endOfMonth(lastMonthDate);
       break;
     }
+    case "This Year":
+      baseStart = new Date(baseToday.getFullYear(), 0, 1);
+      baseEnd = endOfDay(new Date(baseToday.getFullYear(), 11, 31));
+      break;
+    case "All Dates":
+      baseStart = new Date(2000, 0, 1);
+      baseEnd = endOfDay(new Date(2100, 11, 31));
+      break;
     case "Custom":
       baseStart = startOfDay(parseDateInput(customStart) ?? baseToday);
       baseEnd = endOfDay(parseDateInput(customEnd) ?? baseStart);
@@ -643,13 +688,23 @@ export function summarizeTrackerData(
     .reduce((sum, row) => sum + parseMoney(row.pending_withdrawal_amount), 0);
 
   const sportsbookInRange = dataset.sportsbookBets.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
+    dateWithinRange(parseDateInput(row.date_settled) ?? parseDateInput(row.created_at), resolvedDateRange)
   );
   const freeBetsInRange = dataset.freeBets.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
+    dateWithinRange(
+      parseDateInput(row.date_settled) ??
+        parseDateInput(row.expiry_datetime) ??
+        parseDateInput(row.created_at),
+      resolvedDateRange
+    )
   );
   const casinoInRange = dataset.casinoOffers.filter((row) =>
-    dateWithinRange(parseDateInput(row.date_settling), resolvedDateRange)
+    dateWithinRange(
+      parseDateInput(row.date_settling) ??
+        parseDateInput(row.date_started) ??
+        parseDateInput(row.expiry_datetime),
+      resolvedDateRange
+    )
   );
   const cashAdjustmentsInRange = dataset.cashAdjustments.filter((row) =>
     dateWithinRange(parseDateInput(row.adjustment_date), resolvedDateRange)
@@ -660,7 +715,7 @@ export function summarizeTrackerData(
     .slice(0, 20);
 
   const sportsbookReportingValue = sportsbookInRange.reduce(
-    (sum, row) => sum + parseMoney(row.reporting_value),
+    (sum, row) => sum + sportsbookDisplayValue(row),
     0
   );
   const sportsbookOpenCurrentValue = sportsbookInRange
@@ -670,7 +725,7 @@ export function summarizeTrackerData(
     .filter((row) => !row.counts_as_open)
     .reduce((sum, row) => sum + parseMoney(row.final_net_pnl), 0);
   const freeBetReportingValue = freeBetsInRange.reduce(
-    (sum, row) => sum + parseMoney(row.reporting_value),
+    (sum, row) => sum + freeBetDisplayValue(row),
     0
   );
   const freeBetOpenCurrentValue = freeBetsInRange
@@ -752,7 +807,7 @@ export function summarizeTrackerData(
       bookmakerOrAccount: row.bookmaker,
       status: `${row.status} / ${row.result}`,
       date: row.date_settled,
-      value: parseMoney(row.reporting_value),
+      value: sportsbookDisplayValue(row),
     })),
     ...freeBetsInRange.map((row) => ({
       id: row.free_bet_id,
@@ -761,7 +816,7 @@ export function summarizeTrackerData(
       bookmakerOrAccount: row.bookmaker,
       status: `${row.status} / ${row.result}`,
       date: row.date_settled,
-      value: parseMoney(row.reporting_value),
+      value: freeBetDisplayValue(row),
     })),
     ...casinoInRange.map((row) => ({
       id: row.casino_offer_id,
@@ -844,7 +899,7 @@ export function summarizeTrackerData(
   const yearlyMap = new Map<string, ReportRow>();
 
   for (const row of dataset.sportsbookBets) {
-    const value = parseMoney(row.reporting_value);
+    const value = sportsbookDisplayValue(row);
     const settledDate = parseDateInput(row.date_settled);
     if (!settledDate) {
       continue;
@@ -865,7 +920,7 @@ export function summarizeTrackerData(
     if (!reportFreeBetStatuses.has(row.status)) {
       continue;
     }
-    const value = parseMoney(row.reporting_value);
+    const value = freeBetDisplayValue(row);
     const settledDate = parseDateInput(row.date_settled);
     if (!settledDate) {
       continue;
@@ -962,7 +1017,7 @@ export function summarizeTrackerData(
 
   for (const row of sportsbookInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.sportsbookPnl += parseMoney(row.reporting_value);
+    next.sportsbookPnl += sportsbookDisplayValue(row);
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
@@ -972,7 +1027,7 @@ export function summarizeTrackerData(
 
   for (const row of freeBetsInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.freeBetPnl += parseMoney(row.reporting_value);
+    next.freeBetPnl += freeBetDisplayValue(row);
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;

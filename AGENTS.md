@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-07-20
+Last updated: 2026-08-16
 
 ## Project purpose
 
@@ -113,6 +113,9 @@ Read `docs/codex/data-safety-rules.md` before handling workbook-derived data.
 - Any new or changed financial calculation must have a contract first.
 - Use `docs/templates/calculation-contract.md`.
 - If a contract conflicts with the current workbook source pack, stop and surface the contradiction.
+- When the user introduces a new feature idea, workflow, ledger, calculator, or operational rule,
+  record it in the appropriate contract, fixture spec, planning note, and GitHub issue coverage
+  before treating it as durable roadmap scope.
 
 ## Fixture rule
 
@@ -140,6 +143,7 @@ Before implementing or modifying any UI, read and follow:
 - `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`
 - `docs/agent-contracts/plum-duff-ui-implementation-checklist.md`
 - `docs/agent-contracts/plum-duff-known-ui-pitfalls.md`
+- `docs/agent-contracts/plum-duff-ledger-modal-parity-contract.md`
 - `.skills/plum-duff-ui-review/SKILL.md`
 - `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`
 
@@ -153,6 +157,11 @@ Non-negotiable baseline:
 - contained table/dialog overflow with no unintended page-level horizontal scroll
 - process-correct enabled, disabled, loading, error and success states
 - repository-wide equivalent-pattern search whenever a UI pattern is fixed
+- ledger add/edit modal parity across Sportsbook, Free Bets, Casino Offers, Cash Adjustments and
+  future ledgers
+- shared action semantics: positive/create actions use the green positive action token, destructive
+  actions use the red Material `delete` icon, close actions use the red Material `close` icon, and
+  neighbouring icons/buttons must match size, padding and centre alignment
 
 Complete the implementation checklist for every feature, bug fix, route, component, workflow or
 fixture-backed UI change. Larger existing issues belong in
@@ -179,6 +188,32 @@ Short version:
 7. Run relevant tests.
 8. Report changed files and results.
 9. Stop for review.
+
+## Response style
+
+- Keep responses direct, concise, and forward-looking.
+- Do not use a status table unless the user explicitly asks for one.
+- In every substantive reply, explicitly note in short:
+  - what we are working on now
+  - what is on hold if we were sidetracked
+  - what happens next
+- When useful, include a short completion estimate and GitHub issue reference in prose.
+- Avoid long recaps unless the user asks for them.
+- Before asking the user to smoke test, provide a brief, concrete checklist with the routes,
+  actions and expected outcomes for the changed workflow.
+- When a repo change is made for active work, commit and push promptly so connected deployment workflows can pick it up, unless the user says not to.
+
+## Durable feature parity
+
+- A durable Plum Duff feature is not complete when only UI/code exists. Where applicable, its
+  implementation, contracts/schemas, representative fixtures, tests, documentation and GitHub
+  issue/milestone state must remain consistent.
+- Apply this proportionately: a small visual adjustment does not require all artefacts, but a
+  workflow, persisted-data, calculation, public-interface, or domain-rule change does.
+- When live GitHub state matters, try an authenticated integration, browser access, securely
+  available API credentials, then `gh`; only then use a clearly labelled local fallback.
+  Missing `gh` is not missing GitHub. Never request or print credentials. Record a concise
+  pending-sync note when live mutation is unavailable and reconcile it when access returns.
 
 ## Branch baseline rule
 

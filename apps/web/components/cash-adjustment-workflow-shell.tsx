@@ -3,32 +3,53 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import {
+  fetchJsonAndCache,
+  invalidateCachedJson,
+  readCachedJson,
+  TRACKER_STALE_WHILE_REFRESH_MS,
+} from "@/lib/client-json-cache";
+import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { FinancialValue } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
+import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
+import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
+import { TrackerRangeCard } from "@/components/tracker-range-card";
 import {
   scrollToElementTopAfterRender,
+  isGuidedAccessEnabled,
+  useBodyScrollLock,
   useDialogFocusLifecycle,
   usePersistedBoolean,
   usePersistedState,
+  useProfileGuidedAccessMode,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
+import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { formatFinancialValue } from "@/lib/financial-display";
-import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
+import {
+  formatResolvedDateRange,
+  formatResolvedDateRangeContext,
+  resolveDateRange,
+  type DatePreset,
+} from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { sortIssueBadgesByPriority } from "@/lib/issue-priority";
 import {
   cashAdjustmentDirectionOptions,
   cashAdjustmentTypeOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
+import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 
 type CashAdjustmentRecord = {
   cash_adjustment_id: string;
@@ -80,6 +101,7 @@ type TrackerSettingsRecord = {
   default_free_bet_underlay_factor: string;
   default_free_bet_overlay_factor: string;
   default_bonus_retention_percent: string;
+  default_exchange_name?: string;
   created_at: string;
   updated_at: string;
 };
@@ -90,6 +112,19 @@ type CashAdjustmentTableMode =
   | "costs"
   | "investment"
   | "cash-snapshot";
+type CashAdjustmentEditorTabId = "details" | "scope" | "notes" | "advanced";
+type CashAdjustmentGuidedFieldKey =
+  | "adjustment_date"
+  | "amount"
+  | "adjustment_type"
+  | "direction"
+  | "linked_account"
+  | "scope";
+type CashAdjustmentGuidedEntry = {
+  state: "next_required" | "review_required" | "complete";
+  nextRequiredField: CashAdjustmentGuidedFieldKey | null;
+  message: string;
+};
 
 type CashAdjustmentIssueFilter = "any" | "no-account" | "no-scope";
 type CashAdjustmentSortKey = "adjustment_date" | "adjustment_type" | "signed_amount" | "calculation_state";
@@ -205,6 +240,25 @@ const emptyTableFilters: CashAdjustmentTableFilterState = {
   issue_type: "any",
   min_value: "",
   max_value: "",
+};
+
+const cashAdjustmentGuidedFieldTabMap: Record<
+  CashAdjustmentGuidedFieldKey,
+  CashAdjustmentEditorTabId
+> = {
+  adjustment_date: "details",
+  amount: "details",
+  adjustment_type: "details",
+  direction: "details",
+  linked_account: "scope",
+  scope: "scope",
+};
+
+const cashAdjustmentGuidedTabLabels: Record<CashAdjustmentEditorTabId, string> = {
+  details: "Details",
+  scope: "Scope",
+  notes: "Notes",
+  advanced: "Advanced",
 };
 
 function getCashAdjustmentIssueBadges(
@@ -336,6 +390,20 @@ function getSignedAmountPreview(direction: string, amount: string): string {
   return formatFinancialValue(signedNumeric);
 }
 
+function getSignedAmountNumericPreview(direction: string, amount: string): number | null {
+  const normalized = amount.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const numeric = Number(normalized.replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  return direction === "In" ? numeric : -Math.abs(numeric);
+}
+
 function getAdjustmentScopeLabel(
   affectsInvestment: boolean,
   affectsCashSnapshot: boolean
@@ -383,6 +451,51 @@ function getMissingRequiredFields(formState: CashAdjustmentFormState): string[] 
     missing.push("Amount");
   }
   return missing;
+}
+
+function getCashAdjustmentGuidedEntry(
+  formState: CashAdjustmentFormState
+): CashAdjustmentGuidedEntry {
+  if (!formState.adjustment_date.trim()) {
+    return {
+      state: "next_required",
+      nextRequiredField: "adjustment_date",
+      message: "Set The Adjustment Date.",
+    };
+  }
+  if (!formState.amount.trim()) {
+    return {
+      state: "next_required",
+      nextRequiredField: "amount",
+      message: "Add The Amount.",
+    };
+  }
+  if (hasInvalidDirectionTypeCombination(formState)) {
+    return {
+      state: "review_required",
+      nextRequiredField: "adjustment_type",
+      message: "Choose A Workbook-Safe Adjustment Type.",
+    };
+  }
+  if (!formState.linked_account.trim()) {
+    return {
+      state: "review_required",
+      nextRequiredField: "linked_account",
+      message: "Choose The Linked Account.",
+    };
+  }
+  if (!formState.affects_investment && !formState.affects_cash_snapshot) {
+    return {
+      state: "review_required",
+      nextRequiredField: "scope",
+      message: "Choose At Least One Reporting Scope.",
+    };
+  }
+  return {
+    state: "complete",
+    nextRequiredField: null,
+    message: "Cash Adjustment Ready.",
+  };
 }
 
 function createBlankForm(): CashAdjustmentFormState {
@@ -480,10 +593,13 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
 }
 
 export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }) {
+  const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
+  const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
+  const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -513,17 +629,28 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
+  const [settledDeleteReason, setSettledDeleteReason] = useState("");
+  const [resolvedEditEnabled, setResolvedEditEnabled] = useState(false);
   const [showAdjustmentValidation, setShowAdjustmentValidation] = useState(false);
+  const [activeEditorTabId, setActiveEditorTabId] =
+    useState<CashAdjustmentEditorTabId>("details");
+  const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const workflowVisibleRef = useRef(workflowVisible);
+  const activeEditorTabIdRef = useRef<CashAdjustmentEditorTabId>(activeEditorTabId);
   const isCreatingDraftRef = useRef(false);
+
+  const isPersistingRef = useRef(false);
   const pageSize = 8;
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -552,7 +679,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
+  const hasOpenModal = workflowVisible || isFilterModalOpen;
+
   useToastDismiss(statusMessage, clearStatusMessage);
+  useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
 
   const revealEditor = useCallback(
@@ -573,19 +703,30 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   });
 
   useEffect(() => {
+    workflowVisibleRef.current = workflowVisible;
+  }, [workflowVisible]);
+
+  useEffect(() => {
+    activeEditorTabIdRef.current = activeEditorTabId;
+  }, [activeEditorTabId]);
+
+  useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
-      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Unable to load cash-adjustment rows");
+      const url = `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
+      const cachedRows = readCachedJson<CashAdjustmentRecord[]>(
+        url,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
+      if (cachedRows) {
+        setRows(cachedRows);
+        setIsInitialLoading(false);
       }
 
-      const nextRows = (await response.json()) as CashAdjustmentRecord[];
+      const nextRows = await fetchJsonAndCache<CashAdjustmentRecord[]>(url);
       startTransition(() => {
         setRows(nextRows);
         setIsInitialLoading(false);
@@ -602,9 +743,18 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           const activeRecord = nextRows.find((row) => row.cash_adjustment_id === selected);
           if (activeRecord) {
             const nextFormState = recordToForm(activeRecord);
+            const isReloadingCurrentEditor =
+              workflowVisibleRef.current &&
+              selectedIdRef.current === selected;
             setFormState(nextFormState);
             setPristineFormState(nextFormState);
             setShowAdjustmentValidation(false);
+            setGuidedEntryDismissed(false);
+            if (!isReloadingCurrentEditor) {
+              setActiveEditorTabId("details");
+            } else {
+              setActiveEditorTabId(activeEditorTabIdRef.current);
+            }
           }
           setWorkflowVisible(true);
         } else {
@@ -616,6 +766,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           setFormState(blankForm);
           setPristineFormState(blankForm);
           setShowAdjustmentValidation(false);
+          setGuidedEntryDismissed(false);
           setWorkflowVisible(false);
         }
       });
@@ -659,6 +810,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const selectedRow = useMemo(
     () => rows.find((row) => row.cash_adjustment_id === selectedId) ?? null,
     [rows, selectedId]
+  );
+  const isResolvedReadOnly = Boolean(
+    selectedRow?.calculation_state?.toLowerCase() === "resolved" && !resolvedEditEnabled
   );
 
   const accountOptions = useMemo(
@@ -846,8 +1000,23 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     [rows]
   );
 
+  const resolvedDateRange = useMemo(
+    () =>
+      resolveDateRange({
+        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
+        customStart: trackerSettings?.custom_start_date,
+        customEnd: trackerSettings?.custom_end_date,
+        rangeBackDays: trackerSettings?.range_back_days,
+        rangeForwardDays: trackerSettings?.range_forward_days,
+      }),
+    [trackerSettings]
+  );
+
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
+      if (!isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)) {
+        return false;
+      }
       if (tableFilters.direction && row.direction !== tableFilters.direction) {
         return false;
       }
@@ -877,7 +1046,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       }
       return true;
     });
-  }, [sortedReviewRows, tableFilters]);
+  }, [resolvedDateRange, sortedReviewRows, tableFilters]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
@@ -908,6 +1077,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     () => getSignedAmountPreview(formState.direction, formState.amount),
     [formState.amount, formState.direction]
   );
+  const signedAmountNumericPreview = useMemo(
+    () => getSignedAmountNumericPreview(formState.direction, formState.amount),
+    [formState.amount, formState.direction]
+  );
   const scopePreview = useMemo(
     () => getAdjustmentScopeLabel(formState.affects_investment, formState.affects_cash_snapshot),
     [formState.affects_cash_snapshot, formState.affects_investment]
@@ -933,16 +1106,247 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
     return items;
   }, [hasInvalidAdjustmentCombination]);
-  const resolvedDateRange = useMemo(
-    () =>
-      resolveDateRange({
-        preset: (trackerSettings?.active_date_preset as DatePreset | undefined) ?? "Week (Mon-Sun)",
-        customStart: trackerSettings?.custom_start_date,
-        customEnd: trackerSettings?.custom_end_date,
-        rangeBackDays: trackerSettings?.range_back_days,
-        rangeForwardDays: trackerSettings?.range_forward_days,
-      }),
-    [trackerSettings]
+  const cashAdjustmentEditorTabs = useMemo<LedgerEditorTabDefinition[]>(() => {
+    const detailsIssueCount =
+      missingAdjustmentFields.length + (hasInvalidAdjustmentCombination ? 1 : 0);
+    const scopeComplete =
+      Boolean(formState.linked_account.trim()) ||
+      formState.affects_cash_snapshot ||
+      formState.affects_investment;
+    const notesComplete = Boolean(formState.description.trim());
+    const advancedWarningCount = selectedRow?.calculation_notes.length ? 1 : 0;
+
+    return [
+      {
+        id: "details",
+        label: "Details",
+        status: detailsIssueCount > 0 && adjustmentValidationActive ? "invalid" : detailsIssueCount === 0 ? "complete" : "neutral",
+        requiredIssueCount: detailsIssueCount,
+      },
+      {
+        id: "scope",
+        label: "Scope",
+        status: scopeComplete ? "complete" : "neutral",
+      },
+      {
+        id: "notes",
+        label: "Notes",
+        status: notesComplete ? "complete" : "neutral",
+      },
+      {
+        id: "advanced",
+        label: "Advanced",
+        status: advancedWarningCount > 0 ? "warning" : "neutral",
+        warningIssueCount: advancedWarningCount,
+      },
+    ];
+  }, [
+    adjustmentValidationActive,
+    formState.affects_cash_snapshot,
+    formState.affects_investment,
+    formState.description,
+    formState.linked_account,
+    hasInvalidAdjustmentCombination,
+    missingAdjustmentFields.length,
+    selectedRow?.calculation_notes.length,
+  ]);
+  const safeActiveEditorTabId = useMemo<CashAdjustmentEditorTabId>(() => {
+    const activeTab = cashAdjustmentEditorTabs.find((tab) => tab.id === activeEditorTabId);
+    if (activeTab && activeTab.status !== "locked") return activeTab.id as CashAdjustmentEditorTabId;
+    return "details";
+  }, [activeEditorTabId, cashAdjustmentEditorTabs]);
+  const navigableCashAdjustmentTabs = useMemo(
+    () => cashAdjustmentEditorTabs.filter((tab) => tab.status !== "locked"),
+    [cashAdjustmentEditorTabs]
+  );
+  const currentCashAdjustmentTabIndex = Math.max(
+    0,
+    navigableCashAdjustmentTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
+  );
+  const previousCashAdjustmentTab =
+    currentCashAdjustmentTabIndex > 0
+      ? navigableCashAdjustmentTabs[currentCashAdjustmentTabIndex - 1]
+      : null;
+  const nextCashAdjustmentTab =
+    currentCashAdjustmentTabIndex >= 0 &&
+    currentCashAdjustmentTabIndex < navigableCashAdjustmentTabs.length - 1
+      ? navigableCashAdjustmentTabs[currentCashAdjustmentTabIndex + 1]
+      : null;
+
+  const activateCashAdjustmentEditorTab = useCallback((tabId: string) => {
+    const targetTab = cashAdjustmentEditorTabs.find((tab) => tab.id === tabId);
+    if (!targetTab || targetTab.status === "locked") return;
+    setActiveEditorTabId(targetTab.id as CashAdjustmentEditorTabId);
+  }, [cashAdjustmentEditorTabs]);
+
+  const guidedEntry = useMemo(
+    () => getCashAdjustmentGuidedEntry(formState),
+    [formState]
+  );
+  const cashGuidedFallbackMessages = useMemo<Record<CashAdjustmentGuidedFieldKey, string>>(
+    () => ({
+      adjustment_date: "Choose The Adjustment Date.",
+      adjustment_type: "Choose The Adjustment Type.",
+      amount: "Enter The Amount.",
+      direction: "Choose The Direction.",
+      linked_account: "Choose The Linked Account.",
+      scope: "Choose The Reporting Scope.",
+    }),
+    []
+  );
+  const safeGuidedEntry = useMemo(() => {
+    if (guidedEntry.state === "complete") {
+      return guidedEntry;
+    }
+    const nextRequiredField = guidedEntry.nextRequiredField ?? "adjustment_type";
+    return {
+      ...guidedEntry,
+      nextRequiredField,
+      message:
+        guidedEntry.message.trim() ||
+        cashGuidedFallbackMessages[nextRequiredField] ||
+        "Continue The Guided Workflow.",
+    };
+  }, [cashGuidedFallbackMessages, guidedEntry]);
+  const guidedEntryVisible =
+    workflowVisible && guidedAccessEnabled && !guidedEntryDismissed && safeGuidedEntry.state !== "complete";
+  const guidedEntryMessageId = "cash-adjustment-guided-entry-message";
+  const guidedEntryTargetTabId = safeGuidedEntry.nextRequiredField
+    ? cashAdjustmentGuidedFieldTabMap[safeGuidedEntry.nextRequiredField]
+    : null;
+  const guidedEntryNeedsTabJump =
+    guidedEntryTargetTabId !== null && guidedEntryTargetTabId !== safeActiveEditorTabId;
+  const guidedEntryTargetTabIndex = guidedEntryTargetTabId
+    ? cashAdjustmentEditorTabs.findIndex((tab) => tab.id === guidedEntryTargetTabId)
+    : -1;
+  const guidedEntryTargetTabLabel = guidedEntryTargetTabId
+    ? cashAdjustmentGuidedTabLabels[guidedEntryTargetTabId]
+    : "";
+  const guidedEntryMessageText =
+    safeGuidedEntry.message.trim() ||
+    (safeGuidedEntry.nextRequiredField
+      ? cashGuidedFallbackMessages[safeGuidedEntry.nextRequiredField]
+      : "Continue The Guided Workflow.");
+  const guidedEntryActionMessage = guidedEntryNeedsTabJump
+    ? `Go to ${guidedEntryTargetTabLabel} and ${guidedEntryMessageText}`
+    : guidedEntryMessageText;
+  const getGuidedFieldClass = useCallback(
+    (field: CashAdjustmentGuidedFieldKey, extraClass = "") => {
+      const classes = ["field-control"];
+      if (extraClass) {
+        classes.push(extraClass);
+      }
+      if (guidedEntryVisible && safeGuidedEntry.nextRequiredField === field) {
+        classes.push("is-guided-next");
+      }
+      return classes.join(" ");
+    },
+    [guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const getGuidedFieldData = useCallback(
+    (field: CashAdjustmentGuidedFieldKey) => ({
+      "data-guided-field": field,
+    }),
+    []
+  );
+  const getGuidedDescribedBy = useCallback(
+    (field: CashAdjustmentGuidedFieldKey) =>
+      guidedEntryVisible && safeGuidedEntry.nextRequiredField === field ? guidedEntryMessageId : undefined,
+    [guidedEntryMessageId, guidedEntryVisible, safeGuidedEntry.nextRequiredField]
+  );
+  const focusGuidedEntryTarget = useCallback(() => {
+    const nextField = safeGuidedEntry.nextRequiredField;
+    if (!nextField) return;
+    const nextTab = cashAdjustmentGuidedFieldTabMap[nextField];
+    activateCashAdjustmentEditorTab(nextTab);
+    window.setTimeout(() => {
+      const target = editorRef.current?.querySelector<HTMLElement>(
+        `[data-guided-field="${nextField}"]`
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = target?.matches("input, select, textarea, button")
+        ? target
+        : target?.querySelector<HTMLElement>("input, select, textarea, button");
+      focusTarget?.focus({ preventScroll: true });
+    }, 80);
+  }, [activateCashAdjustmentEditorTab, safeGuidedEntry.nextRequiredField]);
+  const renderGuidedEntryMessage = useCallback((message: string) => {
+    const safeMessage = message.trim() || "Continue The Guided Workflow.";
+    const targetTerms = [
+      "Adjustment Date",
+      "Amount",
+      "Adjustment Type",
+      "Direction",
+      "Linked Account",
+      "Reporting Scope",
+      "Scope",
+      "Details",
+    ];
+    const pattern = new RegExp(`(${targetTerms.join("|")})`, "gi");
+    const parts = safeMessage.split(pattern).filter(Boolean);
+    if (parts.length === 0) {
+      return <>{safeMessage}</>;
+    }
+    return parts.map((part, index) => {
+      if (!part) return null;
+      const isTarget = targetTerms.some((term) => term.toLowerCase() === part.toLowerCase());
+      if (!isTarget) {
+        return part;
+      }
+      return (
+        <span className="guided-entry-token guided-entry-token-field" key={`${part}-${index}`}>
+          {part}
+        </span>
+      );
+    });
+  }, []);
+  const renderGuidedEntryInstruction = useCallback(() => {
+    if (!guidedEntryNeedsTabJump) {
+      return (
+        <span className="guided-entry-instruction-text">
+          {renderGuidedEntryMessage(guidedEntryMessageText)}
+        </span>
+      );
+    }
+    return (
+      <span className="guided-entry-instruction-text">
+        <span>Go to </span>
+        <span className="guided-entry-step-reference">
+          {guidedEntryTargetTabIndex >= 0 ? (
+            <span aria-hidden="true" className="guided-entry-step-marker">
+              {guidedEntryTargetTabIndex + 1}
+            </span>
+          ) : null}
+          <span>{guidedEntryTargetTabLabel}</span>
+        </span>
+        <span> and </span>
+        {renderGuidedEntryMessage(guidedEntryMessageText)}
+      </span>
+    );
+  }, [
+    guidedEntryMessageText,
+    guidedEntryNeedsTabJump,
+    guidedEntryTargetTabIndex,
+    guidedEntryTargetTabLabel,
+    renderGuidedEntryMessage,
+  ]);
+
+  const updateTrackerDatePreset = useCallback(
+    async (preset: DatePreset) => {
+      if (!trackerSettings || trackerSettings.active_date_preset === preset) return;
+      setIsTrackerRangeSaving(true);
+      setErrorMessage("");
+      try {
+        const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
+        setTrackerSettings(savedSettings);
+        setStatusMessage(`Tracker range set to ${preset}.`);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
+      } finally {
+        setIsTrackerRangeSaving(false);
+      }
+    },
+    [profileId, trackerSettings]
   );
   const quickView = useMemo(() => {
     const rangeRows = rows.filter((row) =>
@@ -974,9 +1378,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       signedTotal,
     };
   }, [resolvedDateRange, rows]);
+  const quickViewRangeContext = formatResolvedDateRange(resolvedDateRange);
+  const quickViewRangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.cash_adjustment_id === rowId);
@@ -997,16 +1403,20 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setWorkflowVisible(true);
     setErrorMessage("");
     setShowAdjustmentValidation(false);
+    setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
+    setActiveEditorTabId("details");
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
-    setStatusMessage(`Opened cash adjustment ${rowId} for editing.`);
+    setStatusMessage("");
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
+    selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
     setTableCollapsed(false);
@@ -1015,16 +1425,25 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setPristineFormState(blankForm);
     setErrorMessage("");
     setShowAdjustmentValidation(false);
+    setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
+    setActiveEditorTabId("details");
     revealEditor({ expandLedger: true });
-    setStatusMessage("New cash adjustment ready. Complete the required fields, then save.");
+    setStatusMessage("");
   }
 
-  function closeEditor() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function closeEditor() {
+    if (isPersistingRef.current) {
+      return;
+    }
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
     isCreatingDraftRef.current = false;
+    setResolvedEditEnabled(false);
     setTableCollapsed(false);
     setStatusMessage("");
   }
@@ -1043,7 +1462,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       suppressMissingRequiredMessage?: boolean;
       returnToLedgerOnSuccess?: boolean;
     }
-  ) {
+  ): Promise<boolean> {
+    if (isPersistingRef.current) {
+      return false;
+    }
+
     setErrorMessage("");
     if (!canPersistForm(nextFormState)) {
       setShowAdjustmentValidation(true);
@@ -1059,44 +1482,66 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           );
         }
       }
-      return;
+      return false;
     }
 
-    const activeRowId = nextFormState.cash_adjustment_id ?? selectedId;
-    const isEditing = Boolean(activeRowId);
-    const url = isEditing
-      ? `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${activeRowId}`
-      : `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
-    const method = isEditing ? "PUT" : "POST";
+    isPersistingRef.current = true;
+    setIsPersisting(true);
 
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nextFormState),
-    });
+    try {
+      const activeRowId = nextFormState.cash_adjustment_id ?? selectedId;
+      const isEditing = Boolean(activeRowId);
+      const url = isEditing
+        ? `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${activeRowId}`
+        : `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
+      const method = isEditing ? "PUT" : "POST";
 
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      return;
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextFormState),
+      });
+
+      if (!response.ok) {
+        setErrorMessage(await response.text());
+        return false;
+      }
+
+      const saved = (await response.json()) as CashAdjustmentRecord;
+      const savedFormState = recordToForm(saved);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
+      dispatchTrackerDataUpdated({ ledger: "cash-adjustments", profileId });
+      const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+      setFormState(savedFormState);
+      setPristineFormState(savedFormState);
+      setResolvedEditEnabled(false);
+      await loadRows(returnToLedger ? null : saved.cash_adjustment_id);
+      setShowAdjustmentValidation(false);
+      if (returnToLedger) {
+        const blankFormState = createBlankForm();
+        setSelectedId(null);
+        selectedIdRef.current = null;
+        setFormState(blankFormState);
+        setPristineFormState(blankFormState);
+        setWorkflowVisible(false);
+        setTableCollapsed(false);
+        setStatusMessage("");
+      } else if (!workflowVisible) {
+        setStatusMessage(
+          options?.autosaveLabel
+            ? `${options.autosaveLabel} autosaved for ${saved.cash_adjustment_id}.`
+            : isEditing
+              ? `Updated cash adjustment ${saved.cash_adjustment_id}.`
+              : `Created cash adjustment ${saved.cash_adjustment_id}.`
+        );
+      } else {
+        setStatusMessage("");
+      }
+      return true;
+    } finally {
+      isPersistingRef.current = false;
+      setIsPersisting(false);
     }
-
-    const saved = (await response.json()) as CashAdjustmentRecord;
-    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
-    await loadRows(returnToLedger ? null : saved.cash_adjustment_id);
-    setShowAdjustmentValidation(false);
-    if (returnToLedger) {
-      setSelectedId(null);
-      selectedIdRef.current = null;
-      setWorkflowVisible(false);
-      setTableCollapsed(false);
-    }
-    setStatusMessage(
-      options?.autosaveLabel
-        ? `${options.autosaveLabel} autosaved for ${saved.cash_adjustment_id}.`
-        : isEditing
-          ? `Updated cash adjustment ${saved.cash_adjustment_id}.`
-          : `Created cash adjustment ${saved.cash_adjustment_id}.`
-    );
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1123,12 +1568,20 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   }
 
   function handleResetForm() {
+    if (isPersistingRef.current) {
+      return;
+    }
     if (selectedRow) {
       const nextFormState = recordToForm(selectedRow);
       setFormState(nextFormState);
       setPristineFormState(nextFormState);
       setErrorMessage("");
       setShowAdjustmentValidation(false);
+      setGuidedEntryDismissed(false);
+      setResolvedEditEnabled(false);
+      setSettledDeleteGuardRowId(null);
+      setSettledDeleteReason("");
+      setActiveEditorTabId("details");
       setStatusMessage(
         `Reverted unsaved changes for cash adjustment ${selectedRow.cash_adjustment_id}.`
       );
@@ -1140,19 +1593,45 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setPristineFormState(blankForm);
     setErrorMessage("");
     setShowAdjustmentValidation(false);
+    setGuidedEntryDismissed(false);
+    setResolvedEditEnabled(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setActiveEditorTabId("details");
     setStatusMessage("Cleared the unsaved cash-adjustment draft.");
   }
 
-  async function handleDeleteSelectedRow(rowId = selectedId) {
+  async function handleDeleteSelectedRow(
+    rowId = selectedId,
+    options?: { confirmedSettledReason?: string }
+  ) {
     if (!rowId) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete cash-adjustment row ${rowId}? This will remove it from this profile tracker.`
-    );
-    if (!confirmed) {
+    const rowForDelete =
+      selectedRow?.cash_adjustment_id === rowId
+        ? selectedRow
+        : rows.find((row) => row.cash_adjustment_id === rowId);
+    const isResolvedDelete = rowForDelete?.calculation_state?.toLowerCase() === "resolved";
+    const settledReason = options?.confirmedSettledReason?.trim() ?? "";
+
+    if (isResolvedDelete && !settledReason) {
+      setSettledDeleteGuardRowId(rowId);
+      setSettledDeleteReason("");
+      setErrorMessage("");
       return;
+    }
+
+    if (!isResolvedDelete) {
+      const confirmed = await confirmDestructiveAction({
+        confirmLabel: "Delete Row",
+        message: `Delete cash-adjustment row ${rowId}? This will remove it from this profile tracker.`,
+        title: "Delete cash-adjustment row?",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
 
     setErrorMessage("");
@@ -1168,9 +1647,29 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return;
     }
 
+    invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
+    dispatchTrackerDataUpdated({ ledger: "cash-adjustments", profileId });
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted cash adjustment ${rowId}.`);
+  }
+
+  function handleCancelResolvedEdit() {
+    if (!selectedRow) {
+      setResolvedEditEnabled(false);
+      return;
+    }
+
+    const nextFormState = recordToForm(selectedRow);
+    setFormState(nextFormState);
+    setPristineFormState(nextFormState);
+    setResolvedEditEnabled(false);
+    setErrorMessage("");
+    setShowAdjustmentValidation(false);
+    setGuidedEntryDismissed(false);
+    setSettledDeleteGuardRowId(null);
+    setSettledDeleteReason("");
+    setStatusMessage(`Restored cash adjustment ${selectedRow.cash_adjustment_id}.`);
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -1206,7 +1705,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             aria-label={`Edit ${sourceRow.cash_adjustment_id}`}
             className="icon-button table-action-button"
             disabled={lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)}
-            onClick={() => selectRow(sourceRow.cash_adjustment_id)}
+            onClick={() => void selectRow(sourceRow.cash_adjustment_id)}
             title={
               lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type)
                 ? "Confirmed fee withdrawals are managed from monthly fee review"
@@ -1239,7 +1738,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
   return (
     <section className="stack">
-      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      {!workflowVisible ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
       <section
         aria-busy={isInitialLoading}
         className="content-panel stack sportsbook-page-shell"
@@ -1251,6 +1752,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
         ) : null}
         <section className="stat-strip" aria-label="Cash-adjustment quick view">
+          <TrackerRangeCard
+            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
+            isSaving={isTrackerRangeSaving}
+            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
+            rangeDetail={quickViewRangeDetail}
+            rangeContext={quickViewRangeContext}
+          />
           <article className="stat-card">
             <span className="eyebrow">Withdrawals</span>
             <strong>{quickView.withdrawalCount}</strong>
@@ -1261,22 +1769,22 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             <strong>{quickView.costCount}</strong>
             <span><FinancialValue value={quickView.costTotal} /></span>
           </article>
-            <article className="stat-card">
-              <span className="eyebrow">Workbook scope</span>
-              <strong>
-                {quickView.investmentCount} / {quickView.cashSnapshotCount}
-              </strong>
-            <span>Investment rows • Cash-snapshot rows</span>
-            </article>
+          <article className="stat-card">
+            <span className="eyebrow">Cash impact</span>
+            <strong>
+              {quickView.investmentCount} / {quickView.cashSnapshotCount}
+            </strong>
+            <span>Investment rows • Account-cash rows</span>
+          </article>
           <article className="stat-card">
             <span className="eyebrow">Signed total</span>
             <strong><FinancialValue value={quickView.signedTotal} /></strong>
-            <span>Current net signed effect</span>
+            <span>Net effect of visible adjustments</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search cash-adjustment rows</span><input aria-label="Search cash-adjustment rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" type="search" value={query} /></label>
-          <LedgerAddRowButton label="Add cash adjustment" onClick={startNewRow} />
+          <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
@@ -1390,8 +1898,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key}>
@@ -1625,9 +2133,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       ) : null}
 
       {workflowVisible ? (
-        <div className="modal-backdrop" onClick={closeEditor}>
+        <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
+        aria-busy={isPersisting}
         aria-modal="true"
         className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
         data-pd-id="cash-adjustments.editor.dialog"
@@ -1636,40 +2145,139 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         role="dialog"
       >
           <div className="workflow-panel-header workflow-editor-header" data-pd-id="cash-adjustments.editor.header">
-            <div className="stack">
+            <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit cash adjustment" : "Create cash adjustment"}</span>
             <strong>{selectedId ?? "New cash adjustment"}</strong>
             </div>
-            <div className="tracker-nav">
-              <button aria-label="Close cash-adjustment editor" className="button-link" data-initial-focus="" onClick={closeEditor} type="button">
-                Close
+            <section
+              aria-label="Cash-adjustment editor context"
+              className="editor-compact-summary"
+              data-pd-id="cash-adjustments.editor.compact-summary"
+            >
+              <span
+                className="table-chip editor-summary-value-chip"
+                title={`Signed preview: ${signedAmountPreview}`}
+              >
+                {signedAmountNumericPreview === null ? (
+                  <span className="ledger-financial-value ledger-financial-value-unavailable">
+                    £ -
+                  </span>
+                ) : (
+                  <FinancialValue
+                    animate={false}
+                    className="ledger-financial-value editor-summary-financial-value"
+                    label="Signed preview"
+                    value={signedAmountNumericPreview}
+                  />
+                )}
+              </span>
+              <span className="table-chip">{formState.adjustment_type || "Type pending"}</span>
+              <span
+                className={`table-chip${
+                  formState.direction === "In" ? " table-chip-lay-full" : " table-chip-danger"
+                }`}
+              >
+                {formState.direction || "Out"}
+              </span>
+              <span className="table-chip table-chip-muted">{scopePreview}</span>
+              <span className="table-chip table-chip-muted">
+                {selectedRow?.calculation_state || "Draft"}
+              </span>
+            </section>
+            <div
+              className="tracker-nav workflow-editor-header-actions"
+              data-pd-id="cash-adjustments.editor.tab-actions"
+            >
+              <div
+                aria-label="Cash-adjustment editor tab navigation"
+                className="workflow-editor-header-nav"
+                role="group"
+              >
+                <button
+                  className="review-chip review-chip-action-previous"
+                  disabled={!previousCashAdjustmentTab}
+                  onClick={() => {
+                    if (previousCashAdjustmentTab) {
+                      activateCashAdjustmentEditorTab(previousCashAdjustmentTab.id);
+                    }
+                  }}
+                  type="button"
+                >
+                  Previous
+                </button>
+                <button
+                  className="review-chip review-chip-action-next"
+                  disabled={!nextCashAdjustmentTab}
+                  onClick={() => {
+                    if (nextCashAdjustmentTab) {
+                      activateCashAdjustmentEditorTab(nextCashAdjustmentTab.id);
+                    }
+                  }}
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+              <button
+                aria-label="Close cash-adjustment editor"
+                className="workflow-editor-cancel-button"
+                disabled={isPersisting}
+                onClick={() => void closeEditor()}
+                title="Close editor"
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>
+            <LedgerEditorTabRail
+              activeTabId={safeActiveEditorTabId}
+              ariaLabel="Cash-adjustment editor steps"
+              guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
+              onActiveTabChange={activateCashAdjustmentEditorTab}
+              tabs={cashAdjustmentEditorTabs}
+            />
         </div>
+        {guidedEntryVisible ? (
+          <section
+            aria-label="Cash-adjustment guided entry"
+            className={`guided-entry-banner guided-entry-banner-${safeGuidedEntry.state}`}
+            data-pd-id="cash-adjustments.guided-entry"
+            key={`${safeGuidedEntry.state}:${safeGuidedEntry.nextRequiredField ?? "none"}:${guidedEntryActionMessage}`}
+            role="status"
+          >
+            <button className="guided-entry-action" onClick={focusGuidedEntryTarget} type="button">
+              <span className="eyebrow">
+                {safeGuidedEntry.state === "review_required" ? "Review required" : "Next required"}
+              </span>
+              <strong id={guidedEntryMessageId}>
+                {renderGuidedEntryInstruction()}
+              </strong>
+            </button>
+            <button
+              aria-label="Dismiss cash-adjustment guided entry"
+              className="icon-button guided-entry-dismiss"
+              onClick={() => setGuidedEntryDismissed(true)}
+              title="Dismiss guided entry"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">
+                close
+              </span>
+            </button>
+          </section>
+        ) : guidedAccessEnabled && guidedEntryDismissed && safeGuidedEntry.state !== "complete" ? (
+          <button
+            className="button-link guided-entry-restore"
+            data-pd-id="cash-adjustments.guided-entry.restore"
+            onClick={() => setGuidedEntryDismissed(false)}
+            type="button"
+          >
+            Show guide
+          </button>
+        ) : null}
           <div className="workflow-editor-body">
-            <section className="stat-strip" aria-label="Cash-adjustment summary">
-              <article className="stat-card">
-                <span className="eyebrow">Signed preview</span>
-                <strong>{signedAmountPreview}</strong>
-                <span>{formState.adjustment_type || "Type pending"} • {formState.direction || "—"}</span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Adjustment date</span>
-                <strong>{formState.adjustment_date ? formatUkDateTime(formState.adjustment_date) : "—"}</strong>
-                <span>Raw amount: {formatMoneyValue(formState.amount)}</span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Tracker scope</span>
-                <strong>{scopePreview}</strong>
-                <span>Linked account: {formState.linked_account || "Unassigned"}</span>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Workbook state</span>
-                <strong>{selectedRow?.calculation_state || "Draft"}</strong>
-                <span>{selectedRow?.week_label || "Pending save"}</span>
-              </article>
-            </section>
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="details">
           <EditorSection
             invalid={
               adjustmentValidationActive &&
@@ -1677,24 +2285,33 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             }
             title="Adjustment setup"
           >
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             {adjustmentValidationActive && missingAdjustmentFields.length > 0 ? (
-              <p className="field-validation-text" role="alert">
-                Complete the required Adjustment details fields: {missingAdjustmentFields.join(", ")}.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`cash-adjustment-setup:${selectedId ?? formState.cash_adjustment_id ?? "new"}:${missingAdjustmentFields.join("|")}`}
+                id="cash-adjustment.editor.setup-validation"
+                message={`Complete these fields before saving: ${missingAdjustmentFields.join(", ")}.`}
+                title="Adjustment setup incomplete"
+              />
             ) : null}
             {adjustmentValidationActive && hasInvalidAdjustmentCombination ? (
-              <p className="field-validation-text" role="alert">
-                Direction and adjustment type must stay in a workbook-safe combination.
-              </p>
+              <EditorValidationBanner
+                dismissKey={`cash-adjustment-combination:${selectedId ?? formState.cash_adjustment_id ?? "new"}:${formState.direction}:${formState.adjustment_type}`}
+                id="cash-adjustment.editor.combination-validation"
+                message="Direction and adjustment type must stay in a workbook-safe combination."
+                title="Workbook-safe combination required"
+              />
             ) : null}
             <div className="form-grid">
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("adjustment_date")}${
                   adjustmentValidationActive && !formState.adjustment_date.trim() ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("adjustment_date")}
               >
                 <span>Adjustment date</span>
                 <input
+                  aria-describedby={getGuidedDescribedBy("adjustment_date")}
                   aria-invalid={adjustmentValidationActive && !formState.adjustment_date.trim()}
                   lang="en-GB"
                   onChange={(event) =>
@@ -1709,12 +2326,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 />
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("amount")}${
                   adjustmentValidationActive && !formState.amount.trim() ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("amount")}
               >
                 <span>Amount</span>
                 <input
+                  aria-describedby={getGuidedDescribedBy("amount")}
                   aria-invalid={adjustmentValidationActive && !formState.amount.trim()}
                   inputMode="decimal"
                   onChange={(event) =>
@@ -1725,12 +2344,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 />
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("adjustment_type")}${
                   adjustmentValidationActive && hasInvalidAdjustmentCombination ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("adjustment_type")}
               >
                 <span>Adjustment type</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("adjustment_type")}
                   aria-invalid={adjustmentValidationActive && hasInvalidAdjustmentCombination}
                   onChange={(event) =>
                     void applyDropdownChange(
@@ -1748,12 +2369,14 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 </select>
               </label>
               <label
-                className={`field-control${
+                className={`${getGuidedFieldClass("direction")}${
                   adjustmentValidationActive && hasInvalidAdjustmentCombination ? " is-invalid" : ""
                 }`}
+                {...getGuidedFieldData("direction")}
               >
                 <span>Direction</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("direction")}
                   aria-invalid={adjustmentValidationActive && hasInvalidAdjustmentCombination}
                   onChange={(event) =>
                     void applyDropdownChange(
@@ -1778,12 +2401,20 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 ))}
               </div>
             </div>
+            </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="scope">
           <EditorSection title="Reporting scope">
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             <div className="form-grid">
-              <label className="field-control">
+              <label
+                className={getGuidedFieldClass("linked_account")}
+                {...getGuidedFieldData("linked_account")}
+              >
                 <span>Linked account</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("linked_account")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => ({ ...current, linked_account: event.target.value }),
@@ -1800,9 +2431,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   ))}
                 </select>
               </label>
-              <label className="field-control">
+              <label className={getGuidedFieldClass("scope")} {...getGuidedFieldData("scope")}>
                 <span>Affects investment</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("scope")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => ({
@@ -1818,9 +2450,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   <option value="false">No</option>
                 </select>
               </label>
-              <label className="field-control">
+              <label className={getGuidedFieldClass("scope")} {...getGuidedFieldData("scope")}>
                 <span>Affects cash snapshot</span>
                 <select
+                  aria-describedby={getGuidedDescribedBy("scope")}
                   onChange={(event) =>
                     void applyDropdownChange(
                       (current) => ({
@@ -1841,8 +2474,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 <input readOnly value={signedAmountPreview} />
               </label>
             </div>
+            </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="notes">
           <EditorSection title="Audit note">
+            <fieldset className="section-fieldset" disabled={isResolvedReadOnly}>
             <label className="field-control">
               <span>Description</span>
               <textarea
@@ -1853,7 +2490,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 value={formState.description}
               />
             </label>
+            </fieldset>
           </EditorSection>
+          </LedgerEditorTabPanel>
+          <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="advanced">
           <EditorSection defaultOpen={false} title="Advanced controls">
             {selectedRow?.calculation_notes.length ? (
               <section className="stack">
@@ -1866,25 +2506,102 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               </section>
             ) : null}
           </EditorSection>
-              <div className="tracker-nav field-span-2 workflow-editor-footer" data-pd-id="cash-adjustments.editor.actions">
-                <button className="review-chip review-chip-copy" disabled={isPending} type="submit">
-                  Save
-                </button>
-                {selectedId ? (
+          </LedgerEditorTabPanel>
+              <div className="field-span-2 workflow-editor-footer" data-pd-id="cash-adjustments.editor.actions">
+                {selectedId && settledDeleteGuardRowId === selectedId ? (
+                  <LedgerSettledDeleteGuard
+                    disabled={isPersisting}
+                    ledgerLabel="cash-adjustments"
+                    onCancel={() => {
+                      setSettledDeleteGuardRowId(null);
+                      setSettledDeleteReason("");
+                    }}
+                    onConfirm={() =>
+                      void handleDeleteSelectedRow(selectedId, {
+                        confirmedSettledReason: settledDeleteReason,
+                      })
+                    }
+                    onReasonChange={setSettledDeleteReason}
+                    reason={settledDeleteReason}
+                    rowLabel={selectedId}
+                  />
+                ) : null}
+                <div className="tracker-nav workflow-editor-footer-primary">
+                  {isResolvedReadOnly ? (
+                    <button
+                      aria-label="Edit cash-adjustment row"
+                      className="review-chip"
+                      disabled={isPersisting}
+                      onClick={() => setResolvedEditEnabled(true)}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="review-chip review-chip-copy"
+                        disabled={isPending || isPersisting || !isDirty}
+                        type="submit"
+                      >
+                        {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                        {isPending || isPersisting ? "Saving" : resolvedEditEnabled ? "Save Edits" : "Save"}
+                      </button>
+                      {resolvedEditEnabled ? (
+                        <button
+                          className="review-chip"
+                          disabled={isPersisting}
+                          onClick={handleCancelResolvedEdit}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                      {selectedId ? (
+                        <button
+                          className="review-chip review-chip-danger"
+                          disabled={isPersisting}
+                          onClick={() => void handleDeleteSelectedRow()}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                      <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">
+                        Revert
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div
+                  className="tracker-nav workflow-editor-footer-nav"
+                  data-pd-id="cash-adjustments.editor.footer-tab-actions"
+                >
                   <button
-                    className="review-chip review-chip-danger"
-                    onClick={() => void handleDeleteSelectedRow()}
+                    className="review-chip review-chip-action-previous"
+                    disabled={!previousCashAdjustmentTab}
+                    onClick={() => {
+                      if (previousCashAdjustmentTab) {
+                        activateCashAdjustmentEditorTab(previousCashAdjustmentTab.id);
+                      }
+                    }}
                     type="button"
                   >
-                    Delete
+                    Previous
                   </button>
-                ) : null}
-                <button className="review-chip" onClick={handleResetForm} type="button">
-                  Revert
-                </button>
-                <button aria-label="Close cash-adjustment editor" className="button-link tracker-nav-right-action" onClick={closeEditor} type="button">
-                  Close
-                </button>
+                  <button
+                    className="review-chip review-chip-action-next"
+                    disabled={!nextCashAdjustmentTab}
+                    onClick={() => {
+                      if (nextCashAdjustmentTab) {
+                        activateCashAdjustmentEditorTab(nextCashAdjustmentTab.id);
+                      }
+                    }}
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </form>
           </div>

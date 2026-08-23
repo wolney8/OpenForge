@@ -5,6 +5,7 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 ## Before implementation
 
 - [ ] Read `plum-duff-ui-accessibility-contract.md`.
+- [ ] Read `plum-duff-ledger-modal-parity-contract.md` for any ledger/editor/modal change.
 - [ ] Read and apply `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`.
 - [ ] Identify the workbook/workflow/financial contract, if relevant.
 - [ ] Search for an existing Plum Duff component or CSS primitive.
@@ -19,6 +20,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] No new hard-coded colour, spacing, shape, opacity or elevation where a token exists.
 - [ ] Equivalent controls match size, border, surface, typography, focus and state styling.
 - [ ] Platform Material Symbols convention used for established icon actions.
+- [ ] Positive/create, secondary, tertiary and destructive actions use the shared action token set.
+- [ ] Delete actions use the shared red Material `delete` icon and close actions use the shared red
+      Material `close` icon.
+- [ ] Icons inside buttons/pills are centre-aligned and match neighbouring action icon dimensions.
+- [ ] Button, pill, input and focus-ring padding/margins match the nearest canonical Plum Duff
+      control and are not clipped.
 
 ## Accessibility
 
@@ -47,6 +54,10 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 ## Consistency and tests
 
 - [ ] Similar controls elsewhere were searched and updated or intentionally excluded with reason.
+- [ ] Ledger/editor changes were checked against Sportsbook, Free Bets, Casino Offers and Cash
+      Adjustments, or a documented reason explains why a ledger is intentionally excluded.
+- [ ] Partial lay, where applicable, is represented as a placement state/control rather than a
+      standalone calculator mode, with legacy `Partial Lay` rows kept readable.
 - [ ] Unit/Playwright/accessibility tests added or updated.
 - [ ] Geometry and computed-style parity asserted where the task fixes layout/style divergence.
 - [ ] Dialog/page top, bottom, left and right visibility asserted where geometry changed.

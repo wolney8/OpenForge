@@ -1,11 +1,12 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-07-21_
+_Last updated: 2026-08-17_
 
 ## 1. Workflow name
 
 - Name: Fund Manager notification centre
-- Initial notification sources: active partial-lay and free-bet follow-up reminders
+- Initial notification sources: database backup reminders, active partial-lay reminders and
+  free-bet follow-up reminders
 
 ## 2. User goal
 
@@ -49,6 +50,13 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
 Read and cleared state is local view state for the single local Fund Manager MVP. Resolving or
 dismissing the source reminder remains a profile-scoped, audited sportsbook action.
 
+Notification source preferences are also local-first Fund Manager view state in the MVP. The global
+Fund Manager settings route must expose an enabled/disabled control for each approved notification
+source. Disabling a source hides matching notifications from the bell feed; it does not alter source
+ledger records, backup state, reminders, financial values or audit history. Unknown future
+notification types must remain visible by default until their own contract, fixture and preference
+label are added.
+
 Read state is stored against the reminder's current attention stage: `created`, `due-day`,
 `due-4h`, or `due-2h`. A previously read reminder becomes unread again when it reaches a later
 stage. If it is already unread, crossing a threshold leaves the existing card and single unread
@@ -88,6 +96,8 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
   confirmation rather than a nested modal
 - disabled actions remain unavailable when their exact preconditions are false
 - all important controls and regions use stable `data-pd-id` identifiers
+- Fund Manager notification preferences live under global `/settings`, not profile settings, until
+  subscriber/user account settings exist
 
 ## 7. Calculation and safety boundary
 
@@ -121,12 +131,15 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 - task clear requires inline confirmation
 - clear hides notifications without resolving the source reminder
 - Escape closes the panel and restores trigger focus
+- disabling a known notification source hides that source from the bell feed
+- unknown notification source types remain visible by default
 
 ## 9. Deferred extensions
 
 Future approved Fund Manager notification sources may include automatic free-bet expiry, overdue
 settlement, account-health actions, cash-adjustment follow-ups and fee-review blockers. Each source
-requires its own workflow contract and deterministic fixture before it can enter this shared feed.
+requires its own workflow contract, deterministic fixture and Fund Manager preference label before
+it can enter this shared feed.
 
 Subscriber notifications are a separate deferred product surface. They require a subscriber-only,
 profile-scoped endpoint, separate view state and explicit visibility contract; they must not reuse or

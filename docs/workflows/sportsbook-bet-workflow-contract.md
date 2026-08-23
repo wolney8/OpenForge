@@ -93,7 +93,41 @@ Allow the Fund Manager, inside a selected profile tracker, to record, review, an
 - manual final override
 - profile mismatch
 
-## 10. Audit notes
+## 10. Strategy and lay-mode presentation
+
+Persisted `match_strategy` values remain contract-compatible with the workbook and existing
+reporting fixtures:
+
+- `Standard`
+- `Underlay`
+- `Overlay`
+- `Custom`
+- `No Lay`
+- `Partial Lay`
+- `Multilay`
+- `Multilay-Underlay`
+
+The editor must not present all of those values as equivalent user-facing workflow choices.
+`Underlay`, `Overlay`, and `Custom` are calculator result paths inside the advanced matching
+calculator, not top-level strategy modes. The visible sportsbook editor control is `Lay mode`:
+
+- `No Lay`: no exchange placement is required.
+- `Standard`: standard single-lay calculator path only.
+- `Advanced`: shows Underlay, Standard, Overlay, and Custom result cards; copying a card persists
+  the matching result path as the stored strategy.
+- `Multi Lay`: enables the multi-lay planner. Legacy `Multilay-Underlay` rows load as `Multi Lay`
+  with the underlay planner toggle enabled.
+
+`Partial Lay` is not a visible top-level lay mode. It is a placement state available inside every
+lay-capable mode. Legacy or workbook-imported `Partial Lay` rows must remain readable by loading as a
+standard single-lay calculator with partial matched stake enabled or inferred from actual matched
+stake fields.
+
+Common bet combos may still store a default strategy such as `Underlay` or `Overlay`; those rows
+must open in `Advanced` lay mode and preserve the stored strategy until the user copies a result
+card or changes lay mode.
+
+## 11. Audit notes
 
 Retain:
 
@@ -106,7 +140,7 @@ Retain:
 - linked free-bet award group and split count where applicable
 - acting user and timestamp
 
-## 11. Tests required
+## 12. Tests required
 
 - sportsbook current-value fixture cases
 - sportsbook settlement outcome cases
@@ -115,7 +149,7 @@ Retain:
 - profile isolation tests
 - dashboard/report aggregation cases that consume sportsbook `NetPnL`
 
-## 12. Playwright path
+## 13. Playwright path
 
 Draft UI path:
 

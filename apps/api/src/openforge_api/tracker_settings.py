@@ -20,8 +20,12 @@ DatePresetValue = Literal[
     "Fortnight",
     "This Month",
     "Last Month",
+    "This Year",
+    "All Dates",
     "Custom",
 ]
+
+DashboardViewModeValue = Literal["Compact", "High-Density", "Visual Comparison"]
 
 
 class TrackerSettingsPayload(BaseModel):
@@ -38,6 +42,10 @@ class TrackerSettingsPayload(BaseModel):
     default_free_bet_overlay_factor: str = Field(default="1.3", max_length=20)
     default_bonus_retention_percent: str = Field(default="0.7", max_length=20)
     default_exchange_name: str = Field(default="", max_length=120)
+    dashboard_view_mode: DashboardViewModeValue = Field(default="High-Density")
+    weekly_profit_target: str = Field(default="", max_length=20)
+    monthly_profit_target: str = Field(default="", max_length=20)
+    annual_profit_target: str = Field(default="", max_length=20)
 
     @field_validator(
         "custom_start_date",
@@ -47,6 +55,9 @@ class TrackerSettingsPayload(BaseModel):
         "default_free_bet_overlay_factor",
         "default_bonus_retention_percent",
         "default_exchange_name",
+        "weekly_profit_target",
+        "monthly_profit_target",
+        "annual_profit_target",
     )
     @classmethod
     def normalize_dates(cls, value: str) -> str:

@@ -52,6 +52,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
   const [editingValue, setEditingValue] = useState("");
   const [statusMessage, setStatusMessage] = useState("Loading workbook authority lists...");
   const [errorMessage, setErrorMessage] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
   const isDirty = useMemo(() => {
     const hasDrafts = Object.values(drafts).some((value) => value.trim().length > 0);
     if (hasDrafts) {
@@ -107,6 +108,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     if (!optionValue) {
       return;
     }
+    setPendingAction(`create:${lookupType}`);
     setErrorMessage("");
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, {
       method: "POST",
@@ -115,11 +117,16 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     });
     if (!response.ok) {
       setErrorMessage(await response.text());
+      setPendingAction("");
       return;
     }
     setDrafts((current) => ({ ...current, [lookupType]: "" }));
-    await loadRows();
-    setStatusMessage(`Added ${optionValue} to ${lookupType} values for this profile.`);
+    try {
+      await loadRows();
+      setStatusMessage(`Added ${optionValue} to ${lookupType} values for this profile.`);
+    } finally {
+      setPendingAction("");
+    }
   }
 
   async function saveLookupValue(row: LookupValueRecord) {
@@ -127,6 +134,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     if (!optionValue) {
       return;
     }
+    setPendingAction(`save:${row.lookup_value_id}`);
     setErrorMessage("");
     const response = await fetch(
       `${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`,
@@ -141,15 +149,21 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     );
     if (!response.ok) {
       setErrorMessage(await response.text());
+      setPendingAction("");
       return;
     }
     setEditingId(null);
     setEditingValue("");
-    await loadRows();
-    setStatusMessage(`Updated ${row.lookup_type} value for this profile.`);
+    try {
+      await loadRows();
+      setStatusMessage(`Updated ${row.lookup_type} value for this profile.`);
+    } finally {
+      setPendingAction("");
+    }
   }
 
   async function deleteLookupValue(row: LookupValueRecord) {
+    setPendingAction(`delete:${row.lookup_value_id}`);
     setErrorMessage("");
     const response = await fetch(
       `${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`,
@@ -157,14 +171,19 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     );
     if (!response.ok) {
       setErrorMessage(await response.text());
+      setPendingAction("");
       return;
     }
     if (editingId === row.lookup_value_id) {
       setEditingId(null);
       setEditingValue("");
     }
-    await loadRows();
-    setStatusMessage(`Removed ${row.option_value} from ${row.lookup_type} values.`);
+    try {
+      await loadRows();
+      setStatusMessage(`Removed ${row.option_value} from ${row.lookup_type} values.`);
+    } finally {
+      setPendingAction("");
+    }
   }
 
   return (
@@ -209,8 +228,16 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
               </label>
               <div className="field-control align-end">
                 <span className="sr-only">Add {title}</span>
-                <button className="button-link" onClick={() => void createLookupValue(lookupType)} type="button">
-                  Add value
+                <button
+                  className="button-link"
+                  disabled={Boolean(pendingAction)}
+                  onClick={() => void createLookupValue(lookupType)}
+                  type="button"
+                >
+                  {pendingAction === `create:${lookupType}` ? (
+                    <span aria-hidden="true" className="button-spinner" />
+                  ) : null}
+                  <span>{pendingAction === `create:${lookupType}` ? "Adding" : "Add value"}</span>
                 </button>
               </div>
             </div>
@@ -239,11 +266,20 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
                       <div className="tracker-nav">
                         {editingId === row.lookup_value_id ? (
                           <>
-                            <button className="button-link" onClick={() => void saveLookupValue(row)} type="button">
-                              Save
+                            <button
+                              className="button-link"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() => void saveLookupValue(row)}
+                              type="button"
+                            >
+                              {pendingAction === `save:${row.lookup_value_id}` ? (
+                                <span aria-hidden="true" className="button-spinner" />
+                              ) : null}
+                              <span>{pendingAction === `save:${row.lookup_value_id}` ? "Saving" : "Save"}</span>
                             </button>
                             <button
                               className="button-link"
+                              disabled={Boolean(pendingAction)}
                               onClick={() => {
                                 setEditingId(null);
                                 setEditingValue("");
@@ -265,8 +301,16 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
                             Edit
                           </button>
                         )}
-                        <button className="button-link" onClick={() => void deleteLookupValue(row)} type="button">
-                          Remove
+                        <button
+                          className="button-link"
+                          disabled={Boolean(pendingAction)}
+                          onClick={() => void deleteLookupValue(row)}
+                          type="button"
+                        >
+                          {pendingAction === `delete:${row.lookup_value_id}` ? (
+                            <span aria-hidden="true" className="button-spinner" />
+                          ) : null}
+                          <span>{pendingAction === `delete:${row.lookup_value_id}` ? "Removing" : "Remove"}</span>
                         </button>
                       </div>
                     </div>

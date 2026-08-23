@@ -26,7 +26,7 @@ test("Casino common combo prefills an unsaved profile-aware draft", async ({ pag
     await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
     const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
     await settingsDialog.getByLabel("Search common bet combos").fill("Demo Casino Spins Combo");
-    await settingsDialog.getByRole("button", { name: "Edit Demo Casino Spins Combo" }).click();
+    await settingsDialog.getByRole("button", { name: "Edit Demo Casino Spins Combo" }).first().click();
     await expect(settingsDialog.getByLabel("Combo ledger")).toHaveValue("Casino");
     await expect(settingsDialog.getByLabel("Game / Slot")).toHaveValue("Demo Slot");
     await expect(settingsDialog.getByLabel("Preferred Strategy")).toHaveCount(0);
@@ -40,12 +40,12 @@ test("Casino common combo prefills an unsaved profile-aware draft", async ({ pag
     await editor.getByLabel("Apply casino common combo").selectOption(preset.preset_id);
 
     await expect(editor.getByLabel("Offer type")).toHaveValue("Free Spins");
-    await expect(editor.getByLabel("Campaign tag (optional)")).toHaveValue("Demo Weekly Spins");
+    await expect(editor.getByLabel("Offer name")).toHaveValue("Demo Weekly Spins");
     await expect(editor.getByLabel("Game / slot")).toHaveValue("Demo Slot");
     await expect(editor.getByLabel("Free spins awarded")).toHaveValue("20.00");
-    await expect(editor.getByLabel("Free spins value")).toHaveValue("2.00");
+    await expect(editor.getByLabel("Converted win amount")).toHaveValue("2.00");
     await expect(editor.getByLabel("Date started")).toHaveValue("");
-    await expect(editor.getByLabel("Date settling")).toHaveValue("");
+    await expect(editor.getByLabel("Date settling")).toHaveCount(0);
 
     const afterRows = await request.get(`${apiBaseUrl}/profiles/profile-demo-001/casino-offers`);
     expect((await afterRows.json()).length).toBe(beforeCount);

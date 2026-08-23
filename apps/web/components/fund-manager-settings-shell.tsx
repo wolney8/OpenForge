@@ -2,6 +2,7 @@ import { MasterAccountCatalogueSettings } from "@/components/master-account-cata
 import { FundManagerAuthoritySettings } from "@/components/fund-manager-authority-settings";
 import { CommonBetComboSettings } from "@/components/common-bet-combo-settings";
 import { DatabaseBackupSettings } from "@/components/database-backup-settings";
+import { FundManagerNotificationSettings } from "@/components/fund-manager-notification-settings";
 
 export function FundManagerSettingsShell() {
   return (
@@ -13,6 +14,7 @@ export function FundManagerSettingsShell() {
       <MasterAccountCatalogueSettings />
       <FundManagerAuthoritySettings />
       <CommonBetComboSettings />
+      <FundManagerNotificationSettings />
       <DatabaseBackupSettings />
     </main>
   );

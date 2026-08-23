@@ -1,6 +1,6 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-07-28_
 
 ## Status and scope
 
@@ -25,18 +25,18 @@ Present existing contract-backed money values consistently and accessibly, with 
 
 - Use `Intl.NumberFormat` or equivalent locale-aware formatting.
 - Default locale: Fund Manager setting, initially `en-GB`.
-- Positive money: `+£ 10.00` when sign context is useful, or `£ 10.00` where a plus sign would add noise.
-- Negative money: accounting style `(£ 1.29)`; never `-£ 1.29`, `£-1.29` or `£ -1.29`.
-- Zero money: `£ 0.00` with positive/green semantics for resolved absolute zero.
-- Inputs may omit a plus sign while editing; resolved read-only values follow the signed display rule.
+- Positive money: Google Sheets-style accounting format, for example `£ 10.00` or `£ 1,000.12`; do not add a plus sign.
+- Negative money: Google Sheets-style accounting format, for example `£ (1.29)` or `£ (1,000.12)`; never `-£ 1.29`, `£-1.29`, `£ -1.29`, `(£ 1.29)` or `( £ 1.29 )`.
+- Zero money: `£ -` with neutral semantics.
+- Inputs may omit currency while editing; resolved read-only values follow the accounting display rule.
 - Use tabular numerals where changing values must remain aligned.
 - Currency and sign are textual information, not decorative icons.
 
 ## Semantic colour
 
-- Positive: approved accessible green plus explicit sign/value.
+- Positive: approved accessible green plus explicit value.
 - Negative: approved accessible red plus accounting parentheses/value.
-- Absolute zero: approved accessible green plus explicit value.
+- Absolute zero: approved accessible neutral/light-grey plus explicit zero placeholder.
 - Unknown/unavailable: neutral colour plus explicit state label where needed.
 - Colour must never be the only way to convey direction or state.
 - Text contrast must meet WCAG 2.2 AA: normally at least `4.5:1`; meaningful non-text boundaries at least `3:1`.
@@ -56,8 +56,9 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
   - Current/projected tooltip meaning: cash-first value while the row is still open.
   - Final/settled tooltip meaning: settled result value for the row.
 - Ledger table money values use a rounded square badge:
-  - positive and absolute-zero values use a green background with dark green text.
+  - positive values use a green background with dark green text.
   - negative values use a red background with dark red text.
+  - absolute-zero values use a neutral/light-grey treatment.
   - bet ledger value badges use dedicated `--bet-ledger-value-*` contrast tokens rather than generic success/danger tokens.
   - unknown/unavailable values use a neutral badge.
 - Stat cards and sentence fragments may use the standard text-only financial value primitive unless a later UI contract requires badges there too.

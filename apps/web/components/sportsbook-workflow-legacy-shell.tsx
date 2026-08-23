@@ -20,7 +20,7 @@ import {
   paginateTrackerRows,
 } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { confirmDestructiveAction, useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import {
   betTypeOptions,
   dedupeOptions,
@@ -1627,8 +1627,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     [effectivePage, filteredRows]
   );
 
-  function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
-    if (rowId !== selectedId && isDirty && !confirmDiscardChanges()) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+    if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     const record = rows.find((entry) => entry.sportsbook_bet_id === rowId);
@@ -1649,8 +1649,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
     revealEditor({ expandLedger: !options?.collapseTable });
   }
 
-  function startNewRow() {
-    if (isDirty && !confirmDiscardChanges()) {
+  async function startNewRow() {
+    if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
     setSelectedId(null);
@@ -1753,9 +1753,11 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete sportsbook row ${selectedId}? This will remove it from this profile tracker.`
-    );
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Delete Row",
+      message: `Delete sportsbook row ${selectedId}? This will remove it from this profile tracker.`,
+      title: "Delete sportsbook row?",
+    });
     if (!confirmed) {
       return;
     }
@@ -1849,7 +1851,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
             <span className="eyebrow">Sportsbook table</span>
           </div>
           <div className="tracker-nav">
-            <button className="button-link" onClick={startNewRow} type="button">
+            <button className="button-link" onClick={() => void startNewRow()} type="button">
               Add sportsbook row
             </button>
             <button
@@ -1914,8 +1916,8 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
                         <tr
                           className={isSelected ? "is-selected-row" : undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => selectRow(rowId)}
-                          onDoubleClick={() => selectRow(rowId, { collapseTable: true })}
+                          onClick={() => void selectRow(rowId)}
+                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td
@@ -2783,7 +2785,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
                 Delete sportsbook row
               </button>
             ) : null}
-            <button className="button-link" onClick={startNewRow} type="button">
+            <button className="button-link" onClick={() => void startNewRow()} type="button">
               Reset form
             </button>
           </div>

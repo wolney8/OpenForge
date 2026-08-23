@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any, Literal, cast
+from typing import Any, Callable, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, model_validator
@@ -363,6 +363,7 @@ def build_response(
     row: object,
     *,
     as_of_date: date,
+    commission_lookup: Callable[[str], str] | None = None,
 ) -> SportsbookBetResponse:
     record = row.__dict__
     profit_boost = resolve_profit_boost(record)
@@ -370,6 +371,11 @@ def build_response(
         format_decimal(profit_boost.effective_back_odds, decimals=4)
         if profit_boost and profit_boost.effective_back_odds is not None
         else record["back_odds"]
+    )
+    resolved_commission = (
+        commission_lookup(record["exchange_name"])
+        if commission_lookup
+        else get_profile_exchange_commission(profile_id, record["exchange_name"])
     )
     calculation = calculate_sportsbook_current_value(
         SportsbookCalculationInput(
@@ -387,10 +393,7 @@ def build_response(
             lay_odds_1=record["lay_odds_1"],
             multi_lay_outcome_1_name=record["multi_lay_outcome_1_name"],
             multi_lay_outcomes_json=record["multi_lay_outcomes_json"],
-            lay_commission_1=get_profile_exchange_commission(
-                profile_id,
-                record["exchange_name"],
-            ),
+            lay_commission_1=resolved_commission,
             lay_actual=record["lay_actual"],
             lay_matched_stake_1=record["lay_matched_stake_1"],
             date_settled=record["date_settled"],
@@ -402,10 +405,7 @@ def build_response(
     return SportsbookBetResponse.model_validate(
         {
             **record,
-            "lay_commission_1": get_profile_exchange_commission(
-                profile_id,
-                record["exchange_name"],
-            ),
+            "lay_commission_1": resolved_commission,
             **serialize_calculation(calculation),
             **serialize_profit_boost(profit_boost),
         }
@@ -480,8 +480,22 @@ def reminder_timestamp(value: str, *, end_of_day_for_date: bool = False) -> floa
 
 @router.get("", response_model=list[SportsbookBetResponse])
 def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]:
+    commission_cache: dict[str, str] = {}
+
+    def resolve_commission(exchange_name: str) -> str:
+        if exchange_name not in commission_cache:
+            commission_cache[exchange_name] = get_profile_exchange_commission(
+                profile_id, exchange_name
+            )
+        return commission_cache[exchange_name]
+
     return [
-        build_response(profile_id, row, as_of_date=date.today())
+        build_response(
+            profile_id,
+            row,
+            as_of_date=date.today(),
+            commission_lookup=resolve_commission,
+        )
         for row in list_sportsbook_bets(profile_id)
     ]
 

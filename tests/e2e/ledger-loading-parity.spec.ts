@@ -56,7 +56,7 @@ test.describe("Cross-ledger loading parity", () => {
     const summaryShell = page.locator(".tracker-summary-shell");
     const loadingState = page
       .getByRole("status")
-      .filter({ hasText: "Loading live tracker summaries" });
+      .filter({ hasText: "Loading tracker summaries" });
     await expect(summaryShell).toHaveAttribute("aria-busy", "true");
     await expect(loadingState).toBeVisible();
     await expect(loadingState.locator(".material-linear-progress")).toBeVisible();

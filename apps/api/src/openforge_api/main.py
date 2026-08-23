@@ -10,6 +10,7 @@ from openforge_api.cash_adjustments import router as cash_adjustments_router
 from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.common_bet_combos import router as common_bet_combos_router
 from openforge_api.config import settings
+from openforge_api.database_provider import router as database_provider_router
 from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.free_bets import router as free_bets_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
@@ -25,7 +26,8 @@ from openforge_api.tracker_settings import router as tracker_settings_router
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3010", "http://127.0.0.1:3010"],
+    allow_origins=settings.cors_origins,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,6 +48,7 @@ app.include_router(imports_router)
 app.include_router(cash_adjustments_router)
 app.include_router(casino_offers_router)
 app.include_router(common_bet_combos_router)
+app.include_router(database_provider_router)
 app.include_router(exchange_settings_router)
 app.include_router(tracker_settings_router)
 app.include_router(lookup_values_router)
@@ -60,7 +63,13 @@ def healthcheck() -> dict[str, str]:
 def config_summary() -> dict[str, str]:
     return {
         "environment": settings.environment,
-        "database_url": settings.database_url,
+        "database_mode": settings.database_mode,
+        "runtime_adapter": "sqlite-only",
+        "database_url_scheme": settings.database_url.split(":", 1)[0],
+        "neon_configured": str(bool(settings.neon_database_url.strip())).lower(),
         "backup_directory": settings.backup_directory,
         "account_catalogue_source": settings.account_catalogue_source,
+        "hosted_api_mount_prefix": "/api",
+        "cors_origin_count": str(len(settings.cors_origins)),
+        "cors_origin_regex_configured": str(bool(settings.cors_origin_regex)).lower(),
     }

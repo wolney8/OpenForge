@@ -182,11 +182,86 @@ cause, prevention rule and regression test.
 
 - Area: sportsbook, free-bet, casino-offer and cash-adjustment ledger toolbars.
 - Root cause: each ledger owned separate add/filter markup, allowing action wording, ordering and
-  geometry to drift.
+  geometry to drift; a later regression used a weak mixed success surface and did not explicitly
+  centre the filter icon within its circular control.
 - Prevention: every current and future ledger uses `LedgerAddRowButton`, keeps search first, the
-  add action second and the filter as the rightmost control.
+  add action second and the filter as the rightmost control. The add action is a green `Add Row`
+  pill with a context-specific accessible name; the filter is a smaller proportional icon control
+  with its Material filter icon centred by explicit flex geometry.
 - Test added: `tests/e2e/ledger-table-controls-parity.spec.ts` verifies icon rendering, add/filter
-  order and matching target widths across all current ledgers.
+  order, visible `Add Row` wording, positive action colour, centred filter icon geometry and
+  proportional target geometry across all current ledgers.
+
+## 2026-07-26: Shared select padding clipped arrows and focus affordances
+
+- Area: ledger editor and modal form fields.
+- Root cause: shared select controls used the same right padding as text inputs, leaving native
+  dropdown arrows crowded against text and focus rings on dense modal fields.
+- Prevention: platform `field-control select` reserves extra inline-end padding; dense grids must
+  opt into smaller tracks without overriding control internals.
+- Test added: existing ledger and toolbar parity tests cover the shared field-control path; add a
+  focused computed-style test if a future select-specific primitive is introduced.
+
+## 2026-07-27: Dirty route guard and ledger delete used browser confirmation
+
+- Area: ledger add/edit flows, top-bar profile switching and ledger row deletion.
+- Root cause: dirty-state navigation relied on `window.confirm`, which escaped Plum Duff styling,
+  could not meet the app's dialog/focus contract, and made route guards and destructive actions
+  visually inconsistent with other Material-aligned confirmations.
+- Prevention: dirty in-app navigation and destructive row deletion use the shared confirmation
+  controller rendered by `AppChrome`; browser confirmation is allowed only for the unavoidable
+  `beforeunload` path or as a fallback before the app-level controller mounts.
+- Test added: `tests/e2e/platform-interaction-readiness.spec.ts` verifies unchanged navigation is
+  silent, dirty navigation opens the bounded in-app prompt, Escape keeps editing, discard continues
+  to the requested route, and row deletion opens an in-app destructive confirmation without a native
+  browser dialog.
+
+## 2026-08-06: Ledger editor tab and footer controls drifted
+
+- Area: sportsbook tabbed add/edit modal.
+- Root cause: the footer navigation used a different content gutter from the sticky header
+  navigation, and helper-pill field rows did not reserve a consistent under-control row.
+- Prevention: tabbed ledger editor headers, sticky tabs and footer navigation share explicit slots;
+  controls with helper pills reserve helper-row space; collapsed advisory panels use compact
+  indicators instead of leaking full chip rows.
+- Test added: `tests/e2e/sportsbook-editor-modal.spec.ts` asserts top/bottom tab navigation
+  alignment and sticky tab visibility after editor scroll.
+
+## 2026-08-08: Ledger editor footer actions became dual-purpose
+
+- Area: sportsbook, free-bet and casino-offer add/edit modals.
+- Root cause: settled-row footer buttons changed meaning between Edit, Save, Save Edits and Close,
+  which made row locking unclear and caused edit actions to behave like close/save actions.
+- Prevention: ledger modal footer buttons must stay single-purpose. Settled read-only rows show
+  Close in the footer and expose Edit through a local section/header lock action. Editable rows
+  show Save, Delete where applicable and Revert. Apply this pattern to every current and future
+  bet-ledger modal when changing shared editor behaviour.
+- Test added: `tests/e2e/sportsbook-editor-modal.spec.ts` verifies the sportsbook settled footer
+  uses Edit -> Save Edits without the legacy header action, and
+  `tests/e2e/ledger-editor-modal-parity.spec.ts` verifies the casino settled editor unlocks from
+  the section Edit action without closing the modal.
+
+## 2026-08-15: MVP modal shell excluded from shared parity checks
+
+- Area: sportsbook, free-bet, casino-offer and cash-adjustment add/edit modals.
+- Root cause: regression checks covered migrated ledger editors more tightly than Sportsbook, even
+  though Sportsbook is the modal/stepper reference implementation. This could allow the baseline
+  shell to drift while the migrated ledgers still passed parity checks.
+- Prevention: shared modal/stepper tests must include the MVP reference ledger and every migrated
+  ledger in the same scenario table. Do not branch tests around Sportsbook unless the difference is
+  explicitly intentional and documented.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` now asserts tab rail and top/bottom
+  navigation regions across all current ledgers, including Sportsbook.
+
+## 2026-08-15: Shared chip action targets drifted below minimum size
+
+- Area: ledger editor footer buttons and other shared `review-chip` action pills.
+- Root cause: the shared chip primitive used a `2.6rem` minimum height, which rendered below the
+  44px touch-target floor in the current browser/font environment.
+- Prevention: reusable pill/action primitives must meet the minimum target size themselves. Do not
+  patch individual ledger footers when the shared primitive is the source of the geometry.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts footer action buttons are at
+  least 44px high and remain vertically centre-aligned across all current ledger editors.
 
 ## 2026-07-20: Fund Manager settings modals diverged
 
@@ -199,6 +274,31 @@ cause, prevention rule and regression test.
   containment, local table structure, fixed footer actions and computed List/Search field parity.
 
 ## Entry template
+
+## 2026-08-16: Partial lay was modelled as both strategy and placement state
+
+- Area: sportsbook and free-bet matching calculators.
+- Root cause: workbook-compatible `Partial Lay` persisted as a strategy was also presented as a
+  user-facing lay mode, while the new calculator UI already needed partial-match controls inside
+  Standard, Advanced, Custom and Multi Lay modes.
+- Prevention: visible lay modes describe calculator shape only. Partial matching is a placement
+  state/control available inside every lay-capable mode. Legacy `Partial Lay` rows load safely as a
+  standard single-lay calculator with partial matched stake inferred or enabled.
+- Test added: `tests/e2e/sportsbook-editor-modal.spec.ts` asserts the current calculator mode
+  branches, and `tests/e2e/ledger-editor-modal-parity.spec.ts` keeps the cross-ledger modal
+  structure stable. Legacy partial-lay rows must continue loading through the standard calculator
+  path with partial placement represented inside execution controls, not as a top-level lay mode.
+
+## 2026-08-16: Calculator table styling drifted by lay mode
+
+- Area: sportsbook Matching step calculator tables.
+- Root cause: the Multi Lay calculator introduced local table header and wrapper styling that
+  diverged from the Outplayed-style single-lay calculator surface.
+- Prevention: all lay modes use the same calculator table/card surfaces. Mode-specific behaviour
+  may change fields, columns and result cards, but not the base table surface, white borders,
+  action geometry, financial formatting or header/body background rules.
+- Test added: `tests/e2e/sportsbook-multilay-workflow.spec.ts` covers multi-lay table wrapper
+  border removal and dark table surface parity; extend this whenever a new lay mode is added.
 
 ## 2026-07-21: Nested reminder dialog and duplicate sportsbook saves
 
@@ -255,6 +355,92 @@ cause, prevention rule and regression test.
   visible overflow and is verified across every ledger editor.
 - Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts visible overflow on expanded
   section content for all current ledger editors.
+
+## 2026-07-27: Editor validation banners and dismiss controls diverged
+
+- Area: ledger editor modal sections and validation banners.
+- Root cause: validation banners used local spacing and a generic pill-shaped `icon-button` for the
+  dismiss action, producing sharp-looking nested edges, crowded headings and a non-circular
+  misaligned close control.
+- Prevention: editor validation states use the shared rounded banner treatment and destructive
+  icon-button semantics; dismiss actions explicitly own square/circle geometry, zero padding,
+  centred Material Symbols and enough spacing from neighbouring borders. Section headings retain
+  a minimum hit area and content starts below the header with a consistent gutter. Sticky editor
+  headers must start flush with the modal's top edge, use named slots for compact summary, title,
+  navigation actions and tabs, and never let an independently sticky tab rail overlap the title,
+  summary or Previous/Next controls.
+- Test added: `tests/e2e/sportsbook-editor-modal.spec.ts` asserts sportsbook header/footer
+  alignment and sticky tab behaviour; `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts
+  cross-ledger modal header/footer geometry, local scroll ownership and expanded-section overflow.
+
+## 2026-08-11: Ledger edits left top-bar summary values stale
+
+- Area: profile top-bar summary, ledger save/delete paths and bridge-created rows.
+- Root cause: row mutations invalidated local ledger caches, but equivalent ledgers did not all
+  dispatch the shared tracker-data update event. App Chrome could therefore keep showing a previous
+  selected-range value until focus, interval refresh or full browser reload.
+- Prevention: every profile-scoped ledger mutation must call `dispatchTrackerDataUpdated` after a
+  successful write/delete. The shared dispatcher invalidates the changed profile ledger cache before
+  emitting `TRACKER_DATA_UPDATED_EVENT`, so App Chrome and dashboard consumers reload from fresh row
+  data.
+- Test added: `apps/web/lib/tracker-data-events.test.ts` asserts ledger-specific and profile-wide
+  cache invalidation before the update event is dispatched.
+
+## 2026-08-12: Dashboard period selector stretched into an oversized capsule
+
+- Area: profile and fund-manager dashboard visual cards.
+- Root cause: the dashboard shortcut selector had insufficient local geometry constraints, so the
+  active pill could stretch vertically and crowd the Portfolio P&L card instead of behaving like a
+  bounded Material segmented control.
+- Prevention: dashboard segmented controls must define explicit inline/block limits, hide their own
+  overflow, centre active pills inside the rail and avoid inheriting stretch from parent chart cards.
+  Any dashboard control embedded in a visual card needs a reduced-viewport geometry assertion before
+  handoff.
+- Test added: `tests/e2e/platform-route-readiness.spec.ts` asserts the dashboard period control
+  stays bounded, hides vertical overflow, keeps the active pill centred and preserves page overflow
+  safety.
+
+## 2026-08-14: Repeated section action inspection IDs in tabbed editors
+
+- Area: casino-offer tabbed editor settled-row unlock actions.
+- Root cause: one reusable section-lock renderer emitted the same `data-pd-id` in every tab, so
+  automated inspection and accessibility-focused tests could not target the active section
+  deterministically.
+- Prevention: repeated actions rendered in multiple editor sections must include the section/tab
+  identifier in their stable inspection ID, even when the visible label and behavior are identical.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts the settlement-specific casino
+  unlock action and confirms the locked footer does not expose a conflicting Edit action.
+
+## 2026-08-17: Sticky ledger modal footer clipped action controls
+
+- Area: Sportsbook, Free Bets, Casino Offers and Cash Adjustments add/edit modal footers.
+- Root cause: the shared `.workflow-editor-footer` used a negative sticky offset and negative
+  bottom margin to fill the modal gutter, which could pull action pills below the visible dialog
+  shell when the modal body scrolled.
+- Prevention: sticky modal footers must use `bottom: 0`, reserve safe-area/internal padding inside
+  the footer, and remain inside the dialog bounds. Do not use negative sticky offsets to hide modal
+  gutter seams. Footer controls must sit the same visual distance from the divider above as from
+  the modal bottom below.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` asserts footer/header alignment and
+  that the footer bottom remains inside the dialog across current ledger modals, with balanced
+  vertical spacing around the footer actions.
+
+## 2026-08-17: Ledger save, revert and close race
+
+- Area: Free Bets add/edit modal, with the same prevention applied to Casino Offers and Cash
+  Adjustments.
+- Root cause: save requests could remain in flight while Revert, Delete or Close stayed active,
+  allowing stale form state to overwrite a just-saved server response and causing conflicting
+  status/toast messages.
+- Prevention: every ledger editor must use an explicit persistence lock separate from render
+  transitions. While persistence is active, Save shows the shared spinner plus `Saving`,
+  destructive/navigation actions are disabled, close/backdrop dismissal is blocked, and the saved
+  server payload becomes the pristine form state before the modal closes. Equivalent modal write
+  actions outside ledgers must use the same visible spinner feedback when a pending state already
+  exists.
+- Test added: `tests/e2e/ledger-editor-modal-parity.spec.ts` verifies current ledger modal
+  structure and settled-row edit behaviour. Manual smoke should verify Free Bets cannot Revert,
+  Delete or Close while Save is active and no duplicate modal-open save messages appear.
 
 ### YYYY-MM-DD: Short issue name
 

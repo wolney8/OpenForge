@@ -65,6 +65,152 @@
       "case_id": "BACKUP-011",
       "inputs": {"verified_backup_count": 0, "days_since_latest_verified_backup": null, "rows_since_latest_verified_backup": 42},
       "expected": {"fund_manager_notification_required": true, "notification_type": "database_backup_reminder"}
+    },
+    {
+      "case_id": "BACKUP-012",
+      "inputs": {
+        "provider": "neon",
+        "configured_database_identity": "ai-diary-production",
+        "configured_role_identity": "ai-diary-app",
+        "plum_duff_database_is_isolated": false
+      },
+      "expected": {
+        "configuration_allowed": false,
+        "error_code": "shared_external_database_rejected",
+        "connection_test_allowed": false
+      }
+    },
+    {
+      "case_id": "BACKUP-013",
+      "inputs": {
+        "provider": "neon",
+        "connection_failure": "authentication_failed",
+        "attempted_operation": "ledger_write"
+      },
+      "expected": {
+        "write_allowed": false,
+        "operator_notice_required": true,
+        "safe_error_code": "database_authentication_failed",
+        "credentials_exposed": false
+      }
+    },
+    {
+      "case_id": "BACKUP-014",
+      "inputs": {
+        "provider": "neon",
+        "connection_failure": "network_timeout",
+        "latest_verified_local_backup_exists": true,
+        "attempted_operation": "ledger_write"
+      },
+      "expected": {
+        "write_allowed": false,
+        "silent_sqlite_fallback_allowed": false,
+        "local_backup_visible": true,
+        "operator_notice_required": true
+      }
+    },
+    {
+      "case_id": "BACKUP-015",
+      "inputs": {
+        "provider": "neon",
+        "requested_mode": "recovery-local",
+        "verified_local_package_exists": true,
+        "fund_manager_confirmed": true
+      },
+      "expected": {
+        "mode_change_allowed": true,
+        "runtime_mode": "recovery-local",
+        "automatic_row_merge_allowed": false,
+        "recovery_banner_required": true
+      }
+    },
+    {
+      "case_id": "BACKUP-016",
+      "inputs": {
+        "provider": "neon",
+        "staged_schema_version": "postgres-v2",
+        "expected_schema_version": "postgres-v1",
+        "live_cutover_requested": true
+      },
+      "expected": {
+        "cutover_allowed": false,
+        "error_code": "external_schema_mismatch",
+        "local_database_remains_authoritative": true
+      }
+    },
+    {
+      "case_id": "BACKUP-017",
+      "inputs": {
+        "provider": "neon",
+        "confirm_phrase": "LOAD PLUM DUFF DATA",
+        "package_fingerprint_current": true,
+        "latest_verified_backup_age_hours": 1,
+        "remote_schema_ready": true,
+        "non_empty_target_tables": ["profiles"]
+      },
+      "expected": {
+        "data_load_allowed": false,
+        "rows_inserted": 0,
+        "error_code": "target_tables_not_empty",
+        "runtime_mode": "local"
+      }
+    },
+    {
+      "case_id": "BACKUP-018",
+      "inputs": {
+        "provider": "neon",
+        "confirm_phrase": "LOAD PLUM DUFF DATA",
+        "package_fingerprint_current": true,
+        "latest_verified_backup_age_hours": 1,
+        "remote_schema_ready": true,
+        "remote_tables_empty": true,
+        "local_total_row_count": 3540,
+        "remote_total_row_count_after_load": 3540
+      },
+      "expected": {
+        "data_load_allowed": true,
+        "row_counts_match": true,
+        "runtime_mode": "local",
+        "cutover_allowed": false
+      }
+    },
+    {
+      "case_id": "BACKUP-019",
+      "inputs": {
+        "provider": "neon",
+        "row_counts_match": true,
+        "content_fingerprint_match": false,
+        "mismatched_tables": ["sportsbook_bets"]
+      },
+      "expected": {
+        "verification_passed": false,
+        "cutover_allowed": false,
+        "operator_investigation_required": true,
+        "runtime_mode": "local"
+      }
+    },
+    {
+      "case_id": "BACKUP-020",
+      "inputs": {
+        "provider": "neon",
+        "neon_configured": true,
+        "neon_reachable": true,
+        "neon_schema_ready": true,
+        "neon_data_verified": true,
+        "postgres_runtime_adapter_implemented": false,
+        "fund_manager_cutover_confirmed": false,
+        "requested_runtime_mode": "neon"
+      },
+      "expected": {
+        "staging_ready": true,
+        "runtime_cutover_ready": false,
+        "runtime_mode": "local",
+        "sqlite_write_under_neon_label_allowed": false,
+        "blockers": [
+          "PostgreSQL runtime adapter is not implemented.",
+          "Explicit Fund Manager runtime cutover confirmation is not implemented."
+        ]
+      }
     }
   ]
 }

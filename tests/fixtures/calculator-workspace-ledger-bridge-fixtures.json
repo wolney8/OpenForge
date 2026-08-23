@@ -29,6 +29,77 @@
       "case_id": "CALC-006",
       "inputs": {"calculator_family": "cashback", "destination": "sportsbook", "offer_mapping_matches": 2},
       "expected": {"bridge_state": "human_review_required", "row_saved": false}
+    },
+    {
+      "case_id": "CALC-007",
+      "inputs": {
+        "calculator_family": "advanced_single_lay",
+        "calculator_contract": "sportsbook-current-value-contract",
+        "back_stake": "10.00",
+        "back_odds": "2.00",
+        "lay_odds": "1.75",
+        "commission": "0.00",
+        "mode": "advanced"
+      },
+      "expected": {
+        "result_kind": "reference",
+        "available_branches": ["underlay", "standard", "overlay", "custom"],
+        "ledger_row_created": false,
+        "actual_lay_stake_set": false
+      }
+    },
+    {
+      "case_id": "CALC-008",
+      "inputs": {
+        "calculator_family": "profit_boost",
+        "calculator_contract": "sportsbook-profit-boost-calculation-contract",
+        "mode": "percentage",
+        "back_stake": "10.00",
+        "base_back_odds": "3.00",
+        "profit_boost_percent": "15"
+      },
+      "expected": {
+        "result_kind": "reference",
+        "reference_boosted_odds": "3.3000",
+        "boost_source": "calculated_reference",
+        "ledger_row_created": false
+      }
+    },
+    {
+      "case_id": "CALC-009",
+      "inputs": {
+        "calculator_family": "profit_boost",
+        "calculator_contract": "sportsbook-profit-boost-calculation-contract",
+        "mode": "displayed_odds",
+        "back_stake": "10.00",
+        "boosted_back_odds": "3.30"
+      },
+      "expected": {
+        "result_kind": "reference",
+        "effective_back_odds": "3.3000",
+        "boost_source": "displayed",
+        "ledger_row_created": false
+      }
+    },
+    {
+      "case_id": "CALC-010",
+      "inputs": {
+        "calculator_family": "multi_lay",
+        "calculator_contract": "sportsbook-current-value-contract",
+        "back_stake": "10.00",
+        "back_odds": "3.20",
+        "outcomes": [
+          {"label": "Outcome A", "exchange": "Smarkets", "lay_odds": "5.90"},
+          {"label": "Outcome B", "exchange": "Matchbook", "lay_odds": "4.90"},
+          {"label": "Outcome C", "exchange": "Smarkets", "lay_odds": "8.00"}
+        ]
+      },
+      "expected": {
+        "result_kind": "reference",
+        "outcome_columns": ["Outcome A", "Outcome B", "Outcome C"],
+        "branch_placement_state_created": false,
+        "ledger_row_created": false
+      }
     }
   ]
 }

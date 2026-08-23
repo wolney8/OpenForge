@@ -1,0 +1,167 @@
+{
+  "schema_version": "1.0",
+  "contract": "docs/contracts/casino-offer-wagering-ev-contract.md",
+  "persisted_planning_fields": [
+    "wagering_base",
+    "custom_wager_base",
+    "wagering_completed",
+    "rtp_percent",
+    "reward_type",
+    "reward_wager_multiplier",
+    "reward_wager_target",
+    "reward_required_spins",
+    "reward_wagering_completed",
+    "reward_rtp_percent",
+    "expected_reward_cash_value",
+    "qualifying_expected_loss",
+    "reward_expected_loss",
+    "other_expected_costs",
+    "campaign_ev"
+  ],
+  "cases": [
+    {
+      "case_id": "CASINO-WAGER-EV-001",
+      "name": "bonus wagering target",
+      "inputs": {
+        "wagering_base": "Bonus",
+        "bonus_amount": "10.00",
+        "wager_multiplier": "20"
+      },
+      "expected": {
+        "wager_target": "200.00",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-002",
+      "name": "deposit plus bonus base",
+      "inputs": {
+        "wagering_base": "DepositPlusBonus",
+        "deposit_amount": "10.00",
+        "bonus_amount": "10.00",
+        "wager_multiplier": "20"
+      },
+      "expected": {
+        "wager_target": "400.00",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-003",
+      "name": "fixed wagering target",
+      "inputs": {
+        "wagering_base": "FixedAmount",
+        "fixed_wager_target": "125.00"
+      },
+      "expected": {
+        "wager_target": "125.00",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-004",
+      "name": "required spins exact integer",
+      "inputs": {
+        "wager_target": "200.00",
+        "spin_stake": "0.20"
+      },
+      "expected": {
+        "exact_spins": 1000,
+        "actionable_spins": 1000,
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-005",
+      "name": "required spins round upward",
+      "inputs": {
+        "wager_target": "10.00",
+        "spin_stake": "0.30"
+      },
+      "expected": {
+        "exact_spins": 33.333333333333336,
+        "actionable_spins": 34,
+        "rounding": "CEILING",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-006",
+      "name": "zero spin stake is incomplete",
+      "inputs": {
+        "wager_target": "200.00",
+        "spin_stake": "0.00"
+      },
+      "expected": {
+        "actionable_spins": null,
+        "state": "incomplete_wagering_details"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-007",
+      "name": "rtp expected return and loss",
+      "inputs": {
+        "wager_target": "200.00",
+        "rtp_percent": "96.00"
+      },
+      "expected": {
+        "expected_return": "192.00",
+        "expected_loss": "8.00",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-008",
+      "name": "reward wagering after converted free spins",
+      "inputs": {
+        "converted_reward_amount": "8.40",
+        "reward_wager_multiplier": "10",
+        "reward_spin_stake": "0.20"
+      },
+      "expected": {
+        "reward_wager_target": "84.00",
+        "reward_spins_required": 420,
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-009",
+      "name": "remaining wagering",
+      "inputs": {
+        "wager_target": "200.00",
+        "wager_completed": "75.00",
+        "spin_stake": "0.20"
+      },
+      "expected": {
+        "wager_remaining": "125.00",
+        "spins_remaining": 625,
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-010",
+      "name": "campaign ev with reward and two loss stages",
+      "inputs": {
+        "expected_reward_cash_value": "10.00",
+        "qualifying_expected_loss": "8.00",
+        "reward_expected_loss": "3.36"
+      },
+      "expected": {
+        "campaign_ev": "-1.36",
+        "state": "calculable"
+      }
+    },
+    {
+      "case_id": "CASINO-WAGER-EV-011",
+      "name": "campaign ev unknown when reward value is unknown",
+      "inputs": {
+        "expected_reward_cash_value": "",
+        "qualifying_expected_loss": "8.00"
+      },
+      "expected": {
+        "campaign_ev": null,
+        "state": "unknown_reward_value"
+      }
+    }
+  ]
+}

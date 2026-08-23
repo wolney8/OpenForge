@@ -44,6 +44,15 @@ Current shared patterns include:
 - state: `LedgerLoadingIndicator`, `StatusToast`, error text and status chips
 - icons: Material Symbols loaded by the root layout
 
+Canonical action semantics:
+
+- positive/create actions use the shared positive action token set; ledger create controls must render
+  as a green `Add Row` pill with the Material `add` icon and centred text/icon alignment.
+- secondary actions use the shared neutral action surface.
+- tertiary/navigation actions use the shared tertiary token set.
+- destructive actions use the shared destructive token set and the Material `delete` icon.
+- close actions use the shared red close treatment and the Material `close` icon.
+
 Rules:
 
 1. Reuse a shared component or class before creating local CSS.
@@ -149,6 +158,14 @@ shell is migrated, new behaviour must not copy another ad hoc modal implementati
 - Side-by-side text/search/select controls use the same `field-control` structure and size.
 - Primary, secondary, destructive and icon actions use platform variants only.
 - Icon-only actions use Material Symbols and a context-specific accessible name.
+- Delete icons must be the shared red Material `delete` action, with the same target size and icon
+  centre as sibling row actions.
+- Close icons must be the shared red Material `close` action, with the same target size and icon
+  centre as sibling modal actions.
+- Icons inside buttons or pills must be optically centred; if a badge or clear control is attached,
+  the base icon centre must still align to the control centre.
+- Buttons, pills, inputs and focus/highlight rings must keep repeated token spacing from adjacent
+  controls, row boundaries and modal edges. Do not let focus rings, dropdown arrows or icons clip.
 - Do not replace an established icon with random text or a text glyph.
 - Navigation has a current-state indication that does not rely only on colour.
 - Navigation and toolbars preserve keyboard order and minimum usable targets.

@@ -263,13 +263,20 @@ export const casinoOfferResultOptions = [
 ] as const;
 
 export const casinoOfferTypeOptions = [
-  "Wager",
+  "Wager To Earn Reward",
+  "Deposit And Bonus Wagering",
   "Free Spins",
-  "Free Play",
-  "Risk Free",
-  "Deposit Bonus",
-  "Cashback",
-  "None",
+  "Fixed Spins Or Free Play",
+  "Risk-Free / Refund",
+  "Cashback / Loss Back",
+  "No-Deposit Bonus / Bonus Credit",
+  "Wager To Earn Free Spins",
+  "Deposit To Receive Free Spins",
+  "Wagering / Turnover Challenge",
+  "Fixed Wagering Requirement",
+  "Daily / Recurring Casino Reward",
+  "Prize / Mystery Reward",
+  "Other / Custom",
 ] as const;
 
 export const accountTypeOptions = ["Bookie", "Exchange", "Bank"] as const;

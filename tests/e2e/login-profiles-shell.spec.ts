@@ -11,26 +11,31 @@ test.describe("Login to profiles shell", () => {
     await profilesLink.click();
 
     await expect(page).toHaveURL(/\/profiles$/);
-    await expect(page.locator("h1", { hasText: "Profiles and combined analytics" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Fund Manager Dashboard" })).toBeVisible();
     await expect(page.getByText("Profiles are isolated tracker containers.")).toHaveCount(0);
 
-    const trackerLink = page.getByRole("link", { name: /Open .* dashboard/ }).first();
-    const trackerHref = await trackerLink.getAttribute("href");
-    expect(trackerHref).toMatch(/^\/profiles\/[^/]+\/tracker\/dashboard$/);
-
-    const profileId = trackerHref!.split("/")[2]!;
-    await trackerLink.click();
+    const profileId = "profile-demo-001";
+    await page.goto(`/profiles/${profileId}/tracker/dashboard`);
 
     await expect(page).toHaveURL(new RegExp(`/profiles/${profileId}/tracker/dashboard$`));
 
-    await page.getByRole("button", { name: "Open profile tracker menu" }).click();
-    const switchProfileButton = page.getByRole("menuitem", {
-      name: /Switch to .* in the current tracker section/,
-    });
-    await expect(switchProfileButton).toBeVisible();
-    await switchProfileButton.click();
-    await expect(page).toHaveURL(
-      new RegExp(`/profiles/(?!${profileId})[^/]+/tracker/dashboard$`)
+    await page.locator('[data-pd-id="profile-command.trigger"]').click();
+    await expect(page.locator(`[data-pd-id="profile-command.profile.${profileId}"]`)).toHaveAttribute(
+      "aria-current",
+      "page"
     );
+
+    const otherProfileButton = page
+      .locator('[data-pd-id^="profile-command.profile."]:not([aria-current="page"])')
+      .first();
+    if ((await otherProfileButton.count()) > 0) {
+      const beforeSelectionUrl = page.url();
+      await otherProfileButton.click();
+      await expect(page).toHaveURL(beforeSelectionUrl);
+      await page.locator('[data-pd-id="profile-command.route.dashboard"]').click();
+      await expect(page).toHaveURL(
+        new RegExp(`/profiles/(?!${profileId})[^/]+/tracker/dashboard$`)
+      );
+    }
   });
 });

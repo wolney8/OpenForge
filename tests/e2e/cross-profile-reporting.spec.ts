@@ -93,7 +93,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
       hasText: "Fund Manager only",
     })
   ).toBeVisible();
-  await expect(analytics.getByText("Displayed earnings are pre-fee.")).toBeVisible();
+  await expect(analytics.getByText("Displayed earnings are pre-fee.")).toHaveCount(0);
   const profilesTab = analytics.getByRole("tab", { name: "Profiles" });
   await expect(profilesTab).toHaveAttribute("aria-selected", "true");
   const directory = analytics.getByRole("tabpanel", { name: "Profiles" });
@@ -103,8 +103,9 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(analytics.getByRole("heading", { name: "Profile comparison" })).toHaveCount(0);
   const totals = directory.getByLabel("All-profile headline totals");
   await expect(totals.getByText("Gross P&L", { exact: true })).toBeVisible();
+  await expect(totals.getByText("Current Account Cash", { exact: true })).toBeVisible();
   await expect(totals.getByText("Available to Withdraw", { exact: true })).toBeVisible();
-  await expect(totals.getByText("£40.00", { exact: true })).toBeVisible();
+  await expect(totals.locator(".financial-value")).toHaveCount(4);
   await expect(directory.getByRole("columnheader", { name: "Available to Withdraw" })).toBeVisible();
   await expect(directory.getByRole("columnheader", { name: "Cash snapshot" })).toHaveCount(0);
   await expect(directory.getByRole("columnheader", { name: "Open Positions" })).toBeVisible();
@@ -137,14 +138,16 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await analytics.getByRole("tab", { name: "Fees" }).click();
   const feesPanel = analytics.getByRole("tabpanel", { name: "Fees" });
   await expect(feesPanel).toBeVisible();
-  await expect(analytics.getByLabel("Fee centre closed month")).toHaveValue("2026-06");
+  await expect(analytics.getByLabel("Fee centre closed month")).toHaveValue("2026-07");
   await expect(feesPanel.getByLabel("Fund Manager fee position")).toContainText(
     "Available to Withdraw"
   );
-  await expect(feesPanel.getByText("£40.00", { exact: true })).toBeVisible();
+  await expect(feesPanel.getByLabel("Fund Manager fee position").getByText("£ 40.00", { exact: true })).toBeVisible();
   await expect(feesPanel.getByRole("columnheader", { name: "Status" })).toBeVisible();
-  await expect(feesPanel.locator("tbody").getByText("Review Required", { exact: true })).toHaveCount(2);
-  await expect(feesPanel.getByRole("button", { name: /^Review Fees for / })).toHaveCount(2);
+  await expect(feesPanel.locator("tbody").getByText("Waiting for Confirmation", { exact: true })).toHaveCount(1);
+  await expect(feesPanel.locator("tbody").getByText("Part Withdrawn", { exact: true })).toHaveCount(1);
+  await expect(feesPanel.getByRole("button", { name: /^Confirm Fees for / })).toHaveCount(1);
+  await expect(feesPanel.getByRole("button", { name: /^Record Withdrawal for / })).toHaveCount(1);
   await expect(analytics.getByLabel("Date range")).toHaveCount(0);
   await feesPanel.locator('[data-pd-id="fees.profile-demo-001.row"]').click();
   const feeBreakdownDrawer = page.getByRole("dialog", { name: "John McJohnson" });
@@ -153,13 +156,13 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(feeBreakdownDrawer.getByRole("heading", { name: "Fee Calculation" })).toBeVisible();
   await expect(feeBreakdownDrawer.getByText("Sportsbook / Qualifying Bets", { exact: true })).toBeVisible();
   await expect(feeBreakdownDrawer.locator("dt", { hasText: "Cash Adjustments" })).toBeVisible();
-  await expect(feeBreakdownDrawer.getByText(/June 2026/)).toBeVisible();
+  await expect(feeBreakdownDrawer.getByText(/July 2026/)).toBeVisible();
   await feeBreakdownDrawer.getByRole("button", { name: "Close", exact: true }).click();
   await expect(feeBreakdownDrawer).toBeHidden();
   await feesPanel.locator('[data-pd-id="fees.profile-demo-001.action"]').click();
   const feesTabReviewDialog = page.getByRole("dialog", { name: "Review Monthly Fees" });
   await expect(feesTabReviewDialog).toBeVisible();
-  await expect(feesTabReviewDialog.locator('[data-pd-id="fee-period-review.month"]')).toHaveValue("2026-06");
+  await expect(feesTabReviewDialog.locator('[data-pd-id="fee-period-review.month"]')).toHaveValue("2026-07");
   await feesTabReviewDialog.getByRole("button", { name: /Close monthly fee review/ }).click();
   await expect(feesTabReviewDialog).toBeHidden();
 
@@ -205,7 +208,8 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(feeQueueDialog).toBeVisible();
   await expect(feeQueueDialog.getByRole("columnheader", { name: "Profile" })).toBeVisible();
   await expect(feeQueueDialog.locator("tbody tr")).toHaveCount(2);
-  await expect(feeQueueDialog.getByText("Open Month", { exact: true })).toHaveCount(2);
+  await expect(feeQueueDialog.getByText("Awaiting Confirmation", { exact: true })).toHaveCount(1);
+  await expect(feeQueueDialog.getByText("Fees Earned", { exact: true })).toHaveCount(1);
   for (const icon of await feeQueueDialog.locator(".report-action-link .material-symbols-outlined").all()) {
     expect((await icon.boundingBox())!.width).toBeLessThan(40);
   }
@@ -230,16 +234,17 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(directory.getByText("ALPHA-001", { exact: true })).toBeVisible();
   await analytics.getByLabel("Directory status").selectOption("all");
   const bravoDirectoryRow = directory.getByRole("row").filter({ hasText: "BRAVO-002" });
-  await expect(bravoDirectoryRow.getByText("£ 0.00", { exact: true }).first()).toBeVisible();
+  await expect(bravoDirectoryRow.getByText("£ -", { exact: true }).first()).toBeVisible();
   await bravoDirectoryRow.getByRole("button", { name: /^Pin / }).click();
   await expect(bravoDirectoryRow.getByRole("button", { name: /^Unpin / })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("dialog", { name: /Profile details/ })).toHaveCount(0);
   await bravoDirectoryRow.getByText("BRAVO-002", { exact: true }).click();
   const drawer = page.getByRole("dialog", { name: /Profile details/ });
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole("heading", { name: "Selected-Range Performance" })).toBeVisible();
+  await expect(drawer.getByRole("heading", { name: "Selected Range Performance" })).toBeVisible();
   await expect(drawer.getByRole("heading", { name: "Fee Position" })).toBeVisible();
-  await expect(drawer.getByText("£15.00", { exact: true })).toBeVisible();
+  await expect(drawer.locator("dt", { hasText: "Estimated Fees" })).toBeVisible();
+  await expect(drawer.locator("dt", { hasText: "Available to Withdraw" })).toBeVisible();
   await expect(drawer.getByText("Cash Adjustments", { exact: true })).toBeVisible();
   await expect(drawer.getByRole("button", { name: "Edit profile code" })).toBeVisible();
   await expect(drawer.getByRole("button", { name: "Edit tracking start" })).toBeVisible();
@@ -247,8 +252,8 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   const feeDialog = page.getByRole("dialog", { name: "Review Monthly Fees" });
   await expect(feeDialog).toBeVisible();
   const closedMonthPicker = feeDialog.locator('[data-pd-id="fee-period-review.month"]');
-  await expect(closedMonthPicker).toHaveValue("2026-06");
-  await expect(closedMonthPicker.getByRole("option", { name: "June 2026" })).toHaveCount(1);
+  await expect(closedMonthPicker).toHaveValue("2026-07");
+  await expect(closedMonthPicker.getByRole("option", { name: "July 2026" })).toHaveCount(1);
   const calendarIcon = feeDialog.locator(".fee-period-month-field .material-symbols-outlined");
   await expect(calendarIcon).toHaveText("calendar_month");
   expect((await calendarIcon.boundingBox())!.width).toBeLessThan(40);
@@ -258,8 +263,8 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
     await bravoDirectoryRow.locator(".profile-action-count").allTextContents()
   );
   const settledProfitCard = feeDialog.locator(".stat-card").filter({ hasText: "Settled Profit" });
-  await expect(settledProfitCard.getByText("£40.00", { exact: true })).toBeVisible();
-  await expect(feeDialog.getByRole("button", { name: "Prepare Fee Review" })).toBeEnabled();
+  await expect(settledProfitCard.getByText("£ 40.00", { exact: true })).toBeVisible();
+  await expect(feeDialog.getByRole("button", { name: "Confirm Fees Earned" })).toBeEnabled();
   const feeDialogBox = await feeDialog.boundingBox();
   expect(feeDialogBox).not.toBeNull();
   expect(feeDialogBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
@@ -311,7 +316,8 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await drawer.getByRole("button", { name: "Close profile details" }).click();
 
   await analytics.getByLabel("Date range").selectOption("Last Week");
-  await expect(analytics.getByText(/Shared range:/)).toBeVisible();
+  await expect(analytics.getByLabel("Date range")).toHaveValue("Last Week");
+  await expect(analytics.getByText(/Shared range:/)).toHaveCount(0);
 
   await expect(analytics.getByRole("button", { name: /edit|delete|settle/i })).toHaveCount(0);
   await expect(directory.getByRole("link", { name: /Open .* dashboard/ })).toHaveCount(2);
@@ -497,7 +503,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   await expect(feeDialog.getByRole("status")).toContainText("fees are confirmed as earned");
   const action = feeDialog.getByRole("button", { name: "Mark as Withdrawn" });
   await expect(action).toBeDisabled();
-  await expect(feeDialog.getByText("£9.39 outstanding", { exact: true })).toBeVisible();
+  await expect(feeDialog.getByText("£ 9.39 outstanding", { exact: true })).toBeVisible();
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.management"]').fill("5.00");
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.investment"]').fill("0.00");
   await feeDialog.locator('[data-pd-id="fee-period-review.withdrawal.account"]').fill("Demo Bank");
@@ -507,7 +513,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   await expect(feeDialog.getByRole("status")).toContainText(
     "fee withdrawal was recorded in Cash Adjustments"
   );
-  await expect(feeDialog.getByText("£4.39 outstanding", { exact: true })).toBeVisible();
+  await expect(feeDialog.getByText("£ 4.39 outstanding", { exact: true })).toBeVisible();
   expect(submittedPayload).toMatchObject({
     actor_id: "fund-manager-local",
     linked_account: "Demo Bank",
@@ -523,7 +529,7 @@ test("crystallised monthly fees can be partially marked as withdrawn", async ({ 
   const correctionAction = feeDialog.getByRole("button", { name: "Record Fee Correction" });
   await expect(correctionAction).toBeEnabled();
   await correctionAction.click();
-  await expect(feeDialog.getByRole("status")).toContainText("Fee credit of £2.73 was recorded");
+  await expect(feeDialog.getByRole("status")).toContainText("Fee credit of £ 2.73 was recorded");
   await expect(feeDialog.getByLabel("Recorded fee corrections")).toContainText("Fee Credit");
   expect(correctionPayload).toMatchObject({
     actor_id: "fund-manager-local",

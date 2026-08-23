@@ -21,9 +21,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       <section className="content-panel stack">
         <span className="eyebrow">Profile</span>
         <h1>{profile.displayName}</h1>
-        <p className="lede">
-          Open this profile tracker or return to the Fund Manager profile dashboard.
-        </p>
         <div className="meta-grid">
           <dl>
             <dt>Profile code</dt>
@@ -34,7 +31,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <dd>{profile.status}</dd>
           </dl>
           <dl>
-            <dt>Current cash snapshot</dt>
+            <dt>Current Account Cash</dt>
             <dd>{profile.currentCashSnapshot}</dd>
           </dl>
         </div>

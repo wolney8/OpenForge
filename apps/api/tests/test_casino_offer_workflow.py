@@ -37,6 +37,24 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
         "spin_stake": "0.10",
         "free_spins_awarded": "10",
         "free_spins_value": "0.10",
+        "wagering_base": "Bonus",
+        "custom_wager_base": "",
+        "wagering_completed": "0.00",
+        "rtp_percent": "96.00",
+        "reward_type": "FreeSpins",
+        "reward_wager_multiplier": "10",
+        "reward_wager_target": "1.00",
+        "reward_required_spins": "10",
+        "reward_wagering_completed": "",
+        "reward_rtp_percent": "96.00",
+        "expected_reward_cash_value": "0.80",
+        "qualifying_expected_loss": "0.20",
+        "reward_expected_loss": "0.04",
+        "other_expected_costs": "0.00",
+        "campaign_ev": "0.56",
+        "own_cash_committed": "5.00",
+        "cash_returned": "3.00",
+        "settlement_other_costs": "0.20",
         "status": "Started",
         "result": "Pending",
         "calc_net_pnl": "-5.00",
@@ -50,6 +68,12 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
     assert created["profile_id"] == "profile-demo-001"
     assert created["casino_offer_id"]
     assert created["resolved_net_pnl"] == "-5.00"
+    assert created["rtp_percent"] == "96.00"
+    assert created["reward_type"] == "FreeSpins"
+    assert created["campaign_ev"] == "0.56"
+    assert created["own_cash_committed"] == "5.00"
+    assert created["cash_returned"] == "3.00"
+    assert created["settlement_other_costs"] == "0.20"
     assert created["counts_as_open"] is True
 
     list_profile_one = client.get("/profiles/profile-demo-001/casino-offers")
@@ -66,7 +90,18 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
         for row in list_profile_two.json()
     )
 
-    updated_payload = {**payload, "status": "Settled", "result": "Win", "final_net_pnl": "3.20"}
+    updated_payload = {
+        **payload,
+        "status": "Settled",
+        "result": "Win",
+        "final_net_pnl": "3.20",
+        "wagering_completed": "1.00",
+        "reward_wagering_completed": "1.00",
+        "campaign_ev": "0.62",
+        "own_cash_committed": "10.00",
+        "cash_returned": "7.00",
+        "settlement_other_costs": "0.00",
+    }
     update_response = client.put(
         f"/profiles/profile-demo-001/casino-offers/{created['casino_offer_id']}",
         json=updated_payload,
@@ -74,6 +109,12 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
     assert update_response.status_code == 200
     updated = update_response.json()
     assert updated["resolved_net_pnl"] == "3.20"
+    assert updated["wagering_completed"] == "1.00"
+    assert updated["reward_wagering_completed"] == "1.00"
+    assert updated["campaign_ev"] == "0.62"
+    assert updated["own_cash_committed"] == "10.00"
+    assert updated["cash_returned"] == "7.00"
+    assert updated["settlement_other_costs"] == "0.00"
     assert updated["counts_as_open"] is False
 
     wrong_profile_response = client.get(
@@ -104,8 +145,22 @@ def test_seed_rows_load_into_dedicated_casino_offer_table(tmp_path: Path) -> Non
 
     connection = sqlite3.connect(settings.database_path)
     count = connection.execute("SELECT COUNT(*) FROM casino_offers").fetchone()[0]
+    columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(casino_offers)").fetchall()
+    }
     connection.close()
     assert count > 0
+    assert {
+        "wagering_base",
+        "rtp_percent",
+        "reward_wager_target",
+        "reward_required_spins",
+        "campaign_ev",
+        "own_cash_committed",
+        "cash_returned",
+        "settlement_other_costs",
+    }.issubset(columns)
 
 
 def test_prospecting_casino_offer_can_be_saved_without_current_or_final_value(
@@ -143,5 +198,7 @@ def test_prospecting_casino_offer_can_be_saved_without_current_or_final_value(
     assert response.status_code == 201
     created = response.json()
     assert created["resolved_net_pnl"] == "0.00"
+    assert created["wagering_base"] == ""
+    assert created["campaign_ev"] == ""
     assert created["calculation_state"] == "resolved"
     assert created["counts_as_open"] is True

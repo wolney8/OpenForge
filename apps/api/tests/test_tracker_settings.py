@@ -26,6 +26,10 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert response.json()["default_free_bet_overlay_factor"] == "1.3"
     assert response.json()["default_bonus_retention_percent"] == "0.7"
     assert response.json()["default_exchange_name"] == ""
+    assert response.json()["dashboard_view_mode"] == "High-Density"
+    assert response.json()["weekly_profit_target"] == ""
+    assert response.json()["monthly_profit_target"] == ""
+    assert response.json()["annual_profit_target"] == ""
 
     save_response = client.put(
         "/profiles/profile-demo-001/tracker-settings",
@@ -43,6 +47,10 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
             "default_free_bet_overlay_factor": "1.25",
             "default_bonus_retention_percent": "0.72",
             "default_exchange_name": "Exchange A",
+            "dashboard_view_mode": "Visual Comparison",
+            "weekly_profit_target": "50",
+            "monthly_profit_target": "250",
+            "annual_profit_target": "3000",
         },
     )
     assert save_response.status_code == 200
@@ -52,6 +60,8 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert save_response.json()["use_global_date_range_toggle"] is False
     assert save_response.json()["default_bonus_retention_percent"] == "0.72"
     assert save_response.json()["default_exchange_name"] == "Exchange A"
+    assert save_response.json()["dashboard_view_mode"] == "Visual Comparison"
+    assert save_response.json()["weekly_profit_target"] == "50"
 
     roundtrip_response = client.get("/profiles/profile-demo-001/tracker-settings")
     assert roundtrip_response.status_code == 200
@@ -64,6 +74,9 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert roundtrip_response.json()["default_free_bet_overlay_factor"] == "1.25"
     assert roundtrip_response.json()["default_bonus_retention_percent"] == "0.72"
     assert roundtrip_response.json()["default_exchange_name"] == "Exchange A"
+    assert roundtrip_response.json()["dashboard_view_mode"] == "Visual Comparison"
+    assert roundtrip_response.json()["monthly_profit_target"] == "250"
+    assert roundtrip_response.json()["annual_profit_target"] == "3000"
 
     other_profile_response = client.get("/profiles/profile-demo-002/tracker-settings")
     assert other_profile_response.status_code == 200
@@ -73,3 +86,5 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert other_profile_response.json()["free_bet_expiry_alert_window_days"] == 3
     assert other_profile_response.json()["use_global_date_range_toggle"] is True
     assert other_profile_response.json()["default_exchange_name"] == ""
+    assert other_profile_response.json()["dashboard_view_mode"] == "High-Density"
+    assert other_profile_response.json()["weekly_profit_target"] == ""
