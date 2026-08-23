@@ -39,12 +39,18 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
         "COMBO-MBB-20260720-888-ACCA",
         "COMBO-MBB-20260720-PADDY-CASHBACK",
         "COMBO-MBB-20260720-UNIBET-UNIBOOST",
+        "COMBO-DEMO-CASINO-FREE-SPINS",
     }
     seeded_by_id = {row["preset_id"]: row for row in seeded.json()}
     assert seeded_by_id.keys() >= expected_defaults
     assert seeded_by_id["COMBO-MBB-20260720-MIDNITE-BUILDER"]["bookmakers"] == ["Midnite"]
     assert seeded_by_id["COMBO-MBB-20260720-MIDNITE-BUILDER"]["default_back_stake"] == "10.00"
-    assert all(seeded_by_id[preset_id]["bookmakers"] for preset_id in expected_defaults)
+    assert all(
+        seeded_by_id[preset_id]["bookmakers"]
+        for preset_id in expected_defaults
+        if preset_id != "COMBO-DEMO-CASINO-FREE-SPINS"
+    )
+    assert seeded_by_id["COMBO-DEMO-CASINO-FREE-SPINS"]["quick_add"]["enabled"] is True
 
     created = client.post(
         "/fund-manager/common-bet-combos",
@@ -142,3 +148,106 @@ def test_casino_common_combo_round_trips_descriptive_defaults(tmp_path: Path) ->
     assert updated.status_code == 200, updated.text
     assert updated.json()["bonus_amount"] == "5.00"
     assert updated.json()["version"] == 2
+
+
+def test_quick_add_loadouts_inherit_and_isolate_profile_overrides(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    created = client.post(
+        "/fund-manager/common-bet-combos",
+        json={
+            "name": "Demo Profile Free Spins",
+            "ledger_type": "Casino",
+            "offer_type": "Free Spins",
+            "offer_name": "Demo Free Spins",
+            "spin_stake": "0.10",
+            "free_spins_awarded": "10",
+            "quick_add": {
+                "enabled": True,
+                "display_label": "Demo Profile Spins",
+                "supported_ledgers": ["Casino"],
+                "enabled_fields": ["spinStake", "spinCount"],
+                "defaults": {"spinStake": "0.10", "spinCount": "10"},
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    preset_id = created.json()["preset_id"]
+
+    inherited = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001"
+    )
+    assert inherited.status_code == 200, inherited.text
+    inherited_row = next(row for row in inherited.json() if row["preset_id"] == preset_id)
+    assert inherited_row["enabled"] is True
+    assert inherited_row["defaults"]["spinStake"] == "0.10"
+
+    hidden = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}",
+        json={"enabled": False, "defaults": {"spinStake": "0.20"}},
+    )
+    assert hidden.status_code == 200, hidden.text
+    hidden_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001?include_hidden=true"
+    )
+    hidden_row = next(row for row in hidden_rows.json() if row["preset_id"] == preset_id)
+    assert hidden_row["enabled"] is False
+    assert hidden_row["defaults"]["spinStake"] == "0.20"
+
+    reenabled = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}",
+        json={"enabled": True},
+    )
+    assert reenabled.status_code == 200, reenabled.text
+    restored_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001"
+    )
+    restored_row = next(row for row in restored_rows.json() if row["preset_id"] == preset_id)
+    assert restored_row["defaults"]["spinStake"] == "0.20"
+
+    other_profile_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-002"
+    )
+    other_profile_row = next(row for row in other_profile_rows.json() if row["preset_id"] == preset_id)
+    assert other_profile_row["defaults"]["spinStake"] == "0.10"
+
+
+def test_quick_add_loadout_rejects_blocked_profile_account_override(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    created = client.post(
+        "/fund-manager/common-bet-combos",
+        json={
+            "name": "Demo restricted Free Spins",
+            "ledger_type": "Casino",
+            "offer_type": "Free Spins",
+            "quick_add": {
+                "enabled": True,
+                "supported_ledgers": ["Casino"],
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    account = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "account": "Demo Gubbed Bookmaker",
+            "type": "Bookie",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Gubbed",
+            "current_balance": "0.00",
+            "pending_withdrawal_amount": "0.00",
+            "last_balance_update": "",
+            "group_name": "Demo Group",
+            "platform": "Demo Platform",
+        },
+    )
+    assert account.status_code == 201, account.text
+
+    rejected = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{created.json()['preset_id']}",
+        json={"bookmaker_override": "Demo Gubbed Bookmaker"},
+    )
+    assert rejected.status_code == 422
+    assert "cannot be used" in rejected.json()["detail"]

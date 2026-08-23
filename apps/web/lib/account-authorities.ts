@@ -8,6 +8,7 @@ export type AccountAuthorityRecord = {
   status: string;
   lifecycle_status?: string;
   restrictions_json?: string;
+  restrictions?: string[];
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;

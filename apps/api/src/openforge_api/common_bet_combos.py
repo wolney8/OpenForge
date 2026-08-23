@@ -11,7 +11,11 @@ from openforge_api.db import (
     FundManagerComboPresetRecord,
     create_fund_manager_combo_preset,
     delete_fund_manager_combo_presets,
+    get_fund_manager_combo_preset,
+    list_accounts,
     list_fund_manager_combo_presets,
+    list_profile_quick_add_loadout_overrides,
+    upsert_profile_quick_add_loadout_override,
     update_fund_manager_combo_preset,
 )
 
@@ -26,6 +30,15 @@ Strategy = Literal[
     "Partial Lay",
     "Multilay",
 ]
+QuickAddLedger = Literal["Sportsbook", "Free Bets", "Casino", "Cash Adjustments"]
+
+
+class QuickAddConfig(BaseModel):
+    enabled: bool = False
+    display_label: str = Field(default="", max_length=80)
+    supported_ledgers: list[QuickAddLedger] = Field(default_factory=list)
+    enabled_fields: list[str] = Field(default_factory=list, max_length=30)
+    defaults: dict[str, str] = Field(default_factory=dict)
 
 
 class CommonBetComboPayload(BaseModel):
@@ -52,6 +65,7 @@ class CommonBetComboPayload(BaseModel):
     default_strategy: Strategy | Literal[""] = ""
     # Kept for backward compatibility with presets created before preferred strategy.
     allowed_strategies: list[Strategy] = Field(default_factory=list)
+    quick_add: QuickAddConfig = Field(default_factory=QuickAddConfig)
     status: Literal["Active", "Archived"] = "Active"
     sort_order: int = 0
 
@@ -117,6 +131,26 @@ class CommonBetComboResponse(CommonBetComboPayload):
     version: int
     created_at: str
     updated_at: str
+
+
+class ProfileQuickAddLoadoutOverridePayload(BaseModel):
+    enabled: bool = True
+    bookmaker_override: str = Field(default="", max_length=120)
+    # Omitted means preserve profile-specific defaults while changing availability.
+    defaults: dict[str, str] | None = None
+    availability_reason: str = Field(default="", max_length=240)
+
+
+class ProfileQuickAddLoadoutResponse(BaseModel):
+    preset_id: str
+    label: str
+    ledger_type: QuickAddLedger
+    defaults: dict[str, str]
+    enabled: bool
+    availability: Literal["eligible", "limited", "blocked"]
+    availability_reason: str
+    bookmaker: str
+    archived: bool
 
 
 RETIRED_DEFAULT_COMBO_IDS = {
@@ -368,6 +402,36 @@ DEFAULT_COMBOS: tuple[dict[str, object], ...] = (
         "allowed_strategies": ["Standard", "Underlay", "Overlay", "Custom"],
         "sort_order": 210,
     },
+    {
+        "preset_id": "COMBO-DEMO-CASINO-FREE-SPINS",
+        "name": "Demo Casino Free Spins",
+        "ledger_type": "Casino",
+        "offer_type": "Free Spins",
+        "offer_name": "Free Spins",
+        "spin_stake": "0.10",
+        "free_spins_awarded": "10",
+        "free_spins_value": "0.00",
+        "quick_add": {
+            "enabled": True,
+            "display_label": "Demo Free Spins",
+            "supported_ledgers": ["Casino"],
+            "enabled_fields": [
+                "bookmaker",
+                "spinCount",
+                "spinStake",
+                "convertedWin",
+                "offerName",
+                "game",
+            ],
+            "defaults": {
+                "offerName": "Free Spins",
+                "spinCount": "10",
+                "spinStake": "0.10",
+                "convertedWin": "0.00",
+            },
+        },
+        "sort_order": 1000,
+    },
 )
 
 
@@ -391,11 +455,18 @@ def serialize(record: FundManagerComboPresetRecord) -> CommonBetComboResponse:
         bookmakers = []
     if not bookmakers and record.bookmaker:
         bookmakers = [record.bookmaker]
+    try:
+        quick_add = json.loads(record.quick_add_json)
+    except json.JSONDecodeError:
+        quick_add = {}
+    if not isinstance(quick_add, dict):
+        quick_add = {}
     return CommonBetComboResponse.model_validate(
         {
             **record.__dict__,
             "allowed_strategies": strategies,
             "bookmakers": bookmakers,
+            "quick_add": quick_add,
         }
     )
 
@@ -431,3 +502,122 @@ def update_common_bet_combo(
     if updated is None:
         raise HTTPException(status_code=404, detail="Common bet combo was not found")
     return serialize(updated)
+
+
+def _loadout_status_for_account(status: str, lifecycle_status: str, restrictions_json: str) -> tuple[str, str]:
+    normalized = f"{status} {lifecycle_status} {restrictions_json}".casefold()
+    if any(value in normalized for value in ("blocked", "gubbed", "closed", "kyc blocked", "risk blocked", "bonus restricted")):
+        return "blocked", "This account is not eligible for this quick add loadout."
+    if any(value in normalized for value in ("limited", "pending", "not signed up", "verification")):
+        return "limited", "This account is available with an account-status warning."
+    return "eligible", ""
+
+
+@router.get("/profile-overrides/{profile_id}", response_model=list[ProfileQuickAddLoadoutResponse])
+def list_profile_quick_add_loadouts(
+    profile_id: str, include_hidden: bool = False
+) -> list[ProfileQuickAddLoadoutResponse]:
+    seed_default_combos()
+    overrides = {row.preset_id: row for row in list_profile_quick_add_loadout_overrides(profile_id)}
+    accounts = list_accounts(profile_id)
+    response: list[ProfileQuickAddLoadoutResponse] = []
+    for record in list_fund_manager_combo_presets(active_only=True):
+        combo = serialize(record)
+        config = combo.quick_add
+        if not config.enabled:
+            continue
+        override = overrides.get(record.preset_id)
+        is_enabled = not override or override.enabled
+        if not is_enabled and not include_hidden:
+            continue
+        try:
+            override_defaults = json.loads(override.defaults_json) if override else {}
+        except json.JSONDecodeError:
+            override_defaults = {}
+        template_defaults = {
+            "bookmaker": combo.bookmaker,
+            "offerName": combo.offer_name,
+            "game": combo.game,
+            "spinCount": combo.free_spins_awarded,
+            "spinStake": combo.spin_stake,
+            "convertedWin": combo.free_spins_value or "0.00",
+        }
+        defaults = {
+            **{key: value for key, value in template_defaults.items() if value},
+            **config.defaults,
+            **(override_defaults if isinstance(override_defaults, dict) else {}),
+        }
+        bookmaker = (override.bookmaker_override if override and override.bookmaker_override else defaults.get("bookmaker", "")).strip()
+        if not bookmaker:
+            bookmakers = combo.bookmakers or ([combo.bookmaker] if combo.bookmaker else [])
+            bookmaker = bookmakers[0] if len(bookmakers) == 1 else ""
+        account = next(
+            (
+                item
+                for item in accounts
+                if item.type == "Bookie" and item.account.casefold() == bookmaker.casefold()
+            ),
+            None,
+        ) if bookmaker else None
+        availability = "eligible"
+        reason = override.availability_reason if override else ""
+        if bookmaker and account is None:
+            availability, reason = "blocked", "This profile has not configured the selected bookmaker."
+        elif account is not None:
+            availability, account_reason = _loadout_status_for_account(account.status, account.lifecycle_status, account.restrictions_json)
+            reason = reason or account_reason
+        for ledger in config.supported_ledgers:
+            response.append(ProfileQuickAddLoadoutResponse(
+                preset_id=record.preset_id,
+                label=config.display_label.strip() or combo.name,
+                ledger_type=ledger,
+                defaults={key: str(value) for key, value in defaults.items()},
+                enabled=is_enabled,
+                availability=availability,
+                availability_reason=reason,
+                bookmaker=bookmaker,
+                archived=combo.status == "Archived",
+            ))
+    return response
+
+
+@router.put("/profile-overrides/{profile_id}/{preset_id}")
+def update_profile_quick_add_loadout(
+    profile_id: str,
+    preset_id: str,
+    payload: ProfileQuickAddLoadoutOverridePayload,
+) -> ProfileQuickAddLoadoutOverridePayload:
+    template = get_fund_manager_combo_preset(preset_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Quick add loadout was not found")
+    combo = serialize(template)
+    if not combo.quick_add.enabled or combo.status != "Active":
+        raise HTTPException(status_code=422, detail="This Quick Add loadout is not available")
+    bookmaker = payload.bookmaker_override.strip()
+    if bookmaker:
+        account = next(
+            (
+                item
+                for item in list_accounts(profile_id)
+                if item.type == "Bookie" and item.account.casefold() == bookmaker.casefold()
+            ),
+            None,
+        )
+        if account is None:
+            raise HTTPException(status_code=422, detail="This bookmaker is not configured for the profile")
+        availability, _ = _loadout_status_for_account(
+            account.status, account.lifecycle_status, account.restrictions_json
+        )
+        if availability == "blocked":
+            raise HTTPException(status_code=422, detail="This bookmaker cannot be used for a Quick Add loadout")
+    record = upsert_profile_quick_add_loadout_override(profile_id, preset_id, payload.model_dump())
+    try:
+        defaults = json.loads(record.defaults_json)
+    except json.JSONDecodeError:
+        defaults = {}
+    return ProfileQuickAddLoadoutOverridePayload(
+        enabled=record.enabled,
+        bookmaker_override=record.bookmaker_override,
+        defaults=defaults if isinstance(defaults, dict) else {},
+        availability_reason=record.availability_reason,
+    )

@@ -152,6 +152,36 @@
       "case_id": "COMBO-030",
       "inputs": {"ledger": "casino", "known_bookmakers": ["Bookmaker A", "Bookmaker B"], "eligible_bookmakers": ["Bookmaker A", "Bookmaker B"]},
       "expected": {"selected_bookmaker": null, "requires_explicit_selection": true}
+    },
+    {
+      "case_id": "COMBO-031",
+      "inputs": {"global_loadout": "DEMO-CASINO-FREE-SPINS", "supported_ledgers": ["Casino"], "profile_override": null},
+      "expected": {"inherits_global_defaults": true, "template_store_count": 1}
+    },
+    {
+      "case_id": "COMBO-032",
+      "inputs": {"global_loadout": "DEMO-CASINO-FREE-SPINS", "profile_id": "PROFILE-001", "enabled": false},
+      "expected": {"shown_in_new_quick_add": false, "global_template_mutated": false}
+    },
+    {
+      "case_id": "COMBO-033",
+      "inputs": {"profile_id": "PROFILE-001", "bookmaker_override": "Bookmaker B", "global_bookmaker": "Bookmaker A"},
+      "expected": {"effective_bookmaker": "Bookmaker B", "global_template_mutated": false}
+    },
+    {
+      "case_id": "COMBO-034",
+      "inputs": {"account_state": "Gubbed", "loadout": "DEMO-CASINO-FREE-SPINS"},
+      "expected": {"quick_add_enabled": false, "availability": "blocked", "reason_visible": true}
+    },
+    {
+      "case_id": "COMBO-035",
+      "inputs": {"account_state": "Limited", "loadout": "DEMO-CASINO-FREE-SPINS"},
+      "expected": {"quick_add_enabled": true, "availability": "limited", "warning_visible": true}
+    },
+    {
+      "case_id": "COMBO-036",
+      "inputs": {"loadout_status": "Archived", "historical_row_reference": true},
+      "expected": {"new_quick_add_available": false, "historical_reference_preserved": true}
     }
   ]
 }

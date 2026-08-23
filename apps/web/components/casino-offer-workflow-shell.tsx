@@ -19,7 +19,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
-import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues } from "@/components/casino-free-spins-quick-add";
+import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -1740,6 +1740,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
+  const [quickAddLoadouts, setQuickAddLoadouts] = useState<CasinoQuickAddLoadout[]>([]);
   const [selectedComboId, setSelectedComboId] = useState("");
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -1969,6 +1970,43 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setCommonBetCombos(nextRows.filter((row) => row.ledger_type === "Casino"));
   }, []);
 
+  const loadQuickAddLoadouts = useCallback(async () => {
+    const response = await fetch(
+      `${apiBaseUrl}/fund-manager/common-bet-combos/profile-overrides/${profileId}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      throw new Error("Unable to load Quick Add loadouts");
+    }
+    const rows = (await response.json()) as Array<{
+      preset_id: string;
+      label: string;
+      ledger_type: string;
+      defaults: Record<string, string>;
+      bookmaker: string;
+      enabled: boolean;
+      availability: CasinoQuickAddLoadout["availability"];
+      availability_reason: string;
+    }>;
+    setQuickAddLoadouts(rows
+      .filter((row) => row.ledger_type === "Casino" && row.enabled)
+      .map((row) => ({
+        preset_id: row.preset_id,
+        label: row.label,
+        bookmaker: row.bookmaker,
+        availability: row.availability,
+        availability_reason: row.availability_reason,
+        defaults: {
+          bookmaker: row.defaults.bookmaker,
+          offerName: row.defaults.offerName ?? row.defaults.offer_name,
+          game: row.defaults.game,
+          spinCount: row.defaults.spinCount ?? row.defaults.free_spins_awarded,
+          spinStake: row.defaults.spinStake ?? row.defaults.spin_stake,
+          convertedWin: row.defaults.convertedWin ?? row.defaults.free_spins_value ?? "0.00",
+        },
+      })));
+  }, [profileId]);
+
   const loadTrackerSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       cache: "no-store",
@@ -1982,7 +2020,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).catch(
+      void Promise.all([loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).then(
+        () => loadQuickAddLoadouts().catch(() => setQuickAddLoadouts([])),
+      ).catch(
         (error: Error) => {
           setIsInitialLoading(false);
           setErrorMessage(error.message);
@@ -1992,7 +2032,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings, loadCommonBetCombos]);
+  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings, loadCommonBetCombos, loadQuickAddLoadouts]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.casino_offer_id === selectedId) ?? null,
@@ -5699,6 +5739,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               initialValues={quickAddReturnValues}
               isSaving={isPersisting}
               key={profileId}
+              loadouts={quickAddLoadouts}
               onClose={() => {
                 setErrorMessage("");
                 setQuickAddReturnValues(null);

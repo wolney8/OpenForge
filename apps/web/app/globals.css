@@ -940,7 +940,7 @@ textarea {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 66%, transparent);
 }
 
-.casino-quick-add-money-input {
+.financial-text-input {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -951,45 +951,75 @@ textarea {
   background: var(--surface-strong);
 }
 
-.casino-quick-add-money-input > span {
+.financial-text-input-prefix {
   padding-left: 1rem;
   color: var(--on-surface-variant);
   font-size: 1.1rem;
   font-weight: 800;
 }
 
-.casino-quick-add-money-input input {
+.financial-text-input input {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
   border: 0;
+  padding: 0.7rem 0.95rem 0.7rem 0.55rem;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.casino-quick-add-money-input:focus-within {
+.financial-text-input:focus-within {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 58%, transparent);
 }
 
-.casino-quick-add-money-input-positive {
+.financial-text-input-positive {
   border-color: color-mix(in srgb, var(--success) 54%, var(--outline));
   background: color-mix(in srgb, var(--success) 10%, var(--surface-strong));
 }
 
-.casino-quick-add-money-input-positive > span,
-.casino-quick-add-money-input-positive input {
+.financial-text-input-positive > span,
+.financial-text-input-positive input {
   color: var(--bet-ledger-value-positive-text);
+  font-weight: 800;
 }
 
-.casino-quick-add-money-input-negative {
+.financial-text-input-negative {
   border-color: color-mix(in srgb, var(--danger) 56%, var(--outline));
   background: color-mix(in srgb, var(--danger) 10%, var(--surface-strong));
 }
 
-.casino-quick-add-money-input-negative > span,
-.casino-quick-add-money-input-negative input {
+.financial-text-input-negative > span,
+.financial-text-input-negative input {
   color: var(--bet-ledger-value-negative-text);
+  font-weight: 800;
+}
+
+.field-control .financial-text-input-positive input,
+.field-control .financial-text-input-positive .financial-text-input-prefix {
+  color: var(--bet-ledger-value-positive-text);
+  font-weight: 800;
+}
+
+.field-control .financial-text-input-negative input,
+.field-control .financial-text-input-negative .financial-text-input-prefix {
+  color: var(--bet-ledger-value-negative-text);
+  font-weight: 800;
+}
+
+.quick-add-loadout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(12rem, 0.8fr);
+  align-items: end;
+  gap: 1rem;
+}
+
+.quick-add-loadout-row small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--on-surface-variant);
 }
 
 .casino-quick-add-footer {
@@ -1007,6 +1037,10 @@ textarea {
 
   .casino-quick-add-footer {
     flex-wrap: wrap;
+  }
+
+  .quick-add-loadout-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4517,26 +4551,17 @@ html[data-theme="dark"] .notification-count-badge {
   color: var(--muted);
 }
 
-/* Keep Quick Add currency adornments as one field, not a nested generic input surface. */
-.field-control .casino-quick-add-money-input input {
-  box-sizing: border-box;
-  width: 100%;
+.casino-quick-add-financial-field > label {
+  display: block;
+  margin-bottom: 0.45rem;
+}
+
+/* Reset generic field styling: FinancialTextInput owns its one visible surface. */
+.field-control .financial-text-input input {
   min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
-  padding: 0.7rem 0.95rem 0.7rem 0.55rem;
   border: 0;
-  border-radius: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.field-control .casino-quick-add-money-input-positive input,
-.field-control .casino-quick-add-money-input-positive > span {
-  color: var(--bet-ledger-value-positive-text);
-}
-
-.field-control .casino-quick-add-money-input-negative input,
-.field-control .casino-quick-add-money-input-negative > span {
-  color: var(--bet-ledger-value-negative-text);
 }
 
 .inline-field-action {

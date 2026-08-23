@@ -68,17 +68,22 @@ test("Casino Free Spins Quick Add normalizes decimal shorthand and shows quick-s
   await convertedWin.fill(".30");
   await convertedWin.blur();
   await expect(convertedWin).toHaveValue("0.30");
-  await expect(convertedWin.locator("xpath=..")).toHaveClass(/casino-quick-add-money-input-positive/);
+  await expect(convertedWin.locator("xpath=..")).toHaveClass(/financial-text-input-positive/);
   await expect(dialog.getByText("£", { exact: true }).nth(1)).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.converted-win-chips']").getByRole("button", { name: "£ 0.20" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "1 spins" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "4 spins" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "5 spins" })).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.bookmaker-chips'] button").first()).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.game-chips']").getByRole("button", { name: "Big Bass Bonanza" })).toBeVisible();
   await dialog.getByRole("button", { name: "Big Bass Bonanza" }).click();
   await expect(dialog.getByLabel("Quick add Free Spins game or slot")).toHaveValue("Big Bass Bonanza");
-  await dialog.getByRole("button", { name: /Daily FS 1$/ }).click();
-  await expect(dialog.getByLabel("Quick add Free Spins number of spins")).toHaveValue("1");
-  await expect(dialog.getByLabel("Quick add Free Spins spin stake")).toHaveValue("0.10");
+  await dialog.locator("[data-pd-id='casino-quick-add.converted-win-chips']").getByRole("button", { name: "£ 0.20" }).click();
+  await expect(convertedWin).toHaveValue("0.20");
+  await convertedWin.fill("-.30");
+  await convertedWin.blur();
+  await expect(convertedWin).toHaveValue("-0.30");
+  await expect(convertedWin.locator("xpath=..")).toHaveClass(/financial-text-input-negative/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
 
@@ -98,7 +103,7 @@ test("Casino Free Spins Quick Add keeps the close control circular and financial
   const convertedWin = dialog.getByLabel("Quick add Free Spins converted win amount");
   await convertedWin.fill("-0.20");
   await convertedWin.blur();
-  await expect(convertedWin.locator("xpath=..")).toHaveClass(/casino-quick-add-money-input-negative/);
+  await expect(convertedWin.locator("xpath=..")).toHaveClass(/financial-text-input-negative/);
   const inputSurface = await convertedWin.evaluate((element) => {
     const style = getComputedStyle(element);
     return { background: style.backgroundColor, borderTopWidth: style.borderTopWidth };

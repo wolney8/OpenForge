@@ -13,6 +13,10 @@ mapping and workflow boundaries, not casino EV or RTP calculations.
 | `CQA-002` | Bookmaker A, `5` spins, `0.10` stake, zero shortcut | Free Spins, Settled/Lose, `free_spins_value=0.00`, `final_net_pnl=0.00`, own cash `0.00` |
 | `CQA-003` | blank bookmaker or malformed money | save disabled; no row is created |
 | `CQA-004` | valid compact values then More details | normal editor opens with values; no row is created before normal save |
+| `CQA-005` | global Free Spins loadout on an eligible profile account | compact preset appears and fills the configured fields without cloning the template |
+| `CQA-006` | hidden profile loadout | compact preset is absent only for that profile |
+| `CQA-007` | blocked/gubbed selected bookmaker | preset is blocked or hidden with an account-status explanation; compact save cannot proceed |
+| `CQA-008` | limited selected bookmaker | preset remains usable with an explicit warning |
 
 ## Rules
 

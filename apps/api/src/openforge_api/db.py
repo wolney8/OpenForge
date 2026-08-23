@@ -402,11 +402,26 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           free_spins_value TEXT NOT NULL DEFAULT '',
           default_strategy TEXT NOT NULL DEFAULT '',
           allowed_strategies_json TEXT NOT NULL DEFAULT '[]',
+          quick_add_json TEXT NOT NULL DEFAULT '{}',
           status TEXT NOT NULL DEFAULT 'Active',
           version INTEGER NOT NULL DEFAULT 1,
           sort_order INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_quick_add_loadout_overrides (
+          profile_id TEXT NOT NULL,
+          preset_id TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          bookmaker_override TEXT NOT NULL DEFAULT '',
+          defaults_json TEXT NOT NULL DEFAULT '{}',
+          availability_reason TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (profile_id, preset_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (preset_id) REFERENCES fund_manager_combo_presets(preset_id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS accounts (
@@ -931,6 +946,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "fund_manager_combo_presets",
         "default_strategy",
         "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "fund_manager_combo_presets",
+        "quick_add_json",
+        "TEXT NOT NULL DEFAULT '{}'",
     )
     for column_name in (
         "game",
@@ -4430,9 +4451,22 @@ class FundManagerComboPresetRecord:
     free_spins_value: str
     default_strategy: str
     allowed_strategies_json: str
+    quick_add_json: str
     status: str
     version: int
     sort_order: int
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
+class ProfileQuickAddLoadoutOverrideRecord:
+    profile_id: str
+    preset_id: str
+    enabled: bool
+    bookmaker_override: str
+    defaults_json: str
+    availability_reason: str
     created_at: str
     updated_at: str
 
@@ -5226,6 +5260,7 @@ def map_fund_manager_combo_preset_row(
         free_spins_value=str(row["free_spins_value"]),
         default_strategy=str(row["default_strategy"]),
         allowed_strategies_json=str(row["allowed_strategies_json"]),
+        quick_add_json=str(row["quick_add_json"]),
         status=str(row["status"]),
         version=int(row["version"]),
         sort_order=int(row["sort_order"]),
@@ -5306,6 +5341,7 @@ def create_fund_manager_combo_preset(
         "allowed_strategies_json": json.dumps(
             payload.get("allowed_strategies", []), sort_keys=True
         ),
+        "quick_add_json": json.dumps(payload.get("quick_add", {}), sort_keys=True),
         "status": payload.get("status", "Active"),
         "version": 1,
         "sort_order": int(payload.get("sort_order", 0)),
@@ -5320,11 +5356,11 @@ def create_fund_manager_combo_preset(
               offer_name, fixture_type, default_back_stake, minimum_back_odds,
               game, cash_stake, credit_amount, bonus_amount, wager_multiplier,
               required_spins, spin_stake, free_spins_awarded, free_spins_value,
-              default_strategy, allowed_strategies_json, status, version, sort_order,
+              default_strategy, allowed_strategies_json, quick_add_json, status, version, sort_order,
               created_at, updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -5357,7 +5393,7 @@ def update_fund_manager_combo_preset(
                 bonus_amount = ?, wager_multiplier = ?, required_spins = ?,
                 spin_stake = ?, free_spins_awarded = ?, free_spins_value = ?,
                 default_strategy = ?,
-                allowed_strategies_json = ?, status = ?,
+                allowed_strategies_json = ?, quick_add_json = ?, status = ?,
                 version = version + 1, sort_order = ?, updated_at = ?
             WHERE preset_id = ?
             """,
@@ -5383,6 +5419,7 @@ def update_fund_manager_combo_preset(
                 str(payload.get("free_spins_value", "")).strip(),
                 str(payload.get("default_strategy", "")).strip(),
                 json.dumps(payload.get("allowed_strategies", []), sort_keys=True),
+                json.dumps(payload.get("quick_add", {}), sort_keys=True),
                 payload.get("status", "Active"),
                 int(payload.get("sort_order", 0)),
                 utc_now(),
@@ -5390,6 +5427,88 @@ def update_fund_manager_combo_preset(
             ),
         )
     return get_fund_manager_combo_preset(preset_id)
+
+
+def map_profile_quick_add_loadout_override_row(
+    row: sqlite3.Row,
+) -> ProfileQuickAddLoadoutOverrideRecord:
+    return ProfileQuickAddLoadoutOverrideRecord(
+        profile_id=str(row["profile_id"]),
+        preset_id=str(row["preset_id"]),
+        enabled=bool(row["enabled"]),
+        bookmaker_override=str(row["bookmaker_override"]),
+        defaults_json=str(row["defaults_json"]),
+        availability_reason=str(row["availability_reason"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def list_profile_quick_add_loadout_overrides(
+    profile_id: str,
+) -> list[ProfileQuickAddLoadoutOverrideRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT * FROM profile_quick_add_loadout_overrides
+            WHERE profile_id = ?
+            ORDER BY preset_id ASC
+            """,
+            (profile_id,),
+        ).fetchall()
+    return [map_profile_quick_add_loadout_override_row(row) for row in rows]
+
+
+def upsert_profile_quick_add_loadout_override(
+    profile_id: str, preset_id: str, payload: dict[str, Any]
+) -> ProfileQuickAddLoadoutOverrideRecord:
+    now = utc_now()
+    with connect() as connection:
+        existing = connection.execute(
+            """
+            SELECT defaults_json FROM profile_quick_add_loadout_overrides
+            WHERE profile_id = ? AND preset_id = ?
+            """,
+            (profile_id, preset_id),
+        ).fetchone()
+        defaults_json = (
+            json.dumps(payload["defaults"], sort_keys=True)
+            if payload.get("defaults") is not None
+            else str(existing["defaults_json"]) if existing is not None else "{}"
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_quick_add_loadout_overrides (
+              profile_id, preset_id, enabled, bookmaker_override, defaults_json,
+              availability_reason, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(profile_id, preset_id) DO UPDATE SET
+              enabled = excluded.enabled,
+              bookmaker_override = excluded.bookmaker_override,
+              defaults_json = excluded.defaults_json,
+              availability_reason = excluded.availability_reason,
+              updated_at = excluded.updated_at
+            """,
+            (
+                profile_id,
+                preset_id,
+                int(bool(payload.get("enabled", True))),
+                str(payload.get("bookmaker_override", "")).strip(),
+                defaults_json,
+                str(payload.get("availability_reason", "")).strip(),
+                now,
+                now,
+            ),
+        )
+        row = connection.execute(
+            """
+            SELECT * FROM profile_quick_add_loadout_overrides
+            WHERE profile_id = ? AND preset_id = ?
+            """,
+            (profile_id, preset_id),
+        ).fetchone()
+    assert row is not None
+    return map_profile_quick_add_loadout_override_row(row)
 
 
 def get_profile_lookup_value(

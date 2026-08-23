@@ -36,9 +36,20 @@ model or bypassing the normal add/edit workflow.
 
 ## Template authority
 
-Fund Manager-created reusable quick-add templates are represented by the existing Casino Common
-Bet Combo authority. A later slice may add an explicit `Save as Quick Add` action to the detailed
-editor. It must write a Common Bet Combo, not an unrelated template store.
+Fund Manager-created reusable quick-add templates are represented by the existing Common Bet Combo
+authority. A `quick_add` configuration enables a combo for one or more compact ledger flows and
+stores its label, ordering, compact fields and defaults. A later `Save as Quick Add` action from a
+detailed editor must write a Common Bet Combo, not an unrelated template store.
+
+- Global templates are Fund Manager-owned.
+- Profiles inherit global templates but may hide one, select a profile-eligible bookmaker, or
+  override explicitly permitted compact defaults.
+- A global edit flows to every profile except overridden fields. Profile edits never rewrite the
+  global template.
+- The compact modal only displays loadouts valid for the profile's account lifecycle/restrictions.
+  A limited account is selectable with a warning; blocked, gubbed, closed or
+  promotion-ineligible accounts are disabled with an explanation.
+- Archived loadouts remain available for historical audit only and cannot create a new row.
 
 ## States
 
