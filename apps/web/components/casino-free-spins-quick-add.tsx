@@ -245,24 +245,24 @@ export function CasinoFreeSpinsQuickAdd({
           </span>
         </label>
         <label className="field-control">
-          <span>Number Of Spins</span>
+          <span>Number Of Spins/Chips</span>
           <input aria-label="Quick add Free Spins number of spins" data-pd-id="casino-quick-add.spin-count" inputMode="numeric" onChange={(event) => update("spinCount", event.target.value.replace(/[^0-9]/g, ""))} value={values.spinCount} />
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.spin-count-chips">
-            {getChipValues(usage.spinCount, ["1", "4", "5", "10"]).map((spinCount) => <button aria-pressed={values.spinCount === spinCount} className="review-chip casino-quick-add-chip" key={spinCount} onClick={() => update("spinCount", spinCount)} type="button">{spinCount} spins</button>)}
+            {getChipValues(usage.spinCount, ["1", "5", "10"]).map((spinCount) => <button aria-pressed={values.spinCount === spinCount} className="review-chip casino-quick-add-chip" key={spinCount} onClick={() => update("spinCount", spinCount)} type="button">{spinCount} spin{spinCount === "1" ? "" : "s"}</button>)}
           </span>
         </label>
         <div className="field-control casino-quick-add-financial-field">
-          <label htmlFor="casino-quick-add-spin-stake">Spin Stake</label>
+          <label htmlFor="casino-quick-add-spin-stake">Spin/Chip Stake</label>
           <FinancialTextInput ariaLabel="Quick add Free Spins spin stake" dataPdId="casino-quick-add.spin-stake" id="casino-quick-add-spin-stake" onBlur={() => update("spinStake", normaliseMoney(values.spinStake))} onChange={(value) => update("spinStake", sanitiseMoneyInput(value, false))} value={values.spinStake} />
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.spin-stake-chips">
-            {getChipValues(usage.spinStake, ["0.10", "0.20", "0.50"]).map((spinStake) => <button aria-pressed={normaliseMoney(values.spinStake) === normaliseMoney(spinStake)} className="review-chip casino-quick-add-chip" key={spinStake} onClick={() => update("spinStake", spinStake)} type="button">£ {normaliseMoney(spinStake)}</button>)}
+            {getChipValues(usage.spinStake, ["0.05", "0.10", "0.20"]).map((spinStake) => <button aria-pressed={normaliseMoney(values.spinStake) === normaliseMoney(spinStake)} className="review-chip casino-quick-add-chip" key={spinStake} onClick={() => update("spinStake", spinStake)} type="button">£ {normaliseMoney(spinStake)}</button>)}
           </span>
         </div>
         <div className="field-control casino-quick-add-financial-field">
           <label htmlFor="casino-quick-add-converted-win">Converted Win Amount</label>
           <FinancialTextInput ariaLabel="Quick add Free Spins converted win amount" dataPdId="casino-quick-add.converted-win" id="casino-quick-add-converted-win" onBlur={() => update("convertedWin", normaliseMoney(values.convertedWin))} onChange={(value) => update("convertedWin", sanitiseMoneyInput(value, true))} value={values.convertedWin} valueTone={financialState(values.convertedWin)} />
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.converted-win-chips">
-            {getChipValues(usage.convertedWin, ["0.00", "0.20", "0.50", "1.00"]).map((convertedWin) => <button aria-pressed={normaliseMoney(values.convertedWin) === normaliseMoney(convertedWin)} className="review-chip casino-quick-add-chip" key={convertedWin} onClick={() => update("convertedWin", convertedWin)} type="button">£ {normaliseMoney(convertedWin)}</button>)}
+            {getChipValues(usage.convertedWin, ["0.20", "0.50", "1.50"]).map((convertedWin) => <button aria-pressed={normaliseMoney(values.convertedWin) === normaliseMoney(convertedWin)} className="review-chip casino-quick-add-chip" key={convertedWin} onClick={() => update("convertedWin", convertedWin)} type="button">£ {normaliseMoney(convertedWin)}</button>)}
           </span>
         </div>
         <label className="field-control">

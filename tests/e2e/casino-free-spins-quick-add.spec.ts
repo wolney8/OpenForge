@@ -14,7 +14,7 @@ test("Casino Free Spins Quick Add saves an explicit zero-own-cash result", async
   await expect(dialog.getByLabel("Quick add Free Spins bookmaker")).not.toHaveValue("");
   await dialog.getByLabel("Quick add Free Spins number of spins").fill("5");
   await dialog.getByLabel("Quick add Free Spins spin stake").fill("0.10");
-  await dialog.getByRole("button", { name: "£ 0.00" }).click();
+  await dialog.getByLabel("Quick add Free Spins converted win amount").fill("0.00");
   await dialog.getByRole("button", { name: "Save Free Spins" }).click();
   await expect(dialog).toBeHidden();
 
@@ -71,9 +71,9 @@ test("Casino Free Spins Quick Add normalizes decimal shorthand and shows quick-s
   await expect(convertedWin.locator("xpath=..")).toHaveClass(/financial-text-input-positive/);
   await expect(dialog.getByText("£", { exact: true }).nth(1)).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.converted-win-chips']").getByRole("button", { name: "£ 0.20" })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "1 spins" })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "4 spins" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "1 spin" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "5 spins" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "10 spins" })).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.bookmaker-chips'] button").first()).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.game-chips']").getByRole("button", { name: "Big Bass Bonanza" })).toBeVisible();
   await dialog.getByRole("button", { name: "Big Bass Bonanza" }).click();
