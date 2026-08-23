@@ -13,8 +13,24 @@ export type NotificationAttentionStage =
   | "due-4h"
   | "due-2h";
 
+export type NotificationAudience = "fund_manager" | "subscriber";
+export type NotificationSecurityTag = "fund_manager_only" | "subscriber_allowed";
+
+export type NotificationViewer = {
+  audience: NotificationAudience;
+  profileId?: string;
+};
+
+type SecurityScopedNotification = {
+  audience: NotificationAudience;
+  security_tag: NotificationSecurityTag;
+  profile_id: string;
+};
+
 export type FundManagerNotification = {
   audience: "fund_manager";
+  // A server-enforced delivery classification. Client filtering is only defence in depth.
+  security_tag: NotificationSecurityTag;
   kind: "task" | "information";
   task_state: "new" | "done";
   notification_id: string;
@@ -33,6 +49,21 @@ export type FundManagerNotification = {
   completion_href: string;
   tone: "warning" | "danger" | "info" | "success";
 };
+
+export function canViewerReceiveNotification(
+  notification: SecurityScopedNotification,
+  viewer: NotificationViewer
+): boolean {
+  if (viewer.audience === "fund_manager") {
+    return notification.audience === "fund_manager";
+  }
+  return (
+    notification.audience === "subscriber" &&
+    notification.security_tag === "subscriber_allowed" &&
+    Boolean(viewer.profileId) &&
+    notification.profile_id === viewer.profileId
+  );
+}
 
 export const fundManagerNotificationTypes = [
   {
@@ -272,6 +303,7 @@ function normalizeLocalNotification(
   const nowIso = new Date().toISOString();
   return {
     audience: "fund_manager",
+    security_tag: "fund_manager_only",
     kind: candidate.kind === "task" ? "task" : "information",
     task_state: candidate.task_state === "done" ? "done" : "new",
     notification_id: candidate.notification_id,
@@ -320,6 +352,7 @@ export function addOrReplaceLocalFundManagerNotification(
   const createdAt = input.created_at ?? new Date().toISOString();
   const notification: FundManagerNotification = {
     audience: "fund_manager",
+    security_tag: "fund_manager_only",
     kind: input.kind ?? "information",
     task_state: input.task_state ?? "new",
     notification_id: input.notification_id,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultFundManagerNotificationPreferences,
+  canViewerReceiveNotification,
   dismissNotificationIds,
   emptyNotificationViewState,
   filterNotificationsByPreferences,
@@ -18,6 +19,7 @@ import {
 const notifications: FundManagerNotification[] = [
   {
     audience: "fund_manager",
+    security_tag: "fund_manager_only",
     kind: "task",
     task_state: "new",
     notification_id: "NOTICE-001",
@@ -38,6 +40,7 @@ const notifications: FundManagerNotification[] = [
   },
   {
     audience: "fund_manager",
+    security_tag: "fund_manager_only",
     kind: "task",
     task_state: "new",
     notification_id: "NOTICE-002",
@@ -59,6 +62,32 @@ const notifications: FundManagerNotification[] = [
 ];
 
 describe("fund manager notification view state", () => {
+  it("keeps Fund Manager-only notices out of subscriber views", () => {
+    expect(
+      canViewerReceiveNotification(notifications[0], {
+        audience: "subscriber",
+        profileId: "PROFILE-001",
+      })
+    ).toBe(false);
+
+    const subscriberSafeNotification = {
+      ...notifications[0],
+      audience: "subscriber" as const,
+      security_tag: "subscriber_allowed" as const,
+    };
+    expect(
+      canViewerReceiveNotification(subscriberSafeNotification, {
+        audience: "subscriber",
+        profileId: "PROFILE-001",
+      })
+    ).toBe(true);
+    expect(
+      canViewerReceiveNotification(subscriberSafeNotification, {
+        audience: "subscriber",
+        profileId: "PROFILE-002",
+      })
+    ).toBe(false);
+  });
   it("tracks unread visible notifications separately from dismissed notifications", () => {
     const now = new Date("2026-07-21T12:00:00Z");
     const readState = markNotificationsRead(emptyNotificationViewState, [notifications[0]], now);

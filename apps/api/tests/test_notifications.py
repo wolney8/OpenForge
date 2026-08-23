@@ -60,6 +60,7 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
         item for item in notifications if item["record_id"] == sportsbook_bet_id
     )
     assert notification["audience"] == "fund_manager"
+    assert notification["security_tag"] == "fund_manager_only"
     assert notification["kind"] == "task"
     assert notification["task_state"] == "new"
     assert notification["notification_type"] == "partial_lay_reminder"
@@ -243,6 +244,7 @@ def test_free_bet_follow_up_reminders_feed_and_complete_from_notifications(
         item for item in feed_response.json() if item["record_id"] == free_bet_id
     )
     assert notification["notification_type"] == "free_bet_follow_up_reminder"
+    assert notification["security_tag"] == "fund_manager_only"
     assert notification["ledger_label"] == "Free Bets"
     assert notification["bookmaker_label"] == "Bookmaker A"
     assert notification["message"] == "Synthetic Free-Bet Notification"

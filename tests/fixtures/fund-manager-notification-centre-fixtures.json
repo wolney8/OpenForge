@@ -6,6 +6,7 @@
       "description": "A future partial-lay reminder enters the feed unread.",
       "source": {
         "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
         "kind": "task",
         "ledger_label": "Sportsbook Bets",
         "bookmaker_label": "Bookmaker A",
@@ -33,6 +34,7 @@
       "description": "Reading a notification leaves its active reminder unchanged.",
       "source": {
         "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
         "kind": "task",
         "ledger_label": "Sportsbook Bets",
         "bookmaker_label": "Bookmaker B",
@@ -58,6 +60,7 @@
       "description": "Clearing a notification hides it locally without resolving the reminder.",
       "source": {
         "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
         "kind": "task",
         "ledger_label": "Sportsbook Bets",
         "bookmaker_label": "Bookmaker C",
@@ -80,6 +83,7 @@
       "description": "Resolving the source moves it to Done until settlement.",
       "source": {
         "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
         "kind": "task",
         "ledger_label": "Sportsbook Bets",
         "bookmaker_label": "Bookmaker D",
@@ -102,6 +106,7 @@
       "description": "A read reminder re-enters unread state at each later attention threshold without duplicating its card.",
       "source": {
         "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
         "kind": "task",
         "ledger_label": "Sportsbook Bets",
         "bookmaker_label": "Bookmaker E",
@@ -143,6 +148,38 @@
         "visible_card_count": 1,
         "maximum_badge_contribution": 1,
         "task_state": "new"
+      }
+    },
+    {
+      "case_id": "FNC-006",
+      "description": "A Fund Manager-only task cannot enter a subscriber feed, even for the linked profile.",
+      "source": {
+        "audience": "fund_manager",
+        "security_tag": "fund_manager_only",
+        "profile_id": "PROFILE-001"
+      },
+      "viewer": {
+        "audience": "subscriber",
+        "profile_id": "PROFILE-001"
+      },
+      "expected": {
+        "visible": false
+      }
+    },
+    {
+      "case_id": "FNC-007",
+      "description": "A subscriber-allowed notification remains isolated to its matching profile.",
+      "source": {
+        "audience": "subscriber",
+        "security_tag": "subscriber_allowed",
+        "profile_id": "PROFILE-001"
+      },
+      "viewer": {
+        "audience": "subscriber",
+        "profile_id": "PROFILE-002"
+      },
+      "expected": {
+        "visible": false
       }
     }
   ]
