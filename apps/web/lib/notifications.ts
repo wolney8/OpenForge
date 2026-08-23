@@ -281,6 +281,38 @@ export function getVisibleNotifications(
   return notifications.filter((notification) => !dismissed.has(notification.notification_id));
 }
 
+export type NotificationHistoryStatus = "all" | "new" | "done";
+
+export function filterNotificationHistory(
+  notifications: FundManagerNotification[],
+  viewState: NotificationViewState,
+  options: {
+    query: string;
+    notificationType: string;
+    status: NotificationHistoryStatus;
+  }
+): FundManagerNotification[] {
+  const normalizedQuery = options.query.trim().toLocaleLowerCase();
+  return getVisibleNotifications(notifications, viewState).filter((notification) => {
+    if (options.status !== "all" && notification.task_state !== options.status) return false;
+    if (
+      options.notificationType !== "all" &&
+      notification.notification_type !== options.notificationType
+    ) {
+      return false;
+    }
+    if (!normalizedQuery) return true;
+    return [
+      notification.title,
+      notification.message,
+      notification.profile_name,
+      notification.ledger_label,
+      notification.bookmaker_label,
+      notification.record_id,
+    ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+  });
+}
+
 export function getUnreadNotificationCount(
   notifications: FundManagerNotification[],
   viewState: NotificationViewState,

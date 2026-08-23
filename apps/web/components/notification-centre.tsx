@@ -324,6 +324,15 @@ export function NotificationCentre() {
             <h2>Notifications</h2>
           </div>
           <div className="notification-panel-actions">
+            <Link
+              aria-label="View all notifications"
+              className="icon-button notification-panel-icon-button"
+              data-pd-id="notifications.view-all"
+              href="/notifications"
+              onClick={() => setIsOpen(false)}
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
+            </Link>
             <div className="notification-actions-shell">
               <button
                 aria-expanded={isActionsOpen}

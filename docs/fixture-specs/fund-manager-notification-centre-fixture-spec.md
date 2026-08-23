@@ -27,6 +27,8 @@ or any financial output.
   not an additional notification
 - clearing a notification removes only its local visibility
 - mark-all-read retains all visible cards and removes the bell badge
+- the notification history page retains read cards until an explicit clear and filters by name,
+  notification type and task state
 - read retained notifications keep the active bell icon without a red badge
 - completing a task resolves the source and retains the card under `Done` until settlement
 - resolving from the sportsbook ledger produces the same `Done` state as the notification action

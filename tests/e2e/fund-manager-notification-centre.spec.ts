@@ -63,6 +63,79 @@ test("notification panel defaults to New and requires a deliberate hover to mark
   await expect(trigger.locator(".notification-count-badge")).toHaveCount(0);
 });
 
+test("notification history retains read notifications until an explicit clear", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
+  });
+  await page.route(`${apiBaseUrl}/fund-manager/notifications`, async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          audience: "fund_manager",
+          kind: "task",
+          task_state: "new",
+          notification_id: "partial-lay:PROFILE-HISTORY:SB-HISTORY:2026-07-21T12:00:00Z",
+          notification_type: "partial_lay_reminder",
+          title: "Partial lay recheck",
+          ledger_label: "Sportsbook Bets",
+          bookmaker_label: "Bookmaker A",
+          message: "Review remaining exposure for history test.",
+          profile_id: "profile-demo-001",
+          profile_name: "Subscriber Alpha",
+          record_id: "SB-HISTORY",
+          due_at: "2099-07-23T18:00:00Z",
+          settles_at: "2099-07-23T20:00:00Z",
+          created_at: "2026-07-21T12:00:00Z",
+          href: "/profiles/profile-demo-001/tracker/sportsbook-bets?record=SB-HISTORY",
+          completion_href: "/profiles/profile-demo-001/sportsbook-bets/SB-HISTORY/partial-lay-reminder",
+          tone: "warning",
+        },
+        {
+          audience: "fund_manager",
+          kind: "reminder",
+          task_state: "new",
+          notification_id: "free-bet:PROFILE-HISTORY:FB-HISTORY:2026-07-21T12:00:00Z",
+          notification_type: "free_bet_follow_up_reminder",
+          title: "Free bet follow up",
+          ledger_label: "Free Bets",
+          bookmaker_label: "Bookmaker B",
+          message: "Check the free bet before expiry.",
+          profile_id: "profile-demo-001",
+          profile_name: "Subscriber Alpha",
+          record_id: "FB-HISTORY",
+          due_at: "2099-07-24T18:00:00Z",
+          settles_at: "2099-07-24T20:00:00Z",
+          created_at: "2026-07-21T12:00:00Z",
+          href: "/profiles/profile-demo-001/tracker/free-bets?record=FB-HISTORY",
+          tone: "info",
+        },
+      ],
+    });
+  });
+
+  await page.goto("/profiles");
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  await page.locator('[data-pd-id="notifications.view-all"]').click();
+  await expect(page).toHaveURL(/\/notifications$/);
+
+  const history = page.locator('[data-pd-id="notifications.history"]');
+  const partialLay = page.locator('[data-pd-id="notifications.history.item.SB-HISTORY"]');
+  await expect(history).toBeVisible();
+  await expect(partialLay).toBeVisible();
+
+  await page.locator('[data-pd-id="notifications.history.search"]').fill("Partial lay");
+  await expect(page.locator('[data-pd-id^="notifications.history.item."]')).toHaveCount(1);
+  await page.locator('[data-pd-id="notifications.history.type"]').selectOption(
+    "partial_lay_reminder"
+  );
+  await page.locator('[data-pd-id="notifications.history.mark-read"]').click();
+  await expect(partialLay).not.toHaveClass(/is-unread/);
+  await expect(partialLay).toBeVisible();
+
+  await page.locator('[data-pd-id="notifications.history.clear"]').click();
+  await expect(partialLay).toHaveCount(0);
+});
+
 test("Fund Manager notification centre exposes and locally manages active reminders", async ({
   page,
   request,
