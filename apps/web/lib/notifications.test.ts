@@ -5,6 +5,7 @@ import {
   dismissNotificationIds,
   emptyNotificationViewState,
   filterNotificationsByPreferences,
+  filterNotificationHistory,
   filterFundManagerNotificationsForViewer,
   formatUnreadNotificationCount,
   fundManagerNotificationTypes,
@@ -232,6 +233,29 @@ describe("fund manager notification view state", () => {
         defaultFundManagerNotificationPreferences
       )
     ).toEqual([notifications[0]]);
+  });
+
+  it("filters retained notification history by name, type and state without clearing read items", () => {
+    const doneNotification = { ...notifications[1], task_state: "done" as const };
+    const readState = markNotificationsRead(
+      emptyNotificationViewState,
+      [notifications[0]],
+      new Date("2026-07-21T12:00:00Z")
+    );
+    expect(
+      filterNotificationHistory([notifications[0], doneNotification], readState, {
+        query: "bookmaker a",
+        notificationType: "partial_lay_reminder",
+        status: "new",
+      })
+    ).toEqual([notifications[0]]);
+    expect(
+      filterNotificationHistory([notifications[0], doneNotification], readState, {
+        query: "",
+        notificationType: "all",
+        status: "done",
+      })
+    ).toEqual([doneNotification]);
   });
 
   it("documents timing and Fund Manager-only delivery for every approved source", () => {

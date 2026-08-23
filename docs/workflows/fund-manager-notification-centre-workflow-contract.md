@@ -27,6 +27,8 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
   notifications have been read
 - unread badge: exact count from `1` to `9`, then `9+`
 - panel: bounded non-modal popover with a fixed header and independently scrollable notification list
+- notification history: `/notifications` retains read and completed cards until an explicit clear;
+  it supports filtering by notification type/state and search across notification context
 - profile context: notifications may span all profiles managed by the local Fund Manager
 
 ## 4. Notification lifecycle
@@ -109,6 +111,8 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
 - every closed-to-open transition defaults the panel to `New`, regardless of the previously viewed
   section
 - the three-dot action menu contains `Mark all as read` and `Clear notifications`
+- the bell popover provides `View all notifications`; the history page permits bulk mark-read and
+  bulk clear only for the current filtered retained set
 - task cards use a green Material completion action; destructive clearing requires inline
   confirmation rather than a nested modal
 - disabled actions remain unavailable when their exact preconditions are false
