@@ -22,18 +22,26 @@ type CasinoFreeSpinsQuickAddProps = {
   profileId: string;
 };
 
-type QuickAddUsage = Record<"bookmaker" | "spinCount" | "spinStake" | "convertedWin", Record<string, number>>;
+type QuickAddUsage = Record<"bookmaker" | "spinCount" | "spinStake" | "convertedWin" | "game", Record<string, number>>;
 
-const moneyPattern = /^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/;
+const moneyPattern = /^-?(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/;
 const countPattern = /^\d+$/;
-const emptyUsage: QuickAddUsage = { bookmaker: {}, spinCount: {}, spinStake: {}, convertedWin: {} };
+const emptyUsage: QuickAddUsage = { bookmaker: {}, spinCount: {}, spinStake: {}, convertedWin: {}, game: {} };
 
 function normaliseMoney(value: string): string {
-  const trimmed = value.trim().replace(/^\./, "0.");
+  const trimmed = value.trim().replace(/^-?\./, (match) => match.startsWith("-") ? "-0." : "0.");
   if (!moneyPattern.test(trimmed)) {
     return value;
   }
   return Number(trimmed).toFixed(2);
+}
+
+function financialState(value: string): "positive" | "negative" | "neutral" {
+  if (!moneyPattern.test(value)) return "neutral";
+  const numericValue = Number(value);
+  if (numericValue > 0) return "positive";
+  if (numericValue < 0) return "negative";
+  return "neutral";
 }
 
 function getInitialValues(values?: CasinoFreeSpinsQuickAddValues | null): CasinoFreeSpinsQuickAddValues {
@@ -61,6 +69,7 @@ function readUsage(profileId: string): QuickAddUsage {
       spinCount: parsed.spinCount ?? {},
       spinStake: parsed.spinStake ?? {},
       convertedWin: parsed.convertedWin ?? {},
+      game: parsed.game ?? {},
     };
   } catch {
     return emptyUsage;
@@ -126,6 +135,9 @@ export function CasinoFreeSpinsQuickAdd({
         spinCount: { ...usage.spinCount, [nextValues.spinCount]: (usage.spinCount[nextValues.spinCount] ?? 0) + 1 },
         spinStake: { ...usage.spinStake, [nextValues.spinStake]: (usage.spinStake[nextValues.spinStake] ?? 0) + 1 },
         convertedWin: { ...usage.convertedWin, [nextValues.convertedWin]: (usage.convertedWin[nextValues.convertedWin] ?? 0) + 1 },
+        game: nextValues.game.trim()
+          ? { ...usage.game, [nextValues.game.trim()]: (usage.game[nextValues.game.trim()] ?? 0) + 1 }
+          : usage.game,
       };
       window.localStorage.setItem(usageKey(profileId), JSON.stringify(nextUsage));
       setUsage(nextUsage);
@@ -185,7 +197,7 @@ export function CasinoFreeSpinsQuickAdd({
         </label>
         <label className="field-control">
           <span>Converted Win Amount</span>
-          <span className="casino-quick-add-money-input"><span aria-hidden="true">£</span><input aria-label="Quick add Free Spins converted win amount" data-pd-id="casino-quick-add.converted-win" inputMode="decimal" onBlur={(event) => update("convertedWin", normaliseMoney(event.target.value))} onChange={(event) => update("convertedWin", event.target.value.replace(/[^0-9.]/g, ""))} value={values.convertedWin} /></span>
+          <span className={`casino-quick-add-money-input casino-quick-add-money-input-${financialState(values.convertedWin)}`}><span aria-hidden="true">£</span><input aria-label="Quick add Free Spins converted win amount" data-pd-id="casino-quick-add.converted-win" inputMode="decimal" onBlur={(event) => update("convertedWin", normaliseMoney(event.target.value))} onChange={(event) => update("convertedWin", event.target.value.replace(/[^0-9.-]/g, ""))} value={values.convertedWin} /></span>
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.converted-win-chips">
             {getChipValues(usage.convertedWin, ["0.00", "0.20", "0.50", "1.00"]).map((convertedWin) => <button aria-pressed={normaliseMoney(values.convertedWin) === normaliseMoney(convertedWin)} className="review-chip casino-quick-add-chip" key={convertedWin} onClick={() => update("convertedWin", convertedWin)} type="button">£ {normaliseMoney(convertedWin)}</button>)}
           </span>
@@ -197,6 +209,9 @@ export function CasinoFreeSpinsQuickAdd({
         <label className="field-control">
           <span>Game Or Slot <em>(Optional)</em></span>
           <input aria-label="Quick add Free Spins game or slot" data-pd-id="casino-quick-add.game" onChange={(event) => update("game", event.target.value)} value={values.game} />
+          <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.game-chips">
+            {getChipValues(usage.game, ["Big Bass Bonanza", "Fishin' Frenzy", "Book Of Dead", "Sweet Bonanza"]).map((game) => <button aria-pressed={values.game === game} className="review-chip casino-quick-add-chip" key={game} onClick={() => update("game", game)} type="button">{game}</button>)}
+          </span>
         </label>
       </div>
       {validationMessage ? <p className="field-hint" role="status">{validationMessage}</p> : null}

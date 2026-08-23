@@ -68,9 +68,13 @@ test("Casino Free Spins Quick Add normalizes decimal shorthand and shows quick-s
   await convertedWin.fill(".30");
   await convertedWin.blur();
   await expect(convertedWin).toHaveValue("0.30");
+  await expect(convertedWin.locator("xpath=..")).toHaveClass(/casino-quick-add-money-input-positive/);
   await expect(dialog.getByText("£", { exact: true }).nth(1)).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.converted-win-chips']").getByRole("button", { name: "£ 0.20" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "5 spins" })).toBeVisible();
   await expect(dialog.locator("[data-pd-id='casino-quick-add.bookmaker-chips'] button").first()).toBeVisible();
+  await expect(dialog.locator("[data-pd-id='casino-quick-add.game-chips']").getByRole("button", { name: "Big Bass Bonanza" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Big Bass Bonanza" }).click();
+  await expect(dialog.getByLabel("Quick add Free Spins game or slot")).toHaveValue("Big Bass Bonanza");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
