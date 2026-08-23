@@ -4,7 +4,7 @@ _Last updated: 2026-08-03_
 
 ## Contract covered
 
-- `docs/contracts/fund-manager-contract.md`
+- `docs/contracts/fund-manager-platform-finance-contract.md`
 
 ## Purpose
 

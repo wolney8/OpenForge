@@ -189,7 +189,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
 
   useToastDismiss(statusMessage, clearStatusMessage);

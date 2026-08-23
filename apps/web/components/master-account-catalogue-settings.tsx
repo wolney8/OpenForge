@@ -479,7 +479,10 @@ function AccountCatalogueForm({
           <button className="button-link" disabled={isSaving} onClick={onBack} type="button">Back to Catalogue</button>
           {!isNew ? <button className={draft.status === "Active" ? "danger-button" : "button-link"} data-pd-id="account-catalogue.archive" disabled={isSaving} onClick={onToggleArchive} type="button">{draft.status === "Active" ? "Archive Account" : "Restore Account"}</button> : null}
         </div>
-        <button className="modal-primary-button" disabled={isSaving} type="submit">{isSaving ? "Saving account…" : isNew ? "Add Account" : "Save Account"}</button>
+        <button className="modal-primary-button" disabled={isSaving} type="submit">
+          {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
+          <span>{isSaving ? "Saving Account" : isNew ? "Add Account" : "Save Account"}</span>
+        </button>
       </footer>
     </form>
   );

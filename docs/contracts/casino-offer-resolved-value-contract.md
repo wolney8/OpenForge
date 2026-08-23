@@ -102,10 +102,24 @@ Plum Duff must not silently derive the authoritative Net Result. Where complete 
 spent and returned inputs exist, the UI may show a non-authoritative suggestion for
 Fund Manager confirmation.
 
+The settlement helper may calculate:
+
+`Suggested Net Result = Cash Returned + Reward Converted - Own Cash Committed - Other Costs`
+
+`Own Cash Committed` may be auto-filled as an editable default from the relevant
+cash stake/deposit field. No-cash reward flows may default it to `0.00`. If the
+Fund Manager manually changes `Own Cash Committed`, later Wagering or Reward edits
+must not overwrite that value unless the Fund Manager explicitly reapplies the
+suggested cash value.
+
+This suggestion is only persisted as the authoritative `final_net_pnl` after the
+Fund Manager explicitly applies or confirms it in the Settlement step.
+
 The approved expansion may add:
 
 - optional withdrawable cash returned;
 - own cash committed to the campaign, excluding repeated turnover of the same funds;
+- optional actual settlement costs;
 - bonus or credit awarded;
 - spin stake and required spin count;
 - wager target and wager multiplier;

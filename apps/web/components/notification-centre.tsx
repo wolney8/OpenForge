@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
+  filterNotificationsByPreferences,
   loadLocalFundManagerNotifications,
   dismissNotificationIds,
   emptyNotificationViewState,
@@ -14,6 +15,7 @@ import {
   getUnreadNotificationCount,
   getVisibleNotifications,
   isNotificationUnread,
+  loadFundManagerNotificationPreferences,
   markNotificationsRead,
   normalizeNotificationViewState,
   type FundManagerNotification,
@@ -69,11 +71,19 @@ export function NotificationCentre() {
         if (!response.ok) throw new Error("Unable to load notifications");
         const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
-        setNotifications([...loadLocalFundManagerNotifications(), ...payload]);
+        setNotifications(
+          filterNotificationsByPreferences(
+            [...loadLocalFundManagerNotifications(), ...payload],
+            loadFundManagerNotificationPreferences()
+          )
+        );
         setLoadFailed(false);
       } catch {
         if (!isActive) return;
-        const localNotifications = loadLocalFundManagerNotifications();
+        const localNotifications = filterNotificationsByPreferences(
+          loadLocalFundManagerNotifications(),
+          loadFundManagerNotificationPreferences()
+        );
         setNotifications(localNotifications);
         setLoadFailed(localNotifications.length === 0);
       } finally {
@@ -249,7 +259,12 @@ export function NotificationCentre() {
       if (!prefersReducedMotion) {
         await new Promise((resolve) => window.setTimeout(resolve, completionExitDurationMs));
       }
-      setNotifications(refreshedNotifications);
+      setNotifications(
+        filterNotificationsByPreferences(
+          refreshedNotifications,
+          loadFundManagerNotificationPreferences()
+        )
+      );
       setExitingId("");
       setCompletionAnnouncement(
         `${notification.message} was completed and moved to Done.`

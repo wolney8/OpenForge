@@ -43,7 +43,7 @@ export type CommonBetCombo = {
   sort_order: number;
 };
 
-const strategies = ["", "Standard", "Underlay", "Overlay", "Custom", "No Lay", "Partial Lay", "Multilay"];
+const strategies = ["", "Standard", "Underlay", "Overlay", "Custom", "No Lay", "Multilay"];
 const emptyDraft: CommonBetCombo = {
   preset_id: "",
   name: "",
@@ -250,7 +250,7 @@ export function CommonBetComboSettings() {
                 </div>
               ) : null}
             </div>
-            <footer className="workflow-editor-modal-footer"><button className="button-link" onClick={() => draft ? setDraft(null) : closeDialog()} type="button">{draft ? "Back to Combos" : "Close"}</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? "Saving" : "Save Combo"}</button> : null}</footer>
+            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={() => draft ? setDraft(null) : closeDialog()} type="button">{draft ? "Back to Combos" : "Close"}</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Combo"}</span></button> : null}</footer>
           </section>
         </div>
       ) : null}

@@ -301,6 +301,56 @@ describe("summarizeTrackerData", () => {
     expect(summary.moduleBreakdown[0]?.label).toBe("Sportsbook");
   });
 
+  it("uses ledger display-value fallbacks when reporting value is blank", () => {
+    const range = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-01T10:00:00Z"),
+    });
+    const fallbackDataset: TrackerSummaryDataset = {
+      ...dataset,
+      sportsbookBets: [
+        {
+          ...dataset.sportsbookBets[0]!,
+          sportsbook_bet_id: "SB-FALLBACK-FINAL",
+          reporting_value: "",
+          final_net_pnl: "4.25",
+          projected_current_pnl: "99.00",
+        },
+        {
+          ...dataset.sportsbookBets[1]!,
+          sportsbook_bet_id: "SB-FALLBACK-CURRENT",
+          reporting_value: "",
+          final_net_pnl: "",
+          projected_current_pnl: "-1.75",
+        },
+      ],
+      freeBets: [
+        {
+          ...dataset.freeBets[0]!,
+          reporting_value: "",
+          final_net_pnl: "",
+          projected_current_pnl: "2.50",
+        },
+      ],
+      casinoOffers: [],
+      cashAdjustments: [],
+    };
+
+    const summary = summarizeTrackerData(fallbackDataset, range, new Date("2026-07-01T10:00:00Z"));
+
+    expect(summary.profitQuickView.sportsbook.reportingValue).toBeCloseTo(2.5, 6);
+    expect(summary.profitQuickView.freeBets.reportingValue).toBeCloseTo(2.5, 6);
+    expect(summary.profitQuickView.overallPnl).toBeCloseTo(5, 6);
+    expect(summary.moduleBreakdown.find((row) => row.moduleKey === "sportsbook")?.reportingValue).toBeCloseTo(
+      2.5,
+      6
+    );
+    expect(summary.bookmakerBreakdown.find((row) => row.bookmaker === "Bookie A")?.sportsbookPnl).toBeCloseTo(
+      4.25,
+      6
+    );
+  });
+
   it("keeps selected-range operational counts and liability inside the resolved range", () => {
     const range = resolveDateRange({
       preset: "Week (Mon-Sun)",

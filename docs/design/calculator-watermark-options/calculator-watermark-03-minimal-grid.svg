@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <title>Minimal grid calculator watermark</title>
+  <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+    <path d="M26 10h44a8 8 0 0 1 8 8v60a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8V18a8 8 0 0 1 8-8z"/>
+    <path d="M30 25h36M30 42h36M30 58h36M30 74h36"/>
+    <path d="M42 42v32M54 42v32"/>
+  </g>
+</svg>

@@ -688,7 +688,7 @@ export function DatabaseBackupSettings() {
                           }}
                           type="button"
                         >
-                          <span aria-hidden="true" className="material-symbols-outlined">backup</span>
+                          {isCreating ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">backup</span>}
                           <span>
                             {isCreating
                               ? "Creating Backup"

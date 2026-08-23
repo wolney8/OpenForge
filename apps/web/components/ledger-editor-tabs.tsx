@@ -47,13 +47,25 @@ export function LedgerEditorTabRail({
         const isGuidedTarget = tab.id === guidedTargetTabId && !isActive;
         const badge = getLedgerEditorTabBadgeLabel(tab);
         const isLocked = tab.status === "locked";
+        const attentionIcon =
+          tab.attentionState === "overdue_settlement"
+            ? "alarm"
+            : tab.attentionState === "pending_settlement"
+              ? "hourglass_top"
+              : null;
+        const attentionLabel =
+          tab.attentionState === "overdue_settlement"
+            ? "Settlement action is due"
+            : tab.attentionState === "pending_settlement"
+              ? "Settlement is pending"
+              : null;
         return (
           <button
             aria-controls={`ledger-editor-panel-${tab.id}`}
             aria-disabled={isLocked}
             aria-label={getLedgerEditorTabStatusLabel(tab)}
             aria-selected={isActive}
-            className={`ledger-editor-tab-button ledger-editor-tab-button-${tab.status}${
+            className={`ledger-editor-tab-button ledger-editor-tab-button-${tab.status} ledger-editor-tab-button-${tab.id}${
               isActive ? " is-active" : ""
             }${isGuidedTarget ? " is-guided-target" : ""}`}
             data-pd-id={`ledger-editor.tab.${tab.id}`}
@@ -78,8 +90,25 @@ export function LedgerEditorTabRail({
             </span>
             <span className="ledger-editor-tab-copy">
               <span className="ledger-editor-tab-label">{tab.label}</span>
-              {badge ? <span className="ledger-editor-tab-badge">{badge}</span> : null}
+              {badge && tab.status !== "complete" ? (
+                <span
+                  aria-label={`${badge} action required`}
+                  className="ledger-editor-tab-badge"
+                  role="status"
+                  title={`${badge} action required`}
+                />
+              ) : null}
             </span>
+            {attentionIcon ? (
+              <span
+                aria-label={attentionLabel ?? undefined}
+                className={`material-symbols-outlined ledger-editor-tab-attention ledger-editor-tab-attention-${tab.attentionState}`}
+                role="status"
+                title={attentionLabel ?? undefined}
+              >
+                {attentionIcon}
+              </span>
+            ) : null}
           </button>
         );
       })}

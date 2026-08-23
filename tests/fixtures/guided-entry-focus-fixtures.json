@@ -11,6 +11,8 @@
     {"case_id": "GUIDE-008", "inputs": {"ledger": "sportsbook", "strategy": "Partial Lay", "lay_odds_1": "2.10", "lay_actual": ""}, "expected": {"next_required_field": "lay_actual"}},
     {"case_id": "GUIDE-009", "inputs": {"ledger": "sportsbook", "status": "Settled", "result": "Back Won", "settlement_date": ""}, "expected": {"next_required_field": "settlement"}},
     {"case_id": "GUIDE-009A", "inputs": {"ledger": "sportsbook", "status": "Settled", "result": "Pending", "settlement_date": "2026-07-20T18:00"}, "expected": {"next_required_field": "settlement"}},
-    {"case_id": "GUIDE-009B", "inputs": {"ledger": "sportsbook", "strategy": "No Lay", "status": "Settled", "result": "Pending"}, "expected": {"next_required_field": "settlement", "hidden_fields": ["exchange", "lay_odds_1", "lay_actual"]}}
+    {"case_id": "GUIDE-009B", "inputs": {"ledger": "sportsbook", "strategy": "No Lay", "status": "Settled", "result": "Pending"}, "expected": {"next_required_field": "settlement", "hidden_fields": ["exchange", "lay_odds_1", "lay_actual"]}},
+    {"case_id": "GUIDE-011", "inputs": {"ledger": "sportsbook", "strategy": "Standard", "offer": "Demo Offer", "bookmaker": "Bookmaker A", "bet_type": "Single", "offer_type": "Bet & Get", "fixture_type": "Football", "event_name": "Demo Event", "back_stake": "10.00", "back_odds": "2.00", "exchange": "Exchange A"}, "expected": {"next_required_field": "lay_odds_1", "hidden_fields": []}},
+    {"case_id": "GUIDE-012", "inputs": {"ledger": "sportsbook", "strategy": "Underlay", "offer": "Demo Offer", "bookmaker": "Bookmaker A", "bet_type": "Single", "offer_type": "Bet & Get", "fixture_type": "Football", "event_name": "Demo Event", "back_stake": "10.00", "back_odds": "2.00", "exchange": "Exchange A", "lay_odds_1": "2.10"}, "expected": {"next_required_field": "lay_actual", "hidden_fields": []}}
   ]
 }

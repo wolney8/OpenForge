@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <title>Ledger calculator watermark</title>
+  <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+    <rect x="16" y="14" width="64" height="68" rx="12"/>
+    <path d="M28 28h40M28 42h40"/>
+    <path d="M30 58h10M48 58h10M66 58h2M30 70h10M48 70h20"/>
+    <path d="M68 22l8-8M76 14v12H64"/>
+  </g>
+</svg>

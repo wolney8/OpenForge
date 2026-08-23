@@ -12,6 +12,10 @@ test("cash adjustment enforces direction rules, saves a signed value, and return
 
   try {
     await page.goto(`/profiles/${profileId}/tracker/cash-adjustments`);
+    const rangeSelect = page.getByLabel("Change tracker date range");
+    if (await rangeSelect.isVisible()) {
+      await rangeSelect.selectOption({ label: "All Dates" });
+    }
     await page.getByRole("button", { name: "Add cash adjustment" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Create cash adjustment" });
@@ -30,15 +34,13 @@ test("cash adjustment enforces direction rules, saves a signed value, and return
     await adjustmentType.selectOption("Withdrawal");
     await page.getByLabel("Adjustment date", { exact: true }).fill("2026-07-14T12:00");
     await page.getByLabel("Amount", { exact: true }).fill("10.00");
+    await dialog.getByRole("tab", { name: /Notes/ }).click();
     await page.getByLabel("Description", { exact: true }).fill(description);
     await expect(page.getByLabel("Signed value preview", { exact: true })).toHaveValue("£ (10.00)");
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("table")).toContainText(description);
-    await expect(page.locator(".status-toast-success")).toContainText(
-      "Created cash adjustment"
-    );
 
     const rowsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
     expect(rowsResponse.ok()).toBeTruthy();

@@ -81,7 +81,34 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   await expect(page.locator('[data-pd-id="dashboard.recent-activity"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="dashboard.peer-comparison"]')).toContainText("Open current value");
   await expect(page.locator('[data-pd-id="dashboard.fund-manager-fees"]')).toContainText("Available to withdraw");
-  await expect(page.getByRole("button", { name: "Dashboard range shortcut 1M" })).toBeVisible();
+  const activeDashboardPeriod = page.getByRole("button", { name: "Dashboard range shortcut 1M" });
+  await expect(activeDashboardPeriod).toBeVisible();
+  const periodGeometry = await page.locator(".dashboard-period-control").evaluate((control) => {
+    const activePill = control.querySelector(".dashboard-period-pill.is-active");
+    if (!activePill) {
+      throw new Error("Active dashboard period pill missing");
+    }
+    const controlBounds = control.getBoundingClientRect();
+    const pillBounds = activePill.getBoundingClientRect();
+    const computed = window.getComputedStyle(control);
+    return {
+      controlHeight: controlBounds.height,
+      controlWidth: controlBounds.width,
+      overflowY: computed.overflowY,
+      pillCenterOffset: Math.abs(
+        pillBounds.top + pillBounds.height / 2 - (controlBounds.top + controlBounds.height / 2)
+      ),
+      pillHeight: pillBounds.height,
+      pillWidth: pillBounds.width,
+    };
+  });
+  expect(periodGeometry.controlHeight).toBeLessThanOrEqual(50);
+  expect(periodGeometry.controlWidth).toBeLessThanOrEqual(310);
+  expect(periodGeometry.overflowY).toBe("hidden");
+  expect(periodGeometry.pillCenterOffset).toBeLessThanOrEqual(2);
+  expect(periodGeometry.pillHeight).toBeLessThan(periodGeometry.controlHeight);
+  expect(periodGeometry.pillHeight).toBeLessThanOrEqual(44);
+  expect(periodGeometry.pillWidth).toBeGreaterThan(periodGeometry.pillHeight);
   const hasNoPageHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
   );

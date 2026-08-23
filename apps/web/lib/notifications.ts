@@ -4,6 +4,8 @@ export const FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY =
   "plum-duff:fund-manager-notifications:v1";
 export const FUND_MANAGER_LOCAL_NOTIFICATIONS_STORAGE_KEY =
   "plum-duff:fund-manager-local-notifications:v1";
+export const FUND_MANAGER_NOTIFICATION_PREFERENCES_STORAGE_KEY =
+  "plum-duff:fund-manager-notification-preferences:v1";
 
 export type NotificationAttentionStage =
   | "created"
@@ -31,6 +33,45 @@ export type FundManagerNotification = {
   completion_href: string;
   tone: "warning" | "danger" | "info" | "success";
 };
+
+export const fundManagerNotificationTypes = [
+  {
+    id: "database_backup_reminder",
+    label: "Database Backup Reminders",
+    description:
+      "Prompts the Fund Manager when local backups are stale or enough tracker rows have changed.",
+  },
+  {
+    id: "partial_lay_reminder",
+    label: "Partial Lay Reminders",
+    description:
+      "Tracks sportsbook partial-lay follow-up tasks and re-alerts on the due day, four hours before, and two hours before.",
+  },
+  {
+    id: "free_bet_follow_up_reminder",
+    label: "Free Bet Follow-Up Reminders",
+    description:
+      "Tracks free-bet review tasks until the free bet is resolved or its relevant lifecycle date has passed.",
+  },
+] as const;
+
+export type FundManagerNotificationTypeId =
+  (typeof fundManagerNotificationTypes)[number]["id"];
+
+export type FundManagerNotificationPreferences = Record<
+  FundManagerNotificationTypeId,
+  boolean
+>;
+
+export const defaultFundManagerNotificationPreferences: FundManagerNotificationPreferences = {
+  database_backup_reminder: true,
+  partial_lay_reminder: true,
+  free_bet_follow_up_reminder: true,
+};
+
+const knownFundManagerNotificationTypeIds = new Set<string>(
+  fundManagerNotificationTypes.map((notificationType) => notificationType.id)
+);
 
 export type LocalFundManagerNotificationInput = Pick<
   FundManagerNotification,
@@ -68,6 +109,63 @@ export const emptyNotificationViewState: NotificationViewState = {
   readKeys: [],
   dismissedIds: [],
 };
+
+export function normalizeFundManagerNotificationPreferences(
+  value: unknown
+): FundManagerNotificationPreferences {
+  if (!value || typeof value !== "object") {
+    return { ...defaultFundManagerNotificationPreferences };
+  }
+  const candidate = value as Partial<Record<FundManagerNotificationTypeId, unknown>>;
+  return fundManagerNotificationTypes.reduce<FundManagerNotificationPreferences>(
+    (preferences, notificationType) => ({
+      ...preferences,
+      [notificationType.id]:
+        typeof candidate[notificationType.id] === "boolean"
+          ? candidate[notificationType.id]
+          : defaultFundManagerNotificationPreferences[notificationType.id],
+    }),
+    { ...defaultFundManagerNotificationPreferences }
+  );
+}
+
+export function loadFundManagerNotificationPreferences(): FundManagerNotificationPreferences {
+  if (typeof window === "undefined") return { ...defaultFundManagerNotificationPreferences };
+  try {
+    const stored = window.localStorage.getItem(
+      FUND_MANAGER_NOTIFICATION_PREFERENCES_STORAGE_KEY
+    );
+    return stored
+      ? normalizeFundManagerNotificationPreferences(JSON.parse(stored) as unknown)
+      : { ...defaultFundManagerNotificationPreferences };
+  } catch {
+    return { ...defaultFundManagerNotificationPreferences };
+  }
+}
+
+export function saveFundManagerNotificationPreferences(
+  preferences: FundManagerNotificationPreferences
+): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    FUND_MANAGER_NOTIFICATION_PREFERENCES_STORAGE_KEY,
+    JSON.stringify(normalizeFundManagerNotificationPreferences(preferences))
+  );
+  window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+}
+
+export function filterNotificationsByPreferences(
+  notifications: FundManagerNotification[],
+  preferences: FundManagerNotificationPreferences
+): FundManagerNotification[] {
+  const knownTypes = new Set<string>(
+    fundManagerNotificationTypes.map((notificationType) => notificationType.id)
+  );
+  return notifications.filter((notification) => {
+    if (!knownTypes.has(notification.notification_type)) return true;
+    return preferences[notification.notification_type as FundManagerNotificationTypeId];
+  });
+}
 
 export function normalizeNotificationViewState(value: unknown): NotificationViewState {
   if (!value || typeof value !== "object") return emptyNotificationViewState;
@@ -165,13 +263,19 @@ function normalizeLocalNotification(
   ) {
     return null;
   }
+  if (
+    typeof candidate.notification_type !== "string" ||
+    !knownFundManagerNotificationTypeIds.has(candidate.notification_type)
+  ) {
+    return null;
+  }
   const nowIso = new Date().toISOString();
   return {
     audience: "fund_manager",
     kind: candidate.kind === "task" ? "task" : "information",
     task_state: candidate.task_state === "done" ? "done" : "new",
     notification_id: candidate.notification_id,
-    notification_type: candidate.notification_type ?? "local_information",
+    notification_type: candidate.notification_type,
     title: candidate.title,
     ledger_label: candidate.ledger_label ?? "Plum Duff",
     bookmaker_label: candidate.bookmaker_label ?? "Local workflow",

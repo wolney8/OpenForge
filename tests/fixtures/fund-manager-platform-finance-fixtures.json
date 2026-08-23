@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "contract": "docs/contracts/fund-manager-contract.md",
+  "contract": "docs/contracts/fund-manager-platform-finance-contract.md",
   "cases": [
     {
       "case_id": "FMF-001",

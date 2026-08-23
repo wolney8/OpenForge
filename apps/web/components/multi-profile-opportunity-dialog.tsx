@@ -136,7 +136,7 @@ const emptySetup: SetupDraft = {
 };
 
 const inlineStrategies = new Set(["Standard", "Underlay", "Overlay", "Custom", "No Lay"]);
-const standardStrategies = ["Standard", "Underlay", "Overlay", "Custom", "Partial Lay", "Multilay"] as const;
+const standardStrategies = ["Standard", "Underlay", "Overlay", "Custom", "Multilay"] as const;
 const mugStrategies = ["No Lay", ...standardStrategies] as const;
 
 type MugTargetDraft = {
@@ -1046,9 +1046,35 @@ export function MultiProfileOpportunityDialog({
         </div>
 
         <footer className="modal-sticky-footer" data-pd-id="multi-profile-opportunity.footer">
-          <button className="button-link" onClick={onClose} type="button">Close</button>
-          {phase === "setup" ? <button className="modal-primary-button" data-pd-id="multi-profile-opportunity.setup.create-rows" disabled={!setupReady || isSubmitting} onClick={() => void createOpportunity()} type="button">Create {setup.preset === "Mug Bet" ? validMugTargetCount : selectedProfileIds.length || ""} Prospecting Row{(setup.preset === "Mug Bet" ? validMugTargetCount : selectedProfileIds.length) === 1 ? "" : "s"}</button> : null}
-          {phase === "placement" ? <button className="modal-primary-button" data-pd-id="multi-profile-opportunity.placement.record-selected" disabled={!selectedPlacementIds.length || isSubmitting} onClick={() => void recordSelectedAsPlaced()} type="button">Record Selected as Placed</button> : null}
+          <button className="button-link" disabled={isSubmitting} onClick={onClose} type="button">Close</button>
+          {phase === "setup" ? (
+            <button
+              className="modal-primary-button"
+              data-pd-id="multi-profile-opportunity.setup.create-rows"
+              disabled={!setupReady || isSubmitting}
+              onClick={() => void createOpportunity()}
+              type="button"
+            >
+              {isSubmitting ? <span aria-hidden="true" className="button-spinner" /> : null}
+              <span>
+                {isSubmitting
+                  ? "Creating"
+                  : `Create ${setup.preset === "Mug Bet" ? validMugTargetCount : selectedProfileIds.length || ""} Prospecting Row${(setup.preset === "Mug Bet" ? validMugTargetCount : selectedProfileIds.length) === 1 ? "" : "s"}`}
+              </span>
+            </button>
+          ) : null}
+          {phase === "placement" ? (
+            <button
+              className="modal-primary-button"
+              data-pd-id="multi-profile-opportunity.placement.record-selected"
+              disabled={!selectedPlacementIds.length || isSubmitting}
+              onClick={() => void recordSelectedAsPlaced()}
+              type="button"
+            >
+              {isSubmitting ? <span aria-hidden="true" className="button-spinner" /> : null}
+              <span>{isSubmitting ? "Recording" : "Record Selected as Placed"}</span>
+            </button>
+          ) : null}
         </footer>
         <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} tone="success" />
       </section>

@@ -153,6 +153,45 @@ describe("getSportsbookGuidedEntry", () => {
     expect(guidance.autoFocus).toBe(false);
   });
 
+  it("GUIDE-011 directs a standard lay to lay odds before a stake can be placed", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      strategy: "Standard",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10.00",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+    });
+
+    expect(guidance.nextRequiredField).toBe("lay_odds_1");
+    expect(guidance.hiddenFields).toEqual([]);
+  });
+
+  it("GUIDE-012 directs an underlay to the actual matched stake after lay odds", () => {
+    const guidance = getSportsbookGuidedEntry({
+      ledger: "sportsbook",
+      strategy: "Underlay",
+      offer: "Demo Offer",
+      bookmaker: "Bookmaker A",
+      betType: "Single",
+      offerType: "Bet & Get",
+      fixtureType: "Football",
+      eventName: "Demo Event",
+      backStake: "10.00",
+      backOdds: "2.00",
+      exchange: "Exchange A",
+      layOdds1: "2.10",
+    });
+
+    expect(guidance.nextRequiredField).toBe("lay_actual");
+    expect(guidance.hiddenFields).toEqual([]);
+  });
+
   it("GUIDE-008 requires actual lay stake for partial-lay placement review", () => {
     const guidance = getSportsbookGuidedEntry({
       ledger: "sportsbook",

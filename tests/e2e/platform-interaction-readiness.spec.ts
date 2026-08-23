@@ -84,13 +84,37 @@ async function clearLedgerTableState(page: import("@playwright/test").Page) {
   });
 }
 
+async function openProfileCommandRoute(
+  page: import("@playwright/test").Page,
+  routeId: string
+) {
+  await page.locator('[data-pd-id="profile-command.trigger"]').evaluate((trigger) => {
+    (trigger as HTMLButtonElement).click();
+  });
+  await page
+    .locator('[data-pd-id^="profile-command.profile."][aria-current="page"]')
+    .evaluate((profile) => {
+      (profile as HTMLButtonElement).click();
+    });
+  await page.locator(`[data-pd-id="profile-command.route.${routeId}"]`).evaluate((route) => {
+    (route as HTMLButtonElement).click();
+  });
+}
+
 test("unchanged editor navigation is silent while a real edit is protected", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto(sportsbookRoute);
   await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+
+  await openProfileCommandRoute(page, "free-bets");
+  await expect(page).toHaveURL(new RegExp(`${freeBetRoute}$`));
+  await expect(page.getByRole("dialog", { name: "Unsaved tracker changes" })).toHaveCount(0);
+
+  await page.goto(sportsbookRoute);
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
   const firstSportsbookRow = page.locator(".data-table tbody tr").first();
   await expect(firstSportsbookRow).toBeVisible();
-  await firstSportsbookRow.click();
+  await firstSportsbookRow.locator("td").nth(1).click();
   await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
 
   let unchangedDialogCount = 0;
@@ -99,9 +123,7 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
     await dialog.dismiss();
   };
   page.on("dialog", unchangedDialogHandler);
-  await page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
-    (link as HTMLAnchorElement).click();
-  });
+  await openProfileCommandRoute(page, "free-bets");
   await expect(page).toHaveURL(new RegExp(`${freeBetRoute}$`));
   expect(unchangedDialogCount).toBe(0);
   page.off("dialog", unchangedDialogHandler);
@@ -112,9 +134,7 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
   const createDialog = page.getByRole("dialog", { name: "Create sportsbook row" });
   await createDialog.getByLabel("Offer", { exact: true }).fill("Unsaved guard check");
 
-  await page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
-    (link as HTMLAnchorElement).click();
-  });
+  await openProfileCommandRoute(page, "free-bets");
   const guardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   await expect(guardDialog).toBeVisible();
   await expect(guardDialog.getByRole("heading", { name: "Leave this tracker form?" })).toBeVisible();
@@ -136,9 +156,7 @@ test("unchanged editor navigation is silent while a real edit is protected", asy
   await expect(page).toHaveURL(new RegExp(`${sportsbookRoute}$`));
   await expect(createDialog).toBeVisible();
 
-  await page.locator(`a[href="${freeBetRoute}"]`).first().evaluate((link) => {
-    (link as HTMLAnchorElement).click();
-  });
+  await openProfileCommandRoute(page, "free-bets");
   const secondGuardDialog = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   await expect(secondGuardDialog).toBeVisible();
   await expect(secondGuardDialog.getByRole("button", { name: "Discard Changes" })).toBeVisible();
@@ -251,7 +269,7 @@ test("top bar profile summary shows date range, value, and range-name hover deta
     .toBe(Math.min(expectedLastMonthRows, 8));
 });
 
-test("top bar profile menu exposes active profile tracker route options", async ({ page }) => {
+test("top bar profile command menu searches profiles and exposes tracker route options", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/profiles/profile-demo-001/tracker/dashboard");
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 90_000 });
@@ -260,19 +278,72 @@ test("top bar profile menu exposes active profile tracker route options", async 
   await expect(summaryButton).toBeVisible();
   await summaryButton.click();
 
-  await expect(page.getByRole("menuitem", { name: /Switch/ })).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.dashboard"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.sportsbook-bets"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.free-bets"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.casino-offers"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.cash-adjustments"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.accounts"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.reports"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="profile-menu.route.settings"]')).toBeVisible();
+  const command = page.locator('[data-pd-id="profile-command.popover"]');
+  await expect(command).toBeVisible();
+  const search = page.locator('[data-pd-id="profile-command.search"]');
+  await expect(search).toBeFocused();
+  await expect(page.locator('[data-pd-id="profile-command.close"]')).toContainText("Esc");
+  const currentProfileRow = page.locator('[data-pd-id="profile-command.profile.profile-demo-001"]');
+  await expect(currentProfileRow).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(page.locator('[data-pd-id="profile-command.route.dashboard"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.free-bets"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.casino-offers"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.cash-adjustments"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.accounts"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.reports"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.settings"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.view-all"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="profile-command.add-profile"]')).toBeVisible();
+  const commandGeometry = await page.evaluate(() => {
+    const trigger = document.querySelector<HTMLElement>('[data-pd-id="profile-command.trigger"]');
+    const popover = document.querySelector<HTMLElement>('[data-pd-id="profile-command.popover"]');
+    if (!trigger || !popover) return null;
+    const triggerBounds = trigger.getBoundingClientRect();
+    const popoverBounds = popover.getBoundingClientRect();
+    return {
+      popoverWidth: Math.round(popoverBounds.width),
+      triggerWidth: Math.round(triggerBounds.width),
+    };
+  });
+  expect(commandGeometry).not.toBeNull();
+  expect(Math.abs(commandGeometry!.popoverWidth - commandGeometry!.triggerWidth)).toBeLessThanOrEqual(8);
 
-  await page.locator('[data-pd-id="profile-menu.route.sportsbook-bets"]').click();
+  const currentProfileName = normalizeText(await currentProfileRow.getAttribute("aria-label"))
+    .replace(", current profile", "");
+  await search.fill(currentProfileName.split(" ")[0] || currentProfileName);
+  await expect(currentProfileRow).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.dashboard"]')).toBeVisible();
+  await search.fill("No matching active profile");
+  await expect(page.getByText("No active profiles match this search.")).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-command.route.dashboard"]')).toHaveCount(0);
+  await search.fill("");
+  await currentProfileRow.click();
+
+  await page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]').click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/sportsbook-bets$/);
   await expect(page.locator(".flexible-nav")).toHaveCount(0);
+
+  await summaryButton.click();
+  const alternateProfile = page.locator('[data-pd-id^="profile-command.profile."]:not([aria-current="page"])').first();
+  if ((await alternateProfile.count()) > 0) {
+    const beforeSelectionUrl = page.url();
+    await alternateProfile.click();
+    await expect(page).toHaveURL(beforeSelectionUrl);
+    await expect(page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]')).toBeVisible();
+    await page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]').click();
+    await expect(page).toHaveURL(/\/profiles\/(?!profile-demo-001)[^/]+\/tracker\/sportsbook-bets$/);
+  } else {
+    await expect(page.getByText("Subscriber Alpha")).toBeVisible();
+  }
+
+  await summaryButton.click();
+  await page.keyboard.press("Escape");
+  await expect(command).toBeHidden();
+  await expect(summaryButton).toBeFocused();
 });
 
 test("tracker range scopes visible rows across ledgers unless the route is an action view", async ({

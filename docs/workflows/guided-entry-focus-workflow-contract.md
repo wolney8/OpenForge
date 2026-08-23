@@ -1,10 +1,10 @@
 # Workflow Contract: Deterministic Guided Entry Focus
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-08-23_
 
 ## Status and scope
 
-- Status: Approved for sportsbook-first implementation slice
+- Status: Approved for Sportsbook reference implementation and parity adoption in Free Bets, Casino Offers and Cash Adjustments
 - Milestone: M15 Platform Experience
 - Related future boundary: M12 decision support may provide advice, but does not control required-field logic
 

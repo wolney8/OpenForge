@@ -1,6 +1,6 @@
 # Fixture Spec: Guided Entry Focus
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-08-23_
 
 ## Contract covered
 
@@ -19,3 +19,5 @@ _Last updated: 2026-07-14_
 | GUIDE-008 | Partial-lay strategy with missing actual lay | Actual lay stake is next required field |
 | GUIDE-009 | Settled row without settlement date or with Pending outcome | Settlement group is next required field |
 | GUIDE-009B | No-lay settled row without final outcome | Settlement group is next required field while lay fields remain hidden |
+| GUIDE-011 | Standard single-lay row with setup and exchange complete | Lay odds is next required field |
+| GUIDE-012 | Underlay row with setup, exchange and lay odds complete | Actual lay stake is next required field |

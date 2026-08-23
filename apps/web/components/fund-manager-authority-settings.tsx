@@ -169,7 +169,7 @@ export function FundManagerAuthoritySettings() {
                 </div>
               ) : null}
             </div>
-            <footer className="workflow-editor-modal-footer"><button className="button-link" onClick={() => editing || isCreating ? closeEditor() : setIsOpen(false)} type="button">{editing || isCreating ? "Back to Tracker Lists" : "Close"}</button>{editing || isCreating ? <button className="modal-primary-button" data-pd-id="fund-manager-authorities.save" disabled={!draftValue.trim() || isSaving} onClick={() => void saveAuthority()} type="button">{isSaving ? "Saving" : "Save Value"}</button> : null}</footer>
+            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={() => editing || isCreating ? closeEditor() : setIsOpen(false)} type="button">{editing || isCreating ? "Back to Tracker Lists" : "Close"}</button>{editing || isCreating ? <button className="modal-primary-button" data-pd-id="fund-manager-authorities.save" disabled={!draftValue.trim() || isSaving} onClick={() => void saveAuthority()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Value"}</span></button> : null}</footer>
           </section>
         </div>
       ) : null}

@@ -101,7 +101,8 @@ export function FeeReviewResolutionBanner({
                 }}
                 type="button"
               >
-                {isSaving ? "Saving" : "Save and Leave"}
+                {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
+                <span>{isSaving ? "Saving" : "Save and Leave"}</span>
               </button>
             ) : null}
             <button

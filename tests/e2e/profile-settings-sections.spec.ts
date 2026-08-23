@@ -17,6 +17,15 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(
     page.getByLabel("Tracker date settings").getByRole("button", { name: "Save" })
   ).toBeDisabled();
+  const guidedEntry = page.locator('[data-pd-id="profile-settings.defaults.guided-entry-mode"]');
+  await expect(guidedEntry).toBeVisible();
+  await expect
+    .poll(async () =>
+      guidedEntry.locator("option").evaluateAll((options) =>
+        options.map((option) => (option as HTMLOptionElement).value)
+      )
+    )
+    .toEqual(["on", "off"]);
 
   await defaults.focus();
   await page.keyboard.press("ArrowRight");

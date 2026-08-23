@@ -118,6 +118,7 @@ Readiness: ready for workflow review after Settings authority ownership is confi
 ### M14 Calculator Workspace
 
 - Existing row calculations: sportsbook/free-bet and advanced sportsbook contracts in `docs/contracts/`
+- `docs/calculation-contracts/sportsbook-profit-boost-calculation-contract.md`
 - `docs/contracts/sportsbook-free-bet-award-bridge-contract.md`
 - `docs/fixture-specs/sportsbook-free-bet-award-bridge-fixture-spec.md`
 - `tests/fixtures/sportsbook-free-bet-award-bridge-fixtures.json`
@@ -135,13 +136,15 @@ Readiness: ready for workflow review after Settings authority ownership is confi
 - `docs/reference/m14-calculator-research/openforge-coverage-review.md`
 
 Readiness: bridge workflow is ready for review. Standard sportsbook, free-bet
-SNR, and odds conversion have accepted external reference cases, but still use
-their owning OpenForge contracts. Refund/bonus lock-in has a reproducible draft
-equation pending human approval. Each-way remains research-only. Extra-place,
-sequential-lay, 2UP/dutch, accumulator, risk-free comparison, and partial-match
-external captures remain blocked for M14 implementation until the targeted
-gates in the coverage review are satisfied. Raw packet `pass` values are not
-financial approval.
+SNR, odds conversion, and sportsbook Profit Boost have contract/fixture coverage, but still use
+their owning Plum Duff contracts. The standalone workspace itself is not implemented yet and is
+tracked by issues `#35`, `#36`, `#37`, `#38`, and Profit Boost issue `#83`. The first implementation
+slice should reuse the Sportsbook calculator shell for Standard, Underlay, Overlay, Custom Lay,
+Multi Lay, and Profit Boost displayed/percentage modes. Refund/bonus lock-in has a reproducible
+draft equation pending human approval. Each-way remains research-only. Extra-place, sequential-lay,
+2UP/dutch, accumulator, risk-free comparison, and partial-match external captures remain blocked for
+M14 implementation until the targeted gates in the coverage review are satisfied. Raw packet `pass`
+values are not financial approval.
 
 ### M15 Platform Experience
 

@@ -4,10 +4,43 @@ export type LedgerEditorTabDefinition = {
   id: string;
   label: string;
   status: LedgerEditorTabStatus;
+  attentionState?: "pending_settlement" | "overdue_settlement";
   requiredIssueCount?: number;
   warningIssueCount?: number;
   summary?: string;
 };
+
+export function getSettlementTabAttentionState({
+  activeStatuses = ["Placed", "Started", "In Progress"],
+  result,
+  settlementDate,
+  status,
+}: {
+  activeStatuses?: string[];
+  result?: string | null;
+  settlementDate?: string | null;
+  status?: string | null;
+}): LedgerEditorTabDefinition["attentionState"] {
+  const normalizedStatus = status?.trim();
+  const normalizedResult = result?.trim();
+  if (
+    !normalizedStatus ||
+    !activeStatuses.includes(normalizedStatus) ||
+    normalizedStatus === "Settled" ||
+    normalizedStatus === "Expired" ||
+    normalizedStatus === "Void" ||
+    (normalizedResult && normalizedResult !== "Pending")
+  ) {
+    return undefined;
+  }
+
+  const timestamp = Date.parse(settlementDate ?? "");
+  if (!Number.isFinite(timestamp)) {
+    return undefined;
+  }
+
+  return timestamp < Date.now() ? "overdue_settlement" : "pending_settlement";
+}
 
 export function getFirstInvalidLedgerEditorTab(
   tabs: LedgerEditorTabDefinition[]

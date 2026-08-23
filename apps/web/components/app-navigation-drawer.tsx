@@ -104,36 +104,12 @@ export function AppNavigationDrawer({
 
   if (!portalReady) return null;
 
-  const navigationItems = [
-    {
-      href: "/login",
-      icon: "login",
-      label: "Login",
-      isActive: pathname === "/login",
-      pdId: "app-navigation.login",
-    },
-    {
-      href: `/profiles/${activeProfileId}/tracker/sportsbook-bets`,
-      icon: "sports",
-      label: "Tracker",
-      isActive: /^\/profiles\/[^/]+\/tracker(?:\/|$)/.test(pathname),
-      pdId: "app-navigation.tracker",
-    },
-    {
-      href: "/settings",
-      icon: "settings",
-      label: "Settings",
-      isActive: pathname === "/settings",
-      pdId: "app-navigation.settings",
-    },
-  ];
   const profilesIsActive =
     pathname === "/profiles" ||
     pathname === "/profiles/new" ||
-    /^\/profiles\/[^/]+$/.test(pathname);
+    (/^\/profiles\/[^/]+$/.test(pathname) && pathname !== "/profiles/requests");
   const profileShortcuts = activeProfiles.slice(0, 3);
   const hasMoreProfiles = activeProfiles.length > profileShortcuts.length;
-
   return createPortal(
     <div
       aria-hidden={!isOpen}
@@ -179,19 +155,16 @@ export function AppNavigationDrawer({
         </header>
 
         <nav aria-label="Primary navigation" className="app-navigation-drawer-list">
-          {navigationItems.slice(0, 1).map((item) => (
-            <Link
-              aria-current={item.isActive ? "page" : undefined}
-              className={`app-navigation-drawer-link${item.isActive ? " is-active" : ""}`}
-              data-pd-id={item.pdId}
-              href={item.href}
-              key={item.href}
-              onClick={onClose}
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          <Link
+            aria-current={pathname === "/profiles" ? "page" : undefined}
+            className={`app-navigation-drawer-link${pathname === "/profiles" ? " is-active" : ""}`}
+            data-pd-id="app-navigation.fund-manager-dashboard"
+            href="/profiles"
+            onClick={onClose}
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">space_dashboard</span>
+            <span>Home</span>
+          </Link>
           <div className="app-navigation-drawer-group">
             <button
               aria-controls="app-navigation-profile-shortcuts"
@@ -243,6 +216,18 @@ export function AppNavigationDrawer({
                   <span>View all</span>
                 </Link>
               ) : null}
+              <Link
+                aria-current={pathname === "/profiles/new" ? "page" : undefined}
+                className={`app-navigation-profile-link${
+                  pathname === "/profiles/new" ? " is-active" : ""
+                }`}
+                data-pd-id="app-navigation.profiles.add-profile"
+                href="/profiles/new"
+                onClick={onClose}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">add</span>
+                <span>Add profile</span>
+              </Link>
               {profileShortcuts.length === 0 ? (
                 <Link
                   className="app-navigation-profile-link"
@@ -256,19 +241,38 @@ export function AppNavigationDrawer({
               ) : null}
             </div>
           </div>
-          {navigationItems.slice(1).map((item) => (
-            <Link
-              aria-current={item.isActive ? "page" : undefined}
-              className={`app-navigation-drawer-link${item.isActive ? " is-active" : ""}`}
-              data-pd-id={item.pdId}
-              href={item.href}
-              key={item.href}
-              onClick={onClose}
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          <Link
+            aria-current={pathname === "/profiles/requests" ? "page" : undefined}
+            className={`app-navigation-drawer-link${pathname === "/profiles/requests" ? " is-active" : ""}`}
+            data-pd-id="app-navigation.registration-requests"
+            href="/profiles/requests"
+            onClick={onClose}
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">how_to_reg</span>
+            <span>Registration requests</span>
+          </Link>
+          <Link
+            aria-current={pathname === "/settings" ? "page" : undefined}
+            className={`app-navigation-drawer-link${pathname === "/settings" ? " is-active" : ""}`}
+            data-pd-id="app-navigation.settings"
+            href="/settings"
+            onClick={onClose}
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">settings</span>
+            <span>Settings</span>
+          </Link>
+          <Link
+            aria-current={pathname === "/login" ? "page" : undefined}
+            className={`app-navigation-drawer-link app-navigation-drawer-dev-link${
+              pathname === "/login" ? " is-active" : ""
+            }`}
+            data-pd-id="app-navigation.logout"
+            href="/login"
+            onClick={onClose}
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">logout</span>
+            <span>Logout</span>
+          </Link>
         </nav>
 
         {isInsideProfile ? (

@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 
 export const TRACKER_ROUTE_RESELECT_EVENT = "openforge:tracker-route-reselected";
 
+let bodyScrollLockCount = 0;
+let previousBodyOverflow: string | null = null;
+
 export function dispatchTrackerRouteReselect(href: string) {
   window.dispatchEvent(
     new CustomEvent<{ href: string }>(TRACKER_ROUTE_RESELECT_EVENT, {
@@ -69,6 +72,30 @@ export function usePersistedState<T>(
   return [value, setValue] as const;
 }
 
+export type GuidedAccessMode = "on" | "minimal" | "off";
+
+export const guidedAccessModeOptions: GuidedAccessMode[] = ["on", "minimal", "off"];
+export const guidedAccessModeSettingOptions: GuidedAccessMode[] = ["on", "off"];
+
+export function normalizeGuidedAccessMode(value: unknown): GuidedAccessMode {
+  return guidedAccessModeOptions.includes(value as GuidedAccessMode)
+    ? (value as GuidedAccessMode)
+    : "on";
+}
+
+export function isGuidedAccessEnabled(mode: GuidedAccessMode) {
+  return mode !== "off";
+}
+
+export function useProfileGuidedAccessMode(profileId: string) {
+  const [mode, setMode] = usePersistedState<GuidedAccessMode>(
+    `plum-duff:${profileId}:guided-access-mode`,
+    "on"
+  );
+
+  return [normalizeGuidedAccessMode(mode), setMode] as const;
+}
+
 export function useTrackerRouteReselect(onReselect: () => void) {
   const pathname = usePathname();
 
@@ -107,6 +134,29 @@ export function useDialogFocusLifecycle(
       window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
     };
   }, [active, dialogRef]);
+}
+
+export function useBodyScrollLock(active: boolean) {
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    if (bodyScrollLockCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+
+    bodyScrollLockCount += 1;
+
+    return () => {
+      bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1);
+      if (bodyScrollLockCount === 0) {
+        document.body.style.overflow = previousBodyOverflow ?? "";
+        previousBodyOverflow = null;
+      }
+    };
+  }, [active]);
 }
 
 export function scrollToElementTop(element: HTMLElement | null) {

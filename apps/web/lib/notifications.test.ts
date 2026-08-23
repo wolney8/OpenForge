@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultFundManagerNotificationPreferences,
   dismissNotificationIds,
   emptyNotificationViewState,
+  filterNotificationsByPreferences,
   formatUnreadNotificationCount,
   getNotificationAttentionStage,
   getUnreadNotificationCount,
   getVisibleNotifications,
   isNotificationUnread,
   markNotificationsRead,
+  normalizeFundManagerNotificationPreferences,
   normalizeNotificationViewState,
   type FundManagerNotification,
 } from "./notifications";
@@ -142,5 +145,45 @@ describe("fund manager notification view state", () => {
       1
     );
     expect(getVisibleNotifications([notification], readOnDueDay)).toHaveLength(1);
+  });
+
+  it("normalizes notification preferences from partial or malformed storage", () => {
+    expect(
+      normalizeFundManagerNotificationPreferences({
+        database_backup_reminder: false,
+        partial_lay_reminder: "yes",
+      })
+    ).toEqual({
+      ...defaultFundManagerNotificationPreferences,
+      database_backup_reminder: false,
+    });
+  });
+
+  it("filters disabled known notification types without hiding future unknown types", () => {
+    const databaseBackupNotice: FundManagerNotification = {
+      ...notifications[0],
+      notification_id: "NOTICE-BACKUP",
+      notification_type: "database_backup_reminder",
+      kind: "information",
+      title: "Create a verified backup",
+    };
+    const unknownNotice: FundManagerNotification = {
+      ...notifications[0],
+      notification_id: "NOTICE-FUTURE",
+      notification_type: "future_safety_alert",
+      kind: "information",
+      title: "Future safety alert",
+    };
+
+    expect(
+      filterNotificationsByPreferences(
+        [databaseBackupNotice, notifications[0], unknownNotice],
+        {
+          ...defaultFundManagerNotificationPreferences,
+          database_backup_reminder: false,
+          partial_lay_reminder: false,
+        }
+      ).map((notification) => notification.notification_id)
+    ).toEqual(["NOTICE-FUTURE"]);
   });
 });

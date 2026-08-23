@@ -1,7 +1,62 @@
 # Issue 61 Ledger Editor Flow Refactor Plan
 
-Status: sportsbook-first tranche signed off. Remaining ledger migrations must be completed as
-separate, small, test-backed slices.
+Status: implementation, automated parity verification and Fund Manager smoke testing complete for
+Sportsbook, Free Bets, Casino Offers and Cash Adjustments on 2026-08-23. The public GitHub issue
+remains open pending an authenticated closure update.
+
+## Post-Outage Recovery Focus (2026-08-20)
+
+The outage handover and follow-on smoke testing narrowed the remaining `#61` work to a small set
+of active tracks. The intention is to finish these before reopening broader platform UX or starting
+new ledger families.
+
+### Active completion tracks
+
+1. Cross-ledger modal parity hardening
+   - sportsbook remains the canonical reference implementation;
+   - Free Bets must match sportsbook for:
+     - guided access;
+     - sticky header/footer alignment;
+     - settlement quick-result chips;
+     - step-level `EDIT` / `EDITING` semantics;
+     - save/revert/cancel-edit behaviour;
+     - Outplayed-style matching calculator parity where the free-bet formula family allows it.
+   - Casino Offers must keep the same shell, stepper rail, footer semantics and guided-access model
+     while preserving casino-specific wagering/reward/settlement logic.
+   - Cash Adjustments must keep the same shell, sticky geometry, guided access and save-state rules.
+
+2. Guided access completion
+   - every ledger tab set must provide working next-step text, clickable routing to the next field,
+     and correct state when a row is saved, settled, bridged or reopened;
+   - guided access must never render a blank `NEXT REQUIRED` banner;
+   - guided access remains profile-scoped and user-toggleable.
+
+3. Sportsbook calculator parity
+   - sportsbook single-lay matching now uses the approved Outplayed-inspired layout;
+   - remaining parity work is behaviour polishing, not a fresh redesign;
+   - Multi Lay stays separate but must remain visually aligned with the same calculator system;
+   - Free Bets reuses the same interaction model where formula differences permit it.
+
+4. Modal save and route-guard hardening
+   - modal body scroll must never leak to the page;
+   - closing a saved modal must release body scroll reliably;
+   - no route guard may appear when the user has not changed ledger data;
+   - save/edit/revert states must be globally consistent across all ledgers.
+
+5. Notification boundary after `#61`
+   - toasts inside ledger modals stay suppressed in favour of inline/save-state feedback;
+   - durable reminders and follow-up tasks belong in the Fund Manager notification centre;
+   - notification consistency remains the next issue after `#61`, not part of the final `#61`
+     smoke tranche except where modal parity depends on avoiding duplicate feedback.
+
+### Deferred until `#61` is closed
+
+- Extra Places ledger/calculator shell
+- multi-fixture / outright sportsbook setup expansion
+- bookmaker quick-account popup and multi-settle popup
+- decision-support/dashboard task automation
+- source-ingestion and Discord offer intake
+- subscriber-facing guided access and modal variants
 
 ## Scope
 
@@ -22,6 +77,10 @@ Follow-up requirement:
   spacing rules now proven in Sportsbook.
 - Cash Adjustments and any future ledgers must use the same shared modal/stepper primitives by
   default, not one-off expanding page sections.
+- Guided access must be profile-scoped and user-controllable. The first implementation stores
+  `On`/`Off` locally per profile and keeps the internal `Minimal` value tolerant for later
+  subscriber-facing reduced guidance. Do not expose `Minimal` until it has distinct behaviour and
+  tests.
 
 Out of scope for this refactor:
 - changing calculation contracts;
@@ -38,6 +97,7 @@ This work must follow:
 - `docs/agent-contracts/plum-duff-ui-accessibility-contract.md`;
 - `docs/agent-contracts/plum-duff-ui-implementation-checklist.md`;
 - `docs/agent-contracts/plum-duff-known-ui-pitfalls.md`;
+- `docs/agent-contracts/plum-duff-ledger-modal-parity-contract.md`;
 - `.skills/plum-duff-ui-review/SKILL.md`;
 - `.skills/plum-duff-ui-consistency-enforcer/SKILL.md`.
 
@@ -300,7 +360,9 @@ Acceptance:
 - tab status reflects expiry/award/matching/settlement issues.
 
 Status:
-- next required migration slice. Must include guided access and reuse sportsbook modal primitives.
+- first-pass migration completed. Remaining work is smoke-test polish and ensuring Free Bet
+  award/expiry/matching/settlement guidance stays equivalent to Sportsbook without introducing
+  duplicate helper text.
 
 ### Slice 5: Casino Migration
 
@@ -312,8 +374,8 @@ Acceptance:
 - no new money logic without approved casino contract updates.
 
 Status:
-- pending migration slice. Must include guided access and avoid new money logic without contract
-  updates.
+- first-pass migration completed with offer-type-driven tabs and guided access. Remaining work is
+  smoke-test polish plus casino calculation-contract completion for any new wagering/EV logic.
 
 ### Slice 6: Cash Adjustment Migration
 
@@ -325,7 +387,8 @@ Acceptance:
 - posting/audit fields are not visually mixed with primary amount entry.
 
 Status:
-- pending migration slice. The shared modal shell must become the default for future ledgers.
+- first-pass migration completed with compact summary chips, tab rail, guided access and sticky
+  header/footer parity. Remaining work is smoke-test polish and future ledger template extraction.
 
 ### Slice 7: Cross-Ledger Regression Lock
 
@@ -334,6 +397,33 @@ Harden tests and docs:
 - add visual geometry/style parity assertions for tab rail, close/delete icons, fields, banners and
   footer;
 - update known pitfalls if any new repeated defect is found.
+
+Status:
+- implementation verified. Current parity spec verifies the four existing ledgers open in a shared dialog shell,
+  sticky header/footer geometry aligns to modal edges, tab rails and top/bottom navigation regions
+  are present across all current ledgers including Sportsbook as the MVP reference shell, Cash
+  Adjustments guided entry focuses the next field, Casino settled-row edit unlock stays inside the
+  editor, and guided access can be disabled per profile.
+- latest focused evidence on 2026-08-23:
+  - `pnpm --filter @openforge/web test -- guided-entry-focus ledger-editor-tabs`: 200 passing tests;
+  - `pnpm exec playwright test tests/e2e/sportsbook-guided-entry.spec.ts --workers=1`: 3/3;
+  - `pnpm exec playwright test tests/e2e/ledger-editor-modal-parity.spec.ts tests/e2e/profile-settings-sections.spec.ts --workers=1`: 9/9;
+  - `pnpm exec playwright test tests/e2e/free-bet-calculator-parity.spec.ts tests/e2e/casino-offer-branching.spec.ts --workers=1`: 8/8.
+
+### Slice 8: Future Ledger and Subscriber Guidance Readiness
+
+Before adding Extra Places, Calculator Workspace bridge rows or subscriber-entered ledgers:
+- start from the shared modal/stepper shell;
+- expose guided access only through the profile/user preference model;
+- add subscriber-facing guidance copy only after subscriber visibility and permissions contracts
+  define what the subscriber may see and edit;
+- keep Fund Manager-only calculations, fees, account intelligence and audit notes hidden by
+  default from subscriber routes.
+
+Acceptance:
+- new ledger scaffold has modal geometry parity tests before smoke test;
+- guided access can be disabled for that profile/user context;
+- subscriber route tests prove Fund Manager-only guidance and values are not visible.
 
 ## Required Tests
 
@@ -376,16 +466,112 @@ Rollback options:
 
 Do not migrate all ledgers in one commit.
 
-## Smoke Test After Sportsbook Slice
+## Smoke Test For Current Cross-Ledger Slice
+
+Smoke test only after the automated modal geometry, guided access, lint, typecheck and focused
+Playwright checks pass.
 
 Minimal user smoke test:
-- create a sportsbook prospecting row;
-- complete setup;
-- enter standard matching values and use suggested lay;
-- mark back and lay placed;
-- settle the row;
-- confirm Save closes the editor and the table reflects value/status;
-- reopen and confirm data persisted;
-- test one incomplete row to ensure invalid tab/banners are clear.
+- Sportsbook: create a prospecting row, complete Bet Setup, enter standard matching values, use the
+  suggested lay, mark back and lay placed, settle the row, save, reopen and confirm persisted value,
+  status and Free Bet bridge availability where relevant.
+- Free Bets: create a free-bet row, confirm guided access moves from Bet Setup to Matching, enter
+  value/expiry/matching details, settle the row and confirm the settlement value banner and footer
+  actions behave like Sportsbook.
+- Casino Offers: create a Free Spins row and a Deposit/Bonus Wagering row, confirm offer type
+  changes expose the correct steps, Reward completion ticks only after required reward fields are
+  filled, Settlement uses the net result, and settled-row Edit keeps the modal open.
+- Cash Adjustments: create an adjustment, confirm guided access moves from Details to Scope, save,
+  reopen and confirm signed amount, posting scope and footer actions remain consistent.
+- All ledgers: toggle guided access off for the profile and confirm no guided banner or restore pill
+  appears; toggle it back on before continuing normal testing.
+- All ledgers: resize/scroll the editor, confirm sticky header/footer stay flush with the modal,
+  buttons remain aligned, close/delete icons are centred, and no page-level horizontal scroll appears.
 
 No smoke test should be requested until automated geometry and interaction checks pass.
+
+## Tranche Note: Sportsbook Multi-Lay Planner Inline Placement
+
+Date: 2026-08-16
+
+Change:
+- Sportsbook multi-lay rows now keep branch exchange, effective lay stake and matched stake together
+  in the multi-lay outcome table instead of splitting branch placement into a separate Placement tab.
+- Multi-lay result table headings use the same visual style as calculator result-card headings, and
+  liability/current summary values sit in the result-table footer.
+- Multi-lay lay stake and liability values use neutral financial styling; result/profit outcomes keep
+  positive/negative colour semantics.
+- Multi-lay rows hide the single-lay `Lay / Exchange` and `Matched Lay` panels, so the branch table
+  is the only place to manage multi-lay branch exchange, odds, calculated stake and partial match.
+- Multi-lay calculator surfaces use the lay theme, no visible white table wrapper border, a readable
+  off-state switch, and bounded columns that keep Exchange, Odds and Underlay Stake readable without
+  expanding the modal.
+- Multi-lay underlay mode uses a single effective `Lay Stake` column; the duplicate `Underlay Stake`
+  column was removed because it repeated the same operational value in this workflow.
+- Multi-lay partial matching edits now happen inline inside the `Lay Stake` cell; ticking `Partial`
+  replaces the calculated value with a prefilled matched-stake input instead of adding a second field
+  beneath it.
+- Multi-lay calculator rule chips are hidden from the calculator body; branch guidance belongs in
+  guided access rather than as extra visual noise inside the table.
+- Multi-lay result and settlement outcome cards now render every branch, including third and later
+  outcomes, rather than stopping at outcome two.
+- Price Boost sportsbook rows no longer show the Free Bet step unless the offer type is actually
+  free-bet awardable.
+- Partial Lay is no longer treated as a visible primary lay mode. It remains a workbook-compatible
+  stored strategy for legacy/imported rows, but the editor should expose partial matching as a
+  placement control inside every lay-capable calculator mode:
+  - Standard and Advanced single-lay rows expose a partial-match control for actual matched stake;
+  - Custom uses the same control after the custom stake is chosen;
+  - Multi Lay exposes the same control per outcome branch;
+  - resetting partial match clears the visible `Part Laid` chip and restores the calculated target;
+  - legacy `Partial Lay` rows load as Standard plus inferred/enabled partial matched stake.
+
+Why:
+- Smoke testing showed the previous split between planner and placement rows made multi-lay status
+  unclear and duplicated the single/partial lay workflow.
+- Per-outcome exchange selection is required because branches can be matched on different exchanges
+  with different commission settings.
+- Free Bet bridge actions must be gated by offer mechanics; showing a Free Bet step on Price Boost
+  rows created a false workflow path.
+- Treating `Partial Lay` as both a lay mode and a placement state made Strategy/Lay Mode confusing.
+  Calculator mode should describe the calculation shape; partial matching should describe what was
+  actually matched in the market.
+
+Evidence:
+- `pnpm --filter @openforge/web lint` passed.
+- `pnpm --filter @openforge/web typecheck` passed.
+- `pnpm exec playwright test tests/e2e/sportsbook-multilay-workflow.spec.ts` passed, 2 tests,
+  including explicit checks for the lay-themed multi-lay surface and zero-width table wrapper border.
+- `git diff --check` passed.
+
+## Follow-Up: Notification Centre Audit
+
+Date: 2026-08-17
+
+This is related to ledger modal parity because durable task feedback now belongs in the notification
+bell, not as overlapping toasts inside add/edit modals. It should be tracked as a separate issue so
+issue 61 can close without widening into account-level preferences.
+
+Required scope:
+- inventory all notification-producing workflows, including reminders, partial-lay rechecks, free-bet
+  follow-ups, expiry watch, fee-review blockers, backup reminders and import/review tasks;
+- confirm trigger conditions and timing windows for each notification type, including day-of,
+  four-hours-before, two-hours-before, overdue, done, dismissed and cleared states;
+- standardise notification templates with profile, ledger, row/event identity, due time, severity,
+  action link and done/clear behaviour;
+- verify notification links route to the correct profile, ledger, filter and row/action context;
+- add fund-manager notification preferences first, with later subscriber-specific preferences for
+  subscriber login scope;
+- allow individual notification types to be disabled without disabling critical system warnings;
+- add fixtures and tests for timing, deduplication, read/done/clear state, preference filtering and
+  route targets.
+
+Acceptance criteria for the follow-up issue:
+- every active notification has a documented trigger, timing rule, template and route target;
+- the fund manager can turn individual notification types on/off in account/settings scope;
+- read notifications keep the active bell state without a red unread badge;
+- done task notifications move to Done and expire only when the related row's settled datetime has
+  passed;
+- disabled notification types do not create new non-critical notifications;
+- tests cover reminder timing, no duplicate unread badges, task completion, clearing confirmation and
+  preference filtering.

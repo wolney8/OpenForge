@@ -79,10 +79,13 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
       return;
     }
 
-    setSavingExchange(null);
-    await loadSettings();
-    if (onSaved) {
-      await onSaved();
+    try {
+      await loadSettings();
+      if (onSaved) {
+        await onSaved();
+      }
+    } finally {
+      setSavingExchange(null);
     }
   }
 
@@ -131,7 +134,10 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
                   onClick={() => void saveRow(row.exchange_name)}
                   type="button"
                 >
-                  Save
+                  {savingExchange === row.exchange_name ? (
+                    <span aria-hidden="true" className="button-spinner" />
+                  ) : null}
+                  <span>{savingExchange === row.exchange_name ? "Saving" : "Save"}</span>
                 </button>
               </div>
             </label>

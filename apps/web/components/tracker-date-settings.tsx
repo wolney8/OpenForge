@@ -9,6 +9,11 @@ import {
   type DashboardTargetSettings,
 } from "@/lib/dashboard-analytics";
 import {
+  guidedAccessModeSettingOptions,
+  useProfileGuidedAccessMode,
+  type GuidedAccessMode,
+} from "@/lib/ledger-ui";
+import {
   formatResolvedDateRange,
   getDatePresetOptions,
   resolveDateRange,
@@ -49,7 +54,14 @@ type Props = {
   profileId: string;
 };
 
+const guidedAccessModeLabels: Record<GuidedAccessMode, string> = {
+  on: "On",
+  minimal: "Minimal",
+  off: "Off",
+};
+
 export function TrackerDateSettings({ profileId }: Props) {
+  const [guidedAccessMode, setGuidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
   const [pristineSettings, setPristineSettings] = useState<TrackerSettingsRecord | null>(null);
   const [statusMessage, setStatusMessage] = useState("Loading tracker date settings...");
@@ -542,6 +554,25 @@ export function TrackerDateSettings({ profileId }: Props) {
                     <option key={exchange} value={exchange}>{exchange}</option>
                   ))}
                 </select>
+              </label>
+              <label className="field-control">
+                <span>Guided entry</span>
+                <select
+                  aria-describedby="guided-entry-mode-help"
+                  data-pd-id="profile-settings.defaults.guided-entry-mode"
+                  onChange={(event) => setGuidedAccessMode(event.target.value as GuidedAccessMode)}
+                  value={guidedAccessMode}
+                >
+                  {guidedAccessModeSettingOptions.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {guidedAccessModeLabels[mode]}
+                    </option>
+                  ))}
+                </select>
+                <small id="guided-entry-mode-help">
+                  Controls ledger editor guidance on this device for this profile. Subscriber-facing
+                  defaults will inherit this pattern later.
+                </small>
               </label>
               <label className="field-control field-control-checkbox">
                 <span>Use global date-range toggle</span>
