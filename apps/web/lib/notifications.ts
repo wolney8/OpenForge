@@ -71,18 +71,21 @@ export const fundManagerNotificationTypes = [
     label: "Database Backup Reminders",
     description:
       "Prompts the Fund Manager when local backups are stale or enough tracker rows have changed.",
+    timing: "No verified backup, after 7 days, or after 25 changed tracker rows.",
   },
   {
     id: "partial_lay_reminder",
     label: "Partial Lay Reminders",
     description:
       "Tracks sportsbook partial-lay follow-up tasks and re-alerts on the due day, four hours before, and two hours before.",
+    timing: "When active or reopened, then on the due day, 4 hours before, and 2 hours before.",
   },
   {
     id: "free_bet_follow_up_reminder",
     label: "Free Bet Follow-Up Reminders",
     description:
       "Tracks free-bet review tasks until the free bet is resolved or its relevant lifecycle date has passed.",
+    timing: "When active or reopened, then on the due day, 4 hours before, and 2 hours before.",
   },
 ] as const;
 
@@ -196,6 +199,18 @@ export function filterNotificationsByPreferences(
     if (!knownTypes.has(notification.notification_type)) return true;
     return preferences[notification.notification_type as FundManagerNotificationTypeId];
   });
+}
+
+export function filterFundManagerNotificationsForViewer(
+  notifications: FundManagerNotification[],
+  preferences: FundManagerNotificationPreferences
+): FundManagerNotification[] {
+  return filterNotificationsByPreferences(
+    notifications.filter((notification) =>
+      canViewerReceiveNotification(notification, { audience: "fund_manager" })
+    ),
+    preferences
+  );
 }
 
 export function normalizeNotificationViewState(value: unknown): NotificationViewState {

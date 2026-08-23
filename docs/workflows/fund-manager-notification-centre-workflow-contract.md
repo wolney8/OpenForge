@@ -84,6 +84,18 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 - reopening or materially updating a reminder creates a new notification identity
 - local read/dismissed state must not contain credentials, financial inputs or workbook data
 
+## 5.1 Approved source matrix
+
+| Source | Trigger and timing | Current audience | Security tag | Preference |
+|---|---|---|---|---|
+| Database backup reminder | No verified backup, seven days since the latest verified backup, or 25 changed tracker rows since that backup | Fund Manager | `fund_manager_only` | Database Backup Reminders |
+| Partial-lay reminder | Manual active or reopened task; re-alerts on the due day, four hours before due, and two hours before due | Fund Manager | `fund_manager_only` | Partial Lay Reminders |
+| Free-bet follow-up reminder | Manual active or reopened task; re-alerts on the due day, four hours before due, and two hours before due | Fund Manager | `fund_manager_only` | Free Bet Follow-Up Reminders |
+
+No other source may enter the shared feed without an approved workflow contract, deterministic
+fixtures, a preference label, an audience decision, and a security tag. Automatic free-bet expiry,
+overdue settlement, account-health, cash-adjustment, and fee-review notifications remain deferred.
+
 ## 6. Interaction and accessibility
 
 - the bell has a contextual accessible name including unread count
@@ -138,6 +150,9 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 - Escape closes the panel and restores trigger focus
 - disabling a known notification source hides that source from the bell feed
 - unknown notification source types remain visible by default
+- each approved source exposes its trigger/timing and Fund Manager-only delivery scope in Settings
+- client-side Fund Manager filtering rejects a subscriber-scoped item if a malformed response reaches
+  the shared Fund Manager feed
 
 ## 9. Deferred extensions
 

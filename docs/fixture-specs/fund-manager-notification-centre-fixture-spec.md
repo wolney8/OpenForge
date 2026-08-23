@@ -44,6 +44,8 @@ or any financial output.
 - the bell remains available through shared application chrome on login, Fund Manager and tracker
   routes
 - a future subscriber consumer cannot read the cross-profile Fund Manager feed
+- approved source metadata exposes the documented trigger/timing and Fund Manager-only scope
+- a malformed subscriber-scoped item is excluded by the Fund Manager client filter
 
 ## Fixture source
 
