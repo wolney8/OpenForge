@@ -19,6 +19,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -1745,6 +1746,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:casino-offers`,
     false
@@ -1804,6 +1806,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isPending, startTransition] = useTransition();
   const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
+  const quickAddRef = useRef<HTMLDivElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
@@ -1843,11 +1846,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
-  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+  const hasOpenModal = workflowVisible || isQuickAddOpen || isFilterModalOpen || Boolean(outcomeModalState);
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(isQuickAddOpen, quickAddRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -2505,6 +2509,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       ]),
     [accountAuthorities, formState.bookmaker, lookupValues, rows]
   );
+  const quickAddBookmakerOptions = useMemo(
+    () => dedupeOptions(getAccountNamesByType(accountAuthorities, "Bookie")),
+    [accountAuthorities]
+  );
 
   const selectedComboCoverage = useMemo(() => {
     const combo = commonBetCombos.find((row) => row.preset_id === selectedComboId);
@@ -3096,6 +3104,51 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     revealEditor({ expandLedger: true });
   }
 
+  function buildFreeSpinsQuickAddForm(values: CasinoFreeSpinsQuickAddValues): CasinoOfferFormState {
+    const operatingDate = getCurrentDateTimeLocalValue();
+    const base = applyCasinoOfferTypeDefaults(createBlankForm(), "Free Spins");
+    const convertedWin = formatCasinoMoneyInput(values.convertedWin);
+    return {
+      ...base,
+      date_started: operatingDate,
+      date_settling: operatingDate,
+      bookmaker: values.bookmaker,
+      offer_name: values.offerName.trim() || "Free Spins",
+      game: values.game.trim(),
+      spin_stake: formatCasinoMoneyInput(values.spinStake),
+      free_spins_awarded: values.spinCount,
+      free_spins_value: convertedWin,
+      own_cash_committed: "0.00",
+      status: "Settled",
+      result: Number(convertedWin) > 0 ? "Win" : "Lose",
+      final_net_pnl: convertedWin,
+    };
+  }
+
+  async function saveFreeSpinsQuickAdd(values: CasinoFreeSpinsQuickAddValues): Promise<boolean> {
+    const nextForm = buildFreeSpinsQuickAddForm(values);
+    const saved = await persistForm(nextForm, { returnToLedgerOnSuccess: true });
+    if (saved) {
+      setIsQuickAddOpen(false);
+    }
+    return saved;
+  }
+
+  function openFreeSpinsQuickAddDetails(values: CasinoFreeSpinsQuickAddValues) {
+    const nextForm = buildFreeSpinsQuickAddForm(values);
+    setIsQuickAddOpen(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    isCreatingDraftRef.current = true;
+    setFormState(nextForm);
+    setPristineFormState(nextForm);
+    setActiveEditorTabId("setup");
+    setWorkflowVisible(true);
+    setTableCollapsed(false);
+    setErrorMessage("");
+    revealEditor({ expandLedger: true });
+  }
+
   async function closeEditor() {
     if (isPersistingRef.current) {
       return;
@@ -3563,6 +3616,20 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
+          <button
+            aria-label="Quick add Free Spins"
+            className="icon-button ledger-toolbar-quick-add-action"
+            data-pd-id="casino-quick-add.open"
+            onClick={() => {
+              setErrorMessage("");
+              setIsQuickAddOpen(true);
+            }}
+            title="Quick add Free Spins"
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">bolt</span>
+            <span>Quick Add</span>
+          </button>
           <LedgerAddRowButton label="Add casino row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open casino-offer filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
@@ -5589,6 +5656,23 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
       </section>
       </div>
+      ) : null}
+      {isQuickAddOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !isPersisting) setIsQuickAddOpen(false); }}>
+          <div ref={quickAddRef}>
+            <CasinoFreeSpinsQuickAdd
+              bookmakerOptions={quickAddBookmakerOptions}
+              errorMessage={errorMessage}
+              isSaving={isPersisting}
+              onClose={() => {
+                setErrorMessage("");
+                setIsQuickAddOpen(false);
+              }}
+              onMoreDetails={openFreeSpinsQuickAddDetails}
+              onSave={saveFreeSpinsQuickAdd}
+            />
+          </div>
+        </div>
       ) : null}
     </section>
   );

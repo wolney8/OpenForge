@@ -28,8 +28,59 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Multi-fixture, outright and long-duration sportsbook workflow | M14 Calculator Workspace or later sportsbook expansion | `docs/workflows/sportsbook-multi-fixture-and-outright-workflow-contract.md` | `docs/fixture-specs/sportsbook-multi-fixture-and-outright-fixture-spec.md` | Needs issue verification |
 | Account quick popup and bookmaker hygiene | M6 Account Intelligence or future account-management milestone | `docs/workflows/account-quick-popup-workflow-contract.md`, `docs/contracts/account-health-intelligence-contract.md` | `docs/fixture-specs/account-quick-popup-fixture-spec.md` | Needs issue verification |
 | In-app route guards and unsaved-state handling | M15 Platform Experience | `docs/workflows/in-app-route-guard-and-unsaved-state-workflow-contract.md` | `docs/fixture-specs/in-app-route-guard-and-unsaved-state-fixture-spec.md` | Needs issue verification |
+| Template-driven ledger Quick Add | M13 Common Bet Combos, M15 Platform Experience | `docs/workflows/ledger-quick-add-workflow-contract.md`, `docs/workflows/casino-offer-workflow-contract.md` | `docs/fixture-specs/ledger-quick-add-fixture-spec.md` | Live public GitHub checked 2026-08-23: no dedicated issue found. Pending authenticated issue sync; do not duplicate if the user has since created one. |
 
 ## Recommended issue bodies
+
+### Template-driven ledger Quick Add
+
+Title:
+
+`Add Template-Driven Ledger Quick Add Starting With Casino Free Spins`
+
+Milestone:
+
+`M13 Common Bet Combos` with `M15 Platform Experience` UX dependency
+
+Body:
+
+```md
+## Objective
+
+Add a compact, template-driven quick-add path beside ledger Add Row actions, starting with a
+no-deposit Casino Free Spins record.
+
+## Scope
+
+- Add a Quick Add entry beside Casino Offers Add Row.
+- Free Spins template: profile-valid bookmaker, optional offer/game, spin count, spin stake and
+  confirmed converted win amount.
+- Persist the confirmed converted win as the explicit Casino final net result for this zero-own-
+  cash template.
+- Provide a no-return `£ 0.00` shortcut and a More details path into the normal editor.
+- Reuse Common Bet Combos as the Fund Manager-owned template authority; do not add a second
+  template store.
+- Define later candidate templates without implementing uncontracted casino EV/wager logic.
+
+## Exclusions
+
+- No wagering, RTP, EV, cashback, refund or deposit-bonus calculation changes.
+- No bookmaker automation or account creation.
+
+## Contract and fixtures
+
+- `docs/workflows/ledger-quick-add-workflow-contract.md`
+- `docs/fixture-specs/ledger-quick-add-fixture-spec.md`
+- `docs/contracts/casino-offer-resolved-value-contract.md`
+
+## Acceptance criteria
+
+- Quick Add uses profile account authorities and preserves normal ledger persistence.
+- Converted win is visibly confirmed before save and produces the expected resolved value.
+- More details pre-fills but does not save.
+- Save/loading/error/keyboard/dialog geometry follow the ledger modal parity contract.
+- Focused unit and Playwright tests cover valid, zero and invalid paths.
+```
 
 ### Notification consistency and preferences
 
