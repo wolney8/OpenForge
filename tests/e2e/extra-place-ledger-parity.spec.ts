@@ -92,8 +92,16 @@ test.describe("Extra Place ledger parity", () => {
 
     const themedHeader = page.locator("th.extra-place-column-back").first();
     const neutralHeader = page.locator("th", { hasText: "Date / time" }).first();
-    await expect(themedHeader).toHaveCSS("background-color", "rgb(125, 170, 232)");
-    await expect(themedHeader).toHaveCSS("color", "rgb(20, 37, 51)");
+    await expect(themedHeader).toHaveCSS("background-color", "rgb(23, 69, 131)");
+    await expect(themedHeader).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(page.locator("th.extra-place-column-win-lay").first()).toHaveCSS(
+      "background-color",
+      "rgb(124, 30, 47)",
+    );
+    await expect(page.locator("th.extra-place-column-place-lay").first()).toHaveCSS(
+      "background-color",
+      "rgb(123, 40, 30)",
+    );
     await expect(neutralHeader).toHaveCSS("color", "rgb(255, 255, 255)");
     await expect(neutralHeader).toHaveCSS("background-color", "rgb(39, 51, 63)");
 
@@ -112,7 +120,8 @@ test.describe("Extra Place ledger parity", () => {
         ),
       )
       .toBeGreaterThan(30);
-    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(20, 37, 51)");
+    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(dialog.locator(".calculator-segment-back h3")).toHaveCSS("color", "rgb(248, 251, 255)");
   });
 
   test("keeps calculation and settlement choices in local Extra Place controls", async ({ page }) => {

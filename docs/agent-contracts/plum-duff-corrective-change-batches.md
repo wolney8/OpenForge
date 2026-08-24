@@ -51,3 +51,10 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | PD-FIX-027 | Extra Place calculate step | Make `div.extra-place-bet-type-toggle` visibly fully rounded, including its clipped child surfaces. | `div.extra-place-bet-type-toggle` | VERIFIED |
 | PD-FIX-028 | Extra Place ledger bookmaker cell | Reuse the shared account-catalogue brand badge, with its configured foreground/background palette. | Bet-ledger bookmaker styling | VERIFIED |
 | PD-FIX-029 | Extra Place ledger EP Profit | Use the same full pill radius as adjacent financial-value pills for `span.extra-place-profit-neutral`. | `span.extra-place-profit-neutral` | VERIFIED |
+
+## 2026-08-24 Extra Place Dark Palette Contrast Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-030 | Extra Place EP theme | Use dark-mode Back `#174583`, Win Lay `#7C1E2F`, and Place Lay `#7B281E` surfaces with contrast-safe foreground text. | EP dark theme swatches | VERIFIED |
+| PD-FIX-031 | Extra Place Back/Lay theme | Brighten modal section headings, labels, calculated stakes, and helper copy for the Smarkets/Betfair palette in dark mode. | EP modal Back/Lay text | VERIFIED |

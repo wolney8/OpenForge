@@ -8118,12 +8118,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 html[data-theme="dark"] .extra-place-theme-ep {
-  --extra-place-back-surface: #7daae8;
-  --extra-place-win-lay-surface: #e18494;
-  --extra-place-place-lay-surface: #e18e84;
-  --extra-place-back-header: #7daae8;
-  --extra-place-win-header: #e18494;
-  --extra-place-place-header: #e18e84;
+  --extra-place-back-surface: #174583;
+  --extra-place-win-lay-surface: #7c1e2f;
+  --extra-place-place-lay-surface: #7b281e;
+  --extra-place-back-header: #174583;
+  --extra-place-win-header: #7c1e2f;
+  --extra-place-place-header: #7b281e;
 }
 
 .extra-place-theme-back-lay {
@@ -8137,7 +8137,7 @@ html[data-theme="dark"] .extra-place-theme-ep {
 
 /* The editor portal is outside the page subtree; :has keeps the page-local setting in force. */
 body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #d4e6ff; --extra-place-win-lay-surface: #fab6c2; --extra-place-place-lay-surface: #fde4e1; }
-html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #7daae8; --extra-place-win-lay-surface: #e18494; --extra-place-place-lay-surface: #e18e84; }
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #174583; --extra-place-win-lay-surface: #7c1e2f; --extra-place-place-lay-surface: #7b281e; }
 body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal { --extra-place-back-surface: var(--back-panel-bg); --extra-place-win-lay-surface: var(--lay-panel-bg); --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container)); }
 
 .extra-place-toolbar-actions,
@@ -8276,7 +8276,7 @@ html[data-theme="dark"] .extra-place-data-table th {
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-back,
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-win-lay,
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-place-lay {
-  color: #142533;
+  color: #ffffff;
 }
 
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-back {
@@ -8307,8 +8307,8 @@ html[data-theme="dark"] .extra-place-theme-back-lay .extra-place-data-table th.e
 }
 
 html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span {
-  color: #142533;
-  background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #ffffff);
+  color: #ffffff;
+  background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #000000);
 }
 
 .extra-place-bet-type-toggle-option:first-child,
@@ -8410,6 +8410,28 @@ html[data-theme="dark"] .extra-place-profit-value.is-hit {
 .extra-place-editor-modal .extra-place-lay-win .extra-place-stake-explainer,
 .extra-place-editor-modal .extra-place-lay-place .extra-place-stake-explainer {
   color: #142533;
+}
+
+/* Dark EP and Back/Lay schemes use saturated surfaces: keep all calculator copy bright. */
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place,
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back h3,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win h3,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place h3,
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .field-control > span,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .field-control > span,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .field-control > span,
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > span,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > span,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > span,
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > strong,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > strong,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > strong,
+html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-stake-explainer,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-stake-explainer,
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-stake-explainer {
+  color: #f8fbff;
 }
 
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
