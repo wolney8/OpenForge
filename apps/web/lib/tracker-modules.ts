@@ -90,6 +90,12 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
       { key: "result", label: "Result" },
     ],
   },
+  "each-way-extra-places": {
+    href: "each-way-extra-places",
+    title: "Each Way / Extra Places",
+    summary: "Horse-racing each-way and Extra Place calculator and settlement ledger.",
+    addLabel: "Add Each Way / Extra Place row",
+  },
   "cash-adjustments": {
     href: "cash-adjustments",
     title: "Cash Adjustments",
@@ -134,6 +140,7 @@ export const primaryProfileModules = trackerModuleCards.filter((module) =>
     "sportsbook-bets",
     "free-bets",
     "casino-offers",
+    "each-way-extra-places",
     "cash-adjustments",
   ].includes(module.href)
 );
