@@ -19,6 +19,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -3705,7 +3706,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 {errorMessage}
               </p>
             ) : null}
-            <div className="table-scroll">
+            <LedgerTableScroll dataPdId="casino-offers.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3841,7 +3842,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                   )}
                 </tbody>
               </table>
-            </div>
+            </LedgerTableScroll>
             <div className="table-pagination" aria-label="Casino-offer pagination">
               <div className="table-status">Page {effectivePage} of {pageCount}</div>
               <div className="tracker-nav">

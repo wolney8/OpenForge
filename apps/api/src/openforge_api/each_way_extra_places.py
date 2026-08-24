@@ -12,6 +12,7 @@ from openforge_api.db import (
     create_each_way_extra_place,
     delete_each_way_extra_place,
     get_each_way_extra_place,
+    get_profile_exchange_commission,
     list_each_way_extra_places,
     update_each_way_extra_place,
 )
@@ -66,7 +67,17 @@ def _format(value: Decimal | None) -> str | None:
     return f"{value:.2f}" if value is not None else None
 
 
-def build_calculation(payload: dict[str, object]) -> dict[str, object]:
+def _with_profile_commissions(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
+    """Resolve exchange commission from profile settings rather than the editor."""
+    return {
+        **payload,
+        "win_commission": get_profile_exchange_commission(profile_id, str(payload["win_exchange"])),
+        "place_commission": get_profile_exchange_commission(profile_id, str(payload["place_exchange"])),
+    }
+
+
+def build_calculation(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
+    payload = _with_profile_commissions(profile_id, payload)
     result = calculate_each_way_extra_place(
         EachWayCalculationInput(
             mode=str(payload["mode"]),
@@ -85,8 +96,21 @@ def build_calculation(payload: dict[str, object]) -> dict[str, object]:
     )
     fields = (
         "place_back_odds", "win_lay_stake", "place_lay_stake", "win_liability",
-        "place_liability", "qualifying_loss", "extra_place_profit", "first_place_pnl",
-        "standard_place_pnl", "extra_place_pnl", "unplaced_pnl", "current_value", "final_value",
+        "place_liability", "qualifying_loss", "extra_place_profit", "rating_percent", "implied_odds", "first_place_pnl",
+        "standard_place_pnl", "extra_place_pnl", "unplaced_pnl",
+        "first_place_bookie_pnl", "first_place_exchange_pnl",
+        "standard_place_bookie_pnl", "standard_place_exchange_pnl",
+        "extra_place_bookie_pnl", "extra_place_exchange_pnl",
+        "unplaced_bookie_pnl", "unplaced_exchange_pnl",
+        "first_place_bookie_win_pnl", "first_place_bookie_place_pnl",
+        "first_place_exchange_win_pnl", "first_place_exchange_place_pnl",
+        "standard_place_bookie_win_pnl", "standard_place_bookie_place_pnl",
+        "standard_place_exchange_win_pnl", "standard_place_exchange_place_pnl",
+        "extra_place_bookie_win_pnl", "extra_place_bookie_place_pnl",
+        "extra_place_exchange_win_pnl", "extra_place_exchange_place_pnl",
+        "unplaced_bookie_win_pnl", "unplaced_bookie_place_pnl",
+        "unplaced_exchange_win_pnl", "unplaced_exchange_place_pnl",
+        "current_value", "final_value",
     )
     return {
         "calculation_state": result.calculation_state,
@@ -97,7 +121,8 @@ def build_calculation(payload: dict[str, object]) -> dict[str, object]:
 
 def build_response(record: object) -> dict[str, object]:
     data = record.__dict__.copy()
-    return {**data, **build_calculation(data)}
+    resolved = _with_profile_commissions(str(data["profile_id"]), data)
+    return {**resolved, **build_calculation(str(data["profile_id"]), data)}
 
 
 @router.get("")
@@ -117,14 +142,16 @@ def get_profile_each_way_extra_place(profile_id: str, each_way_extra_place_id: s
 def create_profile_each_way_extra_place(
     profile_id: str, payload: EachWayExtraPlacePayload
 ) -> dict[str, object]:
-    return build_response(create_each_way_extra_place(profile_id, payload.model_dump()))
+    values = _with_profile_commissions(profile_id, payload.model_dump())
+    return build_response(create_each_way_extra_place(profile_id, values))
 
 
 @router.put("/{each_way_extra_place_id}")
 def update_profile_each_way_extra_place(
     profile_id: str, each_way_extra_place_id: str, payload: EachWayExtraPlacePayload
 ) -> dict[str, object]:
-    record = update_each_way_extra_place(profile_id, each_way_extra_place_id, payload.model_dump())
+    values = _with_profile_commissions(profile_id, payload.model_dump())
+    record = update_each_way_extra_place(profile_id, each_way_extra_place_id, values)
     if record is None:
         raise HTTPException(status_code=404, detail="Each Way / Extra Place row not found")
     return build_response(record)
@@ -150,4 +177,4 @@ def delete_profile_each_way_extra_place(
 
 @router.post("/preview")
 def preview_each_way_extra_place(profile_id: str, payload: EachWayPreviewPayload) -> dict[str, object]:
-    return {"profile_id": profile_id, **build_calculation(payload.model_dump())}
+    return {"profile_id": profile_id, **build_calculation(profile_id, payload.model_dump())}

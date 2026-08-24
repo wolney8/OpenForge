@@ -21,6 +21,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -3416,7 +3417,7 @@ export function FreeBetWorkflowShell({
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
-            <div className="table-scroll">
+            <LedgerTableScroll dataPdId="free-bets.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3560,7 +3561,7 @@ export function FreeBetWorkflowShell({
                   )}
                 </tbody>
               </table>
-            </div>
+            </LedgerTableScroll>
             <div className="table-pagination" aria-label="Free-bet pagination">
               <div className="table-status">Page {effectivePage} of {pageCount}</div>
               <div className="tracker-nav">

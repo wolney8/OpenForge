@@ -17,6 +17,7 @@ import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -1797,7 +1798,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 {errorMessage}
               </p>
             ) : null}
-            <div className="table-scroll">
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -1921,7 +1922,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   )}
                 </tbody>
               </table>
-            </div>
+            </LedgerTableScroll>
             <div className="table-pagination" aria-label="Cash-adjustment pagination">
               <div className="table-status">Page {effectivePage} of {pageCount}</div>
               <div className="tracker-nav">

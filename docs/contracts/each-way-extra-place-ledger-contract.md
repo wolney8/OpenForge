@@ -1,5 +1,30 @@
 # Each Way / Extra Place Ledger Contract
 
+## Product Naming And Editor Parity
+
+The user-facing ledger is **Extra Place**. The internal API and compatibility route remain
+`each-way-extra-places` while existing integrations migrate, but no navigation, page title, or
+user-facing label should expose the older combined name.
+
+The editor follows the shared Plum Duff ledger-modal contract:
+
+- **Calculate**, **Placement**, and **Settlement** are the only primary steps.
+- Guided entry identifies the next missing required field and moves the user to its step.
+- E/W stake, lay stakes, and liabilities are neutral amounts; only outcome, profit, and loss
+  values use positive/negative semantic colours.
+- The ledger table does not carry a duplicate status column. The established row action state and
+  issue-row treatment communicate incomplete, placed and settlement-required work.
+- Actions provide the same edit and destructive controls as signed-off ledgers, plus a compact
+  Extra Place-specific result selector. Its options are restricted to the selected mode and the
+  configured bookmaker place count.
+- The modal owns scrolling, has a fixed viewport-constrained shell, and keeps its header and
+  footer controls visible.
+- Incomplete or unresolved rows are visibly marked as requiring action and can be filtered.
+
+Initial quick-select loadouts are safe defaults. Their durable ownership is the existing
+Fund-Manager Quick Add Loadout/Common Bet Combo authority; profile availability must later honour
+the selected account's eligibility and restrictions.
+
 _Status: Implementing. Approved: 2026-08-24._
 
 ## Scope
@@ -8,12 +33,22 @@ One profile-scoped ledger supports `Each Way` and `Extra Place`; it does not dup
 The user enters E/W stake per leg, back odds, fractional terms, win/place lay odds and optional
 actual lay stakes. Preferred exchanges and commissions come from profile account settings.
 
+- Terms are entered as `1 / denominator`; the default is `1 / 5`, with `1/4`, `1/5`, and `1/6`
+  quick selections. The selected term is carried to Placement as read-only calculator context.
+- `Bookmaker Places Paid` remains a separate operational settlement field. It must never be
+  overwritten by the each-way term.
+- Commission is resolved from the selected profile exchange/account. The normal entry flow has
+  no manual commission fields.
+
 ## Derived calculation
 
 - Total bookmaker outlay: `E/W stake * 2`.
 - Place odds: `1 + ((back odds - 1) * term numerator / term denominator)`.
 - Suggested win/place lay stakes: `(respective bookmaker return) / (lay odds - commission)`.
 - Actual entered lay stakes replace suggestions for liabilities and final outcomes.
+- Rating %: `(1 + qualifying loss / total bookmaker outlay) * 100`, rounded half-up to two decimals.
+- Implied Odds: `1 + extra place profit / abs(qualifying loss)` when qualifying loss is non-zero,
+  rounded half-up to two decimals. It is unavailable when there is no qualifying loss.
 - Monetary legs and outputs use decimal half-up rounding to two places.
 - Open value is the conservative minimum of supported outcome values; settled value is the selected outcome.
 
@@ -28,8 +63,15 @@ future branches and must never be silently inferred.
 2. **Placement**: runner, race, date/time, bookmaker/accounts and per-leg placement status.
 3. **Settlement**: outcome first, optional finishing position, calculated final P&L.
 
-The ledger table shows date/time, runner/race, mode, bookmaker, stake, back odds, two lay odds,
-qualifying loss, extra-place potential where applicable, status/result and realised value.
+Settlement position quick actions contain position only (`1st`, `2nd`, and so on). Selecting one
+derives the valid settlement result, highlights its outcome-matrix row, and sets the displayed
+outcome amount. Notes are advanced-only.
+
+The ledger table shows date/time, runner/race, mode, bookmaker, per-way stake and total outlay,
+back odds, two lay odds, qualifying loss, extra-place potential where applicable and realised
+value. It is row-click editable. The result matrix separates contract-calculated Bookie,
+Exchange and Total values, with individual win and place legs visible for audit; React must not
+calculate those values.
 
 ## EP Catcher evidence
 

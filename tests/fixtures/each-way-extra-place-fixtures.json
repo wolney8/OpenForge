@@ -18,6 +18,8 @@
       "expected": {
         "win_lay_stake": "26.09",
         "place_lay_stake": "4.44",
+        "rating_percent": "152.65",
+      "implied_odds": "3.90",
         "first_place_pnl": "10.54",
         "standard_place_pnl": "10.55",
         "extra_place_pnl": "30.53",

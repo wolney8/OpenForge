@@ -80,7 +80,7 @@ const profileTrackerMenuRoutes = [
   { href: "sportsbook-bets", title: "Sportsbook Bets", icon: "sports" },
   { href: "free-bets", title: "Free Bets", icon: "award_star" },
   { href: "casino-offers", title: "Casino Offers", icon: "playing_cards" },
-  { href: "each-way-extra-places", title: "Each Way / Extra Places", icon: "trophy" },
+  { href: "each-way-extra-places", title: "Extra Place", icon: "trophy" },
   { href: "cash-adjustments", title: "Cash Adjustments", icon: "payments" },
   { href: "accounts", title: "Accounts", icon: "account_balance_wallet" },
   { href: "reports", title: "Reports", icon: "summarize" },

@@ -456,6 +456,19 @@ cause, prevention rule and regression test.
   positive value styling, branded quick selectors and preset selection. Geometry parity remains a
   mandatory computed-style check in the consistency-enforcer skill.
 
+## 2026-08-24: New ledger diverged from signed-off tracker patterns
+
+- Area: Extra Place ledger table, filter workflow and tabbed editor modal.
+- Root cause: the new ledger initially introduced a separate table and modal shell instead of
+  extending the signed-off ledger primitives, producing clipped footer controls, missing filter
+  controls and inconsistent action/value presentation.
+- Prevention: a first-class ledger must inherit the canonical modal backdrop, sticky footer,
+  tracker-range card, filter-dialog and row-action patterns before feature-specific styling is
+  added. Page-local themes may alter semantic back/lay surfaces only; they cannot change action,
+  value or modal geometry conventions.
+- Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` covers modal viewport/footer bounds,
+  tracker range, detail-column control, grouped headers and Extra Place filter dialog behaviour.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

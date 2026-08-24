@@ -889,7 +889,7 @@ export function summarizeTrackerData(
       id: row.each_way_extra_place_id,
       module: "each-way-extra-place" as const,
       label: row.runner || row.each_way_extra_place_id,
-      bookmakerOrAccount: row.bookmaker || "Each Way / Extra Place",
+      bookmakerOrAccount: row.bookmaker || "Extra Place",
       status: `${row.status} / ${row.result}`,
       date: row.placed_at,
       value: eachWayExtraPlaceDisplayValue(row),
@@ -1078,7 +1078,7 @@ export function summarizeTrackerData(
     },
     {
       moduleKey: "each-way-extra-places",
-      label: "Each Way / Extra Places",
+      label: "Extra Place",
       rowCount: eachWayExtraPlacesInRange.length,
       reportingValue: eachWayExtraPlaceReportingValue,
     },

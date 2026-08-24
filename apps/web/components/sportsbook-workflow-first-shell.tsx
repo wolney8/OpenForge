@@ -36,6 +36,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
@@ -6336,7 +6337,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ) : null}
         {!tableCollapsed ? (
           <>
-            <div className="table-scroll">
+            <LedgerTableScroll dataPdId="sportsbook.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -6483,7 +6484,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   )}
                 </tbody>
               </table>
-            </div>
+            </LedgerTableScroll>
             <div className="table-pagination" aria-label="Sportsbook pagination">
               <div className="table-status">Page {effectivePage} of {pageCount}</div>
               <div className="tracker-nav">

@@ -109,6 +109,14 @@ All lay-capable ledger calculators use the same Outplayed-inspired Plum Duff cal
 Different calculator modes may change fields and result cards, but they must not invent unrelated
 spacing, colours, table surfaces, icon sizes or action geometry.
 
+## Wide ledger table controls
+
+Wide ledger tables retain their native horizontal scrollbar and expose contained, keyboard-accessible
+left/right scroll controls at the visible table edges. Controls are disabled at the respective edge,
+use smooth motion only when motion is allowed, and must not obscure row actions or escape the table
+viewport. Column resizing and action popovers must remain contained or portalled above the scroll
+region so no control is clipped by table overflow.
+
 The calculator system must be reusable outside ledgers for M14 Calculator Workspace. Ledger mode may
 add placement side effects such as marking a lay as placed. Standalone mode must not. If a
 calculator change cannot run in both modes, the implementation must explain why and add a bridge
