@@ -16,6 +16,10 @@ def test_mbb_extra_place_reference_example() -> None:
     assert result.standard_place_pnl == Decimal("10.55")
     assert result.extra_place_pnl == Decimal("30.53")
     assert result.unplaced_pnl == Decimal("10.53")
+    assert result.first_place_bookie_win_pnl == Decimal("50.00")
+    assert result.first_place_bookie_place_pnl == Decimal("10.00")
+    assert result.first_place_exchange_win_pnl == Decimal("-33.92")
+    assert result.first_place_exchange_place_pnl == Decimal("-15.54")
     assert result.first_place_bookie_pnl + result.first_place_exchange_pnl == result.first_place_pnl
     assert result.standard_place_bookie_pnl + result.standard_place_exchange_pnl == result.standard_place_pnl
     assert result.extra_place_bookie_pnl + result.extra_place_exchange_pnl == result.extra_place_pnl

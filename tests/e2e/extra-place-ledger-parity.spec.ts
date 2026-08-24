@@ -54,4 +54,34 @@ test.describe("Extra Place ledger parity", () => {
     await expect(dialog.getByText("Issue type", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible();
   });
+
+  test("keeps calculation and settlement choices in local Extra Place controls", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    await expect(dialog.getByLabel("Each-way term denominator")).toHaveValue("5");
+    await dialog.getByRole("button", { name: "1/4" }).click();
+    await expect(dialog.getByLabel("Each-way term denominator")).toHaveValue("4");
+    await expect(dialog.getByText("Total bookmaker stake:")).toBeVisible();
+    const calculatePanel = dialog.locator('[data-pd-id="ledger-editor.panel.calculate"]');
+    await expect(calculatePanel.getByText("Outcomes", { exact: true })).toBeVisible();
+    await expect(calculatePanel.getByText("Qualifying Loss", { exact: false })).toBeVisible();
+
+    await dialog.getByLabel("E/W Stake (each way)").fill("5");
+    await dialog.getByLabel("Back Odds").fill("6");
+    await dialog.getByLabel("Lay Odds").first().fill("2.3");
+    await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await dialog.getByRole("tab", { name: /Placement/ }).click();
+    await dialog.getByLabel("Runner / Horse").fill("Test Runner");
+    await dialog.getByLabel("Race").fill("Test Race");
+    await dialog.getByLabel("Date / Time").fill("2026-08-24T12:00");
+    const placementPanel = dialog.locator('[data-pd-id="ledger-editor.panel.placement"]');
+    await placementPanel.locator("select").first().selectOption("Betfred");
+    const settlementPanel = dialog.locator('[data-pd-id="ledger-editor.panel.settlement"]');
+    await expect(settlementPanel.locator(".extra-place-quick-choice-row")).toHaveCount(3);
+    await expect(settlementPanel.getByText("Advanced", { exact: true })).toHaveCount(1);
+    await expect(settlementPanel.locator(".tracker-nav.field-choice-pills")).toHaveCount(0);
+  });
 });

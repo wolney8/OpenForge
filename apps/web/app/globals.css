@@ -7861,6 +7861,63 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   margin: 0;
 }
 
+.extra-place-field-with-chips {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.extra-place-field-with-chips .field-choice-pills,
+.extra-place-field-with-chips .extra-place-quick-choice-row,
+.extra-place-editor-modal .field-control > .field-choice-pills {
+  margin: 0;
+}
+
+.extra-place-term-input {
+  display: flex;
+  align-items: center;
+  min-height: var(--field-height);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.extra-place-term-input > span {
+  display: grid;
+  place-items: center;
+  min-width: 4.25rem;
+  align-self: stretch;
+  border-right: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-weight: 700;
+}
+
+.extra-place-term-input input {
+  min-width: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.extra-place-term-input input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.extra-place-quick-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.extra-place-bookmaker-chip {
+  border-color: color-mix(in srgb, currentColor 46%, var(--outline));
+  font-weight: 760;
+}
+
 .extra-place-calculated-stake {
   display: flex;
   flex-wrap: wrap;
@@ -7887,35 +7944,13 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .extra-place-outcome-matrix {
   display: grid;
-  gap: 0.9rem;
-  padding: 1.1rem;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--shape-large);
-  background: var(--surface-container);
-}
-
-.extra-place-outcome-matrix-heading,
-.extra-place-outcome-summary {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.65rem;
-}
-
-.extra-place-outcome-matrix-heading h3 {
-  margin: 0;
-}
-
-.extra-place-outcome-matrix-heading > span {
-  color: var(--on-surface-variant);
-  font-size: 0.85rem;
+  gap: 0;
+  padding: 0;
 }
 
 .extra-place-outcome-table {
+  display: grid;
   overflow: hidden;
-  border-radius: var(--shape-medium);
-  border: 1px solid var(--outline-variant);
 }
 
 .extra-place-outcome-row {
@@ -7925,21 +7960,11 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.75rem;
   min-height: 3rem;
   padding: 0.6rem 1rem;
-  background: var(--surface-container-high);
+  background: var(--surface-container);
 }
 
 .extra-place-outcome-row + .extra-place-outcome-row {
   border-top: 1px solid var(--outline-variant);
-}
-
-.extra-place-outcome-row-heading {
-  min-height: 2.7rem;
-  color: var(--on-surface-variant);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: var(--surface-container-highest);
 }
 
 .extra-place-outcome-row strong:first-child {
@@ -7948,6 +7973,25 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   align-items: center;
   padding-left: 0.7rem;
   border-left: 0.5rem solid var(--outline);
+}
+
+.extra-place-outcome-row.is-selected {
+  box-shadow: inset 0 0 0 2px var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface-container));
+}
+
+.extra-place-matrix-value {
+  font-weight: 740;
+  white-space: nowrap;
+}
+
+.extra-place-matrix-value-positive { color: var(--success); }
+.extra-place-matrix-value-negative { color: var(--error); }
+.extra-place-matrix-value-neutral { color: var(--on-surface-variant); }
+
+.extra-place-outcome-row b {
+  color: var(--on-surface-variant);
+  font-weight: 700;
 }
 
 .extra-place-outcome-win strong:first-child { border-color: var(--primary); }
@@ -7961,8 +8005,13 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .extra-place-outcome-unplaced strong:first-child { background: var(--surface-container-highest); }
 
 .extra-place-outcome-summary {
-  padding-top: 0.15rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
   color: var(--on-surface-variant);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .extra-place-stake-explainer {

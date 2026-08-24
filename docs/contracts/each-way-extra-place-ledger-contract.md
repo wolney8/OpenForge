@@ -33,6 +33,13 @@ One profile-scoped ledger supports `Each Way` and `Extra Place`; it does not dup
 The user enters E/W stake per leg, back odds, fractional terms, win/place lay odds and optional
 actual lay stakes. Preferred exchanges and commissions come from profile account settings.
 
+- Terms are entered as `1 / denominator`; the default is `1 / 5`, with `1/4`, `1/5`, and `1/6`
+  quick selections. The selected term is carried to Placement as read-only calculator context.
+- `Bookmaker Places Paid` remains a separate operational settlement field. It must never be
+  overwritten by the each-way term.
+- Commission is resolved from the selected profile exchange/account. The normal entry flow has
+  no manual commission fields.
+
 ## Derived calculation
 
 - Total bookmaker outlay: `E/W stake * 2`.
@@ -53,10 +60,15 @@ future branches and must never be silently inferred.
 2. **Placement**: runner, race, date/time, bookmaker/accounts and per-leg placement status.
 3. **Settlement**: outcome first, optional finishing position, calculated final P&L.
 
+Settlement position quick actions contain position only (`1st`, `2nd`, and so on). Selecting one
+derives the valid settlement result, highlights its outcome-matrix row, and sets the displayed
+outcome amount. Notes are advanced-only.
+
 The ledger table shows date/time, runner/race, mode, bookmaker, per-way stake and total outlay,
 back odds, two lay odds, qualifying loss, extra-place potential where applicable and realised
 value. It is row-click editable. The result matrix separates contract-calculated Bookie,
-Exchange and Total values; React must not calculate those values.
+Exchange and Total values, with individual win and place legs visible for audit; React must not
+calculate those values.
 
 ## EP Catcher evidence
 
