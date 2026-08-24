@@ -3,6 +3,27 @@ import { expect, test } from "@playwright/test";
 const route = "/profiles/profile-demo-001/tracker/each-way-extra-places";
 
 test.describe("Extra Place ledger parity", () => {
+  test("uses the range card, grouped headers, and an optional detail-column rail", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+
+    const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
+    await expect(ledger.getByText("Tracker range", { exact: true })).toBeVisible();
+    await expect(ledger.locator("th.extra-place-column-back").first()).toContainText("Bookmaker");
+    await expect(ledger.locator("th.extra-place-column-win-lay").first()).toContainText("Win Lay Odds");
+    await expect(ledger.locator("th.extra-place-column-place-lay").first()).toContainText("Place Lay Odds");
+
+    await ledger.getByRole("button", { name: "Hide detail columns" }).click();
+    await expect(ledger.getByRole("button", { name: "Show detail columns" })).toBeVisible();
+    await expect(ledger.getByRole("columnheader", { name: "Date / time" })).toBeVisible();
+    await expect(ledger.getByRole("columnheader", { name: "Qual Loss" })).toBeVisible();
+    await expect(ledger.getByRole("columnheader", { name: "Extra Place Profit" })).toBeVisible();
+    await expect(ledger.getByRole("columnheader", { name: "Win Lay Odds" })).toHaveCount(0);
+
+    await ledger.getByRole("button", { name: "Back / Lay theme" }).click();
+    await expect(ledger).toHaveClass(/extra-place-theme-back-lay/);
+  });
+
   test("uses a viewport-owned editor with visible footer controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });

@@ -8062,6 +8062,115 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   width: min(480px, calc(100vw - 2rem));
 }
 
+/* Extra Place has two deliberate, page-scoped presentation schemes. The ledger keeps
+   operational cells neutral while the related calculator sections inherit the same scheme. */
+.extra-place-theme-ep {
+  --extra-place-back-surface: color-mix(in srgb, #91c6ff 28%, var(--surface-container));
+  --extra-place-win-lay-surface: color-mix(in srgb, #ff8fa2 25%, var(--surface-container));
+  --extra-place-place-lay-surface: color-mix(in srgb, #ffc0b4 20%, var(--surface-container));
+  --extra-place-back-header: color-mix(in srgb, #91c6ff 36%, var(--surface-container-high));
+  --extra-place-win-header: color-mix(in srgb, #ff8fa2 36%, var(--surface-container-high));
+  --extra-place-place-header: color-mix(in srgb, #ffc0b4 30%, var(--surface-container-high));
+}
+
+.extra-place-theme-back-lay {
+  --extra-place-back-surface: var(--back-panel-bg);
+  --extra-place-win-lay-surface: var(--lay-panel-bg);
+  --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container));
+  --extra-place-back-header: color-mix(in srgb, var(--back-color) 38%, var(--surface-container-high));
+  --extra-place-win-header: color-mix(in srgb, var(--lay-color) 38%, var(--surface-container-high));
+  --extra-place-place-header: color-mix(in srgb, var(--lay-color) 25%, var(--surface-container-high));
+}
+
+/* The editor portal is outside the page subtree; :has keeps the page-local setting in force. */
+body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: color-mix(in srgb, #91c6ff 28%, var(--surface-container)); --extra-place-win-lay-surface: color-mix(in srgb, #ff8fa2 25%, var(--surface-container)); --extra-place-place-lay-surface: color-mix(in srgb, #ffc0b4 20%, var(--surface-container)); }
+body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal { --extra-place-back-surface: var(--back-panel-bg); --extra-place-win-lay-surface: var(--lay-panel-bg); --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container)); }
+
+.extra-place-toolbar-actions,
+.extra-place-table-preferences {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.extra-place-table-preferences {
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.extra-place-data-table th.extra-place-column-back { background: var(--extra-place-back-header); }
+.extra-place-data-table th.extra-place-column-win-lay { background: var(--extra-place-win-header); }
+.extra-place-data-table th.extra-place-column-place-lay { background: var(--extra-place-place-header); }
+.extra-place-data-table th {
+  min-width: 7.5rem;
+  text-align: center;
+}
+
+.extra-place-data-table td {
+  color: var(--on-surface);
+  font-weight: 680;
+  white-space: nowrap;
+}
+.extra-place-data-table td:nth-child(2) { white-space: normal; min-width: 13rem; }
+
+.extra-place-editor-modal .calculator-segment-back,
+.extra-place-editor-modal .extra-place-lay-win,
+.extra-place-editor-modal .extra-place-lay-place {
+  border-color: color-mix(in srgb, var(--outline) 62%, transparent);
+}
+
+.extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
+.extra-place-editor-modal .extra-place-lay-win { background: var(--extra-place-win-lay-surface); }
+.extra-place-editor-modal .extra-place-lay-place { background: var(--extra-place-place-lay-surface); }
+
+.extra-place-editor-modal .extra-place-lay-segment {
+  margin-top: 0.45rem;
+}
+
+.extra-place-editor-modal .calculator-result-card-heading {
+  margin-top: 1.45rem;
+}
+
+.extra-place-editor-modal .extra-place-outcome-matrix {
+  margin-top: 0.35rem;
+}
+
+.extra-place-editor-modal .modal-primary-button {
+  border-color: color-mix(in srgb, #78b8ff 68%, var(--outline));
+  background: color-mix(in srgb, #4f8fd6 34%, var(--surface-strong));
+  color: #cfe5ff;
+}
+
+.extra-place-editor-modal .review-chip-destructive {
+  border-color: color-mix(in srgb, var(--error) 68%, var(--outline));
+  color: var(--error);
+}
+
+.extra-place-outcome-row {
+  grid-template-columns: minmax(10rem, 1.2fr) repeat(2, minmax(10rem, 1.4fr)) minmax(7rem, 0.8fr);
+  background: var(--surface-container-high);
+}
+
+.extra-place-outcome-row > span { text-align: center; }
+.extra-place-outcome-row > strong:last-child { text-align: right; }
+
+.extra-place-outcome-row > strong:first-child {
+  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 50%, calc(100% - 1rem) 100%, 0 100%);
+  padding-right: 1.4rem;
+}
+
+.extra-place-outcome-row > span {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+@media (max-width: 780px) {
+  .extra-place-table-preferences { align-items: flex-start; flex-direction: column; }
+  .extra-place-toolbar-actions { margin-left: auto; }
+}
+
 .extra-place-outcome-summary .ledger-financial-value {
   margin-left: 0.35rem;
 }
