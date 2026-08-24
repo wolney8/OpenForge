@@ -90,6 +90,21 @@ Choose a recognised recurring offer such as a synthetic weekly bet builder or lo
   may supply an initial campaign tag, but applying it must not create a lookup authority.
 - Presets are templates, not historical rows and not betting instructions.
 
+### Quick Add loadout authority
+
+- `Common Bet Combo` remains the single persisted template authority. `Quick Add Loadout` is a
+  Settings/UI label for a combo with `quick_add.enabled`.
+- A loadout declares its supported ledger surfaces, display label, order, compact fields and copied
+  defaults. Existing combo fields remain the default source where they map to the compact workflow.
+- Fund Manager edits are global. Profiles inherit those changes unless a permitted profile override
+  exists; an override can only enable/hide the loadout, choose an eligible profile bookmaker, or
+  supply approved profile defaults. It must never mutate the global combo.
+- Archived templates remain auditable for existing rows but cannot start new Quick Add work.
+- Account lifecycle and restriction records remain authoritative. Blocked, gubbed, closed, KYC/risk
+  blocked and promotion-ineligible accounts cannot use a promotional loadout. Limited and pending
+  accounts remain visible with an explicit warning where the offer family permits use.
+- A profile must never receive another profile's override, bookmaker or default values.
+
 ## Application rules
 
 1. Select a profile and ledger, or open the Fund Manager multi-profile opportunity workflow.
@@ -192,3 +207,6 @@ account-health mug bets; weekly reloads; welcome offers; enhanced prices; and bo
 - UI: selected profile -> add row -> choose quick action -> inspect prefill -> complete calculator -> save draft
 - Casino UI: selected profile -> Casino Offers -> add row -> choose Casino combo -> verify
   profile bookmaker coverage and descriptive prefill -> complete dates/result -> explicitly save
+- Quick Add UI: Fund Manager enables a global combo as a loadout -> profile hides or selects an
+  eligible account -> Casino Free Spins compact entry shows only that profile's eligible loadouts ->
+  applying it creates an unsaved compact form with copied defaults.

@@ -3,6 +3,7 @@ import { AccountsWorkflowShell } from "@/components/accounts-workflow-shell";
 import { CashAdjustmentWorkflowShell } from "@/components/cash-adjustment-workflow-shell";
 import { CasinoOfferWorkflowShell } from "@/components/casino-offer-workflow-shell";
 import { FreeBetWorkflowShell } from "@/components/free-bet-workflow-shell";
+import { EachWayExtraPlaceWorkflowShell } from "@/components/each-way-extra-place-workflow-shell";
 import { ProfileSettingsShell } from "@/components/profile-settings-shell";
 import { SportsbookWorkflowShell } from "@/components/sportsbook-workflow-shell";
 import { TrackerSummaryShell } from "@/components/tracker-summary-shell";
@@ -76,6 +77,7 @@ export default async function TrackerModulePage({
     "sportsbook-bets",
     "free-bets",
     "casino-offers",
+    "each-way-extra-places",
     "cash-adjustments",
     "settings",
     "reports",
@@ -104,6 +106,8 @@ export default async function TrackerModulePage({
         <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} />
       ) : module === "casino-offers" ? (
         <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
+      ) : module === "each-way-extra-places" ? (
+        <EachWayExtraPlaceWorkflowShell profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (

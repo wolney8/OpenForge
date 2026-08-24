@@ -12,6 +12,7 @@ from openforge_api.common_bet_combos import router as common_bet_combos_router
 from openforge_api.config import settings
 from openforge_api.database_provider import router as database_provider_router
 from openforge_api.exchange_settings import router as exchange_settings_router
+from openforge_api.each_way_extra_places import router as each_way_extra_places_router
 from openforge_api.free_bets import router as free_bets_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.fund_manager_lookup_values import router as fund_manager_lookup_values_router
@@ -50,6 +51,7 @@ app.include_router(casino_offers_router)
 app.include_router(common_bet_combos_router)
 app.include_router(database_provider_router)
 app.include_router(exchange_settings_router)
+app.include_router(each_way_extra_places_router)
 app.include_router(tracker_settings_router)
 app.include_router(lookup_values_router)
 

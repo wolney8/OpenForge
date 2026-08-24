@@ -6,6 +6,7 @@ import { AccountAuthoritySettings } from "@/components/account-authority-setting
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
+import { ProfileQuickAddLoadoutSettings } from "@/components/profile-quick-add-loadout-settings";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
 import { apiBaseUrl } from "@/lib/api";
 
@@ -15,6 +16,7 @@ const settingsSections = [
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
   { id: "account-authorities", label: "Accounts" },
+  { id: "quick-add", label: "Quick Add" },
 ] as const;
 
 type SettingsSection = (typeof settingsSections)[number]["id"];
@@ -153,6 +155,15 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           role="tabpanel"
         >
           <AccountAuthoritySettings profileId={profileId} />
+        </section>
+        <section
+          aria-labelledby="profile-settings-tab-quick-add"
+          className="analytics-tab-panel"
+          hidden={activeSection !== "quick-add"}
+          id="profile-settings-panel-quick-add"
+          role="tabpanel"
+        >
+          <ProfileQuickAddLoadoutSettings profileId={profileId} />
         </section>
       </section>
     </section>

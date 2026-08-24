@@ -442,6 +442,20 @@ cause, prevention rule and regression test.
   structure and settled-row edit behaviour. Manual smoke should verify Free Bets cannot Revert,
   Delete or Close while Save is active and no duplicate modal-open save messages appear.
 
+## 2026-08-23: Quick Add controls inherited conflicting generic field geometry
+
+- Area: Casino Free Spins Quick Add modal.
+- Root cause: shared icon-button minimum height made the modal close action oval, generic
+  field-control styling reintroduced an inner bordered input inside the currency wrapper, and
+  grid stretch made the Offer Name field taller than its adjacent Game field.
+- Prevention: modal close controls explicitly reset width, height, minimum size and padding;
+  composite financial inputs reset nested generic input geometry after field-control rules; grids
+  with chip rows use `align-items: start`; branded bookmaker quick-select chips take the existing
+  catalogue foreground/background pair.
+- Test added: `tests/e2e/casino-free-spins-quick-add.spec.ts` covers decimal shorthand,
+  positive value styling, branded quick selectors and preset selection. Geometry parity remains a
+  mandatory computed-style check in the consistency-enforcer skill.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

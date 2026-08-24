@@ -28,6 +28,7 @@ Allow the Fund Manager, inside a selected profile tracker, to record and manage 
   - row detail / status view
 - entry points:
   - add casino offer row
+  - template-driven quick add for approved common offer types
   - update casino offer progress
   - settle casino offer row
 - profile context required:
@@ -51,6 +52,8 @@ Allow the Fund Manager, inside a selected profile tracker, to record and manage 
 
 - current/final casino `NetPnL` resolution
 - `docs/contracts/dashboard-selected-range-pnl-contract.md`
+- `docs/workflows/ledger-quick-add-workflow-contract.md` for the approved no-deposit Free Spins
+  quick-add boundary
 
 ## 8. Reports touched
 

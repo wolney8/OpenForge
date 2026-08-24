@@ -19,6 +19,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -1739,12 +1740,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
+  const [quickAddLoadouts, setQuickAddLoadouts] = useState<CasinoQuickAddLoadout[]>([]);
   const [selectedComboId, setSelectedComboId] = useState("");
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddReturnValues, setQuickAddReturnValues] =
+    useState<CasinoFreeSpinsQuickAddValues | null>(null);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:casino-offers`,
     false
@@ -1804,6 +1809,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isPending, startTransition] = useTransition();
   const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
+  const quickAddRef = useRef<HTMLDivElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
@@ -1843,11 +1849,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
-  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+  const hasOpenModal = workflowVisible || isQuickAddOpen || isFilterModalOpen || Boolean(outcomeModalState);
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
   useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(isQuickAddOpen, quickAddRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -1963,6 +1970,43 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setCommonBetCombos(nextRows.filter((row) => row.ledger_type === "Casino"));
   }, []);
 
+  const loadQuickAddLoadouts = useCallback(async () => {
+    const response = await fetch(
+      `${apiBaseUrl}/fund-manager/common-bet-combos/profile-overrides/${profileId}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      throw new Error("Unable to load Quick Add loadouts");
+    }
+    const rows = (await response.json()) as Array<{
+      preset_id: string;
+      label: string;
+      ledger_type: string;
+      defaults: Record<string, string>;
+      bookmaker: string;
+      enabled: boolean;
+      availability: CasinoQuickAddLoadout["availability"];
+      availability_reason: string;
+    }>;
+    setQuickAddLoadouts(rows
+      .filter((row) => row.ledger_type === "Casino" && row.enabled)
+      .map((row) => ({
+        preset_id: row.preset_id,
+        label: row.label,
+        bookmaker: row.bookmaker,
+        availability: row.availability,
+        availability_reason: row.availability_reason,
+        defaults: {
+          bookmaker: row.defaults.bookmaker,
+          offerName: row.defaults.offerName ?? row.defaults.offer_name,
+          game: row.defaults.game,
+          spinCount: row.defaults.spinCount ?? row.defaults.free_spins_awarded,
+          spinStake: row.defaults.spinStake ?? row.defaults.spin_stake,
+          convertedWin: row.defaults.convertedWin ?? row.defaults.free_spins_value ?? "0.00",
+        },
+      })));
+  }, [profileId]);
+
   const loadTrackerSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       cache: "no-store",
@@ -1976,7 +2020,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).catch(
+      void Promise.all([loadRows(ignoreInitialRecordIdRef.current ? undefined : initialRecordId), loadAccountAuthorities(), loadLookupValues(), loadTrackerSettings(), loadCommonBetCombos()]).then(
+        () => loadQuickAddLoadouts().catch(() => setQuickAddLoadouts([])),
+      ).catch(
         (error: Error) => {
           setIsInitialLoading(false);
           setErrorMessage(error.message);
@@ -1986,7 +2032,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings, loadCommonBetCombos]);
+  }, [initialRecordId, loadRows, loadAccountAuthorities, loadLookupValues, loadTrackerSettings, loadCommonBetCombos, loadQuickAddLoadouts]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.casino_offer_id === selectedId) ?? null,
@@ -2504,6 +2550,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         formState.bookmaker,
       ]),
     [accountAuthorities, formState.bookmaker, lookupValues, rows]
+  );
+  const quickAddBookmakerOptions = useMemo(
+    () => dedupeOptions(getAccountNamesByType(accountAuthorities, "Bookie")),
+    [accountAuthorities]
   );
 
   const selectedComboCoverage = useMemo(() => {
@@ -3096,6 +3146,70 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     revealEditor({ expandLedger: true });
   }
 
+  function buildFreeSpinsQuickAddForm(values: CasinoFreeSpinsQuickAddValues): CasinoOfferFormState {
+    const operatingDate = getCurrentDateTimeLocalValue();
+    const base = applyCasinoOfferTypeDefaults(createBlankForm(), "Free Spins");
+    const convertedWin = formatCasinoMoneyInput(values.convertedWin);
+    return {
+      ...base,
+      date_started: operatingDate,
+      date_settling: operatingDate,
+      bookmaker: values.bookmaker,
+      offer_name: values.offerName.trim() || "Free Spins",
+      game: values.game.trim(),
+      spin_stake: formatCasinoMoneyInput(values.spinStake),
+      free_spins_awarded: values.spinCount,
+      free_spins_value: convertedWin,
+      own_cash_committed: "0.00",
+      status: "Settled",
+      result: Number(convertedWin) > 0 ? "Win" : "Lose",
+      final_net_pnl: convertedWin,
+    };
+  }
+
+  async function saveFreeSpinsQuickAdd(values: CasinoFreeSpinsQuickAddValues): Promise<boolean> {
+    const nextForm = buildFreeSpinsQuickAddForm(values);
+    const saved = await persistForm(nextForm, { returnToLedgerOnSuccess: true });
+    if (saved) {
+      setQuickAddReturnValues(null);
+      setIsQuickAddOpen(false);
+    }
+    return saved;
+  }
+
+  function openFreeSpinsQuickAddDetails(values: CasinoFreeSpinsQuickAddValues) {
+    const nextForm = buildFreeSpinsQuickAddForm(values);
+    setQuickAddReturnValues(values);
+    setIsQuickAddOpen(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    isCreatingDraftRef.current = true;
+    setFormState(nextForm);
+    setPristineFormState(nextForm);
+    setActiveEditorTabId("setup");
+    setWorkflowVisible(true);
+    setTableCollapsed(false);
+    setErrorMessage("");
+    revealEditor({ expandLedger: true });
+  }
+
+  function returnToFreeSpinsQuickAdd() {
+    setQuickAddReturnValues({
+      bookmaker: formState.bookmaker,
+      offerName: formState.offer_name,
+      game: formState.game,
+      spinCount: formState.free_spins_awarded,
+      spinStake: formState.spin_stake,
+      convertedWin: formState.free_spins_value,
+    });
+    setWorkflowVisible(false);
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    isCreatingDraftRef.current = false;
+    setTableCollapsed(false);
+    setIsQuickAddOpen(true);
+  }
+
   async function closeEditor() {
     if (isPersistingRef.current) {
       return;
@@ -3563,6 +3677,21 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
+          <button
+            aria-label="Quick add Free Spins"
+            className="icon-button ledger-toolbar-quick-add-action"
+            data-pd-id="casino-quick-add.open"
+            onClick={() => {
+              setErrorMessage("");
+              setQuickAddReturnValues(null);
+              setIsQuickAddOpen(true);
+            }}
+            title="Quick add Free Spins"
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">bolt</span>
+            <span>Quick Add</span>
+          </button>
           <LedgerAddRowButton label="Add casino row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open casino-offer filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
@@ -5507,6 +5636,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               />
             ) : null}
             <div className="tracker-nav workflow-editor-footer-primary">
+              {quickAddReturnValues && !selectedId ? (
+                <button
+                  className="review-chip"
+                  disabled={isPersisting}
+                  onClick={returnToFreeSpinsQuickAdd}
+                  type="button"
+                >
+                  Back To Quick Add
+                </button>
+              ) : null}
               {isSettledReadOnly ? (
                 <button
                   aria-label="Close casino editor"
@@ -5589,6 +5728,29 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
       </section>
       </div>
+      ) : null}
+      {isQuickAddOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !isPersisting) setIsQuickAddOpen(false); }}>
+          <div ref={quickAddRef}>
+            <CasinoFreeSpinsQuickAdd
+              bookmakerCatalogue={bookmakerCatalogue}
+              bookmakerOptions={quickAddBookmakerOptions}
+              errorMessage={errorMessage}
+              initialValues={quickAddReturnValues}
+              isSaving={isPersisting}
+              key={profileId}
+              loadouts={quickAddLoadouts}
+              onClose={() => {
+                setErrorMessage("");
+                setQuickAddReturnValues(null);
+                setIsQuickAddOpen(false);
+              }}
+              onMoreDetails={openFreeSpinsQuickAddDetails}
+              onSave={saveFreeSpinsQuickAdd}
+              profileId={profileId}
+            />
+          </div>
+        </div>
       ) : null}
     </section>
   );

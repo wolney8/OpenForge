@@ -83,10 +83,10 @@ Open gaps:
 - Remaining taxonomy work is now broader authority ownership: additional workbook lists still need migration from hardcoded constants into settings-owned profile authorities.
 - Contract-backed money logic still needs expansion to natively consume multiple partial lay legs for full strategy-preserving recalculation across mixed-odds legs.
 - Advanced sportsbook offer families remain missing dedicated contracts and fixtures:
-  - Each Way fixture/contract draft now exists; still not approved or implemented
+  - Each Way / Extra Places now has an implemented dedicated ledger, calculation contract and
+    deterministic fixtures; future work is importer mapping and account-authority integration.
   - 2UP / Early Payout fixture/contract draft now exists; still not approved or implemented
   - BOG / Best Odds Guaranteed fixture/contract draft now exists; still not approved or implemented
-  - Extra Places fixture/contract draft now exists; still not approved or implemented
   - explicit horse-racing refund subtypes such as money back if 2nd/3rd
 
 ### 3a) Free-Bet Multi-Lay Expansion

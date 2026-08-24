@@ -45,6 +45,12 @@ _Last updated: 2026-07-22_
 | COMBO-035 | Profile is Soft Limited / Stake Restricted | Offer remains selectable only with a stake-risk warning and no implied profitability claim |
 | COMBO-036 | External offer has stale evidence date | Combo application requires re-verification before creating new rows |
 | COMBO-037 | Source cannot be safely collected automatically | Manual catalogue maintenance remains available; no scraper is run |
+| COMBO-038 | Global Quick Add loadout | Active global template inherits its compact defaults into an eligible profile without cloning the template |
+| COMBO-039 | Profile disables Quick Add loadout | Loadout is hidden from that profile's compact entry but remains available to other profiles |
+| COMBO-040 | Profile chooses account override | Permitted profile default wins over the global default without changing the global template |
+| COMBO-041 | Blocked or gubbed account override | UI marks it unavailable and API rejects the override |
+| COMBO-042 | Limited account override | Loadout stays available with a visible warning |
+| COMBO-043 | Archived Quick Add loadout | Historical rows retain the preset reference; it cannot be selected for a new compact entry |
 | PB-001 | Displayed boosted odds | Displayed odds drive sportsbook scenarios |
 | PB-002 | 15% boost on odds 3.00, stake 10 | Reference boosted odds 3.3000; extra profit 3.00 |
 | PB-003 | PB-002 capped at 2.00 | Reference boosted odds 3.2000; extra profit 2.00 |

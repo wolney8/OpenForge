@@ -28,8 +28,59 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Multi-fixture, outright and long-duration sportsbook workflow | M14 Calculator Workspace or later sportsbook expansion | `docs/workflows/sportsbook-multi-fixture-and-outright-workflow-contract.md` | `docs/fixture-specs/sportsbook-multi-fixture-and-outright-fixture-spec.md` | Needs issue verification |
 | Account quick popup and bookmaker hygiene | M6 Account Intelligence or future account-management milestone | `docs/workflows/account-quick-popup-workflow-contract.md`, `docs/contracts/account-health-intelligence-contract.md` | `docs/fixture-specs/account-quick-popup-fixture-spec.md` | Needs issue verification |
 | In-app route guards and unsaved-state handling | M15 Platform Experience | `docs/workflows/in-app-route-guard-and-unsaved-state-workflow-contract.md` | `docs/fixture-specs/in-app-route-guard-and-unsaved-state-fixture-spec.md` | Needs issue verification |
+| Template-driven ledger Quick Add | M13 Common Bet Combos, M15 Platform Experience | `docs/workflows/ledger-quick-add-workflow-contract.md`, `docs/workflows/casino-offer-workflow-contract.md` | `docs/fixture-specs/ledger-quick-add-fixture-spec.md` | Live public GitHub checked 2026-08-23: no dedicated issue found. Pending authenticated issue sync; do not duplicate if the user has since created one. |
 
 ## Recommended issue bodies
+
+### Template-driven ledger Quick Add
+
+Title:
+
+`Add Template-Driven Ledger Quick Add Starting With Casino Free Spins`
+
+Milestone:
+
+`M13 Common Bet Combos` with `M15 Platform Experience` UX dependency
+
+Body:
+
+```md
+## Objective
+
+Add a compact, template-driven quick-add path beside ledger Add Row actions, starting with a
+no-deposit Casino Free Spins record.
+
+## Scope
+
+- Add a Quick Add entry beside Casino Offers Add Row.
+- Free Spins template: profile-valid bookmaker, optional offer/game, spin count, spin stake and
+  confirmed converted win amount.
+- Persist the confirmed converted win as the explicit Casino final net result for this zero-own-
+  cash template.
+- Provide a no-return `£ 0.00` shortcut and a More details path into the normal editor.
+- Reuse Common Bet Combos as the Fund Manager-owned template authority; do not add a second
+  template store.
+- Define later candidate templates without implementing uncontracted casino EV/wager logic.
+
+## Exclusions
+
+- No wagering, RTP, EV, cashback, refund or deposit-bonus calculation changes.
+- No bookmaker automation or account creation.
+
+## Contract and fixtures
+
+- `docs/workflows/ledger-quick-add-workflow-contract.md`
+- `docs/fixture-specs/ledger-quick-add-fixture-spec.md`
+- `docs/contracts/casino-offer-resolved-value-contract.md`
+
+## Acceptance criteria
+
+- Quick Add uses profile account authorities and preserves normal ledger persistence.
+- Converted win is visibly confirmed before save and produces the expected resolved value.
+- More details pre-fills but does not save.
+- Save/loading/error/keyboard/dialog geometry follow the ledger modal parity contract.
+- Focused unit and Playwright tests cover valid, zero and invalid paths.
+```
 
 ### Notification consistency and preferences
 
@@ -362,14 +413,13 @@ local-first recovery login.
 
 ## Additional draft issues from the 2026-08-20 outage handover
 
-These are intentionally deferred until `#61` closes unless another task explicitly reprioritises
-them.
+These are intentionally deferred unless another task explicitly reprioritises them.
 
 ### Extra Places ledger and calculator
 
 Title:
 
-`Implement Extra Places Ledger, Calculator and Settlement Workflow`
+`Implement Each Way / Extra Places Ledger, Calculator and Settlement Workflow`
 
 Milestone:
 
@@ -380,31 +430,25 @@ Body:
 ```md
 ## Objective
 
-Add Extra Places as an approved sportsbook extension with a dedicated ledger flow, calculator and
-settlement vocabulary.
+Add a dedicated Each Way / Extra Places ledger flow, calculator and settlement vocabulary.
 
 ## Scope
 
-- Build the Extra Places ledger/editor using the shared ledger modal shell.
-- Reuse the approved cash-first current-value contract for Extra Places.
-- Capture ordinary place terms and promotional place terms side by side.
-- Add settlement branches including `Extra Place Hit`.
-- Keep account-health capability and tooling-status integration aligned with the existing
-  Extra Places contracts.
+- Implemented on `feature/casino-quick-add` on 2026-08-24: profile-scoped API, SQLite persistence,
+  three-step ledger editor, calculation engine and deterministic MBB/EP Catcher fixtures.
+- Remaining: selected-range reporting aggregation, account-authority defaults, historical importer
+  mapping, authentication-gated hosted persistence and a dedicated standalone calculator workspace.
 
 ## Contract and fixtures
 
-- `docs/contracts/extra-places-contract.md`
-- `docs/contracts/sportsbook-extra-places-current-value-contract.md`
-- `docs/fixture-specs/extra-places-fixture-spec.md`
-- `docs/fixture-specs/sportsbook-extra-places-current-value-fixture-spec.md`
-- `tests/fixtures/extra-places-fixtures.json`
+- `docs/contracts/each-way-extra-place-ledger-contract.md`
+- `tests/fixtures/each-way-extra-place-fixtures.json`
 
 ## Acceptance criteria
 
-- The ledger/editor follows the same modal parity contract as sportsbook/free bets/casino.
+- The ledger/editor follows the established modal system and requires a later parity smoke test.
 - Current value and settlement branches match deterministic fixtures.
-- Extra Places can be tracked without breaking workbook cash-first semantics.
+- Each Way and Extra Place use one cash-first calculation engine.
 ```
 
 ### Sportsbook multi-fixture, outright and long-duration offers

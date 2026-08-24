@@ -857,6 +857,181 @@ textarea {
   text-transform: none;
 }
 
+.icon-button.ledger-toolbar-quick-add-action {
+  width: auto;
+  min-width: 8.1rem;
+  min-height: 3.25rem;
+  padding: 0.72rem 1rem;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--primary) 62%, var(--outline));
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-strong));
+  color: var(--primary-strong);
+}
+
+.icon-button.ledger-toolbar-quick-add-action:hover {
+  background: color-mix(in srgb, var(--primary) 23%, var(--surface-strong));
+}
+
+.casino-quick-add-modal {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: min(44rem, calc(100dvh - 2rem));
+  overflow: auto;
+  gap: 1.1rem;
+  padding: 1.25rem;
+}
+
+.casino-quick-add-modal .modal-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.casino-quick-add-modal .modal-panel-header h2 {
+  margin: 0.2rem 0 0;
+}
+
+.casino-quick-add-grid {
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.casino-quick-add-grid .field-control {
+  min-width: 0;
+}
+
+.casino-quick-add-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-height: 2rem;
+  margin-top: 0.55rem;
+}
+
+.casino-quick-add-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: -0.2rem;
+}
+
+.casino-quick-add-chip {
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.casino-quick-add-chip[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-strong));
+  color: var(--primary-strong);
+}
+
+.casino-quick-add-bookmaker-chip {
+  border-color: color-mix(in srgb, currentColor 26%, var(--outline));
+}
+
+.casino-quick-add-bookmaker-chip[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 66%, transparent);
+}
+
+.financial-text-input {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: var(--field-control-min-height, 3.55rem);
+  /* The shared surface owns focus so its ring includes the currency prefix. */
+  overflow: visible;
+  border: 1px solid var(--outline);
+  border-radius: var(--field-control-radius, 1.35rem);
+  background: var(--surface-strong);
+}
+
+.financial-text-input-prefix {
+  padding-left: 1rem;
+  color: var(--on-surface-variant);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.financial-text-input input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
+  border: 0;
+  padding: 0.7rem 0.95rem 0.7rem 0.55rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.financial-text-input:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 58%, transparent);
+}
+
+.financial-text-input-positive input {
+  color: var(--bet-ledger-value-positive-text);
+  font-weight: 800;
+}
+
+.financial-text-input-negative input {
+  color: var(--bet-ledger-value-negative-text);
+  font-weight: 800;
+}
+
+.field-control .financial-text-input-positive input {
+  color: var(--bet-ledger-value-positive-text);
+  font-weight: 800;
+}
+
+.field-control .financial-text-input-negative input {
+  color: var(--bet-ledger-value-negative-text);
+  font-weight: 800;
+}
+
+.quick-add-loadout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(12rem, 0.8fr);
+  align-items: end;
+  gap: 1rem;
+}
+
+.quick-add-loadout-row small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--on-surface-variant);
+}
+
+.casino-quick-add-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.3rem;
+}
+
+@media (max-width: 42rem) {
+  .casino-quick-add-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .casino-quick-add-footer {
+    flex-wrap: wrap;
+  }
+
+  .quick-add-loadout-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .summary-menu-button {
   display: inline-flex;
   align-items: center;
@@ -4362,6 +4537,27 @@ html[data-theme="dark"] .notification-count-badge {
 
 .field-control input::placeholder {
   color: var(--muted);
+}
+
+.casino-quick-add-financial-field > label {
+  display: block;
+  margin-bottom: 0.45rem;
+}
+
+/* Reset generic field styling: FinancialTextInput owns its one visible surface. */
+.field-control .financial-text-input input {
+  min-height: calc(var(--field-control-min-height, 3.55rem) - 2px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.field-control .financial-text-input input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: 0;
 }
 
 .inline-field-action {
@@ -10546,6 +10742,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .modal-close-button {
   width: 2.5rem;
   height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  flex: 0 0 2.5rem;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
@@ -10555,6 +10755,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.modal-close-button .material-symbols-outlined {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .modal-close-button:hover {
