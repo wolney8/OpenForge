@@ -12,6 +12,11 @@ The editor follows the shared Plum Duff ledger-modal contract:
 - Guided entry identifies the next missing required field and moves the user to its step.
 - E/W stake, lay stakes, and liabilities are neutral amounts; only outcome, profit, and loss
   values use positive/negative semantic colours.
+- The ledger table does not carry a duplicate status column. The established row action state and
+  issue-row treatment communicate incomplete, placed and settlement-required work.
+- Actions provide the same edit and destructive controls as signed-off ledgers, plus a compact
+  Extra Place-specific result selector. Its options are restricted to the selected mode and the
+  configured bookmaker place count.
 - The modal owns scrolling, has a fixed viewport-constrained shell, and keeps its header and
   footer controls visible.
 - Incomplete or unresolved rows are visibly marked as requiring action and can be filtered.
@@ -48,8 +53,10 @@ future branches and must never be silently inferred.
 2. **Placement**: runner, race, date/time, bookmaker/accounts and per-leg placement status.
 3. **Settlement**: outcome first, optional finishing position, calculated final P&L.
 
-The ledger table shows date/time, runner/race, mode, bookmaker, stake, back odds, two lay odds,
-qualifying loss, extra-place potential where applicable, status/result and realised value.
+The ledger table shows date/time, runner/race, mode, bookmaker, per-way stake and total outlay,
+back odds, two lay odds, qualifying loss, extra-place potential where applicable and realised
+value. It is row-click editable. The result matrix separates contract-calculated Bookie,
+Exchange and Total values; React must not calculate those values.
 
 ## EP Catcher evidence
 
