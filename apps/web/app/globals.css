@@ -52,8 +52,10 @@
   --ledger-value-state-icon: var(--muted);
   --ledger-value-current-icon: #a86f00;
   --ledger-value-final-icon: #0e7c42;
+  --shape-small: 0.65rem;
   --shape-medium: 0.95rem;
   --shape-large: 1.25rem;
+  --shape-full: 999px;
   --shadow: 0 18px 48px rgba(25, 39, 52, 0.12);
   --hero-glow: radial-gradient(circle at top, rgba(0, 91, 99, 0.14), transparent 36%);
   --floating-nav-surface: rgba(231, 237, 244, 0.98);
@@ -8209,18 +8211,21 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 .extra-place-bet-type-toggle {
   display: inline-grid;
   grid-template-columns: repeat(2, minmax(8.5rem, 1fr));
-  gap: 0;
+  gap: 0.16rem;
   width: min(100%, 22rem);
   overflow: hidden;
+  padding: 0.16rem;
   border: 1px solid var(--outline);
-  border-radius: var(--shape-full);
+  border-radius: 999px;
+  clip-path: inset(0 round 999px);
+  isolation: isolate;
   background: var(--surface-container);
 }
 
 .extra-place-bet-type-toggle-option {
   min-width: 0;
   min-height: 2.6rem;
-  margin: 0.16rem;
+  margin: 0;
   border: 0;
   border-radius: var(--shape-full);
   color: var(--on-surface-variant);
@@ -8263,7 +8268,8 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 
 html[data-theme="dark"] .extra-place-data-table th {
   color: #ffffff;
-  background: color-mix(in srgb, var(--surface-strong) 58%, #ffffff);
+  /* A lighter, distinct header surface above the #1c2731 row treatment. */
+  background: #27333f;
   border-bottom-color: color-mix(in srgb, #ffffff 24%, var(--outline));
 }
 
@@ -8337,7 +8343,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   align-items: center;
   justify-content: center;
   padding: 0.35rem 0.55rem;
-  border-radius: var(--shape-small);
+  border-radius: var(--shape-full);
   border: 1px solid var(--outline);
   color: var(--on-surface);
   background: color-mix(in srgb, var(--surface-container-highest) 86%, #ffffff);

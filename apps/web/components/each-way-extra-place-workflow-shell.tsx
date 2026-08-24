@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue } from "@/components/financial-value";
+import {
+  BookmakerIdentity,
+  useBookmakerCatalogue,
+} from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import {
@@ -379,6 +383,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [trackerSettings, setTrackerSettings] =
     useState<TrackerSettingsClientRecord | null>(null);
   const [savingRange, setSavingRange] = useState(false);
+  const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
   useBodyScrollLock(isAnyDialogOpen);
@@ -947,6 +952,7 @@ export function EachWayExtraPlaceWorkflowShell({
         </div>
       </div>
       <ExtraPlaceTable
+        bookmakerCatalogue={bookmakerCatalogue}
         onDelete={requestDelete}
         onEdit={openRow}
         onResult={(row, result) => void saveResult(row, result)}
@@ -1404,12 +1410,14 @@ function ExtraPlaceFilterDialog({
   );
 }
 function ExtraPlaceTable({
+  bookmakerCatalogue,
   rows,
   visibleColumns,
   onDelete,
   onEdit,
   onResult,
 }: {
+  bookmakerCatalogue: BookmakerCatalogueRecord[];
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: (row: Row) => void;
@@ -1503,6 +1511,7 @@ function ExtraPlaceTable({
         <tbody>
           {rows.map((row) => (
             <LedgerRow
+              bookmakerCatalogue={bookmakerCatalogue}
               key={row.each_way_extra_place_id}
               onDelete={() => onDelete(row)}
               onEdit={() => onEdit(row)}
@@ -1527,12 +1536,14 @@ function ResizableHeader({ className = "", label, onResize }: { className?: stri
   return <th className={className} scope="col"><div className="table-header-cell"><span className="table-header-label">{label}</span><span aria-hidden="true" className="table-column-resize-handle" onMouseDown={onResize} /></div></th>;
 }
 function LedgerRow({
+  bookmakerCatalogue,
   row,
   visibleColumns,
   onDelete,
   onEdit,
   onResult,
 }: {
+  bookmakerCatalogue: BookmakerCatalogueRecord[];
   row: Row;
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: () => void;
@@ -1559,7 +1570,17 @@ function LedgerRow({
         <br />
         {row.race || "Race needed"}
       </td>
-      <td>{row.bookmaker || "Bookmaker needed"}</td>
+      <td>
+        {row.bookmaker ? (
+          <BookmakerIdentity
+            bookmaker={row.bookmaker}
+            catalogue={bookmakerCatalogue}
+            mode="Brand badge"
+          />
+        ) : (
+          "Bookmaker needed"
+        )}
+      </td>
       <td>
         <span className="extra-place-stake-stack">
           {neutralValue(row.each_way_stake)}

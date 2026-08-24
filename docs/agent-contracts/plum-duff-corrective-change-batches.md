@@ -42,3 +42,12 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | PD-FIX-023 | Extra Place ledger controls | Place loadouts and theme switch between search/actions and the table. | `div.extra-place-table-heading-controls` | VERIFIED |
 | PD-FIX-024 | Extra Place calculate mode | Match platform toggle curvature on Each Way / Extra Place. | `button.extra-place-bet-type-toggle-option` | VERIFIED |
 | PD-FIX-025 | Extra Place table contrast | Increase dark-mode separation between header and row surfaces. | dark-mode ledger screenshot | VERIFIED |
+
+## 2026-08-24 Extra Place Header And Brand Parity Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-026 | Extra Place ledger table | Use a distinct dark-grey generic header surface, lighter than the `#1c2731` row surface, with readable white text. | Dark-mode headers | VERIFIED |
+| PD-FIX-027 | Extra Place calculate step | Make `div.extra-place-bet-type-toggle` visibly fully rounded, including its clipped child surfaces. | `div.extra-place-bet-type-toggle` | VERIFIED |
+| PD-FIX-028 | Extra Place ledger bookmaker cell | Reuse the shared account-catalogue brand badge, with its configured foreground/background palette. | Bet-ledger bookmaker styling | VERIFIED |
+| PD-FIX-029 | Extra Place ledger EP Profit | Use the same full pill radius as adjacent financial-value pills for `span.extra-place-profit-neutral`. | `span.extra-place-profit-neutral` | VERIFIED |
