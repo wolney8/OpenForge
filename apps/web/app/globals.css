@@ -5633,6 +5633,44 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   opacity: 1;
 }
 
+.ledger-table-scroll-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.ledger-table-scroll-arrow {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--outline) 72%, transparent);
+  border-radius: var(--shape-full);
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--surface-container-high) 88%, transparent);
+  box-shadow: var(--shadow);
+  opacity: 0.78;
+  transform: translateY(-50%);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.ledger-table-scroll-arrow:hover,
+.ledger-table-scroll-arrow:focus-visible {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.04);
+}
+
+.ledger-table-scroll-arrow:disabled {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.ledger-table-scroll-arrow-left { left: 0.6rem; }
+.ledger-table-scroll-arrow-right { right: 0.6rem; }
+.ledger-table-scroll-arrow .material-symbols-outlined { font-size: 1.45rem; }
+
 .table-sort-button {
   display: inline-flex;
   align-items: center;
@@ -8035,10 +8073,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .extra-place-result-menu {
-  position: absolute;
-  z-index: 8;
-  top: calc(100% + 0.35rem);
-  right: 0;
+  position: fixed;
+  z-index: 100;
   display: grid;
   width: max-content;
   min-width: 13rem;
@@ -8280,6 +8316,44 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   font-weight: 680;
   white-space: nowrap;
 }
+.extra-place-data-table td small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--on-surface-variant);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.extra-place-resolved-detail {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.extra-place-profit-value,
+.extra-place-profit-neutral {
+  display: inline-flex;
+  min-width: 6.5rem;
+  min-height: 2.3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--shape-small);
+  background: var(--surface-container-highest);
+}
+
+.extra-place-profit-value.is-hit { background: color-mix(in srgb, var(--success) 18%, var(--surface-container)); }
+.extra-place-profit-value.is-missed { text-decoration: line-through; text-decoration-thickness: 2px; }
+html[data-theme="dark"] .extra-place-profit-value,
+html[data-theme="dark"] .extra-place-profit-neutral { background: color-mix(in srgb, #ffffff 12%, var(--surface-container)); }
+
+.extra-place-status-display {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 8rem;
+}
+.extra-place-status-display small { color: var(--on-surface-variant); }
+.extra-place-status-extra { color: var(--warning) !important; font-weight: 780; }
 .extra-place-data-table td:nth-child(2) { white-space: normal; min-width: 13rem; }
 
 .extra-place-editor-modal .calculator-segment-back,

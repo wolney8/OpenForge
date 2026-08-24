@@ -17,3 +17,17 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | PD-FIX-008 | Extra Place calculation and context | Calculate Rating % and Implied Odds and surface them in the table and editor context chips. | Extra Place table and modal | DONE |
 | PD-FIX-009 | Extra Place calculate step | Add a Bookmaker field to the Back Bet calculator segment. | `section.calculator-segment.calculator-segm...` | DONE |
 | PD-FIX-010 | Extra Place settlement | Keep status, result and finishing-position fields and quick chips synchronised, including ordinal input formatting. | Settlement controls and position chips | DONE |
+
+## 2026-08-24 Extra Place Ledger Semantics And Table Navigation Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-011 | Extra Place theme switch | Uses icon-only `chess_knight` for EP and `palette` for Back/Lay. | EP theme switch | VERIFIED |
+| PD-FIX-012 | Extra Place stat strip | Shows selected-range qualifying loss beside resolved value. | Resolved Value stat card | VERIFIED |
+| PD-FIX-013 | Extra Place profit cell | Renamed to EP Profit; unsettled/missed values remain neutral and missed settled Extra Place profit is struck through. | EP Profit column | VERIFIED |
+| PD-FIX-014 | Extra Place ledger table | Adds a Status column showing position and result; only Extra Place wording is gold. | Status column | VERIFIED |
+| PD-FIX-015 | Extra Place ledger table | Provides user column-width realignment. | Table column parity | VERIFIED |
+| PD-FIX-016 | Extra Place ledger actions | Portals the result flag list above the table instead of clipping in the scroll container. | Action flag dropdown | VERIFIED |
+| PD-FIX-017 | Shared bet-ledger tables | Adds accessible faded left/right controls for horizontally scrollable tables. | Table-side arrow wireframe | VERIFIED |
+| PD-FIX-018 | Extra Place ledger table | Shows selected/unselected exchange beneath both lay-odds values. | Win/Place Lay Odds columns | VERIFIED |
+| PD-FIX-019 | Extra Place ledger table | Marks missing required bookmaker, exchange, odds or stake data as a visible needs-action issue. | Signed-off ledger issue state | VERIFIED |

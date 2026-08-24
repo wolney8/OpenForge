@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import {
   LedgerEditorTabPanel,
   LedgerEditorTabRail,
@@ -235,6 +236,17 @@ function neutralValue(value: string | null | undefined) {
 function decimalDisplay(value: string | null | undefined) {
   const number = asNumber(value);
   return number === null ? "-" : number.toFixed(2);
+}
+function hasRequiredRowGap(row: Row) {
+  return [
+    row.bookmaker,
+    row.each_way_stake,
+    row.back_odds,
+    row.win_exchange,
+    row.win_lay_odds,
+    row.place_exchange,
+    row.place_lay_odds,
+  ].some((value) => !value?.trim());
 }
 function isBlank(value: string) {
   return !value.trim();
@@ -620,6 +632,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const hasIssue = (row: Row) =>
     row.calculation_state !== "resolved" ||
     row.status === "Prospecting" ||
+    hasRequiredRowGap(row) ||
     (row.status === "Settled" && row.result === "Pending");
   const hasActiveTableControls = Object.entries(tableFilters).some(
     ([key, filter]) =>
@@ -759,6 +772,10 @@ export function EachWayExtraPlaceWorkflowShell({
       total + (asNumber(row.final_value ?? row.current_value) ?? 0),
     0,
   );
+  const qualifyingLoss = rangeRows.reduce(
+    (total, row) => total + (asNumber(row.qualifying_loss) ?? 0),
+    0,
+  );
   const rangeContext = formatResolvedDateRange(resolvedDateRange);
   const rangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
@@ -801,7 +818,9 @@ export function EachWayExtraPlaceWorkflowShell({
           <strong>
             <FinancialValue value={resolvedValue} />
           </strong>
-          <span>Current ledger total</span>
+          <span className="extra-place-resolved-detail">
+            Qual Loss <FinancialValue animate={false} value={qualifyingLoss} />
+          </span>
         </article>
       </section>
       <div
@@ -910,7 +929,7 @@ export function EachWayExtraPlaceWorkflowShell({
             type="button"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
-              horse
+              chess_knight
             </span>
           </button>
           <button
@@ -1397,48 +1416,88 @@ function ExtraPlaceTable({
   onEdit: (row: Row) => void;
   onResult: (row: Row, result: string) => void;
 }) {
-  const columnCount = 7 + Object.values(visibleColumns).filter(Boolean).length;
+  const columns = [
+    "date", "runner", "bookmaker", "stake", "backOdds", "terms", "placeOdds",
+    "winLayOdds", "winLayStake", "winLiability", "placeLayOdds", "placeLayStake",
+    "placeLiability", "rating", "impliedOdds", "qualLoss", "epProfit", "status", "actions",
+  ] as const;
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+    date: 152, runner: 230, bookmaker: 150, stake: 155, backOdds: 118, terms: 108,
+    placeOdds: 118, winLayOdds: 142, winLayStake: 142, winLiability: 142,
+    placeLayOdds: 142, placeLayStake: 142, placeLiability: 142, rating: 108,
+    impliedOdds: 120, qualLoss: 132, epProfit: 144, status: 180, actions: 116,
+  });
+  const visible = (key: (typeof columns)[number]) =>
+    !["backOdds", "terms", "placeOdds", "winLayOdds", "winLayStake", "winLiability", "placeLayOdds", "placeLayStake", "placeLiability", "rating", "impliedOdds"].includes(key) ||
+    visibleColumns[
+      ({ backOdds: "back_odds", terms: "terms", placeOdds: "place_odds", winLayOdds: "win_lay_odds", winLayStake: "win_lay_stake", winLiability: "win_lay_liability", placeLayOdds: "place_lay_odds", placeLayStake: "place_lay_stake", placeLiability: "place_lay_liability", rating: "rating", impliedOdds: "implied_odds" } as Record<string, ExtraPlaceVisibleColumn>)[key]
+    ];
+  const activeColumns = columns.filter(visible);
+  const startResize = (
+    event: React.MouseEvent<HTMLSpanElement>,
+    key: (typeof columns)[number],
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const initial = columnWidths[key];
+    const start = event.clientX;
+    const move = (next: MouseEvent) =>
+      setColumnWidths((current) => ({
+        ...current,
+        [key]: Math.max(96, Math.round(initial + next.clientX - start)),
+      }));
+    const stop = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", stop);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", stop);
+  };
   return (
-    <div className="table-scroll" data-pd-id="extra-place.table-scroll">
+    <LedgerTableScroll dataPdId="extra-place.table-scroll">
       <table className="data-table extra-place-data-table">
+        <colgroup>
+          {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}
+        </colgroup>
         <thead>
           <tr>
-            <th>Date / time</th>
-            <th>Runner / Race</th>
-            <th className="extra-place-column-back">Bookmaker</th>
-            <th className="extra-place-column-back">E/W Stake</th>
+            <ResizableHeader label="Date / time" onResize={(event) => startResize(event, "date")} />
+            <ResizableHeader label="Runner / Race" onResize={(event) => startResize(event, "runner")} />
+            <ResizableHeader className="extra-place-column-back" label="Bookmaker" onResize={(event) => startResize(event, "bookmaker")} />
+            <ResizableHeader className="extra-place-column-back" label="E/W Stake" onResize={(event) => startResize(event, "stake")} />
             {visibleColumns.back_odds ? (
-              <th className="extra-place-column-back">Back Odds</th>
+              <ResizableHeader className="extra-place-column-back" label="Back Odds" onResize={(event) => startResize(event, "backOdds")} />
             ) : null}
             {visibleColumns.terms ? (
-              <th className="extra-place-column-back">E/W Terms</th>
+              <ResizableHeader className="extra-place-column-back" label="E/W Terms" onResize={(event) => startResize(event, "terms")} />
             ) : null}
             {visibleColumns.place_odds ? (
-              <th className="extra-place-column-back">Place Odds</th>
+              <ResizableHeader className="extra-place-column-back" label="Place Odds" onResize={(event) => startResize(event, "placeOdds")} />
             ) : null}
             {visibleColumns.win_lay_odds ? (
-              <th className="extra-place-column-win-lay">Win Lay Odds</th>
+              <ResizableHeader className="extra-place-column-win-lay" label="Win Lay Odds" onResize={(event) => startResize(event, "winLayOdds")} />
             ) : null}
             {visibleColumns.win_lay_stake ? (
-              <th className="extra-place-column-win-lay">Win Lay Stake</th>
+              <ResizableHeader className="extra-place-column-win-lay" label="Win Lay Stake" onResize={(event) => startResize(event, "winLayStake")} />
             ) : null}
             {visibleColumns.win_lay_liability ? (
-              <th className="extra-place-column-win-lay">Win Lay Liab</th>
+              <ResizableHeader className="extra-place-column-win-lay" label="Win Lay Liab" onResize={(event) => startResize(event, "winLiability")} />
             ) : null}
             {visibleColumns.place_lay_odds ? (
-              <th className="extra-place-column-place-lay">Place Lay Odds</th>
+              <ResizableHeader className="extra-place-column-place-lay" label="Place Lay Odds" onResize={(event) => startResize(event, "placeLayOdds")} />
             ) : null}
             {visibleColumns.place_lay_stake ? (
-              <th className="extra-place-column-place-lay">Place Lay Stake</th>
+              <ResizableHeader className="extra-place-column-place-lay" label="Place Lay Stake" onResize={(event) => startResize(event, "placeLayStake")} />
             ) : null}
             {visibleColumns.place_lay_liability ? (
-              <th className="extra-place-column-place-lay">Place Lay Liab</th>
+              <ResizableHeader className="extra-place-column-place-lay" label="Place Lay Liab" onResize={(event) => startResize(event, "placeLiability")} />
             ) : null}
-            {visibleColumns.rating ? <th>Rating %</th> : null}
-            {visibleColumns.implied_odds ? <th>Implied Odds</th> : null}
-            <th>Qual Loss</th>
-            <th>Extra Place Profit</th>
-            <th>Actions</th>
+            {visibleColumns.rating ? <ResizableHeader label="Rating %" onResize={(event) => startResize(event, "rating")} /> : null}
+            {visibleColumns.implied_odds ? <ResizableHeader label="Implied Odds" onResize={(event) => startResize(event, "impliedOdds")} /> : null}
+            <ResizableHeader label="Qual Loss" onResize={(event) => startResize(event, "qualLoss")} />
+            <ResizableHeader label="EP Profit" onResize={(event) => startResize(event, "epProfit")} />
+            <ResizableHeader label="Status" onResize={(event) => startResize(event, "status")} />
+            <ResizableHeader label="Actions" onResize={(event) => startResize(event, "actions")} />
           </tr>
         </thead>
         <tbody>
@@ -1454,15 +1513,18 @@ function ExtraPlaceTable({
           ))}
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columnCount}>
+              <td colSpan={activeColumns.length}>
                 No Extra Place rows match this view.
               </td>
             </tr>
           ) : null}
         </tbody>
       </table>
-    </div>
+    </LedgerTableScroll>
   );
+}
+function ResizableHeader({ className = "", label, onResize }: { className?: string; label: string; onResize: (event: React.MouseEvent<HTMLSpanElement>) => void }) {
+  return <th className={className} scope="col"><div className="table-header-cell"><span className="table-header-label">{label}</span><span aria-hidden="true" className="table-column-resize-handle" onMouseDown={onResize} /></div></th>;
 }
 function LedgerRow({
   row,
@@ -1477,10 +1539,7 @@ function LedgerRow({
   onEdit: () => void;
   onResult: (result: string) => void;
 }) {
-  const issue =
-    row.calculation_state !== "resolved" ||
-    row.status === "Prospecting" ||
-    (row.status === "Settled" && row.result === "Pending");
+  const issue = row.calculation_state !== "resolved" || row.status === "Prospecting" || hasRequiredRowGap(row) || (row.status === "Settled" && row.result === "Pending");
   const outcomes = resultChoices(row.mode, row.bookmaker_places ?? "");
   return (
     <tr
@@ -1516,7 +1575,7 @@ function LedgerRow({
         <td>1 / {row.place_term_denominator || "-"}</td>
       ) : null}
       {visibleColumns.place_odds ? <td>{row.place_back_odds || "-"}</td> : null}
-      {visibleColumns.win_lay_odds ? <td>{row.win_lay_odds || "-"}</td> : null}
+      {visibleColumns.win_lay_odds ? <td><strong>{row.win_lay_odds || "-"}</strong><small>{row.win_exchange || "Unselected"}</small></td> : null}
       {visibleColumns.win_lay_stake ? (
         <td>{neutralValue(row.win_lay_stake)}</td>
       ) : null}
@@ -1524,7 +1583,7 @@ function LedgerRow({
         <td>{neutralValue(row.win_liability)}</td>
       ) : null}
       {visibleColumns.place_lay_odds ? (
-        <td>{row.place_lay_odds || "-"}</td>
+        <td><strong>{row.place_lay_odds || "-"}</strong><small>{row.place_exchange || "Unselected"}</small></td>
       ) : null}
       {visibleColumns.place_lay_stake ? (
         <td>{neutralValue(row.place_lay_stake)}</td>
@@ -1535,9 +1594,8 @@ function LedgerRow({
       {visibleColumns.rating ? <td>{decimalDisplay(row.rating_percent)}%</td> : null}
       {visibleColumns.implied_odds ? <td>{decimalDisplay(row.implied_odds)}</td> : null}
       <td>{value(row.qualifying_loss)}</td>
-      <td>
-        {row.mode === "Extra Place" ? value(row.extra_place_profit) : "-"}
-      </td>
+      <td><EpProfit row={row} /></td>
+      <td><StatusDisplay row={row} /></td>
       <td>
         <div
           className="table-action-row extra-place-table-actions"
@@ -1559,6 +1617,25 @@ function LedgerRow({
     </tr>
   );
 }
+function EpProfit({ row }: { row: Row }) {
+  if (row.mode !== "Extra Place") return <span className="extra-place-profit-neutral">-</span>;
+  const hit = row.status === "Settled" && row.result === "Extra Place";
+  const missed = row.status === "Settled" && !hit && row.result !== "Pending";
+  return (
+    <span className={`extra-place-profit-value${hit ? " is-hit" : ""}${missed ? " is-missed" : ""}`}>
+      {value(row.extra_place_profit)}
+    </span>
+  );
+}
+function StatusDisplay({ row }: { row: Row }) {
+  const position = row.finishing_position || (row.status === "Settled" ? "Position needed" : "Pending");
+  return (
+    <span className="extra-place-status-display">
+      <strong>{position}</strong>
+      <small className={row.result === "Extra Place" ? "extra-place-status-extra" : ""}>{row.result || "Pending"}</small>
+    </span>
+  );
+}
 function ResultAction({
   row,
   outcomes,
@@ -1569,6 +1646,13 @@ function ResultAction({
   onResult: (result: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const openMenu = () => {
+    const nextAnchor = triggerRef.current?.getBoundingClientRect() ?? null;
+    setAnchor(nextAnchor);
+    setExpanded((current) => !current);
+  };
   return (
     <div className="extra-place-result-action">
       <button
@@ -1576,18 +1660,20 @@ function ResultAction({
         aria-haspopup="listbox"
         aria-label={`Update result for ${row.runner || "Extra Place row"}`}
         className="icon-button table-action-button"
-        onClick={() => setExpanded((current) => !current)}
+        onClick={openMenu}
+        ref={triggerRef}
         type="button"
       >
         <span aria-hidden="true" className="material-symbols-outlined">
           flag
         </span>
       </button>
-      {expanded ? (
+      {expanded && anchor && typeof document !== "undefined" ? createPortal(
         <div
           aria-label={`Results for ${row.runner || "Extra Place row"}`}
           className="extra-place-result-menu"
           role="listbox"
+          style={{ top: anchor.bottom + 6, left: Math.max(8, anchor.right - 208) }}
         >
           {outcomes.map(([result, label]) => (
             <button
@@ -1604,7 +1690,7 @@ function ResultAction({
             </button>
           ))}
         </div>
-      ) : null}
+      , document.body) : null}
     </div>
   );
 }
