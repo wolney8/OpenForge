@@ -16,9 +16,11 @@ Do not use Vercel filesystem SQLite for persistent data.
 
 ## Each Way / Extra Places State
 
-Implemented on `feature/casino-quick-add`: dedicated profile-scoped table/API, calculation engine,
-three-step calculator/editor and deterministic MBB plus EP Catcher regression fixtures. The
-existing selected-range reporting summary does not yet aggregate this ledger.
+Implemented and merged to `main`: dedicated profile-scoped table/API, calculation engine,
+three-step calculator/editor and deterministic MBB plus EP Catcher regression fixtures. Selected-range
+summaries, dashboards, formal reports, bookmaker breakdowns, cross-profile reporting and route-specific
+top-bar values now include Each Way / Extra Place as a distinct module. Local synthetic rows are available
+on `profile-demo-002` for verification only.
 
 ## Personal Profile State
 
@@ -40,4 +42,4 @@ selected-profile approval -> import -> reconciliation. This mapping is not imple
 
 Implement and verify the PostgreSQL runtime adapter against an isolated Neon database, then add
 owner authentication/session enforcement before importing any personal operational data. After that,
-add EP Catcher dry-run importer mapping and selected-range reporting aggregation.
+add the EP Catcher dry-run importer mapping and selected-profile reconciliation.
