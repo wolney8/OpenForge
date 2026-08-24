@@ -7780,10 +7780,24 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding-top: 0;
 }
 
-/* Extra Place follows the shared ledger editor shell; only its horse-racing matrix is bespoke. */
+/* Extra Place follows the shared viewport-owned editor shell. */
+.modal-backdrop-extra-place {
+  position: fixed;
+  inset: 0;
+  width: 100dvw;
+  height: 100dvh;
+  max-width: 100dvw;
+  max-height: 100dvh;
+  z-index: 90;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+}
+
 .extra-place-editor-modal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(900px, calc(100dvh - 2.5rem));
+  max-height: calc(100dvh - 2.5rem);
+  min-height: 0;
 }
 
 .extra-place-editor-modal .workflow-editor-body {
@@ -7793,14 +7807,14 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.85rem 1rem 1.1rem;
 }
 
-.modal-backdrop:has(.extra-place-editor-modal) {
-  z-index: 90;
-  padding-top: max(1.25rem, env(safe-area-inset-top));
+.extra-place-editor-modal .workflow-editor-footer {
+  position: sticky;
+  bottom: 0;
 }
 
-.extra-place-editor-modal .workflow-editor-footer {
-  flex: 0 0 auto;
-  position: relative;
+.extra-place-filter-dialog {
+  width: min(760px, calc(100dvw - 2rem));
+  max-height: calc(100dvh - 2rem);
 }
 
 .extra-place-stake-value {
