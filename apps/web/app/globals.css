@@ -7781,6 +7781,11 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 /* Extra Place follows the shared ledger editor shell; only its horse-racing matrix is bespoke. */
+.extra-place-editor-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .extra-place-editor-modal .workflow-editor-body {
   min-height: 0;
   overflow: auto;
@@ -7795,6 +7800,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .extra-place-editor-modal .workflow-editor-footer {
   flex: 0 0 auto;
+  position: relative;
 }
 
 .extra-place-stake-value {
