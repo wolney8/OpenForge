@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const route = "/profiles/profile-demo-001/tracker/each-way-extra-places";
 
 test.describe("Extra Place ledger parity", () => {
-  test("uses the range card, grouped headers, and filter-owned detail-column controls", async ({ page }) => {
+  test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
 
@@ -15,13 +15,14 @@ test.describe("Extra Place ledger parity", () => {
     await expect(ledger.locator("th.extra-place-column-win-lay").first()).toContainText("Win Lay Odds");
     await expect(ledger.locator("th.extra-place-column-place-lay").first()).toContainText("Place Lay Odds");
 
+    await expect(ledger.getByRole("button", { name: "Use Extra Place colour theme" }).locator(".material-symbols-outlined")).toContainText("equestrian_sports");
     await ledger.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
     await expect(ledger).toHaveClass(/extra-place-theme-back-lay/);
 
     await ledger.getByRole("button", { name: "Open Extra Place filters" }).click();
     const filterDialog = page.getByRole("dialog", { name: "Extra Place filter controls" });
-    await filterDialog.getByRole("button", { name: "Hide detail columns" }).click();
-    await filterDialog.getByRole("button", { name: "Apply filters" }).click();
+    await filterDialog.getByRole("button", { name: "Hide Win Lay Odds" }).click();
+    await filterDialog.getByRole("button", { name: "Done" }).click();
     await expect(ledger.locator("th", { hasText: "Date / time" })).toBeVisible();
     await expect(ledger.locator("th", { hasText: "Qual Loss" })).toBeVisible();
     await expect(ledger.locator("th", { hasText: "Extra Place Profit" })).toBeVisible();
@@ -79,7 +80,28 @@ test.describe("Extra Place ledger parity", () => {
     await expect(dialog.getByText("Status", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Result", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Issue type", { exact: true })).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible();
+    await expect(dialog.getByText("Visible columns", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Hide Win Lay Odds" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Done" })).toBeVisible();
+  });
+
+  test("keeps the Extra Place theme readable in dark mode and makes the calculation mode state explicit", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+
+    const header = page.locator("th.extra-place-column-back").first();
+    await expect(header).toHaveCSS("color", "rgb(255, 255, 255)");
+
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    const extraPlace = dialog.getByRole("button", { name: "Extra Place", exact: true });
+    const eachWay = dialog.getByRole("button", { name: "Each Way", exact: true });
+    await expect(extraPlace).toHaveAttribute("aria-pressed", "true");
+    await eachWay.click();
+    await expect(eachWay).toHaveAttribute("aria-pressed", "true");
+    await expect(extraPlace).toHaveAttribute("aria-pressed", "false");
+    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(255, 255, 255)");
   });
 
   test("keeps calculation and settlement choices in local Extra Place controls", async ({ page }) => {

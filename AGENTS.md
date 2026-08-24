@@ -203,6 +203,19 @@ Short version:
   actions and expected outcomes for the changed workflow.
 - When a repo change is made for active work, commit and push promptly so connected deployment workflows can pick it up, unless the user says not to.
 
+## Corrective change batches
+
+- Treat every user-supplied list of UX defects, styling corrections, bugs, or adjustments as one
+  tracked batch. Assign every item a `PD-FIX-###` ID and record its area, requested behaviour,
+  supplied selector/reference, and status in the corrective change batch register.
+- Use only `QUEUED`, `INVESTIGATING`, `NEEDS-INFO`, `IN-PROGRESS`, `BLOCKED`, `VERIFIED`, or
+  `DONE`. Never silently omit an item. Ask one precise question for `NEEDS-INFO`; state the
+  concrete blocker for `BLOCKED`.
+- Mark an item `DONE` only after implementation, applicable automated checks, and focused
+  nearby/shared-pattern verification. Reconcile every supplied ID in a concise final table.
+- Use shared Plum Duff primitives and check all affected equivalents before adding a local CSS
+  correction. Create GitHub tracking only for durable product scope or meaningful deferred bugs.
+
 ## Durable feature parity
 
 - A durable Plum Duff feature is not complete when only UI/code exists. Where applicable, its
