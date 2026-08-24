@@ -15,7 +15,7 @@ test.describe("Extra Place ledger parity", () => {
     await expect(ledger.locator("th.extra-place-column-win-lay").first()).toContainText("Win Lay Odds");
     await expect(ledger.locator("th.extra-place-column-place-lay").first()).toContainText("Place Lay Odds");
 
-    await expect(ledger.getByRole("button", { name: "Use Extra Place colour theme" }).locator(".material-symbols-outlined")).toContainText("equestrian_sports");
+    await expect(ledger.getByRole("button", { name: "Use Extra Place colour theme" }).locator(".material-symbols-outlined")).toContainText("horse");
     await ledger.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
     await expect(ledger).toHaveClass(/extra-place-theme-back-lay/);
 
@@ -90,8 +90,11 @@ test.describe("Extra Place ledger parity", () => {
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     await page.evaluate(() => document.documentElement.dataset.theme = "dark");
 
-    const header = page.locator("th.extra-place-column-back").first();
-    await expect(header).toHaveCSS("color", "rgb(255, 255, 255)");
+    const themedHeader = page.locator("th.extra-place-column-back").first();
+    const neutralHeader = page.locator("th", { hasText: "Date / time" }).first();
+    await expect(themedHeader).toHaveCSS("background-color", "rgb(125, 170, 232)");
+    await expect(themedHeader).toHaveCSS("color", "rgb(20, 37, 51)");
+    await expect(neutralHeader).toHaveCSS("color", "rgb(255, 255, 255)");
 
     await page.getByRole("button", { name: "Add Extra Place row" }).click();
     const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
@@ -101,7 +104,7 @@ test.describe("Extra Place ledger parity", () => {
     await eachWay.click();
     await expect(eachWay).toHaveAttribute("aria-pressed", "true");
     await expect(extraPlace).toHaveAttribute("aria-pressed", "false");
-    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(20, 37, 51)");
   });
 
   test("keeps calculation and settlement choices in local Extra Place controls", async ({ page }) => {
@@ -123,6 +126,8 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
     await expect(calculatePanel.locator(".extra-place-matrix-value-negative").first()).toBeVisible();
+    await expect(dialog.getByText(/^Rating \d+\.\d+%$/)).toBeVisible();
+    await expect(dialog.getByText(/^Implied odds \d+\.\d+$/)).toBeVisible();
     await dialog.getByRole("tab", { name: /Placement/ }).click();
     await dialog.getByLabel("Runner / Horse").fill("Test Runner");
     await dialog.getByLabel("Race").fill("Test Race");
@@ -133,5 +138,20 @@ test.describe("Extra Place ledger parity", () => {
     await expect(settlementPanel.locator(".extra-place-quick-choice-row")).toHaveCount(3);
     await expect(settlementPanel.getByText("Advanced", { exact: true })).toHaveCount(1);
     await expect(settlementPanel.locator(".tracker-nav.field-choice-pills")).toHaveCount(0);
+
+    await dialog.getByRole("tab", { name: /Settlement/ }).click();
+    const finishingPosition = dialog.getByLabel("Finishing Position");
+    await dialog.getByRole("button", { name: "2nd", exact: true }).click();
+    await expect(finishingPosition).toHaveValue("2nd");
+    await expect(dialog.getByLabel("Status")).toHaveValue("Settled");
+    await expect(dialog.getByLabel("Result")).toHaveValue("Standard Place");
+    await expect(dialog.getByRole("button", { name: "2nd", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+    await finishingPosition.fill("3");
+    await expect(finishingPosition).toHaveValue("3rd");
+    await expect(dialog.getByRole("button", { name: "3rd", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await dialog.getByRole("button", { name: "Win", exact: true }).click();
+    await expect(finishingPosition).toHaveValue("1st");
+    await expect(dialog.getByRole("button", { name: "1st", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
 });

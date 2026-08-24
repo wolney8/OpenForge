@@ -96,7 +96,7 @@ def build_calculation(profile_id: str, payload: dict[str, object]) -> dict[str, 
     )
     fields = (
         "place_back_odds", "win_lay_stake", "place_lay_stake", "win_liability",
-        "place_liability", "qualifying_loss", "extra_place_profit", "first_place_pnl",
+        "place_liability", "qualifying_loss", "extra_place_profit", "rating_percent", "implied_odds", "first_place_pnl",
         "standard_place_pnl", "extra_place_pnl", "unplaced_pnl",
         "first_place_bookie_pnl", "first_place_exchange_pnl",
         "standard_place_bookie_pnl", "standard_place_exchange_pnl",

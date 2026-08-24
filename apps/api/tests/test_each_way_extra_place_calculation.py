@@ -12,6 +12,8 @@ def test_mbb_extra_place_reference_example() -> None:
     assert result.place_back_odds == Decimal("2.0")
     assert result.win_lay_stake == Decimal("26.09")
     assert result.place_lay_stake == Decimal("4.44")
+    assert result.rating_percent == Decimal("152.65")
+    assert result.implied_odds == Decimal("3.90")
     assert result.first_place_pnl == Decimal("10.54")
     assert result.standard_place_pnl == Decimal("10.55")
     assert result.extra_place_pnl == Decimal("30.53")

@@ -46,6 +46,9 @@ actual lay stakes. Preferred exchanges and commissions come from profile account
 - Place odds: `1 + ((back odds - 1) * term numerator / term denominator)`.
 - Suggested win/place lay stakes: `(respective bookmaker return) / (lay odds - commission)`.
 - Actual entered lay stakes replace suggestions for liabilities and final outcomes.
+- Rating %: `(1 + qualifying loss / total bookmaker outlay) * 100`, rounded half-up to two decimals.
+- Implied Odds: `1 + extra place profit / abs(qualifying loss)` when qualifying loss is non-zero,
+  rounded half-up to two decimals. It is unavailable when there is no qualifying loss.
 - Monetary legs and outputs use decimal half-up rounding to two places.
 - Open value is the conservative minimum of supported outcome values; settled value is the selected outcome.
 
