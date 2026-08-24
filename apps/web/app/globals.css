@@ -7785,7 +7785,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 0.45rem;
+  padding: 0.85rem 1rem 1.1rem;
 }
 
 .modal-backdrop:has(.extra-place-editor-modal) {
@@ -7823,11 +7823,18 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .extra-place-editor-modal .form-grid,
 .extra-place-editor-modal .section-stack,
 .extra-place-editor-modal .calculator-segment {
-  padding: 0.3rem;
+  padding: 0.5rem;
 }
 
 .extra-place-editor-modal .calculator-segment {
   gap: 0.85rem;
+  overflow: visible;
+}
+
+.extra-place-editor-modal .form-grid,
+.extra-place-editor-modal .field-control {
+  min-width: 0;
+  overflow: visible;
 }
 
 .extra-place-editor-modal .calculator-segment h3 {
@@ -7839,7 +7846,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem 1rem;
-  padding: 0.8rem 0;
+  padding: 0.9rem 0.25rem 0.1rem;
 }
 
 .extra-place-calculated-stake > span:first-child {
@@ -7848,6 +7855,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .extra-place-copy-button {
+  width: fit-content;
+  align-self: center;
   min-width: auto;
   padding-inline: 0.85rem;
 }
@@ -7858,8 +7867,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .extra-place-outcome-matrix {
   display: grid;
-  gap: 0.8rem;
-  padding: 1rem;
+  gap: 0.9rem;
+  padding: 1.1rem;
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-large);
   background: var(--surface-container);
@@ -7894,8 +7903,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   grid-template-columns: minmax(10rem, 1.3fr) repeat(3, minmax(7rem, 1fr));
   align-items: center;
   gap: 0.75rem;
-  min-height: 3.25rem;
-  padding: 0.55rem 0.9rem;
+  min-height: 3rem;
+  padding: 0.6rem 1rem;
   background: var(--surface-container-high);
 }
 
@@ -7914,18 +7923,74 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .extra-place-outcome-row strong:first-child {
-  padding-left: 0.55rem;
-  border-left: 0.45rem solid var(--outline);
+  min-height: 2.1rem;
+  display: flex;
+  align-items: center;
+  padding-left: 0.7rem;
+  border-left: 0.5rem solid var(--outline);
 }
 
-.extra-place-outcome-win strong:first-child { border-color: var(--tertiary); }
-.extra-place-outcome-standard strong:first-child { border-color: var(--secondary); }
+.extra-place-outcome-win strong:first-child { border-color: var(--primary); }
+.extra-place-outcome-standard strong:first-child { border-color: var(--success); }
 .extra-place-outcome-extra strong:first-child { border-color: var(--warning); }
 .extra-place-outcome-unplaced strong:first-child { border-color: var(--outline); }
+
+.extra-place-outcome-win strong:first-child { background: color-mix(in srgb, var(--primary) 18%, var(--surface-container-high)); }
+.extra-place-outcome-standard strong:first-child { background: color-mix(in srgb, var(--success) 18%, var(--surface-container-high)); }
+.extra-place-outcome-extra strong:first-child { background: color-mix(in srgb, var(--warning) 18%, var(--surface-container-high)); }
+.extra-place-outcome-unplaced strong:first-child { background: var(--surface-container-highest); }
 
 .extra-place-outcome-summary {
   padding-top: 0.15rem;
   color: var(--on-surface-variant);
+}
+
+.extra-place-stake-explainer {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
+}
+
+.extra-place-table-actions {
+  min-width: 5.6rem;
+}
+
+.extra-place-result-action {
+  position: relative;
+}
+
+.extra-place-result-menu {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 13rem;
+  padding: 0.35rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container-high);
+  box-shadow: var(--shadow);
+}
+
+.extra-place-result-menu button {
+  min-height: 2.45rem;
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-radius: var(--shape-small);
+  color: var(--on-surface);
+  background: transparent;
+  text-align: left;
+}
+
+.extra-place-result-menu button:hover,
+.extra-place-result-menu button:focus-visible {
+  background: var(--surface-container-highest);
+}
+
+.extra-place-delete-dialog {
+  width: min(480px, calc(100vw - 2rem));
 }
 
 .extra-place-outcome-summary .ledger-financial-value {
