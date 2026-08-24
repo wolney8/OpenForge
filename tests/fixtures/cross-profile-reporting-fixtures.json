@@ -24,16 +24,17 @@
         { "moduleKey": "sportsbook", "label": "Sportsbook", "rowCount": 2, "reportingValue": -1.5 },
         { "moduleKey": "free-bets", "label": "Free Bets", "rowCount": 1, "reportingValue": 12 },
         { "moduleKey": "casino", "label": "Casino", "rowCount": 1, "reportingValue": 4 },
-        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -3 }
+        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -3 },
+        { "moduleKey": "each-way-extra-places", "label": "Each Way / Extra Places", "rowCount": 0, "reportingValue": 0 }
       ],
       "bookmakerBreakdown": [
-        { "bookmaker": "Bookmaker A", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 0, "totalPnl": 10.5, "openRowCount": 1 }
+        { "bookmaker": "Bookmaker A", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 0, "eachWayExtraPlacePnl": 0, "totalPnl": 10.5, "openRowCount": 1 }
       ],
       "weeklyReports": [
-        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
+        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "eachWayExtraPlacePnl": 0, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
       ],
       "monthlyReports": [
-        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
+        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -1.5, "freeBetPnl": 12, "casinoPnl": 4, "eachWayExtraPlacePnl": 0, "totalPnl": 14.5, "withdrawals": -2, "costs": -1, "retainedProfit": 11.5 }
       ]
     },
     {
@@ -58,16 +59,17 @@
         { "moduleKey": "sportsbook", "label": "Sportsbook", "rowCount": 1, "reportingValue": -3 },
         { "moduleKey": "free-bets", "label": "Free Bets", "rowCount": 1, "reportingValue": 0.5 },
         { "moduleKey": "casino", "label": "Casino", "rowCount": 0, "reportingValue": 0 },
-        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -1 }
+        { "moduleKey": "cash-adjustments", "label": "Cash Adjustments", "rowCount": 1, "reportingValue": -1 },
+        { "moduleKey": "each-way-extra-places", "label": "Each Way / Extra Places", "rowCount": 0, "reportingValue": 0 }
       ],
       "bookmakerBreakdown": [
-        { "bookmaker": "Bookmaker A", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "openRowCount": 1 }
+        { "bookmaker": "Bookmaker A", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "eachWayExtraPlacePnl": 0, "totalPnl": -2.5, "openRowCount": 1 }
       ],
       "weeklyReports": [
-        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
+        { "periodKey": "2026-07-06", "periodLabel": "Week commencing; Monday 6th July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "eachWayExtraPlacePnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
       ],
       "monthlyReports": [
-        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
+        { "periodKey": "2026-07", "periodLabel": "July 2026", "sportsbookPnl": -3, "freeBetPnl": 0.5, "casinoPnl": 0, "eachWayExtraPlacePnl": 0, "totalPnl": -2.5, "withdrawals": -1, "costs": 0, "retainedProfit": -3.5 }
       ]
     }
   ],

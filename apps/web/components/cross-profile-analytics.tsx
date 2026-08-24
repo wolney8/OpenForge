@@ -26,6 +26,7 @@ import {
   type BalanceSnapshotSummaryRecord,
   type CashAdjustmentSummaryRecord,
   type CasinoSummaryRecord,
+  type EachWayExtraPlaceSummaryRecord,
   type DatePreset,
   type FreeBetSummaryRecord,
   type SportsbookSummaryRecord,
@@ -134,17 +135,18 @@ async function loadProfileDataset(
   signal: AbortSignal
 ): Promise<TrackerSummaryDataset> {
   const base = `${apiBaseUrl}/profiles/${profileId}`;
-  const [accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, balanceSnapshots] =
+  const [accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces, balanceSnapshots] =
     await Promise.all([
     fetchJson<AccountSummaryRecord[]>(`${base}/accounts`, signal),
     fetchJson<SportsbookSummaryRecord[]>(`${base}/sportsbook-bets`, signal),
     fetchJson<FreeBetSummaryRecord[]>(`${base}/free-bets`, signal),
     fetchJson<CasinoSummaryRecord[]>(`${base}/casino-offers`, signal),
     fetchJson<CashAdjustmentSummaryRecord[]>(`${base}/cash-adjustments`, signal),
+    fetchJson<EachWayExtraPlaceSummaryRecord[]>(`${base}/each-way-extra-places`, signal),
     fetchJson<BalanceSnapshotSummaryRecord[]>(`${base}/balance-snapshots`, signal),
   ]);
 
-  return { accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, balanceSnapshots };
+  return { accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces, balanceSnapshots };
 }
 
 async function loadProfileFeePeriods(
@@ -446,17 +448,19 @@ export function CrossProfileAnalytics({
       const freeBets = readCachedJson<FreeBetSummaryRecord[]>(`${base}/free-bets`);
       const casinoOffers = readCachedJson<CasinoSummaryRecord[]>(`${base}/casino-offers`);
       const cashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(`${base}/cash-adjustments`);
+      const eachWayExtraPlaces = readCachedJson<EachWayExtraPlaceSummaryRecord[]>(`${base}/each-way-extra-places`);
       const balanceSnapshots = readCachedJson<BalanceSnapshotSummaryRecord[]>(`${base}/balance-snapshots`);
       const periods = readCachedJson<FeePeriodApiRecord[]>(`${base}/fee-periods`);
       const settings = readCachedJson<TrackerSettingsRecord>(`${base}/tracker-settings`);
 
-      if (accounts && sportsbookBets && freeBets && casinoOffers && cashAdjustments && balanceSnapshots) {
+      if (accounts && sportsbookBets && freeBets && casinoOffers && cashAdjustments && eachWayExtraPlaces && balanceSnapshots) {
         cachedDatasets.set(profile.profileId, {
           accounts,
           sportsbookBets,
           freeBets,
           casinoOffers,
           cashAdjustments,
+          eachWayExtraPlaces,
           balanceSnapshots,
         });
       }
@@ -1426,7 +1430,7 @@ export function CrossProfileAnalytics({
                 <article className="stat-card">
                   <span className="eyebrow">Current liability</span>
                   <strong><FinancialValue value={combined.totals.currentLiability} /></strong>
-                  <span>Open sportsbook and free-bet exposure</span>
+                  <span>Open sportsbook, free-bet, and each-way exposure</span>
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Expiring free bets</span>

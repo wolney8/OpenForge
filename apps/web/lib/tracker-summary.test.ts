@@ -297,7 +297,7 @@ describe("summarizeTrackerData", () => {
     expect(summary.activityQuickView.casinoCount).toBe(1);
     expect(summary.activityQuickView.cashAdjustmentCount).toBe(3);
     expect(summary.activityQuickView.latestActivityDate).toBe("2026-07-03T00:00:00");
-    expect(summary.moduleBreakdown).toHaveLength(4);
+    expect(summary.moduleBreakdown).toHaveLength(5);
     expect(summary.moduleBreakdown[0]?.label).toBe("Sportsbook");
   });
 
@@ -621,6 +621,55 @@ describe("summarizeTrackerData", () => {
     expect(summary.monthlyReports[0]?.freeBetPnl).toBeCloseTo(7.8, 6);
     expect(summary.reportingModel.selectedRange.grossBettingPnl).toBeCloseTo(14.9, 6);
     expect(summary.reportingModel.selectedRange.retainedProfit).toBeCloseTo(-0.1, 6);
+  });
+
+  it("keeps Each Way / Extra Place rows as a distinct selected-range and reporting module", () => {
+    const range = resolveDateRange({
+      preset: "Week (Mon-Sun)",
+      today: new Date("2026-07-01T10:00:00Z"),
+    });
+    const withEachWayExtraPlaces: TrackerSummaryDataset = {
+      ...dataset,
+      eachWayExtraPlaces: [
+        {
+          each_way_extra_place_id: "EWP-001",
+          placed_at: "2026-07-03T12:00:00Z",
+          runner: "Synthetic Runner",
+          race: "Synthetic Race",
+          bookmaker: "Bookie A",
+          mode: "Extra Place",
+          status: "Placed",
+          result: "Pending",
+          current_value: "-0.83",
+          final_value: null,
+          win_liability: "12.00",
+          place_liability: "3.00",
+        },
+        {
+          each_way_extra_place_id: "EWP-002",
+          placed_at: "2026-07-04T12:00:00Z",
+          runner: "Synthetic Winner",
+          race: "Synthetic Race",
+          bookmaker: "Bookie B",
+          mode: "Extra Place",
+          status: "Settled",
+          result: "Extra Place",
+          current_value: null,
+          final_value: "30.53",
+          win_liability: "0.00",
+          place_liability: "0.00",
+        },
+      ],
+    };
+
+    const summary = summarizeTrackerData(withEachWayExtraPlaces, range, new Date("2026-07-01T10:00:00Z"));
+
+    expect(summary.profitQuickView.eachWayExtraPlaces.reportingValue).toBeCloseTo(29.7, 6);
+    expect(summary.profitQuickView.eachWayExtraPlaces.currentValue).toBeCloseTo(-0.83, 6);
+    expect(summary.profitQuickView.eachWayExtraPlaces.finalValue).toBeCloseTo(30.53, 6);
+    expect(summary.betsQuickView.currentLiability).toBeCloseTo(25.5, 6);
+    expect(summary.moduleBreakdown.find((row) => row.moduleKey === "each-way-extra-places")?.rowCount).toBe(2);
+    expect(summary.weeklyReports[0]?.eachWayExtraPlacePnl).toBeCloseTo(29.7, 6);
   });
 
   it("keeps deposits out of retained-profit reporting while preserving selected-range cash adjustments", () => {
