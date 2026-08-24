@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "fixtures": [
+    {
+      "id": "EWP-MBB-001",
+      "source": "Matched Betting Blog reference example",
+      "input": {
+        "mode": "Extra Place",
+        "each_way_stake": "10.00",
+        "back_odds": "6.00",
+        "place_term_numerator": "1",
+        "place_term_denominator": "5",
+        "win_lay_odds": "2.30",
+        "place_lay_odds": "4.50",
+        "win_commission": "0",
+        "place_commission": "0"
+      },
+      "expected": {
+        "win_lay_stake": "26.09",
+        "place_lay_stake": "4.44",
+        "first_place_pnl": "10.54",
+        "standard_place_pnl": "10.55",
+        "extra_place_pnl": "30.53",
+        "unplaced_pnl": "10.53"
+      }
+    },
+    {
+      "id": "EWP-EP-CATCHER-001",
+      "source": "EP Catcher historical actual-leg regression",
+      "input": {
+        "mode": "Extra Place",
+        "each_way_stake": "5.00",
+        "back_odds": "26.00",
+        "place_term_numerator": "1",
+        "place_term_denominator": "5",
+        "win_lay_odds": "29.00",
+        "place_lay_odds": "7.962",
+        "actual_win_lay_stake": "4.48",
+        "actual_place_lay_stake": "3.75",
+        "result": "Extra Place"
+      },
+      "expected": { "final_value": "28.23" }
+    }
+  ]
+}
