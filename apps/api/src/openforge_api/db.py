@@ -770,6 +770,51 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS each_way_extra_places (
+          each_way_extra_place_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          placed_at TEXT NOT NULL,
+          runner TEXT NOT NULL DEFAULT '',
+          race TEXT NOT NULL DEFAULT '',
+          bookmaker TEXT NOT NULL DEFAULT '',
+          bookmaker_account TEXT NOT NULL DEFAULT '',
+          mode TEXT NOT NULL,
+          each_way_stake TEXT NOT NULL,
+          back_odds TEXT NOT NULL,
+          place_term_numerator TEXT NOT NULL DEFAULT '1',
+          place_term_denominator TEXT NOT NULL DEFAULT '5',
+          bookmaker_places TEXT NOT NULL DEFAULT '',
+          exchange_places TEXT NOT NULL DEFAULT '',
+          win_exchange TEXT NOT NULL DEFAULT '',
+          win_lay_odds TEXT NOT NULL DEFAULT '',
+          win_commission TEXT NOT NULL DEFAULT '0',
+          actual_win_lay_stake TEXT NOT NULL DEFAULT '',
+          place_exchange TEXT NOT NULL DEFAULT '',
+          place_lay_odds TEXT NOT NULL DEFAULT '',
+          place_commission TEXT NOT NULL DEFAULT '0',
+          actual_place_lay_stake TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'Prospecting',
+          result TEXT NOT NULL DEFAULT 'Pending',
+          finishing_position TEXT NOT NULL DEFAULT '',
+          user_notes TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS each_way_extra_place_audit (
+          audit_id TEXT PRIMARY KEY,
+          each_way_extra_place_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          changed_at TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          FOREIGN KEY (each_way_extra_place_id)
+            REFERENCES each_way_extra_places(each_way_extra_place_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS fee_periods (
           fee_period_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -2152,6 +2197,35 @@ def write_cash_adjustment_audit_entry(
     )
 
 
+def write_each_way_extra_place_audit_entry(
+    connection: sqlite3.Connection,
+    each_way_extra_place_id: str,
+    profile_id: str,
+    action: str,
+    payload: dict[str, Any],
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO each_way_extra_place_audit (
+          audit_id,
+          each_way_extra_place_id,
+          profile_id,
+          action,
+          changed_at,
+          payload_json
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            f"audit-{uuid4().hex}",
+            each_way_extra_place_id,
+            profile_id,
+            action,
+            utc_now(),
+            json.dumps(payload, sort_keys=True),
+        ),
+    )
+
+
 def write_casino_offer_audit_entry(
     connection: sqlite3.Connection,
     casino_offer_id: str,
@@ -2290,6 +2364,38 @@ class CashAdjustmentRecord:
 
 
 @dataclass(frozen=True)
+class EachWayExtraPlaceRecord:
+    each_way_extra_place_id: str
+    profile_id: str
+    placed_at: str
+    runner: str
+    race: str
+    bookmaker: str
+    bookmaker_account: str
+    mode: str
+    each_way_stake: str
+    back_odds: str
+    place_term_numerator: str
+    place_term_denominator: str
+    bookmaker_places: str
+    exchange_places: str
+    win_exchange: str
+    win_lay_odds: str
+    win_commission: str
+    actual_win_lay_stake: str
+    place_exchange: str
+    place_lay_odds: str
+    place_commission: str
+    actual_place_lay_stake: str
+    status: str
+    result: str
+    finishing_position: str
+    user_notes: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
 class CasinoOfferRecord:
     casino_offer_id: str
     profile_id: str
@@ -2350,6 +2456,10 @@ def map_cash_adjustment_row(row: sqlite3.Row) -> CashAdjustmentRecord:
     record["affects_investment"] = bool(record["affects_investment"])
     record["affects_cash_snapshot"] = bool(record["affects_cash_snapshot"])
     return CashAdjustmentRecord(**record)
+
+
+def map_each_way_extra_place_row(row: sqlite3.Row) -> EachWayExtraPlaceRecord:
+    return EachWayExtraPlaceRecord(**dict(row))
 
 
 def map_casino_offer_row(row: sqlite3.Row) -> CasinoOfferRecord:
@@ -2467,6 +2577,36 @@ def get_cash_adjustment_by_id(
             (cash_adjustment_id,),
         ).fetchone()
     return None if row is None else map_cash_adjustment_row(row)
+
+
+def list_each_way_extra_places(profile_id: str) -> list[EachWayExtraPlaceRecord]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM each_way_extra_places
+            WHERE profile_id = ?
+            ORDER BY placed_at DESC, each_way_extra_place_id DESC
+            """,
+            (profile_id,),
+        ).fetchall()
+    return [map_each_way_extra_place_row(row) for row in rows]
+
+
+def get_each_way_extra_place(
+    profile_id: str,
+    each_way_extra_place_id: str,
+) -> EachWayExtraPlaceRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT *
+            FROM each_way_extra_places
+            WHERE profile_id = ? AND each_way_extra_place_id = ?
+            """,
+            (profile_id, each_way_extra_place_id),
+        ).fetchone()
+    return None if row is None else map_each_way_extra_place_row(row)
 
 
 def list_casino_offers(profile_id: str) -> list[CasinoOfferRecord]:
@@ -4013,6 +4153,123 @@ def count_cash_adjustment_audit_rows(profile_id: str, cash_adjustment_id: str) -
             (profile_id, cash_adjustment_id),
         ).fetchone()
     return int(row["count"])
+
+
+EACH_WAY_EXTRA_PLACE_FIELDS = (
+    "placed_at",
+    "runner",
+    "race",
+    "bookmaker",
+    "bookmaker_account",
+    "mode",
+    "each_way_stake",
+    "back_odds",
+    "place_term_numerator",
+    "place_term_denominator",
+    "bookmaker_places",
+    "exchange_places",
+    "win_exchange",
+    "win_lay_odds",
+    "win_commission",
+    "actual_win_lay_stake",
+    "place_exchange",
+    "place_lay_odds",
+    "place_commission",
+    "actual_place_lay_stake",
+    "status",
+    "result",
+    "finishing_position",
+    "user_notes",
+)
+
+
+def create_each_way_extra_place(
+    profile_id: str,
+    payload: dict[str, Any],
+) -> EachWayExtraPlaceRecord:
+    record = {
+        "each_way_extra_place_id": payload.get("each_way_extra_place_id")
+        or f"EWP-{uuid4().hex[:8].upper()}",
+        "profile_id": profile_id,
+        **{field: str(payload.get(field, "")) for field in EACH_WAY_EXTRA_PLACE_FIELDS},
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+    }
+    with connect() as connection:
+        columns = ", ".join(record)
+        placeholders = ", ".join("?" for _ in record)
+        connection.execute(
+            f"INSERT INTO each_way_extra_places ({columns}) VALUES ({placeholders})",
+            tuple(record.values()),
+        )
+        write_each_way_extra_place_audit_entry(
+            connection,
+            record["each_way_extra_place_id"],
+            profile_id,
+            "created",
+            record,
+        )
+    created = get_each_way_extra_place(profile_id, record["each_way_extra_place_id"])
+    assert created is not None
+    return created
+
+
+def update_each_way_extra_place(
+    profile_id: str,
+    each_way_extra_place_id: str,
+    payload: dict[str, Any],
+) -> EachWayExtraPlaceRecord | None:
+    existing = get_each_way_extra_place(profile_id, each_way_extra_place_id)
+    if existing is None:
+        return None
+    updated = {
+        **{field: str(payload.get(field, "")) for field in EACH_WAY_EXTRA_PLACE_FIELDS},
+        "updated_at": utc_now(),
+    }
+    assignments = ", ".join(f"{field} = ?" for field in updated)
+    with connect() as connection:
+        connection.execute(
+            f"UPDATE each_way_extra_places SET {assignments} "
+            "WHERE profile_id = ? AND each_way_extra_place_id = ?",
+            (*updated.values(), profile_id, each_way_extra_place_id),
+        )
+        write_each_way_extra_place_audit_entry(
+            connection,
+            each_way_extra_place_id,
+            profile_id,
+            "updated",
+            {"each_way_extra_place_id": each_way_extra_place_id, "profile_id": profile_id, **updated},
+        )
+    return get_each_way_extra_place(profile_id, each_way_extra_place_id)
+
+
+def delete_each_way_extra_place(
+    profile_id: str,
+    each_way_extra_place_id: str,
+    deletion_reason: str = "",
+) -> bool:
+    existing = get_each_way_extra_place(profile_id, each_way_extra_place_id)
+    if existing is None:
+        return False
+    if existing.status == "Settled" and not deletion_reason.strip():
+        raise ValueError("settled_each_way_extra_place_requires_deletion_reason")
+    with connect() as connection:
+        write_each_way_extra_place_audit_entry(
+            connection,
+            each_way_extra_place_id,
+            profile_id,
+            "deleted",
+            {
+                "each_way_extra_place_id": each_way_extra_place_id,
+                "profile_id": profile_id,
+                "deletion_reason": deletion_reason.strip(),
+            },
+        )
+        deleted = connection.execute(
+            "DELETE FROM each_way_extra_places WHERE profile_id = ? AND each_way_extra_place_id = ?",
+            (profile_id, each_way_extra_place_id),
+        )
+    return deleted.rowcount > 0
 
 
 def create_casino_offer(
