@@ -55,6 +55,8 @@ function getModuleVisualClass(moduleKey: string) {
       return "dashboard-module-free-bets";
     case "casino":
       return "dashboard-module-casino";
+    case "each-way-extra-places":
+      return "dashboard-module-sportsbook";
     case "cash-adjustments":
       return "dashboard-module-cash-adjustments";
     default:
@@ -271,12 +273,14 @@ export function PortfolioDashboardView({
               summary.activityQuickView.sportsbookCount +
               summary.activityQuickView.freeBetCount +
               summary.activityQuickView.casinoCount +
+              summary.activityQuickView.eachWayExtraPlaceCount +
               summary.activityQuickView.cashAdjustmentCount
             }
           >
             <span>Sportsbook {summary.activityQuickView.sportsbookCount}</span>
             <span>Free bets {summary.activityQuickView.freeBetCount}</span>
             <span>Casino {summary.activityQuickView.casinoCount}</span>
+            <span>Each way {summary.activityQuickView.eachWayExtraPlaceCount}</span>
           </DashboardMetricCard>
           <DashboardMetricCard
             eyebrow="Cash Movement"

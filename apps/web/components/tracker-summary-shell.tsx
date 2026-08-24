@@ -30,6 +30,7 @@ import {
   type BalanceSnapshotSummaryRecord,
   type CashAdjustmentSummaryRecord,
   type CasinoSummaryRecord,
+  type EachWayExtraPlaceSummaryRecord,
   type FreeBetSummaryRecord,
   type DatePreset,
   type SportsbookSummaryRecord,
@@ -81,6 +82,8 @@ function getActivityModuleLabel(module: string) {
       return "Free Bet";
     case "casino":
       return "Casino";
+    case "each-way-extra-place":
+      return "Each Way / Extra Place";
     case "cash-adjustment":
       return "Cash Adjustment";
     default:
@@ -96,6 +99,8 @@ function getActivityLedgerHref(profileId: string, module: string, reference: str
         ? "free-bets"
         : module === "casino"
           ? "casino-offers"
+          : module === "each-way-extra-place"
+            ? "each-way-extra-places"
           : "cash-adjustments";
   return `/profiles/${profileId}/tracker/${route}?search=${encodeURIComponent(reference)}`;
 }
@@ -122,6 +127,7 @@ function renderReportTable({
     sportsbookPnl: number;
     freeBetPnl: number;
     casinoPnl: number;
+    eachWayExtraPlacePnl: number;
     totalPnl: number;
     withdrawals: number;
     costs: number;
@@ -141,6 +147,7 @@ function renderReportTable({
               <th className="align-end">Sportsbook</th>
               <th className="align-end">Free Bets</th>
               <th className="align-end">Casino</th>
+              <th className="align-end">Each Way / Extra Places</th>
               <th className="align-end">Total P&amp;L</th>
               <th className="align-end">Withdrawals</th>
               <th className="align-end">Costs</th>
@@ -150,7 +157,7 @@ function renderReportTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8}>No rows currently resolve into this report period.</td>
+                <td colSpan={9}>No rows currently resolve into this report period.</td>
               </tr>
             ) : (
               rows.slice(0, 12).map((row) => (
@@ -159,6 +166,7 @@ function renderReportTable({
                   <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                   <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
                   <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
+                  <td className="align-end"><FinancialValue value={row.eachWayExtraPlacePnl} /></td>
                   <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
                   <td className="align-end"><FinancialValue value={row.withdrawals} /></td>
                   <td className="align-end"><FinancialValue value={row.costs} /></td>
@@ -254,6 +262,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       freeBets: `${apiBaseUrl}/profiles/${profileId}/free-bets`,
       casinoOffers: `${apiBaseUrl}/profiles/${profileId}/casino-offers`,
       cashAdjustments: `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`,
+      eachWayExtraPlaces: `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`,
       balanceSnapshots: `${apiBaseUrl}/profiles/${profileId}/balance-snapshots`,
       feePeriods: `${apiBaseUrl}/profiles/${profileId}/fee-periods`,
       trackerSettings: `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
@@ -283,6 +292,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         urls.cashAdjustments,
         TRACKER_STALE_WHILE_REFRESH_MS
       ),
+      eachWayExtraPlaces: readCachedJson<EachWayExtraPlaceSummaryRecord[]>(
+        urls.eachWayExtraPlaces,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      ),
       balanceSnapshots: readCachedJson<BalanceSnapshotSummaryRecord[]>(
         urls.balanceSnapshots,
         TRACKER_STALE_WHILE_REFRESH_MS
@@ -300,6 +313,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       cachedData.freeBets &&
       cachedData.casinoOffers &&
       cachedData.cashAdjustments &&
+      cachedData.eachWayExtraPlaces &&
       cachedData.balanceSnapshots &&
       cachedData.feePeriods
     ) {
@@ -310,6 +324,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         freeBets: cachedData.freeBets,
         casinoOffers: cachedData.casinoOffers,
         cashAdjustments: cachedData.cashAdjustments,
+        eachWayExtraPlaces: cachedData.eachWayExtraPlaces,
         balanceSnapshots: cachedData.balanceSnapshots,
       });
       setFeePeriods(cachedData.feePeriods);
@@ -321,6 +336,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       freeBets,
       casinoOffers,
       cashAdjustments,
+      eachWayExtraPlaces,
       balanceSnapshots,
       feePeriodsResponse,
       trackerSettings,
@@ -330,6 +346,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       fetchJsonAndCache<FreeBetSummaryRecord[]>(urls.freeBets),
       fetchJsonAndCache<CasinoSummaryRecord[]>(urls.casinoOffers),
       fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments),
+      fetchJsonAndCache<EachWayExtraPlaceSummaryRecord[]>(urls.eachWayExtraPlaces),
       fetchJsonAndCache<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots),
       fetchJsonAndCache<FeePeriodApiRecord[]>(urls.feePeriods),
       fetchJsonAndCache<TrackerSettingsRecord>(urls.trackerSettings),
@@ -343,6 +360,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       freeBets,
       casinoOffers,
       cashAdjustments,
+      eachWayExtraPlaces,
       balanceSnapshots,
     });
   }, [profileId]);
@@ -802,13 +820,14 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 "Sportsbook P&L",
                 "Free Bet P&L",
                 "Casino P&L",
+                "Each Way / Extra Place P&L",
                 "Total P&L",
                 "Open rows",
               ],
               rows:
                 summary.bookmakerBreakdown.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>No bookmaker breakdown rows are available for the current range.</td>
+                    <td colSpan={7}>No bookmaker breakdown rows are available for the current range.</td>
                   </tr>
                 ) : (
                   summary.bookmakerBreakdown.map((row) => (
@@ -817,6 +836,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
+                      <td className="align-end"><FinancialValue value={row.eachWayExtraPlacePnl} /></td>
                       <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
                       <td className="align-end">{row.openRowCount}</td>
                     </tr>

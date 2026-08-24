@@ -23,6 +23,7 @@ import {
   summarizeTrackerData,
   type CashAdjustmentSummaryRecord,
   type CasinoSummaryRecord,
+  type EachWayExtraPlaceSummaryRecord,
   type FreeBetSummaryRecord,
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
@@ -105,6 +106,10 @@ function resolveHeaderPnlForRoute(pathname: string, summary: TrackerSummaryResul
     return summary.profitQuickView.casino.reportingValue;
   }
 
+  if (pathname.includes("/tracker/each-way-extra-places")) {
+    return summary.profitQuickView.eachWayExtraPlaces.reportingValue;
+  }
+
   if (pathname.includes("/tracker/cash-adjustments")) {
     return summary.betsQuickView.selectedRangeCashAdjustments;
   }
@@ -158,6 +163,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       "sportsbook-bets",
       "free-bets",
       "casino-offers",
+      "each-way-extra-places",
       "cash-adjustments",
       "dashboard",
       "reports",
@@ -274,6 +280,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       const sportsbookUrl = `${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`;
       const freeBetUrl = `${apiBaseUrl}/profiles/${activeProfileId}/free-bets`;
       const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
+      const eachWayExtraPlacesUrl = `${apiBaseUrl}/profiles/${activeProfileId}/each-way-extra-places`;
       const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
 
       const cachedProfile = readCachedJson<ProfileHeaderRecord>(
@@ -330,6 +337,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         casinoUrl,
         TRACKER_STALE_WHILE_REFRESH_MS
       );
+      const cachedEachWayExtraPlaces = readCachedJson<EachWayExtraPlaceSummaryRecord[]>(
+        eachWayExtraPlacesUrl,
+        TRACKER_STALE_WHILE_REFRESH_MS
+      );
       const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(
         cashUrl,
         TRACKER_STALE_WHILE_REFRESH_MS
@@ -341,7 +352,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         cachedSportsbookBets &&
         cachedFreeBets &&
         cachedCasinoOffers &&
-        cachedCashAdjustments
+        cachedCashAdjustments &&
+        cachedEachWayExtraPlaces
       ) {
         const cachedRange = resolveDateRange({
           preset: cachedSettings.active_date_preset,
@@ -357,6 +369,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             freeBets: cachedFreeBets,
             casinoOffers: cachedCasinoOffers,
             cashAdjustments: cachedCashAdjustments,
+            eachWayExtraPlaces: cachedEachWayExtraPlaces,
           },
           cachedRange,
           undefined,
@@ -385,11 +398,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
       const resolvedRange = applyHeaderIdentity(profile, settings, null);
 
-      const [sportsbookBets, freeBets, casinoOffers, cashAdjustments] = await Promise.all([
+      const [sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces] = await Promise.all([
         fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
         fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
         fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
         fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
+        fetchJsonAndCache<EachWayExtraPlaceSummaryRecord[]>(eachWayExtraPlacesUrl),
       ]);
 
       const summary = summarizeTrackerData(
@@ -399,6 +413,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           freeBets,
           casinoOffers,
           cashAdjustments,
+          eachWayExtraPlaces,
         },
         resolvedRange,
         undefined,

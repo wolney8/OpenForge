@@ -47,3 +47,11 @@ Future EP Catcher import maps runner/race/terms/accounts/actual legs/finishing d
 runs a dry calculation comparison, requires selected-profile approval, and never imports `Week` as
 a primary field. The detailed source-column classification and dry-run gate are recorded in
 `docs/planning/each-way-extra-place-import-preparation.md`.
+
+## Reporting Integration
+
+Each Way / Extra Place is a distinct portfolio and report module. Its selected-range and formal
+reporting date is `placed_at` until a separate settlement timestamp is introduced by an approved
+contract change. A pending row contributes `current_value`; a resolved or void row contributes
+`final_value`. It must not be relabelled as Sportsbook in dashboards, top-bar totals, bookmaker
+breakdowns, or formal reports. Cash snapshot remains a current account-state value, not ledger P&L.

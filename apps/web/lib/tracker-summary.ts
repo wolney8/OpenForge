@@ -98,6 +98,21 @@ export type CashAdjustmentSummaryRecord = {
   week_label: string;
 };
 
+export type EachWayExtraPlaceSummaryRecord = {
+  each_way_extra_place_id: string;
+  placed_at: string;
+  runner: string;
+  race: string;
+  bookmaker: string;
+  mode: "Each Way" | "Extra Place";
+  status: string;
+  result: string;
+  current_value: string | null;
+  final_value: string | null;
+  win_liability?: string | null;
+  place_liability?: string | null;
+};
+
 export type BalanceSnapshotSummaryRecord = {
   balance_snapshot_id: string;
   profile_id: string;
@@ -115,6 +130,7 @@ export type TrackerSummaryDataset = {
   freeBets: FreeBetSummaryRecord[];
   casinoOffers: CasinoSummaryRecord[];
   cashAdjustments: CashAdjustmentSummaryRecord[];
+  eachWayExtraPlaces?: EachWayExtraPlaceSummaryRecord[];
   balanceSnapshots?: BalanceSnapshotSummaryRecord[];
 };
 
@@ -186,7 +202,7 @@ type ModuleMetric = {
 
 type ActivityItem = {
   id: string;
-  module: "sportsbook" | "free-bet" | "casino" | "cash-adjustment";
+  module: "sportsbook" | "free-bet" | "casino" | "each-way-extra-place" | "cash-adjustment";
   label: string;
   bookmakerOrAccount: string;
   status: string;
@@ -212,6 +228,7 @@ export type ReportRow = {
   sportsbookPnl: number;
   freeBetPnl: number;
   casinoPnl: number;
+  eachWayExtraPlacePnl: number;
   totalPnl: number;
   withdrawals: number;
   costs: number;
@@ -219,7 +236,7 @@ export type ReportRow = {
 };
 
 export type ModuleBreakdownRow = {
-  moduleKey: "sportsbook" | "free-bets" | "casino" | "cash-adjustments";
+  moduleKey: "sportsbook" | "free-bets" | "casino" | "each-way-extra-places" | "cash-adjustments";
   label: string;
   rowCount: number;
   reportingValue: number;
@@ -230,6 +247,7 @@ export type BookmakerBreakdownRow = {
   sportsbookPnl: number;
   freeBetPnl: number;
   casinoPnl: number;
+  eachWayExtraPlacePnl: number;
   totalPnl: number;
   openRowCount: number;
 };
@@ -247,6 +265,7 @@ export type TrackerSummaryResult = {
     sportsbook: ModuleMetric;
     freeBets: ModuleMetric;
     casino: ModuleMetric;
+    eachWayExtraPlaces: ModuleMetric;
     openCurrentValue: number;
     settledFinalValue: number;
     overallPnl: number;
@@ -269,6 +288,7 @@ export type TrackerSummaryResult = {
     sportsbookCount: number;
     freeBetCount: number;
     casinoCount: number;
+    eachWayExtraPlaceCount: number;
     cashAdjustmentCount: number;
     latestActivityDate: string;
   };
@@ -383,6 +403,10 @@ function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
 
 function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
   return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
+}
+
+function eachWayExtraPlaceDisplayValue(row: EachWayExtraPlaceSummaryRecord): number {
+  return firstMoneyValue(row.final_value, row.current_value);
 }
 
 function parseDateInput(value: string | null | undefined): Date | null {
@@ -590,6 +614,7 @@ function buildReportAccumulator() {
     sportsbookPnl: 0,
     freeBetPnl: 0,
     casinoPnl: 0,
+    eachWayExtraPlacePnl: 0,
     totalPnl: 0,
     withdrawals: 0,
     costs: 0,
@@ -636,7 +661,11 @@ function pushOrAdd(
     } satisfies ReportRow);
 
   updater(existing);
-  existing.totalPnl = existing.sportsbookPnl + existing.freeBetPnl + existing.casinoPnl;
+  existing.totalPnl =
+    existing.sportsbookPnl +
+    existing.freeBetPnl +
+    existing.casinoPnl +
+    existing.eachWayExtraPlacePnl;
   existing.retainedProfit = existing.totalPnl + existing.withdrawals + existing.costs;
   store.set(key, existing);
 }
@@ -709,6 +738,9 @@ export function summarizeTrackerData(
   const cashAdjustmentsInRange = dataset.cashAdjustments.filter((row) =>
     dateWithinRange(parseDateInput(row.adjustment_date), resolvedDateRange)
   );
+  const eachWayExtraPlacesInRange = (dataset.eachWayExtraPlaces ?? []).filter((row) =>
+    dateWithinRange(parseDateInput(row.placed_at), resolvedDateRange)
+  );
   const recentBalanceSnapshots = (dataset.balanceSnapshots ?? [])
     .filter((row) => dateWithinRange(parseDateInput(row.snapshot_at), resolvedDateRange))
     .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at))
@@ -741,6 +773,16 @@ export function summarizeTrackerData(
   const casinoSettledFinalValue = casinoInRange
     .filter((row) => !row.counts_as_open)
     .reduce((sum, row) => sum + parseMoney(row.resolved_net_pnl), 0);
+  const eachWayExtraPlaceReportingValue = eachWayExtraPlacesInRange.reduce(
+    (sum, row) => sum + eachWayExtraPlaceDisplayValue(row),
+    0
+  );
+  const eachWayExtraPlaceOpenCurrentValue = eachWayExtraPlacesInRange
+    .filter((row) => row.status === "Placed" && row.result === "Pending")
+    .reduce((sum, row) => sum + parseMoney(row.current_value), 0);
+  const eachWayExtraPlaceSettledFinalValue = eachWayExtraPlacesInRange
+    .filter((row) => row.status !== "Placed" || row.result !== "Pending")
+    .reduce((sum, row) => sum + parseMoney(row.final_value), 0);
   const selectedRangeCashAdjustments = cashAdjustmentsInRange
     .filter((row) => cashAdjustmentTypesForDashboard.has(row.adjustment_type))
     .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
@@ -750,6 +792,9 @@ export function summarizeTrackerData(
   const openSportsbook = sportsbookInRange.filter((row) => row.counts_as_open);
   const openFreeBets = freeBetsInRange.filter((row) => row.counts_as_open);
   const openCasino = casinoInRange.filter((row) => row.counts_as_open);
+  const openEachWayExtraPlaces = eachWayExtraPlacesInRange.filter(
+    (row) => row.status === "Placed" && row.result === "Pending"
+  );
 
   const overdueBets =
     sportsbookInRange.filter((row) => row.is_overdue).length +
@@ -770,7 +815,11 @@ export function summarizeTrackerData(
 
   const currentLiability =
     openSportsbook.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0) +
-    openFreeBets.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0);
+    openFreeBets.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0) +
+    openEachWayExtraPlaces.reduce(
+      (sum, row) => sum + parseMoney(row.win_liability) + parseMoney(row.place_liability),
+      0
+    );
 
   const topUps = cashAdjustmentsInRange
     .filter((row) => row.adjustment_type === "TopUp")
@@ -835,6 +884,15 @@ export function summarizeTrackerData(
       status: `${row.adjustment_type} / ${row.direction}`,
       date: row.adjustment_date,
       value: parseMoney(row.signed_amount),
+    })),
+    ...eachWayExtraPlacesInRange.map((row) => ({
+      id: row.each_way_extra_place_id,
+      module: "each-way-extra-place" as const,
+      label: row.runner || row.each_way_extra_place_id,
+      bookmakerOrAccount: row.bookmaker || "Each Way / Extra Place",
+      status: `${row.status} / ${row.result}`,
+      date: row.placed_at,
+      value: eachWayExtraPlaceDisplayValue(row),
     })),
   ]
     .filter((row) => !!parseDateInput(row.date))
@@ -955,6 +1013,21 @@ export function summarizeTrackerData(
     });
   }
 
+  for (const row of dataset.eachWayExtraPlaces ?? []) {
+    const value = eachWayExtraPlaceDisplayValue(row);
+    const placedAt = parseDateInput(row.placed_at);
+    if (!placedAt) {
+      continue;
+    }
+    const periodDate = toPeriodDate(placedAt);
+    const apply = (reportRow: ReportRow) => {
+      reportRow.eachWayExtraPlacePnl += value;
+    };
+    pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), apply);
+    pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), apply);
+    pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), apply);
+  }
+
   for (const row of dataset.cashAdjustments) {
     const value = parseMoney(row.signed_amount);
     const adjustmentDate = parseDateInput(row.adjustment_date);
@@ -1003,6 +1076,12 @@ export function summarizeTrackerData(
       rowCount: cashAdjustmentsInRange.length,
       reportingValue: selectedRangeCashAdjustments,
     },
+    {
+      moduleKey: "each-way-extra-places",
+      label: "Each Way / Extra Places",
+      rowCount: eachWayExtraPlacesInRange.length,
+      reportingValue: eachWayExtraPlaceReportingValue,
+    },
   ];
   const bookmakerMap = new Map<string, BookmakerBreakdownRow>();
   const bookmakerRow = (bookmaker: string) =>
@@ -1011,6 +1090,7 @@ export function summarizeTrackerData(
       sportsbookPnl: 0,
       freeBetPnl: 0,
       casinoPnl: 0,
+      eachWayExtraPlacePnl: 0,
       totalPnl: 0,
       openRowCount: 0,
     };
@@ -1018,7 +1098,7 @@ export function summarizeTrackerData(
   for (const row of sportsbookInRange) {
     const next = bookmakerRow(row.bookmaker);
     next.sportsbookPnl += sportsbookDisplayValue(row);
-    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl;
+    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
     }
@@ -1028,7 +1108,7 @@ export function summarizeTrackerData(
   for (const row of freeBetsInRange) {
     const next = bookmakerRow(row.bookmaker);
     next.freeBetPnl += freeBetDisplayValue(row);
-    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl;
+    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
     }
@@ -1038,8 +1118,18 @@ export function summarizeTrackerData(
   for (const row of casinoInRange) {
     const next = bookmakerRow(row.bookmaker);
     next.casinoPnl += parseMoney(row.resolved_net_pnl);
-    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl;
+    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
+      next.openRowCount += 1;
+    }
+    bookmakerMap.set(row.bookmaker, next);
+  }
+
+  for (const row of eachWayExtraPlacesInRange) {
+    const next = bookmakerRow(row.bookmaker);
+    next.eachWayExtraPlacePnl += eachWayExtraPlaceDisplayValue(row);
+    next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
+    if (row.status === "Placed" && row.result === "Pending") {
       next.openRowCount += 1;
     }
     bookmakerMap.set(row.bookmaker, next);
@@ -1050,6 +1140,7 @@ export function summarizeTrackerData(
     sportsbookReportingValue +
     freeBetReportingValue +
     casinoReportingValue +
+    eachWayExtraPlaceReportingValue +
     withdrawals +
     deductionsAndSubscriptions;
 
@@ -1081,13 +1172,20 @@ export function summarizeTrackerData(
         currentValue: 0,
         finalValue: casinoSettledFinalValue,
       },
-      openCurrentValue: sportsbookOpenCurrentValue + freeBetOpenCurrentValue,
+      eachWayExtraPlaces: {
+        count: eachWayExtraPlacesInRange.length,
+        reportingValue: eachWayExtraPlaceReportingValue,
+        currentValue: eachWayExtraPlaceOpenCurrentValue,
+        finalValue: eachWayExtraPlaceSettledFinalValue,
+      },
+      openCurrentValue:
+        sportsbookOpenCurrentValue + freeBetOpenCurrentValue + eachWayExtraPlaceOpenCurrentValue,
       settledFinalValue:
-        sportsbookSettledFinalValue + freeBetSettledFinalValue + casinoSettledFinalValue,
-      overallPnl: sportsbookReportingValue + freeBetReportingValue + casinoReportingValue,
+        sportsbookSettledFinalValue + freeBetSettledFinalValue + casinoSettledFinalValue + eachWayExtraPlaceSettledFinalValue,
+      overallPnl: sportsbookReportingValue + freeBetReportingValue + casinoReportingValue + eachWayExtraPlaceReportingValue,
     },
     betsQuickView: {
-      openBets: openSportsbook.length + openFreeBets.length + openCasino.length,
+      openBets: openSportsbook.length + openFreeBets.length + openCasino.length + openEachWayExtraPlaces.length,
       overdueBets,
       partLaidBets,
       currentLiability,
@@ -1104,6 +1202,7 @@ export function summarizeTrackerData(
       sportsbookCount: sportsbookInRange.length,
       freeBetCount: freeBetsInRange.length,
       casinoCount: casinoInRange.length,
+      eachWayExtraPlaceCount: eachWayExtraPlacesInRange.length,
       cashAdjustmentCount: cashAdjustmentsInRange.length,
       latestActivityDate,
     },
@@ -1116,12 +1215,12 @@ export function summarizeTrackerData(
     },
     reportingModel: {
       selectedRange: {
-        grossBettingPnl: sportsbookReportingValue + freeBetReportingValue + casinoReportingValue,
+        grossBettingPnl: sportsbookReportingValue + freeBetReportingValue + casinoReportingValue + eachWayExtraPlaceReportingValue,
         cashAdjustments: selectedRangeCashAdjustments,
         retainedProfit,
-        openCurrentValue: sportsbookOpenCurrentValue + freeBetOpenCurrentValue,
+        openCurrentValue: sportsbookOpenCurrentValue + freeBetOpenCurrentValue + eachWayExtraPlaceOpenCurrentValue,
         settledFinalValue:
-          sportsbookSettledFinalValue + freeBetSettledFinalValue + casinoSettledFinalValue,
+          sportsbookSettledFinalValue + freeBetSettledFinalValue + casinoSettledFinalValue + eachWayExtraPlaceSettledFinalValue,
       },
       formalReports: {
         weeklyPeriods: weeklyReports.length,

@@ -55,6 +55,7 @@ function emptyReportRow(periodKey: string, periodLabel: string): ReportRow {
     sportsbookPnl: 0,
     freeBetPnl: 0,
     casinoPnl: 0,
+    eachWayExtraPlacePnl: 0,
     totalPnl: 0,
     withdrawals: 0,
     costs: 0,
@@ -70,10 +71,11 @@ function aggregateReportRows(rows: ReportRow[]): ReportRow[] {
     aggregate.sportsbookPnl += row.sportsbookPnl;
     aggregate.freeBetPnl += row.freeBetPnl;
     aggregate.casinoPnl += row.casinoPnl;
+    aggregate.eachWayExtraPlacePnl += row.eachWayExtraPlacePnl;
     aggregate.withdrawals += row.withdrawals;
     aggregate.costs += row.costs;
     aggregate.totalPnl =
-      aggregate.sportsbookPnl + aggregate.freeBetPnl + aggregate.casinoPnl;
+      aggregate.sportsbookPnl + aggregate.freeBetPnl + aggregate.casinoPnl + aggregate.eachWayExtraPlacePnl;
     aggregate.retainedProfit = aggregate.totalPnl + aggregate.withdrawals + aggregate.costs;
     periods.set(row.periodKey, aggregate);
   }
@@ -161,14 +163,16 @@ export function aggregateCrossProfileReporting(
         sportsbookPnl: 0,
         freeBetPnl: 0,
         casinoPnl: 0,
+        eachWayExtraPlacePnl: 0,
         totalPnl: 0,
         openRowCount: 0,
       };
       aggregate.sportsbookPnl += row.sportsbookPnl;
       aggregate.freeBetPnl += row.freeBetPnl;
       aggregate.casinoPnl += row.casinoPnl;
+      aggregate.eachWayExtraPlacePnl += row.eachWayExtraPlacePnl;
       aggregate.totalPnl =
-        aggregate.sportsbookPnl + aggregate.freeBetPnl + aggregate.casinoPnl;
+        aggregate.sportsbookPnl + aggregate.freeBetPnl + aggregate.casinoPnl + aggregate.eachWayExtraPlacePnl;
       aggregate.openRowCount += row.openRowCount;
       bookmakerMap.set(row.bookmaker, aggregate);
     }

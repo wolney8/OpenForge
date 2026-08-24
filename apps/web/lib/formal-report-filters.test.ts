@@ -3,9 +3,9 @@ import { filterFormalReportRows } from "./formal-report-filters";
 import type { ReportRow } from "./tracker-summary";
 
 const rows: ReportRow[] = [
-  { periodKey: "2026-03", periodLabel: "March 2026", sportsbookPnl: 10, freeBetPnl: 0, casinoPnl: 0, totalPnl: 10, withdrawals: 0, costs: 0, retainedProfit: 10 },
-  { periodKey: "2026-02", periodLabel: "February 2026", sportsbookPnl: -5, freeBetPnl: 0, casinoPnl: 0, totalPnl: -5, withdrawals: 0, costs: 0, retainedProfit: -5 },
-  { periodKey: "2026-01", periodLabel: "January 2026", sportsbookPnl: 2, freeBetPnl: 0, casinoPnl: 0, totalPnl: 2, withdrawals: 0, costs: 0, retainedProfit: 2 },
+  { periodKey: "2026-03", periodLabel: "March 2026", sportsbookPnl: 10, freeBetPnl: 0, casinoPnl: 0, eachWayExtraPlacePnl: 0, totalPnl: 10, withdrawals: 0, costs: 0, retainedProfit: 10 },
+  { periodKey: "2026-02", periodLabel: "February 2026", sportsbookPnl: -5, freeBetPnl: 0, casinoPnl: 0, eachWayExtraPlacePnl: 0, totalPnl: -5, withdrawals: 0, costs: 0, retainedProfit: -5 },
+  { periodKey: "2026-01", periodLabel: "January 2026", sportsbookPnl: 2, freeBetPnl: 0, casinoPnl: 0, eachWayExtraPlacePnl: 0, totalPnl: 2, withdrawals: 0, costs: 0, retainedProfit: 2 },
 ];
 
 describe("filterFormalReportRows", () => {

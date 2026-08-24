@@ -217,6 +217,10 @@ export function buildDashboardTrendFromDataset({
         range.start,
       value: parseDashboardMoney(row.resolved_net_pnl),
     })),
+    ...(dataset.eachWayExtraPlaces ?? []).map((row) => ({
+      date: parseDashboardDate(row.placed_at) ?? range.start,
+      value: parseDashboardMoney(row.final_value ?? row.current_value),
+    })),
   ].filter((row) => isDateInRange(row.date, range));
 
   const buckets = new Map<string, number>();
