@@ -104,7 +104,12 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     unplaced = _money(-total_outlay + win_lay_return + place_lay_return)
     qualifying_loss = min(first_place, standard_place, unplaced)
     extra_place_profit = _money((stake * place_back_odds) + qualifying_loss)
-    current = min(first_place, standard_place, extra_place, unplaced)
+    current = min(
+        first_place,
+        standard_place,
+        extra_place if values.mode == "Extra Place" else standard_place,
+        unplaced,
+    )
     resolved = {"Win": first_place, "Standard Place": standard_place, "Extra Place": extra_place, "Unplaced": unplaced, "Void/NR": Decimal("0.00")}
     final = resolved.get(values.result) if values.result != "Pending" else None
     return EachWayCalculationResult(

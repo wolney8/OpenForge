@@ -24,6 +24,14 @@ def test_extra_place_settlement_and_void() -> None:
     assert calculate_each_way_extra_place(EachWayCalculationInput(**payload, result="Void/NR")).final_value == Decimal("0.00")
 
 
+def test_each_way_current_value_excludes_extra_place_only_branch() -> None:
+    result = calculate_each_way_extra_place(EachWayCalculationInput(
+        mode="Each Way", each_way_stake="10", back_odds="6", place_term_denominator="5",
+        win_lay_odds="2.3", place_lay_odds="4.5",
+    ))
+    assert result.current_value == min(result.first_place_pnl, result.standard_place_pnl, result.unplaced_pnl)
+
+
 def test_historical_actual_legs_remain_authoritative() -> None:
     result = calculate_each_way_extra_place(EachWayCalculationInput(
         mode="Extra Place", each_way_stake="5", back_odds="26", place_term_denominator="5",
