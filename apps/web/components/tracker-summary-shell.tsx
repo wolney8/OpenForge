@@ -83,7 +83,7 @@ function getActivityModuleLabel(module: string) {
     case "casino":
       return "Casino";
     case "each-way-extra-place":
-      return "Each Way / Extra Place";
+      return "Extra Place";
     case "cash-adjustment":
       return "Cash Adjustment";
     default:
@@ -147,7 +147,7 @@ function renderReportTable({
               <th className="align-end">Sportsbook</th>
               <th className="align-end">Free Bets</th>
               <th className="align-end">Casino</th>
-              <th className="align-end">Each Way / Extra Places</th>
+              <th className="align-end">Extra Place</th>
               <th className="align-end">Total P&amp;L</th>
               <th className="align-end">Withdrawals</th>
               <th className="align-end">Costs</th>
@@ -820,7 +820,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 "Sportsbook P&L",
                 "Free Bet P&L",
                 "Casino P&L",
-                "Each Way / Extra Place P&L",
+                "Extra Place P&L",
                 "Total P&L",
                 "Open rows",
               ],

@@ -1,5 +1,25 @@
 # Each Way / Extra Place Ledger Contract
 
+## Product Naming And Editor Parity
+
+The user-facing ledger is **Extra Place**. The internal API and compatibility route remain
+`each-way-extra-places` while existing integrations migrate, but no navigation, page title, or
+user-facing label should expose the older combined name.
+
+The editor follows the shared Plum Duff ledger-modal contract:
+
+- **Calculate**, **Placement**, and **Settlement** are the only primary steps.
+- Guided entry identifies the next missing required field and moves the user to its step.
+- E/W stake, lay stakes, and liabilities are neutral amounts; only outcome, profit, and loss
+  values use positive/negative semantic colours.
+- The modal owns scrolling, has a fixed viewport-constrained shell, and keeps its header and
+  footer controls visible.
+- Incomplete or unresolved rows are visibly marked as requiring action and can be filtered.
+
+Initial quick-select loadouts are safe defaults. Their durable ownership is the existing
+Fund-Manager Quick Add Loadout/Common Bet Combo authority; profile availability must later honour
+the selected account's eligibility and restrictions.
+
 _Status: Implementing. Approved: 2026-08-24._
 
 ## Scope

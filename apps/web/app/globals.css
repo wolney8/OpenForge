@@ -7780,6 +7780,33 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding-top: 0;
 }
 
+/* Extra Place follows the shared ledger editor shell; only neutral calculated stakes differ. */
+.extra-place-editor-modal .workflow-editor-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.extra-place-editor-modal .workflow-editor-footer {
+  flex: 0 0 auto;
+}
+
+.extra-place-neutral-value,
+.extra-place-neutral-value .financial-value-visual {
+  color: var(--on-surface) !important;
+}
+
+.extra-place-row-needs-action {
+  background: color-mix(in srgb, var(--warning-container) 22%, transparent);
+}
+
+.extra-place-loadouts {
+  align-items: center;
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
 .sportsbook-tabbed-editor-modal > form.form-grid {
   align-items: start;
   gap: 1rem;
