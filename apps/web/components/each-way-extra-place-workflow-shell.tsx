@@ -1621,14 +1621,19 @@ function EpProfit({ row }: { row: Row }) {
   if (row.mode !== "Extra Place") return <span className="extra-place-profit-neutral">-</span>;
   const hit = row.status === "Settled" && row.result === "Extra Place";
   const missed = row.status === "Settled" && !hit && row.result !== "Pending";
+  const profit = asNumber(row.extra_place_profit);
   return (
     <span className={`extra-place-profit-value${hit ? " is-hit" : ""}${missed ? " is-missed" : ""}`}>
-      {value(row.extra_place_profit)}
+      {profit === null ? "£ -" : formatFinancialValue(profit)}
     </span>
   );
 }
 function StatusDisplay({ row }: { row: Row }) {
-  const position = row.finishing_position || (row.status === "Settled" ? "Position needed" : "Pending");
+  const position = row.finishing_position
+    ? ordinalPosition(row.finishing_position)
+    : row.status === "Settled"
+      ? "Position needed"
+      : "Pending";
   return (
     <span className="extra-place-status-display">
       <strong>{position}</strong>

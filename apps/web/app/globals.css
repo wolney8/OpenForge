@@ -5646,12 +5646,12 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   width: 2.45rem;
   height: 2.45rem;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--outline) 72%, transparent);
-  border-radius: var(--shape-full);
-  color: var(--on-surface);
-  background: color-mix(in srgb, var(--surface-container-high) 88%, transparent);
-  box-shadow: var(--shadow);
-  opacity: 0.78;
+  border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--outline));
+  border-radius: var(--shape-medium);
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--surface-container-highest) 94%, transparent);
+  box-shadow: 0 0.2rem 0.8rem rgb(0 0 0 / 0.24);
+  opacity: 0.9;
   transform: translateY(-50%);
   transition: opacity 160ms ease, transform 160ms ease;
 }
@@ -8158,7 +8158,7 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 }
 
 .extra-place-ledger > .extra-place-table-heading-controls { order: 5; }
-.extra-place-ledger > .table-scroll { order: 6; }
+.extra-place-ledger > .ledger-table-scroll-wrap { order: 6; }
 
 .extra-place-theme-switch {
   display: inline-grid;
@@ -8220,8 +8220,9 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 .extra-place-bet-type-toggle-option {
   min-width: 0;
   min-height: 2.6rem;
+  margin: 0.16rem;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--shape-full);
   color: var(--on-surface-variant);
   background: transparent;
   box-shadow: none;
@@ -8262,7 +8263,8 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 
 html[data-theme="dark"] .extra-place-data-table th {
   color: #ffffff;
-  background: var(--surface-container-highest);
+  background: color-mix(in srgb, var(--surface-strong) 58%, #ffffff);
+  border-bottom-color: color-mix(in srgb, #ffffff 24%, var(--outline));
 }
 
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-back,
@@ -8303,12 +8305,9 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #ffffff);
 }
 
-.extra-place-bet-type-toggle-option:first-child {
-  border-radius: var(--shape-full) 0 0 var(--shape-full);
-}
-
+.extra-place-bet-type-toggle-option:first-child,
 .extra-place-bet-type-toggle-option:last-child {
-  border-radius: 0 var(--shape-full) var(--shape-full) 0;
+  border-radius: var(--shape-full);
 }
 
 .extra-place-data-table td {
@@ -8339,13 +8338,36 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   justify-content: center;
   padding: 0.35rem 0.55rem;
   border-radius: var(--shape-small);
-  background: var(--surface-container-highest);
+  border: 1px solid var(--outline);
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--surface-container-highest) 86%, #ffffff);
+  font-weight: 800;
 }
 
-.extra-place-profit-value.is-hit { background: color-mix(in srgb, var(--success) 18%, var(--surface-container)); }
+.extra-place-profit-value.is-hit {
+  border-color: color-mix(in srgb, var(--success) 54%, var(--outline));
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 18%, var(--surface-container));
+}
 .extra-place-profit-value.is-missed { text-decoration: line-through; text-decoration-thickness: 2px; }
 html[data-theme="dark"] .extra-place-profit-value,
-html[data-theme="dark"] .extra-place-profit-neutral { background: color-mix(in srgb, #ffffff 12%, var(--surface-container)); }
+html[data-theme="dark"] .extra-place-profit-neutral {
+  border-color: color-mix(in srgb, #ffffff 26%, var(--outline));
+  background: color-mix(in srgb, #ffffff 16%, var(--surface-container));
+  color: #f4f7fb;
+}
+
+html[data-theme="dark"] .extra-place-profit-value:not(.is-hit) {
+  border-color: color-mix(in srgb, #ffffff 26%, var(--outline));
+  background: color-mix(in srgb, #ffffff 16%, var(--surface-container));
+  color: #f4f7fb;
+}
+
+html[data-theme="dark"] .extra-place-profit-value.is-hit {
+  border-color: color-mix(in srgb, var(--success) 58%, var(--outline));
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 20%, var(--surface-container));
+}
 
 .extra-place-status-display {
   display: grid;

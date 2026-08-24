@@ -31,3 +31,14 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | PD-FIX-017 | Shared bet-ledger tables | Adds accessible faded left/right controls for horizontally scrollable tables. | Table-side arrow wireframe | VERIFIED |
 | PD-FIX-018 | Extra Place ledger table | Shows selected/unselected exchange beneath both lay-odds values. | Win/Place Lay Odds columns | VERIFIED |
 | PD-FIX-019 | Extra Place ledger table | Marks missing required bookmaker, exchange, odds or stake data as a visible needs-action issue. | Signed-off ledger issue state | VERIFIED |
+
+## 2026-08-24 Extra Place Contrast And Control Refinement Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-020 | Shared ledger table navigation | Make floating table-scroll arrows more visible in both themes with rounded treatment. | `ledger-table-scroll` arrows | VERIFIED |
+| PD-FIX-021 | Extra Place EP Profit | Use neutral contrast-safe financial pills for unsettled/missed EP Profit; strike missed value only. | EP Profit screenshot | VERIFIED |
+| PD-FIX-022 | Extra Place Status | Normalize numeric finishing positions to ordinals. | Status column screenshot | VERIFIED |
+| PD-FIX-023 | Extra Place ledger controls | Place loadouts and theme switch between search/actions and the table. | `div.extra-place-table-heading-controls` | VERIFIED |
+| PD-FIX-024 | Extra Place calculate mode | Match platform toggle curvature on Each Way / Extra Place. | `button.extra-place-bet-type-toggle-option` | VERIFIED |
+| PD-FIX-025 | Extra Place table contrast | Increase dark-mode separation between header and row surfaces. | dark-mode ledger screenshot | VERIFIED |
