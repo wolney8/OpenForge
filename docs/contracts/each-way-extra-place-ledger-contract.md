@@ -45,4 +45,5 @@ to First Place 10.54, Standard Place 10.55, Extra Place 30.53 and Unplaced 10.53
 
 Future EP Catcher import maps runner/race/terms/accounts/actual legs/finishing data to this record,
 runs a dry calculation comparison, requires selected-profile approval, and never imports `Week` as
-a primary field.
+a primary field. The detailed source-column classification and dry-run gate are recorded in
+`docs/planning/each-way-extra-place-import-preparation.md`.
