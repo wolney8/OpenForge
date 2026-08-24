@@ -7,7 +7,7 @@ import type { AccountAuthorityRecord } from "@/lib/account-authorities";
 type Loadout = {
   preset_id: string;
   label: string;
-  ledger_type: "Sportsbook" | "Free Bets" | "Casino" | "Cash Adjustments";
+  ledger_type: "Sportsbook" | "Free Bets" | "Casino" | "Cash Adjustments" | "Extra Place";
   defaults: Record<string, string>;
   enabled: boolean;
   availability: "eligible" | "limited" | "blocked";

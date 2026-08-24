@@ -30,7 +30,7 @@ Strategy = Literal[
     "Partial Lay",
     "Multilay",
 ]
-QuickAddLedger = Literal["Sportsbook", "Free Bets", "Casino", "Cash Adjustments"]
+QuickAddLedger = Literal["Sportsbook", "Free Bets", "Casino", "Cash Adjustments", "Extra Place"]
 
 
 class QuickAddConfig(BaseModel):
@@ -44,7 +44,7 @@ class QuickAddConfig(BaseModel):
 class CommonBetComboPayload(BaseModel):
     preset_id: str | None = Field(default=None, max_length=64)
     name: str = Field(min_length=1, max_length=80)
-    ledger_type: Literal["Sportsbook", "Casino"] = "Sportsbook"
+    ledger_type: Literal["Sportsbook", "Casino", "Extra Place"] = "Sportsbook"
     bookmaker: str = Field(default="", max_length=120)
     bookmakers: list[str] = Field(default_factory=list, max_length=100)
     offer_type: str = Field(default="", max_length=120)

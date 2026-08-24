@@ -59,6 +59,14 @@ class EachWayCalculationResult:
     standard_place_pnl: Decimal | None
     extra_place_pnl: Decimal | None
     unplaced_pnl: Decimal | None
+    first_place_bookie_pnl: Decimal | None
+    first_place_exchange_pnl: Decimal | None
+    standard_place_bookie_pnl: Decimal | None
+    standard_place_exchange_pnl: Decimal | None
+    extra_place_bookie_pnl: Decimal | None
+    extra_place_exchange_pnl: Decimal | None
+    unplaced_bookie_pnl: Decimal | None
+    unplaced_exchange_pnl: Decimal | None
     current_value: Decimal | None
     final_value: Decimal | None
 
@@ -84,7 +92,7 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     if place_lay_odds is None or place_lay_odds <= (place_commission or Decimal("0")):
         notes.append("Enter valid place lay odds.")
     if notes:
-        return EachWayCalculationResult("incomplete", tuple(notes), *([None] * 13))
+        return EachWayCalculationResult("incomplete", tuple(notes), *([None] * 21))
 
     assert stake is not None and back_odds is not None and numerator is not None and denominator is not None
     assert win_lay_odds is not None and place_lay_odds is not None and win_commission is not None and place_commission is not None
@@ -98,10 +106,18 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     total_outlay = stake * 2
     win_lay_return = _money(win_stake * (Decimal("1") - win_commission))
     place_lay_return = _money(place_stake * (Decimal("1") - place_commission))
-    first_place = _money((stake * back_odds) + (stake * place_back_odds) - total_outlay - win_liability - place_liability)
-    standard_place = _money((stake * place_back_odds) - total_outlay + win_lay_return - place_liability)
-    extra_place = _money((stake * place_back_odds) - total_outlay + win_lay_return + place_lay_return)
-    unplaced = _money(-total_outlay + win_lay_return + place_lay_return)
+    first_place_bookie = _money((stake * back_odds) + (stake * place_back_odds) - total_outlay)
+    first_place_exchange = _money(-win_liability - place_liability)
+    standard_place_bookie = _money((stake * place_back_odds) - total_outlay)
+    standard_place_exchange = _money(win_lay_return - place_liability)
+    extra_place_bookie = standard_place_bookie
+    extra_place_exchange = _money(win_lay_return + place_lay_return)
+    unplaced_bookie = _money(-total_outlay)
+    unplaced_exchange = _money(win_lay_return + place_lay_return)
+    first_place = _money(first_place_bookie + first_place_exchange)
+    standard_place = _money(standard_place_bookie + standard_place_exchange)
+    extra_place = _money(extra_place_bookie + extra_place_exchange)
+    unplaced = _money(unplaced_bookie + unplaced_exchange)
     qualifying_loss = min(first_place, standard_place, unplaced)
     extra_place_profit = _money((stake * place_back_odds) + qualifying_loss)
     current = min(
@@ -115,5 +131,10 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     return EachWayCalculationResult(
         "resolved", (), place_back_odds, suggested_win_stake, suggested_place_stake,
         win_liability, place_liability, qualifying_loss, extra_place_profit,
-        first_place, standard_place, extra_place, unplaced, current, final,
+        first_place, standard_place, extra_place, unplaced,
+        first_place_bookie, first_place_exchange,
+        standard_place_bookie, standard_place_exchange,
+        extra_place_bookie, extra_place_exchange,
+        unplaced_bookie, unplaced_exchange,
+        current, final,
     )

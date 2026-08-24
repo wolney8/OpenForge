@@ -86,7 +86,12 @@ def build_calculation(payload: dict[str, object]) -> dict[str, object]:
     fields = (
         "place_back_odds", "win_lay_stake", "place_lay_stake", "win_liability",
         "place_liability", "qualifying_loss", "extra_place_profit", "first_place_pnl",
-        "standard_place_pnl", "extra_place_pnl", "unplaced_pnl", "current_value", "final_value",
+        "standard_place_pnl", "extra_place_pnl", "unplaced_pnl",
+        "first_place_bookie_pnl", "first_place_exchange_pnl",
+        "standard_place_bookie_pnl", "standard_place_exchange_pnl",
+        "extra_place_bookie_pnl", "extra_place_exchange_pnl",
+        "unplaced_bookie_pnl", "unplaced_exchange_pnl",
+        "current_value", "final_value",
     )
     return {
         "calculation_state": result.calculation_state,

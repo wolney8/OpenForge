@@ -7780,24 +7780,37 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding-top: 0;
 }
 
-/* Extra Place follows the shared ledger editor shell; only neutral calculated stakes differ. */
+/* Extra Place follows the shared ledger editor shell; only its horse-racing matrix is bespoke. */
 .extra-place-editor-modal .workflow-editor-body {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  padding: 0.45rem;
+}
+
+.modal-backdrop:has(.extra-place-editor-modal) {
+  z-index: 90;
+  padding-top: max(1.25rem, env(safe-area-inset-top));
 }
 
 .extra-place-editor-modal .workflow-editor-footer {
   flex: 0 0 auto;
 }
 
-.extra-place-neutral-value,
-.extra-place-neutral-value .financial-value-visual {
-  color: var(--on-surface) !important;
+.extra-place-stake-value {
+  color: var(--on-surface);
+  font-weight: 760;
+  white-space: nowrap;
 }
 
-.extra-place-row-needs-action {
-  background: color-mix(in srgb, var(--warning-container) 22%, transparent);
+.extra-place-stake-stack {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.extra-place-stake-stack small {
+  color: var(--on-surface-variant);
+  font-size: 0.78rem;
 }
 
 .extra-place-loadouts {
@@ -7805,6 +7818,135 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.55rem;
   overflow-x: auto;
   padding-bottom: 0.1rem;
+}
+
+.extra-place-editor-modal .form-grid,
+.extra-place-editor-modal .section-stack,
+.extra-place-editor-modal .calculator-segment {
+  padding: 0.3rem;
+}
+
+.extra-place-editor-modal .calculator-segment {
+  gap: 0.85rem;
+}
+
+.extra-place-editor-modal .calculator-segment h3 {
+  margin: 0;
+}
+
+.extra-place-calculated-stake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1rem;
+  padding: 0.8rem 0;
+}
+
+.extra-place-calculated-stake > span:first-child {
+  color: var(--on-surface-variant);
+  font-weight: 700;
+}
+
+.extra-place-copy-button {
+  min-width: auto;
+  padding-inline: 0.85rem;
+}
+
+.extra-place-copy-button .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+.extra-place-outcome-matrix {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-large);
+  background: var(--surface-container);
+}
+
+.extra-place-outcome-matrix-heading,
+.extra-place-outcome-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.extra-place-outcome-matrix-heading h3 {
+  margin: 0;
+}
+
+.extra-place-outcome-matrix-heading > span {
+  color: var(--on-surface-variant);
+  font-size: 0.85rem;
+}
+
+.extra-place-outcome-table {
+  overflow: hidden;
+  border-radius: var(--shape-medium);
+  border: 1px solid var(--outline-variant);
+}
+
+.extra-place-outcome-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1.3fr) repeat(3, minmax(7rem, 1fr));
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--surface-container-high);
+}
+
+.extra-place-outcome-row + .extra-place-outcome-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.extra-place-outcome-row-heading {
+  min-height: 2.7rem;
+  color: var(--on-surface-variant);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface-container-highest);
+}
+
+.extra-place-outcome-row strong:first-child {
+  padding-left: 0.55rem;
+  border-left: 0.45rem solid var(--outline);
+}
+
+.extra-place-outcome-win strong:first-child { border-color: var(--tertiary); }
+.extra-place-outcome-standard strong:first-child { border-color: var(--secondary); }
+.extra-place-outcome-extra strong:first-child { border-color: var(--warning); }
+.extra-place-outcome-unplaced strong:first-child { border-color: var(--outline); }
+
+.extra-place-outcome-summary {
+  padding-top: 0.15rem;
+  color: var(--on-surface-variant);
+}
+
+.extra-place-outcome-summary .ledger-financial-value {
+  margin-left: 0.35rem;
+}
+
+.table-result-action {
+  max-width: 11rem;
+  min-height: 2.5rem;
+  padding-inline: 0.65rem 2rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  color: var(--on-surface);
+  background: var(--surface-container);
+}
+
+@media (max-width: 780px) {
+  .extra-place-outcome-row { grid-template-columns: 1fr 1fr; }
+  .extra-place-outcome-row-heading { display: none; }
+  .extra-place-outcome-row > span::before,
+  .extra-place-outcome-row > strong:last-child::before { display: block; color: var(--on-surface-variant); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
 }
 
 .sportsbook-tabbed-editor-modal > form.form-grid {

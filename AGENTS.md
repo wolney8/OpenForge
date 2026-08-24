@@ -217,6 +217,9 @@ Short version:
 
 ## Branch baseline rule
 
+- Work only in `/Users/will_work/Scripts/Homelab/OpenForge`. Never edit, create, stage, commit,
+  run formatting against, or otherwise modify files in
+  `/Users/will_work/Scripts/Homelab/OpenForge-oddsforge-m8/`.
 - Treat `origin/main` as the cumulative source of truth for all completed work.
 - Before starting a new issue branch, first update from `origin/main` and branch from that exact tip.
 - Every new branch must be a clean layer on top of the previously merged work.
