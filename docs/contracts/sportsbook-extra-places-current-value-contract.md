@@ -1,16 +1,16 @@
 # Calculation Contract: Sportsbook Extra Places Cash-First Current Value
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-08-24_
 
 ## 0. Contract status
 
-- Status: Draft
+- Status: Superseded for the dedicated Each Way / Extra Places ledger
 - Owner: Codex planning draft
 - Human approval required before implementation: Yes
 - Related workflow contract: `docs/workflows/sportsbook-bet-workflow-contract.md`
 - Related spreadsheet source: none in current workbook source-pack
 - Related source-pack file: external expansion beyond current workbook source-pack
-- Related issue/task: advanced sportsbook offer-family expansion for `Extra Places`
+- Authoritative replacement: `docs/contracts/each-way-extra-place-ledger-contract.md`
 
 ## 1. Product context
 
@@ -27,6 +27,9 @@ _Last updated: 2026-07-11_
 
 This calculation defines how OpenForge should value an `Extra Places`
 sportsbook row as a cash-first tracker position.
+
+This is retained as historical planning evidence only. The implemented feature uses the dedicated
+Each Way / Extra Places engine rather than adding conflicting money logic to sportsbook rows.
 
 It supports:
 

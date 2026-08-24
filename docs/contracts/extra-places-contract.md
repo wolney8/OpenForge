@@ -1,19 +1,23 @@
 # Product Contract: Extra Places
 
-_Last updated: 2026-08-03_
+_Last updated: 2026-08-24_
 
 ## Status
 
-- Status: Draft
-- Human approval required before implementation: Yes
-- Module: Sportsbook Bets and Calculator Workspace
+- Status: Superseded for the implemented dedicated ledger
+- Human approval required before implementation: No
+- Module: Each Way / Extra Places ledger
 - Money-impacting: Yes
-- Related calculation contract: `docs/contracts/sportsbook-extra-places-current-value-contract.md`
+- Authoritative implementation contract: `docs/contracts/each-way-extra-place-ledger-contract.md`
 - Workbook parity: Extension beyond the current workbook source pack
 
 ## Purpose
 
 Extra Places supports each-way-style promotions where the bookmaker pays more places than the ordinary market. Plum Duff must track the offer terms, the win/place legs, exchange lays, scenario values and settlement branch without losing the workbook cash-first principle.
+
+This retained document describes the earlier proposed sportsbook-row integration. New work must use
+the dedicated Each Way / Extra Places contract and calculation engine; it must not fork this draft
+or reintroduce another set of money rules.
 
 ## Scope
 

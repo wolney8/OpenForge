@@ -413,14 +413,13 @@ local-first recovery login.
 
 ## Additional draft issues from the 2026-08-20 outage handover
 
-These are intentionally deferred until `#61` closes unless another task explicitly reprioritises
-them.
+These are intentionally deferred unless another task explicitly reprioritises them.
 
 ### Extra Places ledger and calculator
 
 Title:
 
-`Implement Extra Places Ledger, Calculator and Settlement Workflow`
+`Implement Each Way / Extra Places Ledger, Calculator and Settlement Workflow`
 
 Milestone:
 
@@ -431,31 +430,25 @@ Body:
 ```md
 ## Objective
 
-Add Extra Places as an approved sportsbook extension with a dedicated ledger flow, calculator and
-settlement vocabulary.
+Add a dedicated Each Way / Extra Places ledger flow, calculator and settlement vocabulary.
 
 ## Scope
 
-- Build the Extra Places ledger/editor using the shared ledger modal shell.
-- Reuse the approved cash-first current-value contract for Extra Places.
-- Capture ordinary place terms and promotional place terms side by side.
-- Add settlement branches including `Extra Place Hit`.
-- Keep account-health capability and tooling-status integration aligned with the existing
-  Extra Places contracts.
+- Implemented on `feature/casino-quick-add` on 2026-08-24: profile-scoped API, SQLite persistence,
+  three-step ledger editor, calculation engine and deterministic MBB/EP Catcher fixtures.
+- Remaining: selected-range reporting aggregation, account-authority defaults, historical importer
+  mapping, authentication-gated hosted persistence and a dedicated standalone calculator workspace.
 
 ## Contract and fixtures
 
-- `docs/contracts/extra-places-contract.md`
-- `docs/contracts/sportsbook-extra-places-current-value-contract.md`
-- `docs/fixture-specs/extra-places-fixture-spec.md`
-- `docs/fixture-specs/sportsbook-extra-places-current-value-fixture-spec.md`
-- `tests/fixtures/extra-places-fixtures.json`
+- `docs/contracts/each-way-extra-place-ledger-contract.md`
+- `tests/fixtures/each-way-extra-place-fixtures.json`
 
 ## Acceptance criteria
 
-- The ledger/editor follows the same modal parity contract as sportsbook/free bets/casino.
+- The ledger/editor follows the established modal system and requires a later parity smoke test.
 - Current value and settlement branches match deterministic fixtures.
-- Extra Places can be tracked without breaking workbook cash-first semantics.
+- Each Way and Extra Place use one cash-first calculation engine.
 ```
 
 ### Sportsbook multi-fixture, outright and long-duration offers
