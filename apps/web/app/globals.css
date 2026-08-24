@@ -8065,12 +8065,21 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 /* Extra Place has two deliberate, page-scoped presentation schemes. The ledger keeps
    operational cells neutral while the related calculator sections inherit the same scheme. */
 .extra-place-theme-ep {
-  --extra-place-back-surface: color-mix(in srgb, #91c6ff 28%, var(--surface-container));
-  --extra-place-win-lay-surface: color-mix(in srgb, #ff8fa2 25%, var(--surface-container));
-  --extra-place-place-lay-surface: color-mix(in srgb, #ffc0b4 20%, var(--surface-container));
-  --extra-place-back-header: color-mix(in srgb, #91c6ff 36%, var(--surface-container-high));
-  --extra-place-win-header: color-mix(in srgb, #ff8fa2 36%, var(--surface-container-high));
-  --extra-place-place-header: color-mix(in srgb, #ffc0b4 30%, var(--surface-container-high));
+  --extra-place-back-surface: #d4e6ff;
+  --extra-place-win-lay-surface: #fab6c2;
+  --extra-place-place-lay-surface: #fde4e1;
+  --extra-place-back-header: #d4e6ff;
+  --extra-place-win-header: #fab6c2;
+  --extra-place-place-header: #fde4e1;
+}
+
+html[data-theme="dark"] .extra-place-theme-ep {
+  --extra-place-back-surface: #7daae8;
+  --extra-place-win-lay-surface: #e18494;
+  --extra-place-place-lay-surface: #e18e84;
+  --extra-place-back-header: #7daae8;
+  --extra-place-win-header: #e18494;
+  --extra-place-place-header: #e18e84;
 }
 
 .extra-place-theme-back-lay {
@@ -8083,7 +8092,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 /* The editor portal is outside the page subtree; :has keeps the page-local setting in force. */
-body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: color-mix(in srgb, #91c6ff 28%, var(--surface-container)); --extra-place-win-lay-surface: color-mix(in srgb, #ff8fa2 25%, var(--surface-container)); --extra-place-place-lay-surface: color-mix(in srgb, #ffc0b4 20%, var(--surface-container)); }
+body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #d4e6ff; --extra-place-win-lay-surface: #fab6c2; --extra-place-place-lay-surface: #fde4e1; }
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #7daae8; --extra-place-win-lay-surface: #e18494; --extra-place-place-lay-surface: #e18e84; }
 body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal { --extra-place-back-surface: var(--back-panel-bg); --extra-place-win-lay-surface: var(--lay-panel-bg); --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container)); }
 
 .extra-place-toolbar-actions,
@@ -8094,9 +8104,59 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 }
 
 .extra-place-table-preferences {
-  justify-content: space-between;
+  justify-content: flex-end;
   min-width: 0;
 }
+
+.extra-place-theme-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-container);
+}
+
+.extra-place-theme-switch-option {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  border-radius: 0;
+  color: var(--on-surface-variant);
+  background: transparent;
+  font: inherit;
+  font-weight: 720;
+}
+
+.extra-place-theme-switch-option[aria-pressed="true"] {
+  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary) 24%, var(--surface-container-high));
+}
+
+.extra-place-theme-switch-option:focus-visible {
+  z-index: 1;
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.extra-place-theme-switch-option .material-symbols-outlined { font-size: 1.15rem; }
+
+.extra-place-filter-columns {
+  display: grid;
+  align-items: start;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container);
+}
+
+.extra-place-filter-columns > span { font-weight: 760; }
+.extra-place-filter-columns > small { color: var(--on-surface-variant); }
 
 .extra-place-data-table th.extra-place-column-back { background: var(--extra-place-back-header); }
 .extra-place-data-table th.extra-place-column-win-lay { background: var(--extra-place-win-header); }
@@ -8117,6 +8177,16 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 .extra-place-editor-modal .extra-place-lay-win,
 .extra-place-editor-modal .extra-place-lay-place {
   border-color: color-mix(in srgb, var(--outline) 62%, transparent);
+  color: #142533;
+}
+
+.extra-place-editor-modal .calculator-segment-back h3,
+.extra-place-editor-modal .extra-place-lay-win h3,
+.extra-place-editor-modal .extra-place-lay-place h3,
+.extra-place-editor-modal .calculator-segment-back .field-control > span,
+.extra-place-editor-modal .extra-place-lay-win .field-control > span,
+.extra-place-editor-modal .extra-place-lay-place .field-control > span {
+  color: #075b63;
 }
 
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
@@ -8128,7 +8198,8 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 }
 
 .extra-place-editor-modal .calculator-result-card-heading {
-  margin-top: 1.45rem;
+  /* Keep the outcome card aligned with the signed-off calculator result cards. */
+  margin-top: 0;
 }
 
 .extra-place-editor-modal .extra-place-outcome-matrix {
