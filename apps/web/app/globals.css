@@ -7985,9 +7985,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   white-space: nowrap;
 }
 
-.extra-place-matrix-value-positive { color: var(--success); }
-.extra-place-matrix-value-negative { color: var(--error); }
-.extra-place-matrix-value-neutral { color: var(--on-surface-variant); }
+.extra-place-matrix-value-positive { color: var(--success) !important; }
+.extra-place-matrix-value-negative { color: var(--danger) !important; }
+.extra-place-matrix-value-neutral { color: var(--on-surface-variant) !important; }
 
 .extra-place-outcome-row b {
   color: var(--on-surface-variant);
@@ -8163,6 +8163,7 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 .extra-place-data-table th.extra-place-column-place-lay { background: var(--extra-place-place-header); }
 .extra-place-data-table th {
   min-width: 7.5rem;
+  color: #142533;
   text-align: center;
 }
 
@@ -8186,7 +8187,19 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 .extra-place-editor-modal .calculator-segment-back .field-control > span,
 .extra-place-editor-modal .extra-place-lay-win .field-control > span,
 .extra-place-editor-modal .extra-place-lay-place .field-control > span {
-  color: #075b63;
+  color: #142533;
+}
+
+.extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > span,
+.extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > span,
+.extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > span,
+.extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > strong,
+.extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > strong,
+.extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > strong,
+.extra-place-editor-modal .calculator-segment-back .extra-place-stake-explainer,
+.extra-place-editor-modal .extra-place-lay-win .extra-place-stake-explainer,
+.extra-place-editor-modal .extra-place-lay-place .extra-place-stake-explainer {
+  color: #142533;
 }
 
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
@@ -8204,17 +8217,6 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 
 .extra-place-editor-modal .extra-place-outcome-matrix {
   margin-top: 0.35rem;
-}
-
-.extra-place-editor-modal .modal-primary-button {
-  border-color: color-mix(in srgb, #78b8ff 68%, var(--outline));
-  background: color-mix(in srgb, #4f8fd6 34%, var(--surface-strong));
-  color: #cfe5ff;
-}
-
-.extra-place-editor-modal .review-chip-destructive {
-  border-color: color-mix(in srgb, var(--error) 68%, var(--outline));
-  color: var(--error);
 }
 
 .extra-place-outcome-row {

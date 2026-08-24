@@ -24,3 +24,14 @@ code, tests and parity review.
   page-specific presentation.
 - The outcome-card heading uses the shared `calculator-result-card` geometry without a local
   vertical offset. Negative matrix components and totals are red; positive values are green.
+
+## 2026-08-24: Extra Place contrast and action parity correction
+
+- Approved EP swatches always use the dark foreground `#142533` for table headers and calculator
+  section labels in both light and dark application modes. Grey copy is not permitted on these
+  coloured surfaces.
+- Outcome matrix components are semantic: positive is the shared success token, negative is the
+  shared destructive token, and zero/unavailable is neutral. The value element owns this colour so
+  parent outcome-row styles cannot override it.
+- Extra Place uses the shared modal Save and Delete styles without page-specific overrides. Save
+  retains the canonical blue shared action and Delete retains the canonical red destructive action.

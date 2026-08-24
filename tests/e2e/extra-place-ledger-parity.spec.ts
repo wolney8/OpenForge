@@ -10,6 +10,7 @@ test.describe("Extra Place ledger parity", () => {
     const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
     await expect(ledger.locator('[data-pd-id="tracker.range-card"]')).toBeVisible();
     await expect(ledger.locator("th.extra-place-column-back").first()).toContainText("Bookmaker");
+    await expect(ledger.locator("th.extra-place-column-back").first()).toHaveCSS("color", "rgb(20, 37, 51)");
     await expect(ledger.locator("th", { hasText: "Place Odds" })).toBeVisible();
     await expect(ledger.locator("th.extra-place-column-win-lay").first()).toContainText("Win Lay Odds");
     await expect(ledger.locator("th.extra-place-column-place-lay").first()).toContainText("Place Lay Odds");
@@ -99,6 +100,7 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByLabel("Back Odds").fill("6");
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await expect(calculatePanel.locator(".extra-place-matrix-value-negative").first()).toBeVisible();
     await dialog.getByRole("tab", { name: /Placement/ }).click();
     await dialog.getByLabel("Runner / Horse").fill("Test Runner");
     await dialog.getByLabel("Race").fill("Test Race");
