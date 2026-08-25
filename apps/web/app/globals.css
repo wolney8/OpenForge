@@ -8118,12 +8118,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 html[data-theme="dark"] .extra-place-theme-ep {
-  --extra-place-back-surface: #174583;
-  --extra-place-win-lay-surface: #7c1e2f;
-  --extra-place-place-lay-surface: #7b281e;
-  --extra-place-back-header: #174583;
-  --extra-place-win-header: #7c1e2f;
-  --extra-place-place-header: #7b281e;
+  --extra-place-back-surface: #7daae8;
+  --extra-place-win-lay-surface: #e18494;
+  --extra-place-place-lay-surface: #e18e84;
+  --extra-place-back-header: #7daae8;
+  --extra-place-win-header: #e18494;
+  --extra-place-place-header: #e18e84;
 }
 
 .extra-place-theme-back-lay {
@@ -8137,7 +8137,7 @@ html[data-theme="dark"] .extra-place-theme-ep {
 
 /* The editor portal is outside the page subtree; :has keeps the page-local setting in force. */
 body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #d4e6ff; --extra-place-win-lay-surface: #fab6c2; --extra-place-place-lay-surface: #fde4e1; }
-html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #174583; --extra-place-win-lay-surface: #7c1e2f; --extra-place-place-lay-surface: #7b281e; }
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal { --extra-place-back-surface: #7daae8; --extra-place-win-lay-surface: #e18494; --extra-place-place-lay-surface: #e18e84; }
 body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal { --extra-place-back-surface: var(--back-panel-bg); --extra-place-win-lay-surface: var(--lay-panel-bg); --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container)); }
 
 .extra-place-toolbar-actions,
@@ -8217,7 +8217,6 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
   padding: 0.16rem;
   border: 1px solid var(--outline);
   border-radius: 999px;
-  clip-path: inset(0 round 999px);
   isolation: isolate;
   background: var(--surface-container);
 }
@@ -8227,7 +8226,7 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
   min-height: 2.6rem;
   margin: 0;
   border: 0;
-  border-radius: var(--shape-full);
+  border-radius: 999px !important;
   color: var(--on-surface-variant);
   background: transparent;
   box-shadow: none;
@@ -8269,14 +8268,14 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 html[data-theme="dark"] .extra-place-data-table th {
   color: #ffffff;
   /* A lighter, distinct header surface above the #1c2731 row treatment. */
-  background: #27333f;
+  background: #2d3a47;
   border-bottom-color: color-mix(in srgb, #ffffff 24%, var(--outline));
 }
 
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-back,
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-win-lay,
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-place-lay {
-  color: #ffffff;
+  color: #142533;
 }
 
 html[data-theme="dark"] .extra-place-theme-ep .extra-place-data-table th.extra-place-column-back {
@@ -8313,7 +8312,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
 
 .extra-place-bet-type-toggle-option:first-child,
 .extra-place-bet-type-toggle-option:last-child {
-  border-radius: var(--shape-full);
+  border-radius: 999px !important;
 }
 
 .extra-place-data-table td {
@@ -8431,7 +8430,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-
 html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-stake-explainer,
 html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-stake-explainer,
 html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-stake-explainer {
-  color: #f8fbff;
+  color: #142533;
 }
 
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
@@ -11693,6 +11692,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-
   padding: 0.35rem 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Unknown legacy names retain the catalogue badge geometry without inventing colours. */
+.bookmaker-identity-badge-fallback {
+  border: 1px solid var(--outline);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
 }
 
 .bookmaker-identity-logo img {

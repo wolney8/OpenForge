@@ -73,7 +73,11 @@ export function BookmakerIdentity({
 }) {
   const entry = findBookmakerCatalogueEntry(catalogue, bookmaker);
   if (!entry) {
-    return <span>{bookmaker || "—"}</span>;
+    return (
+      <span className="bookmaker-identity bookmaker-identity-badge bookmaker-identity-badge-fallback">
+        {bookmaker || "—"}
+      </span>
+    );
   }
   if (mode === "Name") {
     return <span>{entry.brand_name}</span>;
