@@ -19,6 +19,7 @@ import {
   findBookmakerCatalogueEntry,
   type BookmakerCatalogueRecord,
 } from "@/lib/bookmaker-catalogue";
+import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
@@ -1017,6 +1018,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   <div className="form-grid">
                     <LedgerEditorTabPanel activeTabId={step} tabId="calculate">
                       <Calculate
+                        bookmakerCatalogue={bookmakerCatalogue}
                         form={form}
                         onCopy={copy}
                         onUpdate={update}
@@ -1024,7 +1026,12 @@ export function EachWayExtraPlaceWorkflowShell({
                       />
                     </LedgerEditorTabPanel>
                     <LedgerEditorTabPanel activeTabId={step} tabId="placement">
-                      <Placement form={form} onUpdate={update} rows={rows} />
+                      <Placement
+                        bookmakerCatalogue={bookmakerCatalogue}
+                        form={form}
+                        onUpdate={update}
+                        rows={rows}
+                      />
                     </LedgerEditorTabPanel>
                     <LedgerEditorTabPanel activeTabId={step} tabId="settlement">
                       <Settlement
@@ -1610,18 +1617,11 @@ function LedgerRow({
     </tr>
   );
 }
-function ratingTone(value: string | null | undefined) {
-  const rating = asNumber(value);
-  if (rating === null) return "neutral";
-  if (rating >= 100) return "arp";
-  if (rating >= 70) return "good";
-  if (rating >= 40) return "mid";
-  return "low";
-}
 function RatingPill({ rating }: { rating: string | null | undefined }) {
   const numericRating = asNumber(rating);
+  const tone = numericRating === null ? "neutral" : getMatchRatingPillTone(numericRating);
   return (
-    <span className={`table-chip calculator-match-rating-pill extra-place-rating-pill calculator-match-rating-pill-${ratingTone(rating)}`}>
+    <span className={`table-chip calculator-match-rating-pill extra-place-rating-pill calculator-match-rating-pill-${tone}`}>
       Rating {numericRating === null ? "—" : `${numericRating.toFixed(2)}%`}
     </span>
   );
@@ -1875,22 +1875,16 @@ function Chips({
   );
 }
 function BookmakerChips({
+  catalogue,
   labels,
   onPick,
   rows = [],
 }: {
+  catalogue: BookmakerCatalogueRecord[];
   labels: string[];
   onPick: (value: string) => void;
   rows?: Row[];
 }) {
-  const [catalogue, setCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
-  useEffect(() => {
-    void fetch(`${apiBaseUrl}/bookmaker-catalogue`, { cache: "no-store" }).then(
-      async (response) => {
-        if (response.ok) setCatalogue(await response.json());
-      },
-    );
-  }, []);
   const rankedLabels = useMemo(() => {
     const counts = new Map<string, number>();
     rows.forEach((row) => {
@@ -1933,11 +1927,13 @@ function BookmakerChips({
   );
 }
 function Calculate({
+  bookmakerCatalogue,
   form,
   onUpdate,
   preview,
   onCopy,
 }: {
+  bookmakerCatalogue: BookmakerCatalogueRecord[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
   preview: Row | null;
@@ -1974,6 +1970,7 @@ function Calculate({
               value={form.bookmaker}
             />
             <BookmakerChips
+              catalogue={bookmakerCatalogue}
               labels={bookmakers}
               onPick={(next) => onUpdate("bookmaker", next)}
             />
@@ -2157,11 +2154,13 @@ function LaySegment({
   );
 }
 function Placement({
+  bookmakerCatalogue,
   form,
   onUpdate,
   rows,
   suggestedBookmakers = bookmakers,
 }: {
+  bookmakerCatalogue: BookmakerCatalogueRecord[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
   rows: Row[];
@@ -2203,6 +2202,7 @@ function Placement({
             value={form.bookmaker}
           />
           <BookmakerChips
+            catalogue={bookmakerCatalogue}
             labels={suggestedBookmakers}
             onPick={(next) => onUpdate("bookmaker", next)}
             rows={rows}

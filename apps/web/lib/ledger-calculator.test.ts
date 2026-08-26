@@ -4,6 +4,7 @@ import {
   coerceStrategyForCalculatorMode,
   getCalculatorModeForLayWorkflowMode,
   getLayWorkflowModeForStrategy,
+  getMatchRatingPillTone,
   getSingleLayResultModes,
   getStrategyForLayWorkflowMode,
   isDecimalCalculatorInput,
@@ -70,6 +71,12 @@ describe("ledger calculator display helpers", () => {
     expect(getCalculatorModeForLayWorkflowMode("Standard")).toBe("Simple");
     expect(getCalculatorModeForLayWorkflowMode("Advanced")).toBe("Advanced");
     expect(getCalculatorModeForLayWorkflowMode("Multilay")).toBe("Advanced");
+  });
+
+  it("keeps high ratings gold while good ratings remain green", () => {
+    expect(getMatchRatingPillTone(92.9)).toBe("good");
+    expect(getMatchRatingPillTone(100)).toBe("arp");
+    expect(getMatchRatingPillTone(151.2)).toBe("arp");
   });
 
   it("derives Free Bet result-card outcomes from each visible lay stake", () => {

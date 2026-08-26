@@ -480,6 +480,19 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` covers modal viewport/footer bounds,
   tracker range, detail-column control, grouped headers and Extra Place filter dialog behaviour.
 
+## 2026-08-26: Branded controls and floating scroll actions drifted from ledger parity
+
+- Area: Extra Place calculator quick selectors and shared horizontally-scrollable ledger tables.
+- Root cause: the calculator fetched a second account catalogue independently of the table, while
+  translucent scroll actions exposed underlying cell text.
+- Prevention: modal bookmaker controls receive the same profile-owned catalogue instance as the
+  table badge; never add a second catalogue fetch for the same ledger. Scroll actions must use a
+  near-opaque surface, surrounding surface halo and backdrop blur sufficient to obscure table data.
+  Rating display always uses `getMatchRatingPillTone`: `100%+` uses the gold high-rating state and
+  `70–99.99%` uses green.
+- Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` and
+  `apps/web/lib/ledger-calculator.test.ts`.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

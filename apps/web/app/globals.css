@@ -5651,11 +5651,13 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--outline));
   border-radius: var(--shape-medium);
   color: var(--primary-strong);
-  background: color-mix(in srgb, var(--surface-container-highest) 88%, transparent);
-  box-shadow: 0 0.2rem 1rem rgb(0 0 0 / 0.34), 0 0 1.25rem color-mix(in srgb, var(--surface-container-highest) 78%, transparent);
-  backdrop-filter: blur(0.7rem);
-  -webkit-backdrop-filter: blur(0.7rem);
-  opacity: 0.97;
+  background: var(--surface-container-highest);
+  box-shadow:
+    0 0 0 0.35rem color-mix(in srgb, var(--surface-container-highest) 82%, transparent),
+    0 0.3rem 1.25rem rgb(0 0 0 / 0.42);
+  backdrop-filter: blur(1.25rem);
+  -webkit-backdrop-filter: blur(1.25rem);
+  opacity: 1;
   transform: translateY(-50%);
   transition: opacity 160ms ease, transform 160ms ease;
 }
@@ -6946,9 +6948,9 @@ html:not([data-theme="dark"]) .calculator-match-rating-pill-good {
 }
 
 html:not([data-theme="dark"]) .calculator-match-rating-pill-arp {
-  border-color: #276ca8;
-  background: #dcecff;
-  color: #123f73;
+  border-color: #9a7100;
+  background: #fff2bf;
+  color: #5f4600;
 }
 
 html[data-theme="dark"] .calculator-match-rating-pill-low {
@@ -6970,9 +6972,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-good {
 }
 
 html[data-theme="dark"] .calculator-match-rating-pill-arp {
-  border-color: #75b4f0;
-  background: #173d68;
-  color: #e5f2ff;
+  border-color: #e2c75f;
+  background: #4d421c;
+  color: #ffea9c;
 }
 
 .calculator-input-grid {
