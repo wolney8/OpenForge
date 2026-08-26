@@ -1,6 +1,10 @@
 from decimal import Decimal
 
-from openforge_api.calculations.each_way_extra_place import EachWayCalculationInput, calculate_each_way_extra_place
+from openforge_api.calculations.each_way_extra_place import (
+    EachWayCalculationInput,
+    calculate_each_way_extra_place,
+    outcome_for_finishing_position,
+)
 
 
 def test_mbb_extra_place_reference_example() -> None:
@@ -49,3 +53,14 @@ def test_historical_actual_legs_remain_authoritative() -> None:
         result="Extra Place",
     ))
     assert result.final_value == Decimal("28.23")
+
+
+def test_extra_place_position_uses_explicit_place_count_gap() -> None:
+    # Paying six places instead of four means fifth and sixth are extra places;
+    # seventh is outside every bookmaker-paid place.
+    common = {"mode": "Extra Place", "bookmaker_places": 6, "exchange_places": 4}
+    assert outcome_for_finishing_position(**common, finishing_position=1) == "Win"
+    assert outcome_for_finishing_position(**common, finishing_position=4) == "Standard Place"
+    assert outcome_for_finishing_position(**common, finishing_position=5) == "Extra Place"
+    assert outcome_for_finishing_position(**common, finishing_position=6) == "Extra Place"
+    assert outcome_for_finishing_position(**common, finishing_position=7) == "Unplaced"

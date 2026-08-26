@@ -35,8 +35,15 @@ actual lay stakes. Preferred exchanges and commissions come from profile account
 
 - Terms are entered as `1 / denominator`; the default is `1 / 5`, with `1/4`, `1/5`, and `1/6`
   quick selections. The selected term is carried to Placement as read-only calculator context.
-- `Bookmaker Places Paid` remains a separate operational settlement field. It must never be
-  overwritten by the each-way term.
+- **Payout fraction and paid places are independent inputs.** `1 / 5` determines the derived
+  bookmaker place odds; it must never be used to infer the number of paid places. `Bookmaker
+  Pays` and `Exchange Pays` are explicit place-count fields. In Extra Place mode, positions
+  `exchange_places + 1` through `bookmaker_places` are Extra Place; positions above
+  `bookmaker_places` are Unplaced. In Each Way mode, bookmaker and exchange place counts resolve
+  to the same boundary.
+- Standard Extra Place presets are `4 instead of 3`, `5 instead of 4`, `6 instead of 4`, `6
+  instead of 5`, `8 instead of 5`, and `10 instead of 8`. They set only place counts, never odds
+  or the each-way payout fraction.
 - Commission is resolved from the selected profile exchange/account. The normal entry flow has
   no manual commission fields.
 
@@ -64,8 +71,9 @@ future branches and must never be silently inferred.
 3. **Settlement**: outcome first, optional finishing position, calculated final P&L.
 
 Settlement position quick actions contain position only (`1st`, `2nd`, and so on). Selecting one
-derives the valid settlement result, highlights its outcome-matrix row, and sets the displayed
-outcome amount. Notes are advanced-only.
+derives the valid settlement result from the explicit paid-place gap, highlights its
+outcome-matrix row, and sets the displayed outcome amount. For example, under `Paying 6 instead
+of 4`, fifth and sixth are Extra Place and seventh is Unplaced. Notes are advanced-only.
 
 The ledger table shows date/time, runner/race, mode, bookmaker, per-way stake and total outlay,
 back odds, two lay odds, qualifying loss, extra-place potential where applicable and realised

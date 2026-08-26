@@ -28,6 +28,31 @@ def _commission(value: str | Decimal | int | float | None) -> Decimal | None:
     return parsed / Decimal("100") if parsed > 1 else parsed
 
 
+def outcome_for_finishing_position(
+    *,
+    mode: Mode,
+    bookmaker_places: int,
+    exchange_places: int,
+    finishing_position: int,
+) -> Result:
+    """Classify a finish from the explicit bookmaker/exchange place-count gap.
+
+    The each-way fraction (for example 1/5) only derives bookmaker place odds.
+    It must not be used to infer how many places either market pays.
+    """
+    if finishing_position < 1:
+        return "Pending"
+    bookmaker = max(1, bookmaker_places)
+    exchange = bookmaker if mode == "Each Way" else max(1, min(exchange_places, bookmaker))
+    if finishing_position == 1:
+        return "Win"
+    if finishing_position <= exchange:
+        return "Standard Place"
+    if mode == "Extra Place" and bookmaker > exchange and finishing_position <= bookmaker:
+        return "Extra Place"
+    return "Unplaced"
+
+
 @dataclass(frozen=True)
 class EachWayCalculationInput:
     mode: Mode

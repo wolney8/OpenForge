@@ -5651,9 +5651,11 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--outline));
   border-radius: var(--shape-medium);
   color: var(--primary-strong);
-  background: color-mix(in srgb, var(--surface-container-highest) 94%, transparent);
-  box-shadow: 0 0.2rem 0.8rem rgb(0 0 0 / 0.24);
-  opacity: 0.9;
+  background: color-mix(in srgb, var(--surface-container-highest) 88%, transparent);
+  box-shadow: 0 0.2rem 1rem rgb(0 0 0 / 0.34), 0 0 1.25rem color-mix(in srgb, var(--surface-container-highest) 78%, transparent);
+  backdrop-filter: blur(0.7rem);
+  -webkit-backdrop-filter: blur(0.7rem);
+  opacity: 0.97;
   transform: translateY(-50%);
   transition: opacity 160ms ease, transform 160ms ease;
 }
@@ -7959,6 +7961,27 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.5rem;
 }
 
+.extra-place-place-terms {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-medium);
+  background: color-mix(in srgb, var(--surface-container-high) 74%, transparent);
+}
+
+.extra-place-place-terms-title {
+  color: var(--on-surface);
+  font-size: 0.95rem;
+  font-weight: 760;
+}
+
+.extra-place-place-terms-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
 .extra-place-bookmaker-chip {
   border-color: color-mix(in srgb, currentColor 46%, var(--outline));
   font-weight: 760;
@@ -8043,12 +8066,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .extra-place-outcome-win strong:first-child { border-color: var(--primary); }
 .extra-place-outcome-standard strong:first-child { border-color: var(--success); }
 .extra-place-outcome-extra strong:first-child { border-color: var(--warning); }
-.extra-place-outcome-unplaced strong:first-child { border-color: var(--outline); }
+.extra-place-outcome-unplaced strong:first-child { border-color: color-mix(in srgb, var(--danger) 78%, var(--outline)); }
 
 .extra-place-outcome-win strong:first-child { background: color-mix(in srgb, var(--primary) 18%, var(--surface-container-high)); }
 .extra-place-outcome-standard strong:first-child { background: color-mix(in srgb, var(--success) 18%, var(--surface-container-high)); }
 .extra-place-outcome-extra strong:first-child { background: color-mix(in srgb, var(--warning) 18%, var(--surface-container-high)); }
-.extra-place-outcome-unplaced strong:first-child { background: var(--surface-container-highest); }
+.extra-place-outcome-unplaced strong:first-child { background: color-mix(in srgb, var(--danger) 30%, var(--surface-container-high)); }
+.extra-place-outcome-unplaced {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-container));
+}
 
 .extra-place-outcome-summary {
   display: flex;
@@ -8310,6 +8336,30 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #000000);
 }
 
+html[data-theme="dark"] .extra-place-outcome-unplaced strong:first-child {
+  border-color: #ff9c98;
+  background: #642c34;
+  color: #ffe3e1;
+}
+
+html[data-theme="dark"] .extra-place-outcome-unplaced {
+  background: #3b232a;
+}
+
+html:not([data-theme="dark"]) .extra-place-outcome-unplaced strong:first-child {
+  border-color: #b42318;
+  background: #fbd0cd;
+  color: #74130e;
+}
+
+html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
+  background: #fff0ef;
+}
+
+@media (max-width: 700px) {
+  .extra-place-place-terms-inputs { grid-template-columns: 1fr; }
+}
+
 .extra-place-bet-type-toggle-option:first-child,
 .extra-place-bet-type-toggle-option:last-child {
   border-radius: 999px !important;
@@ -8453,6 +8503,15 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-
 .extra-place-outcome-row {
   grid-template-columns: minmax(10rem, 1.2fr) repeat(2, minmax(10rem, 1.4fr)) minmax(7rem, 0.8fr);
   background: var(--surface-container-high);
+}
+
+/* Keep the missed outcome legible after the generic matrix row surface is applied. */
+.extra-place-editor-modal .extra-place-outcome-row.extra-place-outcome-unplaced {
+  background: #fff0ef;
+}
+
+html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra-place-outcome-unplaced {
+  background: #3b232a;
 }
 
 .extra-place-outcome-row > span { text-align: center; }

@@ -3,6 +3,19 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-25 Explicit Extra Place Terms And Outcome Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-034 | Extra Place outcome matrix | Give `extra-place-outcome-row extra-place-outcome-unplaced` a contrast-safe, two-tone red outcome treatment. | "Doesn't Place" matrix row | DONE |
+| PD-FIX-035 | Extra Place rating | Show rating as a quality-scaled pill in the modal header and `Rating %` table cell. | Match Rating equivalent | DONE |
+| PD-FIX-036 | Extra Place calculate step | Place branded bookmaker chips beneath the Bookmaker dropdown. | Bookmaker dropdown and ledger badge | DONE |
+| PD-FIX-037 | Extra Place calculate step | Keep `p.extra-place-stake-explainer` directly below E/W Stake and above its quick chips. | `p.extra-place-stake-explainer` | DONE |
+| PD-FIX-038 | Extra Place calculation | Add explicit Bookmaker Pays / Exchange Pays inputs and standard paid-place presets. | "Paying X instead of Y" presets | DONE |
+| PD-FIX-039 | Extra Place settlement | Derive result and quick position availability from explicit paid-place counts. | "6 instead of 4": 6th Extra Place, 7th Unplaced | DONE |
+| PD-FIX-040 | Shared ledger tables | Give visible horizontal table-scroll arrows a stronger, blurred backdrop. | Table navigation arrows | DONE |
+| PD-FIX-041 | Extra Place parity | Update contract and deterministic calculation fixtures for the explicit paid-place rule. | Each Way / Extra Place contract | DONE |
+
 ## 2026-08-24 Extra Place Parity Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

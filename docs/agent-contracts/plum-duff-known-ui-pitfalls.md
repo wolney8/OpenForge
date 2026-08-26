@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-25: Extra Place payout fraction was treated as a place-count boundary
+
+- Area: Extra Place calculation and settlement editor.
+- Root cause: the `1 / x` each-way payout fraction was incorrectly reused to decide paid places,
+  making Extra Place settlement classifications implicit and wrong for offers such as "paying 6
+  instead of 4".
+- Prevention: keep payout fraction, bookmaker-paid places and exchange-paid places as distinct
+  fields. Settlement classifications must use the explicit place-count gap only.
+- Test: `apps/api/tests/test_each_way_extra_place_calculation.py` verifies fifth/sixth Extra Place
+  and seventh Unplaced for a 6-vs-4 offer.
+
 ## 2026-07-16: Wide table enlarged modal
 
 - Area: profile spreadsheet import review

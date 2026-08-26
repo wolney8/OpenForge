@@ -20,6 +20,13 @@ import {
   type BookmakerCatalogueRecord,
 } from "@/lib/bookmaker-catalogue";
 import { formatFinancialValue } from "@/lib/financial-display";
+import {
+  extraPlacePositionChoices,
+  extraPlacePositionForResult,
+  extraPlaceResultChoices,
+  ordinalPosition,
+  resultForExtraPlacePosition,
+} from "@/lib/extra-place-place-terms";
 import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import {
   isGuidedAccessEnabled,
@@ -122,7 +129,7 @@ const newForm = (): Form => ({
   place_term_numerator: "1",
   place_term_denominator: "5",
   bookmaker_places: "5",
-  exchange_places: "",
+  exchange_places: "4",
   win_exchange: "",
   win_lay_odds: "",
   win_commission: "0",
@@ -163,6 +170,8 @@ const fallbackLoadouts: QuickAddLoadout[] = [
       bookmaker: "Betfred",
       eachWayStake: "5",
       placeTermDenominator: "5",
+      bookmakerPlaces: "5",
+      exchangePlaces: "4",
       mode: "Extra Place",
     },
   },
@@ -176,6 +185,8 @@ const fallbackLoadouts: QuickAddLoadout[] = [
       bookmaker: "Unibet",
       eachWayStake: "5",
       placeTermDenominator: "4",
+      bookmakerPlaces: "5",
+      exchangePlaces: "4",
       mode: "Extra Place",
     },
   },
@@ -255,75 +266,15 @@ function hasRequiredRowGap(row: Row) {
 function isBlank(value: string) {
   return !value.trim();
 }
-function resultChoices(mode: Form["mode"], bookmakerPlaces: string) {
-  void bookmakerPlaces;
-  return mode === "Extra Place"
-    ? [
-        ["Win", "Win"],
-        ["Standard Place", "Standard Place"],
-        ["Extra Place", "Extra Place"],
-        ["Unplaced", "Unplaced"],
-        ["Void/NR", "Void / NR"],
-      ]
-    : [
-        ["Win", "Win"],
-        ["Standard Place", "Standard Place"],
-        ["Unplaced", "Unplaced"],
-        ["Void/NR", "Void / NR"],
-      ];
-}
-function resultForPosition(
+function resultChoices(
   mode: Form["mode"],
-  bookmakerPlaces: string,
-  position: string,
+  bookmakerPlaces = "5",
+  exchangePlaces = "4",
 ) {
-  const numericPosition = Number(position.replace(/\D/g, ""));
-  const places = Math.max(1, Number(bookmakerPlaces || "3"));
-  if (!Number.isFinite(numericPosition) || numericPosition < 1)
-    return "Pending";
-  if (numericPosition === 1) return "Win";
-  if (numericPosition <= places) return "Standard Place";
-  if (mode === "Extra Place" && numericPosition === places + 1)
-    return "Extra Place";
-  return "Unplaced";
-}
-function positionChoices(mode: Form["mode"], bookmakerPlaces: string) {
-  const places = Math.max(1, Number(bookmakerPlaces || "3"));
-  const highestExactPosition = mode === "Extra Place" ? places + 1 : places;
-  return [
-    ...Array.from({ length: highestExactPosition }, (_, index) =>
-      String(index + 1),
-    ),
-    `${highestExactPosition + 1}+`,
-  ];
-}
-function ordinalPosition(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed || /^unplaced$/i.test(trimmed) || /^void\/?nr$/i.test(trimmed))
-    return trimmed;
-  const match = trimmed.match(/^(\d+)(?:st|nd|rd|th)?(\+)?$/i);
-  if (!match) return trimmed;
-  const number = Number(match[1]);
-  if (match[2]) return `${number}+`;
-  const suffix =
-    number % 100 >= 11 && number % 100 <= 13
-      ? "th"
-      : number % 10 === 1
-        ? "st"
-        : number % 10 === 2
-          ? "nd"
-          : number % 10 === 3
-            ? "rd"
-            : "th";
-  return `${number}${suffix}`;
-}
-function positionForResult(result: string, bookmakerPlaces: string) {
-  const places = Math.max(1, Number(bookmakerPlaces || "3"));
-  if (result === "Win") return "1st";
-  if (result === "Standard Place") return "2nd";
-  if (result === "Extra Place") return ordinalPosition(String(places + 1));
-  if (result === "Unplaced") return `${places + 2}+`;
-  return "";
+  return extraPlaceResultChoices(mode, bookmakerPlaces, exchangePlaces).map((result) => [
+    result,
+    result === "Void/NR" ? "Void / NR" : result,
+  ]);
 }
 function matrixValue(value: string | null | undefined) {
   const number = asNumber(value);
@@ -450,13 +401,22 @@ export function EachWayExtraPlaceWorkflowShell({
       const nextForm = {
         ...current,
         [key]: next,
-        ...(key === "place_term_denominator" ? { bookmaker_places: next } : {}),
       };
-      if (key === "finishing_position") {
+      if (
+        key === "finishing_position" ||
+        key === "mode" ||
+        key === "bookmaker_places" ||
+        key === "exchange_places"
+      ) {
         return {
           ...nextForm,
-          result: next
-            ? resultForPosition(nextForm.mode, nextForm.bookmaker_places, next)
+          result: nextForm.finishing_position
+            ? resultForExtraPlacePosition(
+                nextForm.mode,
+                nextForm.bookmaker_places,
+                nextForm.exchange_places,
+                nextForm.finishing_position,
+              )
             : current.result,
         };
       }
@@ -567,9 +527,11 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     next.result = result;
     next.status = result === "Void/NR" ? "Void" : "Settled";
-    next.finishing_position = positionForResult(
+    next.finishing_position = extraPlacePositionForResult(
       result,
-      String(row.bookmaker_places || "3"),
+      next.mode,
+      String(row.bookmaker_places || "5"),
+      String(row.exchange_places || "4"),
     );
     const response = await fetch(`${baseUrl}/${row.each_way_extra_place_id}`, {
       method: "PUT",
@@ -630,7 +592,11 @@ export function EachWayExtraPlaceWorkflowShell({
   const stepIndex = stepIds.indexOf(step);
   const resultOptions = [
     "Pending",
-    ...resultChoices(form.mode, form.bookmaker_places).map(
+    ...resultChoices(
+      form.mode,
+      form.bookmaker_places,
+      form.exchange_places,
+    ).map(
       ([result]) => result,
     ),
   ];
@@ -904,6 +870,10 @@ export function EachWayExtraPlaceWorkflowShell({
                     "",
                   place_term_denominator:
                     loadout.defaults.placeTermDenominator ?? "5",
+                  bookmaker_places:
+                    loadout.defaults.bookmakerPlaces ?? "5",
+                  exchange_places:
+                    loadout.defaults.exchangePlaces ?? "4",
                   mode:
                     loadout.defaults.mode === "Each Way"
                       ? "Each Way"
@@ -997,9 +967,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   >
                     <span className="table-chip">{form.mode}</span>
                     <span className="table-chip">{form.status}</span>
-                    <span className="table-chip">
-                      Rating {decimalDisplay(preview?.rating_percent)}%
-                    </span>
+                    <RatingPill rating={preview?.rating_percent} />
                     <span className="table-chip">
                       Implied odds {decimalDisplay(preview?.implied_odds)}
                     </span>
@@ -1551,7 +1519,11 @@ function LedgerRow({
   onResult: (result: string) => void;
 }) {
   const issue = row.calculation_state !== "resolved" || row.status === "Prospecting" || hasRequiredRowGap(row) || (row.status === "Settled" && row.result === "Pending");
-  const outcomes = resultChoices(row.mode, row.bookmaker_places ?? "");
+  const outcomes = resultChoices(
+    row.mode,
+    row.bookmaker_places ?? undefined,
+    row.exchange_places ?? undefined,
+  );
   return (
     <tr
       className={issue ? "row-state-issue-warning" : ""}
@@ -1612,7 +1584,7 @@ function LedgerRow({
       {visibleColumns.place_lay_liability ? (
         <td>{neutralValue(row.place_liability)}</td>
       ) : null}
-      {visibleColumns.rating ? <td>{decimalDisplay(row.rating_percent)}%</td> : null}
+      {visibleColumns.rating ? <td><RatingPill rating={row.rating_percent} /></td> : null}
       {visibleColumns.implied_odds ? <td>{decimalDisplay(row.implied_odds)}</td> : null}
       <td>{value(row.qualifying_loss)}</td>
       <td><EpProfit row={row} /></td>
@@ -1636,6 +1608,22 @@ function LedgerRow({
         </div>
       </td>
     </tr>
+  );
+}
+function ratingTone(value: string | null | undefined) {
+  const rating = asNumber(value);
+  if (rating === null) return "neutral";
+  if (rating >= 100) return "arp";
+  if (rating >= 70) return "good";
+  if (rating >= 40) return "mid";
+  return "low";
+}
+function RatingPill({ rating }: { rating: string | null | undefined }) {
+  const numericRating = asNumber(rating);
+  return (
+    <span className={`table-chip calculator-match-rating-pill extra-place-rating-pill calculator-match-rating-pill-${ratingTone(rating)}`}>
+      Rating {numericRating === null ? "—" : `${numericRating.toFixed(2)}%`}
+    </span>
   );
 }
 function EpProfit({ row }: { row: Row }) {
@@ -1978,12 +1966,18 @@ function Calculate({
       <section className="calculator-segment calculator-segment-back">
         <h3>Back Bet</h3>
         <div className="form-grid">
-          <ChoiceField
-            label="Bookmaker"
-            onChange={(next) => onUpdate("bookmaker", next)}
-            options={bookmakers}
-            value={form.bookmaker}
-          />
+          <div className="extra-place-field-with-chips">
+            <ChoiceField
+              label="Bookmaker"
+              onChange={(next) => onUpdate("bookmaker", next)}
+              options={bookmakers}
+              value={form.bookmaker}
+            />
+            <BookmakerChips
+              labels={bookmakers}
+              onPick={(next) => onUpdate("bookmaker", next)}
+            />
+          </div>
           <div className="extra-place-field-with-chips">
             <Field
               label="E/W Stake (each way)"
@@ -1991,6 +1985,10 @@ function Calculate({
               type="number"
               value={form.each_way_stake}
             />
+            <p className="extra-place-stake-explainer">
+              {neutralValue(form.each_way_stake)} each way. Total bookmaker stake: {" "}
+              {neutralValue(String((asNumber(form.each_way_stake) ?? 0) * 2))}.
+            </p>
             <Chips
               labels={["£ 2.50", "£ 5.00", "£ 10.00"]}
               onPick={(next) =>
@@ -2030,14 +2028,47 @@ function Calculate({
             />
           </div>
         </div>
-        <BookmakerChips
-          labels={bookmakers}
-          onPick={(next) => onUpdate("bookmaker", next)}
-        />
-        <p className="extra-place-stake-explainer">
-          {neutralValue(form.each_way_stake)} each way. Total bookmaker stake:{" "}
-          {neutralValue(String((asNumber(form.each_way_stake) ?? 0) * 2))}.
-        </p>
+        <div className="extra-place-place-terms">
+          <strong className="extra-place-place-terms-title">Place Terms</strong>
+          <div className="extra-place-place-terms-inputs">
+            <Field
+              label="Bookmaker Pays"
+              onChange={(next) => onUpdate("bookmaker_places", next)}
+              type="number"
+              value={form.bookmaker_places}
+            />
+            <Field
+              label="Exchange Pays"
+              onChange={(next) => onUpdate("exchange_places", next)}
+              type="number"
+              value={form.exchange_places}
+            />
+          </div>
+          <p className="extra-place-stake-explainer">
+            {form.mode === "Extra Place"
+              ? `Paying ${form.bookmaker_places || "—"} instead of ${form.exchange_places || "—"}.`
+              : `Paying ${form.bookmaker_places || "—"} places.`}
+          </p>
+          <Chips
+            labels={[
+              "Paying 4 instead of 3",
+              "Paying 5 instead of 4",
+              "Paying 6 instead of 4",
+              "Paying 6 instead of 5",
+              "Paying 8 instead of 5",
+              "Paying 10 instead of 8",
+            ]}
+            onPick={(next) => {
+              const match = next.match(/Paying (\d+) instead of (\d+)/);
+              if (!match) return;
+              onUpdate("bookmaker_places", match[1]);
+              onUpdate("exchange_places", match[2]);
+            }}
+            selected={[
+              `Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`,
+            ]}
+          />
+        </div>
       </section>
       <LaySegment
         exchange="win_exchange"
@@ -2185,15 +2216,13 @@ function Placement({
           <span>Bookmaker Places Paid</span>
           <input
             readOnly
-            value={form.bookmaker_places || form.place_term_denominator || "5"}
+            value={form.bookmaker_places || "5"}
           />
         </label>
-        <Field
-          label="Exchange Places Paid"
-          onChange={(next) => onUpdate("exchange_places", next)}
-          type="number"
-          value={form.exchange_places}
-        />
+        <label className="field-control">
+          <span>Exchange Places Paid</span>
+          <input readOnly value={form.exchange_places || "4"} />
+        </label>
       </div>
     </section>
   );
@@ -2209,13 +2238,22 @@ function Settlement({
   preview: Row | null;
   results: string[];
 }) {
-  const positions = positionChoices(form.mode, form.bookmaker_places);
+  const positions = extraPlacePositionChoices(
+    form.mode,
+    form.bookmaker_places,
+    form.exchange_places,
+  );
   const applyResult = (result: string) => {
     onUpdate("status", result === "Void/NR" ? "Void" : "Settled");
     onUpdate("result", result);
     onUpdate(
       "finishing_position",
-      positionForResult(result, form.bookmaker_places),
+      extraPlacePositionForResult(
+        result,
+        form.mode,
+        form.bookmaker_places,
+        form.exchange_places,
+      ),
     );
   };
   const applyPosition = (position: string) => {
@@ -2224,7 +2262,12 @@ function Settlement({
     onUpdate("status", "Settled");
     onUpdate(
       "result",
-      resultForPosition(form.mode, form.bookmaker_places, normalized),
+      resultForExtraPlacePosition(
+        form.mode,
+        form.bookmaker_places,
+        form.exchange_places,
+        normalized,
+      ),
     );
   };
   const normalizedPosition = ordinalPosition(form.finishing_position);
