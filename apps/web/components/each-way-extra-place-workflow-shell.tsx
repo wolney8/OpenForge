@@ -20,6 +20,7 @@ import {
   type BookmakerCatalogueRecord,
 } from "@/lib/bookmaker-catalogue";
 import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
+import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
@@ -53,7 +54,7 @@ type Row = Record<string, string | null> & {
   result: string;
   calculation_state: string;
 };
-type StepId = "calculate" | "placement" | "settlement";
+type StepId = "calculate" | "settlement";
 type Form = {
   placed_at: string;
   runner: string;
@@ -255,6 +256,9 @@ function decimalDisplay(value: string | null | undefined) {
 }
 function hasRequiredRowGap(row: Row) {
   return [
+    row.runner,
+    row.race,
+    row.placed_at,
     row.bookmaker,
     row.each_way_stake,
     row.back_odds,
@@ -335,6 +339,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [trackerSettings, setTrackerSettings] =
     useState<TrackerSettingsClientRecord | null>(null);
   const [savingRange, setSavingRange] = useState(false);
+  const parserOwnedDateRef = useRef<string | null>(null);
   const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
@@ -398,6 +403,7 @@ export function EachWayExtraPlaceWorkflowShell({
   }, [baseUrl, form, open]);
   const update = (key: keyof Form, next: string) => {
     if (numeric.has(key) && next && !/^\d*(?:\.\d*)?$/.test(next)) return;
+    if (key === "placed_at") parserOwnedDateRef.current = null;
     setForm((current) => {
       const nextForm = {
         ...current,
@@ -424,7 +430,23 @@ export function EachWayExtraPlaceWorkflowShell({
       return nextForm;
     });
   };
+  const updateRace = (race: string) => {
+    const suggestion = getRaceDateSuggestions(race);
+    setForm((current) => {
+      const mayReplaceDate =
+        Boolean(suggestion) &&
+        (!current.placed_at || current.placed_at === parserOwnedDateRef.current);
+      const placedAt = mayReplaceDate ? suggestion!.today : current.placed_at;
+      if (mayReplaceDate) parserOwnedDateRef.current = placedAt;
+      return { ...current, race, placed_at: placedAt };
+    });
+  };
+  const applyRaceDate = (placedAt: string) => {
+    parserOwnedDateRef.current = placedAt;
+    setForm((current) => ({ ...current, placed_at: placedAt }));
+  };
   const resetEditor = (next: Form, row: Row | null) => {
+    parserOwnedDateRef.current = null;
     setForm(next);
     setPristine(next);
     setPreview(row);
@@ -547,14 +569,15 @@ export function EachWayExtraPlaceWorkflowShell({
   const missing = useMemo(
     () => ({
       calculate: [
+        "runner",
+        "race",
+        "placed_at",
+        "bookmaker",
         "each_way_stake",
         "back_odds",
         "win_lay_odds",
         "place_lay_odds",
       ].filter((key) => isBlank(form[key as keyof Form] as string)),
-      placement: ["runner", "race", "placed_at", "bookmaker"].filter((key) =>
-        isBlank(form[key as keyof Form] as string),
-      ),
       settlement:
         form.status === "Settled" && form.result === "Pending"
           ? ["result"]
@@ -565,15 +588,9 @@ export function EachWayExtraPlaceWorkflowShell({
   const tabs: LedgerEditorTabDefinition[] = [
     {
       id: "calculate",
-      label: "Calculate",
+      label: "Calculate & Place",
       status: missing.calculate.length ? "invalid" : "complete",
       requiredIssueCount: missing.calculate.length,
-    },
-    {
-      id: "placement",
-      label: "Placement",
-      status: missing.placement.length ? "warning" : "complete",
-      warningIssueCount: missing.placement.length,
     },
     {
       id: "settlement",
@@ -589,7 +606,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const needed = (Object.entries(missing).find(
     ([, fields]) => fields.length,
   )?.[0] ?? null) as StepId | null;
-  const stepIds: StepId[] = ["calculate", "placement", "settlement"];
+  const stepIds: StepId[] = ["calculate", "settlement"];
   const stepIndex = stepIds.indexOf(step);
   const resultOptions = [
     "Pending",
@@ -685,7 +702,20 @@ export function EachWayExtraPlaceWorkflowShell({
       ),
     [resolvedDateRange, rows],
   );
-  const filtered = rangeRows.filter((row) => {
+  const outOfRangeIssueRows = useMemo(
+    () =>
+      rows.filter(
+        (row) =>
+          !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
+          hasIssue(row),
+      ),
+    [resolvedDateRange, rows],
+  );
+  const tableRows = useMemo(
+    () => [...outOfRangeIssueRows, ...rangeRows],
+    [outOfRangeIssueRows, rangeRows],
+  );
+  const filtered = tableRows.filter((row) => {
     const text =
       `${row.runner} ${row.race} ${row.bookmaker} ${row.status} ${row.result}`.toLowerCase();
     if (query && !text.includes(query.toLowerCase())) return false;
@@ -924,6 +954,9 @@ export function EachWayExtraPlaceWorkflowShell({
       </div>
       <ExtraPlaceTable
         bookmakerCatalogue={bookmakerCatalogue}
+        outOfRangeIssueIds={new Set(
+          outOfRangeIssueRows.map((row) => row.each_way_extra_place_id),
+        )}
         onDelete={requestDelete}
         onEdit={openRow}
         onResult={(row, result) => void saveResult(row, result)}
@@ -1021,16 +1054,10 @@ export function EachWayExtraPlaceWorkflowShell({
                         bookmakerCatalogue={bookmakerCatalogue}
                         form={form}
                         onCopy={copy}
+                        onRaceDatePick={applyRaceDate}
+                        onRaceUpdate={updateRace}
                         onUpdate={update}
                         preview={preview}
-                      />
-                    </LedgerEditorTabPanel>
-                    <LedgerEditorTabPanel activeTabId={step} tabId="placement">
-                      <Placement
-                        bookmakerCatalogue={bookmakerCatalogue}
-                        form={form}
-                        onUpdate={update}
-                        rows={rows}
                       />
                     </LedgerEditorTabPanel>
                     <LedgerEditorTabPanel activeTabId={step} tabId="settlement">
@@ -1386,6 +1413,7 @@ function ExtraPlaceFilterDialog({
 }
 function ExtraPlaceTable({
   bookmakerCatalogue,
+  outOfRangeIssueIds,
   rows,
   visibleColumns,
   onDelete,
@@ -1393,6 +1421,7 @@ function ExtraPlaceTable({
   onResult,
 }: {
   bookmakerCatalogue: BookmakerCatalogueRecord[];
+  outOfRangeIssueIds: Set<string>;
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: (row: Row) => void;
@@ -1491,6 +1520,9 @@ function ExtraPlaceTable({
               onDelete={() => onDelete(row)}
               onEdit={() => onEdit(row)}
               onResult={(result) => onResult(row, result)}
+              outsideTrackerRange={outOfRangeIssueIds.has(
+                row.each_way_extra_place_id,
+              )}
               row={row}
               visibleColumns={visibleColumns}
             />
@@ -1512,6 +1544,7 @@ function ResizableHeader({ className = "", label, onResize }: { className?: stri
 }
 function LedgerRow({
   bookmakerCatalogue,
+  outsideTrackerRange,
   row,
   visibleColumns,
   onDelete,
@@ -1519,6 +1552,7 @@ function LedgerRow({
   onResult,
 }: {
   bookmakerCatalogue: BookmakerCatalogueRecord[];
+  outsideTrackerRange: boolean;
   row: Row;
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: () => void;
@@ -1533,7 +1567,7 @@ function LedgerRow({
   );
   return (
     <tr
-      className={issue ? "row-state-issue-warning" : ""}
+      className={`${issue ? "row-state-issue-warning" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
       onClick={onEdit}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1595,7 +1629,7 @@ function LedgerRow({
       {visibleColumns.implied_odds ? <td>{decimalDisplay(row.implied_odds)}</td> : null}
       <td>{value(row.qualifying_loss)}</td>
       <td><EpProfit row={row} /></td>
-      <td><StatusDisplay row={row} /></td>
+      <td><StatusDisplay outsideTrackerRange={outsideTrackerRange} row={row} /></td>
       <td>
         <div
           className="table-action-row extra-place-table-actions"
@@ -1637,7 +1671,13 @@ function EpProfit({ row }: { row: Row }) {
     </span>
   );
 }
-function StatusDisplay({ row }: { row: Row }) {
+function StatusDisplay({
+  row,
+  outsideTrackerRange = false,
+}: {
+  row: Row;
+  outsideTrackerRange?: boolean;
+}) {
   const position = row.finishing_position
     ? ordinalPosition(row.finishing_position)
     : row.status === "Settled"
@@ -1647,6 +1687,7 @@ function StatusDisplay({ row }: { row: Row }) {
     <span className="extra-place-status-display">
       <strong>{position}</strong>
       <small className={row.result === "Extra Place" ? "extra-place-status-extra" : ""}>{row.result || "Pending"}</small>
+      {outsideTrackerRange ? <small>Needs action · outside range</small> : null}
     </span>
   );
 }
@@ -1763,10 +1804,8 @@ function Guidance({
 }) {
   const copy =
     step === "calculate"
-      ? "Enter the Stake, Back Odds, and Lay Odds."
-      : step === "placement"
-        ? "Add the runner, race, date, and bookmaker."
-        : "Select the settlement result.";
+      ? "Add the runner, race, date, bookmaker, stake, and lay odds."
+      : "Select the settlement result.";
   return (
     <section
       className="guided-entry-banner guided-entry-banner-next_required"
@@ -1778,7 +1817,7 @@ function Guidance({
         <strong>
           {step === "calculate"
             ? copy
-            : `Go to ${step === "placement" ? "Placement" : "Settlement"} and ${copy.charAt(0).toLowerCase()}${copy.slice(1)}`}
+            : `Go to Settlement and ${copy.charAt(0).toLowerCase()}${copy.slice(1)}`}
         </strong>
       </button>
       <button
@@ -1930,17 +1969,59 @@ function Calculate({
   bookmakerCatalogue,
   form,
   onUpdate,
+  onRaceUpdate,
+  onRaceDatePick,
   preview,
   onCopy,
 }: {
   bookmakerCatalogue: BookmakerCatalogueRecord[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
+  onRaceUpdate: (value: string) => void;
+  onRaceDatePick: (value: string) => void;
   preview: Row | null;
   onCopy: (value: string | null | undefined) => void;
 }) {
+  const raceDates = getRaceDateSuggestions(form.race);
   return (
     <section className="stack">
+      <section className="extra-place-race-details" aria-label="Racing details">
+        <div className="form-grid">
+          <Field
+            label="Runner / Horse"
+            onChange={(next) => onUpdate("runner", next)}
+            value={form.runner}
+          />
+          <Field
+            label="Race"
+            onChange={onRaceUpdate}
+            value={form.race}
+          />
+          <div className="extra-place-field-with-chips">
+            <Field
+              label="Date / Time"
+              onChange={(next) => onUpdate("placed_at", next)}
+              type="datetime-local"
+              value={form.placed_at}
+            />
+            {raceDates ? (
+              <Chips
+                labels={[
+                  `Today, ${raceDates.time}`,
+                  `Tomorrow, ${raceDates.time}`,
+                ]}
+                onPick={(choice) =>
+                  onRaceDatePick(
+                    choice.startsWith("Today")
+                      ? raceDates.today
+                      : raceDates.tomorrow,
+                  )
+                }
+              />
+            ) : null}
+          </div>
+        </div>
+      </section>
       <div className="extra-place-bet-type-toggle" role="group">
         <button
           aria-pressed={form.mode === "Each Way"}
@@ -2149,80 +2230,6 @@ function LaySegment({
           </span>
           <span>Copy stake</span>
         </button>
-      </div>
-    </section>
-  );
-}
-function Placement({
-  bookmakerCatalogue,
-  form,
-  onUpdate,
-  rows,
-  suggestedBookmakers = bookmakers,
-}: {
-  bookmakerCatalogue: BookmakerCatalogueRecord[];
-  form: Form;
-  onUpdate: (key: keyof Form, value: string) => void;
-  rows: Row[];
-  suggestedBookmakers?: string[];
-}) {
-  const bookmakerOptions = [
-    ...new Set([
-      ...suggestedBookmakers,
-      ...rows
-        .map((row) => row.bookmaker)
-        .filter((bookmaker): bookmaker is string => Boolean(bookmaker)),
-      ...bookmakers,
-    ]),
-  ];
-  return (
-    <section className="stack">
-      <div className="form-grid">
-        <Field
-          label="Runner / Horse"
-          onChange={(next) => onUpdate("runner", next)}
-          value={form.runner}
-        />
-        <Field
-          label="Race"
-          onChange={(next) => onUpdate("race", next)}
-          value={form.race}
-        />
-        <Field
-          label="Date / Time"
-          onChange={(next) => onUpdate("placed_at", next)}
-          type="datetime-local"
-          value={form.placed_at}
-        />
-        <div className="extra-place-field-with-chips">
-          <ChoiceField
-            label="Bookmaker"
-            onChange={(next) => onUpdate("bookmaker", next)}
-            options={bookmakerOptions}
-            value={form.bookmaker}
-          />
-          <BookmakerChips
-            catalogue={bookmakerCatalogue}
-            labels={suggestedBookmakers}
-            onPick={(next) => onUpdate("bookmaker", next)}
-            rows={rows}
-          />
-        </div>
-        <label className="field-control">
-          <span>Each-Way Terms</span>
-          <input readOnly value={`1 / ${form.place_term_denominator || "5"}`} />
-        </label>
-        <label className="field-control">
-          <span>Bookmaker Places Paid</span>
-          <input
-            readOnly
-            value={form.bookmaker_places || "5"}
-          />
-        </label>
-        <label className="field-control">
-          <span>Exchange Places Paid</span>
-          <input readOnly value={form.exchange_places || "4"} />
-        </label>
       </div>
     </section>
   );

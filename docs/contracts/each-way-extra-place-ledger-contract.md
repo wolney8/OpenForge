@@ -8,7 +8,7 @@ user-facing label should expose the older combined name.
 
 The editor follows the shared Plum Duff ledger-modal contract:
 
-- **Calculate**, **Placement**, and **Settlement** are the only primary steps.
+- **Calculate & Place** and **Settlement** are the only primary steps.
 - Guided entry identifies the next missing required field and moves the user to its step.
 - E/W stake, lay stakes, and liabilities are neutral amounts; only outcome, profit, and loss
   values use positive/negative semantic colours.
@@ -34,7 +34,8 @@ The user enters E/W stake per leg, back odds, fractional terms, win/place lay od
 actual lay stakes. Preferred exchanges and commissions come from profile account settings.
 
 - Terms are entered as `1 / denominator`; the default is `1 / 5`, with `1/4`, `1/5`, and `1/6`
-  quick selections. The selected term is carried to Placement as read-only calculator context.
+  quick selections. Runner, race and date/time belong in the compact racing-details segment above
+  the calculator so the user can calculate and place without moving to a duplicate metadata step.
 - **Payout fraction and paid places are independent inputs.** `1 / 5` determines the derived
   bookmaker place odds; it must never be used to infer the number of paid places. `Bookmaker
   Pays` and `Exchange Pays` are explicit place-count fields. In Extra Place mode, positions
@@ -66,9 +67,11 @@ future branches and must never be silently inferred.
 
 ## Workflow
 
-1. **Calculate**: fast calculator, result matrix and copy controls. No runner or race required.
-2. **Placement**: runner, race, date/time, bookmaker/accounts and per-leg placement status.
-3. **Settlement**: outcome first, optional finishing position, calculated final P&L.
+1. **Calculate & Place**: compact runner/race/date-time details, fast calculator, account choices,
+   result matrix and copy controls. A trailing valid 24-hour race time such as `Sandtown 14:10`
+   proposes local Today and Tomorrow date/time choices. It only fills an empty or parser-owned
+   date/time and never replaces a manually selected value.
+2. **Settlement**: outcome first, optional finishing position, calculated final P&L.
 
 Settlement position quick actions contain position only (`1st`, `2nd`, and so on). Selecting one
 derives the valid settlement result from the explicit paid-place gap, highlights its
@@ -80,6 +83,10 @@ back odds, two lay odds, qualifying loss, extra-place potential where applicable
 value. It is row-click editable. The result matrix separates contract-calculated Bookie,
 Exchange and Total values, with individual win and place legs visible for audit; React must not
 calculate those values.
+
+Incomplete rows remain visible as `Needs action` even where their date/time is blank or outside
+the current tracker range. This exception applies only to the operational table; tracker-range
+cards, reporting and financial totals remain strictly range-scoped.
 
 ## EP Catcher evidence
 

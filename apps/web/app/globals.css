@@ -7911,6 +7911,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   margin: 0;
 }
 
+.extra-place-race-details {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-large);
+  background: var(--surface-container-high);
+}
+
 .extra-place-field-with-chips {
   display: grid;
   gap: 0.55rem;

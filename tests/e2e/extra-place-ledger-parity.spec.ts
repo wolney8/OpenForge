@@ -68,6 +68,43 @@ test.describe("Extra Place ledger parity", () => {
     await expect(footer.getByRole("button", { name: "Next" })).toBeVisible();
   });
 
+  test("uses two editor steps and only lets race parsing own an empty date", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    await expect(dialog.getByRole("tab", { name: /Calculate & Place/ })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: /Placement/ })).toHaveCount(0);
+
+    const race = dialog.getByLabel("Race");
+    const date = dialog.getByLabel("Date / Time");
+    await race.fill("Sandtown 14:10");
+    await expect(date).toHaveValue(/T14:10$/);
+    await expect(dialog.getByRole("button", { name: "Today, 14:10" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Tomorrow, 14:10" })).toBeVisible();
+
+    await date.fill("2026-08-30T12:00");
+    await race.fill("Sandtown 15:10");
+    await expect(date).toHaveValue("2026-08-30T12:00");
+  });
+
+  test("keeps an incomplete saved row visible outside the active range", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    await dialog.getByLabel("Runner / Horse").fill("Incomplete visibility runner");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeHidden({ timeout: 30_000 });
+
+    const row = page.locator("tr", { hasText: "Incomplete visibility runner" }).last();
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("Needs action");
+    await expect(row).toContainText("outside range");
+  });
+
   test("opens Extra Place-specific filter controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
@@ -142,15 +179,13 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByLabel("Back Odds").fill("6");
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await calculatePanel.locator("select").first().selectOption("Betfred");
     await expect(calculatePanel.locator(".extra-place-matrix-value-negative").first()).toBeVisible();
     await expect(dialog.getByText(/^Rating \d+\.\d+%$/)).toBeVisible();
     await expect(dialog.getByText(/^Implied odds \d+\.\d+$/)).toBeVisible();
-    await dialog.getByRole("tab", { name: /Placement/ }).click();
     await dialog.getByLabel("Runner / Horse").fill("Test Runner");
-    await dialog.getByLabel("Race").fill("Test Race");
+    await dialog.getByLabel("Race").fill("Test Race 14:10");
     await dialog.getByLabel("Date / Time").fill("2026-08-24T12:00");
-    const placementPanel = dialog.locator('[data-pd-id="ledger-editor.panel.placement"]');
-    await placementPanel.locator("select").first().selectOption("Betfred");
     const settlementPanel = dialog.locator('[data-pd-id="ledger-editor.panel.settlement"]');
     await expect(settlementPanel.locator(".extra-place-quick-choice-row")).toHaveCount(3);
     await expect(settlementPanel.getByText("Advanced", { exact: true })).toHaveCount(1);
@@ -216,20 +251,6 @@ test.describe("Extra Place ledger parity", () => {
     await expect(ledger.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]')).toBeAttached();
     await expect(ledger.locator(".table-column-resize-handle").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Add Extra Place row" }).click();
-    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
-    await dialog.getByLabel("E/W Stake (each way)").fill("5");
-    await dialog.getByLabel("Back Odds").fill("6");
-    await dialog.getByLabel("Lay Odds").first().fill("2.3");
-    await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
-    await dialog.getByRole("tab", { name: /Placement/ }).click();
-    await dialog.getByLabel("Runner / Horse").fill("Action Menu Runner");
-    await dialog.getByLabel("Race").fill("Action Menu Race");
-    await dialog.getByLabel("Date / Time").fill("2026-08-24T12:00");
-    await dialog.locator('[data-pd-id="ledger-editor.panel.placement"] select').first().selectOption("Betfred");
-    await dialog.getByRole("button", { name: "Save" }).click();
-    await expect(dialog).toBeHidden({ timeout: 30_000 });
-
     const flag = ledger.getByRole("button", { name: /Update result for/ }).first();
     await flag.click();
     await expect(page.locator(".extra-place-result-menu")).toBeVisible();
@@ -240,13 +261,6 @@ test.describe("Extra Place ledger parity", () => {
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
 
-    await expect(
-      ledger.locator(".bookmaker-identity-badge", { hasText: "Betfred" }).first(),
-    ).toBeVisible();
-    const ledgerBetfred = ledger
-      .locator(".bookmaker-identity-badge", { hasText: "Betfred" })
-      .first();
-    await expect(ledgerBetfred).toHaveCSS("background-color", "rgb(179, 38, 30)");
     await page.getByRole("button", { name: "Add Extra Place row" }).click();
     const quickAddDialog = page.getByRole("dialog", { name: "Create Extra Place row" });
     const modalBetfred = quickAddDialog
@@ -254,7 +268,14 @@ test.describe("Extra Place ledger parity", () => {
       .locator(".extra-place-bookmaker-chip", { hasText: "Betfred" });
     await expect(modalBetfred).toHaveCSS("background-color", "rgb(179, 38, 30)");
     await expect(modalBetfred).toHaveCSS("color", "rgb(255, 255, 255)");
-    await quickAddDialog.getByRole("button", { name: "Close Extra Place editor" }).click();
+    await quickAddDialog.locator('[data-pd-id="ledger-editor.panel.calculate"] select').first().selectOption("Betfred");
+    await quickAddDialog.getByLabel("Runner / Horse").fill("Branded badge runner");
+    await quickAddDialog.getByLabel("Race").fill("Branded badge race 14:10");
+    await quickAddDialog.getByRole("button", { name: "Save" }).click();
+    await expect(quickAddDialog).toBeHidden({ timeout: 30_000 });
+    const ledgerBetfred = ledger.locator(".bookmaker-identity-badge", { hasText: "Betfred" }).last();
+    await expect(ledgerBetfred).toBeVisible();
+    await expect(ledgerBetfred).toHaveCSS("background-color", "rgb(179, 38, 30)");
     await expect
       .poll(() =>
         ledger.locator(".extra-place-profit-value, .extra-place-profit-neutral").first().evaluate((element) =>

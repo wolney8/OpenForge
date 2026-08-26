@@ -3,6 +3,14 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-26 Extra Place Flow Consolidation Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-042 | Extra Place table | Keep incomplete saved rows visible as Needs action when blank-dated or outside tracker range, without changing range-scoped totals. | Extra Place flow consolidation | DONE |
+| PD-FIX-043 | Extra Place calculate step | Parse a trailing race time into parser-owned today/tomorrow date choices without replacing a manual date. | `Sandtown 14:10` | DONE |
+| PD-FIX-044 | Extra Place editor | Consolidate Calculate and Placement into Calculate & Place, retaining Settlement as the second step. | Extra Place flow consolidation | DONE |
+
 ## 2026-08-25 Explicit Extra Place Terms And Outcome Batch
 
 | ID | Area | Requested change | Supplied reference | Status |
