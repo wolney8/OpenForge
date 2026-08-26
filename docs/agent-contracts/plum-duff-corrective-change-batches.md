@@ -3,6 +3,28 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-26 Extra Place Final Table And Modal Parity Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-045 | Shared ledger table navigation | Give visible left/right table navigation controls an opaque blurred backing in both themes. | Recurring table navigation issue | DONE |
+| PD-FIX-046 | Extra Place table | Render compact local date/time labels such as `Today at 14:10` and `Thu 27th 12:45`. | Date/time column | DONE |
+| PD-FIX-047 | Extra Place table | Surface concrete missing-field/outcome issues in the established row issue-overlay. | Signed-off ledger issue chips | DONE |
+| PD-FIX-048 | Extra Place Calculate & Place | Make Back, Place Terms, Win Lay and Place Lay headings/labels contrast-safe in dark Back/Lay mode. | Paint palette mode | DONE |
+| PD-FIX-049 | Extra Place Calculate & Place | Make Place Terms heading and labels contrast-safe in dark EP mode. | EP theme mode | DONE |
+| PD-FIX-050 | Extra Place rating | Use a neutral rating chip when a rating cannot be calculated. | Rating column | DONE |
+| PD-FIX-051 | Extra Place parity audit | Review the changed table/modal equivalents for adjacent regressions without expanding scope. | User request for outstanding modal/table issues | DONE |
+
+## 2026-08-26 Extra Place Operational Visibility Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-052 | Extra Place table issues | Show no more than four actionable issue chips; show a count chip for the remainder and make four-or-more issue rows danger/red, otherwise warning/yellow. | First-row hover with ten issue chips | DONE |
+| PD-FIX-053 | Extra Place editor themes | Recheck heading and helper-copy contrast for both light/dark modes and both EP/Back-Lay themes. | Back Bet, Place Terms, Lay sections | DONE |
+| PD-FIX-054 | Extra Place settlement visibility | Define and implement a non-intrusive race-ready indicator shortly after the scheduled race time. | Race approaching finish/results timing | INVESTIGATING |
+| PD-FIX-055 | Extra Place racing details | Parse pasted Smarkets and MBB runner/race text into Runner, Race, and parser-owned date/time suggestions without overwriting manual fields. | Smarkets/MBB paste examples | DONE |
+| PD-FIX-056 | Extra Place resolved-value card | Clarify selected-range qualifying loss, realised Extra Place outcome, and a weekly loss-budget control without changing existing resolved-value calculation. | Resolved Value £25.89 discrepancy and £15 weekly loss factor | INVESTIGATING |
+
 ## 2026-08-26 Extra Place Flow Consolidation Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

@@ -5218,6 +5218,20 @@ def get_profile_exchange_commission(profile_id: str, exchange_name: str) -> str:
     return str(row["commission_rate"])
 
 
+def list_profile_exchange_commissions(profile_id: str) -> dict[str, str]:
+    """Return one profile's exchange defaults without opening a connection per row."""
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT exchange_name, commission_rate
+            FROM profile_exchange_commissions
+            WHERE profile_id = ?
+            """,
+            (profile_id,),
+        ).fetchall()
+    return {str(row["exchange_name"]): str(row["commission_rate"]) for row in rows}
+
+
 def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecord:
     with connect() as connection:
         row = connection.execute(

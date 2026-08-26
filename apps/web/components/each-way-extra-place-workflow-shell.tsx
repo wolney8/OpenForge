@@ -21,6 +21,8 @@ import {
 } from "@/lib/bookmaker-catalogue";
 import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
 import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
+import { formatLedgerDateTime } from "@/lib/ledger-date-display";
+import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
@@ -268,6 +270,26 @@ function hasRequiredRowGap(row: Row) {
     row.place_lay_odds,
   ].some((value) => !value?.trim());
 }
+function getRowIssues(row: Row) {
+  const labels: Array<[keyof Row, string]> = [
+    ["runner", "Runner"],
+    ["race", "Race"],
+    ["placed_at", "Date / time"],
+    ["bookmaker", "Bookmaker"],
+    ["each_way_stake", "E/W stake"],
+    ["back_odds", "Back odds"],
+    ["win_exchange", "Win exchange"],
+    ["win_lay_odds", "Win lay odds"],
+    ["place_exchange", "Place exchange"],
+    ["place_lay_odds", "Place lay odds"],
+  ];
+  const missing = labels
+    .filter(([key]) => !row[key]?.trim())
+    .map(([, label]) => `${label} needed`);
+  if (row.status === "Settled" && row.result === "Pending") missing.push("Outcome needed");
+  if (row.status === "Prospecting") missing.push("Placement not confirmed");
+  return Array.from(new Set(missing));
+}
 function isBlank(value: string) {
   return !value.trim();
 }
@@ -346,7 +368,9 @@ export function EachWayExtraPlaceWorkflowShell({
   useBodyScrollLock(isAnyDialogOpen);
   useDialogFocusLifecycle(open, editorRef);
   const load = useCallback(async () => {
-    const response = await fetch(baseUrl);
+    // Draft and issue rows must appear immediately after a write, even when the
+    // active tracker range would normally hide their dates.
+    const response = await fetch(baseUrl, { cache: "no-store" });
     if (response.ok) setRows(await response.json());
   }, [baseUrl]);
   useEffect(() => {
@@ -444,6 +468,20 @@ export function EachWayExtraPlaceWorkflowShell({
   const applyRaceDate = (placedAt: string) => {
     parserOwnedDateRef.current = placedAt;
     setForm((current) => ({ ...current, placed_at: placedAt }));
+  };
+  const applyRacePaste = (raw: string) => {
+    const parsed = parseExtraPlaceRacePaste(raw);
+    if (!parsed) return false;
+    const suggestion = getRaceDateSuggestions(parsed.race);
+    setForm((current) => {
+      const mayReplaceDate =
+        Boolean(suggestion) &&
+        (!current.placed_at || current.placed_at === parserOwnedDateRef.current);
+      const placedAt = mayReplaceDate ? suggestion!.today : current.placed_at;
+      if (mayReplaceDate) parserOwnedDateRef.current = placedAt;
+      return { ...current, ...parsed, placed_at: placedAt };
+    });
+    return true;
   };
   const resetEditor = (next: Form, row: Row | null) => {
     parserOwnedDateRef.current = null;
@@ -1055,6 +1093,7 @@ export function EachWayExtraPlaceWorkflowShell({
                         form={form}
                         onCopy={copy}
                         onRaceDatePick={applyRaceDate}
+                        onRacePaste={applyRacePaste}
                         onRaceUpdate={updateRace}
                         onUpdate={update}
                         preview={preview}
@@ -1559,7 +1598,10 @@ function LedgerRow({
   onEdit: () => void;
   onResult: (result: string) => void;
 }) {
-  const issue = row.calculation_state !== "resolved" || row.status === "Prospecting" || hasRequiredRowGap(row) || (row.status === "Settled" && row.result === "Pending");
+  const rowIssues = getRowIssues(row);
+  const issueCount = rowIssues.length;
+  const issue = row.calculation_state !== "resolved" || issueCount > 0;
+  const visibleIssues = rowIssues.slice(0, 4);
   const outcomes = resultChoices(
     row.mode,
     row.bookmaker_places ?? undefined,
@@ -1567,7 +1609,7 @@ function LedgerRow({
   );
   return (
     <tr
-      className={`${issue ? "row-state-issue-warning" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
+      className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
       onClick={onEdit}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1577,7 +1619,21 @@ function LedgerRow({
       }}
       tabIndex={0}
     >
-      <td>{row.placed_at || "-"}</td>
+      <td>
+        {rowIssues.length > 0 ? (
+          <div aria-label={`Issues for ${row.runner || "Extra Place row"}`} className="row-issue-overlay">
+            {visibleIssues.map((label) => (
+              <span className="table-chip table-chip-warning" key={label}>{label}</span>
+            ))}
+            {issueCount > visibleIssues.length ? (
+              <span className="table-chip table-chip-muted">
+                {issueCount - visibleIssues.length}+ Issues
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {formatLedgerDateTime(row.placed_at)}
+      </td>
       <td>
         <strong>{row.runner || "Runner needed"}</strong>
         <br />
@@ -1655,7 +1711,7 @@ function RatingPill({ rating }: { rating: string | null | undefined }) {
   const numericRating = asNumber(rating);
   const tone = numericRating === null ? "neutral" : getMatchRatingPillTone(numericRating);
   return (
-    <span className={`table-chip calculator-match-rating-pill extra-place-rating-pill calculator-match-rating-pill-${tone}`}>
+    <span className={`table-chip calculator-match-rating-pill extra-place-rating-pill calculator-match-rating-pill-${tone}${numericRating === null ? " extra-place-rating-pill-neutral" : ""}`}>
       Rating {numericRating === null ? "—" : `${numericRating.toFixed(2)}%`}
     </span>
   );
@@ -1838,12 +1894,14 @@ function Field({
   value: fieldValue,
   onChange,
   onBlur,
+  onPaste,
   type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: (value: string) => void;
+  onPaste?: (value: string) => boolean;
   type?: string;
 }) {
   const numericField = type === "number";
@@ -1854,6 +1912,11 @@ function Field({
         inputMode={numericField ? "decimal" : undefined}
         onBlur={(event) => onBlur?.(event.target.value)}
         onChange={(event) => onChange(event.target.value)}
+        onPaste={(event) => {
+          if (onPaste?.(event.clipboardData.getData("text"))) {
+            event.preventDefault();
+          }
+        }}
         type={numericField ? "text" : type}
         value={fieldValue}
       />
@@ -1971,6 +2034,7 @@ function Calculate({
   onUpdate,
   onRaceUpdate,
   onRaceDatePick,
+  onRacePaste,
   preview,
   onCopy,
 }: {
@@ -1979,6 +2043,7 @@ function Calculate({
   onUpdate: (key: keyof Form, value: string) => void;
   onRaceUpdate: (value: string) => void;
   onRaceDatePick: (value: string) => void;
+  onRacePaste: (value: string) => boolean;
   preview: Row | null;
   onCopy: (value: string | null | undefined) => void;
 }) {
@@ -1990,11 +2055,13 @@ function Calculate({
           <Field
             label="Runner / Horse"
             onChange={(next) => onUpdate("runner", next)}
+            onPaste={onRacePaste}
             value={form.runner}
           />
           <Field
             label="Race"
             onChange={onRaceUpdate}
+            onPaste={onRacePaste}
             value={form.race}
           />
           <div className="extra-place-field-with-chips">

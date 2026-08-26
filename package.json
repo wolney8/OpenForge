@@ -4,7 +4,7 @@
   "packageManager": "pnpm@11.2.2",
   "scripts": {
     "build:web": "pnpm --filter @openforge/web build",
-    "dev:api": "./scripts/run-python.sh -m uvicorn openforge_api.main:app --app-dir apps/api/src --reload --host 127.0.0.1 --port 8010",
+    "dev:api": "./scripts/run-python.sh -m uvicorn openforge_api.main:app --app-dir apps/api/src --reload --reload-dir apps/api/src --host 127.0.0.1 --port 8010",
     "dev:web": "pnpm --filter @openforge/web exec next dev --port 3010",
     "lint:web": "pnpm --filter @openforge/web lint",
     "typecheck:web": "pnpm --filter @openforge/web typecheck",

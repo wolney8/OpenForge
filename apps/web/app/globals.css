@@ -9,7 +9,11 @@
   --surface-strong: #ffffff;
   --surface-container: rgba(244, 248, 252, 0.94);
   --surface-container-high: rgba(250, 252, 255, 0.96);
+  --surface-container-highest: #ffffff;
+  --ledger-scroll-control-surface: rgba(222, 242, 244, 0.94);
+  --ledger-scroll-control-halo: rgba(0, 91, 99, 0.16);
   --text: #18232f;
+  --on-surface: var(--text);
   --muted: #536371;
   --primary: #005b63;
   --primary-strong: #004148;
@@ -89,7 +93,11 @@ html[data-theme="dark"] {
   --surface-strong: #1b2530;
   --surface-container: rgba(24, 35, 47, 0.94);
   --surface-container-high: rgba(29, 41, 54, 0.96);
+  --surface-container-highest: #24313e;
+  --ledger-scroll-control-surface: rgba(42, 62, 78, 0.94);
+  --ledger-scroll-control-halo: rgba(104, 212, 216, 0.2);
   --text: #e7edf4;
+  --on-surface: var(--text);
   --muted: #a6b3c0;
   --primary: #68d4d8;
   --primary-strong: #a9f1f3;
@@ -5648,15 +5656,18 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   width: 2.45rem;
   height: 2.45rem;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--outline));
+  border: 1px solid color-mix(in srgb, var(--primary) 76%, var(--outline-strong));
   border-radius: var(--shape-medium);
   color: var(--primary-strong);
-  background: var(--surface-container-highest);
+  isolation: isolate;
+  overflow: visible;
+  /* Keep navigation legible over dense table cells in both colour schemes. */
+  background: var(--ledger-scroll-control-surface);
   box-shadow:
-    0 0 0 0.35rem color-mix(in srgb, var(--surface-container-highest) 82%, transparent),
+    0 0 0 0.42rem var(--ledger-scroll-control-halo),
     0 0.3rem 1.25rem rgb(0 0 0 / 0.42);
-  backdrop-filter: blur(1.25rem);
-  -webkit-backdrop-filter: blur(1.25rem);
+  backdrop-filter: blur(1.6rem) saturate(1.35);
+  -webkit-backdrop-filter: blur(1.6rem) saturate(1.35);
   opacity: 1;
   transform: translateY(-50%);
   transition: opacity 160ms ease, transform 160ms ease;
@@ -5676,6 +5687,19 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .ledger-table-scroll-arrow-left { left: 0.6rem; }
 .ledger-table-scroll-arrow-right { right: 0.6rem; }
 .ledger-table-scroll-arrow .material-symbols-outlined { font-size: 1.45rem; }
+.ledger-table-scroll-arrow .material-symbols-outlined { position: relative; z-index: 1; }
+
+.ledger-table-scroll-arrow::before {
+  content: "";
+  position: absolute;
+  inset: -0.45rem;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--ledger-scroll-control-halo);
+  box-shadow: 0 0 1.55rem 0.28rem var(--ledger-scroll-control-halo);
+  backdrop-filter: blur(2rem) saturate(1.45);
+  -webkit-backdrop-filter: blur(2rem) saturate(1.45);
+}
 
 .table-sort-button {
   display: inline-flex;
@@ -5830,7 +5854,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border-radius: 0.9rem;
   opacity: 0;
   pointer-events: none;
-  background: transparent;
+  background: color-mix(in srgb, var(--surface-container-high) 88%, transparent);
+  box-shadow: 0 0.55rem 1.35rem rgb(0 0 0 / 0.26);
   transition: opacity 150ms ease, transform 150ms ease;
   z-index: 6;
   isolation: isolate;
@@ -5847,9 +5872,9 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: rgb(255 255 255 / 0.1%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface-container-high) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
 }
 
 .editor-section {
@@ -7920,6 +7945,19 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   background: var(--surface-container-high);
 }
 
+/* The EP swatches are intentionally light in dark mode, so this neutral racing
+   segment keeps the normal high-contrast dark surface rather than inheriting them. */
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-race-details,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-race-details .field-control > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-race-details .field-control small {
+  color: var(--on-surface);
+}
+
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-race-details .field-control > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-race-details .field-control small {
+  background: transparent;
+}
+
 .extra-place-field-with-chips {
   display: grid;
   gap: 0.55rem;
@@ -8347,6 +8385,16 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-term-input > span
   background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #000000);
 }
 
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-term-input > span {
+  color: #0e1720;
+  background: color-mix(in srgb, var(--extra-place-back-surface) 84%, #ffffff);
+}
+
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-term-input > span {
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--extra-place-back-surface) 76%, #000000);
+}
+
 html[data-theme="dark"] .extra-place-outcome-unplaced strong:first-child {
   border-color: #ff9c98;
   background: #642c34;
@@ -8472,26 +8520,39 @@ html[data-theme="dark"] .extra-place-profit-value.is-hit {
   color: #142533;
 }
 
-/* Dark EP and Back/Lay schemes use saturated surfaces: keep all calculator copy bright. */
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place,
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back h3,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win h3,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place h3,
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .field-control > span,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .field-control > span,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .field-control > span,
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > span,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > span,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > span,
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-calculated-stake > strong,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-calculated-stake > strong,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-calculated-stake > strong,
-html[data-theme="dark"] .extra-place-editor-modal .calculator-segment-back .extra-place-stake-explainer,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-win .extra-place-stake-explainer,
-html[data-theme="dark"] .extra-place-editor-modal .extra-place-lay-place .extra-place-stake-explainer {
-  color: #142533;
+/* EP dark swatches are light enough for dark copy; Back/Lay panels remain dark and need light copy. */
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .calculator-segment-back,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-lay-win,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-lay-place,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .calculator-segment-back h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-lay-win h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-lay-place h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .field-control > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-calculated-stake > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-calculated-stake > strong,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-stake-explainer,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extra-place-editor-modal .extra-place-place-terms-title {
+  color: #0e1720;
+}
+
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .calculator-segment-back,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-lay-win,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-lay-place,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .calculator-segment-back h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-lay-win h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-lay-place h3,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .field-control > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-calculated-stake > span,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-calculated-stake > strong,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-stake-explainer,
+html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-modal .extra-place-place-terms-title {
+  color: var(--on-surface);
+}
+
+.extra-place-rating-pill-neutral {
+  color: var(--on-surface-variant) !important;
+  border-color: var(--outline) !important;
+  background: var(--surface-container) !important;
 }
 
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }

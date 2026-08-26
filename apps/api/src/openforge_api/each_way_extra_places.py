@@ -13,6 +13,7 @@ from openforge_api.db import (
     delete_each_way_extra_place,
     get_each_way_extra_place,
     get_profile_exchange_commission,
+    list_profile_exchange_commissions,
     list_each_way_extra_places,
     update_each_way_extra_place,
 )
@@ -67,17 +68,30 @@ def _format(value: Decimal | None) -> str | None:
     return f"{value:.2f}" if value is not None else None
 
 
-def _with_profile_commissions(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
+def _with_profile_commissions(
+    profile_id: str,
+    payload: dict[str, object],
+    commissions: dict[str, str] | None = None,
+) -> dict[str, object]:
     """Resolve exchange commission from profile settings rather than the editor."""
+    def commission_for(exchange: str) -> str:
+        if commissions is not None:
+            return commissions.get(exchange, "")
+        return get_profile_exchange_commission(profile_id, exchange)
+
     return {
         **payload,
-        "win_commission": get_profile_exchange_commission(profile_id, str(payload["win_exchange"])),
-        "place_commission": get_profile_exchange_commission(profile_id, str(payload["place_exchange"])),
+        "win_commission": commission_for(str(payload["win_exchange"])),
+        "place_commission": commission_for(str(payload["place_exchange"])),
     }
 
 
-def build_calculation(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
-    payload = _with_profile_commissions(profile_id, payload)
+def build_calculation(
+    profile_id: str,
+    payload: dict[str, object],
+    commissions: dict[str, str] | None = None,
+) -> dict[str, object]:
+    payload = _with_profile_commissions(profile_id, payload, commissions)
     result = calculate_each_way_extra_place(
         EachWayCalculationInput(
             mode=str(payload["mode"]),
@@ -119,15 +133,26 @@ def build_calculation(profile_id: str, payload: dict[str, object]) -> dict[str, 
     }
 
 
-def build_response(record: object) -> dict[str, object]:
+def build_response(
+    record: object,
+    commissions: dict[str, str] | None = None,
+) -> dict[str, object]:
     data = record.__dict__.copy()
-    resolved = _with_profile_commissions(str(data["profile_id"]), data)
-    return {**resolved, **build_calculation(str(data["profile_id"]), data)}
+    profile_id = str(data["profile_id"])
+    resolved = _with_profile_commissions(profile_id, data, commissions)
+    return {
+        **resolved,
+        **build_calculation(profile_id, resolved, commissions),
+    }
 
 
 @router.get("")
 def list_profile_each_way_extra_places(profile_id: str) -> list[dict[str, object]]:
-    return [build_response(record) for record in list_each_way_extra_places(profile_id)]
+    commissions = list_profile_exchange_commissions(profile_id)
+    return [
+        build_response(record, commissions)
+        for record in list_each_way_extra_places(profile_id)
+    ]
 
 
 @router.get("/{each_way_extra_place_id}")

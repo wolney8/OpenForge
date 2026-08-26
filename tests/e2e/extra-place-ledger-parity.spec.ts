@@ -1,6 +1,30 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const route = "/profiles/profile-demo-001/tracker/each-way-extra-places";
+const apiBaseUrl = "http://127.0.0.1:8010";
+const profileId = "profile-demo-001";
+
+async function createExtraPlaceRow(
+  request: APIRequestContext,
+  values: Record<string, string>,
+) {
+  const response = await request.post(
+    `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`,
+    { data: values },
+  );
+  expect(response.ok()).toBeTruthy();
+  return response.json() as Promise<{ each_way_extra_place_id: string }>;
+}
+
+async function deleteExtraPlaceRow(
+  request: APIRequestContext,
+  id: string,
+) {
+  const response = await request.delete(
+    `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places/${id}`,
+  );
+  expect(response.ok()).toBeTruthy();
+}
 
 test.describe("Extra Place ledger parity", () => {
   test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {
@@ -89,20 +113,22 @@ test.describe("Extra Place ledger parity", () => {
     await expect(date).toHaveValue("2026-08-30T12:00");
   });
 
-  test("keeps an incomplete saved row visible outside the active range", async ({ page }) => {
+  test("keeps an incomplete saved row visible outside the active range", async ({ page, request }) => {
+    const runnerName = `Incomplete visibility runner ${Date.now()}`;
+    const row = await createExtraPlaceRow(request, { runner: runnerName });
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
-    await page.getByRole("button", { name: "Add Extra Place row" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
-    await dialog.getByLabel("Runner / Horse").fill("Incomplete visibility runner");
-    await dialog.getByRole("button", { name: "Save" }).click();
-    await expect(dialog).toBeHidden({ timeout: 30_000 });
-
-    const row = page.locator("tr", { hasText: "Incomplete visibility runner" }).last();
-    await expect(row).toBeVisible();
-    await expect(row).toContainText("Needs action");
-    await expect(row).toContainText("outside range");
+    const tableRow = page.locator("tbody tr").filter({ hasText: runnerName }).last();
+    await expect(tableRow).toBeVisible();
+    await expect(tableRow).toContainText("Needs action");
+    await expect(tableRow).toContainText("outside range");
+    await tableRow.hover();
+    await expect(tableRow.locator(".row-issue-overlay")).toContainText("Bookmaker needed");
+    await expect(tableRow).toHaveClass(/row-state-issue-danger/);
+    await expect(tableRow.locator(".row-issue-overlay .table-chip")).toHaveCount(5);
+    await expect(tableRow.locator(".row-issue-overlay")).toContainText(/\d+\+ Issues/);
+    await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 
   test("opens Extra Place-specific filter controls", async ({ page }) => {
@@ -157,8 +183,26 @@ test.describe("Extra Place ledger parity", () => {
         ),
       )
       .toBeGreaterThan(30);
-    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(255, 255, 255)");
-    await expect(dialog.locator(".calculator-segment-back h3")).toHaveCSS("color", "rgb(20, 37, 51)");
+    await expect(dialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(14, 23, 32)");
+    await expect(dialog.locator(".calculator-segment-back h3")).toHaveCSS("color", "rgb(14, 23, 32)");
+    await expect(dialog.locator(".extra-place-place-terms-title")).toHaveCSS("color", "rgb(14, 23, 32)");
+
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+    const backLayDialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    await expect(backLayDialog.locator(".calculator-segment-back h3")).toHaveCSS("color", "rgb(231, 237, 244)");
+    await expect(backLayDialog.locator(".extra-place-place-terms-title")).toHaveCSS("color", "rgb(231, 237, 244)");
+    await expect(backLayDialog.locator(".extra-place-term-input > span")).toHaveCSS("color", "rgb(231, 237, 244)");
+
+    await backLayDialog.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Use Extra Place colour theme" }).click();
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+    const epDialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    await expect(epDialog.locator(".extra-place-race-details .field-control > span").first()).toHaveCSS(
+      "color",
+      "rgb(231, 237, 244)",
+    );
   });
 
   test("keeps calculation and settlement choices in local Extra Place controls", async ({ page }) => {
@@ -177,9 +221,11 @@ test.describe("Extra Place ledger parity", () => {
 
     await dialog.getByLabel("E/W Stake (each way)").fill("5");
     await dialog.getByLabel("Back Odds").fill("6");
+    await dialog.locator(".extra-place-lay-win select").selectOption("Smarkets");
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
+    await dialog.locator(".extra-place-lay-place select").selectOption("Smarkets");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
-    await calculatePanel.locator("select").first().selectOption("Betfred");
+    await dialog.getByLabel("BookmakerSelect").selectOption("Betfred");
     await expect(calculatePanel.locator(".extra-place-matrix-value-negative").first()).toBeVisible();
     await expect(dialog.getByText(/^Rating \d+\.\d+%$/)).toBeVisible();
     await expect(dialog.getByText(/^Implied odds \d+\.\d+$/)).toBeVisible();
@@ -205,6 +251,46 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByRole("button", { name: "Win", exact: true }).click();
     await expect(finishingPosition).toHaveValue("1st");
     await expect(dialog.getByRole("button", { name: "1st", exact: true })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("parses supported Smarkets and MBB runner copy blocks without overwriting a manual date", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    const runner = dialog.getByLabel("Runner / Horse");
+    const race = dialog.getByLabel("Race");
+    const date = dialog.getByLabel("Date / Time");
+
+    await runner.evaluate((element, copiedText) => {
+      const data = new DataTransfer();
+      data.setData("text/plain", copiedText);
+      element.dispatchEvent(
+        new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: data,
+        }),
+      );
+    }, "14:45 - Catterick\n\nTo win\n\nRoyale Union");
+    await expect(runner).toHaveValue("Royale Union");
+    await expect(race).toHaveValue("Catterick 14:45");
+
+    await date.fill("2026-08-30T12:00");
+    await race.evaluate((element, copiedText) => {
+      const data = new DataTransfer();
+      data.setData("text/plain", copiedText);
+      element.dispatchEvent(
+        new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: data,
+        }),
+      );
+    }, "14:45 Catterick\n\nCatterick\n\nRoyale Union\n\nWinner");
+    await expect(runner).toHaveValue("Royale Union");
+    await expect(race).toHaveValue("Catterick 14:45");
+    await expect(date).toHaveValue("2026-08-30T12:00");
   });
 
   test("derives Extra Place settlement choices from paid-place counts", async ({ page }) => {
@@ -239,9 +325,22 @@ test.describe("Extra Place ledger parity", () => {
 
     await expect(rightArrow).toBeAttached();
     await expect(rightArrow).toHaveCSS("opacity", "1");
+    await expect(rightArrow).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(rightArrow).not.toHaveCSS("box-shadow", "none");
+    await expect(rightArrow).toHaveCSS("border-top-style", "solid");
   });
 
-  test("keeps operational table controls available for Extra Place rows", async ({ page }) => {
+  test("keeps operational table controls available for Extra Place rows", async ({ page, request }) => {
+    const row = await createExtraPlaceRow(request, {
+      runner: `Action menu runner ${Date.now()}`,
+      bookmaker: "Betfred",
+      each_way_stake: "5",
+      back_odds: "6",
+      win_exchange: "Smarkets",
+      win_lay_odds: "2.3",
+      place_exchange: "Smarkets",
+      place_lay_odds: "4.5",
+    });
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
@@ -251,12 +350,17 @@ test.describe("Extra Place ledger parity", () => {
     await expect(ledger.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]')).toBeAttached();
     await expect(ledger.locator(".table-column-resize-handle").first()).toBeVisible();
 
-    const flag = ledger.getByRole("button", { name: /Update result for/ }).first();
-    await flag.click();
+    await ledger.locator(".table-scroll").evaluate((element) => {
+      element.scrollLeft = element.scrollWidth;
+    });
+    const flag = ledger.locator('button[aria-label^="Update result for"]').first();
+    await flag.scrollIntoViewIfNeeded();
+    await flag.click({ force: true });
     await expect(page.locator(".extra-place-result-menu")).toBeVisible();
+    await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 
-  test("uses the shared bookmaker badge and fully rounded neutral EP Profit treatment", async ({ page }) => {
+  test("uses the shared bookmaker badge and fully rounded neutral EP Profit treatment", async ({ page, request }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
@@ -268,11 +372,12 @@ test.describe("Extra Place ledger parity", () => {
       .locator(".extra-place-bookmaker-chip", { hasText: "Betfred" });
     await expect(modalBetfred).toHaveCSS("background-color", "rgb(179, 38, 30)");
     await expect(modalBetfred).toHaveCSS("color", "rgb(255, 255, 255)");
-    await quickAddDialog.locator('[data-pd-id="ledger-editor.panel.calculate"] select').first().selectOption("Betfred");
-    await quickAddDialog.getByLabel("Runner / Horse").fill("Branded badge runner");
-    await quickAddDialog.getByLabel("Race").fill("Branded badge race 14:10");
-    await quickAddDialog.getByRole("button", { name: "Save" }).click();
-    await expect(quickAddDialog).toBeHidden({ timeout: 30_000 });
+    await quickAddDialog.getByRole("button", { name: "Close", exact: true }).click();
+    const row = await createExtraPlaceRow(request, {
+      runner: `Branded badge runner ${Date.now()}`,
+      bookmaker: "Betfred",
+    });
+    await page.reload();
     const ledgerBetfred = ledger.locator(".bookmaker-identity-badge", { hasText: "Betfred" }).last();
     await expect(ledgerBetfred).toBeVisible();
     await expect(ledgerBetfred).toHaveCSS("background-color", "rgb(179, 38, 30)");
@@ -283,5 +388,17 @@ test.describe("Extra Place ledger parity", () => {
         ),
       )
       .toBeGreaterThan(30);
+    await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
+  });
+
+  test("uses a neutral rating pill when calculation inputs are incomplete", async ({ page, request }) => {
+    const runnerName = `Neutral rating runner ${Date.now()}`;
+    const saved = await createExtraPlaceRow(request, { runner: runnerName });
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+
+    const row = page.locator("tbody tr").filter({ hasText: runnerName }).last();
+    await expect(row.locator(".extra-place-rating-pill-neutral")).toContainText("Rating —");
+    await deleteExtraPlaceRow(request, saved.each_way_extra_place_id);
   });
 });
