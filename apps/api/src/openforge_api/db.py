@@ -4257,7 +4257,11 @@ def update_each_way_extra_place(
             each_way_extra_place_id,
             profile_id,
             "updated",
-            {"each_way_extra_place_id": each_way_extra_place_id, "profile_id": profile_id, **updated},
+            {
+                "each_way_extra_place_id": each_way_extra_place_id,
+                "profile_id": profile_id,
+                **updated,
+            },
         )
     return get_each_way_extra_place(profile_id, each_way_extra_place_id)
 
@@ -4285,7 +4289,8 @@ def delete_each_way_extra_place(
             },
         )
         deleted = connection.execute(
-            "DELETE FROM each_way_extra_places WHERE profile_id = ? AND each_way_extra_place_id = ?",
+            "DELETE FROM each_way_extra_places WHERE profile_id = ? "
+            "AND each_way_extra_place_id = ?",
             (profile_id, each_way_extra_place_id),
         )
     return deleted.rowcount > 0
@@ -5399,7 +5404,8 @@ def upsert_profile_tracker_settings(
                             weekly_profit_target = excluded.weekly_profit_target,
                             monthly_profit_target = excluded.monthly_profit_target,
                             annual_profit_target = excluded.annual_profit_target,
-                            weekly_extra_place_loss_budget = excluded.weekly_extra_place_loss_budget,
+                            weekly_extra_place_loss_budget =
+                              excluded.weekly_extra_place_loss_budget,
               updated_at = excluded.updated_at
             """,
             (

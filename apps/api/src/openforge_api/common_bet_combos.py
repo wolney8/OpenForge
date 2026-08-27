@@ -515,7 +515,11 @@ def update_common_bet_combo(
     return serialize(updated)
 
 
-def _loadout_status_for_account(status: str, lifecycle_status: str, restrictions_json: str) -> tuple[str, str]:
+def _loadout_status_for_account(
+    status: str,
+    lifecycle_status: str,
+    restrictions_json: str,
+) -> tuple[Literal["eligible", "limited", "blocked"], str]:
     normalized = f"{status} {lifecycle_status} {restrictions_json}".casefold()
     if any(value in normalized for value in ("blocked", "gubbed", "closed", "kyc blocked", "risk blocked", "bonus restricted")):
         return "blocked", "This account is not eligible for this quick add loadout."
@@ -574,7 +578,7 @@ def list_profile_quick_add_loadouts(
             ),
             None,
         ) if bookmaker else None
-        availability = "eligible"
+        availability: Literal["eligible", "limited", "blocked"] = "eligible"
         reason = override.availability_reason if override else ""
         if bookmaker and account is None:
             availability, reason = "blocked", "This profile has not configured the selected bookmaker."

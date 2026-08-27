@@ -28,18 +28,21 @@ def payload(**overrides: str) -> dict[str, str]:
 
 def test_each_way_extra_place_crud_is_profile_scoped() -> None:
     client = TestClient(app)
-    created = client.post(
-        "/profiles/profile-demo-001/each-way-extra-places", json=payload()
-    )
+    created = client.post("/profiles/profile-demo-001/each-way-extra-places", json=payload())
     assert created.status_code == 201
     row = created.json()
     assert row["win_lay_stake"] == "26.09"
     assert row["extra_place_pnl"] == "30.53"
 
     other_profile_rows = client.get("/profiles/profile-demo-002/each-way-extra-places").json()
-    assert all(item["each_way_extra_place_id"] != row["each_way_extra_place_id"] for item in other_profile_rows)
+    assert all(
+        item["each_way_extra_place_id"] != row["each_way_extra_place_id"]
+        for item in other_profile_rows
+    )
     listed = client.get("/profiles/profile-demo-001/each-way-extra-places")
-    assert any(item["each_way_extra_place_id"] == row["each_way_extra_place_id"] for item in listed.json())
+    assert any(
+        item["each_way_extra_place_id"] == row["each_way_extra_place_id"] for item in listed.json()
+    )
 
     settled = client.put(
         f"/profiles/profile-demo-001/each-way-extra-places/{row['each_way_extra_place_id']}",

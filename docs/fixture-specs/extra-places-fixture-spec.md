@@ -1,33 +1,32 @@
-# Fixture Spec: Extra Places
+# Fixture Spec: Each Way / Extra Place Ledger
 
-_Last updated: 2026-08-03_
+_Last reconciled: 2026-08-27_
 
-## Contract covered
+## Authoritative Contract And Fixtures
 
-- `docs/contracts/extra-places-contract.md`
-- `docs/contracts/sportsbook-extra-places-current-value-contract.md`
+- Contract: `docs/contracts/each-way-extra-place-ledger-contract.md`
+- Calculation fixtures: `tests/fixtures/each-way-extra-place-fixtures.json`
+- Calculation tests: `apps/api/tests/test_each_way_extra_place_calculation.py`
+- Workflow/API tests: `apps/api/tests/test_each_way_extra_place_workflow.py`
+- UI parity tests: `tests/e2e/extra-place-ledger-parity.spec.ts`
 
-## Purpose
+## Implemented Deterministic Cases
 
-Define deterministic synthetic extra-places fixtures for workflow, settlement and cash-first current-value review.
+| ID | Evidence | Coverage |
+| --- | --- | --- |
+| EWP-MBB-001 | Matched Betting Blog reference example | 1/5 terms, zero commission, suggested lay stakes, rating, implied odds, and all Extra Place outcome values. |
+| EWP-EP-CATCHER-001 | Synthetic EP Catcher historical actual-leg regression | Actual win/place lay stakes override suggestions for final Extra Place value. |
+| EWP-SETTLEMENT-001 | API calculation regression | Extra Place settlement and Void/NR final-value branches. |
+| EWP-POSITION-001 | API calculation regression | Explicit bookmaker/exchange paid-place gap derives Win, Standard Place, Extra Place, and Unplaced boundaries. |
+| EWP-WORKFLOW-001 | Profile-scoped API workflow | Create, list isolation, settlement, settled-row deletion reason guard, and deletion. |
 
-## Required cases
+## Deliberately Deferred Branches
 
-| ID | Scenario | Expected result |
-|---|---|---|
-| EP-001 | Pending extra-place row | conservative current value is minimum scenario |
-| EP-002 | Win | final value uses win branch |
-| EP-003 | Ordinary place | final value uses ordinary place branch |
-| EP-004 | Extra-place finish | final value uses promotional extra-place branch |
-| EP-005 | Unplaced | final value uses unplaced branch |
-| EP-006 | Non-runner | review required until settlement semantics are confirmed |
-| EP-007 | Rule 4 | applies explicit Rule 4 reduction |
-| EP-008 | Dead heat | applies explicit dead-heat factor |
-| EP-009 | Partial exchange matching | unresolved or partial state remains visible |
-| EP-010 | Changed place terms | blocks final value until revised terms are approved |
-| EP-011 | Unsupported branch | blocks value and raises manual review |
+Rule 4, dead heat, changed terms after placement, and unsupported settlement branches are not
+implemented. They remain manual-review branches under the ledger contract and must not be inferred
+or assigned financial values automatically.
 
-## Notes
+## Fixture Safety
 
-- Extra Places is an approved planning extension, not workbook parity.
-- Any production implementation must have exact numerical expectations before money values are visible.
+Fixtures are synthetic. The `EP Catcher` worksheet remains a regression and future migration
+source only; raw personal operational data must not be committed.

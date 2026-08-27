@@ -25,7 +25,7 @@ Initial quick-select loadouts are safe defaults. Their durable ownership is the 
 Fund-Manager Quick Add Loadout/Common Bet Combo authority; profile availability must later honour
 the selected account's eligibility and restrictions.
 
-_Status: Implementing. Approved: 2026-08-24._
+_Status: Signed off. Approved: 2026-08-24. Fund Manager UX and functional signoff recorded: 2026-08-27._
 
 ## Scope
 

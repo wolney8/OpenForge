@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -74,6 +74,7 @@ def _with_profile_commissions(
     commissions: dict[str, str] | None = None,
 ) -> dict[str, object]:
     """Resolve exchange commission from profile settings rather than the editor."""
+
     def commission_for(exchange: str) -> str:
         if commissions is not None:
             return commissions.get(exchange, "")
@@ -94,7 +95,7 @@ def build_calculation(
     payload = _with_profile_commissions(profile_id, payload, commissions)
     result = calculate_each_way_extra_place(
         EachWayCalculationInput(
-            mode=str(payload["mode"]),
+            mode=cast(Mode, str(payload["mode"])),
             each_way_stake=str(payload["each_way_stake"]),
             back_odds=str(payload["back_odds"]),
             place_term_numerator=str(payload["place_term_numerator"]),
@@ -105,26 +106,49 @@ def build_calculation(
             place_commission=str(payload["place_commission"]),
             actual_win_lay_stake=str(payload["actual_win_lay_stake"]),
             actual_place_lay_stake=str(payload["actual_place_lay_stake"]),
-            result=str(payload["result"]),
+            result=cast(Result, str(payload["result"])),
         )
     )
     fields = (
-        "place_back_odds", "win_lay_stake", "place_lay_stake", "win_liability",
-        "place_liability", "qualifying_loss", "extra_place_profit", "rating_percent", "implied_odds", "first_place_pnl",
-        "standard_place_pnl", "extra_place_pnl", "unplaced_pnl",
-        "first_place_bookie_pnl", "first_place_exchange_pnl",
-        "standard_place_bookie_pnl", "standard_place_exchange_pnl",
-        "extra_place_bookie_pnl", "extra_place_exchange_pnl",
-        "unplaced_bookie_pnl", "unplaced_exchange_pnl",
-        "first_place_bookie_win_pnl", "first_place_bookie_place_pnl",
-        "first_place_exchange_win_pnl", "first_place_exchange_place_pnl",
-        "standard_place_bookie_win_pnl", "standard_place_bookie_place_pnl",
-        "standard_place_exchange_win_pnl", "standard_place_exchange_place_pnl",
-        "extra_place_bookie_win_pnl", "extra_place_bookie_place_pnl",
-        "extra_place_exchange_win_pnl", "extra_place_exchange_place_pnl",
-        "unplaced_bookie_win_pnl", "unplaced_bookie_place_pnl",
-        "unplaced_exchange_win_pnl", "unplaced_exchange_place_pnl",
-        "current_value", "final_value",
+        "place_back_odds",
+        "win_lay_stake",
+        "place_lay_stake",
+        "win_liability",
+        "place_liability",
+        "qualifying_loss",
+        "extra_place_profit",
+        "rating_percent",
+        "implied_odds",
+        "first_place_pnl",
+        "standard_place_pnl",
+        "extra_place_pnl",
+        "unplaced_pnl",
+        "first_place_bookie_pnl",
+        "first_place_exchange_pnl",
+        "standard_place_bookie_pnl",
+        "standard_place_exchange_pnl",
+        "extra_place_bookie_pnl",
+        "extra_place_exchange_pnl",
+        "unplaced_bookie_pnl",
+        "unplaced_exchange_pnl",
+        "first_place_bookie_win_pnl",
+        "first_place_bookie_place_pnl",
+        "first_place_exchange_win_pnl",
+        "first_place_exchange_place_pnl",
+        "standard_place_bookie_win_pnl",
+        "standard_place_bookie_place_pnl",
+        "standard_place_exchange_win_pnl",
+        "standard_place_exchange_place_pnl",
+        "extra_place_bookie_win_pnl",
+        "extra_place_bookie_place_pnl",
+        "extra_place_exchange_win_pnl",
+        "extra_place_exchange_place_pnl",
+        "unplaced_bookie_win_pnl",
+        "unplaced_bookie_place_pnl",
+        "unplaced_exchange_win_pnl",
+        "unplaced_exchange_place_pnl",
+        "current_value",
+        "final_value",
     )
     return {
         "calculation_state": result.calculation_state,
@@ -150,13 +174,14 @@ def build_response(
 def list_profile_each_way_extra_places(profile_id: str) -> list[dict[str, object]]:
     commissions = get_profile_exchange_commission_map(profile_id)
     return [
-        build_response(record, commissions)
-        for record in list_each_way_extra_places(profile_id)
+        build_response(record, commissions) for record in list_each_way_extra_places(profile_id)
     ]
 
 
 @router.get("/{each_way_extra_place_id}")
-def get_profile_each_way_extra_place(profile_id: str, each_way_extra_place_id: str) -> dict[str, object]:
+def get_profile_each_way_extra_place(
+    profile_id: str, each_way_extra_place_id: str
+) -> dict[str, object]:
     record = get_each_way_extra_place(profile_id, each_way_extra_place_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Each Way / Extra Place row not found")
@@ -201,5 +226,7 @@ def delete_profile_each_way_extra_place(
 
 
 @router.post("/preview")
-def preview_each_way_extra_place(profile_id: str, payload: EachWayPreviewPayload) -> dict[str, object]:
+def preview_each_way_extra_place(
+    profile_id: str, payload: EachWayPreviewPayload
+) -> dict[str, object]:
     return {"profile_id": profile_id, **build_calculation(profile_id, payload.model_dump())}

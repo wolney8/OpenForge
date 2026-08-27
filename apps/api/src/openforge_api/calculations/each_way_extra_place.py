@@ -137,8 +137,18 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     if notes:
         return EachWayCalculationResult("incomplete", tuple(notes), *([None] * 39))
 
-    assert stake is not None and back_odds is not None and numerator is not None and denominator is not None
-    assert win_lay_odds is not None and place_lay_odds is not None and win_commission is not None and place_commission is not None
+    assert (
+        stake is not None
+        and back_odds is not None
+        and numerator is not None
+        and denominator is not None
+    )
+    assert (
+        win_lay_odds is not None
+        and place_lay_odds is not None
+        and win_commission is not None
+        and place_commission is not None
+    )
     place_back_odds = Decimal("1") + ((back_odds - Decimal("1")) * numerator / denominator)
     suggested_win_stake = _money((back_odds * stake) / (win_lay_odds - win_commission))
     suggested_place_stake = _money((place_back_odds * stake) / (place_lay_odds - place_commission))
@@ -183,30 +193,65 @@ def calculate_each_way_extra_place(values: EachWayCalculationInput) -> EachWayCa
     # Rating expresses retained value after the qualifying loss against total bookmaker outlay.
     rating_percent = _money((Decimal("1") + (qualifying_loss / total_outlay)) * Decimal("100"))
     # Implied odds are the extra-place return needed to recover the qualifying loss.
-    implied_odds = _money(Decimal("1") + (extra_place_profit / abs(qualifying_loss))) if qualifying_loss != 0 else None
+    implied_odds = (
+        _money(Decimal("1") + (extra_place_profit / abs(qualifying_loss)))
+        if qualifying_loss != 0
+        else None
+    )
     current = min(
         first_place,
         standard_place,
         extra_place if values.mode == "Extra Place" else standard_place,
         unplaced,
     )
-    resolved = {"Win": first_place, "Standard Place": standard_place, "Extra Place": extra_place, "Unplaced": unplaced, "Void/NR": Decimal("0.00")}
+    resolved = {
+        "Win": first_place,
+        "Standard Place": standard_place,
+        "Extra Place": extra_place,
+        "Unplaced": unplaced,
+        "Void/NR": Decimal("0.00"),
+    }
     final = resolved.get(values.result) if values.result != "Pending" else None
     return EachWayCalculationResult(
-        "resolved", (), place_back_odds, suggested_win_stake, suggested_place_stake,
-        win_liability, place_liability, qualifying_loss, extra_place_profit, rating_percent, implied_odds,
-        first_place, standard_place, extra_place, unplaced,
-        first_place_bookie, first_place_exchange,
-        standard_place_bookie, standard_place_exchange,
-        extra_place_bookie, extra_place_exchange,
-        unplaced_bookie, unplaced_exchange,
-        first_place_bookie_win, first_place_bookie_place,
-        first_place_exchange_win, first_place_exchange_place,
-        standard_place_bookie_win, standard_place_bookie_place,
-        standard_place_exchange_win, standard_place_exchange_place,
-        extra_place_bookie_win, extra_place_bookie_place,
-        extra_place_exchange_win, extra_place_exchange_place,
-        unplaced_bookie_win, unplaced_bookie_place,
-        unplaced_exchange_win, unplaced_exchange_place,
-        current, final,
+        "resolved",
+        (),
+        place_back_odds,
+        suggested_win_stake,
+        suggested_place_stake,
+        win_liability,
+        place_liability,
+        qualifying_loss,
+        extra_place_profit,
+        rating_percent,
+        implied_odds,
+        first_place,
+        standard_place,
+        extra_place,
+        unplaced,
+        first_place_bookie,
+        first_place_exchange,
+        standard_place_bookie,
+        standard_place_exchange,
+        extra_place_bookie,
+        extra_place_exchange,
+        unplaced_bookie,
+        unplaced_exchange,
+        first_place_bookie_win,
+        first_place_bookie_place,
+        first_place_exchange_win,
+        first_place_exchange_place,
+        standard_place_bookie_win,
+        standard_place_bookie_place,
+        standard_place_exchange_win,
+        standard_place_exchange_place,
+        extra_place_bookie_win,
+        extra_place_bookie_place,
+        extra_place_exchange_win,
+        extra_place_exchange_place,
+        unplaced_bookie_win,
+        unplaced_bookie_place,
+        unplaced_exchange_win,
+        unplaced_exchange_place,
+        current,
+        final,
     )

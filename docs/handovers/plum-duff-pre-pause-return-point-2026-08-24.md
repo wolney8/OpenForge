@@ -16,11 +16,12 @@ Do not use Vercel filesystem SQLite for persistent data.
 
 ## Each Way / Extra Places State
 
-Implemented and merged to `main`: dedicated profile-scoped table/API, calculation engine,
-three-step calculator/editor and deterministic MBB plus EP Catcher regression fixtures. Selected-range
-summaries, dashboards, formal reports, bookmaker breakdowns, cross-profile reporting and route-specific
-top-bar values now include Each Way / Extra Place as a distinct module. Local synthetic rows are available
-on `profile-demo-002` for verification only.
+Signed off on `main`: dedicated profile-scoped table/API, calculation engine, two-step
+`Calculate & Place` / `Settlement` editor, and deterministic MBB plus EP Catcher regression fixtures.
+Selected-range summaries, dashboards, formal reports, bookmaker breakdowns, cross-profile reporting and
+route-specific top-bar values include Each Way / Extra Place as a distinct module. Local synthetic rows
+are available on `profile-demo-002` for verification only. Fund Manager approval was recorded on
+2026-08-27; issue #88 awaits authenticated GitHub closure only.
 
 ## Personal Profile State
 
