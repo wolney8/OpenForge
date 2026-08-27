@@ -136,9 +136,9 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
   await expect(page.getByRole("columnheader", { name: /Status/i })).toBeVisible();
   await expect(page.locator(".accounts-financial-chip").first()).toBeVisible();
 
-  const toolbar = page.locator(".accounts-review-toolbar");
+  const toolbar = page.locator('[data-pd-id="accounts.table-toolbar"]');
   const loadouts = page.getByRole("group", { name: "Accounts review modes" });
-  const actions = toolbar.locator(".accounts-review-actions");
+  const actions = toolbar.locator(".extra-place-toolbar-actions");
   const pagination = page.getByLabel("Accounts top controls");
   const search = toolbar.getByRole("searchbox");
   const [toolbarBox, searchBox, actionsBox, loadoutBox, paginationBox] = await Promise.all([

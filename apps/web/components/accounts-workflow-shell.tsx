@@ -723,7 +723,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           <>
             <div
               aria-label="Accounts controls"
-              className="sportsbook-review-bar accounts-review-toolbar"
+              className="sportsbook-review-bar"
+              data-pd-id="accounts.table-toolbar"
               role="toolbar"
             >
               <label className="field-control table-search-field">
@@ -738,7 +739,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   value={query}
                 />
               </label>
-              <div className="extra-place-toolbar-actions accounts-review-actions">
+              <div className="extra-place-toolbar-actions">
                 <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
                 <div className="table-filter-button-wrap">
                   <button
@@ -775,8 +776,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </div>
               </div>
             </div>
-            <div className="extra-place-table-heading-controls accounts-table-heading-controls">
-              <div className="tracker-nav extra-place-loadouts accounts-review-loadouts" role="group" aria-label="Accounts review modes">
+            <div className="extra-place-table-heading-controls" data-pd-id="accounts.table-loadouts">
+              <div className="tracker-nav extra-place-loadouts" role="group" aria-label="Accounts review modes">
                 {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
                   <button
                     aria-pressed={tableMode === mode.value}

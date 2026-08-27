@@ -5745,14 +5745,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   overflow: auto;
 }
 
-.accounts-review-toolbar .table-search-field {
-  width: min(100%, 30rem);
-}
-
-.accounts-table-heading-controls {
-  justify-content: flex-start;
-}
-
 .account-catalogue-import-help {
   max-width: 48rem;
   margin: 0;
@@ -5830,12 +5822,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .accounts-editor-modal .field-control:focus-within {
   position: relative;
   z-index: 1;
-}
-
-@media (max-width: 44rem) {
-  .accounts-review-toolbar .table-search-field {
-    width: 100%;
-  }
 }
 
 .report-open-module-links {
