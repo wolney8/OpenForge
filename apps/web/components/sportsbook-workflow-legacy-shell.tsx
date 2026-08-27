@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { apiBaseUrl } from "@/lib/api";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -1267,7 +1268,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   );
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(8);
   const isDirty = useMemo(
     () =>
       JSON.stringify({
@@ -1624,7 +1625,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
   const effectivePage = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
-    [effectivePage, filteredRows]
+    [effectivePage, filteredRows, pageSize]
   );
 
   async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
@@ -1886,6 +1887,19 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
                 {errorMessage}
               </p>
             ) : null}
+            <LedgerPagination
+              ariaLabel="Sportsbook legacy pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="top"
+              totalRows={filteredRows.length}
+            />
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -1934,27 +1948,19 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
                 </tbody>
               </table>
             </div>
-            <div className="table-pagination" aria-label="Sportsbook pagination">
-              <div className="table-status">Page {effectivePage} of {pageCount}</div>
-              <div className="tracker-nav">
-                <button
-                  className="button-link"
-                  disabled={effectivePage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="button-link"
-                  disabled={effectivePage === pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <LedgerPagination
+              ariaLabel="Sportsbook legacy pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="bottom"
+              totalRows={filteredRows.length}
+            />
           </>
         ) : (
           <p className="lede">Table collapsed.</p>

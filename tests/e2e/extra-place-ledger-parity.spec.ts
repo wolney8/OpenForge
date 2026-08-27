@@ -353,12 +353,29 @@ test.describe("Extra Place ledger parity", () => {
     try {
       await page.goto(route);
       await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
-      const pagination = page.locator('[aria-label="Extra Place pagination"]');
-      await expect(pagination).toContainText(/Page 1 of [2-9]/);
-      await expect(pagination.getByRole("button", { name: "Next" })).toBeEnabled();
-      await pagination.getByRole("button", { name: "Next" }).click();
-      await expect(pagination).toContainText(/Page 2 of [2-9]/);
-      await expect(pagination.getByRole("button", { name: "Previous" })).toBeEnabled();
+      const topPagination = page.locator(
+        '[data-pd-id="extra-place-pagination.pagination.top"]',
+      );
+      const bottomPagination = page.locator(
+        '[data-pd-id="extra-place-pagination.pagination.bottom"]',
+      );
+      await expect(topPagination).toContainText(/Page 1 of [2-9]/);
+      await expect(bottomPagination).toContainText(/Page 1 of [2-9]/);
+      await expect(topPagination.getByRole("button", { name: "Next" })).toBeEnabled();
+      await topPagination.getByRole("button", { name: "Next" }).click();
+      await expect(topPagination).toContainText(/Page 2 of [2-9]/);
+      await expect(bottomPagination).toContainText(/Page 2 of [2-9]/);
+      await expect(bottomPagination.getByRole("button", { name: "Previous" })).toBeEnabled();
+      const pageCountBeforePageSizeChange = Number(
+        (await topPagination.textContent())?.match(/Page 2 of (\d+)/)?.[1],
+      );
+      await topPagination.getByLabel("Extra Place pagination rows per page").selectOption("16");
+      await expect(topPagination).toContainText(/Page 1 of \d+/);
+      const pageCountAfterPageSizeChange = Number(
+        (await topPagination.textContent())?.match(/Page 1 of (\d+)/)?.[1],
+      );
+      expect(pageCountAfterPageSizeChange).toBeLessThan(pageCountBeforePageSizeChange);
+      await expect(bottomPagination.getByLabel("Extra Place pagination rows per page")).toHaveValue("16");
     } finally {
       await Promise.all(created.map((row) => deleteExtraPlaceRow(request, row.each_way_extra_place_id)));
     }

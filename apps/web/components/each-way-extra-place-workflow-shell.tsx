@@ -8,6 +8,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import {
   LedgerEditorTabPanel,
@@ -832,7 +833,7 @@ export function EachWayExtraPlaceWorkflowShell({
       ),
     [filtered, resolvedDateRange],
   );
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
   const pageCount = getTrackerPageCount(pageableRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
   const paginatedRows = useMemo(
@@ -840,7 +841,7 @@ export function EachWayExtraPlaceWorkflowShell({
       ...pinnedIssueRows,
       ...paginateTrackerRows(pageableRows, effectivePage, pageSize),
     ],
-    [effectivePage, pageableRows, pinnedIssueRows],
+    [effectivePage, pageableRows, pageSize, pinnedIssueRows],
   );
   const selectedRow = selectedId
     ? (rows.find((row) => row.each_way_extra_place_id === selectedId) ?? null)
@@ -1039,6 +1040,19 @@ export function EachWayExtraPlaceWorkflowShell({
           </div>
         </div>
       </div>
+      <LedgerPagination
+        ariaLabel="Extra Place pagination"
+        currentPage={effectivePage}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setCurrentPage(1);
+        }}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        position="top"
+        totalRows={pageableRows.length}
+      />
       <ExtraPlaceTable
         bookmakerCatalogue={bookmakerCatalogue}
         outOfRangeIssueIds={new Set(
@@ -1050,27 +1064,19 @@ export function EachWayExtraPlaceWorkflowShell({
         rows={paginatedRows}
         visibleColumns={visibleColumns}
       />
-      <div aria-label="Extra Place pagination" className="table-pagination">
-        <div className="table-status">Page {effectivePage} of {pageCount}</div>
-        <div className="tracker-nav">
-          <button
-            className="button-link"
-            disabled={effectivePage === 1}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            type="button"
-          >
-            Previous
-          </button>
-          <button
-            className="button-link"
-            disabled={effectivePage === pageCount}
-            onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-            type="button"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <LedgerPagination
+        ariaLabel="Extra Place pagination"
+        currentPage={effectivePage}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setCurrentPage(1);
+        }}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        position="bottom"
+        totalRows={pageableRows.length}
+      />
       {typeof document !== "undefined" && open
         ? createPortal(
             <div

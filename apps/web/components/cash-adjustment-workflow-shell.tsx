@@ -17,6 +17,7 @@ import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -646,7 +647,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const isCreatingDraftRef = useRef(false);
 
   const isPersistingRef = useRef(false);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
@@ -1072,7 +1073,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const effectivePage = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
-    [effectivePage, filteredRows]
+    [effectivePage, filteredRows, pageSize]
   );
   const signedAmountPreview = useMemo(
     () => getSignedAmountPreview(formState.direction, formState.amount),
@@ -1798,6 +1799,19 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 {errorMessage}
               </p>
             ) : null}
+            <LedgerPagination
+              ariaLabel="Cash Adjustment pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="top"
+              totalRows={filteredRows.length}
+            />
             <LedgerTableScroll dataPdId="cash-adjustments.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
@@ -1923,27 +1937,19 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                 </tbody>
               </table>
             </LedgerTableScroll>
-            <div className="table-pagination" aria-label="Cash-adjustment pagination">
-              <div className="table-status">Page {effectivePage} of {pageCount}</div>
-              <div className="tracker-nav">
-                <button
-                  className="button-link"
-                  disabled={effectivePage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="button-link"
-                  disabled={effectivePage === pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <LedgerPagination
+              ariaLabel="Cash Adjustment pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="bottom"
+              totalRows={filteredRows.length}
+            />
           </>
         ) : null}
       </section>

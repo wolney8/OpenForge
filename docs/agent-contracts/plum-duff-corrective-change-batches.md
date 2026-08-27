@@ -3,6 +3,12 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Unified Bet Ledger Pagination Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-057 | Shared bet-ledger pagination | Show pagination at the top and bottom of every bet ledger table, allowing the Fund Manager to choose the visible row count from a shared default. | Global pagination correction | DONE |
+
 ## 2026-08-27 Global Bet Ledger Table Controls Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

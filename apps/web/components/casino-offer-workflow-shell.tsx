@@ -19,6 +19,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -1816,7 +1817,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
   const isPersistingRef = useRef(false);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
 
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
@@ -3084,7 +3085,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const effectivePage = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
-    [effectivePage, filteredRows]
+    [effectivePage, filteredRows, pageSize]
   );
   const editorHeaderFullTitle = useMemo(() => {
     const offerName = formState.offer_name.trim();
@@ -3717,6 +3718,19 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 {errorMessage}
               </p>
             ) : null}
+            <LedgerPagination
+              ariaLabel="Casino Offer pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="top"
+              totalRows={filteredRows.length}
+            />
             <LedgerTableScroll dataPdId="casino-offers.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
@@ -3854,27 +3868,19 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 </tbody>
               </table>
             </LedgerTableScroll>
-            <div className="table-pagination" aria-label="Casino-offer pagination">
-              <div className="table-status">Page {effectivePage} of {pageCount}</div>
-              <div className="tracker-nav">
-                <button
-                  className="button-link"
-                  disabled={effectivePage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="button-link"
-                  disabled={effectivePage === pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <LedgerPagination
+              ariaLabel="Casino Offer pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="bottom"
+              totalRows={filteredRows.length}
+            />
           </>
         ) : null}
       </section>

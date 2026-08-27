@@ -21,6 +21,7 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -1325,7 +1326,7 @@ export function FreeBetWorkflowShell({
   const isCreatingDraftRef = useRef(false);
 
   const isPersistingRef = useRef(false);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
   const currentDirtyState = useMemo(
     () => getComparableFreeBetDirtyState(formState),
     [formState]
@@ -2612,7 +2613,7 @@ export function FreeBetWorkflowShell({
   const effectivePage = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
-    [effectivePage, filteredRows]
+    [effectivePage, filteredRows, pageSize]
   );
   const editorHeaderFullTitle = useMemo(() => {
     const offerText = formState.offer_text.trim();
@@ -3417,6 +3418,19 @@ export function FreeBetWorkflowShell({
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+            <LedgerPagination
+              ariaLabel="Free Bet pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="top"
+              totalRows={filteredRows.length}
+            />
             <LedgerTableScroll dataPdId="free-bets.table-scroll">
               <table className="data-table sportsbook-data-table">
                 <colgroup>
@@ -3562,27 +3576,19 @@ export function FreeBetWorkflowShell({
                 </tbody>
               </table>
             </LedgerTableScroll>
-            <div className="table-pagination" aria-label="Free-bet pagination">
-              <div className="table-status">Page {effectivePage} of {pageCount}</div>
-              <div className="tracker-nav">
-                <button
-                  className="button-link"
-                  disabled={effectivePage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="button-link"
-                  disabled={effectivePage === pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <LedgerPagination
+              ariaLabel="Free Bet pagination"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="bottom"
+              totalRows={filteredRows.length}
+            />
           </>
         ) : null}
       </section>
