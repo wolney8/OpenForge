@@ -3,6 +3,13 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Extra Place Result-Due Geometry Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-068 | Extra Place ledger rows | Reserve the result-cue line in every status cell so purple result-due rows do not grow taller than other rows. | `Result due` chip on purple rows | DONE |
+| PD-FIX-069 | Extra Place result-due state | Use a darker purple base in dark mode and brighten it on hover, matching light-mode feedback. | Purple row dark-mode treatment | DONE |
+
 ## 2026-08-27 Extra Place Post-Race Cue Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

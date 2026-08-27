@@ -1882,12 +1882,21 @@ function StatusDisplay({
     : row.status === "Settled"
       ? "Position needed"
       : "Pending";
+  const statusCue = raceReady
+    ? { label: raceReady.label, tone: raceReady.tone }
+    : outsideTrackerRange
+      ? { label: "Needs action · outside range", tone: "outside-range" }
+      : null;
   return (
     <span className="extra-place-status-display">
       <strong>{position}</strong>
       <small className={row.result === "Extra Place" ? "extra-place-status-extra" : ""}>{row.result || "Pending"}</small>
-      {raceReady ? <small className={`extra-place-race-ready extra-place-race-ready-${raceReady.tone}`}>{raceReady.label}</small> : null}
-      {outsideTrackerRange ? <small>Needs action · outside range</small> : null}
+      <small
+        aria-hidden={statusCue ? undefined : true}
+        className={statusCue ? `extra-place-race-ready extra-place-race-ready-${statusCue.tone}` : "extra-place-status-cue-placeholder"}
+      >
+        {statusCue?.label ?? "\u00a0"}
+      </small>
     </span>
   );
 }

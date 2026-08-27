@@ -104,8 +104,8 @@ html[data-theme="dark"] {
   /* Ledger rows lift above the dark surface while issue-state colours retain priority. */
   --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 70%, var(--surface-container-high));
   --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 58%, var(--surface-container-highest));
-  --extra-place-result-due-surface: color-mix(in srgb, var(--surface-strong) 76%, #b775e6 24%);
-  --extra-place-result-due-hover-surface: color-mix(in srgb, var(--surface-strong) 63%, #c58af0 37%);
+  --extra-place-result-due-surface: color-mix(in srgb, var(--surface-strong) 87%, #8a49bb 13%);
+  --extra-place-result-due-hover-surface: color-mix(in srgb, var(--surface-strong) 70%, #c58af0 30%);
   --text: #e7edf4;
   --on-surface: var(--text);
   --muted: #a6b3c0;
@@ -8654,10 +8654,15 @@ html[data-theme="dark"] .extra-place-profit-value.is-hit {
 
 .extra-place-status-display {
   display: grid;
+  grid-template-rows: 1.25rem 1.15rem 1.85rem;
   gap: 0.15rem;
   min-width: 8rem;
 }
 .extra-place-status-display small { color: var(--on-surface-variant); }
+.extra-place-status-cue-placeholder {
+  display: block;
+  visibility: hidden;
+}
 .extra-place-status-extra { color: var(--warning) !important; font-weight: 780; }
 .extra-place-data-table td:nth-child(2) { white-space: normal; min-width: 13rem; }
 

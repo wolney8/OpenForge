@@ -181,23 +181,38 @@ test.describe("Extra Place ledger parity", () => {
 
   test("uses the purple result-due cue for an unsettled placed race after ten minutes", async ({ page, request }) => {
     const runnerName = `Result due runner ${Date.now()}`;
+    const normalRunnerName = `Normal placed runner ${Date.now()}`;
     const row = await createExtraPlaceRow(request, {
       runner: runnerName,
       placed_at: new Date(Date.now() - 11 * 60_000).toISOString(),
+      status: "Placed",
+    });
+    const normalRow = await createExtraPlaceRow(request, {
+      runner: normalRunnerName,
+      placed_at: new Date().toISOString(),
       status: "Placed",
     });
     try {
       await page.goto(route);
       await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
       const tableRow = page.locator("tbody tr").filter({ hasText: runnerName }).last();
+      const normalTableRow = page.locator("tbody tr").filter({ hasText: normalRunnerName }).last();
       await expect(tableRow).toHaveClass(/extra-place-row-result-due/);
       await expect(tableRow.getByText("Result due", { exact: true })).toBeVisible();
       await expect(tableRow.locator("td").first()).toHaveCSS(
         "box-shadow",
         /rgba?\(138, 73, 187(?:, 0\.72)?\)|rgba?\(216, 174, 255(?:, 0\.72)?\)/,
       );
+      const [resultDueBox, normalBox] = await Promise.all([
+        tableRow.boundingBox(),
+        normalTableRow.boundingBox(),
+      ]);
+      expect(resultDueBox).not.toBeNull();
+      expect(normalBox).not.toBeNull();
+      expect(Math.abs(resultDueBox!.height - normalBox!.height)).toBeLessThanOrEqual(1);
     } finally {
       await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
+      await deleteExtraPlaceRow(request, normalRow.each_way_extra_place_id);
     }
   });
 
@@ -252,6 +267,25 @@ test.describe("Extra Place ledger parity", () => {
     expect(Number.parseFloat(styles.light.transition)).toBeLessThanOrEqual(0.1);
     expect(rgbLuminance(styles.dark.normal)).toBeGreaterThan(rgbLuminance(styles.dark.surface));
     expect(rgbLuminance(styles.dark.due)).toBeGreaterThan(rgbLuminance(styles.dark.normal));
+
+    const { baseColour, hoverColour } = await page.evaluate(() => {
+      document.documentElement.dataset.theme = "dark";
+      const probe = document.createElement("div");
+      const base = document.createElement("span");
+      const hover = document.createElement("span");
+      base.style.background = "var(--extra-place-result-due-surface)";
+      hover.style.background = "var(--extra-place-result-due-hover-surface)";
+      probe.append(base, hover);
+      document.body.append(probe);
+      const values = {
+        baseColour: getComputedStyle(base).backgroundColor,
+        hoverColour: getComputedStyle(hover).backgroundColor,
+      };
+      probe.remove();
+      return values;
+    });
+    expect(rgbLuminance(baseColour)).toBeLessThan(60);
+    expect(rgbLuminance(hoverColour)).toBeGreaterThan(rgbLuminance(baseColour));
   });
 
   test("opens Extra Place-specific filter controls", async ({ page }) => {
