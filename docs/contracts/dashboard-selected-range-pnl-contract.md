@@ -1,6 +1,6 @@
 # Calculation Contract: Dashboard Selected-Range P&L
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-08-27_
 
 ## 0. Contract status
 
@@ -111,7 +111,8 @@ This calculation defines the selected-range dashboard summary for:
 | `sportsbook_pnl` | money | dashboard | current/final aggregate | derived | selected range |
 | `free_bet_pnl` | money | dashboard | current/final aggregate | derived | selected range |
 | `casino_pnl` | money | dashboard | current/final aggregate | derived | selected range |
-| `total_pnl` | money | dashboard | current/final aggregate | derived | sum of module pnl |
+| `each_way_extra_place_pnl` | money | dashboard | current/final aggregate | derived | selected range |
+| `total_pnl` | money | dashboard and profile top bar | current/final aggregate | derived | profile-wide selected-range betting P&L; excludes cash adjustments |
 | `open_bet_count` | integer | dashboard/profile summary | current | derived | helper count |
 | `overdue_bet_count` | integer | dashboard/profile summary | current | derived | helper count |
 | `part_laid_count` | integer | dashboard | current | derived | in-range lay status count |
@@ -144,7 +145,13 @@ Selected-range P&L:
 - `sportsbook_pnl = sum(sportsbook_bets.net_pnl where date_settled in resolved range)`
 - `free_bet_pnl = sum(free_bets.net_pnl where date_settled in resolved range)`
 - `casino_pnl = sum(casino_offers.net_pnl where date_settled in resolved range)`
-- `total_pnl = sportsbook_pnl + free_bet_pnl + casino_pnl`
+- `total_pnl = sportsbook_pnl + free_bet_pnl + casino_pnl + each_way_extra_place_pnl`
+
+## 9.1 Display scope
+
+- The profile top bar always displays `Total P&L for <selected range>` using `total_pnl`, regardless of the active tracker route.
+- Ledger quick-view cards are module-scoped and label their value `<module> P&L`; they are not profile totals.
+- Cash Adjustments are operational cash movement, not betting P&L. Its ledger card is labelled `Cash Adjustment Net` and does not change `total_pnl`.
 
 Open and overdue counts:
 

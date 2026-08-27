@@ -3,6 +3,14 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Financial Scope And Settings Recovery Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-054 (reopened) | Shared ledger issue overlays | Increase the transparent backdrop blur by 45%. | Follow-up to issue-chip blur request | DONE |
+| PD-FIX-060 | Profile header and ledger stat cards | Keep the top bar profile-wide for the selected tracker range and label ledger cards with their module scope. | Profile total versus ledger value audit | DONE |
+| PD-FIX-061 | Profile Settings / commission | Restore the typed exchange-commission list endpoint and prevent duplicate React keys. | `/tracker/settings#commission` failed fetch and `10Bet` warning | DONE |
+
 ## 2026-08-27 Unified Bet Ledger Pagination Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

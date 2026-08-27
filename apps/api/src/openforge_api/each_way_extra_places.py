@@ -13,7 +13,7 @@ from openforge_api.db import (
     delete_each_way_extra_place,
     get_each_way_extra_place,
     get_profile_exchange_commission,
-    list_profile_exchange_commissions,
+    get_profile_exchange_commission_map,
     list_each_way_extra_places,
     update_each_way_extra_place,
 )
@@ -148,7 +148,7 @@ def build_response(
 
 @router.get("")
 def list_profile_each_way_extra_places(profile_id: str) -> list[dict[str, object]]:
-    commissions = list_profile_exchange_commissions(profile_id)
+    commissions = get_profile_exchange_commission_map(profile_id)
     return [
         build_response(record, commissions)
         for record in list_each_way_extra_places(profile_id)

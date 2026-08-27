@@ -6312,9 +6312,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <span>Rows with a settle datetime</span>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Resolved value</span>
+            <span className="eyebrow">Sportsbook P&L</span>
             <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
-            <span>Current ledger total</span>
+            <span>Selected-range sportsbook P&L</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Sportsbook ledger controls" role="toolbar">

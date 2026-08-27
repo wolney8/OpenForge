@@ -5906,8 +5906,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   /* Blur the table behind issue chips without turning them into opaque cards. */
   background: color-mix(in srgb, var(--surface-container-high) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--outline) 24%, transparent);
-  backdrop-filter: blur(18px) saturate(0.92);
-  -webkit-backdrop-filter: blur(18px) saturate(0.92);
+  backdrop-filter: blur(26px) saturate(0.92);
+  -webkit-backdrop-filter: blur(26px) saturate(0.92);
   box-shadow: none;
   transition: opacity 150ms ease, transform 150ms ease;
   z-index: 6;
@@ -5920,7 +5920,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border: 0;
   border-radius: inherit;
   content: "";
-  filter: blur(10px);
+  filter: blur(14.5px);
   inset: -0.28rem;
   position: absolute;
   z-index: 0;

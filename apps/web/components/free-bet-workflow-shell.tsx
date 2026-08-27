@@ -3349,9 +3349,9 @@ export function FreeBetWorkflowShell({
             <span>Missing Expiry / Upcoming Expiry</span>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Resolved value</span>
+            <span className="eyebrow">Free Bets P&L</span>
             <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
-            <span>Current ledger total</span>
+            <span>Selected-range free-bet P&L</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Free-bet ledger controls" role="toolbar">

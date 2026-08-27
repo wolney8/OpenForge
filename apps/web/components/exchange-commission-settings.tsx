@@ -111,7 +111,7 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
       ) : (
         <div className="form-grid">
           {rows.map((row) => (
-            <label className="field-control" key={row.exchange_name}>
+            <label className="field-control" key={`${row.profile_id}:${row.exchange_name}`}>
               <span>{row.exchange_name}</span>
               <div className="tracker-nav">
                 <input

@@ -1779,9 +1779,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             <span>Investment rows • Account-cash rows</span>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Signed total</span>
+            <span className="eyebrow">Cash Adjustment Net</span>
             <strong><FinancialValue value={quickView.signedTotal} /></strong>
-            <span>Net effect of visible adjustments</span>
+            <span>Selected-range cash movement</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">

@@ -40,3 +40,24 @@ def test_exchange_commission_settings_are_profile_scoped(tmp_path: Path) -> None
         row["exchange_name"] == "Matchbook" and row["commission_rate"] == "0.02"
         for row in profile_two_response.json()
     )
+
+
+def test_exchange_commission_list_returns_unique_typed_records(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    for exchange_name, commission_rate in (("10Bet", "0.02"), ("Matchbook", "0.03")):
+        response = client.put(
+            "/profiles/profile-demo-001/exchange-commissions",
+            json={"exchange_name": exchange_name, "commission_rate": commission_rate},
+        )
+        assert response.status_code == 200
+
+    response = client.get("/profiles/profile-demo-001/exchange-commissions")
+    assert response.status_code == 200
+    rows = response.json()
+    assert all(isinstance(row, dict) for row in rows)
+    assert [row["exchange_name"] for row in rows] == sorted(
+        {row["exchange_name"] for row in rows}
+    )
+    assert len(rows) == len({row["exchange_name"] for row in rows})

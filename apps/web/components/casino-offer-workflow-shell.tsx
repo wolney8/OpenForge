@@ -3683,9 +3683,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             <span>Reward-led rows • Wagering rows</span>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Resolved value</span>
+            <span className="eyebrow">Casino Offers P&L</span>
             <strong><FinancialValue value={quickView.totalResolvedValue} /></strong>
-            <span>Current ledger total</span>
+            <span>Selected-range casino P&L</span>
           </article>
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">

@@ -73,8 +73,6 @@ type HeaderSummaryState = {
   overallPnl: number | null;
 };
 
-type TrackerSummaryResult = ReturnType<typeof summarizeTrackerData>;
-
 const profileTrackerMenuRoutes = [
   { href: "dashboard", title: "Dashboard", icon: "dashboard" },
   { href: "sportsbook-bets", title: "Sportsbook Bets", icon: "sports" },
@@ -91,30 +89,6 @@ function resolveProfileId(pathname: string): string | null {
   const match = pathname.match(/^\/profiles\/([^/]+)/);
   const profileId = match?.[1] ?? null;
   return profileId === "new" ? null : profileId;
-}
-
-function resolveHeaderPnlForRoute(pathname: string, summary: TrackerSummaryResult): number {
-  if (pathname.includes("/tracker/sportsbook-bets")) {
-    return summary.profitQuickView.sportsbook.reportingValue;
-  }
-
-  if (pathname.includes("/tracker/free-bets")) {
-    return summary.profitQuickView.freeBets.reportingValue;
-  }
-
-  if (pathname.includes("/tracker/casino-offers")) {
-    return summary.profitQuickView.casino.reportingValue;
-  }
-
-  if (pathname.includes("/tracker/each-way-extra-places")) {
-    return summary.profitQuickView.eachWayExtraPlaces.reportingValue;
-  }
-
-  if (pathname.includes("/tracker/cash-adjustments")) {
-    return summary.betsQuickView.selectedRangeCashAdjustments;
-  }
-
-  return summary.profitQuickView.overallPnl;
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
@@ -313,7 +287,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           profileRangeLabel: rangeLabel,
           profileSubtitle: rangeLabel,
           overallPnl:
-            overallPnl === null && current?.profileId === activeProfileId
+            // Never relabel a previous total with a newly selected range while
+            // its profile-wide summary is still loading.
+            overallPnl === null &&
+            current?.profileId === activeProfileId &&
+            current.profileRangeLabel === rangeLabel &&
+            current.profileRangeDetail === rangeDetail
               ? current.overallPnl
               : overallPnl,
         }));
@@ -382,7 +361,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           applyHeaderIdentity(
             cachedProfile,
             cachedSettings,
-            resolveHeaderPnlForRoute(pathname, cachedSummary)
+            cachedSummary.profitQuickView.overallPnl
           );
         }
       }
@@ -426,7 +405,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      applyHeaderIdentity(profile, settings, resolveHeaderPnlForRoute(pathname, summary));
+      applyHeaderIdentity(profile, settings, summary.profitQuickView.overallPnl);
     };
 
     void loadHeader().catch(() => {
@@ -598,7 +577,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                   aria-expanded={trackerMenuOpen}
                   aria-controls="profile-command-popover"
                   aria-haspopup="dialog"
-                  aria-label={`Open profile navigation for ${profileName}. ${profileRangeDetail}`}
+                  aria-label={`Open profile navigation for ${profileName}. Total P&L for ${profileRangeLabel}. ${profileRangeDetail}`}
                   className="summary-menu-button"
                   data-pd-id="profile-command.trigger"
                   onClick={() => {
@@ -610,20 +589,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                     openTrackerMenu();
                   }}
                   ref={trackerMenuTriggerRef}
-                  title={profileRangeDetail}
+                  title={`Total P&L for ${profileRangeLabel}. ${profileRangeDetail}`}
                   type="button"
                 >
                   <span className="summary-menu-copy">
                     <strong>{profileName}</strong>
                     <span className="summary-menu-subtitle">
-                      <span>{profileRangeLabel}</span>
+                      <span>Total P&L for {profileRangeLabel}</span>
                       {typeof profileOverallPnl === "number" ? (
                         <>
                           <span aria-hidden="true" className="summary-menu-separator">•</span>
                           <FinancialValue
                             animate={false}
                             className="summary-menu-financial-value"
-                            label={`${profileName} selected-range value`}
+                            label={`Total P&L for ${profileRangeLabel}`}
                             value={profileOverallPnl}
                           />
                         </>

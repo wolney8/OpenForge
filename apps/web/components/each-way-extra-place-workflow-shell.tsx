@@ -933,10 +933,11 @@ export function EachWayExtraPlaceWorkflowShell({
           detail="Completed race rows"
         />
         <article className="stat-card">
-          <span className="eyebrow">Resolved value</span>
+          <span className="eyebrow">Extra Place P&L</span>
           <strong>
             <FinancialValue value={resolvedValue} />
           </strong>
+          <span className="extra-place-resolved-detail">Selected-range Extra Place P&L</span>
           <span className="extra-place-resolved-detail">
             Qual Loss <FinancialValue animate={false} value={qualifyingLoss} />
           </span>

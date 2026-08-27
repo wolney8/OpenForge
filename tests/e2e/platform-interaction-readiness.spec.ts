@@ -5,6 +5,7 @@ const sportsbookRoute = "/profiles/profile-demo-001/tracker/sportsbook-bets";
 const freeBetRoute = "/profiles/profile-demo-001/tracker/free-bets";
 const casinoRoute = "/profiles/profile-demo-001/tracker/casino-offers";
 const cashAdjustmentRoute = "/profiles/profile-demo-001/tracker/cash-adjustments";
+const settingsRoute = "/profiles/profile-demo-001/tracker/settings";
 
 function colourChannels(value: string) {
   const rgbMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
@@ -198,7 +199,7 @@ test("tracker controls expose visible focus and an operable theme toggle", async
   await expect(page.getByRole("button", { name: /Switch to (light|dark) mode/ })).toBeVisible();
 });
 
-test("top bar profile summary shows date range, value, and range-name hover detail", async ({
+test("top bar profile summary shows profile-wide selected-range P&L across tracker routes", async ({
   page,
   request,
 }) => {
@@ -222,25 +223,30 @@ test("top bar profile summary shows date range, value, and range-name hover deta
   await expect(summaryValue).toBeVisible({ timeout: 90_000 });
   await expect(summaryValue).toHaveAttribute("data-money-tone", /^(positive|negative|neutral)$/);
   await expect(summaryValue).toContainText(/^£ ((\([0-9,]+\.[0-9]{2}\))|([0-9,]+\.[0-9]{2})|-)$/);
-  await expect(summaryButton).toHaveAttribute("title", /Tracker range:/);
-  const resolvedValueCard = page
-    .locator(".stat-card", { hasText: /Resolved value/i })
-    .first()
-    .locator(".financial-value");
-  await expect
-    .poll(async () => normalizeText(await summaryValue.textContent()))
-    .toBe(normalizeText(await resolvedValueCard.textContent()));
+  await expect(summaryButton).toContainText("Total P&L for");
+  await expect(summaryButton).toHaveAttribute("title", /Total P&L for .*Tracker range:/);
 
   await rangeSelect.selectOption("This Month");
   await expect(rangeCard).toHaveAttribute("title", /Tracker range: This Month/, {
     timeout: 30_000,
   });
-  await expect(summaryButton).toHaveAttribute("title", /Tracker range: This Month/, {
+  await expect(summaryButton).toHaveAttribute("title", /Total P&L for .*Tracker range: This Month/, {
     timeout: 30_000,
   });
-  await expect
-    .poll(async () => normalizeText(await summaryValue.textContent()))
-    .toBe(normalizeText(await resolvedValueCard.textContent()));
+  await expect(summaryValue).toBeVisible({ timeout: 30_000 });
+  const profileTotalForThisMonth = normalizeText(await summaryValue.textContent());
+  await page.goto(freeBetRoute);
+  await expect(page.getByText("Loading free-bet ledger")).toBeHidden({ timeout: 90_000 });
+  const freeBetSummaryValue = page.locator("button.summary-menu-button .summary-menu-financial-value");
+  await expect(freeBetSummaryValue).toBeVisible({ timeout: 30_000 });
+  expect(normalizeText(await freeBetSummaryValue.textContent())).toBe(profileTotalForThisMonth);
+  await page.goto(settingsRoute);
+  const settingsSummaryValue = page.locator("button.summary-menu-button .summary-menu-financial-value");
+  await expect(settingsSummaryValue).toBeVisible({ timeout: 30_000 });
+  expect(normalizeText(await settingsSummaryValue.textContent())).toBe(profileTotalForThisMonth);
+
+  await page.goto(sportsbookRoute);
+  await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
 
   await rangeSelect.selectOption("Last Month");
   await expect(rangeCard).toHaveAttribute("title", /Tracker range: Last Month/, {

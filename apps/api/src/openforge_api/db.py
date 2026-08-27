@@ -5248,7 +5248,7 @@ def get_profile_exchange_commission(profile_id: str, exchange_name: str) -> str:
     return str(row["commission_rate"])
 
 
-def list_profile_exchange_commissions(profile_id: str) -> dict[str, str]:
+def get_profile_exchange_commission_map(profile_id: str) -> dict[str, str]:
     """Return one profile's exchange defaults without opening a connection per row."""
     with connect() as connection:
         rows = connection.execute(
