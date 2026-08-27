@@ -72,6 +72,14 @@ test.describe("Extra Place ledger parity", () => {
     await expect(weeklyBudget.locator(".material-symbols-outlined")).toHaveText("savings");
     await expect(weeklyBudget).toContainText("/");
     await expect(ledger.getByText("Selected-range Extra Place P&L", { exact: true })).toHaveCount(0);
+
+    const [qualifyingLossBox, weeklyBudgetBox] = await Promise.all([
+      qualifyingLoss.boundingBox(),
+      weeklyBudget.boundingBox(),
+    ]);
+    expect(qualifyingLossBox).not.toBeNull();
+    expect(weeklyBudgetBox).not.toBeNull();
+    expect(weeklyBudgetBox!.y).toBeGreaterThan(qualifyingLossBox!.y + 1);
   });
 
   test("uses a viewport-owned editor with visible footer controls", async ({ page }) => {

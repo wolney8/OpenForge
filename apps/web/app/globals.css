@@ -8499,9 +8499,11 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
 }
 
 .extra-place-resolved-detail {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
   gap: 0.3rem;
+  margin-top: 0.38rem;
+  width: 100%;
 }
 
 .extra-place-resolved-detail .material-symbols-outlined {

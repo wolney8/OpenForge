@@ -8,6 +8,7 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | ID | Area | Requested change | Supplied reference | Status |
 | --- | --- | --- | --- | --- |
 | PD-FIX-062 | Extra Place resolved-value stat card | Remove redundant selected-range prose and replace Qual Loss / weekly budget labels with accessible Material indicators. Show qualifying-loss spend against weekly budget, turning the spend indicator danger only after the budget is exhausted. | Extra Place stat-card simplification | DONE |
+| PD-FIX-063 | Extra Place resolved-value stat card | Keep Qual Loss and weekly loss-budget indicators on separate lines. | Follow-up stat-card layout correction | DONE |
 
 ## 2026-08-27 Financial Scope And Settings Recovery Batch
 
