@@ -39,9 +39,15 @@ workbook cutover are explicitly excluded._
 | PD-PR-031 | Extra Places operational routing | Fund Manager and report links use the `all-issues` Extra Places route state, which the ledger reads deterministically. | DONE |
 | PD-PR-032 | Extra Places navigation identity | Profile command route and ledger title now use `chess_knight` and "Extra Places". | DONE |
 | PD-PR-033 | Extra Places filter dialog | Added the shared destructive clear control to the dialog footer, beside the normal completion action. | DONE |
-| PD-PR-034 | Accounts toolbar geometry | Replace Accounts-specific toolbar wrappers with the exact signed-off Extra Places control hierarchy; awaiting visual verification. | IN-PROGRESS |
+| PD-PR-034 | Accounts toolbar geometry | Reused the exact signed-off Extra Places control hierarchy. Fund Manager visual sign-off recorded. | DONE |
 | PD-PR-035 | Legacy profile provider reconciliation | Define an audited mapping from legacy profile account rows to global catalogue providers; no automatic deletion or replacement of financial history. | NEEDS-INFO |
 | PD-PR-036 | Catalogue import explanation | Settings now explains that catalogue import check is JSON validation/preflight only and cannot alter providers or Profile account state. | DONE |
+| PD-PR-037 | Profile Settings information architecture | Rename Spreadsheet to Import/Export and replace in-page offer-name CRUD with canonical list dialogs. | QUEUED |
+| PD-PR-038 | Exchange commission interaction | Replace per-row Save with validated debounced autosave, persistent session success state and last-updated display. | QUEUED |
+| PD-PR-039 | Quick Actions authority | Extend the existing Common Bet Combo authority with Fund Manager-enforced and Profile-owned action rules. | QUEUED |
+| PD-PR-040 | Quick Actions ledger presentation | Resolve actions into a bounded, static carousel above ledger pagination using shared table-control geometry. | QUEUED |
+| PD-PR-041 | Module security metadata | Define server-enforced Fund Manager/Subscriber action policy metadata for modules, settings, quick actions and notifications. | QUEUED |
+| PD-PR-042 | Settings dialog table geometry | Provide a reusable dialog-table viewport so data rows cannot underlap visible table headers. | QUEUED |
 | PD-PR-DEFER-001 | Provider source consolidation | Safely migrate legacy `bookmaker_catalogue` and master catalogue into one stable-ID persisted authority. | DEFERRED |
 | PD-PR-DEFER-002 | Global catalogue apply | Add audited, confirmed bulk apply with profile-reference impact resolution after source consolidation. | DEFERRED |
 | PD-PR-DEFER-003 | Extra Place transfer | Add staged Extra Place import/export mapping and fixture reconciliation before founder cutover. | DEFERRED |
