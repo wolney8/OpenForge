@@ -1,319 +1,152 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { apiBaseUrl } from "@/lib/api";
-import {
-  getLookupValuesByType,
-  type LookupValueRecord,
-  type LookupValueType,
-} from "@/lib/lookup-values";
-import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { useBodyScrollLock, useDialogFocusLifecycle } from "@/lib/ledger-ui";
+import { getLookupValuesByType, type LookupValueRecord, type LookupValueType } from "@/lib/lookup-values";
 import { dedupeOptions } from "@/lib/workbook-options";
 
-const sections: Array<{
-  lookupType: LookupValueType;
-  title: string;
-  singularLabel: string;
-  description: string;
-}> = [
-  {
-    lookupType: "offer_name",
-    title: "Sportsbook and free-bet offer names",
-    singularLabel: "sportsbook or free-bet offer name",
-    description:
-      "Workbook OfferNameList values from Settings used by sportsbook and free-bet offer selectors.",
-  },
-  {
-    lookupType: "casino_offer_name",
-    title: "Casino offer names",
-    singularLabel: "casino offer name",
-    description:
-      "Profile-owned casino offer authorities for casino campaigns, free spins, free play, and risk-free rows.",
-  },
+const sections: Array<{ lookupType: LookupValueType; title: string; singularLabel: string }> = [
+  { lookupType: "offer_name", title: "Sportsbook And Free Bet Offer Names", singularLabel: "offer name" },
+  { lookupType: "casino_offer_name", title: "Casino Offer Names", singularLabel: "casino offer name" },
 ];
 
 export function LookupValueSettings({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<LookupValueRecord[]>([]);
-  const [drafts, setDrafts] = useState<Partial<Record<LookupValueType, string>>>({
-    bookmaker: "",
-    exchange: "",
-    offer_name: "",
-    casino_offer_name: "",
-    group: "",
-    platform: "",
-  });
+  const [activeType, setActiveType] = useState<LookupValueType | null>(null);
+  const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
-  const [statusMessage, setStatusMessage] = useState("Loading workbook authority lists...");
+  const [statusMessage, setStatusMessage] = useState("Loading offer names...");
   const [errorMessage, setErrorMessage] = useState("");
   const [pendingAction, setPendingAction] = useState("");
-  const isDirty = useMemo(() => {
-    const hasDrafts = Object.values(drafts).some((value) => value.trim().length > 0);
-    if (hasDrafts) {
-      return true;
-    }
-    if (!editingId) {
-      return false;
-    }
-    const activeRow = rows.find((row) => row.lookup_value_id === editingId);
-    return !!activeRow && editingValue.trim() !== activeRow.option_value.trim();
-  }, [drafts, editingId, editingValue, rows]);
-  useUnsavedChangesGuard(isDirty);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const activeSection = sections.find((section) => section.lookupType === activeType) ?? null;
+
+  useBodyScrollLock(Boolean(activeType));
+  useDialogFocusLifecycle(Boolean(activeType), dialogRef);
 
   const loadRows = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      throw new Error("Unable to load workbook authority lists.");
-    }
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Unable to load offer names.");
     const data = (await response.json()) as LookupValueRecord[];
     setRows(data);
-    setStatusMessage(`Loaded ${data.length} workbook authority values for this profile.`);
+    setStatusMessage("Offer names are ready.");
   }, [profileId]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadRows().catch((error: Error) => {
-        setErrorMessage(error.message);
-        setStatusMessage("Workbook authority lists could not be loaded.");
-      });
-    }, 0);
+    const timeoutId = window.setTimeout(() => void loadRows().catch((error: Error) => {
+      setErrorMessage(error.message);
+      setStatusMessage("Offer names could not be loaded.");
+    }), 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadRows]);
 
-  const groupedRows = useMemo(
-    () =>
-      Object.fromEntries(
-        sections.map(({ lookupType }) => [
-          lookupType,
-          dedupeOptions(getLookupValuesByType(rows, lookupType)).map((value) =>
-            rows.find(
-              (row) => row.lookup_type === lookupType && row.option_value === value
-            ) ?? null
-          ),
-        ])
-      ) as Record<LookupValueType, Array<LookupValueRecord | null>>,
-    [rows]
-  );
+  const valuesByType = useMemo(() => Object.fromEntries(sections.map(({ lookupType }) => [
+    lookupType,
+    dedupeOptions(getLookupValuesByType(rows, lookupType)).map((value) => rows.find((row) => row.lookup_type === lookupType && row.option_value === value)).filter((row): row is LookupValueRecord => Boolean(row)),
+  ])) as Partial<Record<LookupValueType, LookupValueRecord[]>>, [rows]);
 
-  async function createLookupValue(lookupType: LookupValueType) {
-    const optionValue = (drafts[lookupType] ?? "").trim();
-    if (!optionValue) {
-      return;
-    }
-    setPendingAction(`create:${lookupType}`);
-    setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lookup_type: lookupType, option_value: optionValue }),
-    });
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      setPendingAction("");
-      return;
-    }
-    setDrafts((current) => ({ ...current, [lookupType]: "" }));
-    try {
-      await loadRows();
-      setStatusMessage(`Added ${optionValue} to ${lookupType} values for this profile.`);
-    } finally {
-      setPendingAction("");
-    }
-  }
-
-  async function saveLookupValue(row: LookupValueRecord) {
-    const optionValue = editingValue.trim();
-    if (!optionValue) {
-      return;
-    }
-    setPendingAction(`save:${row.lookup_value_id}`);
-    setErrorMessage("");
-    const response = await fetch(
-      `${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lookup_type: row.lookup_type,
-          option_value: optionValue,
-        }),
-      }
-    );
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      setPendingAction("");
-      return;
-    }
+  function closeDialog() {
+    setActiveType(null);
+    setDraft("");
     setEditingId(null);
     setEditingValue("");
-    try {
-      await loadRows();
-      setStatusMessage(`Updated ${row.lookup_type} value for this profile.`);
-    } finally {
-      setPendingAction("");
-    }
+    setErrorMessage("");
   }
 
-  async function deleteLookupValue(row: LookupValueRecord) {
-    setPendingAction(`delete:${row.lookup_value_id}`);
+  async function createValue() {
+    if (!activeType || !draft.trim()) return;
+    setPendingAction("create");
     setErrorMessage("");
-    const response = await fetch(
-      `${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`,
-      { method: "DELETE" }
-    );
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      setPendingAction("");
-      return;
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lookup_type: activeType, option_value: draft.trim() }),
+    });
+    if (!response.ok) setErrorMessage(await response.text());
+    else {
+      setDraft("");
+      await loadRows();
+      setStatusMessage("Offer name added.");
     }
-    if (editingId === row.lookup_value_id) {
+    setPendingAction("");
+  }
+
+  async function saveValue(row: LookupValueRecord) {
+    if (!editingValue.trim()) return;
+    setPendingAction(`save:${row.lookup_value_id}`);
+    setErrorMessage("");
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lookup_type: row.lookup_type, option_value: editingValue.trim() }),
+    });
+    if (!response.ok) setErrorMessage(await response.text());
+    else {
       setEditingId(null);
       setEditingValue("");
-    }
-    try {
       await loadRows();
-      setStatusMessage(`Removed ${row.option_value} from ${row.lookup_type} values.`);
-    } finally {
-      setPendingAction("");
+      setStatusMessage("Offer name updated.");
     }
+    setPendingAction("");
+  }
+
+  async function deleteValue(row: LookupValueRecord) {
+    setPendingAction(`delete:${row.lookup_value_id}`);
+    setErrorMessage("");
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values/${row.lookup_value_id}`, { method: "DELETE" });
+    if (!response.ok) setErrorMessage(await response.text());
+    else {
+      if (editingId === row.lookup_value_id) {
+        setEditingId(null);
+        setEditingValue("");
+      }
+      await loadRows();
+      setStatusMessage("Offer name removed.");
+    }
+    setPendingAction("");
   }
 
   return (
-    <section className="content-subpanel stack" aria-label="Workbook authority lists">
-      <div className="stack">
-        <span className="eyebrow">Workbook authority lists</span>
-        <p className="lede">
-          These profile-scoped lists hold offer labels only. Bookmaker, exchange, group, and
-          platform definitions are Fund Manager catalogue authority and are selected through
-          Profile Accounts rather than created here.
-        </p>
-      </div>
-      <div className="table-status" aria-live="polite">
-        {statusMessage}
-      </div>
-      {errorMessage ? (
-        <p className="error-text" role="alert">
-          {errorMessage}
-        </p>
-      ) : null}
-      <div className="stack">
-        {sections.map(({ lookupType, title, singularLabel, description }) => (
-          <section className="content-subpanel stack" key={lookupType}>
-            <div className="stack">
-              <span className="eyebrow">{title}</span>
-              <p className="lede">{description}</p>
-            </div>
-            <div className="form-grid">
-              <label className="field-control">
-                <span>Add {singularLabel}</span>
-                <input
-                  onChange={(event) =>
-                    setDrafts((current) => ({
-                      ...current,
-                      [lookupType]: event.target.value,
-                    }))
-                  }
-                  placeholder={`Add ${singularLabel} value`}
-                  type="text"
-                  value={drafts[lookupType] ?? ""}
-                />
-              </label>
-              <div className="field-control align-end">
-                <span className="sr-only">Add {title}</span>
-                <button
-                  className="button-link"
-                  disabled={Boolean(pendingAction)}
-                  onClick={() => void createLookupValue(lookupType)}
-                  type="button"
-                >
-                  {pendingAction === `create:${lookupType}` ? (
-                    <span aria-hidden="true" className="button-spinner" />
-                  ) : null}
-                  <span>{pendingAction === `create:${lookupType}` ? "Adding" : "Add value"}</span>
-                </button>
-              </div>
-            </div>
-            <div className="stack">
-              {groupedRows[lookupType].length === 0 ? (
-                <p className="lede">No {title.toLowerCase()} are defined yet for this profile.</p>
-              ) : (
-                groupedRows[lookupType]
-                  .filter((row): row is LookupValueRecord => row !== null)
-                  .map((row) => (
-                    <div className="table-toolbar" key={row.lookup_value_id}>
-                      {editingId === row.lookup_value_id ? (
-                        <label className="field-control" style={{ flex: 1 }}>
-                          <span>Edit value</span>
-                          <input
-                            onChange={(event) => setEditingValue(event.target.value)}
-                            type="text"
-                            value={editingValue}
-                          />
-                        </label>
-                      ) : (
-                        <div className="stack" style={{ flex: 1 }}>
-                          <strong>{row.option_value}</strong>
-                        </div>
-                      )}
-                      <div className="tracker-nav">
-                        {editingId === row.lookup_value_id ? (
-                          <>
-                            <button
-                              className="button-link"
-                              disabled={Boolean(pendingAction)}
-                              onClick={() => void saveLookupValue(row)}
-                              type="button"
-                            >
-                              {pendingAction === `save:${row.lookup_value_id}` ? (
-                                <span aria-hidden="true" className="button-spinner" />
-                              ) : null}
-                              <span>{pendingAction === `save:${row.lookup_value_id}` ? "Saving" : "Save"}</span>
-                            </button>
-                            <button
-                              className="button-link"
-                              disabled={Boolean(pendingAction)}
-                              onClick={() => {
-                                setEditingId(null);
-                                setEditingValue("");
-                              }}
-                              type="button"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            className="button-link"
-                            onClick={() => {
-                              setEditingId(row.lookup_value_id);
-                              setEditingValue(row.option_value);
-                            }}
-                            type="button"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          className="button-link"
-                          disabled={Boolean(pendingAction)}
-                          onClick={() => void deleteLookupValue(row)}
-                          type="button"
-                        >
-                          {pendingAction === `delete:${row.lookup_value_id}` ? (
-                            <span aria-hidden="true" className="button-spinner" />
-                          ) : null}
-                          <span>{pendingAction === `delete:${row.lookup_value_id}` ? "Removing" : "Remove"}</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </section>
+    <section aria-label="Offer name settings" className="stack" data-pd-id="profile-settings.offer-names">
+      <div className="table-status" aria-live="polite">{statusMessage}</div>
+      {errorMessage && !activeType ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+      <div className="settings-card-grid">
+        {sections.map((section) => (
+          <article className="content-subpanel stack settings-action-card" key={section.lookupType}>
+            <div><span className="eyebrow">Profile List</span><h2>{section.title}</h2><p className="field-hint">{valuesByType[section.lookupType]?.length ?? 0} values</p></div>
+            <button className="button-link settings-card-action" data-pd-id={`profile-settings.offer-names.${section.lookupType}.manage`} onClick={() => setActiveType(section.lookupType)} type="button">Manage</button>
+          </article>
         ))}
       </div>
+      {activeSection ? (
+        <div className="modal-backdrop modal-backdrop-elevated">
+          <section aria-label={`Manage ${activeSection.title}`} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal lookup-values-modal" data-pd-id={`profile-settings.offer-names.${activeSection.lookupType}.dialog`} ref={dialogRef} role="dialog" tabIndex={-1}>
+            <header className="workflow-editor-modal-header">
+              <div><span className="eyebrow">Profile Settings</span><h2>{activeSection.title}</h2></div>
+              <button aria-label={`Close ${activeSection.title}`} className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+            </header>
+            <div className="workflow-editor-modal-body stack dialog-table-modal-body">
+              {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+              <div className="table-toolbar dialog-table-toolbar">
+                <label className="field-control"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
+                <button className="button-link icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
+              </div>
+              <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">
+                <table className="data-table"><thead><tr><th>Offer Name</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
+                  {(valuesByType[activeSection.lookupType] ?? []).map((row) => (
+                    <tr key={row.lookup_value_id}>
+                      <td>{editingId === row.lookup_value_id ? <input aria-label={`Edit ${row.option_value}`} onChange={(event) => setEditingValue(event.target.value)} value={editingValue} /> : row.option_value}</td>
+                      <td>{new Date(row.updated_at).toLocaleDateString()}</td>
+                      <td><div className="table-action-group">{editingId === row.lookup_value_id ? <><button className="icon-button" aria-label={`Save ${row.option_value}`} disabled={Boolean(pendingAction)} onClick={() => void saveValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span></button><button className="icon-button" aria-label="Cancel edit" onClick={() => { setEditingId(null); setEditingValue(""); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></> : <button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => { setEditingId(row.lookup_value_id); setEditingValue(row.option_value); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>}<button aria-label={`Delete ${row.option_value}`} className="icon-button destructive-icon-button" disabled={Boolean(pendingAction)} onClick={() => void deleteValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

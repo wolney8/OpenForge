@@ -23,6 +23,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
@@ -3415,6 +3416,25 @@ export function FreeBetWorkflowShell({
             ) : null}
           </div>
         </div>
+        <LedgerQuickActions
+          ledgerType="Free Bets"
+          onSelect={async (action: LedgerQuickAction) => {
+            await startNewRow();
+            const defaults = action.defaults;
+            setFormState((current) => ({
+              ...current,
+              offer_text: defaults.offerName ?? current.offer_text,
+              offer_name: defaults.offerName ?? current.offer_name,
+              bookmaker: action.bookmaker || defaults.bookmaker || current.bookmaker,
+              bet_type: defaults.betType ?? current.bet_type,
+              fixture_type: defaults.fixtureType ?? current.fixture_type,
+              free_bet_value: defaults.freeBetValue ?? current.free_bet_value,
+              retention_mode: defaults.retention ?? current.retention_mode,
+              exchange_name: defaults.exchange ?? current.exchange_name,
+            }));
+          }}
+          profileId={profileId}
+        />
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}

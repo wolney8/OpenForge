@@ -42,12 +42,12 @@ workbook cutover are explicitly excluded._
 | PD-PR-034 | Accounts toolbar geometry | Reused the exact signed-off Extra Places control hierarchy. Fund Manager visual sign-off recorded. | DONE |
 | PD-PR-035 | Legacy profile provider reconciliation | Define an audited mapping from legacy profile account rows to global catalogue providers; no automatic deletion or replacement of financial history. | NEEDS-INFO |
 | PD-PR-036 | Catalogue import explanation | Settings now explains that catalogue import check is JSON validation/preflight only and cannot alter providers or Profile account state. | DONE |
-| PD-PR-037 | Profile Settings information architecture | Rename Spreadsheet to Import/Export and replace in-page offer-name CRUD with canonical list dialogs. | QUEUED |
-| PD-PR-038 | Exchange commission interaction | Replace per-row Save with validated debounced autosave, persistent session success state and last-updated display. | QUEUED |
-| PD-PR-039 | Quick Actions authority | Extend the existing Common Bet Combo authority with Fund Manager-enforced and Profile-owned action rules. | QUEUED |
-| PD-PR-040 | Quick Actions ledger presentation | Resolve actions into a bounded, static carousel above ledger pagination using shared table-control geometry. | QUEUED |
-| PD-PR-041 | Module security metadata | Define server-enforced Fund Manager/Subscriber action policy metadata for modules, settings, quick actions and notifications. | QUEUED |
-| PD-PR-042 | Settings dialog table geometry | Provide a reusable dialog-table viewport so data rows cannot underlap visible table headers. | QUEUED |
+| PD-PR-037 | Profile Settings information architecture | Rename Spreadsheet to Import/Export and replace in-page offer-name CRUD with canonical list dialogs. | VERIFIED |
+| PD-PR-038 | Exchange commission interaction | Replace per-row Save with validated debounced autosave, persistent session success state and last-updated display. | VERIFIED |
+| PD-PR-039 | Quick Actions authority | Extend the existing Common Bet Combo authority with Fund Manager-enforced and Profile-owned action rules. | VERIFIED |
+| PD-PR-040 | Quick Actions ledger presentation | Resolve actions into a bounded, static carousel above ledger pagination using shared table-control geometry. | VERIFIED |
+| PD-PR-041 | Module security metadata | Define central declarative Fund Manager/Subscriber action policy metadata for modules, settings, quick actions and notifications; server enforcement is held for authentication. | COMPLETE |
+| PD-PR-042 | Settings dialog table geometry | Provide a reusable dialog-table viewport so data rows cannot underlap visible table headers. | NEEDS VERIFICATION |
 | PD-PR-DEFER-001 | Provider source consolidation | Safely migrate legacy `bookmaker_catalogue` and master catalogue into one stable-ID persisted authority. | DEFERRED |
 | PD-PR-DEFER-002 | Global catalogue apply | Add audited, confirmed bulk apply with profile-reference impact resolution after source consolidation. | DEFERRED |
 | PD-PR-DEFER-003 | Extra Place transfer | Add staged Extra Place import/export mapping and fixture reconciliation before founder cutover. | DEFERRED |
@@ -79,3 +79,6 @@ workbook cutover are explicitly excluded._
 - Automated evidence: Accounts/profile Settings, table-control, Extra Place deep-link and catalogue
   E2E specs; Accounts API tests; web unit tests/typecheck/lint/build; and `git diff --check` passed
   on 2026-08-27. The UI items remain `NEEDS VERIFICATION` pending Fund Manager visual review.
+- The Profile Settings / Quick Actions follow-on verifies its API, unit, typecheck, lint, build and
+  focused keyboard/deep-link Playwright path. Its visual modal/commission/carousel review remains
+  a Fund Manager sign-off item in `profile-settings-quick-actions-register.md`.

@@ -38,6 +38,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-sportsbook-copy-dialog";
@@ -6331,6 +6332,29 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             {hasActiveTableControls ? <button aria-label="Clear active sportsbook filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); }} type="button">×</button> : null}
           </div>
         </div>
+        <LedgerQuickActions
+          ledgerType="Sportsbook"
+          onSelect={async (action: LedgerQuickAction) => {
+            await startNewRow();
+            const defaults = action.defaults;
+            setFormState((current) => ({
+              ...current,
+              offer_text: defaults.offerName ?? current.offer_text,
+              offer_name: defaults.offerName ?? current.offer_name,
+              bookmaker: action.bookmaker || defaults.bookmaker || current.bookmaker,
+              bet_type: defaults.betType ?? current.bet_type,
+              offer_type: defaults.offerType ?? current.offer_type,
+              fixture_type: defaults.fixtureType ?? current.fixture_type,
+              event_name: defaults.event ?? current.event_name,
+              market: defaults.market ?? current.market,
+              back_stake: defaults.stake ?? current.back_stake,
+              back_odds: defaults.backOdds ?? current.back_odds,
+              exchange_name: defaults.exchange ?? current.exchange_name,
+              match_strategy: defaults.layMode ?? current.match_strategy,
+            }));
+          }}
+          profileId={profileId}
+        />
         {errorMessage ? (
           <p className="error-text" role="alert">
             {errorMessage}

@@ -52,6 +52,7 @@ import {
   type DatePreset,
 } from "@/lib/tracker-summary";
 import { getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
+import { resolveVisibleQuickActions } from "@/lib/quick-actions";
 
 type Row = Record<string, string | null> & {
   each_way_extra_place_id: string;
@@ -410,17 +411,7 @@ export function EachWayExtraPlaceWorkflowShell({
           record.enabled &&
           record.availability !== "blocked",
       );
-      if (eligible.length) {
-        const favourites = eligible.filter((record) => record.is_favourite);
-        const visible = (favourites.length ? favourites : eligible)
-          .sort((left, right) =>
-            (favourites.length
-              ? (left.favourite_order ?? 0) - (right.favourite_order ?? 0)
-              : (left.sort_order ?? 0) - (right.sort_order ?? 0)) || left.label.localeCompare(right.label),
-          )
-          .slice(0, 4);
-        setLoadouts(visible);
-      }
+      if (eligible.length) setLoadouts(resolveVisibleQuickActions(eligible, "Extra Place"));
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [profileId]);

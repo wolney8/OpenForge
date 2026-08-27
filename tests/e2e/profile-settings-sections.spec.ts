@@ -13,12 +13,12 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
 
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
   const defaults = tabs.getByRole("tab", { name: "Defaults" });
-  const spreadsheet = tabs.getByRole("tab", { name: "Spreadsheet" });
+  const importExport = tabs.getByRole("tab", { name: "Import/Export" });
 
   await expect(defaults).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: /Settings for .* Profile/ })).toBeVisible();
   await expect(page.getByRole("tabpanel", { name: "Defaults" })).toBeVisible();
-  await expect(page.getByRole("tabpanel", { name: "Spreadsheet" })).toBeHidden();
+  await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeHidden();
   await expect(
     page.getByLabel("Tracker date settings").getByRole("button", { name: "Save" })
   ).toBeDisabled();
@@ -34,21 +34,21 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
 
   await defaults.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(spreadsheet).toBeFocused();
-  await expect(spreadsheet).toHaveAttribute("aria-selected", "true");
-  await expect(page).toHaveURL(`${settingsPath}#spreadsheet-transfer`);
-  await expect(page.getByRole("tabpanel", { name: "Spreadsheet" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Spreadsheet transfer" })).toBeVisible();
+  await expect(importExport).toBeFocused();
+  await expect(importExport).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(`${settingsPath}#import-export`);
+  await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Import/Export" })).toBeVisible();
 
   await page.keyboard.press("End");
-  const quickAdd = tabs.getByRole("tab", { name: "Quick Add" });
-  await expect(quickAdd).toBeFocused();
+  const quickActions = tabs.getByRole("tab", { name: "Quick Actions" });
+  await expect(quickActions).toBeFocused();
   await expect(tabs.getByRole("tab", { name: "Account Access" })).toHaveCount(0);
-  await expect(page).toHaveURL(`${settingsPath}#quick-add`);
-  await expect(page.getByRole("tabpanel", { name: "Quick Add" })).toBeVisible();
+  await expect(page).toHaveURL(`${settingsPath}#quick-actions`);
+  await expect(page.getByRole("tabpanel", { name: "Quick Actions" })).toBeVisible();
 
   await page.reload();
-  await expect(quickAdd).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel", { name: "Quick Add" })).toBeVisible();
+  await expect(quickActions).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Quick Actions" })).toBeVisible();
   expect(duplicateKeyErrors).toEqual([]);
 });

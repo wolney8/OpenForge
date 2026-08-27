@@ -437,6 +437,23 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (preset_id) REFERENCES fund_manager_combo_presets(preset_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_quick_actions (
+          action_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          ledger_type TEXT NOT NULL,
+          label TEXT NOT NULL,
+          enabled_fields_json TEXT NOT NULL DEFAULT '[]',
+          defaults_json TEXT NOT NULL DEFAULT '{}',
+          enabled INTEGER NOT NULL DEFAULT 1,
+          is_favourite INTEGER NOT NULL DEFAULT 0,
+          favourite_order INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          archived INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS accounts (
           account_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -4764,6 +4781,23 @@ class ProfileQuickAddLoadoutFavouriteRecord:
 
 
 @dataclass(frozen=True)
+class ProfileQuickActionRecord:
+    action_id: str
+    profile_id: str
+    ledger_type: str
+    label: str
+    enabled_fields_json: str
+    defaults_json: str
+    enabled: bool
+    is_favourite: bool
+    favourite_order: int
+    sort_order: int
+    archived: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
 class AccountRecord:
     account_id: str
     profile_id: str
@@ -5933,6 +5967,123 @@ def set_profile_quick_add_loadout_favourite(
             (profile_id, ledger_type),
         ).fetchall()
     return [map_profile_quick_add_loadout_favourite_row(row) for row in rows]
+
+
+def map_profile_quick_action_row(row: sqlite3.Row) -> ProfileQuickActionRecord:
+    record = dict(row)
+    record["enabled"] = bool(record["enabled"])
+    record["is_favourite"] = bool(record["is_favourite"])
+    record["archived"] = bool(record["archived"])
+    return ProfileQuickActionRecord(**record)
+
+
+def list_profile_quick_actions(
+    profile_id: str, *, include_archived: bool = False
+) -> list[ProfileQuickActionRecord]:
+    where_clause = "" if include_archived else "AND archived = 0"
+    with connect() as connection:
+        rows = connection.execute(
+            f"""
+            SELECT * FROM profile_quick_actions
+            WHERE profile_id = ? {where_clause}
+            ORDER BY ledger_type ASC, is_favourite DESC, favourite_order ASC,
+                     sort_order ASC, label COLLATE NOCASE ASC, action_id ASC
+            """,
+            (profile_id,),
+        ).fetchall()
+    return [map_profile_quick_action_row(row) for row in rows]
+
+
+def create_profile_quick_action(
+    profile_id: str, payload: dict[str, Any]
+) -> ProfileQuickActionRecord:
+    now = utc_now()
+    action_id = f"PQA-{uuid4().hex[:10].upper()}"
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_quick_actions (
+              action_id, profile_id, ledger_type, label, enabled_fields_json,
+              defaults_json, enabled, is_favourite, favourite_order, sort_order,
+              archived, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                action_id,
+                profile_id,
+                str(payload["ledger_type"]),
+                str(payload["label"]).strip(),
+                json.dumps(payload.get("enabled_fields", []), sort_keys=True),
+                json.dumps(payload.get("defaults", {}), sort_keys=True),
+                int(bool(payload.get("enabled", True))),
+                int(bool(payload.get("is_favourite", False))),
+                int(payload.get("favourite_order", 0)),
+                int(payload.get("sort_order", 0)),
+                int(bool(payload.get("archived", False))),
+                now,
+                now,
+            ),
+        )
+        row = connection.execute(
+            "SELECT * FROM profile_quick_actions WHERE action_id = ? AND profile_id = ?",
+            (action_id, profile_id),
+        ).fetchone()
+    assert row is not None
+    return map_profile_quick_action_row(row)
+
+
+def update_profile_quick_action(
+    profile_id: str, action_id: str, payload: dict[str, Any]
+) -> ProfileQuickActionRecord | None:
+    now = utc_now()
+    with connect() as connection:
+        existing = connection.execute(
+            "SELECT * FROM profile_quick_actions WHERE action_id = ? AND profile_id = ?",
+            (action_id, profile_id),
+        ).fetchone()
+        if existing is None:
+            return None
+        connection.execute(
+            """
+            UPDATE profile_quick_actions
+            SET ledger_type = ?, label = ?, enabled_fields_json = ?, defaults_json = ?,
+                enabled = ?, is_favourite = ?, favourite_order = ?, sort_order = ?,
+                archived = ?, updated_at = ?
+            WHERE action_id = ? AND profile_id = ?
+            """,
+            (
+                str(payload["ledger_type"]),
+                str(payload["label"]).strip(),
+                json.dumps(payload.get("enabled_fields", []), sort_keys=True),
+                json.dumps(payload.get("defaults", {}), sort_keys=True),
+                int(bool(payload.get("enabled", True))),
+                int(bool(payload.get("is_favourite", False))),
+                int(payload.get("favourite_order", 0)),
+                int(payload.get("sort_order", 0)),
+                int(bool(payload.get("archived", False))),
+                now,
+                action_id,
+                profile_id,
+            ),
+        )
+        row = connection.execute(
+            "SELECT * FROM profile_quick_actions WHERE action_id = ? AND profile_id = ?",
+            (action_id, profile_id),
+        ).fetchone()
+    return None if row is None else map_profile_quick_action_row(row)
+
+
+def archive_profile_quick_action(profile_id: str, action_id: str) -> bool:
+    with connect() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE profile_quick_actions
+            SET archived = 1, enabled = 0, is_favourite = 0, updated_at = ?
+            WHERE action_id = ? AND profile_id = ?
+            """,
+            (utc_now(), action_id, profile_id),
+        )
+    return cursor.rowcount > 0
 
 
 def get_profile_lookup_value(

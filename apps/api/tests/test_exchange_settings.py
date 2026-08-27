@@ -61,3 +61,14 @@ def test_exchange_commission_list_returns_unique_typed_records(tmp_path: Path) -
         {row["exchange_name"] for row in rows}
     )
     assert len(rows) == len({row["exchange_name"] for row in rows})
+
+
+def test_exchange_commission_requires_decimal_fraction(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    response = client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": "Matchbook", "commission_rate": "2"},
+    )
+    assert response.status_code == 422
+    assert "between 0 and 1" in response.text

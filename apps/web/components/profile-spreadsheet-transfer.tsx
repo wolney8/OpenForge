@@ -561,11 +561,11 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
     <StatusToast message={message} onDismiss={() => setMessage("")} />
     <section className="content-subpanel stack spreadsheet-transfer-panel">
       <div className="workflow-panel-header">
-        <div><span className="eyebrow">Profile data</span><h2>Spreadsheet transfer</h2></div>
+        <div><span className="eyebrow">Profile data</span><h2>Import/Export</h2></div>
         <div className="tracker-nav">
           <label className="field-control table-filter-field spreadsheet-ledger-control">
-            <span className="visually-hidden">Spreadsheet type</span>
-            <select aria-label="Spreadsheet transfer ledger" data-pd-id="spreadsheet-transfer.ledger" onChange={(event) => setSelectedLedger(event.target.value as LedgerKey)} value={selectedLedger}>
+            <span className="visually-hidden">Import/export ledger</span>
+            <select aria-label="Import/export ledger" data-pd-id="spreadsheet-transfer.ledger" onChange={(event) => setSelectedLedger(event.target.value as LedgerKey)} value={selectedLedger}>
               <option value="sportsbook">Sportsbook Bets</option>
               <option value="free-bets">Free Bets</option>
               <option value="casino-offers">Casino Offers</option>

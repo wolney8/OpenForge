@@ -20,6 +20,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -41,6 +42,7 @@ import {
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
+import { resolveVisibleQuickActions } from "@/lib/quick-actions";
 import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import {
   casinoOfferTypeUsesFieldGroup,
@@ -1992,17 +1994,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       sort_order: number;
       is_favourite: boolean;
       favourite_order: number;
+      enforced?: boolean;
     }>;
-    const eligible = rows
-      .filter((row) => row.ledger_type === "Casino" && row.enabled && row.availability !== "blocked");
-    const favourites = eligible.filter((row) => row.is_favourite);
-    setQuickAddLoadouts((favourites.length ? favourites : eligible)
-      .sort((left, right) =>
-        (favourites.length
-          ? left.favourite_order - right.favourite_order
-          : left.sort_order - right.sort_order) || left.label.localeCompare(right.label),
-      )
-      .slice(0, 4)
+    const eligible = rows.filter((row) => row.ledger_type === "Casino" && row.enabled && row.availability !== "blocked");
+    setQuickAddLoadouts(resolveVisibleQuickActions(eligible, "Casino")
       .map((row) => ({
         preset_id: row.preset_id,
         label: row.label,
@@ -3159,6 +3154,25 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     revealEditor({ expandLedger: true });
   }
 
+  async function startQuickAction(action: LedgerQuickAction) {
+    await startNewRow();
+    const defaults = action.defaults;
+    setFormState((current) => ({
+      ...current,
+      bookmaker: action.bookmaker || defaults.bookmaker || current.bookmaker,
+      offer_name: defaults.offerName ?? defaults.offer_name ?? current.offer_name,
+      offer_type: defaults.offerType ?? defaults.offer_type ?? current.offer_type,
+      game: defaults.game ?? current.game,
+      cash_stake: defaults.cashStake ?? defaults.cash_stake ?? current.cash_stake,
+      credit_amount: defaults.creditAmount ?? defaults.credit_amount ?? current.credit_amount,
+      bonus_amount: defaults.bonusAmount ?? defaults.bonus_amount ?? current.bonus_amount,
+      wager_multiplier: defaults.wagerMultiplier ?? defaults.wager_multiplier ?? current.wager_multiplier,
+      spin_stake: defaults.spinStake ?? defaults.spin_stake ?? current.spin_stake,
+      free_spins_awarded: defaults.spinCount ?? defaults.free_spins_awarded ?? current.free_spins_awarded,
+      free_spins_value: defaults.reward ?? defaults.convertedWin ?? defaults.free_spins_value ?? current.free_spins_value,
+    }));
+  }
+
   function buildFreeSpinsQuickAddForm(values: CasinoFreeSpinsQuickAddValues): CasinoOfferFormState {
     const operatingDate = getCurrentDateTimeLocalValue();
     const base = applyCasinoOfferTypeDefaults(createBlankForm(), "Free Spins");
@@ -3713,6 +3727,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
         {!tableCollapsed ? (
           <>
+            <LedgerQuickActions ledgerType="Casino" onSelect={startQuickAction} profileId={profileId} />
             {errorMessage ? (
               <p className="error-text" role="alert">
                 {errorMessage}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, field_validator
@@ -21,8 +21,14 @@ class ExchangeCommissionPayload(BaseModel):
     @classmethod
     def validate_decimal(cls, value: str) -> str:
         normalized = value.strip()
-        if normalized:
-            Decimal(normalized)
+        if not normalized:
+            return normalized
+        try:
+            parsed = Decimal(normalized)
+        except InvalidOperation as error:
+            raise ValueError("commission_rate must be a decimal fraction") from error
+        if parsed < Decimal("0") or parsed > Decimal("1"):
+            raise ValueError("commission_rate must be between 0 and 1")
         return normalized
 
 

@@ -1,4 +1,21 @@
 {
+  "quick_action_cases": [
+    {
+      "case_id": "QUICK-ACTION-001",
+      "inputs": {"scope": "fund_manager", "ledger": "Extra Place", "enforcement": "required", "enabled_fields": ["bookmaker", "eachWayStake"], "profile_override_fields": ["bookmaker"]},
+      "expected": {"visible_for_eligible_profile": true, "profile_can_disable": false, "profile_can_override": ["bookmaker"]}
+    },
+    {
+      "case_id": "QUICK-ACTION-002",
+      "inputs": {"scope": "profile", "profile_id": "PROFILE-001", "ledger": "Casino", "enabled_fields": ["offerName", "spinCount", "spinStake"]},
+      "expected": {"visible_to_profile_001": true, "visible_to_other_profiles": false, "unknown_field_rejected": true}
+    },
+    {
+      "case_id": "QUICK-ACTION-003",
+      "inputs": {"ledger": "Casino", "actions": ["required-a", "required-b", "profile-favourite", "optional", "blocked"]},
+      "expected": {"visible_slots": ["required-a", "required-b", "profile-favourite", "optional"], "blocked_action_visible": false}
+    }
+  ],
   "cases": [
     {
       "case_id": "COMBO-001",

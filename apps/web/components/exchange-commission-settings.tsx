@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { apiBaseUrl } from "@/lib/api";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
@@ -12,136 +13,126 @@ type ExchangeCommissionRecord = {
   updated_at: string;
 };
 
-type Props = {
-  profileId: string;
-  onSaved?: () => void | Promise<void>;
-};
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+type Props = { profileId: string; onSaved?: () => void | Promise<void> };
+
+function isValidCommission(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return true;
+  if (!/^\d*(?:\.\d*)?$/.test(normalized)) return false;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1;
+}
+
+function formatUpdatedAt(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Last updated";
+  return `Last updated ${new Intl.DateTimeFormat(undefined, {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  }).format(parsed)}`;
+}
 
 export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
   const [rows, setRows] = useState<ExchangeCommissionRecord[]>([]);
-  const [pristineRows, setPristineRows] = useState<ExchangeCommissionRecord[]>([]);
   const [statusMessage, setStatusMessage] = useState("Loading exchange commission settings...");
   const [errorMessage, setErrorMessage] = useState("");
-  const [savingExchange, setSavingExchange] = useState<string | null>(null);
-  const isDirty = useMemo(
-    () =>
-      JSON.stringify(rows.map((row) => [row.exchange_name, row.commission_rate])) !==
-      JSON.stringify(pristineRows.map((row) => [row.exchange_name, row.commission_rate])),
-    [pristineRows, rows]
-  );
-  useUnsavedChangesGuard(isDirty);
+  const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
+  const [savedAt, setSavedAt] = useState<Record<string, string>>({});
+  const timers = useRef<Record<string, number>>({});
+  const rowsRef = useRef<ExchangeCommissionRecord[]>([]);
+  const pendingValues = useRef<Record<string, string>>({});
+
+  useUnsavedChangesGuard(rows.some((row) => !isValidCommission(row.commission_rate)));
+
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const loadSettings = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      throw new Error("Unable to load exchange commission settings.");
-    }
-
+    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Unable to load exchange commission settings.");
     const data = (await response.json()) as ExchangeCommissionRecord[];
     setRows(data);
-    setPristineRows(data);
+    setSavedAt(Object.fromEntries(data.map((row) => [row.exchange_name, row.updated_at])));
     setStatusMessage(`Loaded ${data.length} profile-scoped exchange commission settings.`);
   }, [profileId]);
 
   useEffect(() => {
+    const activeTimers = timers.current;
     const timeoutId = window.setTimeout(() => {
       void loadSettings().catch((error: Error) => {
         setErrorMessage(error.message);
         setStatusMessage("Exchange commission settings could not be loaded.");
       });
     }, 0);
-
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+      Object.values(activeTimers).forEach((timer) => window.clearTimeout(timer));
+    };
   }, [loadSettings]);
 
-  async function saveRow(exchangeName: string) {
-    const row = rows.find((entry) => entry.exchange_name === exchangeName);
-    if (!row) {
-      return;
-    }
-
-    setSavingExchange(exchangeName);
+  const saveRow = useCallback(async (exchangeName: string, pendingValue?: string) => {
+    const row = rowsRef.current.find((entry) => entry.exchange_name === exchangeName);
+    const commissionRate = pendingValue ?? pendingValues.current[exchangeName] ?? row?.commission_rate ?? "";
+    if (!row || !isValidCommission(commissionRate)) return;
+    setSaveStates((current) => ({ ...current, [exchangeName]: "saving" }));
     setErrorMessage("");
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        exchange_name: row.exchange_name,
-        commission_rate: row.commission_rate,
-      }),
+      body: JSON.stringify({ exchange_name: row.exchange_name, commission_rate: commissionRate.trim() }),
     });
-
     if (!response.ok) {
+      setSaveStates((current) => ({ ...current, [exchangeName]: "error" }));
       setErrorMessage(await response.text());
-      setSavingExchange(null);
       return;
     }
+    const saved = (await response.json()) as ExchangeCommissionRecord;
+    setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? saved : entry));
+    setSavedAt((current) => ({ ...current, [exchangeName]: saved.updated_at }));
+    setSaveStates((current) => ({ ...current, [exchangeName]: "saved" }));
+    delete pendingValues.current[exchangeName];
+    if (onSaved) await onSaved();
+  }, [onSaved, profileId]);
 
-    try {
-      await loadSettings();
-      if (onSaved) {
-        await onSaved();
-      }
-    } finally {
-      setSavingExchange(null);
-    }
+  function scheduleSave(exchangeName: string, value: string) {
+    window.clearTimeout(timers.current[exchangeName]);
+    pendingValues.current[exchangeName] = value;
+    setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? { ...entry, commission_rate: value } : entry));
+    setSaveStates((current) => ({ ...current, [exchangeName]: "idle" }));
+    if (!isValidCommission(value)) return;
+    timers.current[exchangeName] = window.setTimeout(() => void saveRow(exchangeName, value), 550);
+  }
+
+  function saveOnBlur(exchangeName: string) {
+    window.clearTimeout(timers.current[exchangeName]);
+    void saveRow(exchangeName, pendingValues.current[exchangeName]);
   }
 
   return (
-    <section className="content-subpanel stack" aria-label="Exchange commission settings">
-      <div className="stack">
-        <span className="eyebrow">Exchange commission settings</span>
-        <p className="lede">
-          Workbook parity: commission is set once per exchange for this profile and then
-          looked up on sportsbook and free-bet rows.
-        </p>
-      </div>
-      <div className="table-status" aria-live="polite">
-        {statusMessage}
-      </div>
-      {errorMessage ? (
-        <p className="error-text" role="alert">
-          {errorMessage}
-        </p>
-      ) : null}
-      {rows.length === 0 ? (
-        <p className="lede">No exchange settings exist yet for this profile.</p>
-      ) : (
-        <div className="form-grid">
-          {rows.map((row) => (
-            <label className="field-control" key={`${row.profile_id}:${row.exchange_name}`}>
-              <span>{row.exchange_name}</span>
-              <div className="tracker-nav">
-                <input
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setRows((current) =>
-                      current.map((entry) =>
-                        entry.exchange_name === row.exchange_name
-                          ? { ...entry, commission_rate: event.target.value }
-                          : entry
-                      )
-                    )
-                  }
-                  placeholder="0.02"
-                  value={row.commission_rate}
-                />
-                <button
-                  className="button-link"
-                  disabled={savingExchange === row.exchange_name}
-                  onClick={() => void saveRow(row.exchange_name)}
-                  type="button"
-                >
-                  {savingExchange === row.exchange_name ? (
-                    <span aria-hidden="true" className="button-spinner" />
-                  ) : null}
-                  <span>{savingExchange === row.exchange_name ? "Saving" : "Save"}</span>
-                </button>
-              </div>
-            </label>
-          ))}
+    <section aria-label="Exchange commission settings" className="content-subpanel stack" data-pd-id="profile-settings.commission">
+      <div><span className="eyebrow">Exchange commission</span><h2>Profile commission defaults</h2></div>
+      <div aria-live="polite" className="table-status">{statusMessage}</div>
+      {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+      {rows.length === 0 ? <p className="field-hint">No exchange settings exist yet for this profile.</p> : (
+        <div className="form-grid commission-settings-grid">
+          {rows.map((row) => {
+            const state = saveStates[row.exchange_name] ?? "idle";
+            const valid = isValidCommission(row.commission_rate);
+            return (
+              <label className="field-control commission-setting" key={`${row.profile_id}:${row.exchange_name}`}>
+                <span>{row.exchange_name}</span>
+                <input aria-describedby={`commission-status-${row.exchange_name}`} aria-invalid={!valid} inputMode="decimal" onBlur={() => saveOnBlur(row.exchange_name)} onChange={(event) => scheduleSave(row.exchange_name, event.target.value)} placeholder="0.02" value={row.commission_rate} />
+                <small id={`commission-status-${row.exchange_name}`}>
+                  {!valid ? "Enter a decimal fraction from 0 to 1." : null}
+                  {state === "saving" ? "Saving" : null}
+                  {state === "saved" ? <><span aria-hidden="true" className="material-symbols-outlined">check_circle</span>{formatUpdatedAt(savedAt[row.exchange_name] ?? row.updated_at)}</> : null}
+                  {state === "error" ? "Could not save." : null}
+                </small>
+              </label>
+            );
+          })}
         </div>
       )}
     </section>

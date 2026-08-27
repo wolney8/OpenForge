@@ -11,10 +11,10 @@ import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
   { id: "defaults", label: "Defaults" },
-  { id: "spreadsheet-transfer", label: "Spreadsheet" },
+  { id: "import-export", label: "Import/Export" },
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
-  { id: "quick-add", label: "Quick Add" },
+  { id: "quick-actions", label: "Quick Actions" },
 ] as const;
 
 type SettingsSection = (typeof settingsSections)[number]["id"];
@@ -48,7 +48,12 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
 
   useEffect(() => {
     const syncFromHash = () => {
-      const hashSection = window.location.hash.slice(1);
+      const rawHashSection = window.location.hash.slice(1);
+      const hashSection = rawHashSection === "spreadsheet-transfer"
+        ? "import-export"
+        : rawHashSection === "quick-add"
+          ? "quick-actions"
+          : rawHashSection;
       if (isSettingsSection(hashSection)) setActiveSection(hashSection);
     };
     const timeoutId = window.setTimeout(syncFromHash, 0);
@@ -119,10 +124,10 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           <TrackerDateSettings profileId={profileId} />
         </section>
         <section
-          aria-labelledby="profile-settings-tab-spreadsheet-transfer"
+          aria-labelledby="profile-settings-tab-import-export"
           className="analytics-tab-panel"
-          hidden={activeSection !== "spreadsheet-transfer"}
-          id="profile-settings-panel-spreadsheet-transfer"
+          hidden={activeSection !== "import-export"}
+          id="profile-settings-panel-import-export"
           role="tabpanel"
         >
           <ProfileSpreadsheetTransfer profileId={profileId} />
@@ -146,10 +151,10 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           <ExchangeCommissionSettings profileId={profileId} />
         </section>
         <section
-          aria-labelledby="profile-settings-tab-quick-add"
+          aria-labelledby="profile-settings-tab-quick-actions"
           className="analytics-tab-panel"
-          hidden={activeSection !== "quick-add"}
-          id="profile-settings-panel-quick-add"
+          hidden={activeSection !== "quick-actions"}
+          id="profile-settings-panel-quick-actions"
           role="tabpanel"
         >
           <ProfileQuickAddLoadoutSettings profileId={profileId} />

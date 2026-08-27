@@ -19,6 +19,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -1792,6 +1793,23 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
           </div>
         </div>
+        <LedgerQuickActions
+          ledgerType="Cash Adjustments"
+          onSelect={async (action: LedgerQuickAction) => {
+            await startNewRow();
+            const defaults = action.defaults;
+            setFormState((current) => ({
+              ...current,
+              adjustment_type: defaults.adjustmentType ?? current.adjustment_type,
+              linked_account: defaults.linkedAccount ?? current.linked_account,
+              amount: defaults.amount ?? current.amount,
+              direction: defaults.direction ?? current.direction,
+              adjustment_date: defaults.adjustmentDate ?? current.adjustment_date,
+              description: defaults.notes ?? current.description,
+            }));
+          }}
+          profileId={profileId}
+        />
         {!tableCollapsed ? (
           <>
             {errorMessage ? (

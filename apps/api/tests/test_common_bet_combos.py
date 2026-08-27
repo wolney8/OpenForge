@@ -168,6 +168,7 @@ def test_quick_add_loadouts_inherit_and_isolate_profile_overrides(tmp_path: Path
                 "supported_ledgers": ["Casino"],
                 "enabled_fields": ["spinStake", "spinCount"],
                 "defaults": {"spinStake": "0.10", "spinCount": "10"},
+                "allowed_profile_override_fields": ["spinStake"],
             },
         },
     )
@@ -181,6 +182,7 @@ def test_quick_add_loadouts_inherit_and_isolate_profile_overrides(tmp_path: Path
     inherited_row = next(row for row in inherited.json() if row["preset_id"] == preset_id)
     assert inherited_row["enabled"] is True
     assert inherited_row["defaults"]["spinStake"] == "0.10"
+    assert inherited_row["allowed_profile_override_fields"] == ["spinStake"]
 
     hidden = client.put(
         f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}",
@@ -316,7 +318,7 @@ def test_quick_add_loadout_rejects_blocked_profile_account_override(tmp_path: Pa
     account = client.post(
         "/profiles/profile-demo-001/accounts",
         json={
-            "account": "Demo Gubbed Bookmaker",
+                "account": "10Bet",
             "type": "Bookie",
             "counts_in_cash_total": True,
             "channel": "Online",
@@ -332,7 +334,79 @@ def test_quick_add_loadout_rejects_blocked_profile_account_override(tmp_path: Pa
 
     rejected = client.put(
         f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{created.json()['preset_id']}",
-        json={"bookmaker_override": "Demo Gubbed Bookmaker"},
+        json={"bookmaker_override": "10Bet"},
     )
     assert rejected.status_code == 422
     assert "cannot be used" in rejected.json()["detail"]
+
+
+def test_required_global_quick_action_cannot_be_hidden_and_precedes_optional_actions(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    created = client.post(
+        "/fund-manager/common-bet-combos",
+        json={
+            "name": "Required Extra Place action",
+            "ledger_type": "Extra Place",
+            "quick_add": {
+                "enabled": True,
+                "supported_ledgers": ["Extra Place"],
+                "enabled_fields": ["runner", "eachWayStake"],
+                "enforcement": "required",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    preset_id = created.json()["preset_id"]
+
+    rejected = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}",
+        json={"enabled": False},
+    )
+    assert rejected.status_code == 422
+    assert "required" in rejected.json()["detail"].lower()
+
+    rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001?include_hidden=true"
+    )
+    assert rows.status_code == 200
+    resolved = next(row for row in rows.json() if row["preset_id"] == preset_id)
+    assert resolved["enforced"] is True
+    assert resolved["enabled"] is True
+    assert resolved["enabled_fields"] == ["runner", "eachWayStake"]
+
+
+def test_profile_quick_actions_are_typed_and_profile_scoped(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    invalid = client.post(
+        "/fund-manager/common-bet-combos/profile-actions/profile-demo-001",
+        json={
+            "ledger_type": "Casino",
+            "label": "Unsafe action",
+            "enabled_fields": ["formulaOverride"],
+        },
+    )
+    assert invalid.status_code == 422
+
+    created = client.post(
+        "/fund-manager/common-bet-combos/profile-actions/profile-demo-001",
+        json={
+            "ledger_type": "Casino",
+            "label": "Daily Free Spins",
+            "enabled_fields": ["bookmaker", "spinCount", "spinStake"],
+            "defaults": {"spinCount": "10", "spinStake": "0.10"},
+        },
+    )
+    assert created.status_code == 201, created.text
+    action_id = created.json()["preset_id"]
+    assert created.json()["source"] == "profile"
+
+    owner_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001?include_hidden=true"
+    )
+    assert any(row["preset_id"] == action_id for row in owner_rows.json())
+    other_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-002?include_hidden=true"
+    )
+    assert not any(row["preset_id"] == action_id for row in other_rows.json())

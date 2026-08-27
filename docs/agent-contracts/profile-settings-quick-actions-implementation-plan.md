@@ -1,7 +1,6 @@
 # Profile Settings And Quick Actions Implementation Plan
 
-_Status: approved for planning; implementation requires explicit approval because it changes persisted
-workflow authority and future security boundaries._
+_Status: approved for implementation. See the active register for delivery and verification state._
 
 ## Scope
 
@@ -51,10 +50,8 @@ header bottom edge. It must also assert no page-level horizontal overflow.
 
 ### Exchange Commission
 
-- Display a percentage editing control, while retaining the existing decimal-fraction API contract:
-  user input `2` is normalised and persisted as `0.02`.
-- Accept only a valid non-negative percentage within the configured contract range; no silent invalid
-  coercion.
+- Display and persist a decimal fraction, for example `0.02` for 2%.
+- Accept only a valid non-negative fraction from `0` to `1`; do not silently coerce percentage input.
 - Debounce autosave after valid input and save immediately on blur.
 - Keep a green saved tick and `Last updated <timestamp>` per exchange until the page refreshes or a
   later edit starts. Loading/error states remain visible and inputs stay recoverable.
@@ -107,9 +104,7 @@ Introduce a central server-readable policy registry, not UI-only flags. Each rou
 notification template receives a security tag such as:
 
 - `fund_manager_only`
-- `profile_operator`
-- `subscriber_read`
-- `subscriber_record`
+- `subscriber_allowed`
 
 When authentication is implemented, the API resolves the authenticated principal, role and profile
 scope before allowing the action. The client uses the same registry only to present permitted controls;
@@ -128,8 +123,8 @@ access is enabled, with settings, imports, provider catalogue and global actions
 - Update the Common Bet Combo/Quick Add contract and fixtures. Do not alter calculation contracts
   unless a newly supported default affects a calculation input.
 
-## Decision Needed Before Implementation
+## Approved Decisions
 
-Confirm this exact hierarchy: a globally enabled action is mandatory/always visible to eligible
-Profiles; Profile-level actions are optional and Profile-scoped; both share the four-visible-action
-carousel budget after global actions are ordered first.
+- Globally required actions are mandatory and always visible to eligible Profiles.
+- Profile actions are optional and Profile-scoped.
+- Global required actions consume the four-visible-action carousel budget before profile favourites.

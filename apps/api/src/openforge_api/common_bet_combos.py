@@ -4,19 +4,24 @@ import json
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, HTTPException, Response
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openforge_api.db import (
     FundManagerComboPresetRecord,
+    ProfileQuickActionRecord,
     create_fund_manager_combo_preset,
+    create_profile_quick_action,
     delete_fund_manager_combo_presets,
     get_fund_manager_combo_preset,
     list_accounts,
     list_fund_manager_combo_presets,
     list_profile_quick_add_loadout_favourites,
     list_profile_quick_add_loadout_overrides,
+    list_profile_quick_actions,
     set_profile_quick_add_loadout_favourite,
+    archive_profile_quick_action,
+    update_profile_quick_action,
     upsert_profile_quick_add_loadout_override,
     update_fund_manager_combo_preset,
 )
@@ -34,6 +39,29 @@ Strategy = Literal[
 ]
 QuickAddLedger = Literal["Sportsbook", "Free Bets", "Casino", "Cash Adjustments", "Extra Place"]
 
+QUICK_ACTION_FIELD_SCHEMAS: dict[str, tuple[str, ...]] = {
+    "Sportsbook": (
+        "offerName", "bookmaker", "betType", "offerType", "fixtureType", "event",
+        "market", "stake", "backOdds", "exchange", "layMode",
+    ),
+    "Free Bets": (
+        "freeBetValue", "retention", "bookmaker", "fixtureType", "betType", "exchange",
+        "offerName",
+    ),
+    "Casino": (
+        "offerName", "offerType", "bookmaker", "game", "spinCount", "spinStake",
+        "reward", "convertedWin",
+    ),
+    "Cash Adjustments": (
+        "adjustmentType", "linkedAccount", "amount", "direction", "adjustmentDate", "notes",
+    ),
+    "Extra Place": (
+        "runner", "race", "bookmaker", "eachWayStake", "placeTermDenominator",
+        "bookmakerPlaces", "exchangePlaces", "winExchange", "placeExchange", "winLayOdds",
+        "placeLayOdds",
+    ),
+}
+
 
 class QuickAddConfig(BaseModel):
     enabled: bool = False
@@ -41,6 +69,24 @@ class QuickAddConfig(BaseModel):
     supported_ledgers: list[QuickAddLedger] = Field(default_factory=list)
     enabled_fields: list[str] = Field(default_factory=list, max_length=30)
     defaults: dict[str, str] = Field(default_factory=dict)
+    enforcement: Literal["optional", "required"] = "optional"
+    allowed_profile_override_fields: list[str] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="after")
+    def validate_field_contract(self) -> "QuickAddConfig":
+        ledgers = self.supported_ledgers
+        allowed = {
+            field
+            for ledger in ledgers
+            for field in QUICK_ACTION_FIELD_SCHEMAS[ledger]
+        }
+        invalid = set(self.enabled_fields) | set(self.defaults) | set(self.allowed_profile_override_fields)
+        invalid -= allowed
+        if invalid:
+            raise ValueError(f"Quick Action fields are not allowed for the selected ledger: {', '.join(sorted(invalid))}")
+        if self.enforcement == "required" and not self.enabled:
+            raise ValueError("A required Quick Action must be enabled")
+        return self
 
 
 class CommonBetComboPayload(BaseModel):
@@ -156,6 +202,31 @@ class ProfileQuickAddLoadoutResponse(BaseModel):
     sort_order: int
     is_favourite: bool
     favourite_order: int
+    source: Literal["fund_manager", "profile"] = "fund_manager"
+    enforced: bool = False
+    enabled_fields: list[str] = Field(default_factory=list)
+    allowed_profile_override_fields: list[str] = Field(default_factory=list)
+
+
+class ProfileQuickActionPayload(BaseModel):
+    ledger_type: QuickAddLedger
+    label: str = Field(min_length=1, max_length=80)
+    enabled_fields: list[str] = Field(default_factory=list, max_length=30)
+    defaults: dict[str, str] = Field(default_factory=dict)
+    enabled: bool = True
+    is_favourite: bool = True
+    favourite_order: int = Field(default=0, ge=0, le=4)
+    sort_order: int = 0
+
+    @model_validator(mode="after")
+    def validate_field_contract(self) -> "ProfileQuickActionPayload":
+        allowed = set(QUICK_ACTION_FIELD_SCHEMAS[self.ledger_type])
+        invalid = (set(self.enabled_fields) | set(self.defaults)) - allowed
+        if invalid:
+            raise ValueError(f"Profile Quick Action fields are not allowed: {', '.join(sorted(invalid))}")
+        if not self.enabled_fields:
+            raise ValueError("Select at least one field for a Profile Quick Action")
+        return self
 
 
 class ProfileQuickAddLoadoutFavouritePayload(BaseModel):
@@ -528,6 +599,36 @@ def _loadout_status_for_account(
     return "eligible", ""
 
 
+def _profile_action_response(record: ProfileQuickActionRecord) -> ProfileQuickAddLoadoutResponse:
+    action = record
+    try:
+        enabled_fields = json.loads(action.enabled_fields_json)
+    except json.JSONDecodeError:
+        enabled_fields = []
+    try:
+        defaults = json.loads(action.defaults_json)
+    except json.JSONDecodeError:
+        defaults = {}
+    return ProfileQuickAddLoadoutResponse(
+        preset_id=action.action_id,
+        label=action.label,
+        ledger_type=action.ledger_type,
+        defaults=defaults if isinstance(defaults, dict) else {},
+        enabled=action.enabled,
+        availability="eligible",
+        availability_reason="",
+        bookmaker=str(defaults.get("bookmaker", "")) if isinstance(defaults, dict) else "",
+        archived=action.archived,
+        sort_order=action.sort_order,
+        is_favourite=action.is_favourite,
+        favourite_order=action.favourite_order,
+        source="profile",
+        enforced=False,
+        enabled_fields=enabled_fields if isinstance(enabled_fields, list) else [],
+        allowed_profile_override_fields=[],
+    )
+
+
 @router.get("/profile-overrides/{profile_id}", response_model=list[ProfileQuickAddLoadoutResponse])
 def list_profile_quick_add_loadouts(
     profile_id: str, include_hidden: bool = False
@@ -546,7 +647,8 @@ def list_profile_quick_add_loadouts(
         if not config.enabled:
             continue
         override = overrides.get(record.preset_id)
-        is_enabled = not override or override.enabled
+        is_enforced = config.enforcement == "required"
+        is_enabled = is_enforced or not override or override.enabled
         if not is_enabled and not include_hidden:
             continue
         try:
@@ -600,11 +702,22 @@ def list_profile_quick_add_loadouts(
                 sort_order=record.sort_order,
                 is_favourite=favourite is not None,
                 favourite_order=favourite.favourite_order if favourite else 0,
+                source="fund_manager",
+                enforced=is_enforced,
+                enabled_fields=config.enabled_fields,
+                allowed_profile_override_fields=config.allowed_profile_override_fields,
             ))
+    for action in list_profile_quick_actions(profile_id):
+        resolved = _profile_action_response(action)
+        if resolved.enabled and not resolved.archived:
+            response.append(resolved)
+        elif include_hidden:
+            response.append(resolved)
     return sorted(
         response,
         key=lambda item: (
             item.ledger_type,
+            0 if item.enforced else 1,
             0 if item.is_favourite else 1,
             item.favourite_order if item.is_favourite else item.sort_order,
             item.label.casefold(),
@@ -624,6 +737,15 @@ def update_profile_quick_add_loadout(
     combo = serialize(template)
     if not combo.quick_add.enabled or combo.status != "Active":
         raise HTTPException(status_code=422, detail="This Quick Add loadout is not available")
+    if combo.quick_add.enforcement == "required" and not payload.enabled:
+        raise HTTPException(status_code=422, detail="This Fund Manager Quick Action is required for eligible profiles")
+    if payload.defaults is not None:
+        # Existing optional templates predate explicit override metadata. Their enabled
+        # fields remain the compatible override boundary until edited by a Fund Manager.
+        allowed = set(combo.quick_add.allowed_profile_override_fields) or set(combo.quick_add.enabled_fields)
+        invalid = set(payload.defaults) - allowed
+        if invalid:
+            raise HTTPException(status_code=422, detail=f"This Quick Action cannot override: {', '.join(sorted(invalid))}")
     bookmaker = payload.bookmaker_override.strip()
     if bookmaker:
         account = next(
@@ -641,7 +763,11 @@ def update_profile_quick_add_loadout(
         )
         if availability == "blocked":
             raise HTTPException(status_code=422, detail="This bookmaker cannot be used for a Quick Add loadout")
-    record = upsert_profile_quick_add_loadout_override(profile_id, preset_id, payload.model_dump())
+    record = upsert_profile_quick_add_loadout_override(
+        profile_id,
+        preset_id,
+        {**payload.model_dump(), "enabled": True if combo.quick_add.enforcement == "required" else payload.enabled},
+    )
     try:
         defaults = json.loads(record.defaults_json)
     except json.JSONDecodeError:
@@ -652,6 +778,36 @@ def update_profile_quick_add_loadout(
         defaults=defaults if isinstance(defaults, dict) else {},
         availability_reason=record.availability_reason,
     )
+
+
+@router.get("/profile-actions/schemas")
+def list_profile_quick_action_schemas() -> dict[str, list[str]]:
+    return {ledger: list(fields) for ledger, fields in QUICK_ACTION_FIELD_SCHEMAS.items()}
+
+
+@router.post("/profile-actions/{profile_id}", response_model=ProfileQuickAddLoadoutResponse, status_code=201)
+def create_profile_action(
+    profile_id: str, payload: ProfileQuickActionPayload
+) -> ProfileQuickAddLoadoutResponse:
+    created = create_profile_quick_action(profile_id, payload.model_dump())
+    return _profile_action_response(created)
+
+
+@router.put("/profile-actions/{profile_id}/{action_id}", response_model=ProfileQuickAddLoadoutResponse)
+def update_profile_action(
+    profile_id: str, action_id: str, payload: ProfileQuickActionPayload
+) -> ProfileQuickAddLoadoutResponse:
+    updated = update_profile_quick_action(profile_id, action_id, payload.model_dump())
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Profile Quick Action was not found")
+    return _profile_action_response(updated)
+
+
+@router.delete("/profile-actions/{profile_id}/{action_id}", status_code=204)
+def remove_profile_action(profile_id: str, action_id: str) -> Response:
+    if not archive_profile_quick_action(profile_id, action_id):
+        raise HTTPException(status_code=404, detail="Profile Quick Action was not found")
+    return Response(status_code=204)
 
 
 @router.put("/profile-overrides/{profile_id}/{preset_id}/favourite")
