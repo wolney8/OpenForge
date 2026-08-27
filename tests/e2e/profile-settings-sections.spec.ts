@@ -52,3 +52,22 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(page.getByRole("tabpanel", { name: "Quick Actions" })).toBeVisible();
   expect(duplicateKeyErrors).toEqual([]);
 });
+
+test("offer-name managers portal above settings and persist an added value", async ({ page }) => {
+  const uniqueValue = `Playwright offer ${Date.now()}`;
+  await page.goto(`${settingsPath}#offer-lists`);
+  await page.getByRole("button", { name: "Manage" }).first().click();
+
+  const dialog = page.getByRole("dialog", { name: "Manage Sportsbook And Free Bet Offer Names" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("xpath=.." )).toHaveAttribute("data-pd-id", "profile-settings.offer-names.backdrop");
+  expect(await dialog.evaluate((element) => element.parentElement?.parentElement === document.body)).toBe(true);
+
+  await dialog.getByLabel("Add offer name").fill(uniqueValue);
+  await dialog.getByRole("button", { name: "Add Value" }).click();
+  await expect(dialog.getByText(uniqueValue, { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: `Delete ${uniqueValue}` }).click();
+  await expect(dialog.getByText(uniqueValue, { exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});

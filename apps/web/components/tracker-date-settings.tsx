@@ -65,7 +65,6 @@ export function TrackerDateSettings({ profileId }: Props) {
   const [guidedAccessMode, setGuidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
   const [pristineSettings, setPristineSettings] = useState<TrackerSettingsRecord | null>(null);
-  const [statusMessage, setStatusMessage] = useState("Loading tracker date settings...");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [exchangeOptions, setExchangeOptions] = useState<string[]>([]);
@@ -156,14 +155,12 @@ export function TrackerDateSettings({ profileId }: Props) {
     );
     setSettings(data);
     setPristineSettings(data);
-    setStatusMessage("Loaded profile-scoped dashboard/profit/report date controls.");
   }, [profileId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadSettings().catch((error: Error) => {
         setErrorMessage(error.message);
-        setStatusMessage("Tracker date settings could not be loaded.");
       });
     }, 0);
 
@@ -189,17 +186,13 @@ export function TrackerDateSettings({ profileId }: Props) {
     };
   }
 
-  async function persistSettings(
-    nextSettings: TrackerSettingsRecord,
-    options?: { autosaveLabel?: string }
-  ) {
+  async function persistSettings(nextSettings: TrackerSettingsRecord) {
     if (!nextSettings) {
       return;
     }
 
     setIsSaving(true);
     setErrorMessage("");
-    setStatusMessage("Saving changes...");
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -234,11 +227,6 @@ export function TrackerDateSettings({ profileId }: Props) {
     const saved = normalizeTrackerSettingsRecord((await response.json()) as TrackerSettingsRecord);
     setSettings(saved);
     setPristineSettings(saved);
-    setStatusMessage(
-      options?.autosaveLabel
-        ? `${options.autosaveLabel} autosaved for this profile tracker.`
-        : "Saved profile-scoped tracker date settings."
-    );
     setIsSaving(false);
   }
 
@@ -252,21 +240,23 @@ export function TrackerDateSettings({ profileId }: Props) {
 
   async function applyDropdownChange(
     updater: (current: TrackerSettingsRecord) => TrackerSettingsRecord,
-    autosaveLabel: string
+    _autosaveLabel: string
   ) {
+    void _autosaveLabel;
     if (!settings) {
       return;
     }
 
     const nextSettings = updater(settings);
     setSettings(nextSettings);
-    await persistSettings(nextSettings, { autosaveLabel });
+    await persistSettings(nextSettings);
   }
 
   async function applyFieldChange(
     updater: (current: TrackerSettingsRecord) => TrackerSettingsRecord,
-    autosaveLabel: string
+    _autosaveLabel: string
   ) {
+    void _autosaveLabel;
     if (!settings) {
       return;
     }
@@ -274,7 +264,7 @@ export function TrackerDateSettings({ profileId }: Props) {
     const nextSettings = updater(settings);
     setSettings(nextSettings);
     if (nextSettings.active_date_preset === "Custom") {
-      await persistSettings(nextSettings, { autosaveLabel });
+      await persistSettings(nextSettings);
     }
   }
 
@@ -285,14 +275,6 @@ export function TrackerDateSettings({ profileId }: Props) {
           <span className="eyebrow">Profile defaults</span>
           <h2 className="section-title">Date Range and Tracker Defaults</h2>
         </div>
-        {settings ? (
-          <span
-            className={`settings-save-state ${isSaving ? "is-saving" : isDirty ? "is-dirty" : "is-saved"}`}
-            data-pd-id="profile-settings.defaults.save-state"
-          >
-            {isSaving ? "Saving" : isDirty ? "Unsaved Changes" : "Saved"}
-          </span>
-        ) : null}
       </div>
       {settings ? (
         <section className="stat-strip" aria-label="Tracker date setting summary">
@@ -335,9 +317,6 @@ export function TrackerDateSettings({ profileId }: Props) {
           </article>
         </section>
       ) : null}
-      <div className="table-status" aria-live="polite">
-        {statusMessage}
-      </div>
       {errorMessage ? (
         <p className="error-text" role="alert">
           {errorMessage}

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import { formatHumanDisplayDate } from "@/lib/tracker-summary";
@@ -74,6 +76,11 @@ function downloadFilename(response: Response, fallback: string): string {
 
 export function DatabaseBackupSettings() {
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Verified" | "Verification Failed">("All");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("open") === "database-backups";
@@ -106,6 +113,10 @@ export function DatabaseBackupSettings() {
     Boolean(deletingId) ||
     isImporting ||
     isRestoring;
+
+  const filteredSnapshots = snapshots.filter((snapshot) => `${snapshot.storage_name} ${snapshot.notes} ${snapshot.status}`.toLocaleLowerCase("en-GB").includes(search.trim().toLocaleLowerCase("en-GB")) && (statusFilter === "All" || (statusFilter === "Verified" ? snapshot.status === "verified" : snapshot.status !== "verified"))).sort((left, right) => sortDirection === "asc" ? left.created_at.localeCompare(right.created_at) : right.created_at.localeCompare(left.created_at));
+  const pageCount = Math.max(1, Math.ceil(filteredSnapshots.length / pageSize));
+  const visibleSnapshots = filteredSnapshots.slice((page - 1) * pageSize, page * pageSize);
 
   const loadSnapshots = useCallback(async () => {
     setIsLoading(true);
@@ -140,6 +151,13 @@ export function DatabaseBackupSettings() {
     setBackupReason(defaultBackupReason);
     window.setTimeout(() => openButtonRef.current?.focus(), 0);
   }, [discardImportPreview, isBusy]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadSnapshots().catch((loadError: Error) => setError(loadError.message));
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadSnapshots]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -349,18 +367,13 @@ export function DatabaseBackupSettings() {
   return (
     <>
       <section className="content-panel stack" data-pd-id="database-backups.section">
-        <span className="eyebrow">Local data protection</span>
-        <h2>Database Backups</h2>
-        <button
-          aria-haspopup="dialog"
-          className="button-link settings-card-action"
-          data-pd-id="database-backups.open"
-          onClick={() => setIsOpen(true)}
-          ref={openButtonRef}
-          type="button"
-        >
-          Manage Database Backups
-        </button>
+        <div className="sportsbook-page-header"><div><span className="eyebrow">Local data protection</span><h2>Database Backups</h2></div><button aria-haspopup="dialog" className="button-link settings-card-action" data-pd-id="database-backups.open" onClick={() => setIsOpen(true)} ref={openButtonRef} type="button">Manage Database Backups</button></div>
+        {error && !isOpen ? <p className="error-text" role="alert">{error}</p> : null}
+        {isLoading && !snapshots.length ? <LedgerLoadingIndicator label="Loading database backups" /> : null}
+        <div className="table-toolbar"><label className="field-control table-search-field"><span>Search backups</span><input aria-label="Search database backups" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label><label className="field-control table-filter-field"><span>State</span><select aria-label="Filter database backup state" onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }} value={statusFilter}><option>All</option><option>Verified</option><option>Verification Failed</option></select></label></div>
+        <LedgerPagination ariaLabel="Database Backups" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filteredSnapshots.length} />
+        <LedgerTableScroll dataPdId="database-backups.settings-table"><table className="data-table database-backups-table"><thead><tr><th aria-sort={sortDirection === "asc" ? "ascending" : "descending"}><button aria-label={`Sort backups ${sortDirection === "asc" ? "descending" : "ascending"}`} className="table-sort-button is-active" onClick={() => setSortDirection((current) => current === "asc" ? "desc" : "asc")} type="button">Created<span aria-hidden="true" className="material-symbols-outlined">{sortDirection === "asc" ? "arrow_upward" : "arrow_downward"}</span></button></th><th>Reason</th><th>Size</th><th>Local State</th><th>Cloud</th></tr></thead><tbody>{visibleSnapshots.map((snapshot) => <tr key={snapshot.backup_snapshot_id}><td><time dateTime={snapshot.created_at}>{formatHumanDisplayDate(snapshot.created_at, true)}</time></td><td>{snapshot.notes}</td><td>{formatBytes(snapshot.byte_size)}</td><td><span className={`table-chip ${snapshot.status === "verified" ? "table-chip-status-placed" : "table-chip-warning"}`}>{snapshot.status === "verified" ? "Verified" : "Verification Failed"}</span></td><td><span className="table-chip table-chip-muted">Deferred</span></td></tr>)}</tbody></table></LedgerTableScroll>
+        <LedgerPagination ariaLabel="Database Backups" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filteredSnapshots.length} />
       </section>
 
       {isOpen && typeof document !== "undefined"

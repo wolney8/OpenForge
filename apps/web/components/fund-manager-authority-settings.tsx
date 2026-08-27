@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
+import { useBodyScrollLock, useDialogFocusLifecycle } from "@/lib/ledger-ui";
 
 type AuthorityRow = {
   lookup_value_id: string;
@@ -36,6 +40,9 @@ export function FundManagerAuthoritySettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("offer_type");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [editing, setEditing] = useState<AuthorityRow | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,6 +51,10 @@ export function FundManagerAuthoritySettings() {
   const [draftStatus, setDraftStatus] = useState<"Active" | "Archived">("Active");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLElement | null>(null);
+
+  useBodyScrollLock(isOpen);
+  useDialogFocusLifecycle(isOpen, dialogRef);
 
   const loadRows = useCallback(async () => {
     setIsLoading(true);
@@ -60,10 +71,9 @@ export function FundManagerAuthoritySettings() {
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
     const timeoutId = window.setTimeout(() => void loadRows(), 0);
     return () => window.clearTimeout(timeoutId);
-  }, [isOpen, loadRows]);
+  }, [loadRows]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -71,6 +81,9 @@ export function FundManagerAuthoritySettings() {
       row.lookup_type === typeFilter && (!query || row.option_value.toLowerCase().includes(query))
     );
   }, [rows, search, typeFilter]);
+  const sortedRows = useMemo(() => [...filteredRows].sort((left, right) => sortDirection === "asc" ? left.option_value.localeCompare(right.option_value) : right.option_value.localeCompare(left.option_value)), [filteredRows, sortDirection]);
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const visibleRows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
   function openCreate() {
     setEditing(null);
@@ -78,6 +91,7 @@ export function FundManagerAuthoritySettings() {
     setDraftType(typeFilter);
     setDraftValue("");
     setDraftStatus("Active");
+    setIsOpen(true);
   }
 
   function openEdit(row: AuthorityRow) {
@@ -86,6 +100,7 @@ export function FundManagerAuthoritySettings() {
     setDraftType(row.lookup_type);
     setDraftValue(row.option_value);
     setDraftStatus(row.status);
+    setIsOpen(true);
   }
 
   async function saveAuthority() {
@@ -121,28 +136,44 @@ export function FundManagerAuthoritySettings() {
   function closeEditor() {
     setEditing(null);
     setIsCreating(false);
+    setIsOpen(false);
   }
+
+  const closeDialog = useCallback(() => {
+    setEditing(null);
+    setIsCreating(false);
+    setIsOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSaving) {
+        event.preventDefault();
+        closeDialog();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [closeDialog, isOpen, isSaving]);
 
   return (
     <>
       <section className="content-panel stack" data-pd-id="fund-manager-authorities.section">
-        <span className="eyebrow">Universal tracker authority</span>
-        <h2>Tracker Lists</h2>
-        <button
-          className="button-link settings-card-action"
-          data-pd-id="fund-manager-authorities.manage"
-          onClick={() => setIsOpen(true)}
-          type="button"
-        >
-          Manage Tracker Lists
-        </button>
+        <div className="sportsbook-page-header"><div><span className="eyebrow">Universal tracker authority</span><h2>Tracker Lists</h2></div><button className="modal-primary-button" data-pd-id="fund-manager-authorities.add" onClick={openCreate} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Value</span></button></div>
+        {isLoading && !rows.length ? <LedgerLoadingIndicator label="Loading tracker lists" /> : null}
+        {error ? <p className="error-text" role="alert">{error}</p> : null}
+        <div className="table-toolbar fund-manager-authority-toolbar"><label className="field-control table-filter-field"><span>List</span><select data-pd-id="fund-manager-authorities.list-filter" onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} value={typeFilter}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field-control table-search-field"><span>Search</span><input aria-label="Search Fund Manager tracker list" data-pd-id="fund-manager-authorities.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label></div>
+        <LedgerPagination ariaLabel="Tracker Lists" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={sortedRows.length} />
+        <LedgerTableScroll dataPdId="fund-manager-authorities.settings-table"><table className="data-table"><thead><tr><th aria-sort={sortDirection === "asc" ? "ascending" : "descending"}><button aria-label={`Sort tracker list ${sortDirection === "asc" ? "descending" : "ascending"}`} className="table-sort-button is-active" onClick={() => setSortDirection((current) => current === "asc" ? "desc" : "asc")} type="button">Value<span aria-hidden="true" className="material-symbols-outlined">{sortDirection === "asc" ? "arrow_upward" : "arrow_downward"}</span></button></th><th>Status</th><th>Action</th></tr></thead><tbody>{visibleRows.map((row) => <tr key={row.lookup_value_id}><td>{row.option_value}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => openEdit(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}</tbody></table></LedgerTableScroll>
+        <LedgerPagination ariaLabel="Tracker Lists" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={sortedRows.length} />
       </section>
-      {isOpen ? (
+      {isOpen && typeof document !== "undefined" ? createPortal(
         <div className="modal-backdrop modal-backdrop-elevated">
-          <section aria-label="Manage Fund Manager tracker lists" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal" data-pd-id="fund-manager-authorities.dialog" role="dialog">
+          <section aria-label="Manage Fund Manager tracker lists" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal" data-pd-id="fund-manager-authorities.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
             <header className="workflow-editor-modal-header">
               <div><span className="eyebrow">Fund Manager Settings</span><h2>Tracker Lists</h2></div>
-              <button aria-label="Close tracker lists" className="modal-close-button" onClick={() => setIsOpen(false)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+              <button aria-label="Close tracker lists" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
             <div className="workflow-editor-modal-body stack fund-manager-authority-body">
               {isLoading ? <LedgerLoadingIndicator label="Loading tracker lists" /> : null}
@@ -150,15 +181,17 @@ export function FundManagerAuthoritySettings() {
               {!isLoading && !editing && !isCreating ? (
                 <>
                   <div className="table-toolbar fund-manager-authority-toolbar">
-                    <label className="field-control table-filter-field"><span>List</span><select data-pd-id="fund-manager-authorities.list-filter" onChange={(event) => setTypeFilter(event.target.value)} value={typeFilter}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                    <label className="field-control table-search-field"><span>Search</span><input aria-label="Search Fund Manager tracker list" data-pd-id="fund-manager-authorities.search" onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
+                    <label className="field-control table-filter-field"><span>List</span><select data-pd-id="fund-manager-authorities.list-filter" onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} value={typeFilter}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                    <label className="field-control table-search-field"><span>Search</span><input aria-label="Search Fund Manager tracker list" data-pd-id="fund-manager-authorities.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label>
                     <button className="button-link icon-text-action" data-pd-id="fund-manager-authorities.add" onClick={openCreate} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Value</span></button>
                   </div>
-                  <div className="table-scroll" data-pd-id="fund-manager-authorities.table-scroll">
-                    <table className="data-table"><thead><tr><th>Value</th><th>Status</th><th>Action</th></tr></thead><tbody>
-                      {filteredRows.map((row) => <tr key={row.lookup_value_id}><td>{row.option_value}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={"Edit " + row.option_value} className="icon-button" onClick={() => openEdit(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}
+                  <LedgerPagination ariaLabel="Tracker Lists" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={sortedRows.length} />
+                  <LedgerTableScroll dataPdId="fund-manager-authorities.table-scroll">
+                    <table className="data-table"><thead><tr><th aria-sort={sortDirection === "asc" ? "ascending" : "descending"}><button aria-label={`Sort tracker list ${sortDirection === "asc" ? "descending" : "ascending"}`} className="table-sort-button is-active" onClick={() => setSortDirection((current) => current === "asc" ? "desc" : "asc")} type="button">Value<span aria-hidden="true" className="material-symbols-outlined">{sortDirection === "asc" ? "arrow_upward" : "arrow_downward"}</span></button></th><th>Status</th><th>Action</th></tr></thead><tbody>
+                      {visibleRows.map((row) => <tr key={row.lookup_value_id}><td>{row.option_value}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={"Edit " + row.option_value} className="icon-button" onClick={() => openEdit(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}
                     </tbody></table>
-                  </div>
+                  </LedgerTableScroll>
+                  <LedgerPagination ariaLabel="Tracker Lists" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={sortedRows.length} />
                 </>
               ) : null}
               {editing || isCreating ? (
@@ -169,10 +202,9 @@ export function FundManagerAuthoritySettings() {
                 </div>
               ) : null}
             </div>
-            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={() => editing || isCreating ? closeEditor() : setIsOpen(false)} type="button">{editing || isCreating ? "Back to Tracker Lists" : "Close"}</button>{editing || isCreating ? <button className="modal-primary-button" data-pd-id="fund-manager-authorities.save" disabled={!draftValue.trim() || isSaving} onClick={() => void saveAuthority()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Value"}</span></button> : null}</footer>
+            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={() => editing || isCreating ? closeEditor() : closeDialog()} type="button">{editing || isCreating ? "Back to Tracker Lists" : "Close"}</button>{editing || isCreating ? <button className="modal-primary-button" data-pd-id="fund-manager-authorities.save" disabled={!draftValue.trim() || isSaving} onClick={() => void saveAuthority()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Value"}</span></button> : null}</footer>
           </section>
-        </div>
-      ) : null}
+        </div>, document.body) : null}
       <StatusToast message={message} onDismiss={() => setMessage("")} tone="success" />
     </>
   );

@@ -35,7 +35,6 @@ function formatUpdatedAt(value: string) {
 
 export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
   const [rows, setRows] = useState<ExchangeCommissionRecord[]>([]);
-  const [statusMessage, setStatusMessage] = useState("Loading exchange commission settings...");
   const [errorMessage, setErrorMessage] = useState("");
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [savedAt, setSavedAt] = useState<Record<string, string>>({});
@@ -55,7 +54,6 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     const data = (await response.json()) as ExchangeCommissionRecord[];
     setRows(data);
     setSavedAt(Object.fromEntries(data.map((row) => [row.exchange_name, row.updated_at])));
-    setStatusMessage(`Loaded ${data.length} profile-scoped exchange commission settings.`);
   }, [profileId]);
 
   useEffect(() => {
@@ -63,7 +61,6 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     const timeoutId = window.setTimeout(() => {
       void loadSettings().catch((error: Error) => {
         setErrorMessage(error.message);
-        setStatusMessage("Exchange commission settings could not be loaded.");
       });
     }, 0);
     return () => {
@@ -113,7 +110,6 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
   return (
     <section aria-label="Exchange commission settings" className="content-subpanel stack" data-pd-id="profile-settings.commission">
       <div><span className="eyebrow">Exchange commission</span><h2>Profile commission defaults</h2></div>
-      <div aria-live="polite" className="table-status">{statusMessage}</div>
       {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       {rows.length === 0 ? <p className="field-hint">No exchange settings exist yet for this profile.</p> : (
         <div className="form-grid commission-settings-grid">

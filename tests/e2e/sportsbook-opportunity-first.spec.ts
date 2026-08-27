@@ -98,9 +98,10 @@ test("Opportunity loading state remains contained and omits the duplicate header
 test("Fund Manager can manage and apply a common bet combo without creating rows", async ({
   page,
 }) => {
-  await page.goto("/settings");
+  await page.goto("/settings#quick-actions");
   const comboManageButton = page.locator('[data-pd-id="common-bet-combos.manage"]');
   const comboSection = page.locator('[data-pd-id="common-bet-combos.section"]');
+  await expect(comboSection).toBeVisible();
   const comboActionGeometry = await Promise.all([
     comboManageButton.boundingBox(),
     comboSection.boundingBox(),
@@ -189,10 +190,10 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   ).toBeDisabled();
 });
 
-test("Tracker Lists uses the constrained Fund Manager settings modal pattern", async ({ page }) => {
+test("Tracker Lists uses the Fund Manager table-first settings pattern", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto("/settings");
-  const authorityManageButton = page.locator('[data-pd-id="fund-manager-authorities.manage"]');
+  await page.goto("/settings#lists");
+  const authorityManageButton = page.locator('[data-pd-id="fund-manager-authorities.add"]');
   const authoritySection = page.locator('[data-pd-id="fund-manager-authorities.section"]');
   const authorityActionGeometry = await Promise.all([
     authorityManageButton.boundingBox(),
@@ -203,15 +204,11 @@ test("Tracker Lists uses the constrained Fund Manager settings modal pattern", a
   expect(authorityActionGeometry[0]!.width).toBeLessThan(
     authorityActionGeometry[1]!.width / 2
   );
-  await page.getByRole("button", { name: "Manage Tracker Lists" }).click();
+  await expect(authoritySection.locator('[data-pd-id="fund-manager-authorities.settings-table"]')).toBeVisible();
+  await expect(authoritySection.locator('[data-pd-id="fund-manager-authorities.list-filter"]')).toBeVisible();
+  await expect(authoritySection.locator('[data-pd-id="fund-manager-authorities.search"]')).toBeVisible();
 
-  const dialog = page.getByRole("dialog", { name: "Manage Fund Manager tracker lists" });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.table-scroll"]')).toBeVisible();
-  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.list-filter"]')).toBeVisible();
-  await expect(dialog.locator('[data-pd-id="fund-manager-authorities.search"]')).toBeVisible();
-
-  const geometry = await dialog.evaluate((element) => {
+  const geometry = await authoritySection.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
       top: rect.top,
@@ -224,12 +221,11 @@ test("Tracker Lists uses the constrained Fund Manager settings modal pattern", a
     };
   });
   expect(geometry.top).toBeGreaterThanOrEqual(0);
-  expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
   expect(geometry.left).toBeGreaterThanOrEqual(0);
   expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
   expect(geometry.pageScrollWidth).toBeLessThanOrEqual(geometry.viewportWidth);
 
-  const fieldStyles = await dialog.evaluate(() => {
+  const fieldStyles = await authoritySection.evaluate(() => {
     const list = document.querySelector<HTMLElement>(
       '[data-pd-id="fund-manager-authorities.list-filter"]'
     );
@@ -253,7 +249,9 @@ test("Tracker Lists uses the constrained Fund Manager settings modal pattern", a
   expect(fieldStyles?.listRadius).toBe(fieldStyles?.searchRadius);
   expect(fieldStyles?.listBackground).toBe(fieldStyles?.searchBackground);
 
-  await dialog.getByRole("button", { name: "Add Value" }).click();
+  await authoritySection.getByRole("button", { name: "Add Value" }).click();
+  const dialog = page.getByRole("dialog", { name: "Manage Fund Manager tracker lists" });
+  await expect(dialog).toBeVisible();
   await expect(dialog.locator('[data-pd-id="fund-manager-authorities.editor"]')).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Back to Tracker Lists" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Save Value" })).toBeVisible();

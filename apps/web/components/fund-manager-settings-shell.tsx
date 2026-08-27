@@ -6,14 +6,16 @@ import { CommonBetComboSettings } from "@/components/common-bet-combo-settings";
 import { DatabaseBackupSettings } from "@/components/database-backup-settings";
 import { FundManagerAuthoritySettings } from "@/components/fund-manager-authority-settings";
 import { FundManagerNotificationSettings } from "@/components/fund-manager-notification-settings";
+import { FundManagerSiteSettings } from "@/components/fund-manager-site-settings";
 import { MasterAccountCatalogueSettings } from "@/components/master-account-catalogue-settings";
 
 const sections = [
   { id: "catalogue", label: "Account Catalogue", component: <MasterAccountCatalogueSettings /> },
   { id: "lists", label: "Lists", component: <FundManagerAuthoritySettings /> },
-  { id: "quick-actions", label: "Quick Actions", component: <CommonBetComboSettings /> },
   { id: "notifications", label: "Notifications", component: <FundManagerNotificationSettings /> },
   { id: "database", label: "Database", component: <DatabaseBackupSettings /> },
+  { id: "site-settings", label: "Site Settings", component: <FundManagerSiteSettings /> },
+  { id: "quick-actions", label: "Quick Actions", component: <CommonBetComboSettings /> },
 ] as const;
 
 type SectionId = (typeof sections)[number]["id"];

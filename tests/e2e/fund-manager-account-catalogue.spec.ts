@@ -1,16 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("Fund Manager can inspect and prepare account catalogue changes", async ({ page }) => {
-  await page.goto("/settings");
+test("Fund Manager can inspect and prepare account catalogue changes from the table view", async ({ page }) => {
+  await page.goto("/settings#catalogue");
 
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Open Account Catalogue" }).click();
+  const catalogue = page.locator('[data-pd-id="account-catalogue.section"]');
+  await expect(catalogue.locator('[data-pd-id="account-catalogue.table-scroll"]')).toBeVisible();
+  await expect(catalogue.getByLabel("Account Catalogue top controls").getByText("Rows per page")).toBeVisible();
+  await catalogue.getByLabel("Search Account Catalogue").fill("Smarkets");
+  await expect(catalogue.getByRole("cell", { name: "Smarkets", exact: true })).toBeVisible();
 
-  const dialog = page.getByRole("dialog", { name: "Account Catalogue" });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('[data-pd-id="account-catalogue.table-scroll"]')).toBeVisible();
-
-  const geometry = await dialog.evaluate((element) => {
+  const geometry = await catalogue.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
       withinWidth: rect.left >= 0 && rect.right <= window.innerWidth,
@@ -20,12 +20,8 @@ test("Fund Manager can inspect and prepare account catalogue changes", async ({ 
     };
   });
   expect(geometry.withinWidth, JSON.stringify(geometry)).toBe(true);
-  expect(geometry.withinHeight, JSON.stringify(geometry)).toBe(true);
 
-  await dialog.getByLabel("Search Account Catalogue").fill("Smarkets");
-  await expect(dialog.getByRole("cell", { name: "Smarkets", exact: true })).toBeVisible();
-
-  await dialog.getByRole("button", { name: "Add Account" }).click();
+  await catalogue.getByRole("button", { name: "Add Account" }).click();
   await expect(page.getByRole("dialog", { name: "Add Account" })).toBeVisible();
   await expect(page.getByLabel("Brand name")).toBeVisible();
   await expect(page.getByLabel("Operating countries")).toHaveValue("GB");
@@ -37,11 +33,10 @@ test("Fund Manager can inspect and prepare account catalogue changes", async ({ 
   await expect(page.getByText("/account-logos/", { exact: true })).toBeVisible();
   await expect(page.getByText("Demo Account", { exact: true })).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await page.getByRole("button", { name: "Back to Catalogue" }).click();
-  await expect(page.getByRole("dialog", { name: "Account Catalogue" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Account Catalogue" })).toHaveCount(0);
 
-  await dialog.getByLabel("Search Account Catalogue").fill("Smarkets");
-  await expect(dialog.locator('[data-pd-id="account-catalogue.brand-pill"]')).toContainText("Smarkets");
-  await dialog.getByRole("button", { name: "Edit Smarkets" }).click();
+  await expect(catalogue.locator('[data-pd-id="account-catalogue.brand-pill"]')).toContainText("Smarkets");
+  await catalogue.getByRole("button", { name: "Edit Smarkets" }).click();
   const editDialog = page.getByRole("dialog", { name: "Edit Account" });
   await expect(editDialog.getByRole("group", { name: "Brand colours" })).toBeVisible();
   await expect(editDialog.getByRole("button", { name: "Archive Account" })).toBeVisible();
@@ -59,9 +54,6 @@ test("Fund Manager can inspect and prepare account catalogue changes", async ({ 
   expect(fieldSpacing[0]!.x + fieldSpacing[0]!.width + 5).toBeLessThan(fieldSpacing[1]!.x);
 
   await page.getByRole("button", { name: "Back to Catalogue" }).click();
-
-  await page.getByRole("button", { name: "Close Account Catalogue" }).click();
-  await expect(page.getByRole("button", { name: "Open Account Catalogue" })).toBeFocused();
 
   const hasPageOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth

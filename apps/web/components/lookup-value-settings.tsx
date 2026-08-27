@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
+import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import { useBodyScrollLock, useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord, type LookupValueType } from "@/lib/lookup-values";
@@ -18,7 +20,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
-  const [statusMessage, setStatusMessage] = useState("Loading offer names...");
+  const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [pendingAction, setPendingAction] = useState("");
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -32,13 +34,11 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     if (!response.ok) throw new Error("Unable to load offer names.");
     const data = (await response.json()) as LookupValueRecord[];
     setRows(data);
-    setStatusMessage("Offer names are ready.");
   }, [profileId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => void loadRows().catch((error: Error) => {
       setErrorMessage(error.message);
-      setStatusMessage("Offer names could not be loaded.");
     }), 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadRows]);
@@ -48,13 +48,25 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     dedupeOptions(getLookupValuesByType(rows, lookupType)).map((value) => rows.find((row) => row.lookup_type === lookupType && row.option_value === value)).filter((row): row is LookupValueRecord => Boolean(row)),
   ])) as Partial<Record<LookupValueType, LookupValueRecord[]>>, [rows]);
 
-  function closeDialog() {
+  const closeDialog = useCallback(() => {
     setActiveType(null);
     setDraft("");
     setEditingId(null);
     setEditingValue("");
     setErrorMessage("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!activeType) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeType, closeDialog]);
 
   async function createValue() {
     if (!activeType || !draft.trim()) return;
@@ -107,9 +119,38 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     setPendingAction("");
   }
 
+  const dialog = activeSection ? (
+    <div className="modal-backdrop modal-backdrop-elevated" data-pd-id="profile-settings.offer-names.backdrop">
+      <section aria-label={`Manage ${activeSection.title}`} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal lookup-values-modal" data-pd-id={`profile-settings.offer-names.${activeSection.lookupType}.dialog`} ref={dialogRef} role="dialog" tabIndex={-1}>
+        <header className="workflow-editor-modal-header">
+          <div><span className="eyebrow">Profile Settings</span><h2>{activeSection.title}</h2></div>
+          <button aria-label={`Close ${activeSection.title}`} className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+        </header>
+        <div className="workflow-editor-modal-body stack dialog-table-modal-body">
+          {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+          <div className="table-toolbar dialog-table-toolbar">
+            <label className="field-control"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createValue(); } }} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
+            <button className="button-link icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
+          </div>
+          <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">
+            <table className="data-table"><thead><tr><th>Offer Name</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
+              {(valuesByType[activeSection.lookupType] ?? []).map((row) => (
+                <tr key={row.lookup_value_id}>
+                  <td>{editingId === row.lookup_value_id ? <input aria-label={`Edit ${row.option_value}`} onChange={(event) => setEditingValue(event.target.value)} value={editingValue} /> : row.option_value}</td>
+                  <td>{new Date(row.updated_at).toLocaleDateString()}</td>
+                  <td><div className="table-action-group">{editingId === row.lookup_value_id ? <><button className="icon-button" aria-label={`Save ${row.option_value}`} disabled={Boolean(pendingAction)} onClick={() => void saveValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span></button><button className="icon-button" aria-label="Cancel edit" onClick={() => { setEditingId(null); setEditingValue(""); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></> : <button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => { setEditingId(row.lookup_value_id); setEditingValue(row.option_value); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>}<button aria-label={`Delete ${row.option_value}`} className="icon-button destructive-icon-button" disabled={Boolean(pendingAction)} onClick={() => void deleteValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                </tr>
+              ))}
+            </tbody></table>
+          </div>
+        </div>
+      </section>
+    </div>
+  ) : null;
+
   return (
-    <section aria-label="Offer name settings" className="stack" data-pd-id="profile-settings.offer-names">
-      <div className="table-status" aria-live="polite">{statusMessage}</div>
+    <>
+      <section aria-label="Offer name settings" className="stack" data-pd-id="profile-settings.offer-names">
       {errorMessage && !activeType ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       <div className="settings-card-grid">
         {sections.map((section) => (
@@ -119,34 +160,9 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
           </article>
         ))}
       </div>
-      {activeSection ? (
-        <div className="modal-backdrop modal-backdrop-elevated">
-          <section aria-label={`Manage ${activeSection.title}`} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal lookup-values-modal" data-pd-id={`profile-settings.offer-names.${activeSection.lookupType}.dialog`} ref={dialogRef} role="dialog" tabIndex={-1}>
-            <header className="workflow-editor-modal-header">
-              <div><span className="eyebrow">Profile Settings</span><h2>{activeSection.title}</h2></div>
-              <button aria-label={`Close ${activeSection.title}`} className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
-            </header>
-            <div className="workflow-editor-modal-body stack dialog-table-modal-body">
-              {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
-              <div className="table-toolbar dialog-table-toolbar">
-                <label className="field-control"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
-                <button className="button-link icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
-              </div>
-              <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">
-                <table className="data-table"><thead><tr><th>Offer Name</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
-                  {(valuesByType[activeSection.lookupType] ?? []).map((row) => (
-                    <tr key={row.lookup_value_id}>
-                      <td>{editingId === row.lookup_value_id ? <input aria-label={`Edit ${row.option_value}`} onChange={(event) => setEditingValue(event.target.value)} value={editingValue} /> : row.option_value}</td>
-                      <td>{new Date(row.updated_at).toLocaleDateString()}</td>
-                      <td><div className="table-action-group">{editingId === row.lookup_value_id ? <><button className="icon-button" aria-label={`Save ${row.option_value}`} disabled={Boolean(pendingAction)} onClick={() => void saveValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span></button><button className="icon-button" aria-label="Cancel edit" onClick={() => { setEditingId(null); setEditingValue(""); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></> : <button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => { setEditingId(row.lookup_value_id); setEditingValue(row.option_value); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>}<button aria-label={`Delete ${row.option_value}`} className="icon-button destructive-icon-button" disabled={Boolean(pendingAction)} onClick={() => void deleteValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
-                    </tr>
-                  ))}
-                </tbody></table>
-              </div>
-            </div>
-          </section>
-        </div>
-      ) : null}
-    </section>
+      </section>
+      {dialog && typeof document !== "undefined" ? createPortal(dialog, document.body) : null}
+      <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} tone="success" />
+    </>
   );
 }

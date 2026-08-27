@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import type {
@@ -12,7 +14,7 @@ import type {
   MasterAccountType,
 } from "@/lib/bookmaker-catalogue";
 
-const pageSize = 25;
+const defaultPageSize = 8;
 const accountLogoPrefix = "/account-logos/";
 const accountTypes: MasterAccountType[] = ["Bookmaker", "Exchange", "Bank"];
 const channels: MasterAccountChannel[] = ["web", "mobile", "retail"];
@@ -82,7 +84,9 @@ export function MasterAccountCatalogueSettings() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<MasterAccountType | "All">("All");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Archived">("All");
+  const [pageSize, setPageSize] = useState(defaultPageSize);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ key: "type" | "brand" | "status"; direction: "asc" | "desc" }>({ key: "brand", direction: "asc" });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -156,12 +160,20 @@ export function MasterAccountCatalogueSettings() {
     });
   }, [catalogue, query, statusFilter, typeFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
-  const visibleRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
+  const sortedRecords = useMemo(() => [...filteredRecords].sort((left, right) => {
+    const value = sort.key === "type"
+      ? left.account_type.localeCompare(right.account_type)
+      : sort.key === "status"
+        ? left.status.localeCompare(right.status)
+        : left.brand_name.localeCompare(right.brand_name);
+    return sort.direction === "asc" ? value : -value;
+  }), [filteredRecords, sort]);
+  const totalPages = Math.max(1, Math.ceil(sortedRecords.length / pageSize));
+  const visibleRecords = sortedRecords.slice((page - 1) * pageSize, page * pageSize);
 
-  function openCatalogue() {
-    setEditingRecord(null);
-    setIsOpen(true);
+  function toggleSort(key: "type" | "brand" | "status") {
+    setSort((current) => current.key === key ? { key, direction: current.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" });
+    setPage(1);
   }
 
   function closeCatalogue() {
@@ -177,12 +189,14 @@ export function MasterAccountCatalogueSettings() {
     setDraft(createBlankRecord());
     setEditingRecord(createBlankRecord());
     setErrorMessage("");
+    setIsOpen(true);
   }
 
   function beginEdit(record: MasterAccountCatalogueRecord) {
     setDraft(structuredClone(record));
     setEditingRecord(record);
     setErrorMessage("");
+    setIsOpen(true);
   }
 
   async function preflightImport(file: File | undefined) {
@@ -267,23 +281,13 @@ export function MasterAccountCatalogueSettings() {
   }
 
   return (
-    <section className="content-subpanel stack" aria-labelledby="master-account-catalogue-title">
+    <section className="content-subpanel stack" aria-labelledby="master-account-catalogue-title" data-pd-id="account-catalogue.section">
       <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} />
       <div className="sportsbook-page-header">
         <div>
           <span className="eyebrow">Universal authority</span>
           <h2 id="master-account-catalogue-title">Account Catalogue</h2>
         </div>
-        <button
-          aria-haspopup="dialog"
-          className="button-link"
-          data-pd-id="account-catalogue.open"
-          onClick={openCatalogue}
-          ref={openButtonRef}
-          type="button"
-        >
-          Open Account Catalogue
-        </button>
       </div>
       <div className="meta-grid">
         {accountTypes.map((accountType) => (
@@ -295,8 +299,29 @@ export function MasterAccountCatalogueSettings() {
       </div>
       {errorMessage && !isOpen ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       {isLoading && !catalogue ? <LedgerLoadingIndicator label="Loading Account Catalogue" /> : null}
+      <div className="table-toolbar account-catalogue-toolbar" data-pd-id="account-catalogue.controls">
+        <label className="field-control table-search-field"><span>Search accounts</span><input aria-label="Search Account Catalogue" data-pd-id="account-catalogue.search" onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" value={query} /></label>
+        <label className="field-control table-filter-field"><span>Account type</span><select data-pd-id="account-catalogue.type-filter" onChange={(event) => { setTypeFilter(event.target.value as MasterAccountType | "All"); setPage(1); }} value={typeFilter}><option>All</option>{accountTypes.map((accountType) => <option key={accountType}>{accountType}</option>)}</select></label>
+        <label className="field-control table-filter-field"><span>Status</span><select data-pd-id="account-catalogue.status-filter" onChange={(event) => { setStatusFilter(event.target.value as "All" | "Active" | "Archived"); setPage(1); }} value={statusFilter}><option>All</option><option>Active</option><option>Archived</option></select></label>
+        <div className="tracker-nav">
+          <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>Export</a>
+          <input accept="application/json" aria-label="Choose account catalogue JSON file to validate" className="sr-only" onChange={(event) => void preflightImport(event.target.files?.[0])} ref={importFileRef} type="file" />
+          <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">Check catalogue import</button>
+          <button className="modal-primary-button" data-pd-id="account-catalogue.add" onClick={beginAdd} ref={openButtonRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Account</span></button>
+        </div>
+      </div>
+      <p className="field-hint account-catalogue-import-help">Check catalogue import validates a catalogue JSON against the current global providers. It reports added, updated and missing providers; it never changes Profile accounts or replaces the catalogue.</p>
+      {importPreflight ? <section aria-live="polite" className="content-subpanel stack"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Missing {importPreflight.removed_catalogue_ids.length}</span></section> : null}
+      <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="top" totalRows={sortedRecords.length} />
+      <LedgerTableScroll dataPdId="account-catalogue.table-scroll">
+        <table className="data-table account-catalogue-table"><thead><tr>
+          {([['type', 'Type'], ['brand', 'Brand']] as const).map(([key, label]) => <th aria-sort={sort.key === key ? sort.direction === "asc" ? "ascending" : "descending" : "none"} key={key}><button className={`table-sort-button${sort.key === key ? " is-active" : ""}`} onClick={() => toggleSort(key)} type="button">{label}<span aria-hidden="true" className="material-symbols-outlined">{sort.key === key && sort.direction === "desc" ? "arrow_downward" : "arrow_upward"}</span></button></th>)}
+          <th>Operator Details</th><th>Availability</th><th aria-sort={sort.key === "status" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button className={`table-sort-button${sort.key === "status" ? " is-active" : ""}`} onClick={() => toggleSort("status")} type="button">Status<span aria-hidden="true" className="material-symbols-outlined">{sort.key === "status" && sort.direction === "desc" ? "arrow_downward" : "arrow_upward"}</span></button></th><th>Actions</th>
+        </tr></thead><tbody>{visibleRecords.map((record) => <tr key={record.catalogue_id}><td><span className="table-chip table-chip-muted">{record.account_type}</span></td><td><span className="account-brand-pill" data-pd-id="account-catalogue.brand-pill" style={{ backgroundColor: record.background_colour, color: record.foreground_colour }}>{record.brand_name}</span></td><td><span>{record.operator_group || "No group"}</span><span className="table-status">{record.platform || "No platform"}</span></td><td>{record.operating_jurisdictions.join(", ") || "Unverified"}<span className="table-status">{record.operating_channels.join(", ") || "No verified channels"}</span></td><td><span className={`table-chip ${record.status === "Active" ? "table-chip-status-placed" : "table-chip-muted"}`}>{record.status}</span></td><td><div className="tracker-nav account-catalogue-actions"><button aria-label={`Edit ${record.brand_name}`} className="icon-button" onClick={() => beginEdit(record)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></div></td></tr>)}</tbody></table>
+      </LedgerTableScroll>
+      <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="bottom" totalRows={sortedRecords.length} />
 
-      {isOpen && typeof document !== "undefined" ? createPortal((
+      {isOpen && editingRecord && typeof document !== "undefined" ? createPortal((
         <div
           className="modal-backdrop"
           data-pd-id="account-catalogue.dialog-backdrop"
