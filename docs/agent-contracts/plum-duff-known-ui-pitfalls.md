@@ -511,9 +511,11 @@ cause, prevention rule and regression test.
 - Root cause: table-row transitions continued after the root theme token changed, while the
   dark purple result-due surface was too close to its hover colour.
 - Prevention: `ThemeProvider` adds `theme-switching` for the token swap and removes it after two
-  animation frames; this disables transitions only during the atomic change. Result-due dark
-  tokens must retain a measurable base-to-hover luminance difference. Operational result cues
-  are displayed as purple issue-overlay chips without changing data-issue severity.
+  animation frames; this disables transitions only during the atomic change. Result-due rows own
+  their purple base/hover surface even if incomplete-field chips are also present; the chips and
+  left markers preserve data-issue severity. Dark-mode base and hover selectors must have the
+  same specificity, otherwise a later dark base rule silently defeats hover. Dark result-due
+  tokens must retain a measurable lighter-base-to-darker-hover luminance difference.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` verifies the purple cue, fast row
   feedback, dark hover contrast and zero transition duration during a theme swap.
 

@@ -104,8 +104,8 @@ html[data-theme="dark"] {
   /* Ledger rows lift above the dark surface while issue-state colours retain priority. */
   --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 70%, var(--surface-container-high));
   --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 58%, var(--surface-container-highest));
-  --extra-place-result-due-surface: #332244;
-  --extra-place-result-due-hover-surface: #52356a;
+  --extra-place-result-due-surface: #5a3c74;
+  --extra-place-result-due-hover-surface: #332244;
   --text: #e7edf4;
   --on-surface: var(--text);
   --muted: #a6b3c0;
@@ -8584,12 +8584,12 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
   color: #6b2698;
 }
 
-/* A scheduled race result needs attention, without disguising input-completeness states. */
-.data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
+/* Result due is an operational state. Missing-field severity remains visible in its issue chips. */
+.data-table tbody tr.extra-place-row-result-due {
   background: var(--extra-place-result-due-surface);
 }
 
-.data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger):hover {
+.data-table tbody tr.extra-place-row-result-due:hover {
   background: var(--extra-place-result-due-hover-surface);
 }
 
@@ -8616,8 +8616,12 @@ html[data-theme="dark"] .extra-place-race-ready-due {
   color: #e4c3ff;
 }
 
-html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
+html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due {
   background: var(--extra-place-result-due-surface);
+}
+
+html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due:hover {
+  background: var(--extra-place-result-due-hover-surface);
 }
 
 html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due > td:first-child {
