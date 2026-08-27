@@ -182,6 +182,26 @@
       "case_id": "COMBO-036",
       "inputs": {"loadout_status": "Archived", "historical_row_reference": true},
       "expected": {"new_quick_add_available": false, "historical_reference_preserved": true}
+    },
+    {
+      "case_id": "COMBO-044",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-MULTI-LEDGER", "ledger_type": "Casino", "favourite_order": 1},
+      "expected": {"casino_favourite": true, "extra_place_favourite": false, "other_profile_favourite": false}
+    },
+    {
+      "case_id": "COMBO-045",
+      "inputs": {"profile_id": "PROFILE-001", "ledger_type": "Casino", "favourite_count": 5},
+      "expected": {"accepted_favourite_count": 4, "fifth_favourite_rejected": true}
+    },
+    {
+      "case_id": "COMBO-046",
+      "inputs": {"profile_id": "PROFILE-001", "ledger_type": "Casino", "favourite_count": 0},
+      "expected": {"uses_global_sort_order": true}
+    },
+    {
+      "case_id": "COMBO-047",
+      "inputs": {"profile_id": "PROFILE-001", "preset_id": "DEMO-CASINO-FREE-SPINS", "availability": "blocked"},
+      "expected": {"hidden_from_compact_entry": true, "historical_row_reference_preserved": true}
     }
   ]
 }

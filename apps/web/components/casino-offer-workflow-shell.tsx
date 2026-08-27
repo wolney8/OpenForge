@@ -1988,9 +1988,20 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       enabled: boolean;
       availability: CasinoQuickAddLoadout["availability"];
       availability_reason: string;
+      sort_order: number;
+      is_favourite: boolean;
+      favourite_order: number;
     }>;
-    setQuickAddLoadouts(rows
-      .filter((row) => row.ledger_type === "Casino" && row.enabled)
+    const eligible = rows
+      .filter((row) => row.ledger_type === "Casino" && row.enabled && row.availability !== "blocked");
+    const favourites = eligible.filter((row) => row.is_favourite);
+    setQuickAddLoadouts((favourites.length ? favourites : eligible)
+      .sort((left, right) =>
+        (favourites.length
+          ? left.favourite_order - right.favourite_order
+          : left.sort_order - right.sort_order) || left.label.localeCompare(right.label),
+      )
+      .slice(0, 4)
       .map((row) => ({
         preset_id: row.preset_id,
         label: row.label,

@@ -17,6 +17,9 @@ mapping and workflow boundaries, not casino EV or RTP calculations.
 | `CQA-006` | hidden profile loadout | compact preset is absent only for that profile |
 | `CQA-007` | blocked/gubbed selected bookmaker | preset is blocked or hidden with an account-status explanation; compact save cannot proceed |
 | `CQA-008` | limited selected bookmaker | preset remains usable with an explicit warning |
+| `CQA-009` | four profile-and-ledger favourites | compact entry renders the ordered four eligible favourites only |
+| `CQA-010` | no profile-and-ledger favourites | compact entry renders the global loadout order as fallback |
+| `CQA-011` | favourite exists only for Casino | the same loadout is not implicitly favourite in Extra Place or another profile |
 
 ## Rules
 

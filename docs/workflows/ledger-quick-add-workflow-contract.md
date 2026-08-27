@@ -50,6 +50,10 @@ detailed editor must write a Common Bet Combo, not an unrelated template store.
   A limited account is selectable with a warning; blocked, gubbed, closed or
   promotion-ineligible accounts are disabled with an explanation.
 - Archived loadouts remain available for historical audit only and cannot create a new row.
+- A Fund Manager may favourite up to four enabled, eligible loadouts for a profile and individual
+  ledger. Favourite order is a profile presentation preference, not a global template edit.
+- If no favourite is configured for the current profile and ledger, compact entry falls back to the
+  global loadout sort order. Hidden, blocked and archived loadouts never appear as favourites.
 
 ## States
 

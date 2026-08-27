@@ -90,6 +90,9 @@ type QuickAddLoadout = {
   bookmaker: string;
   availability: "eligible" | "limited" | "blocked";
   availability_reason: string;
+  sort_order?: number;
+  is_favourite?: boolean;
+  favourite_order?: number;
 };
 type ExtraPlaceIssueFilter =
   | "any"
@@ -395,7 +398,17 @@ export function EachWayExtraPlaceWorkflowShell({
           record.enabled &&
           record.availability !== "blocked",
       );
-      if (eligible.length) setLoadouts(eligible);
+      if (eligible.length) {
+        const favourites = eligible.filter((record) => record.is_favourite);
+        const visible = (favourites.length ? favourites : eligible)
+          .sort((left, right) =>
+            (favourites.length
+              ? (left.favourite_order ?? 0) - (right.favourite_order ?? 0)
+              : (left.sort_order ?? 0) - (right.sort_order ?? 0)) || left.label.localeCompare(right.label),
+          )
+          .slice(0, 4);
+        setLoadouts(visible);
+      }
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [profileId]);

@@ -1,6 +1,6 @@
 # Quick Add Loadout Favourites Plan
 
-_Status: proposed; requires approval before schema and API implementation._
+_Status: implemented; validation in progress._
 
 ## Purpose
 
@@ -19,10 +19,12 @@ they are not a second template store.
 
 ## Proposed Addition
 
-Extend `profile_quick_add_loadout_overrides` with:
+Add `profile_quick_add_loadout_favourites`, keyed by `profile_id`, `preset_id`, and
+`ledger_type`, with a one-based `favourite_order`.
 
-- `is_favourite` boolean, default `false`;
-- `favourite_order` integer, default `0`.
+This separate presentation table is necessary because one global template can support multiple
+ledgers. Favouriting it for Casino must not also favourite it for Extra Place, Sportsbook, Free
+Bets, or Cash Adjustments.
 
 The profile settings row gains a favourite control and ordering action. A ledger control bar renders
 only the first four enabled, eligible favourites for that profile and ledger, ordered by
@@ -30,6 +32,7 @@ only the first four enabled, eligible favourites for that profile and ledger, or
 
 ## Rules
 
+- A favourite is scoped to one profile and one supported ledger.
 - A favourite must be enabled, unarchived, supported by the current ledger and profile-eligible.
 - Blocked or gubbed account states remove the loadout from quick entry and show the reason in
   Settings; no silent substitute bookmaker is selected.
@@ -60,4 +63,5 @@ only the first four enabled, eligible favourites for that profile and ledger, or
 
 ## Approval Boundary
 
-This requires a schema migration and API contract extension. Do not implement until approved.
+Approved and implemented as a narrowly scoped schema/API extension. Remaining validation covers
+the API, profile settings, and existing compact-entry consumers.

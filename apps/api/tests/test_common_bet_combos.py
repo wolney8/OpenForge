@@ -212,6 +212,91 @@ def test_quick_add_loadouts_inherit_and_isolate_profile_overrides(tmp_path: Path
     assert other_profile_row["defaults"]["spinStake"] == "0.10"
 
 
+def test_quick_add_favourites_are_profile_and_ledger_scoped(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    created = client.post(
+        "/fund-manager/common-bet-combos",
+        json={
+            "name": "Demo dual-ledger loadout",
+            "ledger_type": "Casino",
+            "quick_add": {
+                "enabled": True,
+                "display_label": "Demo dual ledger",
+                "supported_ledgers": ["Casino", "Extra Place"],
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    preset_id = created.json()["preset_id"]
+
+    favourite = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}/favourite",
+        json={"ledger_type": "Casino", "is_favourite": True},
+    )
+    assert favourite.status_code == 200, favourite.text
+    assert favourite.json()["favourite_order"] == 1
+
+    rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001"
+    )
+    assert rows.status_code == 200, rows.text
+    casino_row = next(
+        row for row in rows.json()
+        if row["preset_id"] == preset_id and row["ledger_type"] == "Casino"
+    )
+    extra_place_row = next(
+        row for row in rows.json()
+        if row["preset_id"] == preset_id and row["ledger_type"] == "Extra Place"
+    )
+    assert casino_row["is_favourite"] is True
+    assert casino_row["favourite_order"] == 1
+    assert extra_place_row["is_favourite"] is False
+    assert extra_place_row["favourite_order"] == 0
+
+    other_profile_rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-002"
+    )
+    assert other_profile_rows.status_code == 200, other_profile_rows.text
+    other_profile_row = next(
+        row for row in other_profile_rows.json()
+        if row["preset_id"] == preset_id and row["ledger_type"] == "Casino"
+    )
+    assert other_profile_row["is_favourite"] is False
+
+
+def test_quick_add_favourites_are_limited_to_four_per_profile_ledger(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    preset_ids: list[str] = []
+    for index in range(5):
+        created = client.post(
+            "/fund-manager/common-bet-combos",
+            json={
+                "name": f"Demo favourite {index}",
+                "ledger_type": "Casino",
+                "quick_add": {"enabled": True, "supported_ledgers": ["Casino"]},
+            },
+        )
+        assert created.status_code == 201, created.text
+        preset_ids.append(created.json()["preset_id"])
+
+    for preset_id in preset_ids[:4]:
+        response = client.put(
+            f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_id}/favourite",
+            json={"ledger_type": "Casino", "is_favourite": True},
+        )
+        assert response.status_code == 200, response.text
+
+    rejected = client.put(
+        f"/fund-manager/common-bet-combos/profile-overrides/profile-demo-001/{preset_ids[4]}/favourite",
+        json={"ledger_type": "Casino", "is_favourite": True},
+    )
+    assert rejected.status_code == 422
+    assert "up to four" in rejected.json()["detail"]
+
+
 def test_quick_add_loadout_rejects_blocked_profile_account_override(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)

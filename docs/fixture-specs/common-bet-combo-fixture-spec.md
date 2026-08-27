@@ -51,6 +51,10 @@ _Last updated: 2026-07-22_
 | COMBO-041 | Blocked or gubbed account override | UI marks it unavailable and API rejects the override |
 | COMBO-042 | Limited account override | Loadout stays available with a visible warning |
 | COMBO-043 | Archived Quick Add loadout | Historical rows retain the preset reference; it cannot be selected for a new compact entry |
+| COMBO-044 | Casino favourite on a multi-ledger loadout | The loadout is favourite only for the selected profile's Casino quick entry, not Extra Place or another profile |
+| COMBO-045 | Four favourite loadouts | Exactly four ordered, enabled and eligible favourites render; a fifth favourite is rejected |
+| COMBO-046 | No profile-ledger favourites | Compact entry falls back to the global loadout order |
+| COMBO-047 | Favourite becomes hidden, blocked or archived | It is excluded from new compact entry without mutating historical rows or another profile's preferences |
 | PB-001 | Displayed boosted odds | Displayed odds drive sportsbook scenarios |
 | PB-002 | 15% boost on odds 3.00, stake 10 | Reference boosted odds 3.3000; extra profit 3.00 |
 | PB-003 | PB-002 capped at 2.00 | Reference boosted odds 3.2000; extra profit 2.00 |

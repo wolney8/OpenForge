@@ -424,6 +424,18 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (preset_id) REFERENCES fund_manager_combo_presets(preset_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_quick_add_loadout_favourites (
+          profile_id TEXT NOT NULL,
+          preset_id TEXT NOT NULL,
+          ledger_type TEXT NOT NULL,
+          favourite_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (profile_id, preset_id, ledger_type),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (preset_id) REFERENCES fund_manager_combo_presets(preset_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS accounts (
           account_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -4729,6 +4741,16 @@ class ProfileQuickAddLoadoutOverrideRecord:
 
 
 @dataclass(frozen=True)
+class ProfileQuickAddLoadoutFavouriteRecord:
+    profile_id: str
+    preset_id: str
+    ledger_type: str
+    favourite_order: int
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
 class AccountRecord:
     account_id: str
     profile_id: str
@@ -5780,6 +5802,118 @@ def upsert_profile_quick_add_loadout_override(
         ).fetchone()
     assert row is not None
     return map_profile_quick_add_loadout_override_row(row)
+
+
+def map_profile_quick_add_loadout_favourite_row(
+    row: sqlite3.Row,
+) -> ProfileQuickAddLoadoutFavouriteRecord:
+    return ProfileQuickAddLoadoutFavouriteRecord(
+        profile_id=str(row["profile_id"]),
+        preset_id=str(row["preset_id"]),
+        ledger_type=str(row["ledger_type"]),
+        favourite_order=int(row["favourite_order"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def list_profile_quick_add_loadout_favourites(
+    profile_id: str,
+    ledger_type: str | None = None,
+) -> list[ProfileQuickAddLoadoutFavouriteRecord]:
+    with connect() as connection:
+        if ledger_type:
+            rows = connection.execute(
+                """
+                SELECT * FROM profile_quick_add_loadout_favourites
+                WHERE profile_id = ? AND ledger_type = ?
+                ORDER BY favourite_order ASC, preset_id ASC
+                """,
+                (profile_id, ledger_type),
+            ).fetchall()
+        else:
+            rows = connection.execute(
+                """
+                SELECT * FROM profile_quick_add_loadout_favourites
+                WHERE profile_id = ?
+                ORDER BY ledger_type ASC, favourite_order ASC, preset_id ASC
+                """,
+                (profile_id,),
+            ).fetchall()
+    return [map_profile_quick_add_loadout_favourite_row(row) for row in rows]
+
+
+def set_profile_quick_add_loadout_favourite(
+    profile_id: str,
+    preset_id: str,
+    ledger_type: str,
+    *,
+    is_favourite: bool,
+    favourite_order: int | None = None,
+) -> list[ProfileQuickAddLoadoutFavouriteRecord]:
+    """Set a profile-and-ledger favourite without changing the shared template."""
+    now = utc_now()
+    with connect() as connection:
+        existing_rows = connection.execute(
+            """
+            SELECT * FROM profile_quick_add_loadout_favourites
+            WHERE profile_id = ? AND ledger_type = ?
+            ORDER BY favourite_order ASC, preset_id ASC
+            """,
+            (profile_id, ledger_type),
+        ).fetchall()
+        current = [
+            map_profile_quick_add_loadout_favourite_row(row)
+            for row in existing_rows
+            if str(row["preset_id"]) != preset_id
+        ]
+        if is_favourite:
+            if len(current) >= 4:
+                raise ValueError("A profile can keep up to four Quick Add favourites per ledger")
+            position = max(1, min(favourite_order or len(current) + 1, len(current) + 1))
+            current.insert(
+                position - 1,
+                ProfileQuickAddLoadoutFavouriteRecord(
+                    profile_id=profile_id,
+                    preset_id=preset_id,
+                    ledger_type=ledger_type,
+                    favourite_order=position,
+                    created_at=now,
+                    updated_at=now,
+                ),
+            )
+        connection.execute(
+            """
+            DELETE FROM profile_quick_add_loadout_favourites
+            WHERE profile_id = ? AND ledger_type = ?
+            """,
+            (profile_id, ledger_type),
+        )
+        for index, favourite in enumerate(current, start=1):
+            connection.execute(
+                """
+                INSERT INTO profile_quick_add_loadout_favourites (
+                  profile_id, preset_id, ledger_type, favourite_order, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    profile_id,
+                    favourite.preset_id,
+                    ledger_type,
+                    index,
+                    favourite.created_at,
+                    now,
+                ),
+            )
+        rows = connection.execute(
+            """
+            SELECT * FROM profile_quick_add_loadout_favourites
+            WHERE profile_id = ? AND ledger_type = ?
+            ORDER BY favourite_order ASC, preset_id ASC
+            """,
+            (profile_id, ledger_type),
+        ).fetchall()
+    return [map_profile_quick_add_loadout_favourite_row(row) for row in rows]
 
 
 def get_profile_lookup_value(

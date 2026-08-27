@@ -14,7 +14,9 @@ from openforge_api.db import (
     get_fund_manager_combo_preset,
     list_accounts,
     list_fund_manager_combo_presets,
+    list_profile_quick_add_loadout_favourites,
     list_profile_quick_add_loadout_overrides,
+    set_profile_quick_add_loadout_favourite,
     upsert_profile_quick_add_loadout_override,
     update_fund_manager_combo_preset,
 )
@@ -151,6 +153,15 @@ class ProfileQuickAddLoadoutResponse(BaseModel):
     availability_reason: str
     bookmaker: str
     archived: bool
+    sort_order: int
+    is_favourite: bool
+    favourite_order: int
+
+
+class ProfileQuickAddLoadoutFavouritePayload(BaseModel):
+    ledger_type: QuickAddLedger
+    is_favourite: bool
+    favourite_order: int | None = Field(default=None, ge=1, le=4)
 
 
 RETIRED_DEFAULT_COMBO_IDS = {
@@ -519,6 +530,10 @@ def list_profile_quick_add_loadouts(
 ) -> list[ProfileQuickAddLoadoutResponse]:
     seed_default_combos()
     overrides = {row.preset_id: row for row in list_profile_quick_add_loadout_overrides(profile_id)}
+    favourites = {
+        (row.preset_id, row.ledger_type): row
+        for row in list_profile_quick_add_loadout_favourites(profile_id)
+    }
     accounts = list_accounts(profile_id)
     response: list[ProfileQuickAddLoadoutResponse] = []
     for record in list_fund_manager_combo_presets(active_only=True):
@@ -567,6 +582,7 @@ def list_profile_quick_add_loadouts(
             availability, account_reason = _loadout_status_for_account(account.status, account.lifecycle_status, account.restrictions_json)
             reason = reason or account_reason
         for ledger in config.supported_ledgers:
+            favourite = favourites.get((record.preset_id, ledger))
             response.append(ProfileQuickAddLoadoutResponse(
                 preset_id=record.preset_id,
                 label=config.display_label.strip() or combo.name,
@@ -577,8 +593,19 @@ def list_profile_quick_add_loadouts(
                 availability_reason=reason,
                 bookmaker=bookmaker,
                 archived=combo.status == "Archived",
+                sort_order=record.sort_order,
+                is_favourite=favourite is not None,
+                favourite_order=favourite.favourite_order if favourite else 0,
             ))
-    return response
+    return sorted(
+        response,
+        key=lambda item: (
+            item.ledger_type,
+            0 if item.is_favourite else 1,
+            item.favourite_order if item.is_favourite else item.sort_order,
+            item.label.casefold(),
+        ),
+    )
 
 
 @router.put("/profile-overrides/{profile_id}/{preset_id}")
@@ -620,4 +647,42 @@ def update_profile_quick_add_loadout(
         bookmaker_override=record.bookmaker_override,
         defaults=defaults if isinstance(defaults, dict) else {},
         availability_reason=record.availability_reason,
+    )
+
+
+@router.put("/profile-overrides/{profile_id}/{preset_id}/favourite")
+def update_profile_quick_add_loadout_favourite(
+    profile_id: str,
+    preset_id: str,
+    payload: ProfileQuickAddLoadoutFavouritePayload,
+) -> ProfileQuickAddLoadoutFavouritePayload:
+    template = get_fund_manager_combo_preset(preset_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Quick add loadout was not found")
+    combo = serialize(template)
+    if not combo.quick_add.enabled or combo.status != "Active":
+        raise HTTPException(status_code=422, detail="This Quick Add loadout is not available")
+    if payload.ledger_type not in combo.quick_add.supported_ledgers:
+        raise HTTPException(status_code=422, detail="This loadout does not support the selected ledger")
+    override = next(
+        (item for item in list_profile_quick_add_loadout_overrides(profile_id) if item.preset_id == preset_id),
+        None,
+    )
+    if override is not None and not override.enabled:
+        raise HTTPException(status_code=422, detail="Enable this Quick Add loadout before favouriting it")
+    try:
+        favourites = set_profile_quick_add_loadout_favourite(
+            profile_id,
+            preset_id,
+            payload.ledger_type,
+            is_favourite=payload.is_favourite,
+            favourite_order=payload.favourite_order,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    favourite = next((item for item in favourites if item.preset_id == preset_id), None)
+    return ProfileQuickAddLoadoutFavouritePayload(
+        ledger_type=payload.ledger_type,
+        is_favourite=favourite is not None,
+        favourite_order=favourite.favourite_order if favourite else None,
     )

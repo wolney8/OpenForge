@@ -104,6 +104,11 @@ Choose a recognised recurring offer such as a synthetic weekly bet builder or lo
   blocked and promotion-ineligible accounts cannot use a promotional loadout. Limited and pending
   accounts remain visible with an explicit warning where the offer family permits use.
 - A profile must never receive another profile's override, bookmaker or default values.
+- Favourites are presentation preferences, stored separately by `profile_id`, global loadout and
+  supported ledger. A favourite in Casino must not affect the same loadout's Extra Place or other
+  ledger visibility.
+- At most four enabled, eligible favourites are displayed in a profile ledger's quick-entry row.
+  With no favourites for that profile and ledger, the existing global loadout order is used.
 
 ## Application rules
 
