@@ -99,6 +99,8 @@ No onboarding action may create an account silently or bypass the global account
   `docs/contracts/spreadsheet-import-export-roundtrip-contract.md`
 - Extra Place source migration: `docs/planning/each-way-extra-place-import-preparation.md`
 - Profile and account authority: `docs/contracts/fund-manager-tracker-authorities-contract.md`
+- Founder onboarding and migration: `docs/workflows/founder-profile-onboarding-and-operational-migration-workflow-contract.md`,
+  `docs/fixture-specs/founder-profile-onboarding-and-operational-migration-fixture-spec.md`
 
 ## Required Delivery Slices
 
@@ -120,7 +122,8 @@ show no unexplained row-count or financial-total variance before the workbook is
 
 ## Tracking
 
-The local tracking register currently records Google OIDC as `#62` and Neon runtime/cutover as
-`#75`; authenticated live GitHub reconciliation is required before relying on those references or
-creating migration/onboarding duplicates. Founder onboarding and operational-workbook migration
-need their own issue coverage if no current issue already covers the end-to-end acceptance criteria.
+Live public GitHub was checked on 2026-08-27. Google OIDC is `#62` and Neon runtime/cutover is
+`#75`. No open issue covers founder-profile onboarding plus operational-workbook migration end to
+end. Create one only through an authenticated GitHub client, using the pending body in
+`docs/planning/plum-duff-next-issue-tracking-register.md`; do not create a duplicate if it appears
+before that sync.

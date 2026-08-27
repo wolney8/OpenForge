@@ -23,6 +23,7 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Platform billing and Fund Manager finance | M10 Fee Visibility or later Billing milestone | `docs/contracts/fund-manager-platform-finance-contract.md` | `tests/fixtures/fund-manager-platform-finance-fixtures.json` | Needs issue verification |
 | Fund Manager OAuth and account self-management | M5 Login Profiles Tracker Shell | `docs/contracts/fund-manager-authentication-contract.md` | `tests/fixtures/fund-manager-authentication-fixtures.json` | Existing M5 issue noted as #62 in readiness doc; verify |
 | Neon cutover and local-first backup hardening | M5 Login Profiles Tracker Shell or deployment milestone | `docs/contracts/local-database-cloud-backup-contract.md`, `docs/fund-managers/neon-local-first-cutover-and-recovery.md`, `docs/deployment/vercel-neon-dev-target.md`, `docs/deployment/neon-runtime-tranche-01.md` | `tests/fixtures/local-database-cloud-backup-fixtures.json` | User-created later issue; verify |
+| Founder profile onboarding and operational workbook migration | M17 Database Runtime, Neon Cutover and Recovery Hardening | `docs/workflows/founder-profile-onboarding-and-operational-migration-workflow-contract.md`, `docs/planning/founder-operational-migration-readiness.md` | `docs/fixture-specs/founder-profile-onboarding-and-operational-migration-fixture-spec.md` | Live public GitHub checked 2026-08-27: no open issue covers the end-to-end workflow. Pending authenticated issue sync; do not duplicate if the user creates one first. |
 | Public offer source ingestion | Future sourcing/intelligence milestone | `docs/contracts/public-offer-source-ingestion-contract.md` | `docs/fixture-specs/public-offer-source-ingestion-fixture-spec.md` | Needs issue verification |
 | Profit Boost workflow parity | M14 Calculator Workspace or sportsbook enhancement milestone | `docs/contracts/sportsbook-profit-boost-contract.md`, `docs/calculation-contracts/sportsbook-profit-boost-calculation-contract.md` | `docs/fixture-specs/sportsbook-profit-boost-fixture-spec.md` | Needs issue verification |
 | Multi-fixture, outright and long-duration sportsbook workflow | M14 Calculator Workspace or later sportsbook expansion | `docs/workflows/sportsbook-multi-fixture-and-outright-workflow-contract.md` | `docs/fixture-specs/sportsbook-multi-fixture-and-outright-fixture-spec.md` | Needs issue verification |
@@ -31,6 +32,56 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Template-driven ledger Quick Add | M13 Common Bet Combos, M15 Platform Experience | `docs/workflows/ledger-quick-add-workflow-contract.md`, `docs/workflows/casino-offer-workflow-contract.md` | `docs/fixture-specs/ledger-quick-add-fixture-spec.md` | Live public GitHub checked 2026-08-23: no dedicated issue found. Pending authenticated issue sync; do not duplicate if the user has since created one. |
 
 ## Recommended issue bodies
+
+### Founder profile onboarding and operational workbook migration
+
+Title:
+
+`Onboard Founder Profile and Safely Migrate the Operational Workbook`
+
+Milestone:
+
+`M17 Database Runtime, Neon Cutover and Recovery Hardening`
+
+Body:
+
+```md
+## Objective
+
+Allow the Fund Manager to create their own operational profile, configure its account/module
+authority, then dry-run and reconcile the current workbook before a controlled import and shadow
+operation.
+
+## Scope
+
+- Founder-only profile onboarding using the existing profile model.
+- Module enablement: Sportsbook, Free Bets and Cash Adjustments always on; Casino and Extra Place
+  profile-toggleable.
+- Profile-account authority, opening values, restrictions and Quick Add Loadout overrides.
+- Per-ledger importer mapping, staged review, verified pre-import backup, explicit approval and
+  reconciliation.
+- Two-week workbook/Plum Duff shadow-run acceptance gate.
+
+## Gates
+
+- Hosted writes require the approved Neon runtime cutover (`#75`), with no SQLite fallback.
+- Hosted profile/import endpoints require owner authentication (`#62`).
+- Real workbook data is not committed; fixture coverage remains synthetic.
+
+## Contract and fixtures
+
+- `docs/workflows/founder-profile-onboarding-and-operational-migration-workflow-contract.md`
+- `docs/fixture-specs/founder-profile-onboarding-and-operational-migration-fixture-spec.md`
+- existing ledger import map/reconciliation contracts
+
+## Acceptance criteria
+
+- Founder can configure a profile without bypassing global account authority.
+- Dry run retains unknown columns and detects row-count/control-total variances.
+- Import requires verified backup and explicit approval.
+- Cross-profile access is denied server-side.
+- Real-data migration is blocked until Neon persistence and owner authentication are verified.
+```
 
 ### Template-driven ledger Quick Add
 
