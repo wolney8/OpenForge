@@ -1737,7 +1737,6 @@ function LedgerRow({
   const rowIssues = getRowIssues(row);
   const issueCount = rowIssues.length;
   const issue = row.calculation_state !== "resolved" || issueCount > 0;
-  const visibleIssues = rowIssues.slice(0, 4);
   const outcomes = resultChoices(
     row.mode,
     row.bookmaker_places ?? undefined,
@@ -1748,6 +1747,9 @@ function LedgerRow({
     placedAt: row.placed_at,
     status: row.status,
   });
+  // Result due is an operational cue, not an additional data-completeness issue.
+  const displayIssues = raceReady?.tone === "due" ? ["Result Needed", ...rowIssues] : rowIssues;
+  const visibleIssues = displayIssues.slice(0, 4);
   return (
     <tr
       className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
@@ -1761,14 +1763,19 @@ function LedgerRow({
       tabIndex={0}
     >
       <td>
-        {rowIssues.length > 0 ? (
+        {displayIssues.length > 0 ? (
           <div aria-label={`Issues for ${row.runner || "Extra Place row"}`} className="row-issue-overlay">
             {visibleIssues.map((label) => (
-              <span className="table-chip table-chip-warning" key={label}>{label}</span>
+              <span
+                className={`table-chip${label === "Result Needed" ? " table-chip-result-needed" : " table-chip-warning"}`}
+                key={label}
+              >
+                {label}
+              </span>
             ))}
-            {issueCount > visibleIssues.length ? (
+            {displayIssues.length > visibleIssues.length ? (
               <span className="table-chip table-chip-muted">
-                {issueCount - visibleIssues.length}+ Issues
+                {displayIssues.length - visibleIssues.length}+ Issues
               </span>
             ) : null}
           </div>

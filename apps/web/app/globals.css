@@ -104,8 +104,8 @@ html[data-theme="dark"] {
   /* Ledger rows lift above the dark surface while issue-state colours retain priority. */
   --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 70%, var(--surface-container-high));
   --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 58%, var(--surface-container-highest));
-  --extra-place-result-due-surface: color-mix(in srgb, var(--surface-strong) 87%, #8a49bb 13%);
-  --extra-place-result-due-hover-surface: color-mix(in srgb, var(--surface-strong) 70%, #c58af0 30%);
+  --extra-place-result-due-surface: #332244;
+  --extra-place-result-due-hover-surface: #52356a;
   --text: #e7edf4;
   --on-surface: var(--text);
   --muted: #a6b3c0;
@@ -5234,6 +5234,18 @@ html[data-theme="dark"] .notification-count-badge {
   color: color-mix(in srgb, var(--danger) 86%, var(--text));
 }
 
+.table-chip-result-needed {
+  border-color: color-mix(in srgb, #9e5ad0 70%, var(--outline));
+  background: color-mix(in srgb, #7c3fa3 24%, var(--surface-container));
+  color: color-mix(in srgb, #8e43c3 88%, var(--text));
+}
+
+html[data-theme="dark"] .table-chip-result-needed {
+  border-color: color-mix(in srgb, #d8aeff 62%, var(--outline));
+  background: color-mix(in srgb, #9e5ad0 30%, var(--surface-container));
+  color: #efd9ff;
+}
+
 .table-chip-danger {
   border-color: color-mix(in srgb, var(--danger) 72%, var(--outline));
   background: color-mix(in srgb, var(--danger) 22%, var(--surface-container));
@@ -5810,7 +5822,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .data-table tbody tr {
   cursor: pointer;
   background: color-mix(in srgb, var(--surface-strong) 94%, var(--primary-soft));
-  transition: background 90ms ease;
+  transition: background 55ms ease;
 }
 
 .data-table tbody tr:hover {
@@ -5930,7 +5942,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   backdrop-filter: blur(26px) saturate(0.92);
   -webkit-backdrop-filter: blur(26px) saturate(0.92);
   box-shadow: none;
-  transition: opacity 100ms ease, transform 100ms ease;
+  transition: opacity 55ms ease, transform 55ms ease;
   z-index: 6;
   isolation: isolate;
 }
@@ -8610,6 +8622,14 @@ html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due:not(.row
 
 html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due > td:first-child {
   box-shadow: inset 4px 0 0 #d8aeff;
+}
+
+/* Keep theme-token changes atomic: ledger rows must not repaint after the surrounding page. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
 }
 
 .extra-place-profit-value,

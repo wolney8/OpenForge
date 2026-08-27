@@ -3,6 +3,15 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Shared Ledger Theme Feedback Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-069 (reopened) | Extra Place result-due state | Make purple result-due hover feedback visibly distinct in dark mode. | Purple row dark-mode hover | DONE |
+| PD-FIX-070 | Shared bet-ledger rows | Remove the noticeable delay before row hover feedback. | Slow table hover | DONE |
+| PD-FIX-071 | Global theme switching | Swap dark/light tokens atomically so ledger tables do not repaint after the rest of the page. | Delayed table-theme transition | DONE |
+| PD-FIX-072 | Extra Place result-due state | Show a purple `Result Needed` operational chip in the left-side issue overlay. | Result-due issue cue | DONE |
+
 ## 2026-08-27 Extra Place Result-Due Geometry Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

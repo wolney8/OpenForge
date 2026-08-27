@@ -505,6 +505,18 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` checks viewport anchoring and the
   standard pagination footer.
 
+## 2026-08-27: Ledger rows repainted after the page theme changed
+
+- Area: shared bet-ledger rows, particularly dark-mode result-due rows.
+- Root cause: table-row transitions continued after the root theme token changed, while the
+  dark purple result-due surface was too close to its hover colour.
+- Prevention: `ThemeProvider` adds `theme-switching` for the token swap and removes it after two
+  animation frames; this disables transitions only during the atomic change. Result-due dark
+  tokens must retain a measurable base-to-hover luminance difference. Operational result cues
+  are displayed as purple issue-overlay chips without changing data-issue severity.
+- Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` verifies the purple cue, fast row
+  feedback, dark hover contrast and zero transition duration during a theme swap.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

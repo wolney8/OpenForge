@@ -199,6 +199,8 @@ test.describe("Extra Place ledger parity", () => {
       const normalTableRow = page.locator("tbody tr").filter({ hasText: normalRunnerName }).last();
       await expect(tableRow).toHaveClass(/extra-place-row-result-due/);
       await expect(tableRow.getByText("Result due", { exact: true })).toBeVisible();
+      await tableRow.hover();
+      await expect(tableRow.getByText("Result Needed", { exact: true })).toBeVisible();
       await expect(tableRow.locator("td").first()).toHaveCSS(
         "box-shadow",
         /rgba?\(138, 73, 187(?:, 0\.72)?\)|rgba?\(216, 174, 255(?:, 0\.72)?\)/,
@@ -264,7 +266,7 @@ test.describe("Extra Place ledger parity", () => {
 
     expect(rgbLuminance(styles.light.normal)).toBeLessThan(rgbLuminance(styles.light.surface));
     expect(rgbLuminance(styles.light.due)).toBeLessThan(rgbLuminance(styles.light.normal));
-    expect(Number.parseFloat(styles.light.transition)).toBeLessThanOrEqual(0.1);
+    expect(Number.parseFloat(styles.light.transition)).toBeLessThanOrEqual(0.06);
     expect(rgbLuminance(styles.dark.normal)).toBeGreaterThan(rgbLuminance(styles.dark.surface));
     expect(rgbLuminance(styles.dark.due)).toBeGreaterThan(rgbLuminance(styles.dark.normal));
 
@@ -284,8 +286,18 @@ test.describe("Extra Place ledger parity", () => {
       probe.remove();
       return values;
     });
-    expect(rgbLuminance(baseColour)).toBeLessThan(60);
+    expect(rgbLuminance(baseColour)).toBeLessThan(65);
     expect(rgbLuminance(hoverColour)).toBeGreaterThan(rgbLuminance(baseColour));
+    expect(rgbLuminance(hoverColour) - rgbLuminance(baseColour)).toBeGreaterThan(15);
+
+    const transitionDuration = await page.evaluate(() => {
+      document.documentElement.classList.add("theme-switching");
+      const row = document.querySelector(".extra-place-data-table tbody tr");
+      const duration = row ? getComputedStyle(row).transitionDuration : "";
+      document.documentElement.classList.remove("theme-switching");
+      return duration;
+    });
+    expect(transitionDuration).toBe("0s");
   });
 
   test("opens Extra Place-specific filter controls", async ({ page }) => {

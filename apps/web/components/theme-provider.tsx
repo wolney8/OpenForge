@@ -19,10 +19,25 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+let themeSwitchReleaseFrame: number | null = null;
 
 function applyTheme(theme: ThemeMode) {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+
+  if (themeSwitchReleaseFrame !== null) {
+    window.cancelAnimationFrame(themeSwitchReleaseFrame);
+  }
+
+  // Keep the token swap atomic. Components can animate again on the next frame.
+  themeSwitchReleaseFrame = window.requestAnimationFrame(() => {
+    themeSwitchReleaseFrame = window.requestAnimationFrame(() => {
+      root.classList.remove("theme-switching");
+      themeSwitchReleaseFrame = null;
+    });
+  });
 }
 
 function applyBackLayTheme(theme: BackLayTheme) {
