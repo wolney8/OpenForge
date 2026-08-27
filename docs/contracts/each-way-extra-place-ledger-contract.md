@@ -88,6 +88,19 @@ Incomplete rows remain visible as `Needs action` even where their date/time is b
 the current tracker range. This exception applies only to the operational table; tracker-range
 cards, reporting and financial totals remain strictly range-scoped.
 
+## Operational Visibility And Weekly Loss Budget
+
+- A placed row shows a quiet `Race finishing` cue from five minutes after its scheduled race
+  time, changing to `Result due` after ten minutes. This is an advisory manual-settlement cue,
+  not an automated result source or notification replacement.
+- The resolved-value card remains strictly selected-range scoped. It separately shows selected
+  range qualifying loss and realised Extra Place outcome, so neither changes its established
+  resolved-value calculation.
+- Each profile has an advisory weekly Extra Place loss budget, defaulting to `£15`. It measures
+  the current Monday-Sunday qualifying loss independently of the selected tracker range and shows
+  the amount left or that the budget is reached. It never blocks betting, changes P&L, fees, or
+  reports.
+
 ## EP Catcher evidence
 
 Only `docs/reference/MatchedBetting_Tracker.xlsx`, worksheet `EP Catcher`, is in scope. `Week`

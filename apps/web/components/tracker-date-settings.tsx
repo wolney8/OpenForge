@@ -40,6 +40,7 @@ type TrackerSettingsRecord = {
   weekly_profit_target: string;
   monthly_profit_target: string;
   annual_profit_target: string;
+  weekly_extra_place_loss_budget: string;
   created_at: string;
   updated_at: string;
 };
@@ -91,6 +92,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         weekly_profit_target: settings.weekly_profit_target,
         monthly_profit_target: settings.monthly_profit_target,
         annual_profit_target: settings.annual_profit_target,
+        weekly_extra_place_loss_budget: settings.weekly_extra_place_loss_budget,
       }) !==
       JSON.stringify({
         active_date_preset: pristineSettings.active_date_preset,
@@ -110,6 +112,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         weekly_profit_target: pristineSettings.weekly_profit_target,
         monthly_profit_target: pristineSettings.monthly_profit_target,
         annual_profit_target: pristineSettings.annual_profit_target,
+        weekly_extra_place_loss_budget: pristineSettings.weekly_extra_place_loss_budget,
       })
     );
   }, [pristineSettings, settings]);
@@ -216,6 +219,7 @@ export function TrackerDateSettings({ profileId }: Props) {
         weekly_profit_target: nextSettings.weekly_profit_target,
         monthly_profit_target: nextSettings.monthly_profit_target,
         annual_profit_target: nextSettings.annual_profit_target,
+        weekly_extra_place_loss_budget: nextSettings.weekly_extra_place_loss_budget,
       }),
     });
 
@@ -480,6 +484,16 @@ export function TrackerDateSettings({ profileId }: Props) {
                   )
                 }
               />
+              <DashboardTargetField
+                label="Extra Place weekly loss budget"
+                value={settings.weekly_extra_place_loss_budget}
+                onChange={(value) =>
+                  void applyFieldChange(
+                    (current) => ({ ...current, weekly_extra_place_loss_budget: value }),
+                    "Extra Place loss budget change"
+                  )
+                }
+              />
             </div>
           </section>
 
@@ -699,6 +713,9 @@ function normalizeTrackerSettingsRecord(record: TrackerSettingsRecord): TrackerS
     weekly_profit_target: normalizeTargetSetting(record.weekly_profit_target),
     monthly_profit_target: normalizeTargetSetting(record.monthly_profit_target),
     annual_profit_target: normalizeTargetSetting(record.annual_profit_target),
+    weekly_extra_place_loss_budget: normalizeTargetSetting(
+      record.weekly_extra_place_loss_budget || "15"
+    ),
     default_exchange_name: record.default_exchange_name ?? "",
     default_bonus_retention_percent: normalizeBonusRetentionPercentForUi(
       record.default_bonus_retention_percent

@@ -35,9 +35,16 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | --- | --- | --- | --- | --- |
 | PD-FIX-052 | Extra Place table issues | Show no more than four actionable issue chips; show a count chip for the remainder and make four-or-more issue rows danger/red, otherwise warning/yellow. | First-row hover with ten issue chips | DONE |
 | PD-FIX-053 | Extra Place editor themes | Recheck heading and helper-copy contrast for both light/dark modes and both EP/Back-Lay themes. | Back Bet, Place Terms, Lay sections | DONE |
-| PD-FIX-054 | Extra Place settlement visibility | Define and implement a non-intrusive race-ready indicator shortly after the scheduled race time. | Race approaching finish/results timing | INVESTIGATING |
+| PD-FIX-054 | Extra Place settlement visibility | Define and implement a non-intrusive race-ready indicator shortly after the scheduled race time. | Race approaching finish/results timing | DONE |
 | PD-FIX-055 | Extra Place racing details | Parse pasted Smarkets and MBB runner/race text into Runner, Race, and parser-owned date/time suggestions without overwriting manual fields. | Smarkets/MBB paste examples | DONE |
-| PD-FIX-056 | Extra Place resolved-value card | Clarify selected-range qualifying loss, realised Extra Place outcome, and a weekly loss-budget control without changing existing resolved-value calculation. | Resolved Value £25.89 discrepancy and £15 weekly loss factor | INVESTIGATING |
+| PD-FIX-056 | Extra Place resolved-value card | Clarify selected-range qualifying loss, realised Extra Place outcome, and a weekly loss-budget control without changing existing resolved-value calculation. | Resolved Value £25.89 discrepancy and £15 weekly loss factor | DONE |
+
+## 2026-08-27 Shared Ledger Micro-Polish Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-058 | Shared ledger issue chips | Use a transparent backdrop blur rather than a drop-shadow treatment. | Issue-chip hover overlay | DONE |
+| PD-FIX-059 | Shared ledger pagination | Keep the rows-per-page selector arrow inset from the pill edge. | Rows per page control | DONE |
 
 ## 2026-08-26 Extra Place Flow Consolidation Batch
 

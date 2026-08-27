@@ -129,6 +129,15 @@ test.describe("Extra Place ledger parity", () => {
     await expect(tableRow.locator(".row-issue-overlay .table-chip")).toHaveCount(5);
     await expect(tableRow.locator(".row-issue-overlay")).toContainText(/\d+\+ Issues/);
     await expect(tableRow.locator(".row-issue-overlay")).toHaveCSS("box-shadow", "none");
+    const issueSurfaceOpacity = await tableRow.locator(".row-issue-overlay").evaluate((element) => {
+      const color = getComputedStyle(element).backgroundColor;
+      return Number.parseFloat(color.match(/\/ ([0-9.]+)\)$/)?.[1] ?? "1");
+    });
+    expect(issueSurfaceOpacity).toBeLessThan(0.2);
+    const issueBlurFallback = await tableRow.locator(".row-issue-overlay").evaluate((element) =>
+      getComputedStyle(element, "::before").filter,
+    );
+    expect(issueBlurFallback).toContain("blur");
     await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 
@@ -376,6 +385,10 @@ test.describe("Extra Place ledger parity", () => {
       );
       expect(pageCountAfterPageSizeChange).toBeLessThan(pageCountBeforePageSizeChange);
       await expect(bottomPagination.getByLabel("Extra Place pagination rows per page")).toHaveValue("16");
+      const rowsPerPagePadding = await topPagination
+        .getByLabel("Extra Place pagination rows per page")
+        .evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingRight));
+      expect(rowsPerPagePadding).toBeGreaterThan(32);
     } finally {
       await Promise.all(created.map((row) => deleteExtraPlaceRow(request, row.each_way_extra_place_id)));
     }

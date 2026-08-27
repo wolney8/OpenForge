@@ -353,6 +353,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
                     weekly_profit_target TEXT NOT NULL DEFAULT '',
                     monthly_profit_target TEXT NOT NULL DEFAULT '',
                     annual_profit_target TEXT NOT NULL DEFAULT '',
+                    weekly_extra_place_loss_budget TEXT NOT NULL DEFAULT '15',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
@@ -1227,6 +1228,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "profile_tracker_settings",
         "annual_profit_target",
         "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection,
+        "profile_tracker_settings",
+        "weekly_extra_place_loss_budget",
+        "TEXT NOT NULL DEFAULT '15'",
     )
     ensure_column(
         connection,
@@ -4671,6 +4678,7 @@ class ProfileTrackerSettingsRecord:
     weekly_profit_target: str
     monthly_profit_target: str
     annual_profit_target: str
+    weekly_extra_place_loss_budget: str
     created_at: str
     updated_at: str
 
@@ -5287,11 +5295,12 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                   weekly_profit_target,
                   monthly_profit_target,
                   annual_profit_target,
+                  weekly_extra_place_loss_budget,
                   created_at,
                   updated_at
                 ) VALUES (
                   ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 """,
                 (
@@ -5313,6 +5322,7 @@ def get_profile_tracker_settings(profile_id: str) -> ProfileTrackerSettingsRecor
                     "",
                     "",
                     "",
+                    "15",
                     timestamp,
                     timestamp,
                 ),
@@ -5363,9 +5373,10 @@ def upsert_profile_tracker_settings(
                             weekly_profit_target,
                             monthly_profit_target,
                             annual_profit_target,
+                            weekly_extra_place_loss_budget,
               created_at,
               updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
               active_date_preset = excluded.active_date_preset,
               custom_start_date = excluded.custom_start_date,
@@ -5388,6 +5399,7 @@ def upsert_profile_tracker_settings(
                             weekly_profit_target = excluded.weekly_profit_target,
                             monthly_profit_target = excluded.monthly_profit_target,
                             annual_profit_target = excluded.annual_profit_target,
+                            weekly_extra_place_loss_budget = excluded.weekly_extra_place_loss_budget,
               updated_at = excluded.updated_at
             """,
             (
@@ -5409,6 +5421,7 @@ def upsert_profile_tracker_settings(
                 payload.get("weekly_profit_target", ""),
                 payload.get("monthly_profit_target", ""),
                 payload.get("annual_profit_target", ""),
+                payload.get("weekly_extra_place_loss_budget", "15"),
                 created_at,
                 timestamp,
             ),

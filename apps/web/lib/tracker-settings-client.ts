@@ -23,6 +23,7 @@ export type TrackerSettingsClientRecord = {
   weekly_profit_target?: string;
   monthly_profit_target?: string;
   annual_profit_target?: string;
+  weekly_extra_place_loss_budget?: string;
 };
 
 export async function saveTrackerDatePreset<TSettings extends TrackerSettingsClientRecord>(
@@ -52,6 +53,8 @@ export async function saveTrackerDatePreset<TSettings extends TrackerSettingsCli
       weekly_profit_target: currentSettings.weekly_profit_target ?? "",
       monthly_profit_target: currentSettings.monthly_profit_target ?? "",
       annual_profit_target: currentSettings.annual_profit_target ?? "",
+      weekly_extra_place_loss_budget:
+        currentSettings.weekly_extra_place_loss_budget ?? "15",
     }),
   });
 

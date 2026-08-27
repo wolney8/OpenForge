@@ -30,6 +30,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert response.json()["weekly_profit_target"] == ""
     assert response.json()["monthly_profit_target"] == ""
     assert response.json()["annual_profit_target"] == ""
+    assert response.json()["weekly_extra_place_loss_budget"] == "15"
 
     save_response = client.put(
         "/profiles/profile-demo-001/tracker-settings",
@@ -51,6 +52,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
             "weekly_profit_target": "50",
             "monthly_profit_target": "250",
             "annual_profit_target": "3000",
+            "weekly_extra_place_loss_budget": "22.50",
         },
     )
     assert save_response.status_code == 200
@@ -77,6 +79,7 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert roundtrip_response.json()["dashboard_view_mode"] == "Visual Comparison"
     assert roundtrip_response.json()["monthly_profit_target"] == "250"
     assert roundtrip_response.json()["annual_profit_target"] == "3000"
+    assert roundtrip_response.json()["weekly_extra_place_loss_budget"] == "22.50"
 
     other_profile_response = client.get("/profiles/profile-demo-002/tracker-settings")
     assert other_profile_response.status_code == 200

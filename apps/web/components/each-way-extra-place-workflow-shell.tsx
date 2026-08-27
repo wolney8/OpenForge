@@ -24,6 +24,8 @@ import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
 import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
 import { formatLedgerDateTime } from "@/lib/ledger-date-display";
 import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
+import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
+import { getExtraPlaceLossBudgetState } from "@/lib/extra-place-loss-budget";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
@@ -367,6 +369,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [trackerSettings, setTrackerSettings] =
     useState<TrackerSettingsClientRecord | null>(null);
   const [savingRange, setSavingRange] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const parserOwnedDateRef = useRef<string | null>(null);
   const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -415,6 +418,10 @@ export function EachWayExtraPlaceWorkflowShell({
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [profileId]);
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
@@ -756,6 +763,10 @@ export function EachWayExtraPlaceWorkflowShell({
       ),
     [resolvedDateRange, rows],
   );
+  const weeklyBudgetRange = useMemo(
+    () => resolveDateRange({ preset: "Week (Mon-Sun)" }),
+    [],
+  );
   const outOfRangeIssueRows = useMemo(
     () =>
       rows.filter(
@@ -860,6 +871,30 @@ export function EachWayExtraPlaceWorkflowShell({
     (total, row) => total + (asNumber(row.qualifying_loss) ?? 0),
     0,
   );
+  const weeklyQualifyingLoss = useMemo(
+    () =>
+      rows
+        .filter((row) =>
+          isDateWithinRange(parseRowDate(row.placed_at), weeklyBudgetRange),
+        )
+        .reduce(
+          (total, row) => total + (asNumber(row.qualifying_loss) ?? 0),
+          0,
+        ),
+    [rows, weeklyBudgetRange],
+  );
+  const extraPlaceOutcome = rangeRows.reduce(
+    (total, row) =>
+      total +
+      (row.status === "Settled" && row.result === "Extra Place"
+        ? (asNumber(row.final_value) ?? 0)
+        : 0),
+    0,
+  );
+  const lossBudget = getExtraPlaceLossBudgetState(
+    trackerSettings?.weekly_extra_place_loss_budget,
+    weeklyQualifyingLoss,
+  );
   const rangeContext = formatResolvedDateRange(resolvedDateRange);
   const rangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
@@ -904,6 +939,13 @@ export function EachWayExtraPlaceWorkflowShell({
           </strong>
           <span className="extra-place-resolved-detail">
             Qual Loss <FinancialValue animate={false} value={qualifyingLoss} />
+          </span>
+          <span className="extra-place-resolved-detail">
+            EP outcome <FinancialValue animate={false} value={extraPlaceOutcome} />
+          </span>
+          <span className="extra-place-resolved-detail">
+            Weekly loss budget <FinancialValue animate={false} value={lossBudget.remaining} />
+            {lossBudget.reached ? " reached" : ` left of ${formatFinancialValue(lossBudget.budget)}`}
           </span>
         </article>
       </section>
@@ -1062,6 +1104,7 @@ export function EachWayExtraPlaceWorkflowShell({
         onEdit={openRow}
         onResult={(row, result) => void saveResult(row, result)}
         rows={paginatedRows}
+        currentTime={currentTime}
         visibleColumns={visibleColumns}
       />
       <LedgerPagination
@@ -1532,6 +1575,7 @@ function ExtraPlaceFilterDialog({
 }
 function ExtraPlaceTable({
   bookmakerCatalogue,
+  currentTime,
   outOfRangeIssueIds,
   rows,
   visibleColumns,
@@ -1540,6 +1584,7 @@ function ExtraPlaceTable({
   onResult,
 }: {
   bookmakerCatalogue: BookmakerCatalogueRecord[];
+  currentTime: number;
   outOfRangeIssueIds: Set<string>;
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
@@ -1635,6 +1680,7 @@ function ExtraPlaceTable({
           {rows.map((row) => (
             <LedgerRow
               bookmakerCatalogue={bookmakerCatalogue}
+              currentTime={currentTime}
               key={row.each_way_extra_place_id}
               onDelete={() => onDelete(row)}
               onEdit={() => onEdit(row)}
@@ -1663,6 +1709,7 @@ function ResizableHeader({ className = "", label, onResize }: { className?: stri
 }
 function LedgerRow({
   bookmakerCatalogue,
+  currentTime,
   outsideTrackerRange,
   row,
   visibleColumns,
@@ -1671,6 +1718,7 @@ function LedgerRow({
   onResult,
 }: {
   bookmakerCatalogue: BookmakerCatalogueRecord[];
+  currentTime: number;
   outsideTrackerRange: boolean;
   row: Row;
   visibleColumns: ExtraPlaceVisibleColumns;
@@ -1687,6 +1735,11 @@ function LedgerRow({
     row.bookmaker_places ?? undefined,
     row.exchange_places ?? undefined,
   );
+  const raceReady = getExtraPlaceRaceReadyState({
+    now: currentTime,
+    placedAt: row.placed_at,
+    status: row.status,
+  });
   return (
     <tr
       className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
@@ -1765,7 +1818,7 @@ function LedgerRow({
       {visibleColumns.implied_odds ? <td>{decimalDisplay(row.implied_odds)}</td> : null}
       <td>{value(row.qualifying_loss)}</td>
       <td><EpProfit row={row} /></td>
-      <td><StatusDisplay outsideTrackerRange={outsideTrackerRange} row={row} /></td>
+      <td><StatusDisplay outsideTrackerRange={outsideTrackerRange} raceReady={raceReady} row={row} /></td>
       <td>
         <div
           className="table-action-row extra-place-table-actions"
@@ -1810,9 +1863,11 @@ function EpProfit({ row }: { row: Row }) {
 function StatusDisplay({
   row,
   outsideTrackerRange = false,
+  raceReady,
 }: {
   row: Row;
   outsideTrackerRange?: boolean;
+  raceReady: ReturnType<typeof getExtraPlaceRaceReadyState>;
 }) {
   const position = row.finishing_position
     ? ordinalPosition(row.finishing_position)
@@ -1823,6 +1878,7 @@ function StatusDisplay({
     <span className="extra-place-status-display">
       <strong>{position}</strong>
       <small className={row.result === "Extra Place" ? "extra-place-status-extra" : ""}>{row.result || "Pending"}</small>
+      {raceReady ? <small className={`extra-place-race-ready extra-place-race-ready-${raceReady.tone}`}>{raceReady.label}</small> : null}
       {outsideTrackerRange ? <small>Needs action · outside range</small> : null}
     </span>
   );

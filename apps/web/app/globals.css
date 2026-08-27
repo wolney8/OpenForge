@@ -4522,20 +4522,35 @@ html[data-theme="dark"] .notification-count-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
+  position: relative;
   color: var(--on-surface-variant);
   font-size: 0.88rem;
   font-weight: 700;
 }
 
 .table-pagination-page-size select {
+  appearance: none;
   min-height: 2.5rem;
   min-width: 4.25rem;
-  padding: 0.45rem 2rem 0.45rem 0.75rem;
+  padding: 0.45rem 2.55rem 0.45rem 0.75rem;
   border: 1px solid var(--outline);
   border-radius: var(--shape-full);
   color: var(--on-surface);
   background: var(--surface-container-high);
   font: inherit;
+}
+
+.table-pagination-page-size::after {
+  color: var(--on-surface-variant);
+  content: "expand_more";
+  font-family: "Material Symbols Outlined";
+  font-size: 1.15rem;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  right: 0.72rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .field-control {
@@ -5888,14 +5903,32 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border-radius: 0.9rem;
   opacity: 0;
   pointer-events: none;
-  background: color-mix(in srgb, var(--surface-container-high) 82%, transparent);
-  border: 1px solid color-mix(in srgb, var(--outline) 56%, transparent);
-  backdrop-filter: blur(16px) saturate(1.25);
-  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  /* Blur the table behind issue chips without turning them into opaque cards. */
+  background: color-mix(in srgb, var(--surface-container-high) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline) 24%, transparent);
+  backdrop-filter: blur(18px) saturate(0.92);
+  -webkit-backdrop-filter: blur(18px) saturate(0.92);
   box-shadow: none;
   transition: opacity 150ms ease, transform 150ms ease;
   z-index: 6;
   isolation: isolate;
+}
+
+.row-issue-overlay::before {
+  /* Fallback for environments where backdrop-filter is disabled. */
+  background: color-mix(in srgb, var(--surface-container-high) 16%, transparent);
+  border: 0;
+  border-radius: inherit;
+  content: "";
+  filter: blur(10px);
+  inset: -0.28rem;
+  position: absolute;
+  z-index: 0;
+}
+
+.row-issue-overlay > * {
+  position: relative;
+  z-index: 1;
 }
 
 .row-issue-overlay .table-chip {
@@ -8469,6 +8502,26 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
+}
+
+.extra-place-race-ready {
+  align-items: center;
+  border-radius: var(--shape-full);
+  display: inline-flex !important;
+  font-weight: 800 !important;
+  margin-top: 0.35rem !important;
+  padding: 0.18rem 0.45rem;
+  width: fit-content;
+}
+
+.extra-place-race-ready-finishing {
+  background: color-mix(in srgb, var(--warning) 18%, var(--surface-container));
+  color: var(--warning);
+}
+
+.extra-place-race-ready-due {
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface-container));
+  color: var(--danger);
 }
 
 .extra-place-profit-value,

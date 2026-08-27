@@ -46,6 +46,7 @@ class TrackerSettingsPayload(BaseModel):
     weekly_profit_target: str = Field(default="", max_length=20)
     monthly_profit_target: str = Field(default="", max_length=20)
     annual_profit_target: str = Field(default="", max_length=20)
+    weekly_extra_place_loss_budget: str = Field(default="15", max_length=20)
 
     @field_validator(
         "custom_start_date",
@@ -58,6 +59,7 @@ class TrackerSettingsPayload(BaseModel):
         "weekly_profit_target",
         "monthly_profit_target",
         "annual_profit_target",
+        "weekly_extra_place_loss_budget",
     )
     @classmethod
     def normalize_dates(cls, value: str) -> str:
