@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-_Last updated: 2026-08-26_
+_Last updated: 2026-08-27_
 
 ## Purpose
 
@@ -15,7 +15,7 @@ but authenticated issue mutation must remain pending until a secure client is av
 | Area | Recommended milestone | Local contract evidence | Fixture evidence | GitHub state |
 |---|---|---|---|---|
 | Ledger modal parity and guided access | M15 Platform Experience | `docs/agent-contracts/plum-duff-ledger-modal-parity-contract.md`, `docs/workflows/guided-entry-focus-workflow-contract.md` | `tests/fixtures/guided-entry-focus-fixtures.json`, modal Playwright specs | #61 implementation, automated checks and Fund Manager smoke test passed 2026-08-23; public issue remains open pending authenticated closure |
-| Notification consistency | M15 Platform Experience | `docs/workflows/fund-manager-notification-centre-workflow-contract.md` | `tests/fixtures/fund-manager-notification-centre-fixtures.json` | Fund Manager source timing, preferences, action routing and security-tag filtering merged in `865807e` on 2026-08-23. Re-audited 2026-08-27: API (3), unit (13) and focused Playwright (4) checks pass. Current sources are `fund_manager_only`; subscriber delivery needs a separate authenticated issue with server-enforced sessions. Live public GitHub checked 2026-08-26: no dedicated issue; #39 only mentions notifications within Sequential Lay. Pending authenticated issue sync only; do not create a duplicate. |
+| Notification consistency | M15 Platform Experience | `docs/workflows/fund-manager-notification-centre-workflow-contract.md` | `tests/fixtures/fund-manager-notification-centre-fixtures.json` | Fund Manager source timing, preferences, action routing and security-tag filtering merged in `865807e` on 2026-08-23. Re-audited 2026-08-27: contract/API source matrix, unit (13) and focused Playwright (3) checks pass. Current sources are `fund_manager_only`; subscriber delivery needs a separate authenticated issue with server-enforced sessions. Live public GitHub checked 2026-08-27: no dedicated notification-centre issue; #39 is Sequential Lay specific and #86 only references future notification consistency within its task-deck scope. Pending authenticated issue sync only; do not create a duplicate. |
 | Full financial report review | M7 Reporting and Import/Export, M10 Fee Visibility | `docs/contracts/cross-profile-reporting-contract.md`, `docs/contracts/dashboard-selected-range-pnl-contract.md`, `docs/contracts/retained-profit-reporting-contract.md`, `docs/contracts/fund-manager-fee-calculation-and-withdrawal-contract.md` | reporting and fee fixture packs under `tests/fixtures/` | Needs issue verification |
 | Standalone calculator workspace | M14 Calculator Workspace | `docs/workflows/calculator-workspace-ledger-bridge-workflow-contract.md`, sportsbook/free-bet/casino calculation contracts | `tests/fixtures/calculator-workspace-ledger-bridge-fixtures.json`, calculator fixture packs | Needs issue verification |
 | Subscriber registration and funding review | M9 Subscriber Access | `docs/contracts/subscriber-registration-and-funding-review-contract.md` | `tests/fixtures/subscriber-registration-and-funding-review-fixtures.json` | Needs issue verification |
