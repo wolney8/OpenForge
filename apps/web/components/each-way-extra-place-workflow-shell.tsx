@@ -1572,8 +1572,14 @@ function ExtraPlaceFilterDialog({
           </small>
         </section>
         <div className="dialog-actions">
-          <button className="button-link" onClick={onClear} type="button">
-            Clear filters
+          <button
+            aria-label="Clear Extra Place filters"
+            className="modal-close-button filter-dialog-clear-button"
+            onClick={onClear}
+            title="Clear filters"
+            type="button"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
           <button
             className="modal-primary-button"

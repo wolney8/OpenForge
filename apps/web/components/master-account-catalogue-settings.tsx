@@ -362,6 +362,9 @@ export function MasterAccountCatalogueSettings() {
                     Check catalogue import
                   </button>
                 </div>
+                <p className="lede account-catalogue-import-help">
+                  Validates a catalogue JSON against the current global providers. It reports added, updated and missing providers only; it never changes Profile accounts or applies a catalogue replacement.
+                </p>
                 {importPreflight ? (
                   <section aria-live="polite" className="content-subpanel stack">
                     <strong>Import check passed</strong>

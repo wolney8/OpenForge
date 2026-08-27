@@ -38,6 +38,10 @@ workbook cutover are explicitly excluded._
 | PD-PR-030 | Accounts provider badges | The API overlays legacy bookmaker IDs with canonical global presentation metadata, so Accounts and ledger badges share one palette. | DONE |
 | PD-PR-031 | Extra Places operational routing | Fund Manager and report links use the `all-issues` Extra Places route state, which the ledger reads deterministically. | DONE |
 | PD-PR-032 | Extra Places navigation identity | Profile command route and ledger title now use `chess_knight` and "Extra Places". | DONE |
+| PD-PR-033 | Extra Places filter dialog | Added the shared destructive clear control to the dialog footer, beside the normal completion action. | DONE |
+| PD-PR-034 | Accounts toolbar geometry | Matched the Extra Places two-row toolbar: bounded search/actions above a separate loadout row, both before pagination. | DONE |
+| PD-PR-035 | Legacy profile provider reconciliation | Define an audited mapping from legacy profile account rows to global catalogue providers; no automatic deletion or replacement of financial history. | NEEDS-INFO |
+| PD-PR-036 | Catalogue import explanation | Settings now explains that catalogue import check is JSON validation/preflight only and cannot alter providers or Profile account state. | DONE |
 | PD-PR-DEFER-001 | Provider source consolidation | Safely migrate legacy `bookmaker_catalogue` and master catalogue into one stable-ID persisted authority. | DEFERRED |
 | PD-PR-DEFER-002 | Global catalogue apply | Add audited, confirmed bulk apply with profile-reference impact resolution after source consolidation. | DEFERRED |
 | PD-PR-DEFER-003 | Extra Place transfer | Add staged Extra Place import/export mapping and fixture reconciliation before founder cutover. | DEFERRED |
@@ -58,6 +62,11 @@ workbook cutover are explicitly excluded._
 - Profile account state currently persists in the `accounts` table and carries balance, lifecycle,
   restrictions, channel, notes and profile display/commission overrides.
 - Any catalogue mutation remains local-runtime only until the later PostgreSQL/hosted cutover.
+- `Check catalogue import` accepts an exported JSON catalogue and reports its add/update/missing
+  provider diff without writing data. To reconcile existing legacy profile rows, the Fund Manager
+  must first supply the authoritative catalogue export. The later confirmed migration must show
+  each old provider-to-canonical-provider mapping, affected profile accounts and any row that
+  requires explicit retention or deletion approval.
 - Legacy profile account rows are not deleted or silently reassigned. A later catalogue reconciliation
   must present canonical-match conflicts and require an explicit Fund Manager confirmation before any
   profile financial record is changed or removed.

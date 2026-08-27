@@ -734,22 +734,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   value={query}
                 />
               </label>
-              <div className="review-chip-row accounts-review-loadouts" role="group" aria-label="Accounts review modes">
-                {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
-                  <button
-                    aria-pressed={tableMode === mode.value}
-                    className={`review-chip${tableMode === mode.value ? " is-active" : ""}`}
-                    key={mode.value}
-                    onClick={() => {
-                      setTableMode(mode.value);
-                      setCurrentPage(1);
-                    }}
-                    type="button"
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
               <div className="accounts-review-actions">
                 <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
                 <div className="table-filter-button-wrap">
@@ -785,6 +769,24 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                     </button>
                   ) : null}
                 </div>
+              </div>
+            </div>
+            <div className="extra-place-table-heading-controls accounts-table-heading-controls">
+              <div className="review-chip-row accounts-review-loadouts" role="group" aria-label="Accounts review modes">
+                {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
+                  <button
+                    aria-pressed={tableMode === mode.value}
+                    className={`review-chip${tableMode === mode.value ? " is-active" : ""}`}
+                    key={mode.value}
+                    onClick={() => {
+                      setTableMode(mode.value);
+                      setCurrentPage(1);
+                    }}
+                    type="button"
+                  >
+                    {mode.label}
+                  </button>
+                ))}
               </div>
             </div>
             {errorMessage ? (

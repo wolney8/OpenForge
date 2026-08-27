@@ -56,6 +56,7 @@ test.describe("Extra Place ledger parity", () => {
 
     await ledger.getByRole("button", { name: "Open Extra Place filters" }).click();
     const filterDialog = page.getByRole("dialog", { name: "Extra Place filter controls" });
+    await expect(filterDialog.getByRole("button", { name: "Clear Extra Place filters" })).toBeVisible();
     await filterDialog.getByRole("button", { name: "Hide Win Lay Odds" }).click();
     await filterDialog.getByRole("button", { name: "Done" }).click();
     await expect(ledger.locator("th", { hasText: "Date / time" })).toBeVisible();

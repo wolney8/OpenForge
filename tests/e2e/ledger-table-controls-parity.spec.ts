@@ -135,6 +135,15 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
   await expect(page.getByRole("columnheader", { name: /Status/i })).toBeVisible();
   await expect(page.locator(".accounts-financial-chip").first()).toBeVisible();
 
+  const toolbar = page.locator(".accounts-review-toolbar");
+  const loadouts = page.getByRole("group", { name: "Accounts review modes" });
+  const search = toolbar.getByRole("searchbox");
+  const [searchBox, loadoutBox] = await Promise.all([search.boundingBox(), loadouts.boundingBox()]);
+  expect(searchBox).not.toBeNull();
+  expect(loadoutBox).not.toBeNull();
+  expect(searchBox!.width).toBeLessThanOrEqual(480);
+  expect(loadoutBox!.y).toBeGreaterThan(searchBox!.y + searchBox!.height - 1);
+
   const accountHeader = page.getByRole("columnheader", { name: /Account/i }).first();
   await accountHeader.getByRole("button").click();
   await expect(accountHeader).toHaveAttribute("aria-sort", "ascending");
