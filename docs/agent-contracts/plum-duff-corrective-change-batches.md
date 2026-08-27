@@ -3,6 +3,12 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Extra Place Post-Race Cue Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-064 | Extra Place ledger rows and status | Preserve the five-minute race-finishing cue and highlight unsettled placed rows ten minutes after their race time with a distinct purple result-due state, without replacing red/yellow data-issue states. | Purple row convention from the operational spreadsheet | DONE |
+
 ## 2026-08-27 Extra Place Stat Card Simplification Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

@@ -8546,8 +8546,45 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
 }
 
 .extra-place-race-ready-due {
-  background: color-mix(in srgb, var(--danger) 16%, var(--surface-container));
-  color: var(--danger);
+  background: color-mix(in srgb, #8a49bb 24%, var(--surface-container));
+  border: 1px solid color-mix(in srgb, #8a49bb 54%, var(--outline));
+  color: #6b2698;
+}
+
+/* A scheduled race result needs attention, without disguising input-completeness states. */
+.data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
+  background: color-mix(in srgb, var(--surface-strong) 91%, #8a49bb 9%);
+}
+
+.data-table tbody tr.extra-place-row-result-due > td:first-child {
+  box-shadow: inset 4px 0 0 #8a49bb;
+}
+
+.data-table tbody tr.extra-place-row-result-due.row-state-issue-warning > td:first-child,
+.data-table tbody tr.extra-place-row-result-due.row-state-issue-danger > td:first-child {
+  box-shadow:
+    inset 4px 0 0 color-mix(in srgb, var(--warning) 82%, transparent),
+    inset 8px 0 0 color-mix(in srgb, #8a49bb 72%, transparent);
+}
+
+.data-table tbody tr.extra-place-row-result-due.row-state-issue-danger > td:first-child {
+  box-shadow:
+    inset 4px 0 0 color-mix(in srgb, var(--danger) 78%, transparent),
+    inset 8px 0 0 color-mix(in srgb, #8a49bb 72%, transparent);
+}
+
+html[data-theme="dark"] .extra-place-race-ready-due {
+  background: color-mix(in srgb, #bc7cef 24%, var(--surface-container));
+  border-color: color-mix(in srgb, #d8aeff 58%, var(--outline));
+  color: #e4c3ff;
+}
+
+html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
+  background: color-mix(in srgb, var(--surface-strong) 89%, #9f5bcc 11%);
+}
+
+html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due > td:first-child {
+  box-shadow: inset 4px 0 0 #d8aeff;
 }
 
 .extra-place-profit-value,

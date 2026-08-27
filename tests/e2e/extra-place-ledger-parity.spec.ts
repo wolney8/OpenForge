@@ -168,6 +168,28 @@ test.describe("Extra Place ledger parity", () => {
     await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 
+  test("uses the purple result-due cue for an unsettled placed race after ten minutes", async ({ page, request }) => {
+    const runnerName = `Result due runner ${Date.now()}`;
+    const row = await createExtraPlaceRow(request, {
+      runner: runnerName,
+      placed_at: new Date(Date.now() - 11 * 60_000).toISOString(),
+      status: "Placed",
+    });
+    try {
+      await page.goto(route);
+      await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+      const tableRow = page.locator("tbody tr").filter({ hasText: runnerName }).last();
+      await expect(tableRow).toHaveClass(/extra-place-row-result-due/);
+      await expect(tableRow.getByText("Result due", { exact: true })).toBeVisible();
+      await expect(tableRow.locator("td").first()).toHaveCSS(
+        "box-shadow",
+        /rgba?\(138, 73, 187(?:, 0\.72)?\)|rgba?\(216, 174, 255(?:, 0\.72)?\)/,
+      );
+    } finally {
+      await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
+    }
+  });
+
   test("opens Extra Place-specific filter controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });

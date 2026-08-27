@@ -37,4 +37,14 @@ describe("getExtraPlaceRaceReadyState", () => {
       }),
     ).toEqual({ label: "Result due", tone: "due" });
   });
+
+  it("keeps the result-due cue active until a placed row is settled", () => {
+    expect(
+      getExtraPlaceRaceReadyState({
+        now: scheduledAt + 15 * 60_000,
+        placedAt: "2026-08-27T14:00:00.000Z",
+        status: "Placed",
+      }),
+    ).toEqual({ label: "Result due", tone: "due" });
+  });
 });

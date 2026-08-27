@@ -1750,7 +1750,7 @@ function LedgerRow({
   });
   return (
     <tr
-      className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
+      className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
       onClick={onEdit}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
