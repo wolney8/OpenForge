@@ -67,6 +67,14 @@ Working IDs are local delivery controls, not automatic GitHub issues.
 | PD-FIX-058 | Shared ledger issue chips | Use a transparent backdrop blur rather than a drop-shadow treatment. | Issue-chip hover overlay | DONE |
 | PD-FIX-059 | Shared ledger pagination | Keep the rows-per-page selector arrow inset from the pill edge. | Rows per page control | DONE |
 
+## 2026-08-27 Shared Bet Ledger Row-State Responsiveness Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-065 | Shared bet-ledger rows | Make normal, no-issue rows brighter in dark mode and darker in light mode. | All bet ledgers | DONE |
+| PD-FIX-066 | Extra Place result-due rows | Make purple result-due rows brighter in dark mode and darker in light mode. | Purple race-result rows | DONE |
+| PD-FIX-067 | Shared bet-ledger interaction | Reduce hover and table-control transition delay for faster ledger feedback. | Slow table/row hover movement | DONE |
+
 ## 2026-08-26 Extra Place Flow Consolidation Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

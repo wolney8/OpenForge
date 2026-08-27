@@ -12,6 +12,11 @@
   --surface-container-highest: #ffffff;
   --ledger-scroll-control-surface: rgba(222, 242, 244, 0.94);
   --ledger-scroll-control-halo: rgba(0, 91, 99, 0.16);
+  /* Ledger rows sit slightly below the surrounding surface in light mode. */
+  --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 84%, var(--bg-muted));
+  --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 73%, var(--primary-soft));
+  --extra-place-result-due-surface: color-mix(in srgb, var(--surface-strong) 82%, #7436a8 18%);
+  --extra-place-result-due-hover-surface: color-mix(in srgb, var(--surface-strong) 72%, #7436a8 28%);
   --text: #18232f;
   --on-surface: var(--text);
   --muted: #536371;
@@ -96,6 +101,11 @@ html[data-theme="dark"] {
   --surface-container-highest: #24313e;
   --ledger-scroll-control-surface: rgba(42, 62, 78, 0.94);
   --ledger-scroll-control-halo: rgba(104, 212, 216, 0.2);
+  /* Ledger rows lift above the dark surface while issue-state colours retain priority. */
+  --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 70%, var(--surface-container-high));
+  --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 58%, var(--surface-container-highest));
+  --extra-place-result-due-surface: color-mix(in srgb, var(--surface-strong) 76%, #b775e6 24%);
+  --extra-place-result-due-hover-surface: color-mix(in srgb, var(--surface-strong) 63%, #c58af0 37%);
   --text: #e7edf4;
   --on-surface: var(--text);
   --muted: #a6b3c0;
@@ -5721,7 +5731,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   -webkit-backdrop-filter: blur(1.6rem) saturate(1.35);
   opacity: 1;
   transform: translateY(-50%);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity 100ms ease, transform 100ms ease;
 }
 
 .ledger-table-scroll-arrow:hover,
@@ -5800,11 +5810,22 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .data-table tbody tr {
   cursor: pointer;
   background: color-mix(in srgb, var(--surface-strong) 94%, var(--primary-soft));
-  transition: background 140ms ease;
+  transition: background 90ms ease;
 }
 
 .data-table tbody tr:hover {
   background: color-mix(in srgb, var(--surface-strong) 88%, var(--primary-soft));
+}
+
+/* Keep no-issue rows distinct without competing with stronger warning/danger states. */
+.data-table.sportsbook-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger),
+.data-table.extra-place-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger):not(.extra-place-row-result-due) {
+  background: var(--bet-ledger-row-surface);
+}
+
+.data-table.sportsbook-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger):hover,
+.data-table.extra-place-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger):not(.extra-place-row-result-due):hover {
+  background: var(--bet-ledger-row-hover-surface);
 }
 
 .data-table tbody tr.row-state-issue-warning {
@@ -5909,7 +5930,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   backdrop-filter: blur(26px) saturate(0.92);
   -webkit-backdrop-filter: blur(26px) saturate(0.92);
   box-shadow: none;
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition: opacity 100ms ease, transform 100ms ease;
   z-index: 6;
   isolation: isolate;
 }
@@ -8553,7 +8574,11 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
 
 /* A scheduled race result needs attention, without disguising input-completeness states. */
 .data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
-  background: color-mix(in srgb, var(--surface-strong) 91%, #8a49bb 9%);
+  background: var(--extra-place-result-due-surface);
+}
+
+.data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger):hover {
+  background: var(--extra-place-result-due-hover-surface);
 }
 
 .data-table tbody tr.extra-place-row-result-due > td:first-child {
@@ -8580,7 +8605,7 @@ html[data-theme="dark"] .extra-place-race-ready-due {
 }
 
 html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due:not(.row-state-issue-warning):not(.row-state-issue-danger) {
-  background: color-mix(in srgb, var(--surface-strong) 89%, #9f5bcc 11%);
+  background: var(--extra-place-result-due-surface);
 }
 
 html[data-theme="dark"] .data-table tbody tr.extra-place-row-result-due > td:first-child {

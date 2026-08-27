@@ -26,6 +26,17 @@ async function deleteExtraPlaceRow(
   expect(response.ok()).toBeTruthy();
 }
 
+function rgbLuminance(color: string) {
+  const channels = color.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+  expect(channels).toHaveLength(3);
+  const scale = Math.max(...channels) <= 1 ? 255 : 1;
+  return (
+    channels[0] * scale * 0.2126 +
+    channels[1] * scale * 0.7152 +
+    channels[2] * scale * 0.0722
+  );
+}
+
 test.describe("Extra Place ledger parity", () => {
   test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {
     await page.goto(route);
@@ -188,6 +199,59 @@ test.describe("Extra Place ledger parity", () => {
     } finally {
       await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
     }
+  });
+
+  test("uses faster, theme-aware normal and result-due row feedback", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+
+    const styles = await page.evaluate(() => {
+      const tableBody = document.querySelector<HTMLTableSectionElement>(
+        ".extra-place-data-table tbody",
+      );
+      if (!tableBody) throw new Error("Expected Extra Place table body");
+
+      const toResolvedColor = (value: string) => {
+        const probe = document.createElement("span");
+        probe.style.color = value;
+        document.body.append(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      };
+      const capture = (theme: "light" | "dark") => {
+        document.documentElement.dataset.theme = theme;
+        const normal = document.createElement("tr");
+        const resultDue = document.createElement("tr");
+        resultDue.className = "extra-place-row-result-due";
+        normal.innerHTML = "<td>Normal row</td>";
+        resultDue.innerHTML = "<td>Result-due row</td>";
+        tableBody.append(normal, resultDue);
+        const root = getComputedStyle(document.documentElement);
+        const values = {
+          surface: toResolvedColor(root.getPropertyValue("--surface-strong").trim()),
+          normal: toResolvedColor(getComputedStyle(normal).backgroundColor),
+          due: toResolvedColor(getComputedStyle(resultDue).backgroundColor),
+          transition: getComputedStyle(normal).transitionDuration,
+        };
+        normal.remove();
+        resultDue.remove();
+        return values;
+      };
+
+      const initialTheme = document.documentElement.dataset.theme;
+      const light = capture("light");
+      const dark = capture("dark");
+      if (initialTheme) document.documentElement.dataset.theme = initialTheme;
+      else delete document.documentElement.dataset.theme;
+      return { light, dark };
+    });
+
+    expect(rgbLuminance(styles.light.normal)).toBeLessThan(rgbLuminance(styles.light.surface));
+    expect(rgbLuminance(styles.light.due)).toBeLessThan(rgbLuminance(styles.light.normal));
+    expect(Number.parseFloat(styles.light.transition)).toBeLessThanOrEqual(0.1);
+    expect(rgbLuminance(styles.dark.normal)).toBeGreaterThan(rgbLuminance(styles.dark.surface));
+    expect(rgbLuminance(styles.dark.due)).toBeGreaterThan(rgbLuminance(styles.dark.normal));
   });
 
   test("opens Extra Place-specific filter controls", async ({ page }) => {
@@ -405,7 +469,19 @@ test.describe("Extra Place ledger parity", () => {
   test("paginates Extra Place rows with the standard ledger controls", async ({ page, request }) => {
     const created = await Promise.all(
       Array.from({ length: 9 }, (_, index) =>
-        createExtraPlaceRow(request, { runner: `Pagination runner ${Date.now()}-${index}` }),
+        createExtraPlaceRow(request, {
+          runner: `Pagination runner ${Date.now()}-${index}`,
+          race: "Demo Race 14:10",
+          placed_at: "2026-07-15T14:10:00",
+          bookmaker: "Betfred",
+          each_way_stake: "5",
+          back_odds: "6",
+          win_exchange: "Smarkets",
+          win_lay_odds: "2.3",
+          place_exchange: "Smarkets",
+          place_lay_odds: "4.5",
+          status: "Placed",
+        }),
       ),
     );
     try {
