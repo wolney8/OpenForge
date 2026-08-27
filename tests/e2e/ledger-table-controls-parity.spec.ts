@@ -137,12 +137,26 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
 
   const toolbar = page.locator(".accounts-review-toolbar");
   const loadouts = page.getByRole("group", { name: "Accounts review modes" });
+  const actions = toolbar.locator(".accounts-review-actions");
+  const pagination = page.getByLabel("Accounts top controls");
   const search = toolbar.getByRole("searchbox");
-  const [searchBox, loadoutBox] = await Promise.all([search.boundingBox(), loadouts.boundingBox()]);
+  const [toolbarBox, searchBox, actionsBox, loadoutBox, paginationBox] = await Promise.all([
+    toolbar.boundingBox(),
+    search.boundingBox(),
+    actions.boundingBox(),
+    loadouts.boundingBox(),
+    pagination.boundingBox(),
+  ]);
+  expect(toolbarBox).not.toBeNull();
   expect(searchBox).not.toBeNull();
+  expect(actionsBox).not.toBeNull();
   expect(loadoutBox).not.toBeNull();
+  expect(paginationBox).not.toBeNull();
   expect(searchBox!.width).toBeLessThanOrEqual(480);
-  expect(loadoutBox!.y).toBeGreaterThan(searchBox!.y + searchBox!.height - 1);
+  expect(actionsBox!.x).toBeGreaterThan(toolbarBox!.x + toolbarBox!.width / 2);
+  expect(Math.abs(actionsBox!.y + actionsBox!.height - (searchBox!.y + searchBox!.height))).toBeLessThanOrEqual(6);
+  expect(loadoutBox!.y).toBeGreaterThan(toolbarBox!.y + toolbarBox!.height - 1);
+  expect(paginationBox!.y).toBeGreaterThan(loadoutBox!.y + loadoutBox!.height - 1);
 
   const accountHeader = page.getByRole("columnheader", { name: /Account/i }).first();
   await accountHeader.getByRole("button").click();
