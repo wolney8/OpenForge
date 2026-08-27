@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
+import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
@@ -248,6 +249,7 @@ function renderAttentionTable({
 }
 
 export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellProps) {
+  const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
   const [data, setData] = useState<TrackerSummaryDataset | null>(null);
   const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -722,9 +724,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   {summary.betsQuickView.partLaidBets}
                 </span>
                 {summary.betsQuickView.overdueBets > 0 ? (
-                  <span className="report-action-badge">
+                  <Link className="report-action-badge" href={`/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=reports`}>
                     Action needed: {summary.betsQuickView.overdueBets} overdue
-                  </span>
+                  </Link>
                 ) : null}
               </article>
               <article className="stat-card">
@@ -746,7 +748,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   Expiring free bets • Mug review {summary.betsQuickView.accountsNeedingMugReview}
                 </span>
                 {summary.betsQuickView.expiringFreeBetCount > 0 ? (
-                  <span className="report-action-badge">Action needed</span>
+                  <Link className="report-action-badge" href={`/profiles/${profileId}/tracker/free-bets?view=issues&issue=all-issues&source=reports`}>
+                    Action needed
+                  </Link>
                 ) : null}
               </article>
             </section>
@@ -832,13 +836,25 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 ) : (
                   summary.bookmakerBreakdown.map((row) => (
                     <tr key={row.bookmaker}>
-                      <td>{row.bookmaker}</td>
+                      <td><BookmakerIdentity bookmaker={row.bookmaker} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                       <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.eachWayExtraPlacePnl} /></td>
                       <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
-                      <td className="align-end">{row.openRowCount}</td>
+                      <td className="align-end">
+                        {row.openRowCount > 0 ? (
+                          <Link
+                            aria-label={`Open ${row.openRowCount} ${row.bookmaker} rows in the watchlist`}
+                            className="report-value-link"
+                            href={`/profiles/${profileId}/tracker/dashboard#open-watchlist`}
+                          >
+                            {row.openRowCount}
+                          </Link>
+                        ) : (
+                          row.openRowCount
+                        )}
+                      </td>
                     </tr>
                   ))
                 ),
@@ -1107,9 +1123,9 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                     {summary.betsQuickView.overdueBets}
                   </span>
                   {summary.betsQuickView.overdueBets > 0 ? (
-                    <span className="report-action-badge">
+                    <Link className="report-action-badge" href={`/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=reports`}>
                       Action needed: {summary.betsQuickView.overdueBets} overdue
-                    </span>
+                    </Link>
                   ) : null}
                 </article>
               </section>

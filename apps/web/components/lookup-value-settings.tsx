@@ -17,12 +17,6 @@ const sections: Array<{
   description: string;
 }> = [
   {
-    lookupType: "exchange",
-    title: "Exchanges",
-    singularLabel: "exchange",
-    description: "Exchange authority values used by exchange settings and matched-bet ledgers.",
-  },
-  {
     lookupType: "offer_name",
     title: "Sportsbook and free-bet offer names",
     singularLabel: "sportsbook or free-bet offer name",
@@ -191,9 +185,9 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
       <div className="stack">
         <span className="eyebrow">Workbook authority lists</span>
         <p className="lede">
-          These profile-scoped lists are the current Settings-owned source for named-range
-          style selectors. Ledger forms should read from here rather than relying on
-          scattered hardcoded values.
+          These profile-scoped lists hold offer labels only. Bookmaker, exchange, group, and
+          platform definitions are Fund Manager catalogue authority and are selected through
+          Profile Accounts rather than created here.
         </p>
       </div>
       <div className="table-status" aria-live="polite">

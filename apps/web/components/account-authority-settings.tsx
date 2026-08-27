@@ -46,11 +46,11 @@ export function AccountAuthoritySettings({ profileId }: { profileId: string }) {
   return (
     <section className="content-subpanel stack" aria-label="Account authority settings">
       <div className="stack">
-        <span className="eyebrow">Account, group, and platform authorities</span>
+        <span className="eyebrow">Profile account availability</span>
         <p className="lede">
-          The Fund Manager owns the authority to add, remove, and modify profile accounts,
-          groups, and platforms. Tracker forms should read from these authorities rather
-          than inventing isolated local lists.
+          Global provider identity, groups, and platforms are managed in Fund Manager Settings.
+          This profile view is read-only: use Accounts to manage this profile&apos;s operational
+          account state, restrictions, balances, and access.
         </p>
       </div>
       <div className="table-status" aria-live="polite">

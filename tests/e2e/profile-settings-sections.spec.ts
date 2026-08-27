@@ -8,7 +8,7 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
   const defaults = tabs.getByRole("tab", { name: "Defaults" });
   const spreadsheet = tabs.getByRole("tab", { name: "Spreadsheet" });
-  const accounts = tabs.getByRole("tab", { name: "Accounts" });
+  const accountAccess = tabs.getByRole("tab", { name: "Account Access" });
 
   await expect(defaults).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: /Settings for .* Profile/ })).toBeVisible();
@@ -36,11 +36,14 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(page.getByRole("heading", { name: "Spreadsheet transfer" })).toBeVisible();
 
   await page.keyboard.press("End");
-  await expect(accounts).toBeFocused();
+  const quickAdd = tabs.getByRole("tab", { name: "Quick Add" });
+  await expect(quickAdd).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(accountAccess).toBeFocused();
   await expect(page).toHaveURL(`${settingsPath}#account-authorities`);
-  await expect(page.getByRole("tabpanel", { name: "Accounts" })).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Account Access" })).toBeVisible();
 
   await page.reload();
-  await expect(accounts).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel", { name: "Accounts" })).toBeVisible();
+  await expect(accountAccess).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Account Access" })).toBeVisible();
 });

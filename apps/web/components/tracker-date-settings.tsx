@@ -147,10 +147,12 @@ export function TrackerDateSettings({ profileId }: Props) {
       status: string;
     }[];
     setExchangeOptions(
-      accounts
-        .filter((account) => account.type === "Exchange" && account.status === "Active")
-        .map((account) => account.account)
-        .sort((left, right) => left.localeCompare(right))
+      [...new Set(
+        accounts
+          .filter((account) => account.type === "Exchange" && account.status === "Active")
+          .map((account) => account.account.trim())
+          .filter(Boolean)
+      )].sort((left, right) => left.localeCompare(right))
     );
     setSettings(data);
     setPristineSettings(data);

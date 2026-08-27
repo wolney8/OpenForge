@@ -101,7 +101,7 @@ export function findBookmakerCatalogueEntry(
 }
 
 export function getBookmakerDisplayLabel(entry: BookmakerCatalogueRecord): string {
-  return entry.brand_name || entry.short_display_name;
+  return entry.short_display_name || entry.brand_name;
 }
 
 export function getActiveMasterAccountNames(

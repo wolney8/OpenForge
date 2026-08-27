@@ -228,6 +228,17 @@ Short version:
   Missing `gh` is not missing GitHub. Never request or print credentials. Record a concise
   pending-sync note when live mutation is unavailable and reconcile it when access returns.
 
+## Corrective change cadence
+
+- Treat every user-supplied bug, UX correction, or feature adjustment list as a tracked work batch.
+  Assign a short `PD-FIX-*` or `PD-PR-*` identifier, record the affected surface, supplied selector
+  where relevant, requested outcome, and status in an active register before editing.
+- Reconcile every identifier before reporting a batch complete. An item is only done after its
+  requested behaviour, relevant tests/checks, and nearby shared-pattern regression check pass.
+  Use `NEEDS-INFO` or `BLOCKED` rather than silently skipping unclear or unsafe work.
+- Create GitHub coverage only for durable product scope or meaningful defects. Small visual fixes
+  remain in the active register unless they reveal a broader maintained issue.
+
 ## Branch baseline rule
 
 - Work only in `/Users/will_work/Scripts/Homelab/OpenForge`. Never edit, create, stage, commit,

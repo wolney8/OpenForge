@@ -15,7 +15,7 @@ const settingsSections = [
   { id: "spreadsheet-transfer", label: "Spreadsheet" },
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
-  { id: "account-authorities", label: "Accounts" },
+  { id: "account-authorities", label: "Account Access" },
   { id: "quick-add", label: "Quick Add" },
 ] as const;
 

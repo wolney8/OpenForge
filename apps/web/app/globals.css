@@ -5689,6 +5689,31 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   white-space: nowrap;
 }
 
+.accounts-data-table th,
+.accounts-data-table td {
+  text-align: center;
+}
+
+.accounts-data-table th {
+  white-space: normal;
+}
+
+.accounts-data-table td:first-child,
+.accounts-data-table td:nth-child(2) {
+  text-align: left;
+}
+
+.accounts-data-table td:last-child {
+  min-width: 5.5rem;
+}
+
+.accounts-editor-modal,
+.accounts-filter-modal {
+  width: min(76rem, calc(100vw - 2rem));
+  max-height: min(88vh, 62rem);
+  overflow: auto;
+}
+
 .table-column-resize-handle {
   position: absolute;
   top: 0.1rem;

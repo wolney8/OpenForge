@@ -17,6 +17,14 @@ const accountLogoPrefix = "/account-logos/";
 const accountTypes: MasterAccountType[] = ["Bookmaker", "Exchange", "Bank"];
 const channels: MasterAccountChannel[] = ["web", "mobile", "retail"];
 
+type ImportPreflightResult = {
+  incoming_record_count: number;
+  current_record_count: number;
+  added_catalogue_ids: string[];
+  updated_catalogue_ids: string[];
+  removed_catalogue_ids: string[];
+};
+
 function createBlankRecord(): MasterAccountCatalogueRecord {
   return {
     catalogue_id: "",
@@ -81,6 +89,8 @@ export function MasterAccountCatalogueSettings() {
   const [statusMessage, setStatusMessage] = useState("");
   const openButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+  const [importPreflight, setImportPreflight] = useState<ImportPreflightResult | null>(null);
 
   const loadCatalogue = useCallback(async () => {
     setIsLoading(true);
@@ -173,6 +183,26 @@ export function MasterAccountCatalogueSettings() {
     setDraft(structuredClone(record));
     setEditingRecord(record);
     setErrorMessage("");
+  }
+
+  async function preflightImport(file: File | undefined) {
+    if (!file) return;
+    setErrorMessage("");
+    setImportPreflight(null);
+    try {
+      const catalogue = JSON.parse(await file.text()) as MasterAccountCatalogue;
+      const response = await fetch(`${apiBaseUrl}/account-catalogue/source/import/preflight`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ catalogue }),
+      });
+      if (!response.ok) throw new Error(responseError(await response.text()));
+      setImportPreflight((await response.json()) as ImportPreflightResult);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to validate catalogue file.");
+    } finally {
+      if (importFileRef.current) importFileRef.current.value = "";
+    }
   }
 
   async function saveRecord(event: React.FormEvent<HTMLFormElement>) {
@@ -316,6 +346,30 @@ export function MasterAccountCatalogueSettings() {
               />
             ) : (
               <>
+                <div className="tracker-nav account-catalogue-transfer-actions">
+                  <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>
+                    Export catalogue
+                  </a>
+                  <input
+                    accept="application/json"
+                    aria-label="Choose account catalogue JSON file to validate"
+                    className="sr-only"
+                    onChange={(event) => void preflightImport(event.target.files?.[0])}
+                    ref={importFileRef}
+                    type="file"
+                  />
+                  <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">
+                    Check catalogue import
+                  </button>
+                </div>
+                {importPreflight ? (
+                  <section aria-live="polite" className="content-subpanel stack">
+                    <strong>Import check passed</strong>
+                    <span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span>
+                    <span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Missing {importPreflight.removed_catalogue_ids.length}</span>
+                    <p className="lede">No changes have been applied. A confirmed, audited replacement workflow is required before bulk catalogue changes.</p>
+                  </section>
+                ) : null}
                 <div className="account-catalogue-toolbar">
                   <label className="field-control table-search-field">
                     <span>Search accounts</span>

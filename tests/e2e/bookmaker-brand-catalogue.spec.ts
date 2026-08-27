@@ -49,7 +49,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   });
 
   await page.goto(`/profiles/${profileId}/tracker/accounts`);
-  await page.getByRole("button", { name: "Add account row" }).click();
+  await page.getByRole("button", { name: "Add Account" }).click();
   const editor = page.locator(".workflow-editor-panel");
   await editor.getByRole("combobox").first().selectOption(bookmaker.bookmaker_id);
   await expect(editor.locator("label").filter({ hasText: /^Group/ }).locator("select")).toHaveValue(
@@ -58,7 +58,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await expect(
     editor.locator("label").filter({ hasText: /^Platform/ }).locator("select")
   ).toHaveValue("Demo Platform");
-  await editor.getByRole("button", { name: "Create account row" }).click();
+  await editor.getByRole("button", { name: "Create" }).click();
   await page.getByPlaceholder("Search account rows").fill(brandName);
   await expect(page.getByText(shortName, { exact: true })).toBeVisible();
   const accountRowsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`);
@@ -84,7 +84,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
         lay_odds_1: "",
         lay_commission_1: "",
         exchange_name: "",
-        date_settled: "2026-07-15 18:00:00",
+        date_settled: "2026-08-15 18:00:00",
         user_notes: "",
         manual_override_value: "",
         manual_override_reason: "",
@@ -131,10 +131,9 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await expect(page.locator(".bookmaker-identity-badge", { hasText: shortName })).toBeVisible();
 
   await page.goto(`/profiles/${profileId}/tracker/settings`);
-  await expect(page.getByRole("heading", { name: "Bookmaker catalogue" })).toBeVisible();
-  await page.getByLabel("Search catalogue").fill(brandName);
-  await expect(page.getByText(brandName, { exact: true })).toBeVisible();
-  await expect(page.getByText("Demo Group · Demo Platform · Verified")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bookmaker catalogue" })).toHaveCount(0);
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Account Catalogue" })).toBeVisible();
 
   await request.delete(
     `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${sportsbookRecord.sportsbook_bet_id}`

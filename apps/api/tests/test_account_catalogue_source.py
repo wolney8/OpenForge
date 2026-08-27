@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from openforge_api.account_catalogue_source import MasterAccountCatalogue
 from openforge_api.config import settings
 from openforge_api.main import app
 
@@ -69,6 +70,37 @@ def test_master_account_catalogue_is_read_from_configured_json(
         "subdivision": "",
         "channels": ["web", "mobile"],
     }
+
+
+def test_master_account_catalogue_export_and_preflight_do_not_mutate_source(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    source_payload = catalogue_payload()
+    source_path.write_text(json.dumps(source_payload), encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    client = TestClient(app)
+
+    export_response = client.get("/account-catalogue/source/export.json")
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("application/json")
+    # Export is the validated, canonical representation. The raw source remains
+    # untouched until a separately approved apply workflow exists.
+    assert json.loads(export_response.text) == MasterAccountCatalogue.model_validate(
+        source_payload
+    ).model_dump(mode="json")
+
+    candidate = catalogue_payload()
+    candidate["records"] = [candidate["records"][0]]
+    preflight_response = client.post(
+        "/account-catalogue/source/import/preflight", json={"catalogue": candidate}
+    )
+
+    assert preflight_response.status_code == 200
+    assert preflight_response.json()["valid"] is True
+    assert preflight_response.json()["removed_catalogue_ids"] == ["BANK-DEMO-001"]
+    assert preflight_response.json()["requires_explicit_apply"] is True
+    assert json.loads(source_path.read_text(encoding="utf-8")) == source_payload
 
 
 def test_master_account_catalogue_rejects_duplicate_ids(

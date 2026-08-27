@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from openforge_api.config import settings
@@ -211,6 +211,22 @@ class MasterAccountCatalogue(BaseModel):
         return self
 
 
+class MasterAccountCataloguePreflight(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    catalogue: MasterAccountCatalogue
+
+
+class MasterAccountCataloguePreflightResult(BaseModel):
+    valid: bool
+    incoming_record_count: int
+    current_record_count: int
+    added_catalogue_ids: list[str]
+    updated_catalogue_ids: list[str]
+    removed_catalogue_ids: list[str]
+    requires_explicit_apply: bool
+
+
 def load_master_account_catalogue(path: Path | None = None) -> MasterAccountCatalogue:
     catalogue_path = path or settings.account_catalogue_source_path
     raw = json.loads(catalogue_path.read_text(encoding="utf-8"))
@@ -260,6 +276,49 @@ def _load_catalogue_for_request() -> MasterAccountCatalogue:
 @router.get("", response_model=MasterAccountCatalogue)
 def get_master_account_catalogue() -> MasterAccountCatalogue:
     return _load_catalogue_for_request()
+
+
+@router.get("/export.json", response_class=Response)
+def export_master_account_catalogue() -> Response:
+    """Export the validated source without applying or mutating any provider data."""
+    catalogue = _load_catalogue_for_request()
+    return Response(
+        content=json.dumps(catalogue.model_dump(mode="json"), indent=2) + "\n",
+        media_type="application/json",
+        headers={
+            "Content-Disposition": "attachment; filename=plum-duff-account-catalogue.json"
+        },
+    )
+
+
+@router.post("/import/preflight", response_model=MasterAccountCataloguePreflightResult)
+def preflight_master_account_catalogue_import(
+    payload: MasterAccountCataloguePreflight,
+) -> MasterAccountCataloguePreflightResult:
+    """Validate a whole-catalogue candidate without mutating the active source.
+
+    The explicit apply/audit workflow is intentionally separate. Stable IDs make deleted or
+    changed providers visible before a Fund Manager can decide how to preserve profile history.
+    """
+    current = _load_catalogue_for_request()
+    incoming_by_id = {record.catalogue_id: record for record in payload.catalogue.records}
+    current_by_id = {record.catalogue_id: record for record in current.records}
+    added = sorted(set(incoming_by_id) - set(current_by_id))
+    removed = sorted(set(current_by_id) - set(incoming_by_id))
+    updated = sorted(
+        catalogue_id
+        for catalogue_id in set(incoming_by_id) & set(current_by_id)
+        if incoming_by_id[catalogue_id] != current_by_id[catalogue_id]
+    )
+    return MasterAccountCataloguePreflightResult(
+        valid=True,
+        incoming_record_count=len(incoming_by_id),
+        current_record_count=len(current_by_id),
+        added_catalogue_ids=added,
+        updated_catalogue_ids=updated,
+        removed_catalogue_ids=removed,
+        requires_explicit_apply=True,
+    )
 
 
 @router.post(

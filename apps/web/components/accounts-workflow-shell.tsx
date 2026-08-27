@@ -1,13 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { BookmakerIdentity } from "@/components/bookmaker-identity";
 import { FinancialValue } from "@/components/financial-value";
+import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
+  useBodyScrollLock,
+  useDialogFocusLifecycle,
   usePersistedBoolean,
   useToastDismiss,
   useTrackerRouteReselect,
@@ -27,7 +33,6 @@ import {
 } from "@/lib/workbook-options";
 import type {
   BookmakerCatalogueRecord,
-  BookmakerDisplaySettings,
   MasterAccountCatalogue,
   MasterAccountCatalogueRecord,
   MasterAccountOperatingContext,
@@ -85,6 +90,14 @@ type AccountTableMode =
   | "Bank"
   | "Cash total";
 
+type AccountTableFilters = {
+  type: "" | "Bookie" | "Exchange" | "Bank";
+  status: string;
+  restriction: string;
+  channel: string;
+  cashTotal: "" | "yes" | "no";
+};
+
 const accountTableModes: Array<{ label: string; value: AccountTableMode }> = [
   { label: "All", value: "All" },
   { label: "Active", value: "Active" },
@@ -107,7 +120,16 @@ const tableColumns: TableColumn[] = [
   { key: "channel", label: "Channel" },
   { key: "group_name", label: "Group" },
   { key: "platform", label: "Platform" },
+  { key: "actions", label: "Actions" },
 ];
+
+const emptyAccountTableFilters: AccountTableFilters = {
+  type: "",
+  status: "",
+  restriction: "",
+  channel: "",
+  cashTotal: "",
+};
 
 function createBlankForm(): AccountFormState {
   return {
@@ -164,12 +186,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     subdivision: "",
     channels: [],
   });
-  const [bookmakerDisplaySettings, setBookmakerDisplaySettings] =
-    useState<BookmakerDisplaySettings | null>(null);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
-  const [editorExpanded, setEditorExpanded] = useState(true);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:accounts`,
     false
@@ -177,26 +196,29 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
   const [tableMode, setTableMode] = useState<AccountTableMode>("All");
+  const [tableFilters, setTableFilters] = useState<AccountTableFilters>(emptyAccountTableFilters);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(16);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const isCreatingDraftRef = useRef(false);
-  const pageSize = 10;
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
   const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
+  useBodyScrollLock(workflowVisible || isFilterModalOpen);
+  useDialogFocusLifecycle(workflowVisible, editorRef);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
 
   useToastDismiss(statusMessage, clearStatusMessage);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
-      setEditorExpanded(true);
       if (options?.expandLedger ?? true) {
         setTableCollapsed(false);
       }
@@ -207,7 +229,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   useTrackerRouteReselect(() => {
     setTableCollapsed(false);
-    setEditorExpanded(true);
     scrollToElementTopAfterRender(() => editorRef.current);
   });
 
@@ -274,14 +295,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             setMasterAccountContext(catalogue.default_operating_context);
           }
         ),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`, {
-          cache: "no-store",
-        }).then(async (response) => {
-          if (!response.ok) {
-            throw new Error("Unable to load bookmaker display settings");
-          }
-          setBookmakerDisplaySettings((await response.json()) as BookmakerDisplaySettings);
-        }),
         fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, { cache: "no-store" }).then(
           async (response) => {
             if (!response.ok) {
@@ -395,8 +408,40 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     }
   }, [rows, tableMode]);
 
+  const accountFilterOptions = useMemo(
+    () => ({
+      statuses: dedupeOptions(rows.map((row) => row.status)),
+      restrictions: dedupeOptions(rows.flatMap((row) => row.restrictions)),
+      channels: dedupeOptions(rows.map((row) => row.channel)),
+    }),
+    [rows]
+  );
+
+  const filterRows = useCallback(
+    (sourceRows: AccountRecord[]) =>
+      sourceRows.filter((row) => {
+        if (tableFilters.type && row.type !== tableFilters.type) return false;
+        if (tableFilters.status && row.status !== tableFilters.status) return false;
+        if (
+          tableFilters.restriction &&
+          !row.restrictions.includes(tableFilters.restriction)
+        ) {
+          return false;
+        }
+        if (tableFilters.channel && row.channel !== tableFilters.channel) return false;
+        if (
+          tableFilters.cashTotal &&
+          String(row.counts_in_cash_total) !== String(tableFilters.cashTotal === "yes")
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [tableFilters]
+  );
+
   const filteredRows = useMemo(() => {
-    const tableRows: TrackerRow[] = reviewRows.map((row) => ({
+    const tableRows: TrackerRow[] = filterRows(reviewRows).map((row) => ({
       account_id: row.account_id,
       account: row.account,
       type: row.type,
@@ -408,15 +453,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       channel: row.channel,
       group_name: row.group_name,
       platform: row.platform,
+      actions: "",
     }));
     return filterTrackerRows(tableRows, tableColumns, query);
-  }, [query, reviewRows]);
+  }, [filterRows, query, reviewRows]);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
   const pagedRows = useMemo(
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
-    [effectivePage, filteredRows]
+    [effectivePage, filteredRows, pageSize]
   );
 
   async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
@@ -434,7 +480,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
-    setEditorExpanded(true);
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
     setStatusMessage(`Opened account ${rowId} for editing.`);
@@ -451,7 +496,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
-    setEditorExpanded(true);
     revealEditor({ expandLedger: true });
     setStatusMessage("New account ready. Complete the required fields, then save.");
   }
@@ -474,6 +518,17 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setTableCollapsed(false);
     isCreatingDraftRef.current = false;
     setStatusMessage("Cleared the unsaved account draft.");
+  }
+
+  async function closeEditor() {
+    if (isDirty && !(await confirmDiscardChanges())) {
+      return;
+    }
+    isCreatingDraftRef.current = false;
+    setSelectedId(null);
+    setWorkflowVisible(false);
+    setTableCollapsed(false);
+    setErrorMessage("");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -519,17 +574,17 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Accounts</h1>
           <div className="tracker-nav">
-            <button className="button-link" onClick={() => void startNewRow()} type="button">
-              Add account row
-            </button>
+            <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
             <button
-              aria-label={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
-              className="icon-button ledger-collapse-button"
-              onClick={() => setTableCollapsed((current) => !current)}
-              title={tableCollapsed ? "Expand ledger" : "Collapse ledger"}
+              aria-haspopup="dialog"
+              aria-label="Filter accounts"
+              className="icon-button ledger-toolbar-filter-action"
+              data-pd-id="accounts.toolbar.filter"
+              onClick={() => setIsFilterModalOpen(true)}
+              title="Filter accounts"
               type="button"
             >
-              {tableCollapsed ? "+" : "-"}
+              <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
             </button>
           </div>
         </div>
@@ -540,29 +595,31 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <p className="lede">Restricted {accountQuickView.restrictedAccounts}</p>
           </article>
           <article className="stat-card">
-            <span className="eyebrow">Cash-included balance</span>
+            <span className="eyebrow">Bankroll</span>
             <strong><FinancialValue value={accountQuickView.cashIncludedBalance} /></strong>
-            <p className="lede">Accounts counted in cash total {accountQuickView.cashTotalCount}</p>
+            <p className="lede">{accountQuickView.cashTotalCount} accounts included</p>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Bookmaker balances</span>
+            <strong><FinancialValue value={rows.filter((row) => row.type === "Bookie").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <p className="lede">Profile bookmaker cash</p>
+          </article>
+          <article className="stat-card">
+            <span className="eyebrow">Exchange balances</span>
+            <strong><FinancialValue value={rows.filter((row) => row.type === "Exchange").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <p className="lede">Profile exchange cash</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Pending withdrawals</span>
             <strong><FinancialValue value={accountQuickView.pendingWithdrawals} /></strong>
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article>
-          <article className="stat-card">
-            <span className="eyebrow">Type mix</span>
-            <strong>
-              {accountQuickView.bookieCount} / {accountQuickView.exchangeCount} /{" "}
-              {accountQuickView.bankCount}
-            </strong>
-            <p className="lede">Bookie / Exchange / Bank</p>
-          </article>
         </section>
         {!tableCollapsed ? (
           <>
             <div className="sportsbook-review-bar" aria-label="Accounts review filters">
               <div className="review-chip-row" role="group" aria-label="Accounts review modes">
-                {accountTableModes.map((mode) => (
+                {accountTableModes.filter((mode) => ["Active", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
                   <button
                     aria-pressed={tableMode === mode.value}
                     className={`review-chip${tableMode === mode.value ? " is-active" : ""}`}
@@ -595,8 +652,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 {errorMessage}
               </p>
             ) : null}
-            <div className="table-scroll">
-              <table className="data-table">
+            <LedgerPagination
+              ariaLabel="Accounts"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="top"
+              totalRows={filteredRows.length}
+            />
+            <LedgerTableScroll dataPdId="accounts.table-scroll">
+              <table className="data-table accounts-data-table">
                 <thead>
                   <tr>
                     {tableColumns.map((column) => (
@@ -636,8 +706,23 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                                 <BookmakerIdentity
                                   bookmaker={String(row.account ?? "")}
                                   catalogue={bookmakerCatalogue}
-                                  mode={bookmakerDisplaySettings?.resolved_mode}
+                                  mode="Brand badge"
                                 />
+                              ) : column.key === "type" || column.key === "status" ? (
+                                <span className="table-chip table-chip-muted">{String(row[column.key] || "—")}</span>
+                              ) : column.key === "actions" ? (
+                                <button
+                                  aria-label={`Edit ${String(row.account ?? "account")}`}
+                                  className="icon-button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void selectRow(rowId);
+                                  }}
+                                  title="Edit account"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="material-symbols-outlined">edit</span>
+                                </button>
                               ) : (row[column.key] || "—")}
                             </td>
                           ))}
@@ -647,53 +732,78 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className="table-pagination" aria-label="Accounts pagination">
-              <div className="table-status">
-                {tableMode} • Page {effectivePage} of {pageCount}
-              </div>
-              <div className="tracker-nav">
-                <button
-                  className="button-link"
-                  disabled={effectivePage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="button-link"
-                  disabled={effectivePage === pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            </LedgerTableScroll>
+            <LedgerPagination
+              ariaLabel="Accounts"
+              currentPage={effectivePage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+              }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              position="bottom"
+              totalRows={filteredRows.length}
+            />
           </>
         ) : null}
       </section>
 
-      {workflowVisible ? (
-      <section className="content-panel stack workflow-editor-panel" ref={editorRef}>
-        <div className="workflow-panel-header">
+      {isFilterModalOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div className="modal-backdrop" onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setIsFilterModalOpen(false);
+            }}>
+              <section aria-labelledby="accounts-filter-title" aria-modal="true" className="modal-panel accounts-filter-modal" role="dialog">
+                <header className="modal-sticky-header sportsbook-page-header">
+                  <div>
+                    <span className="eyebrow">Table controls</span>
+                    <h2 id="accounts-filter-title">Filter accounts</h2>
+                  </div>
+                  <button aria-label="Close account filters" className="modal-close-button" data-initial-focus onClick={() => setIsFilterModalOpen(false)} type="button">
+                    <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                  </button>
+                </header>
+                <div className="form-grid">
+                  <label className="field-control"><span>Account type</span><select value={tableFilters.type} onChange={(event) => setTableFilters((current) => ({ ...current, type: event.target.value as AccountTableFilters["type"] }))}><option value="">All</option><option value="Bookie">Bookie</option><option value="Exchange">Exchange</option><option value="Bank">Bank</option></select></label>
+                  <label className="field-control"><span>Status</span><select value={tableFilters.status} onChange={(event) => setTableFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All</option>{accountFilterOptions.statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
+                  <label className="field-control"><span>Restriction</span><select value={tableFilters.restriction} onChange={(event) => setTableFilters((current) => ({ ...current, restriction: event.target.value }))}><option value="">All</option>{accountFilterOptions.restrictions.map((option) => <option key={option}>{option}</option>)}</select></label>
+                  <label className="field-control"><span>Access</span><select value={tableFilters.channel} onChange={(event) => setTableFilters((current) => ({ ...current, channel: event.target.value }))}><option value="">All</option>{accountFilterOptions.channels.map((option) => <option key={option}>{option}</option>)}</select></label>
+                  <label className="field-control"><span>Cash total</span><select value={tableFilters.cashTotal} onChange={(event) => setTableFilters((current) => ({ ...current, cashTotal: event.target.value as AccountTableFilters["cashTotal"] }))}><option value="">All</option><option value="yes">Included</option><option value="no">Excluded</option></select></label>
+                </div>
+                <div className="tracker-nav">
+                  <button className="button-link" onClick={() => { setTableFilters(emptyAccountTableFilters); setCurrentPage(1); }} type="button">Clear filters</button>
+                  <button className="modal-primary-button" onClick={() => { setCurrentPage(1); setIsFilterModalOpen(false); }} type="button">Done</button>
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {workflowVisible && typeof document !== "undefined"
+        ? createPortal(
+            <div className="modal-backdrop" onMouseDown={(event) => {
+              if (event.target === event.currentTarget) void closeEditor();
+            }}>
+      <section aria-label={selectedId ? "Edit account" : "Create account"} aria-modal="true" className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal accounts-editor-modal" onMouseDown={(event) => event.stopPropagation()} ref={editorRef} role="dialog" tabIndex={-1}>
+        <div className="workflow-panel-header workflow-editor-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit account" : "Create account"}</span>
             <strong>{selectedId ?? "New account row"}</strong>
           </div>
           <button
-            aria-expanded={editorExpanded}
-            aria-label={editorExpanded ? "Collapse account form" : "Expand account form"}
-            className="icon-button ledger-collapse-button"
-            onClick={() => setEditorExpanded((current) => !current)}
-            title={editorExpanded ? "Collapse account form" : "Expand account form"}
+            aria-label="Close account editor"
+            className="modal-close-button"
+            data-initial-focus
+            onClick={() => void closeEditor()}
+            title="Close account editor"
             type="button"
           >
-            {editorExpanded ? "-" : "+"}
+            <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
         </div>
-        {editorExpanded ? (
           <div className="workflow-editor-body">
             {selectedRow ? (
               <section className="stat-strip" aria-label="Account summary">
@@ -946,19 +1056,22 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               value={formState.notes}
             />
           </label>
-              <div className="tracker-nav field-span-2">
-                <button className="button-link" disabled={isPending} type="submit">
-                  {selectedId ? "Save account row" : "Create account row"}
+              <div className="tracker-nav field-span-2 workflow-editor-footer">
+                <button className="modal-primary-button" disabled={isPending} type="submit">
+                  {selectedId ? "Save" : "Create"}
                 </button>
-                <button className="button-link" onClick={handleResetForm} type="button">
-                  {selectedId ? "Revert changes" : "Reset form"}
+                <button className="button-link" disabled={isPending} onClick={handleResetForm} type="button">
+                  {selectedId ? "Revert" : "Reset"}
                 </button>
+                <button className="button-link" disabled={isPending} onClick={() => void closeEditor()} type="button">Cancel</button>
               </div>
             </form>
           </div>
-        ) : null}
       </section>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

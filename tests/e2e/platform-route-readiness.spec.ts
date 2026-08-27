@@ -15,15 +15,25 @@ test("Accounts remains profile-scoped and exposes no credential fields", async (
 
   await page.goto(`/profiles/${primaryProfileId}/tracker/accounts`);
   await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
+  await expect(page.getByLabel("Account quick view").locator("article")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: "Filter accounts" })).toBeVisible();
+  await expect(page.getByLabel("Accounts rows per page")).toHaveCount(2);
+  await expect(page.getByLabel("Table horizontal navigation")).toHaveCount(1);
+  await expect(page.getByRole("cell", { name: primaryAccountId })).toBeVisible();
   await page.getByPlaceholder("Search account rows").fill(primaryAccountId);
   await expect(page.getByRole("cell", { name: primaryAccountId })).toBeVisible();
+  await expect(page.locator(".bookmaker-identity-badge").first()).toBeVisible();
+  await page.getByRole("button", { name: "Filter accounts" }).click();
+  const filterDialog = page.getByRole("dialog", { name: /Filter accounts/ });
+  await expect(filterDialog.getByLabel("Account type")).toBeVisible();
+  await filterDialog.getByRole("button", { name: "Close account filters" }).click();
 
   await page.goto(`/profiles/${secondaryProfileId}/tracker/accounts`);
   await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
   await page.getByPlaceholder("Search account rows").fill(primaryAccountId);
   await expect(page.getByText("No account rows match the current filter.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Add account row" }).click();
+  await page.getByRole("button", { name: "Add Account" }).click();
   const editor = page.locator(".workflow-editor-panel");
   await expect(editor).toBeVisible();
   await expect(editor.locator('input[type="password"]')).toHaveCount(0);
@@ -31,20 +41,27 @@ test("Accounts remains profile-scoped and exposes no credential fields", async (
 });
 
 test("Settings exposes the workbook-owned profile authorities", async ({ page }) => {
+  const duplicateKeyMessages: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("same key")) {
+      duplicateKeyMessages.push(message.text());
+    }
+  });
   await page.goto(`/profiles/${primaryProfileId}/tracker/settings`);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByLabel("Tracker date settings")).toBeVisible();
   await expect(page.getByText(/Underlay .* Overlay/)).toBeVisible();
 
   await page.getByRole("tab", { name: "Lists" }).click();
-  await expect(page.getByText("Exchanges", { exact: true })).toBeVisible();
+  await expect(page.getByText("Exchanges", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Sportsbook and free-bet offer names", { exact: true })).toBeVisible();
   await expect(page.getByText("Casino offer names", { exact: true })).toBeVisible();
 
   await page.getByRole("tab", { name: "Commission" }).click();
   await expect(page.getByLabel("Exchange commission settings")).toBeVisible();
+  expect(duplicateKeyMessages).toEqual([]);
 
-  await page.getByRole("tab", { name: "Accounts" }).click();
+  await page.getByRole("tab", { name: "Account Access" }).click();
   await expect(page.getByLabel("Account authority settings")).toBeVisible();
 });
 
