@@ -125,6 +125,7 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
 });
 
 test("Accounts uses canonical table controls, sorting, resizing, and neutral cash chips", async ({ page }) => {
+  await page.setViewportSize({ width: 2048, height: 900 });
   await page.goto("/profiles/profile-demo-001/tracker/accounts");
 
   const quickView = page.getByRole("region", { name: "Account quick view" });
