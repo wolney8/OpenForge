@@ -8504,6 +8504,30 @@ html:not([data-theme="dark"]) .extra-place-outcome-unplaced {
   gap: 0.3rem;
 }
 
+.extra-place-resolved-detail .material-symbols-outlined {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.extra-place-qualifying-loss-detail .material-symbols-outlined {
+  color: var(--danger);
+}
+
+.extra-place-budget-detail {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  gap: 0.38rem;
+}
+
+.extra-place-budget-detail .material-symbols-outlined {
+  color: currentColor;
+}
+
+.extra-place-budget-detail.is-over-budget .extra-place-budget-current {
+  color: var(--danger);
+  font-weight: 800;
+}
+
 .extra-place-race-ready {
   align-items: center;
   border-radius: var(--shape-full);

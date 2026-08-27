@@ -55,6 +55,25 @@ test.describe("Extra Place ledger parity", () => {
     await expect(ledger.getByRole("button", { name: "Show detail columns" })).toHaveCount(0);
   });
 
+  test("uses compact accessible qualifying-loss and weekly-budget stat details", async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+
+    const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
+    const qualifyingLoss = ledger.locator('[data-pd-id="extra-place.stat.qualifying-loss"]');
+    const weeklyBudget = ledger.locator('[data-pd-id="extra-place.stat.weekly-loss-budget"]');
+
+    await expect(qualifyingLoss).toHaveAttribute("aria-label", "Qualifying loss");
+    await expect(qualifyingLoss.locator(".material-symbols-outlined")).toHaveText("trending_down");
+    await expect(weeklyBudget).toHaveAttribute(
+      "aria-label",
+      "Weekly qualifying loss spend against weekly loss budget",
+    );
+    await expect(weeklyBudget.locator(".material-symbols-outlined")).toHaveText("savings");
+    await expect(weeklyBudget).toContainText("/");
+    await expect(ledger.getByText("Selected-range Extra Place P&L", { exact: true })).toHaveCount(0);
+  });
+
   test("uses a viewport-owned editor with visible footer controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });

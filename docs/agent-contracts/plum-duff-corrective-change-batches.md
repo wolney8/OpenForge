@@ -3,6 +3,12 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Extra Place Stat Card Simplification Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-062 | Extra Place resolved-value stat card | Remove redundant selected-range prose and replace Qual Loss / weekly budget labels with accessible Material indicators. Show qualifying-loss spend against weekly budget, turning the spend indicator danger only after the budget is exhausted. | Extra Place stat-card simplification | DONE |
+
 ## 2026-08-27 Financial Scope And Settings Recovery Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

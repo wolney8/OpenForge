@@ -883,14 +883,6 @@ export function EachWayExtraPlaceWorkflowShell({
         ),
     [rows, weeklyBudgetRange],
   );
-  const extraPlaceOutcome = rangeRows.reduce(
-    (total, row) =>
-      total +
-      (row.status === "Settled" && row.result === "Extra Place"
-        ? (asNumber(row.final_value) ?? 0)
-        : 0),
-    0,
-  );
   const lossBudget = getExtraPlaceLossBudgetState(
     trackerSettings?.weekly_extra_place_loss_budget,
     weeklyQualifyingLoss,
@@ -937,16 +929,31 @@ export function EachWayExtraPlaceWorkflowShell({
           <strong>
             <FinancialValue value={resolvedValue} />
           </strong>
-          <span className="extra-place-resolved-detail">Selected-range Extra Place P&L</span>
-          <span className="extra-place-resolved-detail">
-            Qual Loss <FinancialValue animate={false} value={qualifyingLoss} />
+          <span
+            aria-label="Qualifying loss"
+            className="extra-place-resolved-detail extra-place-qualifying-loss-detail"
+            data-pd-id="extra-place.stat.qualifying-loss"
+            title="Qualifying loss"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              trending_down
+            </span>
+            <FinancialValue animate={false} value={qualifyingLoss} />
           </span>
-          <span className="extra-place-resolved-detail">
-            EP outcome <FinancialValue animate={false} value={extraPlaceOutcome} />
-          </span>
-          <span className="extra-place-resolved-detail">
-            Weekly loss budget <FinancialValue animate={false} value={lossBudget.remaining} />
-            {lossBudget.reached ? " reached" : ` left of ${formatFinancialValue(lossBudget.budget)}`}
+          <span
+            aria-label="Weekly qualifying loss spend against weekly loss budget"
+            className={`extra-place-resolved-detail extra-place-budget-detail${lossBudget.reached ? " is-over-budget" : ""}`}
+            data-pd-id="extra-place.stat.weekly-loss-budget"
+            title="Weekly qualifying loss spend / weekly loss budget"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              savings
+            </span>
+            <span className="extra-place-budget-current">
+              {formatFinancialValue(lossBudget.spent)}
+            </span>
+            <span aria-hidden="true">/</span>
+            <span>{formatFinancialValue(lossBudget.budget)}</span>
           </span>
         </article>
       </section>
