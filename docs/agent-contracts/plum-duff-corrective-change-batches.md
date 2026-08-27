@@ -3,6 +3,14 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-08-27 Global Bet Ledger Table Controls Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-048 | Shared ledger tables | Anchor horizontal-scroll arrows to the centre of the table area currently visible in the viewport, not the full table height. | Long ledgers with 50+ rows | DONE |
+| PD-FIX-049 | Shared ledger issue overlays | Use backdrop blur behind issue chips rather than a drop shadow. | Global issue-chip styling | DONE |
+| PD-FIX-050 | Bet ledger pagination | Use the canonical pagination footer in all bet ledgers, including Extra Place. | Signed-off ledger pagination | DONE |
+
 ## 2026-08-26 Extra Place Final Table And Modal Parity Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

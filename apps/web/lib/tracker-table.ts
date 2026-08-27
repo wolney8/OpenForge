@@ -21,11 +21,11 @@ export function filterTrackerRows(
   );
 }
 
-export function paginateTrackerRows(
-  rows: TrackerRow[],
+export function paginateTrackerRows<T>(
+  rows: T[],
   currentPage: number,
   pageSize: number
-): TrackerRow[] {
+): T[] {
   const safePage = Math.max(currentPage, 1);
   const safePageSize = Math.max(pageSize, 1);
   const startIndex = (safePage - 1) * safePageSize;

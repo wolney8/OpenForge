@@ -493,6 +493,18 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` and
   `apps/web/lib/ledger-calculator.test.ts`.
 
+## 2026-08-27: Ledger scroll arrows followed the table midpoint instead of the visible viewport
+
+- Area: shared `LedgerTableScroll` used by every horizontally-scrollable bet ledger.
+- Root cause: absolute arrow controls were positioned at `50%` of the full table wrapper, so a
+  long table required vertical scrolling before the controls could be reached.
+- Prevention: portal horizontal controls to `document.body` and anchor their vertical centre to
+  the visible intersection of the table and browser viewport. Keep disabled edge controls visible
+  at reduced opacity whenever horizontal overflow exists. Issue overlays use backdrop blur rather
+  than drop shadows so dense data is obscured without changing row geometry.
+- Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` checks viewport anchoring and the
+  standard pagination footer.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

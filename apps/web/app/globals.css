@@ -5649,9 +5649,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .ledger-table-scroll-arrow {
-  position: absolute;
-  z-index: 5;
-  top: 50%;
+  position: fixed;
+  z-index: 18;
   display: grid;
   width: 2.45rem;
   height: 2.45rem;
@@ -5662,10 +5661,10 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   isolation: isolate;
   overflow: visible;
   /* Keep navigation legible over dense table cells in both colour schemes. */
-  background: var(--ledger-scroll-control-surface);
+  background: color-mix(in srgb, var(--ledger-scroll-control-surface) 94%, var(--primary) 6%);
   box-shadow:
-    0 0 0 0.42rem var(--ledger-scroll-control-halo),
-    0 0.3rem 1.25rem rgb(0 0 0 / 0.42);
+    0 0 0 0.32rem var(--ledger-scroll-control-halo),
+    0 0.3rem 1.1rem rgb(0 0 0 / 0.38);
   backdrop-filter: blur(1.6rem) saturate(1.35);
   -webkit-backdrop-filter: blur(1.6rem) saturate(1.35);
   opacity: 1;
@@ -5681,11 +5680,9 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 
 .ledger-table-scroll-arrow:disabled {
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.52;
 }
 
-.ledger-table-scroll-arrow-left { left: 0.6rem; }
-.ledger-table-scroll-arrow-right { right: 0.6rem; }
 .ledger-table-scroll-arrow .material-symbols-outlined { font-size: 1.45rem; }
 .ledger-table-scroll-arrow .material-symbols-outlined { position: relative; z-index: 1; }
 
@@ -5854,8 +5851,11 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border-radius: 0.9rem;
   opacity: 0;
   pointer-events: none;
-  background: color-mix(in srgb, var(--surface-container-high) 88%, transparent);
-  box-shadow: 0 0.55rem 1.35rem rgb(0 0 0 / 0.26);
+  background: color-mix(in srgb, var(--surface-container-high) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline) 56%, transparent);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  box-shadow: none;
   transition: opacity 150ms ease, transform 150ms ease;
   z-index: 6;
   isolation: isolate;
@@ -5864,17 +5864,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .row-issue-overlay .table-chip {
   flex: 0 0 auto;
   white-space: nowrap;
-}
-
-.row-issue-overlay::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--surface-container-high) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(1.25);
-  -webkit-backdrop-filter: blur(14px) saturate(1.25);
 }
 
 .editor-section {
@@ -8236,6 +8225,7 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
 
 .extra-place-ledger > .extra-place-table-heading-controls { order: 5; }
 .extra-place-ledger > .ledger-table-scroll-wrap { order: 6; }
+.extra-place-ledger > .table-pagination { order: 7; }
 
 .extra-place-theme-switch {
   display: inline-grid;

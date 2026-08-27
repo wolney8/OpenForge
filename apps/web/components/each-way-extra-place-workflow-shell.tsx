@@ -48,6 +48,7 @@ import {
   resolveDateRange,
   type DatePreset,
 } from "@/lib/tracker-summary";
+import { getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 
 type Row = Record<string, string | null> & {
   each_way_extra_place_id: string;
@@ -351,6 +352,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tableFilters, setTableFilters] =
     useState<ExtraPlaceTableFilters>(emptyTableFilters);
@@ -812,6 +814,34 @@ export function EachWayExtraPlaceWorkflowShell({
       return false;
     return true;
   });
+  const pinnedIssueRows = useMemo(
+    () =>
+      filtered.filter(
+        (row) =>
+          !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
+          hasIssue(row),
+      ),
+    [filtered, resolvedDateRange],
+  );
+  const pageableRows = useMemo(
+    () =>
+      filtered.filter(
+        (row) =>
+          isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) ||
+          !hasIssue(row),
+      ),
+    [filtered, resolvedDateRange],
+  );
+  const pageSize = 8;
+  const pageCount = getTrackerPageCount(pageableRows.length, pageSize);
+  const effectivePage = Math.min(currentPage, pageCount);
+  const paginatedRows = useMemo(
+    () => [
+      ...pinnedIssueRows,
+      ...paginateTrackerRows(pageableRows, effectivePage, pageSize),
+    ],
+    [effectivePage, pageableRows, pinnedIssueRows],
+  );
   const selectedRow = selectedId
     ? (rows.find((row) => row.each_way_extra_place_id === selectedId) ?? null)
     : null;
@@ -885,7 +915,10 @@ export function EachWayExtraPlaceWorkflowShell({
           <span className="visually-hidden">Search Extra Place rows</span>
           <input
             aria-label="Search Extra Place rows"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Search Extra Place rows"
             type="search"
             value={query}
@@ -919,7 +952,10 @@ export function EachWayExtraPlaceWorkflowShell({
           <button
             aria-label="Clear Extra Place filters"
             className="table-filter-clear"
-            onClick={() => setTableFilters(emptyTableFilters)}
+            onClick={() => {
+              setTableFilters(emptyTableFilters);
+              setCurrentPage(1);
+            }}
             type="button"
           >
             ×
@@ -1011,9 +1047,30 @@ export function EachWayExtraPlaceWorkflowShell({
         onDelete={requestDelete}
         onEdit={openRow}
         onResult={(row, result) => void saveResult(row, result)}
-        rows={filtered}
+        rows={paginatedRows}
         visibleColumns={visibleColumns}
       />
+      <div aria-label="Extra Place pagination" className="table-pagination">
+        <div className="table-status">Page {effectivePage} of {pageCount}</div>
+        <div className="tracker-nav">
+          <button
+            className="button-link"
+            disabled={effectivePage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            type="button"
+          >
+            Previous
+          </button>
+          <button
+            className="button-link"
+            disabled={effectivePage === pageCount}
+            onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+            type="button"
+          >
+            Next
+          </button>
+        </div>
+      </div>
       {typeof document !== "undefined" && open
         ? createPortal(
             <div
@@ -1258,10 +1315,14 @@ export function EachWayExtraPlaceWorkflowShell({
         ? createPortal(
             <ExtraPlaceFilterDialog
               filters={tableFilters}
-              onChange={(key, next) =>
-                setTableFilters((current) => ({ ...current, [key]: next }))
-              }
-              onClear={() => setTableFilters(emptyTableFilters)}
+              onChange={(key, next) => {
+                setTableFilters((current) => ({ ...current, [key]: next }));
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setTableFilters(emptyTableFilters);
+                setCurrentPage(1);
+              }}
               onClose={() => setIsFilterModalOpen(false)}
               onToggleColumn={(key) =>
                 setVisibleColumns((current) => ({

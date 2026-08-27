@@ -128,6 +128,7 @@ test.describe("Extra Place ledger parity", () => {
     await expect(tableRow).toHaveClass(/row-state-issue-danger/);
     await expect(tableRow.locator(".row-issue-overlay .table-chip")).toHaveCount(5);
     await expect(tableRow.locator(".row-issue-overlay")).toContainText(/\d+\+ Issues/);
+    await expect(tableRow.locator(".row-issue-overlay")).toHaveCSS("box-shadow", "none");
     await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 
@@ -318,7 +319,7 @@ test.describe("Extra Place ledger parity", () => {
     );
   });
 
-  test("makes visible table scroll controls opaque and obscuring", async ({ page }) => {
+  test("anchors visible table scroll controls to the visible viewport and uses opaque surfaces", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     const rightArrow = page.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]');
@@ -328,6 +329,39 @@ test.describe("Extra Place ledger parity", () => {
     await expect(rightArrow).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await expect(rightArrow).not.toHaveCSS("box-shadow", "none");
     await expect(rightArrow).toHaveCSS("border-top-style", "solid");
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const [arrowBox, tableBox, viewport] = await Promise.all([
+      rightArrow.boundingBox(),
+      page.locator('[data-pd-id="extra-place.table-scroll"]').boundingBox(),
+      page.evaluate(() => ({ height: window.innerHeight })),
+    ]);
+    expect(arrowBox).not.toBeNull();
+    expect(tableBox).not.toBeNull();
+    const visibleTop = Math.max(8, tableBox!.y + 8);
+    const visibleBottom = Math.min(viewport.height - 8, tableBox!.y + tableBox!.height - 8);
+    expect(arrowBox!.y + arrowBox!.height / 2).toBeGreaterThanOrEqual(visibleTop - 1);
+    expect(arrowBox!.y + arrowBox!.height / 2).toBeLessThanOrEqual(visibleBottom + 1);
+  });
+
+  test("paginates Extra Place rows with the standard ledger controls", async ({ page, request }) => {
+    const created = await Promise.all(
+      Array.from({ length: 9 }, (_, index) =>
+        createExtraPlaceRow(request, { runner: `Pagination runner ${Date.now()}-${index}` }),
+      ),
+    );
+    try {
+      await page.goto(route);
+      await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+      const pagination = page.locator('[aria-label="Extra Place pagination"]');
+      await expect(pagination).toContainText(/Page 1 of [2-9]/);
+      await expect(pagination.getByRole("button", { name: "Next" })).toBeEnabled();
+      await pagination.getByRole("button", { name: "Next" }).click();
+      await expect(pagination).toContainText(/Page 2 of [2-9]/);
+      await expect(pagination.getByRole("button", { name: "Previous" })).toBeEnabled();
+    } finally {
+      await Promise.all(created.map((row) => deleteExtraPlaceRow(request, row.each_way_extra_place_id)));
+    }
   });
 
   test("keeps operational table controls available for Extra Place rows", async ({ page, request }) => {
@@ -347,7 +381,7 @@ test.describe("Extra Place ledger parity", () => {
 
     await expect(ledger.getByText("Qual Loss", { exact: true }).first()).toBeVisible();
     await expect(ledger.locator("th", { hasText: "Status" })).toBeVisible();
-    await expect(ledger.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]')).toBeAttached();
+    await expect(page.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]')).toBeAttached();
     await expect(ledger.locator(".table-column-resize-handle").first()).toBeVisible();
 
     await ledger.locator(".table-scroll").evaluate((element) => {
