@@ -515,7 +515,7 @@ cause, prevention rule and regression test.
   their purple base/hover surface even if incomplete-field chips are also present; the chips and
   left markers preserve data-issue severity. Dark-mode base and hover selectors must have the
   same specificity, otherwise a later dark base rule silently defeats hover. Dark result-due
-  tokens must retain a measurable lighter-base-to-darker-hover luminance difference.
+  tokens must retain a measurable darker-base-to-lighter-hover luminance difference.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` verifies the purple cue, fast row
   feedback, dark hover contrast and zero transition duration during a theme swap.
 

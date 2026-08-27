@@ -209,7 +209,7 @@ test.describe("Extra Place ledger parity", () => {
       const hoverBackground = await tableRow.evaluate((element) => getComputedStyle(element).backgroundColor);
       await expect(tableRow.getByText("Result Needed", { exact: true })).toBeVisible();
       expect(hoverBackground).not.toBe(baseBackground);
-      expect(rgbLuminance(hoverBackground)).toBeLessThan(rgbLuminance(baseBackground));
+      expect(rgbLuminance(hoverBackground)).toBeGreaterThan(rgbLuminance(baseBackground));
       await expect(tableRow.locator("td").first()).toHaveCSS(
         "box-shadow",
         /rgba?\(138, 73, 187(?:, 0\.72)?\)|rgba?\(216, 174, 255(?:, 0\.72)?\)/,
@@ -295,9 +295,9 @@ test.describe("Extra Place ledger parity", () => {
       probe.remove();
       return values;
     });
-    expect(rgbLuminance(baseColour)).toBeGreaterThan(65);
-    expect(rgbLuminance(hoverColour)).toBeLessThan(rgbLuminance(baseColour));
-    expect(rgbLuminance(baseColour) - rgbLuminance(hoverColour)).toBeGreaterThan(15);
+    expect(rgbLuminance(baseColour)).toBeLessThan(65);
+    expect(rgbLuminance(hoverColour)).toBeGreaterThan(rgbLuminance(baseColour));
+    expect(rgbLuminance(hoverColour) - rgbLuminance(baseColour)).toBeGreaterThan(15);
 
     const transitionDuration = await page.evaluate(() => {
       document.documentElement.classList.add("theme-switching");

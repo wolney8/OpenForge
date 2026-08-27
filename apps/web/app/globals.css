@@ -104,8 +104,8 @@ html[data-theme="dark"] {
   /* Ledger rows lift above the dark surface while issue-state colours retain priority. */
   --bet-ledger-row-surface: color-mix(in srgb, var(--surface-strong) 70%, var(--surface-container-high));
   --bet-ledger-row-hover-surface: color-mix(in srgb, var(--surface-strong) 58%, var(--surface-container-highest));
-  --extra-place-result-due-surface: #5a3c74;
-  --extra-place-result-due-hover-surface: #332244;
+  --extra-place-result-due-surface: #332244;
+  --extra-place-result-due-hover-surface: #5a3c74;
   --text: #e7edf4;
   --on-surface: var(--text);
   --muted: #a6b3c0;
