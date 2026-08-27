@@ -30,7 +30,7 @@ workbook cutover are explicitly excluded._
 | PD-PR-022 | Quick Add settings warning | Duplicate provider labels are grouped to one canonical account option with a stable account ID key. | NEEDS VERIFICATION |
 | PD-PR-023 | Profile Settings account access | Remove the Account Access section; the supplied sentence ends mid-requirement, so final account-status ownership needs confirmation. | NEEDS-INFO |
 | PD-PR-024 | All ledger tables | Accounts now has uniform rows, column resizing and asc/desc sorting; established bet ledgers already use matching controls. | NEEDS VERIFICATION |
-| PD-PR-025 | Quick Add profile bookmaker options | Canonical grouping and stable account-ID keys are covered with the duplicate-key regression path. | NEEDS VERIFICATION |
+| PD-PR-025 | Quick Add profile bookmaker options | Canonical grouping and stable account-ID keys are covered by the Quick Add settings regression path, including no duplicate-key console error. | DONE |
 | PD-PR-026 | Accounts table controls | Column dragging now uses the rendered header width, default pagination is eight rows, and Type/Status widths protect chips. | DONE |
 | PD-PR-027 | Accounts editor | Restrictions are M3 pressed chips; Channel and editor-open toasts are removed; horizontal editor overflow is contained. | DONE |
 | PD-PR-028 | Profile provider inheritance | New accounts only select global catalogue providers; Not Signed Up filtering is available. Legacy duplicate/synthetic rows remain for an explicit, audited reconciliation. | PARTIALLY COMPLETE |
