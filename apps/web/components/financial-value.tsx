@@ -13,6 +13,7 @@ type FinancialValueProps = {
   className?: string;
   label?: string;
   showPositiveSign?: boolean;
+  tone?: "auto" | "neutral";
   title?: string;
   value: number | string;
   zeroTone?: "positive" | "neutral";
@@ -23,13 +24,18 @@ export function FinancialValue({
   className = "",
   label,
   showPositiveSign = false,
+  tone: tonePreference = "auto",
   title,
   value,
   zeroTone = "neutral",
 }: FinancialValueProps) {
   const numericValue = typeof value === "number" ? value : Number(value);
   const isValid = Number.isFinite(numericValue);
-  const tone = isValid ? moneyTone(numericValue, { zeroTone }) : "neutral";
+  const tone = isValid
+    ? tonePreference === "neutral"
+      ? "neutral"
+      : moneyTone(numericValue, { zeroTone })
+    : "neutral";
   const display = isValid
     ? formatFinancialValue(numericValue, { showPositiveSign })
     : "Unavailable";

@@ -20,6 +20,7 @@ import {
   type FeePeriodApiRecord,
 } from "@/lib/fee-period-summary";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
+import { buildOperationalLedgerHref } from "@/lib/operational-actions";
 import {
   formatHumanDisplayDate,
   formatMoney,
@@ -844,16 +845,22 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
                       <td className="align-end">
                         {row.openRowCount > 0 ? (
-                          <Link
-                            aria-label={`Open ${row.openRowCount} ${row.bookmaker} rows in the watchlist`}
-                            className="report-value-link"
-                            href={`/profiles/${profileId}/tracker/dashboard#open-watchlist`}
-                          >
-                            {row.openRowCount}
-                          </Link>
-                        ) : (
-                          row.openRowCount
-                        )}
+                          <span className="report-open-module-links" aria-label={`${row.openRowCount} ${row.bookmaker} rows requiring action`}>
+                            {[
+                              { ledger: "sportsbook" as const, icon: "sports", count: row.sportsbookOpenRowCount, label: "Sportsbook" },
+                              { ledger: "free-bets" as const, icon: "award_star", count: row.freeBetOpenRowCount, label: "Free Bets" },
+                              { ledger: "casino-offers" as const, icon: "playing_cards", count: row.casinoOpenRowCount, label: "Casino" },
+                              { ledger: "each-way-extra-places" as const, icon: "chess_knight", count: row.extraPlaceOpenRowCount, label: "Extra Place" },
+                            ].filter((module) => module.count > 0).map((module, index) => (
+                              <span key={module.ledger}>
+                                {index ? <span aria-hidden="true" className="report-open-module-separator">|</span> : null}
+                                <Link aria-label={`Open ${module.count} ${row.bookmaker} ${module.label} rows requiring action`} className="report-value-link" href={buildOperationalLedgerHref(profileId, module.ledger)} title={module.label}>
+                                  <span aria-hidden="true" className="material-symbols-outlined">{module.icon}</span>{module.count}
+                                </Link>
+                              </span>
+                            ))}
+                          </span>
+                        ) : row.openRowCount}
                       </td>
                     </tr>
                   ))

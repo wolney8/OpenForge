@@ -18,14 +18,12 @@ import {
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
-import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { formatDisplayDate } from "@/lib/tracker-summary";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import {
-  accountChannelOptions,
   accountLifecycleOptions,
   accountRestrictionOptions,
   accountTypeOptions,
@@ -83,7 +81,9 @@ type AccountFormState = {
 
 type AccountTableMode =
   | "All"
+  | "Recent"
   | "Active"
+  | "Not Signed Up"
   | "Limited / Gubbed"
   | "Bookie"
   | "Exchange"
@@ -95,12 +95,15 @@ type AccountTableFilters = {
   status: string;
   restriction: string;
   channel: string;
+  issue: "" | "all-issues" | "not-signed-up" | "restricted";
   cashTotal: "" | "yes" | "no";
 };
 
 const accountTableModes: Array<{ label: string; value: AccountTableMode }> = [
+  { label: "Recent", value: "Recent" },
   { label: "All", value: "All" },
   { label: "Active", value: "Active" },
+  { label: "Not Signed Up", value: "Not Signed Up" },
   { label: "Restricted / Gubbed", value: "Limited / Gubbed" },
   { label: "Bookie", value: "Bookie" },
   { label: "Exchange", value: "Exchange" },
@@ -108,7 +111,24 @@ const accountTableModes: Array<{ label: string; value: AccountTableMode }> = [
   { label: "Cash total", value: "Cash total" },
 ];
 
-const tableColumns: TableColumn[] = [
+type AccountColumnKey =
+  | "account_id"
+  | "account"
+  | "type"
+  | "status"
+  | "counts_in_cash_total"
+  | "current_balance"
+  | "pending_withdrawal_amount"
+  | "last_balance_update"
+  | "channel"
+  | "group_name"
+  | "platform"
+  | "actions";
+
+type AccountSortKey = Exclude<AccountColumnKey, "actions">;
+type AccountSort = { key: AccountSortKey; direction: "asc" | "desc" };
+
+const tableColumns: Array<TableColumn & { key: AccountColumnKey }> = [
   { key: "account_id", label: "Account ID" },
   { key: "account", label: "Account" },
   { key: "type", label: "Type" },
@@ -123,11 +143,36 @@ const tableColumns: TableColumn[] = [
   { key: "actions", label: "Actions" },
 ];
 
+const lockedAccountColumns = new Set<AccountColumnKey>([
+  "account",
+  "current_balance",
+  "pending_withdrawal_amount",
+  "actions",
+]);
+
+const defaultVisibleAccountColumns = tableColumns.map((column) => column.key);
+
+const defaultAccountColumnWidths: Record<AccountColumnKey, number> = {
+  account_id: 120,
+  account: 170,
+  type: 175,
+  status: 220,
+  counts_in_cash_total: 145,
+  current_balance: 150,
+  pending_withdrawal_amount: 175,
+  last_balance_update: 180,
+  channel: 155,
+  group_name: 165,
+  platform: 160,
+  actions: 110,
+};
+
 const emptyAccountTableFilters: AccountTableFilters = {
   type: "",
   status: "",
   restriction: "",
   channel: "",
+  issue: "",
   cashTotal: "",
 };
 
@@ -138,8 +183,8 @@ function createBlankForm(): AccountFormState {
     type: "Bookie",
     counts_in_cash_total: true,
     channel: "Unknown",
-    status: "Active",
-    lifecycle_status: "Active",
+    status: "Not Signed Up",
+    lifecycle_status: "Not Signed Up",
     restrictions: [],
     current_balance: "",
     pending_withdrawal_amount: "",
@@ -177,6 +222,36 @@ function parseAmount(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseChannels(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function hasAccountIssue(row: AccountRecord) {
+  return (
+    row.lifecycle_status === "Not Signed Up" ||
+    row.status === "Not Signed Up" ||
+    row.lifecycle_status === "Pending Sign Up" ||
+    row.lifecycle_status === "Verification Pending" ||
+    row.restrictions.length > 0
+  );
+}
+
+function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
+  if (!sort) return rows;
+  return [...rows].sort((left, right) => {
+    const leftValue = String(left[sort.key] ?? "");
+    const rightValue = String(right[sort.key] ?? "");
+    const numericKeys: AccountSortKey[] = ["current_balance", "pending_withdrawal_amount"];
+    const comparison = numericKeys.includes(sort.key)
+      ? parseAmount(leftValue) - parseAmount(rightValue)
+      : leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: "base" });
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+}
+
 export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
@@ -186,7 +261,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     subdivision: "",
     channels: [],
   });
-  const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
@@ -197,14 +271,22 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
   const [tableMode, setTableMode] = useState<AccountTableMode>("All");
   const [tableFilters, setTableFilters] = useState<AccountTableFilters>(emptyAccountTableFilters);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<AccountColumnKey>>(
+    () => new Set(defaultVisibleAccountColumns)
+  );
+  const [columnWidths, setColumnWidths] = useState<Record<AccountColumnKey, number>>(
+    defaultAccountColumnWidths
+  );
+  const [tableSort, setTableSort] = useState<AccountSort | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(16);
+  const [pageSize, setPageSize] = useState(8);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
+  const filterDialogRef = useRef<HTMLElement | null>(null);
   const isCreatingDraftRef = useRef(false);
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
@@ -213,6 +295,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
   useBodyScrollLock(workflowVisible || isFilterModalOpen);
   useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(isFilterModalOpen, filterDialogRef);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
 
   useToastDismiss(statusMessage, clearStatusMessage);
@@ -295,14 +378,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             setMasterAccountContext(catalogue.default_operating_context);
           }
         ),
-        fetch(`${apiBaseUrl}/profiles/${profileId}/lookup-values`, { cache: "no-store" }).then(
-          async (response) => {
-            if (!response.ok) {
-              throw new Error("Unable to load workbook authority lists");
-            }
-            setLookupValues((await response.json()) as LookupValueRecord[]);
-          }
-        ),
       ]).catch((error: Error) => {
         setErrorMessage(error.message);
       });
@@ -325,10 +400,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           : "Bookmaker";
     return dedupeOptions([
       ...getAvailableMasterAccountNames(masterAccountCatalogue, sourceType, masterAccountContext),
-      ...rows.filter((row) => row.type === formState.type).map((row) => row.account),
       formState.account,
     ]);
-  }, [formState.account, formState.type, masterAccountCatalogue, masterAccountContext, rows]);
+  }, [formState.account, formState.type, masterAccountCatalogue, masterAccountContext]);
 
   const selectableBookmakers = useMemo(
     () =>
@@ -336,26 +410,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         (row) => row.status === "Active" || row.bookmaker_id === formState.bookmaker_id
       ),
     [bookmakerCatalogue, formState.bookmaker_id]
-  );
-
-  const groupOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...getLookupValuesByType(lookupValues, "group"),
-        ...rows.map((row) => row.group_name),
-        formState.group_name,
-      ]),
-    [formState.group_name, lookupValues, rows]
-  );
-
-  const platformOptions = useMemo(
-    () =>
-      dedupeOptions([
-        ...getLookupValuesByType(lookupValues, "platform"),
-        ...rows.map((row) => row.platform),
-        formState.platform,
-      ]),
-    [formState.platform, lookupValues, rows]
   );
 
   const accountQuickView = useMemo(() => {
@@ -392,6 +446,10 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     switch (tableMode) {
       case "Active":
         return rows.filter((row) => row.status === "Active");
+      case "Not Signed Up":
+        return rows.filter(
+          (row) => row.status === "Not Signed Up" || row.lifecycle_status === "Not Signed Up"
+        );
       case "Limited / Gubbed":
         return rows.filter((row) =>
           ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
@@ -402,6 +460,10 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         return rows.filter((row) => row.type === tableMode);
       case "Cash total":
         return rows.filter((row) => row.counts_in_cash_total);
+      case "Recent":
+        return [...rows].sort((left, right) =>
+          Date.parse(right.updated_at || right.created_at) - Date.parse(left.updated_at || left.created_at)
+        );
       case "All":
       default:
         return rows;
@@ -428,7 +490,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         ) {
           return false;
         }
-        if (tableFilters.channel && row.channel !== tableFilters.channel) return false;
+        if (tableFilters.channel && !parseChannels(row.channel).includes(tableFilters.channel)) return false;
+        if (tableFilters.issue === "all-issues" && !hasAccountIssue(row)) return false;
+        if (
+          tableFilters.issue === "not-signed-up" &&
+          row.status !== "Not Signed Up" &&
+          row.lifecycle_status !== "Not Signed Up"
+        ) {
+          return false;
+        }
+        if (tableFilters.issue === "restricted" && row.restrictions.length === 0) return false;
         if (
           tableFilters.cashTotal &&
           String(row.counts_in_cash_total) !== String(tableFilters.cashTotal === "yes")
@@ -455,8 +526,55 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       platform: row.platform,
       actions: "",
     }));
-    return filterTrackerRows(tableRows, tableColumns, query);
-  }, [filterRows, query, reviewRows]);
+    return sortAccountRows(filterTrackerRows(tableRows, tableColumns, query), tableSort);
+  }, [filterRows, query, reviewRows, tableSort]);
+
+  const visibleTableColumns = useMemo(
+    () => tableColumns.filter((column) => visibleColumnKeys.has(column.key)),
+    [visibleColumnKeys]
+  );
+
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        tableFilters.type,
+        tableFilters.status,
+        tableFilters.restriction,
+        tableFilters.channel,
+        tableFilters.issue,
+        tableFilters.cashTotal,
+      ].filter(Boolean).length,
+    [tableFilters]
+  );
+  const hiddenColumnCount = tableColumns.length - visibleTableColumns.length;
+  const hasActiveTableControls =
+    tableMode !== "All" || activeFilterCount > 0 || hiddenColumnCount > 0;
+  const activeTableControlCount =
+    (tableMode !== "All" ? 1 : 0) + activeFilterCount + hiddenColumnCount;
+
+  const toggleTableSort = useCallback((key: AccountSortKey) => {
+    setTableSort((current) =>
+      current?.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    );
+  }, []);
+
+  const startColumnResize = useCallback((event: React.MouseEvent<HTMLSpanElement>, key: AccountColumnKey, headerCell: HTMLTableCellElement | null) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const initialWidth = headerCell?.getBoundingClientRect().width ?? columnWidths[key];
+    const onMove = (moveEvent: MouseEvent) => {
+      setColumnWidths((current) => ({ ...current, [key]: Math.max(96, Math.round(initialWidth + moveEvent.clientX - startX)) }));
+    };
+    const onEnd = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onEnd);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onEnd);
+  }, [columnWidths]);
 
   const pageCount = getTrackerPageCount(filteredRows.length, pageSize);
   const effectivePage = Math.min(currentPage, pageCount);
@@ -482,7 +600,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setErrorMessage("");
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
-    setStatusMessage(`Opened account ${rowId} for editing.`);
+    setStatusMessage("");
   }
 
   async function startNewRow() {
@@ -497,7 +615,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setPristineFormState(blankForm);
     setErrorMessage("");
     revealEditor({ expandLedger: true });
-    setStatusMessage("New account ready. Complete the required fields, then save.");
+    setStatusMessage("");
   }
 
   function handleResetForm() {
@@ -571,22 +689,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     <section className="stack">
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section className="content-panel stack sportsbook-page-shell">
-        <div className="sportsbook-page-header">
+        <div className="sportsbook-page-header accounts-page-header">
           <h1 className="sportsbook-page-title">Accounts</h1>
-          <div className="tracker-nav">
-            <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
-            <button
-              aria-haspopup="dialog"
-              aria-label="Filter accounts"
-              className="icon-button ledger-toolbar-filter-action"
-              data-pd-id="accounts.toolbar.filter"
-              onClick={() => setIsFilterModalOpen(true)}
-              title="Filter accounts"
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
-            </button>
-          </div>
         </div>
         <section className="stat-strip" aria-label="Account quick view">
           <article className="stat-card">
@@ -617,9 +721,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         </section>
         {!tableCollapsed ? (
           <>
-            <div className="sportsbook-review-bar" aria-label="Accounts review filters">
-              <div className="review-chip-row" role="group" aria-label="Accounts review modes">
-                {accountTableModes.filter((mode) => ["Active", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
+            <div className="sportsbook-review-bar accounts-review-toolbar" aria-label="Accounts review filters">
+              <label className="field-control table-search-field">
+                <span>Search</span>
+                <input
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search account rows"
+                  type="search"
+                  value={query}
+                />
+              </label>
+              <div className="review-chip-row accounts-review-loadouts" role="group" aria-label="Accounts review modes">
+                {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
                   <button
                     aria-pressed={tableMode === mode.value}
                     className={`review-chip${tableMode === mode.value ? " is-active" : ""}`}
@@ -634,18 +750,42 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   </button>
                 ))}
               </div>
-              <label className="field-control table-search-field">
-                <span>Search</span>
-                <input
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search account rows"
-                  type="search"
-                  value={query}
-                />
-              </label>
+              <div className="accounts-review-actions">
+                <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
+                <div className="table-filter-button-wrap">
+                  <button
+                    aria-haspopup="dialog"
+                    aria-label="Filter accounts"
+                    className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
+                    data-pd-id="accounts.toolbar.filter"
+                    onClick={() => setIsFilterModalOpen(true)}
+                    title="Filter accounts"
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
+                    {hasActiveTableControls ? (
+                      <span aria-label={`${activeTableControlCount} active account table controls`} className="table-filter-badge">
+                        {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
+                      </span>
+                    ) : null}
+                  </button>
+                  {hasActiveTableControls ? (
+                    <button
+                      aria-label="Clear active account filters and visible columns"
+                      className="table-filter-clear"
+                      onClick={() => {
+                        setTableFilters(emptyAccountTableFilters);
+                        setTableMode("All");
+                        setVisibleColumnKeys(new Set(defaultVisibleAccountColumns));
+                        setCurrentPage(1);
+                      }}
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             </div>
             {errorMessage ? (
               <p className="error-text" role="alert">
@@ -667,37 +807,60 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             />
             <LedgerTableScroll dataPdId="accounts.table-scroll">
               <table className="data-table accounts-data-table">
+                <colgroup>
+                  {visibleTableColumns.map((column) => (
+                    <col key={column.key} style={{ width: `${columnWidths[column.key]}px` }} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
-                    {tableColumns.map((column) => (
+                    {visibleTableColumns.map((column) => {
+                      const sortable = column.key !== "actions";
+                      const activeSort = tableSort?.key === column.key;
+                      const marker = activeSort ? tableSort.direction === "asc" ? "▲" : "▼" : "↕";
+                      return (
                       <th
+                        aria-sort={sortable ? activeSort ? tableSort.direction === "asc" ? "ascending" : "descending" : "none" : undefined}
                         className={column.align === "end" ? "align-end" : undefined}
                         key={column.key}
                         scope="col"
                       >
-                        {column.label}
+                        <div className="table-header-cell">
+                          {sortable ? (
+                            <button className={`table-sort-button${activeSort ? " is-active" : ""}`} onClick={() => toggleTableSort(column.key as AccountSortKey)} type="button">
+                              <span>{column.label}</span><span aria-hidden="true">{marker}</span>
+                            </button>
+                          ) : <span className="table-header-label">{column.label}</span>}
+                          <span
+                            aria-hidden="true"
+                            className="table-column-resize-handle"
+                            onMouseDown={(event) =>
+                              startColumnResize(event, column.key, event.currentTarget.closest("th"))
+                            }
+                          />
+                        </div>
                       </th>
-                    ))}
+                    );})}
                   </tr>
                 </thead>
                 <tbody>
                   {pagedRows.length === 0 ? (
                     <tr>
-                      <td className="empty-cell" colSpan={tableColumns.length}>
+                      <td className="empty-cell" colSpan={visibleTableColumns.length}>
                         No account rows match the current filter.
                       </td>
                     </tr>
                   ) : (
-                    pagedRows.map((row, index) => {
+                    pagedRows.map((row) => {
                       const rowId = String(row.account_id);
                       return (
                         <tr
                           className={selectedId === rowId ? "is-selected-row" : undefined}
-                          key={`${rowId}-${index}`}
+                          key={rowId}
                           onClick={() => void selectRow(rowId)}
                           onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
-                          {tableColumns.map((column) => (
+                          {visibleTableColumns.map((column) => (
                             <td
                               className={column.align === "end" ? "align-end" : undefined}
                               key={column.key}
@@ -710,6 +873,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                                 />
                               ) : column.key === "type" || column.key === "status" ? (
                                 <span className="table-chip table-chip-muted">{String(row[column.key] || "—")}</span>
+                              ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
+                                <span className="table-chip accounts-financial-chip"><FinancialValue animate={false} tone="neutral" value={String(row[column.key] || "0")} /></span>
                               ) : column.key === "actions" ? (
                                 <button
                                   aria-label={`Edit ${String(row.account ?? "account")}`}
@@ -755,7 +920,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <div className="modal-backdrop" onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsFilterModalOpen(false);
             }}>
-              <section aria-labelledby="accounts-filter-title" aria-modal="true" className="modal-panel accounts-filter-modal" role="dialog">
+              <section aria-labelledby="accounts-filter-title" aria-modal="true" className="modal-panel accounts-filter-modal" ref={filterDialogRef} role="dialog" tabIndex={-1}>
                 <header className="modal-sticky-header sportsbook-page-header">
                   <div>
                     <span className="eyebrow">Table controls</span>
@@ -765,16 +930,46 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                     <span aria-hidden="true" className="material-symbols-outlined">close</span>
                   </button>
                 </header>
-                <div className="form-grid">
+                <div className="form-grid accounts-filter-form-grid">
+                  <label className="field-control"><span>View</span><select value={tableMode} onChange={(event) => { setTableMode(event.target.value as AccountTableMode); setCurrentPage(1); }}>
+                    {accountTableModes.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
+                  </select></label>
                   <label className="field-control"><span>Account type</span><select value={tableFilters.type} onChange={(event) => setTableFilters((current) => ({ ...current, type: event.target.value as AccountTableFilters["type"] }))}><option value="">All</option><option value="Bookie">Bookie</option><option value="Exchange">Exchange</option><option value="Bank">Bank</option></select></label>
                   <label className="field-control"><span>Status</span><select value={tableFilters.status} onChange={(event) => setTableFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All</option>{accountFilterOptions.statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Restriction</span><select value={tableFilters.restriction} onChange={(event) => setTableFilters((current) => ({ ...current, restriction: event.target.value }))}><option value="">All</option>{accountFilterOptions.restrictions.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Access</span><select value={tableFilters.channel} onChange={(event) => setTableFilters((current) => ({ ...current, channel: event.target.value }))}><option value="">All</option>{accountFilterOptions.channels.map((option) => <option key={option}>{option}</option>)}</select></label>
+                  <label className="field-control"><span>Issues</span><select value={tableFilters.issue} onChange={(event) => setTableFilters((current) => ({ ...current, issue: event.target.value as AccountTableFilters["issue"] }))}><option value="">All rows</option><option value="all-issues">Needs action</option><option value="not-signed-up">Not signed up</option><option value="restricted">Restricted</option></select></label>
                   <label className="field-control"><span>Cash total</span><select value={tableFilters.cashTotal} onChange={(event) => setTableFilters((current) => ({ ...current, cashTotal: event.target.value as AccountTableFilters["cashTotal"] }))}><option value="">All</option><option value="yes">Included</option><option value="no">Excluded</option></select></label>
                 </div>
+                <section className="stack-tight" aria-label="Visible account columns">
+                  <strong>Visible columns</strong>
+                  <div className="review-chip-row">
+                    {tableColumns.map((column) => {
+                      const locked = lockedAccountColumns.has(column.key);
+                      const visible = visibleColumnKeys.has(column.key);
+                      return (
+                        <button
+                          aria-pressed={visible}
+                          className={`review-chip${visible ? " is-active" : ""}`}
+                          disabled={locked}
+                          key={column.key}
+                          onClick={() => setVisibleColumnKeys((current) => {
+                            if (locked) return current;
+                            const next = new Set(current);
+                            if (next.has(column.key)) next.delete(column.key); else next.add(column.key);
+                            return next;
+                          })}
+                          type="button"
+                        >
+                          {locked ? column.label : `${visible ? "Hide" : "Show"} ${column.label}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
                 <div className="tracker-nav">
-                  <button className="button-link" onClick={() => { setTableFilters(emptyAccountTableFilters); setCurrentPage(1); }} type="button">Clear filters</button>
-                  <button className="modal-primary-button" onClick={() => { setCurrentPage(1); setIsFilterModalOpen(false); }} type="button">Done</button>
+                  <button className="review-chip" onClick={() => { setTableFilters(emptyAccountTableFilters); setTableMode("All"); setVisibleColumnKeys(new Set(defaultVisibleAccountColumns)); setCurrentPage(1); }} type="button">Clear filters</button>
+                  <button className="review-chip review-chip-copy" onClick={() => { setCurrentPage(1); setIsFilterModalOpen(false); }} type="button">Done</button>
                 </div>
               </section>
             </div>,
@@ -834,7 +1029,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field-control">
             <span>Account</span>
-            {formState.type === "Bookie" ? (
+            {selectedId ? (
+              <input aria-readonly="true" readOnly value={formState.account} />
+            ) : formState.type === "Bookie" ? (
               <select
                 onChange={(event) => {
                   const entry = bookmakerCatalogue.find(
@@ -860,9 +1057,19 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               </select>
             ) : (
               <select
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, account: event.target.value }))
-                }
+                onChange={(event) => {
+                  const account = event.target.value;
+                  const expectedType: MasterAccountType = formState.type === "Exchange" ? "Exchange" : "Bank";
+                  const entry = masterAccountCatalogue.find(
+                    (candidate) => candidate.account_type === expectedType && candidate.brand_name === account
+                  );
+                  setFormState((current) => ({
+                    ...current,
+                    account,
+                    group_name: entry?.operator_group ?? "",
+                    platform: entry?.platform ?? "",
+                  }));
+                }}
                 required
                 value={formState.account}
               >
@@ -875,12 +1082,15 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </label>
           <label className="field-control">
             <span>Type</span>
-            <select
+            {selectedId ? <input aria-readonly="true" readOnly value={formState.type} /> : <select
               onChange={(event) =>
                 setFormState((current) => ({
                   ...current,
                   type: event.target.value,
-                  bookmaker_id: event.target.value === "Bookie" ? current.bookmaker_id : "",
+                  account: "",
+                  bookmaker_id: "",
+                  group_name: "",
+                  platform: "",
                 }))
               }
               value={formState.type}
@@ -890,7 +1100,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   {option}
                 </option>
               ))}
-            </select>
+            </select>}
           </label>
           <label className="field-control">
             <span>Lifecycle</span>
@@ -911,43 +1121,29 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               ))}
             </select>
           </label>
-          <fieldset className="field-control field-span-2">
-            <legend>Restrictions</legend>
-            <div className="tracker-nav">
+          <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-restrictions-title">
+            <span className="field-label" id="account-restrictions-title">Restrictions</span>
+            <div className="review-chip-row account-restriction-choices" role="group" aria-label="Account restrictions">
               {accountRestrictionOptions.map((option) => (
-                <label className="checkbox-control" key={option}>
-                  <input
-                    checked={formState.restrictions.includes(option)}
-                    onChange={(event) =>
+                <button
+                  aria-pressed={formState.restrictions.includes(option)}
+                  className={`review-chip${formState.restrictions.includes(option) ? " is-active" : ""}`}
+                  key={option}
+                  onClick={() =>
                       setFormState((current) => ({
                         ...current,
-                        restrictions: event.target.checked
-                          ? [...current.restrictions, option]
-                          : current.restrictions.filter((value) => value !== option),
+                        restrictions: current.restrictions.includes(option)
+                          ? current.restrictions.filter((value) => value !== option)
+                          : [...current.restrictions, option],
                       }))
-                    }
-                    type="checkbox"
-                  />
-                  <span>{option}</span>
-                </label>
+                  }
+                  type="button"
+                >
+                  {option}
+                </button>
               ))}
             </div>
-          </fieldset>
-          <label className="field-control">
-            <span>Channel</span>
-            <select
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, channel: event.target.value }))
-              }
-              value={formState.channel}
-            >
-              {accountChannelOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+          </section>
           <label className="field-control">
             <span>Current balance</span>
             <input
@@ -1014,37 +1210,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </label>
           <label className="field-control">
             <span>Group</span>
-            <select
-              disabled={formState.type === "Bookie"}
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, group_name: event.target.value }))
-              }
-              value={formState.group_name}
-            >
-              <option value="">Select group</option>
-              {groupOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <input aria-readonly="true" readOnly value={formState.group_name || "Inherited from account catalogue"} />
           </label>
           <label className="field-control">
             <span>Platform</span>
-            <select
-              disabled={formState.type === "Bookie"}
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, platform: event.target.value }))
-              }
-              value={formState.platform}
-            >
-              <option value="">Select platform</option>
-              {platformOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <input aria-readonly="true" readOnly value={formState.platform || "Inherited from account catalogue"} />
           </label>
           <label className="field-control field-span-2">
             <span>Notes</span>
@@ -1056,14 +1226,14 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               value={formState.notes}
             />
           </label>
-              <div className="tracker-nav field-span-2 workflow-editor-footer">
-                <button className="modal-primary-button" disabled={isPending} type="submit">
+              <div className="field-span-2 workflow-editor-footer" data-pd-id="accounts.editor.footer">
+                <div className="workflow-editor-footer-primary">
+                <button className="review-chip review-chip-copy" disabled={isPending} type="submit">
                   {selectedId ? "Save" : "Create"}
                 </button>
-                <button className="button-link" disabled={isPending} onClick={handleResetForm} type="button">
-                  {selectedId ? "Revert" : "Reset"}
-                </button>
-                <button className="button-link" disabled={isPending} onClick={() => void closeEditor()} type="button">Cancel</button>
+                <button className="review-chip" disabled={isPending} onClick={handleResetForm} type="button">Revert</button>
+                <button className="review-chip" disabled={isPending} onClick={() => void closeEditor()} type="button">Cancel</button>
+                </div>
               </div>
             </form>
           </div>

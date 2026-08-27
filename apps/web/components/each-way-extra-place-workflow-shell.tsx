@@ -340,8 +340,10 @@ function isDateWithinRange(
 
 export function EachWayExtraPlaceWorkflowShell({
   profileId,
+  initialIssueFilter,
 }: {
   profileId: string;
+  initialIssueFilter?: string;
 }) {
   const baseUrl = `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`;
   const editorRef = useRef<HTMLElement | null>(null);
@@ -357,8 +359,12 @@ export function EachWayExtraPlaceWorkflowShell({
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tableFilters, setTableFilters] =
-    useState<ExtraPlaceTableFilters>(emptyTableFilters);
+  const [tableFilters, setTableFilters] = useState<ExtraPlaceTableFilters>(() => ({
+    ...emptyTableFilters,
+    ...(initialIssueFilter && ["all-issues", "calculation", "outcome-needed"].includes(initialIssueFilter)
+      ? { view: "issues" as const, issue_type: initialIssueFilter as ExtraPlaceIssueFilter }
+      : {}),
+  }));
   const [visibleColumns, setVisibleColumns] =
     useState<ExtraPlaceVisibleColumns>(defaultVisibleColumns);
   const [guideDismissed, setGuideDismissed] = useState(false);
@@ -898,7 +904,7 @@ export function EachWayExtraPlaceWorkflowShell({
       <div className="tracker-toolbar">
         <div className="stack">
           <span className="eyebrow">Horse racing</span>
-          <h1>Extra Place</h1>
+          <h1>Extra Places</h1>
         </div>
       </div>
       <section aria-label="Extra Place quick view" className="stat-strip">

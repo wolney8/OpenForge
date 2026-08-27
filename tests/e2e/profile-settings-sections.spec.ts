@@ -3,12 +3,17 @@ import { expect, test } from "@playwright/test";
 const settingsPath = "/profiles/profile-demo-001/tracker/settings";
 
 test("profile settings use keyboard-accessible section tabs and retain deep links", async ({ page }) => {
+  const duplicateKeyErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("same key")) {
+      duplicateKeyErrors.push(message.text());
+    }
+  });
   await page.goto(settingsPath);
 
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
   const defaults = tabs.getByRole("tab", { name: "Defaults" });
   const spreadsheet = tabs.getByRole("tab", { name: "Spreadsheet" });
-  const accountAccess = tabs.getByRole("tab", { name: "Account Access" });
 
   await expect(defaults).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: /Settings for .* Profile/ })).toBeVisible();
@@ -38,12 +43,12 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await page.keyboard.press("End");
   const quickAdd = tabs.getByRole("tab", { name: "Quick Add" });
   await expect(quickAdd).toBeFocused();
-  await page.keyboard.press("ArrowLeft");
-  await expect(accountAccess).toBeFocused();
-  await expect(page).toHaveURL(`${settingsPath}#account-authorities`);
-  await expect(page.getByRole("tabpanel", { name: "Account Access" })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: "Account Access" })).toHaveCount(0);
+  await expect(page).toHaveURL(`${settingsPath}#quick-add`);
+  await expect(page.getByRole("tabpanel", { name: "Quick Add" })).toBeVisible();
 
   await page.reload();
-  await expect(accountAccess).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel", { name: "Account Access" })).toBeVisible();
+  await expect(quickAdd).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Quick Add" })).toBeVisible();
+  expect(duplicateKeyErrors).toEqual([]);
 });

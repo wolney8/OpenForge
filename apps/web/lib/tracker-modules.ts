@@ -92,7 +92,7 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
   },
   "each-way-extra-places": {
     href: "each-way-extra-places",
-    title: "Extra Place",
+    title: "Extra Places",
     summary: "Horse-racing each-way and Extra Place calculator and settlement ledger.",
     addLabel: "Add Extra Place row",
   },

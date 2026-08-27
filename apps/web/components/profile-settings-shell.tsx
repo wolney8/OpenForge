@@ -2,7 +2,6 @@
 
 import { KeyboardEvent, useEffect, useState } from "react";
 
-import { AccountAuthoritySettings } from "@/components/account-authority-settings";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
@@ -15,7 +14,6 @@ const settingsSections = [
   { id: "spreadsheet-transfer", label: "Spreadsheet" },
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
-  { id: "account-authorities", label: "Account Access" },
   { id: "quick-add", label: "Quick Add" },
 ] as const;
 
@@ -146,15 +144,6 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           role="tabpanel"
         >
           <ExchangeCommissionSettings profileId={profileId} />
-        </section>
-        <section
-          aria-labelledby="profile-settings-tab-account-authorities"
-          className="analytics-tab-panel"
-          hidden={activeSection !== "account-authorities"}
-          id="profile-settings-panel-account-authorities"
-          role="tabpanel"
-        >
-          <AccountAuthoritySettings profileId={profileId} />
         </section>
         <section
           aria-labelledby="profile-settings-tab-quick-add"

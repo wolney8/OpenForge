@@ -5692,6 +5692,12 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .accounts-data-table th,
 .accounts-data-table td {
   text-align: center;
+  vertical-align: middle;
+}
+
+.accounts-data-table {
+  min-width: max-content;
+  table-layout: fixed;
 }
 
 .accounts-data-table th {
@@ -5703,15 +5709,171 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   text-align: left;
 }
 
+.accounts-data-table tbody tr {
+  height: 5.25rem;
+}
+
 .accounts-data-table td:last-child {
-  min-width: 5.5rem;
+  min-width: 6.5rem;
+}
+
+.accounts-data-table .table-chip {
+  max-width: 100%;
+}
+
+.accounts-financial-chip {
+  min-width: 7.5rem;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface-container-high) 86%, var(--surface));
+  color: var(--on-surface);
 }
 
 .accounts-editor-modal,
 .accounts-filter-modal {
   width: min(76rem, calc(100vw - 2rem));
   max-height: min(88vh, 62rem);
+}
+
+.accounts-editor-modal {
+  overflow-x: clip;
+  overflow-y: hidden;
+  resize: none;
+  scrollbar-gutter: auto;
+}
+
+.accounts-filter-modal {
   overflow: auto;
+}
+
+.accounts-review-toolbar {
+  display: grid;
+  align-items: end;
+  grid-template-areas:
+    "search actions"
+    "loadouts actions";
+  grid-template-columns: minmax(15rem, 1fr) auto;
+  justify-content: stretch;
+}
+
+.accounts-review-toolbar .table-search-field {
+  grid-area: search;
+}
+
+.accounts-review-loadouts {
+  grid-area: loadouts;
+}
+
+.accounts-review-actions {
+  grid-area: actions;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.accounts-editor-modal .workflow-editor-body {
+  overflow-x: clip;
+}
+
+.accounts-filter-form-grid {
+  padding-bottom: 1.25rem;
+}
+
+.accounts-filter-modal .stack-tight {
+  gap: 0.9rem;
+  padding-bottom: 1.25rem;
+}
+
+.accounts-filter-modal .tracker-nav {
+  padding-top: 1.25rem;
+}
+
+.accounts-editor-modal .workflow-editor-body {
+  min-width: 0;
+  overflow-y: auto;
+  padding-inline: 1.35rem;
+}
+
+.accounts-editor-modal .form-grid {
+  min-width: 0;
+  padding: 0.25rem 0 1.25rem;
+}
+
+.accounts-editor-modal .field-control,
+.accounts-editor-modal .field-span-2,
+.accounts-editor-modal input,
+.accounts-editor-modal select,
+.accounts-editor-modal textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.account-editor-choice-section {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+  background: var(--surface-container);
+}
+
+.account-editor-choice-section .field-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.account-restriction-choices {
+  gap: 0.55rem;
+}
+
+.account-restriction-choices .review-chip {
+  min-height: 2.5rem;
+  padding-inline: 0.8rem;
+}
+
+.accounts-editor-modal .field-control:focus-within {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 44rem) {
+  .accounts-review-toolbar {
+    grid-template-areas:
+      "search"
+      "loadouts"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accounts-review-actions {
+    justify-content: flex-start;
+  }
+}
+
+.report-open-module-links {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.report-open-module-links .report-value-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.report-open-module-links .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.report-open-module-separator {
+  color: var(--outline-strong);
 }
 
 .table-column-resize-handle {

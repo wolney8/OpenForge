@@ -250,6 +250,10 @@ export type BookmakerBreakdownRow = {
   eachWayExtraPlacePnl: number;
   totalPnl: number;
   openRowCount: number;
+  sportsbookOpenRowCount: number;
+  freeBetOpenRowCount: number;
+  casinoOpenRowCount: number;
+  extraPlaceOpenRowCount: number;
 };
 
 export type TrackerSummaryResult = {
@@ -1093,6 +1097,10 @@ export function summarizeTrackerData(
       eachWayExtraPlacePnl: 0,
       totalPnl: 0,
       openRowCount: 0,
+      sportsbookOpenRowCount: 0,
+      freeBetOpenRowCount: 0,
+      casinoOpenRowCount: 0,
+      extraPlaceOpenRowCount: 0,
     };
 
   for (const row of sportsbookInRange) {
@@ -1101,6 +1109,7 @@ export function summarizeTrackerData(
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
+      next.sportsbookOpenRowCount += 1;
     }
     bookmakerMap.set(row.bookmaker, next);
   }
@@ -1111,6 +1120,7 @@ export function summarizeTrackerData(
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
+      next.freeBetOpenRowCount += 1;
     }
     bookmakerMap.set(row.bookmaker, next);
   }
@@ -1121,6 +1131,7 @@ export function summarizeTrackerData(
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;
+      next.casinoOpenRowCount += 1;
     }
     bookmakerMap.set(row.bookmaker, next);
   }
@@ -1131,6 +1142,7 @@ export function summarizeTrackerData(
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.status === "Placed" && row.result === "Pending") {
       next.openRowCount += 1;
+      next.extraPlaceOpenRowCount += 1;
     }
     bookmakerMap.set(row.bookmaker, next);
   }

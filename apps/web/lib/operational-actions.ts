@@ -1,18 +1,20 @@
 import type {
   CasinoSummaryRecord,
+  EachWayExtraPlaceSummaryRecord,
   FreeBetSummaryRecord,
   SportsbookSummaryRecord,
   TrackerSummaryDataset,
 } from "./tracker-summary";
 import { getSportsbookIssueBadges } from "./sportsbook-table-workflow";
 
-export type OperationalLedger = "sportsbook" | "free-bets" | "casino-offers";
+export type OperationalLedger = "sportsbook" | "free-bets" | "casino-offers" | "each-way-extra-places";
 export type OperationalIssueQuery = "all" | "overdue";
 
 export type OperationalActionCounts = {
   sportsbook: number;
   freeBets: number;
   casinoOffers: number;
+  extraPlaces: number;
 };
 
 export type OperationalIssueBadge = {
@@ -76,6 +78,16 @@ export function casinoOfferHasActionIssue(row: CasinoSummaryRecord): boolean {
   return getCasinoOperationalIssueBadges(row).length > 0;
 }
 
+export function extraPlaceHasActionIssue(row: EachWayExtraPlaceSummaryRecord): boolean {
+  return row.status !== "Settled" && (
+    !row.bookmaker.trim() ||
+    !row.runner.trim() ||
+    !row.race.trim() ||
+    !row.placed_at.trim() ||
+    !row.current_value
+  );
+}
+
 export function countOperationalActions(
   dataset: TrackerSummaryDataset,
   now = Date.now()
@@ -84,6 +96,7 @@ export function countOperationalActions(
     sportsbook: dataset.sportsbookBets.filter(sportsbookHasActionIssue).length,
     freeBets: dataset.freeBets.filter((row) => freeBetHasActionIssue(row, now)).length,
     casinoOffers: dataset.casinoOffers.filter(casinoOfferHasActionIssue).length,
+    extraPlaces: (dataset.eachWayExtraPlaces ?? []).filter(extraPlaceHasActionIssue).length,
   };
 }
 

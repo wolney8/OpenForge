@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from dataclasses import replace
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
     BookmakerCatalogueRecord,
     create_bookmaker_catalogue_entry,
@@ -133,12 +135,47 @@ def serialize_catalogue(record: BookmakerCatalogueRecord) -> BookmakerCatalogueR
     return BookmakerCatalogueResponse.model_validate(record.__dict__)
 
 
+def apply_master_bookmaker_presentation(
+    record: BookmakerCatalogueRecord,
+) -> BookmakerCatalogueRecord:
+    """Keep legacy IDs while exposing the global catalogue as the display authority."""
+    master = next(
+        (
+            entry
+            for entry in load_master_account_catalogue().records
+            if entry.account_type == "Bookmaker"
+            and entry.brand_name.casefold() == record.brand_name.casefold()
+        ),
+        None,
+    )
+    if master is None:
+        return record
+    return replace(
+        record,
+        brand_name=master.brand_name,
+        short_display_name=master.short_display_name,
+        legal_operator=master.legal_operator,
+        operator_group=master.operator_group,
+        platform=master.platform,
+        risk_team=master.risk_team,
+        licence_reference=master.licence_reference,
+        licence_status=master.licence_status,
+        canonical_domain=master.canonical_domain,
+        foreground_colour=master.foreground_colour,
+        background_colour=master.background_colour,
+        logo_asset_path=master.logo_asset_path,
+        source=master.source,
+        confidence=master.confidence,
+        last_verified_date=master.last_verified_date,
+    )
+
+
 @router.get("/bookmaker-catalogue", response_model=list[BookmakerCatalogueResponse])
 def list_catalogue(
     include_archived: bool = Query(default=True),
 ) -> list[BookmakerCatalogueResponse]:
     return [
-        serialize_catalogue(row)
+        serialize_catalogue(apply_master_bookmaker_presentation(row))
         for row in list_bookmaker_catalogue(include_archived=include_archived)
     ]
 

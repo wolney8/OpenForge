@@ -24,6 +24,9 @@ describe("operational action routing", () => {
     expect(buildOperationalLedgerHref("PROFILE-001", "free-bets", null)).toBe(
       "/profiles/PROFILE-001/tracker/free-bets"
     );
+    expect(buildOperationalLedgerHref("PROFILE-001", "each-way-extra-places")).toBe(
+      "/profiles/PROFILE-001/tracker/each-way-extra-places?view=issues&issue=all-issues&source=profiles"
+    );
     expect(readOperationalIssueQuery("?view=issues&issue=outcome-needed")).toBe("outcome-needed");
     expect(readOperationalIssueQuery("?view=recent")).toBeNull();
   });
@@ -58,6 +61,7 @@ describe("operational action routing", () => {
       sportsbook: 1,
       freeBets: 1,
       casinoOffers: 1,
+      extraPlaces: 0,
     });
   });
 
@@ -94,6 +98,7 @@ describe("operational action routing", () => {
       sportsbook: 1,
       freeBets: 0,
       casinoOffers: 0,
+      extraPlaces: 0,
     });
     expect(dataset.sportsbookBets[0]?.reporting_value).toBe("-0.64");
     expect(dataset.sportsbookBets[0]?.calculated_liability_1).toBe("5.26");

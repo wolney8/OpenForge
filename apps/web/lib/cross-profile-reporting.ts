@@ -31,6 +31,7 @@ export type ProfileComparisonRow = {
   sportsbookActionCount: number;
   freeBetActionCount: number;
   casinoActionCount: number;
+  extraPlaceActionCount: number;
   expiringFreeBetCount: number;
   currentLiability: number;
 };
@@ -89,7 +90,7 @@ export function aggregateCrossProfileReporting(
   profiles: ProfileReportingInput[]
 ): CrossProfileReportingResult {
   const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
-    const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0 };
+    const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0, extraPlaces: 0 };
     return {
       profileId,
       displayName,
@@ -105,6 +106,7 @@ export function aggregateCrossProfileReporting(
       sportsbookActionCount: actionCounts.sportsbook,
       freeBetActionCount: actionCounts.freeBets,
       casinoActionCount: actionCounts.casinoOffers,
+      extraPlaceActionCount: actionCounts.extraPlaces,
       expiringFreeBetCount: summary.betsQuickView.expiringFreeBetCount,
       currentLiability: summary.betsQuickView.currentLiability,
     };
@@ -122,6 +124,7 @@ export function aggregateCrossProfileReporting(
       sportsbookActionCount: aggregate.sportsbookActionCount + row.sportsbookActionCount,
       freeBetActionCount: aggregate.freeBetActionCount + row.freeBetActionCount,
       casinoActionCount: aggregate.casinoActionCount + row.casinoActionCount,
+      extraPlaceActionCount: aggregate.extraPlaceActionCount + row.extraPlaceActionCount,
       expiringFreeBetCount: aggregate.expiringFreeBetCount + row.expiringFreeBetCount,
       currentLiability: aggregate.currentLiability + row.currentLiability,
     }),
@@ -136,6 +139,7 @@ export function aggregateCrossProfileReporting(
       sportsbookActionCount: 0,
       freeBetActionCount: 0,
       casinoActionCount: 0,
+      extraPlaceActionCount: 0,
       expiringFreeBetCount: 0,
       currentLiability: 0,
     }
@@ -166,6 +170,10 @@ export function aggregateCrossProfileReporting(
         eachWayExtraPlacePnl: 0,
         totalPnl: 0,
         openRowCount: 0,
+        sportsbookOpenRowCount: 0,
+        freeBetOpenRowCount: 0,
+        casinoOpenRowCount: 0,
+        extraPlaceOpenRowCount: 0,
       };
       aggregate.sportsbookPnl += row.sportsbookPnl;
       aggregate.freeBetPnl += row.freeBetPnl;
@@ -174,6 +182,10 @@ export function aggregateCrossProfileReporting(
       aggregate.totalPnl =
         aggregate.sportsbookPnl + aggregate.freeBetPnl + aggregate.casinoPnl + aggregate.eachWayExtraPlacePnl;
       aggregate.openRowCount += row.openRowCount;
+      aggregate.sportsbookOpenRowCount += row.sportsbookOpenRowCount;
+      aggregate.freeBetOpenRowCount += row.freeBetOpenRowCount;
+      aggregate.casinoOpenRowCount += row.casinoOpenRowCount;
+      aggregate.extraPlaceOpenRowCount += row.extraPlaceOpenRowCount;
       bookmakerMap.set(row.bookmaker, aggregate);
     }
   }

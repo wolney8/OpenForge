@@ -349,6 +349,7 @@ function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
     { ledger: "sportsbook" as const, label: "Sportsbook", icon: "sports", count: row.sportsbookActionCount },
     { ledger: "free-bets" as const, label: "Free Bets", icon: "award_star", count: row.freeBetActionCount },
     { ledger: "casino-offers" as const, label: "Casino", icon: "playing_cards", count: row.casinoActionCount },
+    { ledger: "each-way-extra-places" as const, label: "Extra Place", icon: "chess_knight", count: row.extraPlaceActionCount },
   ];
 
   return (
@@ -1272,6 +1273,10 @@ export function CrossProfileAnalytics({
                 <dt>Casino</dt>
                 <dd>{combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0)}</dd>
               </div>
+              <div>
+                <dt>Extra Place</dt>
+                <dd>{combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0)}</dd>
+              </div>
             </dl>
           </article>
         </section>
@@ -1981,6 +1986,7 @@ export function CrossProfileAnalytics({
             sportsbook: detailComparisonRow?.sportsbookActionCount ?? 0,
             freeBets: detailComparisonRow?.freeBetActionCount ?? 0,
             casinoOffers: detailComparisonRow?.casinoActionCount ?? 0,
+            extraPlaces: detailComparisonRow?.extraPlaceActionCount ?? 0,
           }}
           periods={feePeriods.get(detailProfile.profileId) ?? []}
           profileId={detailProfile.profileId}

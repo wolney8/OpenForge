@@ -123,3 +123,49 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
   await expect(dialog.getByText("Calc state", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Issue type", { exact: true })).toBeVisible();
 });
+
+test("Accounts uses canonical table controls, sorting, resizing, and neutral cash chips", async ({ page }) => {
+  await page.goto("/profiles/profile-demo-001/tracker/accounts");
+
+  const quickView = page.getByRole("region", { name: "Account quick view" });
+  await expect(quickView).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add Account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter accounts" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: /^Type/i })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: /Status/i })).toBeVisible();
+  await expect(page.locator(".accounts-financial-chip").first()).toBeVisible();
+
+  const accountHeader = page.getByRole("columnheader", { name: /Account/i }).first();
+  await accountHeader.getByRole("button").click();
+  await expect(accountHeader).toHaveAttribute("aria-sort", "ascending");
+  const resizeHandle = accountHeader.locator(".table-column-resize-handle");
+  await expect(resizeHandle).toBeVisible();
+  const beforeResize = await accountHeader.boundingBox();
+  await resizeHandle.hover();
+  await page.mouse.down();
+  await page.mouse.move((beforeResize?.x ?? 0) + (beforeResize?.width ?? 0) + 80, 0, { steps: 4 });
+  await page.mouse.up();
+  const afterResize = await accountHeader.boundingBox();
+  expect(afterResize?.width ?? 0).toBeGreaterThan((beforeResize?.width ?? 0) + 32);
+  await expect(page.getByLabel("Accounts top controls").getByLabel("Accounts rows per page")).toHaveValue("8");
+
+  await page.getByRole("button", { name: "Filter accounts" }).click();
+  const dialog = page.getByRole("dialog", { name: "Filter accounts" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("View", { exact: true })).toBeVisible();
+  await expect(dialog.locator('option[value="Recent"]')).toHaveCount(1);
+  await expect(dialog.getByText("Issues", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("region", { name: "Visible account columns" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close account filters" }).click();
+
+  await page.locator(".accounts-data-table tbody tr").first().click();
+  const editor = page.getByRole("dialog", { name: "Edit account" });
+  await expect(editor).toBeVisible();
+  await expect(editor.getByText("Channel", { exact: true })).toHaveCount(0);
+  await expect(editor.locator("fieldset.field-control")).toHaveCount(0);
+  const horizontalOverflow = await editor.evaluate(
+    (element) => element.scrollWidth - element.clientWidth,
+  );
+  expect(horizontalOverflow).toBeLessThanOrEqual(1);
+  await editor.getByRole("button", { name: "Close account editor" }).click();
+});

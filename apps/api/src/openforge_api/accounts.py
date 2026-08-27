@@ -4,21 +4,24 @@ import json
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
     create_account,
     get_account,
     get_bookmaker_catalogue_entry,
     list_accounts,
+    list_bookmaker_catalogue,
     update_account,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/accounts", tags=["accounts"])
 
 AccountTypeValue = Literal["Bookie", "Exchange", "Bank"]
-ChannelValue = Literal["Online", "Retail", "Unknown"]
+CHANNEL_LABELS = {"Online", "Mobile", "Retail", "Unknown"}
 StatusValue = Literal[
+    "Not Signed Up",
     "Active",
     "Bonus Restricted",
     "Limited",
@@ -72,7 +75,7 @@ class AccountPayload(BaseModel):
     account: str = Field(min_length=1, max_length=120)
     type: AccountTypeValue
     counts_in_cash_total: bool = True
-    channel: ChannelValue = "Unknown"
+    channel: str = "Unknown"
     status: StatusValue
     lifecycle_status: LifecycleValue | None = None
     restrictions: list[RestrictionValue] = Field(default_factory=list)
@@ -83,6 +86,18 @@ class AccountPayload(BaseModel):
     platform: str = Field(default="", max_length=120)
     sign_up_date: str = Field(default="", max_length=20)
     notes: str = Field(default="", max_length=1000)
+
+    @field_validator("channel")
+    @classmethod
+    def normalize_channels(cls, value: str) -> str:
+        channels = [item.strip().title() for item in value.split(",") if item.strip()]
+        if not channels:
+            return "Unknown"
+        if "Unknown" in channels and len(channels) > 1:
+            raise ValueError("Unknown cannot be combined with an operating channel")
+        if any(channel not in CHANNEL_LABELS for channel in channels):
+            raise ValueError("channel must use Online, Mobile, Retail, or Unknown")
+        return ", ".join(dict.fromkeys(channels))
 
 
 class AccountResponse(AccountPayload):
@@ -104,18 +119,57 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     )
     values.pop("restrictions", None)
     if payload.type != "Bookie":
+        master_type = "Exchange" if payload.type == "Exchange" else "Bank"
+        catalogue = load_master_account_catalogue()
+        entry = next(
+            (
+                record
+                for record in catalogue.records
+                if record.account_type == master_type
+                and record.brand_name.casefold() == payload.account.strip().casefold()
+                and record.status == "Active"
+            ),
+            None,
+        )
+        if entry is None:
+            raise HTTPException(status_code=422, detail="Account catalogue entry not found")
         values["bookmaker_id"] = None
+        values.update(
+            account=entry.brand_name,
+            group_name=entry.operator_group,
+            platform=entry.platform,
+        )
         return values
-    if not payload.bookmaker_id:
-        return values
-
-    catalogue = get_bookmaker_catalogue_entry(payload.bookmaker_id)
+    catalogue = (
+        get_bookmaker_catalogue_entry(payload.bookmaker_id)
+        if payload.bookmaker_id
+        else next(
+            (
+                record
+                for record in list_bookmaker_catalogue(include_archived=False)
+                if record.brand_name.casefold() == payload.account.strip().casefold()
+            ),
+            None,
+        )
+    )
     if catalogue is None:
         raise HTTPException(status_code=422, detail="Bookmaker catalogue entry not found")
+    master_catalogue = load_master_account_catalogue()
+    master_entry = next(
+        (
+            record
+            for record in master_catalogue.records
+            if record.account_type == "Bookmaker"
+            and record.brand_name.casefold() == catalogue.brand_name.casefold()
+            and record.status == "Active"
+        ),
+        None,
+    )
+    values["bookmaker_id"] = catalogue.bookmaker_id
     values.update(
-        account=catalogue.brand_name,
-        group_name=catalogue.operator_group,
-        platform=catalogue.platform,
+        account=master_entry.brand_name if master_entry else catalogue.brand_name,
+        group_name=master_entry.operator_group if master_entry else catalogue.operator_group,
+        platform=master_entry.platform if master_entry else catalogue.platform,
     )
     return values
 

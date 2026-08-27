@@ -130,6 +130,17 @@ test.describe("Extra Place ledger parity", () => {
     await expect(footer.getByRole("button", { name: "Next" })).toBeVisible();
   });
 
+  test("honours report issue deep links", async ({ page }) => {
+    await page.goto(`${route}?view=issues&issue=all-issues&source=reports`);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    await expect(page.getByLabel("2 active Extra Place filters")).toBeVisible();
+
+    await page.getByRole("button", { name: "Open Extra Place filters" }).click();
+    const dialog = page.getByRole("dialog", { name: "Extra Place filter controls" });
+    await expect(dialog.getByLabel("View")).toHaveValue("issues");
+    await expect(dialog.getByLabel("Issue type")).toHaveValue("all-issues");
+  });
+
   test("uses two editor steps and only lets race parsing own an empty date", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });

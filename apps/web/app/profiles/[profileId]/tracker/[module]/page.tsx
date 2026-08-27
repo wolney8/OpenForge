@@ -107,7 +107,7 @@ export default async function TrackerModulePage({
       ) : module === "casino-offers" ? (
         <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
       ) : module === "each-way-extra-places" ? (
-        <EachWayExtraPlaceWorkflowShell profileId={profile.profileId} />
+        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (

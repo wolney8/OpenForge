@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
 
@@ -41,6 +41,20 @@ export function ProfileQuickAddLoadoutSettings({ profileId }: { profileId: strin
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [load]);
+
+  const bookmakerOptions = useMemo(() => {
+    const uniqueByProvider = new Map<string, AccountAuthorityRecord>();
+    for (const bookmaker of bookmakers) {
+      const providerKey = bookmaker.account.trim().toLocaleLowerCase();
+      const current = uniqueByProvider.get(providerKey);
+      if (!current || bookmaker.account_id.localeCompare(current.account_id) < 0) {
+        uniqueByProvider.set(providerKey, bookmaker);
+      }
+    }
+    return [...uniqueByProvider.values()].sort((left, right) =>
+      left.account.localeCompare(right.account)
+    );
+  }, [bookmakers]);
 
   async function update(loadout: Loadout, changes: Partial<Pick<Loadout, "enabled" | "bookmaker">>) {
     const saveKey = `${loadout.preset_id}-${loadout.ledger_type}`;
@@ -104,12 +118,12 @@ export function ProfileQuickAddLoadoutSettings({ profileId }: { profileId: strin
               <span>Quick access</span>
             </label>
             {loadout.is_favourite ? <label className="field-control"><span>Quick access order</span><select aria-label={`${loadout.label} quick access order`} data-pd-id={`profile-quick-add-settings.${loadout.preset_id}.${loadout.ledger_type}.favourite-order`} disabled={savingId === saveKey} onChange={(event) => void updateFavourite(loadout, true, Number(event.target.value))} value={loadout.favourite_order}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option></select></label> : null}
-            <label className="field-control"><span>Bookmaker</span><select aria-label={`${loadout.label} bookmaker`} disabled={savingId === saveKey} onChange={(event) => void update(loadout, { bookmaker: event.target.value })} value={loadout.bookmaker}><option value="">Use template default</option>{bookmakers.map((bookmaker) => {
+            <label className="field-control"><span>Bookmaker</span><select aria-label={`${loadout.label} bookmaker`} disabled={savingId === saveKey} onChange={(event) => void update(loadout, { bookmaker: event.target.value })} value={loadout.bookmaker}><option value="">Use template default</option>{bookmakerOptions.map((bookmaker) => {
               const accountState = `${bookmaker.status} ${bookmaker.lifecycle_status ?? ""} ${bookmaker.restrictions_json ?? ""} ${JSON.stringify(bookmaker.restrictions ?? [])}`.toLowerCase();
               const blocked = ["blocked", "gubbed", "closed", "kyc blocked", "risk blocked", "bonus restricted"].some((state) => accountState.includes(state));
               const limited = !blocked && ["limited", "pending", "not signed up", "verification"].some((state) => accountState.includes(state));
               const suffix = blocked ? " (unavailable)" : limited ? " (warning)" : "";
-              return <option disabled={blocked} key={bookmaker.account} value={bookmaker.account}>{bookmaker.account}{suffix}</option>;
+              return <option disabled={blocked} key={bookmaker.account_id} value={bookmaker.account}>{bookmaker.account}{suffix}</option>;
             })}</select></label>
           </article>
         );
