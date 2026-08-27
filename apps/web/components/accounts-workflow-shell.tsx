@@ -721,9 +721,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         </section>
         {!tableCollapsed ? (
           <>
-            <div className="sportsbook-review-bar accounts-review-toolbar" aria-label="Accounts review filters">
+            <div
+              aria-label="Accounts controls"
+              className="sportsbook-review-bar accounts-review-toolbar"
+              role="toolbar"
+            >
               <label className="field-control table-search-field">
-                <span>Search</span>
+                <span className="visually-hidden">Search accounts</span>
                 <input
                   onChange={(event) => {
                     setQuery(event.target.value);
@@ -734,7 +738,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   value={query}
                 />
               </label>
-              <div className="accounts-review-actions">
+              <div className="extra-place-toolbar-actions accounts-review-actions">
                 <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
                 <div className="table-filter-button-wrap">
                   <button
@@ -772,7 +776,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               </div>
             </div>
             <div className="extra-place-table-heading-controls accounts-table-heading-controls">
-              <div className="review-chip-row accounts-review-loadouts" role="group" aria-label="Accounts review modes">
+              <div className="tracker-nav extra-place-loadouts accounts-review-loadouts" role="group" aria-label="Accounts review modes">
                 {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
                   <button
                     aria-pressed={tableMode === mode.value}

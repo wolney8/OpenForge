@@ -39,7 +39,7 @@ workbook cutover are explicitly excluded._
 | PD-PR-031 | Extra Places operational routing | Fund Manager and report links use the `all-issues` Extra Places route state, which the ledger reads deterministically. | DONE |
 | PD-PR-032 | Extra Places navigation identity | Profile command route and ledger title now use `chess_knight` and "Extra Places". | DONE |
 | PD-PR-033 | Extra Places filter dialog | Added the shared destructive clear control to the dialog footer, beside the normal completion action. | DONE |
-| PD-PR-034 | Accounts toolbar geometry | Matched the Extra Places two-row toolbar: bounded search/actions above a separate loadout row, both before pagination. | DONE |
+| PD-PR-034 | Accounts toolbar geometry | Replace Accounts-specific toolbar wrappers with the exact signed-off Extra Places control hierarchy; awaiting visual verification. | IN-PROGRESS |
 | PD-PR-035 | Legacy profile provider reconciliation | Define an audited mapping from legacy profile account rows to global catalogue providers; no automatic deletion or replacement of financial history. | NEEDS-INFO |
 | PD-PR-036 | Catalogue import explanation | Settings now explains that catalogue import check is JSON validation/preflight only and cannot alter providers or Profile account state. | DONE |
 | PD-PR-DEFER-001 | Provider source consolidation | Safely migrate legacy `bookmaker_catalogue` and master catalogue into one stable-ID persisted authority. | DEFERRED |

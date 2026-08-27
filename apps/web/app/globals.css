@@ -5745,26 +5745,12 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   overflow: auto;
 }
 
-.accounts-review-toolbar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
 .accounts-review-toolbar .table-search-field {
   width: min(100%, 30rem);
 }
 
 .accounts-table-heading-controls {
   justify-content: flex-start;
-}
-
-.accounts-review-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
 }
 
 .account-catalogue-import-help {
@@ -5847,15 +5833,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 @media (max-width: 44rem) {
-  .accounts-review-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .accounts-review-actions {
-    justify-content: flex-start;
-  }
-
   .accounts-review-toolbar .table-search-field {
     width: 100%;
   }
