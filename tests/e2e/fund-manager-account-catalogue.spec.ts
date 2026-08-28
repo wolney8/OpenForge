@@ -16,24 +16,36 @@ test("Fund Manager can inspect and prepare account catalogue changes from the ta
   await expect(catalogue.getByRole("button", { name: "Import", exact: true })).toBeVisible();
   await expect(catalogue.getByText("Check catalogue import validates", { exact: false })).toHaveCount(0);
 
-  const controlGeometry = await catalogue.locator('[data-pd-id="account-catalogue.controls"]').evaluate((element) => {
+  const controlGeometry = await catalogue.evaluate((element) => {
+    const controls = element.querySelector<HTMLElement>('[data-pd-id="account-catalogue.controls"]');
+    const search = controls?.querySelector<HTMLElement>(".table-search-field");
     const filters = element.querySelector<HTMLElement>(".account-catalogue-filter-row");
-    const actions = element.querySelector<HTMLElement>(".account-catalogue-action-row");
-    if (!filters || !actions) return null;
+    const addAccount = filters?.querySelector<HTMLElement>('[data-pd-id="account-catalogue.add"]');
+    const transfers = element.querySelector<HTMLElement>('[data-pd-id="account-catalogue.transfer-actions"]');
+    const pagination = element.querySelector<HTMLElement>('[aria-label="Account Catalogue top controls"]');
+    if (!controls || !search || !filters || !addAccount || !transfers || !pagination) return null;
+    const controlsRect = controls.getBoundingClientRect();
+    const searchRect = search.getBoundingClientRect();
     const filterRect = filters.getBoundingClientRect();
-    const actionRect = actions.getBoundingClientRect();
-    const actionControls = Array.from(actions.querySelectorAll<HTMLElement>("a, button"))
+    const addRect = addAccount.getBoundingClientRect();
+    const transferRect = transfers.getBoundingClientRect();
+    const paginationRect = pagination.getBoundingClientRect();
+    const transferControls = Array.from(transfers.querySelectorAll<HTMLElement>("a, button"))
       .map((control) => control.getBoundingClientRect());
     return {
-      actionsBelowFilters: actionRect.top >= filterRect.bottom,
-      actionsShareRow: actionControls.every((rect) => Math.abs(rect.top - actionControls[0].top) < 2),
-      rightAligned: Math.abs(actionRect.right - filterRect.right) < 2,
+      primaryControlsShareRow: Math.abs(searchRect.bottom - filterRect.bottom) < 2 && Math.abs(addRect.bottom - filterRect.bottom) < 2,
+      transfersBelowPrimary: transferRect.top >= controlsRect.bottom,
+      transfersShareRow: transferControls.every((rect) => Math.abs(rect.top - transferControls[0].top) < 2),
+      transfersRightAligned: Math.abs(transferRect.right - controlsRect.right) < 2,
+      paginationBelowTransfers: paginationRect.top >= transferRect.bottom,
     };
   });
   expect(controlGeometry).not.toBeNull();
-  expect(controlGeometry!.actionsBelowFilters, JSON.stringify(controlGeometry)).toBe(true);
-  expect(controlGeometry!.actionsShareRow, JSON.stringify(controlGeometry)).toBe(true);
-  expect(controlGeometry!.rightAligned, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.primaryControlsShareRow, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.transfersBelowPrimary, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.transfersShareRow, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.transfersRightAligned, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.paginationBelowTransfers, JSON.stringify(controlGeometry)).toBe(true);
 
   await catalogue.getByLabel("Search Account Catalogue").fill("Smarkets");
   await expect(catalogue.getByRole("cell", { name: "Smarkets", exact: true })).toBeVisible();

@@ -47,6 +47,7 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-PR-038 | Fund Manager Settings > Account Catalogue toolbar | Keep Account Type and Status filters in the upper right control row; place Export, Import and Add Account together beneath them in one right-aligned action row. | COMPLETE |
 | PD-PR-039 | Fund Manager Settings > Account Catalogue import action | Rename `Check catalogue import` to `Import` while retaining the existing non-destructive preflight behaviour. | COMPLETE |
 | PD-PR-040 | Fund Manager Settings > Account Catalogue copy | Remove the catalogue-import explanatory preamble from the inline authority page and legacy management view. | COMPLETE |
+| PD-PR-041 | Fund Manager Settings > Account Catalogue row structure | Use exactly three control rows: Search/Account Type/Status/Add Account; right-aligned Export/Import; then pagination. | COMPLETE |
 
 ## Boundaries
 

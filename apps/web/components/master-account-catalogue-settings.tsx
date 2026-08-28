@@ -303,18 +303,16 @@ export function MasterAccountCatalogueSettings() {
       {isLoading && !catalogue ? <LedgerLoadingIndicator label="Loading Account Catalogue" /> : null}
       <div className="table-toolbar settings-table-toolbar account-catalogue-toolbar" data-pd-id="account-catalogue.controls">
         <label className="field-control table-search-field"><span>Search accounts</span><input aria-label="Search Account Catalogue" data-pd-id="account-catalogue.search" onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" value={query} /></label>
-        <div className="settings-table-filter-group account-catalogue-control-stack">
-          <div className="account-catalogue-filter-row">
-            <label className="field-control table-filter-field"><span>Account type</span><select data-pd-id="account-catalogue.type-filter" onChange={(event) => { setTypeFilter(event.target.value as MasterAccountType | "All"); setPage(1); }} value={typeFilter}><option>All</option>{accountTypes.map((accountType) => <option key={accountType}>{accountType}</option>)}</select></label>
-            <label className="field-control table-filter-field"><span>Status</span><select data-pd-id="account-catalogue.status-filter" onChange={(event) => { setStatusFilter(event.target.value as "All" | "Active" | "Archived"); setPage(1); }} value={statusFilter}><option>All</option><option>Active</option><option>Archived</option></select></label>
-          </div>
-          <div className="account-catalogue-action-row">
-            <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>Export</a>
-            <input accept="application/json" aria-label="Choose account catalogue JSON file to import" className="sr-only" onChange={(event) => void preflightImport(event.target.files?.[0])} ref={importFileRef} type="file" />
-            <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">Import</button>
-            <button className="modal-primary-button icon-text-action" data-pd-id="account-catalogue.add" onClick={beginAdd} ref={openButtonRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Account</span></button>
-          </div>
+        <div className="settings-table-filter-group account-catalogue-filter-row">
+          <label className="field-control table-filter-field"><span>Account type</span><select data-pd-id="account-catalogue.type-filter" onChange={(event) => { setTypeFilter(event.target.value as MasterAccountType | "All"); setPage(1); }} value={typeFilter}><option>All</option>{accountTypes.map((accountType) => <option key={accountType}>{accountType}</option>)}</select></label>
+          <label className="field-control table-filter-field"><span>Status</span><select data-pd-id="account-catalogue.status-filter" onChange={(event) => { setStatusFilter(event.target.value as "All" | "Active" | "Archived"); setPage(1); }} value={statusFilter}><option>All</option><option>Active</option><option>Archived</option></select></label>
+          <button className="modal-primary-button icon-text-action" data-pd-id="account-catalogue.add" onClick={beginAdd} ref={openButtonRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Account</span></button>
         </div>
+      </div>
+      <div className="tracker-nav settings-table-secondary-actions account-catalogue-transfer-row" data-pd-id="account-catalogue.transfer-actions">
+        <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>Export</a>
+        <input accept="application/json" aria-label="Choose account catalogue JSON file to import" className="sr-only" onChange={(event) => void preflightImport(event.target.files?.[0])} ref={importFileRef} type="file" />
+        <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">Import</button>
       </div>
       {importPreflight ? <section aria-live="polite" className="content-subpanel stack"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Missing {importPreflight.removed_catalogue_ids.length}</span></section> : null}
       <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="top" totalRows={sortedRecords.length} />
