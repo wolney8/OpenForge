@@ -248,6 +248,71 @@ def test_account_creation_requires_a_canonical_provider(tmp_path: Path) -> None:
     assert created.json()["account"] == provider["brand_name"]
 
 
+def test_account_creation_supports_canonical_exchange_and_bank_providers(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    add_master_provider("Exchange", "Exchange A", "EXCHANGE-A")
+    add_master_provider("Bank", "Bank A", "BANK-A")
+    client = TestClient(app)
+
+    missing_commission = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "catalogue_id": "EXCHANGE-A",
+            "account": "Exchange A",
+            "type": "Exchange",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Active",
+        },
+    )
+    assert missing_commission.status_code == 422
+    assert missing_commission.json()["detail"] == "An Exchange commission rate is required"
+    assert all(
+        row["catalogue_id"] != "EXCHANGE-A"
+        for row in client.get("/profiles/profile-demo-001/accounts").json()
+    )
+
+    exchange = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "catalogue_id": "EXCHANGE-A",
+            "account": "Exchange A",
+            "type": "Exchange",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Active",
+            "commission_rate": "0.02",
+        },
+    )
+    assert exchange.status_code == 201
+    assert exchange.json()["catalogue_id"] == "EXCHANGE-A"
+    assert exchange.json()["type"] == "Exchange"
+    commissions = client.get(
+        "/profiles/profile-demo-001/exchange-commissions"
+    ).json()
+    assert any(
+        row["exchange_name"] == "Exchange A" and row["commission_rate"] == "0.02"
+        for row in commissions
+    )
+
+    bank = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "catalogue_id": "BANK-A",
+            "account": "Bank A",
+            "type": "Bank",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Active",
+        },
+    )
+    assert bank.status_code == 201
+    assert bank.json()["catalogue_id"] == "BANK-A"
+    assert bank.json()["type"] == "Bank"
+
+
 def test_profile_catalogue_selection_requires_exchange_commission_and_retains_one_exchange(
     tmp_path: Path,
 ) -> None:

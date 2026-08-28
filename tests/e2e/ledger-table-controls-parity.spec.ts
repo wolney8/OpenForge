@@ -193,3 +193,99 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
   await editor.getByRole("button", { name: "Close account editor" }).click();
 });
+
+test("Accounts Add Account uses the global catalogue for every provider type", async ({ page }) => {
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        schema_version: "1.0",
+        catalogue_name: "Synthetic canonical catalogue",
+        updated_at: "2026-08-28",
+        default_operating_context: {
+          jurisdiction: "",
+          subdivision: "",
+          channels: [],
+        },
+        records: [
+          {
+            catalogue_id: "BOOKMAKER-CANONICAL-A",
+            account_type: "Bookmaker",
+            operating_jurisdictions: ["GB"],
+            operating_subdivisions: [],
+            operating_channels: ["web", "mobile"],
+            brand_name: "Canonical Bookmaker",
+            short_display_name: "Canonical Bookmaker",
+            operator_group: "Canonical Group",
+            platform: "Canonical Platform",
+            status: "Active",
+            foreground_colour: "#FFFFFF",
+            background_colour: "#455A64",
+          },
+          {
+            catalogue_id: "EXCHANGE-CANONICAL-A",
+            account_type: "Exchange",
+            operating_jurisdictions: ["GB"],
+            operating_subdivisions: [],
+            operating_channels: ["web"],
+            brand_name: "Canonical Exchange",
+            short_display_name: "Canonical Exchange",
+            operator_group: "Canonical Group",
+            platform: "Canonical Platform",
+            status: "Active",
+            foreground_colour: "#FFFFFF",
+            background_colour: "#455A64",
+          },
+          {
+            catalogue_id: "BANK-CANONICAL-A",
+            account_type: "Bank",
+            operating_jurisdictions: ["GB"],
+            operating_subdivisions: [],
+            operating_channels: ["web"],
+            brand_name: "Canonical Bank",
+            short_display_name: "Canonical Bank",
+            operator_group: "Canonical Group",
+            platform: "Canonical Platform",
+            status: "Active",
+            foreground_colour: "#FFFFFF",
+            background_colour: "#455A64",
+          },
+        ],
+      },
+      status: 200,
+    });
+  });
+  await page.route("**/bookmaker-catalogue", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: [{
+        bookmaker_id: "BM-OLD-TEST",
+        brand_name: "Old Test Bookmaker",
+        short_display_name: "Old Test",
+        status: "Active",
+      }],
+      status: 200,
+    });
+  });
+
+  await page.goto("/profiles/profile-demo-001/tracker/accounts");
+  await page.getByRole("button", { name: "Add Account" }).click();
+  const editor = page.getByRole("dialog", { name: "Create account" });
+  const accountSelect = editor.getByRole("combobox", { name: "Account" });
+  await expect(accountSelect.locator("optgroup[label='Bookmakers'] option")).toHaveText([
+    "Canonical Bookmaker",
+  ]);
+  await expect(accountSelect.locator("optgroup[label='Exchanges'] option")).toHaveText([
+    "Canonical Exchange",
+  ]);
+  await expect(accountSelect.locator("optgroup[label='Banks'] option")).toHaveText([
+    "Canonical Bank",
+  ]);
+  await expect(accountSelect.locator("option", { hasText: "Old Test Bookmaker" })).toHaveCount(0);
+
+  await accountSelect.selectOption("EXCHANGE-CANONICAL-A");
+  await expect(editor.locator("label").filter({ hasText: /^Type/ }).locator("input")).toHaveValue(
+    "Exchange",
+  );
+  await expect(editor.getByLabel("Exchange commission")).toBeVisible();
+});

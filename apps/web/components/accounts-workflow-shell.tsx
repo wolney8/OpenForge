@@ -26,7 +26,6 @@ import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import {
   accountLifecycleOptions,
   accountRestrictionOptions,
-  accountTypeOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
 import type {
@@ -34,13 +33,13 @@ import type {
   MasterAccountCatalogue,
   MasterAccountCatalogueRecord,
   MasterAccountOperatingContext,
-  MasterAccountType,
 } from "@/lib/bookmaker-catalogue";
-import { getAvailableMasterAccountNames } from "@/lib/bookmaker-catalogue";
+import { isMasterAccountAvailable } from "@/lib/bookmaker-catalogue";
 
 type AccountRecord = {
   account_id: string;
   profile_id: string;
+  catalogue_id: string | null;
   bookmaker_id: string | null;
   account: string;
   type: string;
@@ -62,6 +61,7 @@ type AccountRecord = {
 
 type AccountFormState = {
   account_id?: string;
+  catalogue_id: string;
   bookmaker_id: string;
   account: string;
   type: string;
@@ -77,6 +77,12 @@ type AccountFormState = {
   platform: string;
   sign_up_date: string;
   notes: string;
+  commission_rate: string;
+};
+
+type ExchangeCommissionRecord = {
+  exchange_name: string;
+  commission_rate: string;
 };
 
 type AccountTableMode =
@@ -178,9 +184,10 @@ const emptyAccountTableFilters: AccountTableFilters = {
 
 function createBlankForm(): AccountFormState {
   return {
+    catalogue_id: "",
     bookmaker_id: "",
     account: "",
-    type: "Bookie",
+    type: "",
     counts_in_cash_total: true,
     channel: "Unknown",
     status: "Not Signed Up",
@@ -193,12 +200,14 @@ function createBlankForm(): AccountFormState {
     platform: "",
     sign_up_date: "",
     notes: "",
+    commission_rate: "",
   };
 }
 
-function recordToForm(record: AccountRecord): AccountFormState {
+function recordToForm(record: AccountRecord, commissionRate = ""): AccountFormState {
   return {
     account_id: record.account_id,
+    catalogue_id: record.catalogue_id ?? "",
     bookmaker_id: record.bookmaker_id ?? "",
     account: record.account,
     type: record.type,
@@ -214,6 +223,7 @@ function recordToForm(record: AccountRecord): AccountFormState {
     platform: record.platform,
     sign_up_date: record.sign_up_date,
     notes: record.notes,
+    commission_rate: commissionRate,
   };
 }
 
@@ -256,6 +266,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
   const [masterAccountCatalogue, setMasterAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
+  const [exchangeCommissions, setExchangeCommissions] = useState<ExchangeCommissionRecord[]>([]);
+  const exchangeCommissionsRef = useRef<ExchangeCommissionRecord[]>([]);
   const [masterAccountContext, setMasterAccountContext] = useState<MasterAccountOperatingContext>({
     jurisdiction: "",
     subdivision: "",
@@ -336,7 +348,12 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           isCreatingDraftRef.current = false;
           const activeRecord = nextRows.find((row) => row.account_id === selected);
           if (activeRecord) {
-            const nextFormState = recordToForm(activeRecord);
+            const nextFormState = recordToForm(
+              activeRecord,
+              exchangeCommissionsRef.current.find(
+                (commission) => commission.exchange_name === activeRecord.account
+              )?.commission_rate ?? ""
+            );
             setFormState(nextFormState);
             setPristineFormState(nextFormState);
           }
@@ -375,9 +392,25 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             }
             const catalogue = (await response.json()) as MasterAccountCatalogue;
             setMasterAccountCatalogue(catalogue.records);
-            setMasterAccountContext(catalogue.default_operating_context);
+            setMasterAccountContext({
+              jurisdiction: catalogue.default_operating_context.jurisdiction || "GB",
+              subdivision: catalogue.default_operating_context.subdivision,
+              channels: catalogue.default_operating_context.channels.length
+                ? catalogue.default_operating_context.channels
+                : ["web", "mobile", "retail"],
+            });
           }
         ),
+        fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error("Unable to load Profile Exchange commissions");
+          }
+          const commissions = (await response.json()) as ExchangeCommissionRecord[];
+          exchangeCommissionsRef.current = commissions;
+          setExchangeCommissions(commissions);
+        }),
       ]).catch((error: Error) => {
         setErrorMessage(error.message);
       });
@@ -391,25 +424,19 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     [rows, selectedId]
   );
 
-  const accountOptions = useMemo(() => {
-    const sourceType: MasterAccountType =
-      formState.type === "Exchange"
-        ? "Exchange"
-        : formState.type === "Bank"
-          ? "Bank"
-          : "Bookmaker";
-    return dedupeOptions([
-      ...getAvailableMasterAccountNames(masterAccountCatalogue, sourceType, masterAccountContext),
-      formState.account,
-    ]);
-  }, [formState.account, formState.type, masterAccountCatalogue, masterAccountContext]);
-
-  const selectableBookmakers = useMemo(
-    () =>
-      bookmakerCatalogue.filter(
-        (row) => row.status === "Active" || row.bookmaker_id === formState.bookmaker_id
+  const availableMasterAccounts = useMemo(
+    () => masterAccountCatalogue
+      .filter((record) => isMasterAccountAvailable(
+        record,
+        masterAccountContext.jurisdiction,
+        masterAccountContext.channels,
+        masterAccountContext.subdivision
+      ))
+      .sort((left, right) =>
+        left.account_type.localeCompare(right.account_type, "en-GB") ||
+        left.brand_name.localeCompare(right.brand_name, "en-GB", { numeric: true })
       ),
-    [bookmakerCatalogue, formState.bookmaker_id]
+    [masterAccountCatalogue, masterAccountContext]
   );
 
   const accountQuickView = useMemo(() => {
@@ -594,7 +621,12 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
-    const nextFormState = recordToForm(record);
+    const nextFormState = recordToForm(
+      record,
+      exchangeCommissions.find(
+        (commission) => commission.exchange_name === record.account
+      )?.commission_rate ?? ""
+    );
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
@@ -620,7 +652,12 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   function handleResetForm() {
     if (selectedRow) {
-      const nextFormState = recordToForm(selectedRow);
+      const nextFormState = recordToForm(
+        selectedRow,
+        exchangeCommissions.find(
+          (commission) => commission.exchange_name === selectedRow.account
+        )?.commission_rate ?? ""
+      );
       setFormState(nextFormState);
       setPristineFormState(nextFormState);
       setErrorMessage("");
@@ -653,6 +690,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     event.preventDefault();
     setErrorMessage("");
     const isEditing = Boolean(selectedId);
+    if (!isEditing && !formState.catalogue_id) {
+      setErrorMessage("Select an account from the Fund Manager Account Catalogue.");
+      return;
+    }
+    if (
+      !isEditing &&
+      formState.type === "Exchange" &&
+      (!formState.commission_rate.trim() ||
+        !Number.isFinite(Number(formState.commission_rate)) ||
+        Number(formState.commission_rate) < 0 ||
+        Number(formState.commission_rate) > 1)
+    ) {
+      setErrorMessage("Enter the Exchange commission as a decimal fraction from 0 to 1.");
+      return;
+    }
     const url = isEditing
       ? `${apiBaseUrl}/profiles/${profileId}/accounts/${selectedId}`
       : `${apiBaseUrl}/profiles/${profileId}/accounts`;
@@ -663,6 +715,10 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...formState,
+        commission_rate:
+          !isEditing && formState.type === "Exchange"
+            ? formState.commission_rate
+            : undefined,
         status: formState.lifecycle_status,
         last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
       }),
@@ -1038,76 +1094,61 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <span>Account</span>
             {selectedId ? (
               <input aria-readonly="true" readOnly value={formState.account} />
-            ) : formState.type === "Bookie" ? (
-              <select
-                onChange={(event) => {
-                  const entry = bookmakerCatalogue.find(
-                    (row) => row.bookmaker_id === event.target.value
-                  );
-                  setFormState((current) => ({
-                    ...current,
-                    bookmaker_id: entry?.bookmaker_id ?? "",
-                    account: entry?.brand_name ?? "",
-                    group_name: entry?.operator_group ?? "",
-                    platform: entry?.platform ?? "",
-                  }));
-                }}
-                required
-                value={formState.bookmaker_id}
-              >
-                <option value="">Select bookmaker</option>
-                {selectableBookmakers.map((option) => (
-                  <option key={option.bookmaker_id} value={option.bookmaker_id}>
-                    {option.brand_name}{option.status === "Archived" ? " (Archived)" : ""}
-                  </option>
-                ))}
-              </select>
             ) : (
               <select
+                aria-label="Account"
                 onChange={(event) => {
-                  const account = event.target.value;
-                  const expectedType: MasterAccountType = formState.type === "Exchange" ? "Exchange" : "Bank";
-                  const entry = masterAccountCatalogue.find(
-                    (candidate) => candidate.account_type === expectedType && candidate.brand_name === account
+                  const entry = availableMasterAccounts.find(
+                    (record) => record.catalogue_id === event.target.value
                   );
+                  const bookmaker = entry?.account_type === "Bookmaker"
+                    ? bookmakerCatalogue.find(
+                        (record) => record.brand_name === entry.brand_name
+                      )
+                    : undefined;
                   setFormState((current) => ({
                     ...current,
-                    account,
+                    catalogue_id: entry?.catalogue_id ?? "",
+                    bookmaker_id: bookmaker?.bookmaker_id ?? "",
+                    account: entry?.brand_name ?? "",
+                    type: entry?.account_type === "Bookmaker" ? "Bookie" : entry?.account_type ?? "",
+                    channel: entry
+                      ? entry.operating_channels.map((channel) => ({
+                          web: "Online",
+                          mobile: "Mobile",
+                          retail: "Retail",
+                        })[channel]).join(", ") || "Unknown"
+                      : "Unknown",
                     group_name: entry?.operator_group ?? "",
                     platform: entry?.platform ?? "",
+                    commission_rate: entry?.account_type === "Exchange"
+                      ? exchangeCommissions.find(
+                          (commission) => commission.exchange_name === entry.brand_name
+                        )?.commission_rate ?? ""
+                      : "",
                   }));
                 }}
                 required
-                value={formState.account}
+                value={formState.catalogue_id}
               >
                 <option value="">Select account</option>
-                {accountOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                {(["Bookmaker", "Exchange", "Bank"] as const).map((accountType) => (
+                  <optgroup key={accountType} label={`${accountType}s`}>
+                    {availableMasterAccounts
+                      .filter((option) => option.account_type === accountType)
+                      .map((option) => (
+                        <option key={option.catalogue_id} value={option.catalogue_id}>
+                          {option.brand_name}
+                        </option>
+                      ))}
+                  </optgroup>
                 ))}
               </select>
             )}
           </label>
           <label className="field-control">
             <span>Type</span>
-            {selectedId ? <input aria-readonly="true" readOnly value={formState.type} /> : <select
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  type: event.target.value,
-                  account: "",
-                  bookmaker_id: "",
-                  group_name: "",
-                  platform: "",
-                }))
-              }
-              value={formState.type}
-            >
-              {accountTypeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>}
+            <input aria-readonly="true" placeholder="Inherited from Account Catalogue" readOnly value={formState.type} />
           </label>
           <label className="field-control">
             <span>Lifecycle</span>
@@ -1128,6 +1169,28 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               ))}
             </select>
           </label>
+          {!selectedId && formState.type === "Exchange" ? (
+            <label className="field-control">
+              <span>Exchange Commission</span>
+              <input
+                aria-label="Exchange commission"
+                inputMode="decimal"
+                max="1"
+                min="0"
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    commission_rate: event.target.value,
+                  }))
+                }
+                placeholder="0.02"
+                required
+                step="0.001"
+                type="number"
+                value={formState.commission_rate}
+              />
+            </label>
+          ) : null}
           <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-restrictions-title">
             <span className="field-label" id="account-restrictions-title">Restrictions</span>
             <div className="review-chip-row account-restriction-choices" role="group" aria-label="Account restrictions">

@@ -60,6 +60,10 @@ Required onboarding inputs:
 - Profile creation persists selected accounts and Exchange commissions atomically. Existing
   Profiles use Settings > Accounts to add, reactivate or archive catalogue-backed relationships;
   the final active Exchange cannot be archived.
+- The Accounts ledger Add Account editor is an equivalent canonical-provider entry point. It uses
+  one grouped selector for eligible Bookmakers, Exchanges and Banks, infers immutable provider
+  identity/type/group/platform from the Fund Manager Account Catalogue, and requires an explicit
+  Profile Exchange commission before an Exchange relationship can be created.
 
 ## Migration workflow
 

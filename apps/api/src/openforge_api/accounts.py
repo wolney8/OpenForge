@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
     create_account,
+    create_account_with_exchange_commission,
     get_account,
     get_bookmaker_catalogue_entry,
     get_profile,
@@ -111,6 +112,10 @@ class AccountResponse(AccountPayload):
     updated_at: str
 
 
+class AccountCreatePayload(AccountPayload):
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+
+
 class ProfileAccountCatalogueSelectionPayload(BaseModel):
     selected: bool
     status: StatusValue = "Not Signed Up"
@@ -121,6 +126,7 @@ class ProfileAccountCatalogueSelectionPayload(BaseModel):
 
 def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     values = payload.model_dump()
+    values.pop("commission_rate", None)
     legacy_lifecycle, legacy_restrictions = LEGACY_ACCOUNT_STATES.get(
         payload.status.casefold(),
         ("Active", []),
@@ -305,8 +311,17 @@ def get_profile_account(profile_id: str, account_id: str) -> AccountResponse:
 
 
 @router.post("", response_model=AccountResponse, status_code=201)
-def create_profile_account(profile_id: str, payload: AccountPayload) -> AccountResponse:
-    created = create_account(profile_id, resolve_catalogue_fields(payload))
+def create_profile_account(profile_id: str, payload: AccountCreatePayload) -> AccountResponse:
+    if payload.type == "Exchange" and payload.commission_rate is None:
+        raise HTTPException(
+            status_code=422,
+            detail="An Exchange commission rate is required",
+        )
+    created = create_account_with_exchange_commission(
+        profile_id,
+        resolve_catalogue_fields(payload),
+        str(payload.commission_rate) if payload.type == "Exchange" else None,
+    )
     return build_account_response(created)
 
 

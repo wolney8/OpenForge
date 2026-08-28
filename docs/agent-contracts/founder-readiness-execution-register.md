@@ -22,6 +22,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003F | Subscriber provisioning boundary | Registration approval creates or claims the same Profile type; it does not introduce another Profile model | Subscriber registration contract | COMPLETE |
 | PD-FR-003G | Exchange calculation authority | Require at least one selected Exchange and an explicit Profile commission during onboarding | Profile onboarding and financial-safety contracts | COMPLETE |
 | PD-FR-003H | Existing Profile account authority | Let Fund Managers add, reactivate or archive catalogue-backed Profile accounts without mutating global providers | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003I | Accounts editor provider authority | Replace the legacy bookmaker-only Add Account selector with grouped canonical Bookmaker, Exchange and Bank providers | Global catalogue/Profile state contract | COMPLETE |
 | PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -84,6 +85,13 @@ manage the same catalogue-backed relationships from Profile Settings > Accounts.
 add or reactivate Bookmakers, Exchanges and Banks, archive unused relationships, and edit
 Profile-owned balances/statuses; it cannot change global provider identity or archive the last
 active Exchange.
+
+The Accounts ledger Add Account editor uses the same authority. Its single grouped Account selector
+lists active, operating-context-eligible Bookmakers, Exchanges and Banks from the Fund Manager
+Account Catalogue. Legacy bookmaker presentation records may supply brand display metadata, but
+cannot become selectable Profile providers unless a matching canonical provider exists. Selecting
+an Exchange requires an explicit Profile commission and writes the account relationship and
+commission in one transaction.
 
 The implementation uses active GB global Account Catalogue identities and does not copy editable
 global provider metadata into Profile settings. Invalid providers, duplicate codes and invalid

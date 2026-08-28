@@ -7714,7 +7714,11 @@ def get_account_by_id(account_id: str) -> AccountRecord | None:
     return None if row is None else map_account_row(row)
 
 
-def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
+def create_account_with_exchange_commission(
+    profile_id: str,
+    payload: dict[str, Any],
+    commission_rate: str | None,
+) -> AccountRecord:
     record = {
         "account_id": payload.get("account_id") or f"AC-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -7772,9 +7776,36 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
             action="created",
             payload=record,
         )
+        if commission_rate is not None:
+            connection.execute(
+                """
+                INSERT INTO profile_exchange_commissions (
+                  profile_id,
+                  exchange_name,
+                  commission_rate,
+                  created_at,
+                  updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(profile_id, exchange_name)
+                DO UPDATE SET
+                  commission_rate = excluded.commission_rate,
+                  updated_at = excluded.updated_at
+                """,
+                (
+                    profile_id,
+                    record["account"],
+                    commission_rate,
+                    record["created_at"],
+                    record["updated_at"],
+                ),
+            )
     created = get_account(profile_id, record["account_id"])
     assert created is not None
     return created
+
+
+def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
+    return create_account_with_exchange_commission(profile_id, payload, None)
 
 
 def update_account(

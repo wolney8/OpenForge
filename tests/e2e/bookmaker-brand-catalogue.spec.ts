@@ -10,6 +10,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   const nonce = Date.now().toString().slice(-7);
   const brandName = `Demo Book ${nonce}`;
   const shortName = `DB${nonce.slice(-3)}`;
+  const catalogueId = `BOOKMAKER-DEMO-${nonce}`;
   const originalSettingsResponse = await request.get(
     `${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`
   );
@@ -40,6 +41,36 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   });
   expect(createResponse.ok()).toBeTruthy();
   const bookmaker = (await createResponse.json()) as { bookmaker_id: string };
+  const masterCatalogueResponse = await request.post(
+    `${apiBaseUrl}/account-catalogue/source/records`,
+    {
+      data: {
+        catalogue_id: catalogueId,
+        account_type: "Bookmaker",
+        operating_jurisdictions: ["GB"],
+        operating_subdivisions: [],
+        operating_channels: ["web", "mobile"],
+        brand_name: brandName,
+        short_display_name: shortName,
+        legal_operator: "Demo Operator Limited",
+        operator_group: "Demo Group",
+        platform: "Demo Platform",
+        risk_team: "Demo Risk Team",
+        licence_reference: "DEMO-LICENCE-001",
+        licence_status: "Demo only",
+        canonical_domain: "demo-book.example.invalid",
+        status: "Active",
+        foreground_colour: "#FFFFFF",
+        background_colour: "#1B5E20",
+        logo_asset_path: "",
+        source: "Synthetic Playwright fixture",
+        confidence: "Unverified",
+        last_verified_date: "2026-07-15",
+        evidence: [],
+      },
+    },
+  );
+  expect(masterCatalogueResponse.ok()).toBeTruthy();
 
   await request.put(`${apiBaseUrl}/bookmaker-display-settings`, {
     data: { mode: "Brand badge" },
@@ -51,12 +82,12 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await page.goto(`/profiles/${profileId}/tracker/accounts`);
   await page.getByRole("button", { name: "Add Account" }).click();
   const editor = page.locator(".workflow-editor-panel");
-  await editor.getByRole("combobox").first().selectOption(bookmaker.bookmaker_id);
-  await expect(editor.locator("label").filter({ hasText: /^Group/ }).locator("select")).toHaveValue(
+  await editor.getByRole("combobox", { name: "Account" }).selectOption(catalogueId);
+  await expect(editor.locator("label").filter({ hasText: /^Group/ }).locator("input")).toHaveValue(
     "Demo Group"
   );
   await expect(
-    editor.locator("label").filter({ hasText: /^Platform/ }).locator("select")
+    editor.locator("label").filter({ hasText: /^Platform/ }).locator("input")
   ).toHaveValue("Demo Platform");
   await editor.getByRole("button", { name: "Create" }).click();
   await page.getByPlaceholder("Search account rows").fill(brandName);
@@ -148,6 +179,9 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   ).find((row) => row.bookmaker_id === bookmaker.bookmaker_id);
   await request.put(`${apiBaseUrl}/bookmaker-catalogue/${bookmaker.bookmaker_id}`, {
     data: { ...catalogueRecord, status: "Archived" },
+  });
+  await request.post(`${apiBaseUrl}/account-catalogue/source/records/archive`, {
+    data: { catalogue_ids: [catalogueId] },
   });
   await request.put(`${apiBaseUrl}/bookmaker-display-settings`, {
     data: { mode: originalSettings.global_mode },
