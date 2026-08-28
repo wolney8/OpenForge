@@ -58,6 +58,9 @@ the `api/` FastAPI service and the `/api/*` rewrite. A `Next.js` project preset 
 service, so `/api/healthz` and `/api/auth/google/login` return the frontend 404 even when the Python
 application and OAuth configuration are correct.
 
+The Services build log must show both `frontend` and `backend`. If it only reports a Next.js build,
+the project is still using the wrong preset regardless of whether the deployment itself succeeds.
+
 Set these encrypted variables for Production in the single Plum Duff Vercel project, then redeploy:
 
 ```dotenv

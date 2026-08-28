@@ -53,7 +53,11 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004J | Authenticated identity shell | Show a compact Fund Manager identity trigger with account and logout actions | Canonical app menu and chip patterns | COMPLETE |
 | PD-FR-004K | Post-auth destination | Send normal direct sign-in to the Fund Manager performance dashboard while preserving safe requested routes | OAuth state/redirect contract | COMPLETE |
 | PD-FR-004L | Public auth shell | Show branding and theme only on login/register; hide search, drawer, notifications, account and tracker theme controls | Canonical application shell | COMPLETE |
-| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | BLOCKED |
+| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | IN PROGRESS |
+| PD-FR-004M1 | Hosted route diagnosis | Identify the exact production OAuth request and service that returns the public 404 | Live response headers plus Services routing contract | COMPLETE |
+| PD-FR-004M2 | Services routing parity | Explicitly route API traffic to FastAPI and all remaining traffic to Next.js using the Vercel Services contract | Vercel Next.js + FastAPI starter | NEEDS VERIFICATION |
+| PD-FR-004M3 | Production environment audit | Reconcile required OAuth variable names/scopes without exposing values | Founder OAuth deployment contract | NEEDS VERIFICATION |
+| PD-FR-004M4 | Hosted OAuth smoke test | Verify health, Google redirect/callback, owner session, protected API, refresh and logout on the production domain | Vercel OAuth checklist | BLOCKED |
 | PD-FR-004N | Public auth brand alignment | Centre the canonical Plum Duff logo within the public auth card | Canonical auth panel | COMPLETE |
 | PD-FR-004O | Public auth chrome and theme | Remove the application top bar from public auth routes; retain stored theme and default to dark | Canonical application shell and theme resolver | COMPLETE |
 | PD-FR-004P | Login heading cleanup | Remove the redundant Sign In heading from the login card | Canonical auth panel | COMPLETE |
@@ -132,6 +136,15 @@ reports a successful Vercel deployment, so this is not a stale commit. The Verce
 configured with the `Next.js` Framework Preset rather than `Services`; change the project preset to
 `Services`, retain repository root as the Root Directory, and redeploy before completing the
 production OAuth smoke test. Neon remains blocked until this gate passes.
+
+Live re-verification on 2026-08-28 reproduced the failure before Google: both
+`GET /api/healthz` and `GET /api/auth/google/login` return the frontend Next.js HTML 404 with
+`x-matched-path: /404`. The login control correctly targets the same-origin API and contains no
+local host or development port. The repository Services contract now explicitly identifies the
+backend as FastAPI and routes a final catch-all to the Next.js frontend, matching Vercel's
+Next.js/FastAPI Services reference. Production remains blocked until the Vercel project Framework
+Preset is `Services`, a deployment from the latest `main` completes, and the real hosted OAuth
+smoke test passes. `PD-FR-005` remains unstarted.
 
 `PD-AUDIT-REPORT-001` remains an explicitly unrelated, pre-existing reporting test mismatch: the
 fee queue fixture expects two items while current fixture state produces three. It is not absorbed
