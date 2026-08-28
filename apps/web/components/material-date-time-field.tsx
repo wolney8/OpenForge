@@ -7,6 +7,13 @@ type MaterialDateTimeFieldProps = {
   dataPdId?: string;
 };
 
+type MaterialDateFieldProps = {
+  dataPdId?: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+};
+
 function splitDateTime(value: string) {
   const [date = "", time = ""] = value.split("T");
   return { date, time: time.slice(0, 5) };
@@ -41,6 +48,19 @@ export function MaterialDateTimeField({
         <span aria-hidden="true" className="material-symbols-outlined">schedule</span>
         <span className="visually-hidden">{label} time</span>
         <input disabled={!date} onChange={(event) => updateTime(event.target.value)} type="time" value={time} />
+      </label>
+    </fieldset>
+  );
+}
+
+export function MaterialDateField({ dataPdId, label, onChange, value }: MaterialDateFieldProps) {
+  return (
+    <fieldset className="material-date-time-field material-date-field" data-pd-id={dataPdId}>
+      <legend>{label}</legend>
+      <label className="material-date-time-control">
+        <span aria-hidden="true" className="material-symbols-outlined">event</span>
+        <span className="visually-hidden">{label}</span>
+        <input onChange={(event) => onChange(event.target.value)} type="date" value={value} />
       </label>
     </fieldset>
   );

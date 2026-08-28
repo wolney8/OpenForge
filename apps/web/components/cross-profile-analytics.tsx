@@ -1702,7 +1702,9 @@ export function CrossProfileAnalytics({
               <tr>
                 <th scope="col"><span className="visually-hidden">Pinned</span></th>
                 <th scope="col">Profile</th>
+                <th scope="col">Subscriber</th>
                 <th scope="col">Status</th>
+                <th scope="col">Access</th>
                 <th scope="col">Tracking</th>
                 <th scope="col">Gross P&amp;L</th>
                 <th scope="col">Available to Withdraw</th>
@@ -1712,7 +1714,7 @@ export function CrossProfileAnalytics({
             </thead>
             <tbody>
               {visibleDirectoryProfiles.length === 0 ? (
-                <tr><td colSpan={8}>No profiles match the directory controls.</td></tr>
+                <tr><td colSpan={10}>No profiles match the directory controls.</td></tr>
               ) : visibleDirectoryProfiles.map((profile) => {
                 const isPinned = pinnedProfileIds.includes(profile.profileId);
                 return (
@@ -1747,7 +1749,9 @@ export function CrossProfileAnalytics({
                       </button>
                     </td>
                     <td><strong>{profile.displayName}</strong><br /><small>{profile.profileCode}</small></td>
+                    <td><span className="table-chip table-chip-muted">Not linked</span></td>
                     <td><span className="badge">{normalizeProfileStatus(profile.status)}</span></td>
+                    <td><span className="table-chip table-chip-muted">OAuth pending</span></td>
                     <td>
                       <span className="action-tooltip-wrap">
                         <span

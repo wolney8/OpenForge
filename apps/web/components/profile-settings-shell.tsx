@@ -4,19 +4,20 @@ import { KeyboardEvent, useEffect, useState } from "react";
 
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
-import { ProfileDemographicsSettings } from "@/components/profile-demographics-settings";
+import { ProfileGeneralSettings } from "@/components/profile-demographics-settings";
+import { ProfileSecuritySettings, ProfileSubscriberSettings } from "@/components/profile-future-access-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { ProfileQuickAddLoadoutSettings } from "@/components/profile-quick-add-loadout-settings";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
 import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
-  { id: "demographics", label: "Demographics" },
+  { id: "general", label: "General" },
   { id: "defaults", label: "Defaults" },
+  { id: "preferences", label: "Preferences" },
   { id: "import-export", label: "Import/Export" },
-  { id: "offer-lists", label: "Lists" },
-  { id: "commission", label: "Commission" },
-  { id: "quick-actions", label: "Quick Actions" },
+  { id: "security", label: "Security" },
+  { id: "subscriber", label: "Subscriber" },
 ] as const;
 
 type SettingsSection = (typeof settingsSections)[number]["id"];
@@ -26,7 +27,7 @@ function isSettingsSection(value: string): value is SettingsSection {
 }
 
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("demographics");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [profileName, setProfileName] = useState(profileId);
 
   useEffect(() => {
@@ -55,11 +56,15 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
         window.location.replace(`/profiles/${profileId}/tracker/accounts`);
         return;
       }
-      const hashSection = rawHashSection === "spreadsheet-transfer"
-        ? "import-export"
-        : rawHashSection === "quick-add"
-          ? "quick-actions"
-          : rawHashSection;
+      const legacyHashMap: Record<string, SettingsSection> = {
+        demographics: "general",
+        "spreadsheet-transfer": "import-export",
+        "offer-lists": "preferences",
+        commission: "defaults",
+        "quick-add": "preferences",
+        "quick-actions": "preferences",
+      };
+      const hashSection = legacyHashMap[rawHashSection] ?? rawHashSection;
       if (isSettingsSection(hashSection)) setActiveSection(hashSection);
     };
     const timeoutId = window.setTimeout(syncFromHash, 0);
@@ -121,13 +126,13 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
         </div>
 
         <section
-          aria-labelledby="profile-settings-tab-demographics"
+          aria-labelledby="profile-settings-tab-general"
           className="analytics-tab-panel"
-          hidden={activeSection !== "demographics"}
-          id="profile-settings-panel-demographics"
+          hidden={activeSection !== "general"}
+          id="profile-settings-panel-general"
           role="tabpanel"
         >
-          <ProfileDemographicsSettings />
+          <ProfileGeneralSettings />
         </section>
         <section
           aria-labelledby="profile-settings-tab-defaults"
@@ -137,6 +142,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           role="tabpanel"
         >
           <TrackerDateSettings profileId={profileId} />
+          <ExchangeCommissionSettings profileId={profileId} />
         </section>
         <section
           aria-labelledby="profile-settings-tab-import-export"
@@ -148,31 +154,20 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           <ProfileSpreadsheetTransfer profileId={profileId} />
         </section>
         <section
-          aria-labelledby="profile-settings-tab-offer-lists"
+          aria-labelledby="profile-settings-tab-preferences"
           className="analytics-tab-panel"
-          hidden={activeSection !== "offer-lists"}
-          id="profile-settings-panel-offer-lists"
+          hidden={activeSection !== "preferences"}
+          id="profile-settings-panel-preferences"
           role="tabpanel"
         >
           <LookupValueSettings profileId={profileId} />
-        </section>
-        <section
-          aria-labelledby="profile-settings-tab-commission"
-          className="analytics-tab-panel"
-          hidden={activeSection !== "commission"}
-          id="profile-settings-panel-commission"
-          role="tabpanel"
-        >
-          <ExchangeCommissionSettings profileId={profileId} />
-        </section>
-        <section
-          aria-labelledby="profile-settings-tab-quick-actions"
-          className="analytics-tab-panel"
-          hidden={activeSection !== "quick-actions"}
-          id="profile-settings-panel-quick-actions"
-          role="tabpanel"
-        >
           <ProfileQuickAddLoadoutSettings profileId={profileId} />
+        </section>
+        <section aria-labelledby="profile-settings-tab-security" className="analytics-tab-panel" hidden={activeSection !== "security"} id="profile-settings-panel-security" role="tabpanel">
+          <ProfileSecuritySettings />
+        </section>
+        <section aria-labelledby="profile-settings-tab-subscriber" className="analytics-tab-panel" hidden={activeSection !== "subscriber"} id="profile-settings-panel-subscriber" role="tabpanel">
+          <ProfileSubscriberSettings />
         </section>
       </section>
     </section>

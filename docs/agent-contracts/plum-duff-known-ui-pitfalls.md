@@ -3,6 +3,30 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-28: Profile Accounts copied or missed global provider presentation
+
+- Area: Profile Accounts table and Add/Edit Account editor.
+- Root cause: Profile-owned rows were rendered from stale account names and bookmaker-only display
+  helpers instead of resolving their canonical `catalogue_id` through the Fund Manager Account
+  Catalogue. Exchanges and banks therefore lost global brand colours and provider metadata.
+- Prevention: Profile rows own operational state only. Resolve canonical name, type, brand colours,
+  operator, group and platform from the master catalogue by stable ID, with normalized-name fallback
+  only for legacy relationships. Use the shared provider identity component for all provider types.
+- Test added: `apps/web/lib/bookmaker-catalogue.test.ts` verifies stable-ID precedence and legacy-name
+  fallback; `tests/e2e/ledger-table-controls-parity.spec.ts` verifies catalogue-only selection and
+  inherited provider colours after save.
+
+## 2026-08-28: Profile Settings accumulated overlapping ownership tabs
+
+- Area: Profile Settings navigation and profile/future identity controls.
+- Root cause: commission, offer lists, Quick Actions and future access concepts were added as peer
+  tabs without a durable ownership map.
+- Prevention: Profile Settings uses General, Defaults, Preferences, Import/Export, Security and
+  Subscriber. Security and Subscriber remain explicit read-only boundaries until authoritative
+  authentication/subscriber data exists; do not fabricate state or duplicate Fund Manager authority.
+- Test added: `tests/e2e/profile-settings-sections.spec.ts` verifies keyboard navigation, deep links,
+  legacy hash mapping and future-boundary stubs.
+
 ## 2026-08-28: Settings primary actions drifted into secondary pills and page headers
 
 - Area: Fund Manager Account Catalogue, Tracker Lists, Database, Quick Actions and equivalent

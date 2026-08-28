@@ -12,18 +12,19 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await page.goto(settingsPath);
 
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
-  const demographics = tabs.getByRole("tab", { name: "Demographics" });
+  const general = tabs.getByRole("tab", { name: "General" });
   const defaults = tabs.getByRole("tab", { name: "Defaults" });
+  const preferences = tabs.getByRole("tab", { name: "Preferences" });
   const importExport = tabs.getByRole("tab", { name: "Import/Export" });
 
-  await expect(demographics).toHaveAttribute("aria-selected", "true");
+  await expect(general).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: /Settings for .* Profile/ })).toBeVisible();
-  await expect(page.getByRole("tabpanel", { name: "Demographics" })).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "General" })).toBeVisible();
   await expect(page.getByRole("tabpanel", { name: "Defaults" })).toBeHidden();
   await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeHidden();
-  await expect(page.getByLabel("Profile demographics").getByLabel("Full Name")).toBeDisabled();
+  await expect(page.getByLabel("Profile general settings").getByLabel("Full Name")).toBeDisabled();
 
-  await demographics.focus();
+  await general.focus();
   await page.keyboard.press("ArrowRight");
   await expect(defaults).toBeFocused();
   await expect(defaults).toHaveAttribute("aria-selected", "true");
@@ -40,7 +41,12 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
       )
     )
     .toEqual(["on", "off"]);
+  await expect(page.getByRole("tabpanel", { name: "Defaults" }).getByRole("heading", { name: "Profile commission defaults" })).toBeVisible();
 
+  await page.keyboard.press("ArrowRight");
+  await expect(preferences).toBeFocused();
+  await expect(page).toHaveURL(`${settingsPath}#preferences`);
+  await expect(page.getByRole("tabpanel", { name: "Preferences" })).toBeVisible();
   await page.keyboard.press("ArrowRight");
   await expect(importExport).toBeFocused();
   await expect(importExport).toHaveAttribute("aria-selected", "true");
@@ -49,15 +55,15 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(page.getByRole("heading", { name: "Import/Export" })).toBeVisible();
 
   await page.keyboard.press("End");
-  const quickActions = tabs.getByRole("tab", { name: "Quick Actions" });
-  await expect(quickActions).toBeFocused();
+  const subscriber = tabs.getByRole("tab", { name: "Subscriber" });
+  await expect(subscriber).toBeFocused();
   await expect(tabs.getByRole("tab", { name: "Account Access" })).toHaveCount(0);
-  await expect(page).toHaveURL(`${settingsPath}#quick-actions`);
-  await expect(page.getByRole("tabpanel", { name: "Quick Actions" })).toBeVisible();
+  await expect(page).toHaveURL(`${settingsPath}#subscriber`);
+  await expect(page.getByRole("tabpanel", { name: "Subscriber" })).toBeVisible();
 
   await page.reload();
-  await expect(quickActions).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel", { name: "Quick Actions" })).toBeVisible();
+  await expect(subscriber).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Subscriber" })).toBeVisible();
   expect(duplicateKeyErrors).toEqual([]);
 });
 

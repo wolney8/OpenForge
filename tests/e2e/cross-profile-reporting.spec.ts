@@ -1,5 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test("Fund Manager Profiles exposes future Subscriber and access boundaries without fabricated data", async ({ page }) => {
+  await page.goto("/profiles");
+  await expect(page.getByText("Loading combined profile reporting")).toBeHidden({ timeout: 90_000 });
+  await page.getByRole("tab", { name: "Profiles" }).click();
+  const directory = page.getByRole("tabpanel", { name: "Profiles" });
+  await expect(directory.getByRole("columnheader", { name: "Subscriber" })).toBeVisible();
+  await expect(directory.getByRole("columnheader", { name: "Access" })).toBeVisible();
+  await expect(directory.getByText("Not linked", { exact: true }).first()).toBeVisible();
+  await expect(directory.getByText("OAuth pending", { exact: true }).first()).toBeVisible();
+});
+
 const apiBaseUrl = "http://127.0.0.1:8010";
 const profileIds = ["profile-demo-001", "profile-demo-002"];
 const sourcePaths = [

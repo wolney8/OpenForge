@@ -172,6 +172,7 @@ test("Accounts ignores stale collapsed state and keeps canonical table controls 
   expect(actionsBox).not.toBeNull();
   expect(loadoutBox).not.toBeNull();
   expect(paginationBox).not.toBeNull();
+  expect(searchBox!.width).toBeGreaterThanOrEqual(220);
   expect(searchBox!.width).toBeLessThanOrEqual(480);
   expect(actionsBox!.x).toBeGreaterThan(toolbarBox!.x + toolbarBox!.width / 2);
   expect(Math.abs(actionsBox!.y + actionsBox!.height - (searchBox!.y + searchBox!.height))).toBeLessThanOrEqual(6);
@@ -207,6 +208,12 @@ test("Accounts ignores stale collapsed state and keeps canonical table controls 
   await expect(editor.getByText("Channel", { exact: true })).toHaveCount(0);
   await expect(editor.locator("fieldset.field-control")).toHaveCount(0);
   await expect(editor.getByRole("button", { name: "Remove from Profile" })).toBeVisible();
+  await editor.getByRole("button", { name: "Remove from Profile" }).click();
+  const removeDialog = page.getByRole("dialog", { name: "Remove Account?" });
+  await expect(removeDialog).toBeVisible();
+  await expect(removeDialog.getByText("Historical records will be retained.")).toBeVisible();
+  await removeDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(removeDialog).not.toBeVisible();
   const horizontalOverflow = await editor.evaluate(
     (element) => element.scrollWidth - element.clientWidth,
   );
@@ -353,6 +360,24 @@ test("Accounts Add Account uses the global catalogue for every provider type", a
   await expect(editor.getByLabel("Exchange commission")).toBeVisible();
 
   await accountSelect.selectOption("BANK-CANONICAL-A");
+  await expect(editor.getByText("Restrictions", { exact: true })).toHaveCount(0);
+  await expect(editor.getByText("Available Offers", { exact: true })).toHaveCount(0);
+  await expect(editor.getByLabel("Current balance")).toBeVisible();
+  await expect(editor.getByLabel("Pending withdrawal")).toBeVisible();
+  await expect(editor.locator('[data-pd-id="accounts.editor.last-balance-update"]')).toBeVisible();
+  await expect(editor.locator('[data-pd-id="accounts.editor.sign-up-date"]')).toBeVisible();
+  await editor.getByLabel("Current balance").fill("-1.2");
+  await editor.getByLabel("Current balance").blur();
+  await expect(editor.getByLabel("Current balance")).toHaveValue("-1.20");
+  await expect(editor.getByLabel("Current balance").locator("..")).toHaveClass(/financial-text-input-negative/);
+  await editor.getByLabel("Pending withdrawal").fill("2");
+  await editor.getByLabel("Pending withdrawal").blur();
+  await expect(editor.getByLabel("Pending withdrawal")).toHaveValue("2.00");
+  await expect(editor.getByLabel("Pending withdrawal").locator("..")).toHaveClass(/financial-text-input-positive/);
+  const dateControlRadius = await editor
+    .locator('[data-pd-id="accounts.editor.sign-up-date"] .material-date-time-control')
+    .evaluate((element) => getComputedStyle(element).borderRadius);
+  expect(Number.parseFloat(dateControlRadius)).toBeGreaterThanOrEqual(15);
   const createButton = editor.getByRole("button", { name: "Create" });
   await createButton.evaluate((element) => {
     (element as HTMLButtonElement).click();
@@ -361,4 +386,11 @@ test("Accounts Add Account uses the global catalogue for every provider type", a
   await expect(editor.getByRole("button", { name: "Saving" })).toBeDisabled();
   await expect(editor).toHaveCount(0);
   expect(accountRequests).toBe(1);
+  await expect(page.locator(".accounts-data-table tbody tr")).toHaveCount(1);
+  const providerBadge = page.locator(".accounts-data-table .bookmaker-identity-badge").first();
+  await expect(providerBadge).toHaveText("Canonical Bank");
+  expect(await providerBadge.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(69, 90, 100)");
+  expect(await providerBadge.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(255, 255, 255)");
+  const savedBalance = page.locator(".accounts-financial-chip").first();
+  await expect(savedBalance).toBeVisible();
 });

@@ -4412,7 +4412,9 @@ html[data-theme="dark"] .notification-count-badge {
 
 .table-filter-field,
 .table-search-field {
-  min-width: min(100%, 320px);
+  width: min(100%, 30rem);
+  min-width: min(100%, 13.75rem);
+  flex: 0 1 30rem;
 }
 
 .workflow-editor-body {
@@ -5726,6 +5728,32 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   justify-content: center;
   background: color-mix(in srgb, var(--surface-container-high) 86%, var(--surface));
   color: var(--on-surface);
+}
+
+.material-date-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-future-settings-list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--outline);
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+
+.profile-future-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-container);
+}
+
+.profile-future-setting-row + .profile-future-setting-row {
+  border-top: 1px solid var(--outline);
 }
 
 .accounts-editor-modal,

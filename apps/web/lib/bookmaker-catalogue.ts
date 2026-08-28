@@ -105,6 +105,29 @@ export function getBookmakerDisplayLabel(entry: BookmakerCatalogueRecord): strin
   return entry.brand_name || entry.short_display_name;
 }
 
+export function findMasterAccountCatalogueEntry(
+  catalogue: MasterAccountCatalogueRecord[],
+  account: { catalogueId?: string | null; accountName?: string | null }
+): MasterAccountCatalogueRecord | null {
+  const catalogueId = account.catalogueId?.trim();
+  if (catalogueId) {
+    const exact = catalogue.find((entry) => entry.catalogue_id === catalogueId);
+    if (exact) return exact;
+  }
+
+  const target = normalizeBookmakerName(account.accountName ?? "");
+  if (!target) return null;
+  return catalogue.find(
+    (entry) =>
+      normalizeBookmakerName(entry.brand_name) === target ||
+      normalizeBookmakerName(entry.short_display_name) === target
+  ) ?? null;
+}
+
+export function masterAccountProfileType(entry: MasterAccountCatalogueRecord): string {
+  return entry.account_type === "Bookmaker" ? "Bookie" : entry.account_type;
+}
+
 export function getActiveMasterAccountNames(
   catalogue: MasterAccountCatalogueRecord[],
   accountType: MasterAccountType

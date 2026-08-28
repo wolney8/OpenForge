@@ -93,6 +93,9 @@ use the canonical primitive and computed styling.
   `modal-primary-button`. Authority-page primary actions sit in the right filter/action group below
   stat cards, aligned with Search and filters, before pagination. Secondary utilities remain
   visually secondary.
+- Standard Search controls use the canonical `table-search-field` surface and signed-off toolbar
+  input height. Use a practical 13.75rem minimum and a responsive width up to 30rem where layout
+  permits; do not create route-specific search heights or undersized search pills.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
 
 ## 3a. Retrospective audit boundary

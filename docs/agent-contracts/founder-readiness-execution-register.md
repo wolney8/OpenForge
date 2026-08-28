@@ -30,6 +30,16 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003K3 | Profile account offer availability | Show eligible configured Common Bet Combo / Quick Action offers in the consolidated account editor | Quick Actions and global catalogue contracts | COMPLETE |
 | PD-FR-003L | Profile demographics settings | Replace the removed Settings Accounts tab with a non-persisting demographic and protected-financial placeholder | Authentication and hosted persistence gates | DEFERRED |
 | PD-FR-003M | Accounts content visibility regression | Keep the signed-off Accounts controls and table visible even when obsolete local storage contains a collapsed-ledger value | Signed-off Accounts ledger layout and table-control parity test | COMPLETE |
+| PD-FR-003N | Bank account editor semantics | Hide restrictions and offer eligibility for Bank relationships | Consolidated Profile Account editor | COMPLETE |
+| PD-FR-003O | Account semantic chips | Distinguish provider type, lifecycle status and channels with canonical chips | Signed-off ledger chip taxonomy | COMPLETE |
+| PD-FR-003P | Account financial presentation | Use canonical two-decimal financial values in the table, summary and editor | Financial display/input primitives | COMPLETE |
+| PD-FR-003Q | Account removal confirmation | Replace browser confirmation with the shared warning dialog pattern | Platform confirmation dialog | COMPLETE |
+| PD-FR-003R | Account save refresh | Refresh saved rows immediately without resetting search, filters or pagination | Consolidated Accounts state | COMPLETE |
+| PD-FR-003S | Account date controls | Use themed Material date and time controls | Material date/time field | COMPLETE |
+| PD-FR-003T | Catalogue display inheritance | Resolve provider identity and global display metadata by catalogue ID with legacy-name fallback | Master Account Catalogue | COMPLETE |
+| PD-FR-003U | Canonical Search control | Establish responsive standard Search geometry for touched table surfaces | UI consistency enforcer | COMPLETE |
+| PD-FR-003V | Profile Settings architecture | Map existing controls into General, Defaults, Preferences and Import/Export; add explicit Security and Subscriber stubs | Profile Settings shell | COMPLETE |
+| PD-FR-003W | Fund Manager Profiles overview | Retain `/profiles` as the operational directory and expose explicit future Subscriber/access states | Existing Fund Manager Profiles directory | COMPLETE |
 | PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -130,6 +140,21 @@ isolated tracker/account container used for the founder and subscribers. A Fund 
 authenticated user role that may administer Profiles. Subscriber registration will call the same
 Profile provisioning service after approval; `PD-FR-004` must enforce the Fund Manager role on the
 server before any UI may offer a full-security assignment.
+
+## Profile Settings Ownership Map
+
+- Former Demographics controls are under **General**.
+- Tracker date, guided-entry and calculator defaults plus Exchange Commission are under **Defaults**.
+- Profile offer-name lists and Quick Actions are under **Preferences**.
+- Existing spreadsheet staging remains under **Import/Export**.
+- **Security** is an explicit read-only future boundary for OAuth, sessions, login and MFA state.
+- **Subscriber** is an explicit read-only future boundary for registration, approval, assignment,
+  tier and portal state.
+
+No control was deleted or moved into Fund Manager Settings. `/profiles` remains the Fund Manager's
+operational Profile directory with search, status filtering, financial/open-position context and
+direct Profile actions. Subscriber and authentication columns deliberately show unavailable future
+state until their authoritative models exist.
 
 ## Safety Gate
 

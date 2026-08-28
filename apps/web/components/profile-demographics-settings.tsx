@@ -26,9 +26,9 @@ function StubField({ label, purpose }: { label: string; purpose: string }) {
   );
 }
 
-export function ProfileDemographicsSettings() {
+export function ProfileGeneralSettings() {
   return (
-    <section aria-label="Profile demographics" className="stack" data-pd-id="profile-settings.demographics">
+    <section aria-label="Profile general settings" className="stack" data-pd-id="profile-settings.general">
       <section className="content-subpanel stack">
         <div><span className="eyebrow">Profile Details</span><h2>Demographics</h2></div>
         <p className="field-hint">These fields are reserved for the secured Profile identity workflow and are not editable yet.</p>

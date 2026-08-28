@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
-import { BookmakerIdentity } from "@/components/bookmaker-identity";
+import { AccountProviderIdentity } from "@/components/account-provider-identity";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
+import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
@@ -33,7 +36,11 @@ import type {
   MasterAccountCatalogueRecord,
   MasterAccountOperatingContext,
 } from "@/lib/bookmaker-catalogue";
-import { isMasterAccountAvailable } from "@/lib/bookmaker-catalogue";
+import {
+  findMasterAccountCatalogueEntry,
+  isMasterAccountAvailable,
+  masterAccountProfileType,
+} from "@/lib/bookmaker-catalogue";
 
 type AccountRecord = {
   account_id: string;
@@ -242,6 +249,50 @@ function parseAmount(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function normalizedFinancialInput(value: string) {
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : value;
+}
+
+function financialInputTone(value: string): "positive" | "negative" | "neutral" {
+  const amount = parseAmount(value);
+  return amount > 0 ? "positive" : amount < 0 ? "negative" : "neutral";
+}
+
+function accountTypeChipClass(type: string) {
+  if (type === "Exchange") return "table-chip-info";
+  if (type === "Bank") return "table-chip-offer";
+  return "table-chip-strategy-standard";
+}
+
+function accountStatusChipClass(status: string) {
+  if (status === "Active") return "table-chip-lay-full";
+  if (["Restricted", "Gubbed", "Inactive", "Bonus Restricted", "Limited"].includes(status)) {
+    return "table-chip-danger";
+  }
+  if (["Pending Sign Up", "Verification Pending"].includes(status)) return "table-chip-lay-partial";
+  return "table-chip-muted";
+}
+
+function inheritGlobalProviderMetadata(
+  record: AccountRecord,
+  catalogue: MasterAccountCatalogueRecord[]
+): AccountRecord {
+  const provider = findMasterAccountCatalogueEntry(catalogue, {
+    catalogueId: record.catalogue_id,
+    accountName: record.account,
+  });
+  if (!provider) return record;
+  return {
+    ...record,
+    catalogue_id: provider.catalogue_id,
+    account: provider.brand_name,
+    type: masterAccountProfileType(provider),
+    group_name: provider.operator_group,
+    platform: provider.platform,
+  };
+}
+
 function parseChannels(value: string) {
   return value
     .split(",")
@@ -310,6 +361,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const filterDialogRef = useRef<HTMLElement | null>(null);
@@ -434,10 +486,26 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     return () => window.clearTimeout(timeoutId);
   }, [loadRows, profileId]);
 
-  const selectedRow = useMemo(
-    () => rows.find((row) => row.account_id === selectedId) ?? null,
-    [rows, selectedId]
+  const resolvedRows = useMemo(
+    () => rows.map((row) => inheritGlobalProviderMetadata(row, masterAccountCatalogue)),
+    [masterAccountCatalogue, rows]
   );
+  const selectedRow = useMemo(
+    () => resolvedRows.find((row) => row.account_id === selectedId) ?? null,
+    [resolvedRows, selectedId]
+  );
+
+  const selectedProvider = useMemo(
+    () => findMasterAccountCatalogueEntry(masterAccountCatalogue, {
+      catalogueId: formState.catalogue_id,
+      accountName: formState.account,
+    }),
+    [formState.account, formState.catalogue_id, masterAccountCatalogue]
+  );
+  const resolvedAccountType = selectedProvider
+    ? masterAccountProfileType(selectedProvider)
+    : formState.type;
+  const isBankAccount = resolvedAccountType === "Bank";
 
   const availableMasterAccounts = useMemo(
     () => masterAccountCatalogue
@@ -480,22 +548,22 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   }, [formState.account, offerActions]);
 
   const accountQuickView = useMemo(() => {
-    const activeAccounts = rows.filter((row) => row.status === "Active").length;
-    const restrictedAccounts = rows.filter((row) =>
+    const activeAccounts = resolvedRows.filter((row) => row.status === "Active").length;
+    const restrictedAccounts = resolvedRows.filter((row) =>
       ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
     ).length;
-    const cashTotalAccounts = rows.filter((row) => row.counts_in_cash_total);
+    const cashTotalAccounts = resolvedRows.filter((row) => row.counts_in_cash_total);
     const cashIncludedBalance = cashTotalAccounts.reduce(
       (sum, row) => sum + parseAmount(row.current_balance),
       0
     );
-    const pendingWithdrawals = rows.reduce(
+    const pendingWithdrawals = resolvedRows.reduce(
       (sum, row) => sum + parseAmount(row.pending_withdrawal_amount),
       0
     );
-    const bookieCount = rows.filter((row) => row.type === "Bookie").length;
-    const exchangeCount = rows.filter((row) => row.type === "Exchange").length;
-    const bankCount = rows.filter((row) => row.type === "Bank").length;
+    const bookieCount = resolvedRows.filter((row) => row.type === "Bookie").length;
+    const exchangeCount = resolvedRows.filter((row) => row.type === "Exchange").length;
+    const bankCount = resolvedRows.filter((row) => row.type === "Bank").length;
 
     return {
       activeAccounts,
@@ -507,43 +575,43 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       exchangeCount,
       bankCount,
     };
-  }, [rows]);
+  }, [resolvedRows]);
 
   const reviewRows = useMemo(() => {
     switch (tableMode) {
       case "Active":
-        return rows.filter((row) => row.status === "Active");
+        return resolvedRows.filter((row) => row.status === "Active");
       case "Not Signed Up":
-        return rows.filter(
+        return resolvedRows.filter(
           (row) => row.status === "Not Signed Up" || row.lifecycle_status === "Not Signed Up"
         );
       case "Limited / Gubbed":
-        return rows.filter((row) =>
+        return resolvedRows.filter((row) =>
           ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
         );
       case "Bookie":
       case "Exchange":
       case "Bank":
-        return rows.filter((row) => row.type === tableMode);
+        return resolvedRows.filter((row) => row.type === tableMode);
       case "Cash total":
-        return rows.filter((row) => row.counts_in_cash_total);
+        return resolvedRows.filter((row) => row.counts_in_cash_total);
       case "Recent":
-        return [...rows].sort((left, right) =>
+        return [...resolvedRows].sort((left, right) =>
           Date.parse(right.updated_at || right.created_at) - Date.parse(left.updated_at || left.created_at)
         );
       case "All":
       default:
-        return rows;
+        return resolvedRows;
     }
-  }, [rows, tableMode]);
+  }, [resolvedRows, tableMode]);
 
   const accountFilterOptions = useMemo(
     () => ({
-      statuses: dedupeOptions(rows.map((row) => row.status)),
-      restrictions: dedupeOptions(rows.flatMap((row) => row.restrictions)),
-      channels: dedupeOptions(rows.map((row) => row.channel)),
+      statuses: dedupeOptions(resolvedRows.map((row) => row.status)),
+      restrictions: dedupeOptions(resolvedRows.flatMap((row) => row.restrictions)),
+      channels: dedupeOptions(resolvedRows.map((row) => row.channel)),
     }),
-    [rows]
+    [resolvedRows]
   );
 
   const filterRows = useCallback(
@@ -654,19 +722,32 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
-    const record = rows.find((entry) => entry.account_id === rowId);
+    const record = resolvedRows.find((entry) => entry.account_id === rowId);
     if (!record) {
       return;
     }
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
-    const nextFormState = recordToForm(
+    const provider = findMasterAccountCatalogueEntry(masterAccountCatalogue, {
+      catalogueId: record.catalogue_id,
+      accountName: record.account,
+    });
+    const nextFormState = {
+      ...recordToForm(
       record,
       exchangeCommissions.find(
         (commission) => commission.exchange_name === record.account
       )?.commission_rate ?? ""
-    );
+      ),
+      ...(provider ? {
+        catalogue_id: provider.catalogue_id,
+        account: provider.brand_name,
+        type: masterAccountProfileType(provider),
+        group_name: provider.operator_group,
+        platform: provider.platform,
+      } : {}),
+    };
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
@@ -720,6 +801,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     isCreatingDraftRef.current = false;
     setSelectedId(null);
     setWorkflowVisible(false);
+    setIsArchiveConfirmationOpen(false);
     setErrorMessage("");
   }
 
@@ -756,6 +838,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formState,
+          restrictions: isBankAccount ? [] : formState.restrictions,
           commission_rate:
             !isEditing && formState.type === "Exchange"
               ? formState.commission_rate
@@ -772,10 +855,17 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
       const saved = (await response.json()) as AccountRecord;
       isCreatingDraftRef.current = false;
-      await loadRows(null);
+      setRows((current) => isEditing
+        ? current.map((row) => row.account_id === saved.account_id ? saved : row)
+        : [...current, saved]);
+      const refreshed = await fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" });
+      if (refreshed.ok) setRows((await refreshed.json()) as AccountRecord[]);
+      setSelectedId(null);
       setWorkflowVisible(false);
       setStatusMessage(
-        isEditing
+        !refreshed.ok
+          ? "Account saved. The latest row is shown while the full table refresh retries."
+          : isEditing
           ? `Updated account ${saved.account_id}.`
           : `Created account ${saved.account_id}.`
       );
@@ -787,7 +877,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   async function archiveSelectedAccount() {
     if (!selectedRow || isSaving || isArchiving) return;
-    if (!window.confirm(`Remove ${selectedRow.account} from this Profile? Historical records will be retained.`)) return;
     setErrorMessage("");
     setIsArchiving(true);
     try {
@@ -803,6 +892,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       await loadRows(null);
       setWorkflowVisible(false);
       setStatusMessage(`${selectedRow.account} was removed from this Profile.`);
+      setIsArchiveConfirmationOpen(false);
     } finally {
       setIsArchiving(false);
     }
@@ -828,12 +918,12 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </article>
           <article className="stat-card">
             <span className="eyebrow">Bookmaker balances</span>
-            <strong><FinancialValue value={rows.filter((row) => row.type === "Bookie").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <strong><FinancialValue value={resolvedRows.filter((row) => row.type === "Bookie").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
             <p className="lede">Profile bookmaker cash</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Exchange balances</span>
-            <strong><FinancialValue value={rows.filter((row) => row.type === "Exchange").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <strong><FinancialValue value={resolvedRows.filter((row) => row.type === "Exchange").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
             <p className="lede">Profile exchange cash</p>
           </article>
           <article className="stat-card">
@@ -982,6 +1072,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   ) : (
                     pagedRows.map((row) => {
                       const rowId = String(row.account_id);
+                      const accountRecord = resolvedRows.find((entry) => entry.account_id === rowId);
+                      const provider = findMasterAccountCatalogueEntry(masterAccountCatalogue, {
+                        catalogueId: accountRecord?.catalogue_id,
+                        accountName: String(row.account ?? ""),
+                      });
                       return (
                         <tr
                           className={selectedId === rowId ? "is-selected-row" : undefined}
@@ -993,16 +1088,22 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                               className={column.align === "end" ? "align-end" : undefined}
                               key={column.key}
                             >
-                              {column.key === "account" && String(row.type) === "Bookie" ? (
-                                <BookmakerIdentity
-                                  bookmaker={String(row.account ?? "")}
-                                  catalogue={bookmakerCatalogue}
-                                  mode="Brand badge"
-                                />
-                              ) : column.key === "type" || column.key === "status" ? (
-                                <span className="table-chip table-chip-muted">{String(row[column.key] || "—")}</span>
+                              {column.key === "account" ? (
+                                <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
+                              ) : column.key === "type" ? (
+                                <span className={`table-chip ${accountTypeChipClass(provider ? masterAccountProfileType(provider) : String(row.type))}`}>
+                                  {provider ? masterAccountProfileType(provider) : String(row.type || "—")}
+                                </span>
+                              ) : column.key === "status" ? (
+                                <span className={`table-chip ${accountStatusChipClass(String(row.status))}`}>{String(row.status || "—")}</span>
+                              ) : column.key === "channel" ? (
+                                <span className="table-chip-stack table-chip-stack-centered">
+                                  {parseChannels(String(row.channel)).map((channel) => (
+                                    <span className="table-chip table-chip-info" key={channel}>{channel}</span>
+                                  ))}
+                                </span>
                               ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
-                                <span className="table-chip accounts-financial-chip"><FinancialValue animate={false} tone="neutral" value={String(row[column.key] || "0")} /></span>
+                                <span className="table-chip accounts-financial-chip"><FinancialValue animate={false} value={String(row[column.key] || "0")} /></span>
                               ) : column.key === "actions" ? (
                                 <button
                                   aria-label={`Edit ${String(row.account ?? "account")}`}
@@ -1136,9 +1237,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Current balance</span>
-                  <strong>{selectedRow.current_balance || "—"}</strong>
+                  <strong><FinancialValue animate={false} value={selectedRow.current_balance || "0"} /></strong>
                   <p className="lede">
-                    Pending withdrawal: {selectedRow.pending_withdrawal_amount || "—"}
+                    Pending withdrawal: <FinancialValue animate={false} value={selectedRow.pending_withdrawal_amount || "0"} />
                   </p>
                 </article>
                 <article className="stat-card">
@@ -1212,7 +1313,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </label>
           <label className="field-control">
             <span>Type</span>
-            <input aria-readonly="true" placeholder="Inherited from Account Catalogue" readOnly value={formState.type} />
+            <input aria-readonly="true" placeholder="Inherited from Account Catalogue" readOnly value={resolvedAccountType} />
           </label>
           <label className="field-control">
             <span>Lifecycle</span>
@@ -1255,7 +1356,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               />
             </label>
           ) : null}
-          <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-restrictions-title">
+          {!isBankAccount ? <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-restrictions-title">
             <span className="field-label" id="account-restrictions-title">Restrictions</span>
             <div className="review-chip-row account-restriction-choices" role="group" aria-label="Account restrictions">
               {accountRestrictionOptions.map((option) => (
@@ -1277,8 +1378,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </button>
               ))}
             </div>
-          </section>
-          <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-offers-title">
+          </section> : null}
+          {!isBankAccount ? <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-offers-title">
             <span className="field-label" id="account-offers-title">Available Offers</span>
             {selectedOfferActions.length ? (
               <div className="review-chip-row" aria-label="Available account offers">
@@ -1295,56 +1396,43 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             ) : (
               <p className="field-support-text">No configured offer actions currently target this account.</p>
             )}
-          </section>
+          </section> : null}
           <label className="field-control">
             <span>Current balance</span>
-            <input
-              inputMode="decimal"
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, current_balance: event.target.value }))
-              }
+            <FinancialTextInput
+              ariaLabel="Current balance"
+              dataPdId="accounts.editor.current-balance"
+              id="account-current-balance"
+              onBlur={() => setFormState((current) => ({ ...current, current_balance: normalizedFinancialInput(current.current_balance) }))}
+              onChange={(value) => setFormState((current) => ({ ...current, current_balance: value }))}
               value={formState.current_balance}
+              valueTone={financialInputTone(formState.current_balance)}
             />
           </label>
           <label className="field-control">
             <span>Pending withdrawal</span>
-            <input
-              inputMode="decimal"
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  pending_withdrawal_amount: event.target.value,
-                }))
-              }
+            <FinancialTextInput
+              ariaLabel="Pending withdrawal"
+              dataPdId="accounts.editor.pending-withdrawal"
+              id="account-pending-withdrawal"
+              onBlur={() => setFormState((current) => ({ ...current, pending_withdrawal_amount: normalizedFinancialInput(current.pending_withdrawal_amount) }))}
+              onChange={(value) => setFormState((current) => ({ ...current, pending_withdrawal_amount: value }))}
               value={formState.pending_withdrawal_amount}
+              valueTone={financialInputTone(formState.pending_withdrawal_amount)}
             />
           </label>
-          <label className="field-control">
-            <span>Last balance update</span>
-            <input
-              type="datetime-local"
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  last_balance_update: event.target.value,
-                }))
-              }
-              value={formState.last_balance_update}
-            />
-          </label>
-          <label className="field-control">
-            <span>Sign-up date</span>
-            <input
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  sign_up_date: event.target.value,
-                }))
-              }
-              type="date"
-              value={formState.sign_up_date}
-            />
-          </label>
+          <MaterialDateTimeField
+            dataPdId="accounts.editor.last-balance-update"
+            label="Last balance update"
+            onChange={(value) => setFormState((current) => ({ ...current, last_balance_update: value }))}
+            value={formState.last_balance_update}
+          />
+          <MaterialDateField
+            dataPdId="accounts.editor.sign-up-date"
+            label="Sign-up date"
+            onChange={(value) => setFormState((current) => ({ ...current, sign_up_date: value }))}
+            value={formState.sign_up_date}
+          />
           <label className="field-control">
             <span>Counts in cash total</span>
             <select
@@ -1362,11 +1450,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           </label>
           <label className="field-control">
             <span>Group</span>
-            <input aria-readonly="true" readOnly value={formState.group_name || "Inherited from account catalogue"} />
+            <input aria-readonly="true" readOnly value={selectedProvider?.operator_group || formState.group_name || "Inherited from account catalogue"} />
           </label>
           <label className="field-control">
             <span>Platform</span>
-            <input aria-readonly="true" readOnly value={formState.platform || "Inherited from account catalogue"} />
+            <input aria-readonly="true" readOnly value={selectedProvider?.platform || formState.platform || "Inherited from account catalogue"} />
           </label>
           <label className="field-control field-span-2">
             <span>Notes</span>
@@ -1386,9 +1474,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   <span>{isSaving ? "Saving" : selectedId ? "Save" : "Create"}</span>
                 </button>
                 {selectedRow ? (
-                  <button className="button-link destructive-action" disabled={isPending || isSaving || isArchiving} onClick={() => void archiveSelectedAccount()} type="button">
-                    {isArchiving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">archive</span>}
-                    <span>{isArchiving ? "Removing" : "Remove from Profile"}</span>
+                  <button className="button-link destructive-action" disabled={isPending || isSaving || isArchiving} onClick={() => setIsArchiveConfirmationOpen(true)} type="button">
+                    <span aria-hidden="true" className="material-symbols-outlined">archive</span>
+                    <span>Remove from Profile</span>
                   </button>
                 ) : null}
                 <button className="review-chip" disabled={isPending || isSaving || isArchiving} onClick={handleResetForm} type="button">Revert</button>
@@ -1402,6 +1490,15 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             document.body,
           )
         : null}
+      <ConfirmationDialog
+        busy={isArchiving}
+        confirmLabel="Remove from Profile"
+        description={`${selectedRow?.account ?? "This account"} will be archived for this Profile. Historical records will be retained.`}
+        onCancel={() => setIsArchiveConfirmationOpen(false)}
+        onConfirm={() => void archiveSelectedAccount()}
+        open={isArchiveConfirmationOpen}
+        title="Remove Account?"
+      />
     </section>
   );
 }

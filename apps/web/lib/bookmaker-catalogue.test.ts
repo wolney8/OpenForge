@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   findBookmakerCatalogueEntry,
+  findMasterAccountCatalogueEntry,
   getActiveMasterAccountNames,
   getAvailableMasterAccountNames,
   getBookmakerDisplayLabel,
   isMasterAccountAvailable,
+  masterAccountProfileType,
   type BookmakerCatalogueRecord,
   type MasterAccountCatalogueRecord,
 } from "./bookmaker-catalogue";
@@ -173,5 +175,19 @@ describe("bookmaker catalogue matching", () => {
         channels: ["mobile"],
       })
     ).toEqual(["Exchange GB Mobile"]);
+  });
+
+  it("resolves Profile providers by canonical id before legacy display-name fallback", () => {
+    const sourceRows = [
+      masterFixture({ catalogue_id: "EXCHANGE-DEMO-001", account_type: "Exchange", brand_name: "Exchange A", short_display_name: "Ex A" }),
+      masterFixture({ catalogue_id: "BANK-DEMO-001", account_type: "Bank", brand_name: "Bank A" }),
+    ];
+
+    expect(findMasterAccountCatalogueEntry(sourceRows, {
+      catalogueId: "EXCHANGE-DEMO-001",
+      accountName: "stale copied name",
+    })?.brand_name).toBe("Exchange A");
+    expect(findMasterAccountCatalogueEntry(sourceRows, { accountName: " ex a " })?.catalogue_id).toBe("EXCHANGE-DEMO-001");
+    expect(masterAccountProfileType(sourceRows[0])).toBe("Exchange");
   });
 });
