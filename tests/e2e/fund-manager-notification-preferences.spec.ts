@@ -8,6 +8,7 @@ test("Fund Manager can persist notification source preferences", async ({ page }
   }, preferencesKey);
 
   await page.goto("/settings");
+  await page.getByRole("tab", { name: "Notifications" }).click();
 
   const settings = page.locator('[data-pd-id="fund-manager-notifications.settings"]');
   const partialLayPreference = page.locator(

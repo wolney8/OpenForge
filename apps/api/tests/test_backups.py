@@ -164,7 +164,7 @@ def test_fund_manager_notification_prompts_first_verified_backup(tmp_path: Path)
     )
     assert backup_notice["kind"] == "information"
     assert backup_notice["title"] == "Create a verified backup"
-    assert backup_notice["href"] == "/settings?open=database-backups"
+    assert backup_notice["href"] == "/settings#database"
 
 
 def test_failed_api_reverification_is_persisted_in_backup_history(tmp_path: Path) -> None:

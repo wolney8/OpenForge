@@ -1,6 +1,6 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-28_
 
 ## 1. Workflow name
 
@@ -119,6 +119,8 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
 - all important controls and regions use stable `data-pd-id` identifiers
 - Fund Manager notification preferences live under global `/settings`, not profile settings, until
   subscriber/user account settings exist
+- database-backup notifications deep-link to `/settings#database`, matching the tabbed Fund Manager
+  Settings route
 
 ## 7. Calculation and safety boundary
 

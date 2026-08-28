@@ -77,7 +77,7 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
             due_at=format_timestamp(now),
             settles_at=format_timestamp(now),
             created_at=format_timestamp(now),
-            href="/settings?open=database-backups",
+            href="/settings#database",
             completion_href="",
             tone="warning",
         )
@@ -115,7 +115,7 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
         due_at=format_timestamp(reminder_due_at if is_stale else now),
         settles_at=format_timestamp(now),
         created_at=latest.created_at,
-        href="/settings?open=database-backups",
+        href="/settings#database",
         completion_href="",
         tone="warning",
     )
