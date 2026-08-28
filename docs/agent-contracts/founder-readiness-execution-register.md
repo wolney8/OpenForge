@@ -29,6 +29,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003K2 | Profile provider removal | Archive a Profile provider while retaining history and protecting the final active Exchange | Global catalogue/Profile state contract | COMPLETE |
 | PD-FR-003K3 | Profile account offer availability | Show eligible configured Common Bet Combo / Quick Action offers in the consolidated account editor | Quick Actions and global catalogue contracts | COMPLETE |
 | PD-FR-003L | Profile demographics settings | Replace the removed Settings Accounts tab with a non-persisting demographic and protected-financial placeholder | Authentication and hosted persistence gates | DEFERRED |
+| PD-FR-003M | Accounts content visibility regression | Keep the signed-off Accounts controls and table visible even when obsolete local storage contains a collapsed-ledger value | Signed-off Accounts ledger layout and table-control parity test | COMPLETE |
 | PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -112,6 +113,12 @@ Fund Manager synthetic-data smoke verification remains recommended before using 
 Focused Exchange-authority verification on 2026-08-28 passed 22 Profile/account API tests, all
 226 web unit tests, four focused onboarding/Settings Playwright checks, web typecheck, web lint,
 targeted Ruff and `git diff --check`.
+
+`PD-FR-003M` removed the inaccessible persisted-collapse state from Profile Accounts. The
+consolidated Accounts surface has no collapse control, so obsolete local storage must never hide
+its toolbar, loadouts, pagination or table. Regression coverage now leaves the old value set to
+`true` while asserting the complete Accounts surface, editor and removal action remain available
+without hydration, duplicate-key or runtime errors.
 
 The founder is the first operational use of this shared flow, not a special one-off Profile type.
 Later subscriber identity/invitation work will authorize access to an existing Profile rather than

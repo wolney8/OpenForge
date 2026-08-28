@@ -124,32 +124,31 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
   await expect(dialog.getByText("Issue type", { exact: true })).toBeVisible();
 });
 
-test("Accounts uses canonical table controls, sorting, resizing, and neutral cash chips", async ({ page }) => {
+test("Accounts ignores stale collapsed state and keeps canonical table controls visible", async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 900 });
   await page.addInitScript(() => {
-    if (!window.sessionStorage.getItem("accounts-hydration-tested")) {
-      window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "true");
-      window.sessionStorage.setItem("accounts-hydration-tested", "true");
-    }
+    window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "true");
   });
-  const hydrationErrors: string[] = [];
+  const runtimeErrors: string[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error" && message.text().includes("Hydration failed")) {
-      hydrationErrors.push(message.text());
+    if (
+      message.type() === "error" &&
+      /Hydration failed|same key|uncaught|runtime error/i.test(message.text())
+    ) {
+      runtimeErrors.push(message.text());
     }
   });
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
   await page.goto("/profiles/profile-demo-001/tracker/accounts");
 
   await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
-  await expect.poll(() => hydrationErrors).toEqual([]);
-  await page.evaluate(() => {
-    window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "false");
-  });
-  await page.reload();
-  await expect.poll(() => hydrationErrors).toEqual([]);
+  await expect.poll(() => runtimeErrors).toEqual([]);
 
   const quickView = page.getByRole("region", { name: "Account quick view" });
   await expect(quickView).toBeVisible();
+  await expect(page.locator('[data-pd-id="accounts.table-toolbar"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="accounts.table-loadouts"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Add Account" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Filter accounts" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: /^Type/i })).toBeVisible();
@@ -207,11 +206,29 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
   await expect(editor).toBeVisible();
   await expect(editor.getByText("Channel", { exact: true })).toHaveCount(0);
   await expect(editor.locator("fieldset.field-control")).toHaveCount(0);
+  await expect(editor.getByRole("button", { name: "Remove from Profile" })).toBeVisible();
   const horizontalOverflow = await editor.evaluate(
     (element) => element.scrollWidth - element.clientWidth,
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(1);
   await editor.getByRole("button", { name: "Close account editor" }).click();
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"]')).toBeVisible();
+
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  await page.getByRole("button", { name: /Switch to (light|dark) mode/ }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", initialTheme ?? "");
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"]')).toBeVisible();
+
+  await page.setViewportSize({ width: 900, height: 760 });
+  await expect(page.locator('[data-pd-id="accounts.table-toolbar"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="accounts.table-loadouts"]')).toBeVisible();
+  await expect(page.getByLabel("Accounts top controls")).toBeVisible();
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"]')).toBeVisible();
+  const pageOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(pageOverflow).toBeLessThanOrEqual(1);
+  await expect.poll(() => runtimeErrors).toEqual([]);
 });
 
 test("Accounts Add Account uses the global catalogue for every provider type", async ({ page }) => {

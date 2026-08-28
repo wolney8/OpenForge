@@ -14,7 +14,6 @@ import {
   scrollToElementTopAfterRender,
   useBodyScrollLock,
   useDialogFocusLifecycle,
-  usePersistedBoolean,
   useToastDismiss,
   useTrackerRouteReselect,
 } from "@/lib/ledger-ui";
@@ -292,10 +291,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
-  const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
-    `openforge-ledger-collapsed:${profileId}:accounts`,
-    false
-  );
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
   const [tableMode, setTableMode] = useState<AccountTableMode>("All");
@@ -332,18 +327,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   useToastDismiss(statusMessage, clearStatusMessage);
 
-  const revealEditor = useCallback(
-    (options?: { expandLedger?: boolean }) => {
-      if (options?.expandLedger ?? true) {
-        setTableCollapsed(false);
-      }
-      scrollToElementTopAfterRender(() => editorRef.current);
-    },
-    [setTableCollapsed]
-  );
+  const revealEditor = useCallback(() => {
+    scrollToElementTopAfterRender(() => editorRef.current);
+  }, []);
 
   useTrackerRouteReselect(() => {
-    setTableCollapsed(false);
     scrollToElementTopAfterRender(() => editorRef.current);
   });
 
@@ -662,7 +650,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     [effectivePage, filteredRows, pageSize]
   );
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+  async function selectRow(rowId: string) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -682,8 +670,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
-    setTableCollapsed(Boolean(options?.collapseTable));
-    revealEditor({ expandLedger: !options?.collapseTable });
+    revealEditor();
     setStatusMessage("");
   }
 
@@ -698,7 +685,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setFormState(blankForm);
     setPristineFormState(blankForm);
     setErrorMessage("");
-    revealEditor({ expandLedger: true });
+    revealEditor();
     setStatusMessage("");
   }
 
@@ -722,7 +709,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     setPristineFormState(blankForm);
     setErrorMessage("");
     setWorkflowVisible(false);
-    setTableCollapsed(false);
     isCreatingDraftRef.current = false;
     setStatusMessage("Cleared the unsaved account draft.");
   }
@@ -734,7 +720,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     isCreatingDraftRef.current = false;
     setSelectedId(null);
     setWorkflowVisible(false);
-    setTableCollapsed(false);
     setErrorMessage("");
   }
 
@@ -789,7 +774,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       isCreatingDraftRef.current = false;
       await loadRows(null);
       setWorkflowVisible(false);
-      setTableCollapsed(false);
       setStatusMessage(
         isEditing
           ? `Updated account ${saved.account_id}.`
@@ -818,7 +802,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       isCreatingDraftRef.current = false;
       await loadRows(null);
       setWorkflowVisible(false);
-      setTableCollapsed(false);
       setStatusMessage(`${selectedRow.account} was removed from this Profile.`);
     } finally {
       setIsArchiving(false);
@@ -859,8 +842,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article>
         </section>
-        {!tableCollapsed ? (
-          <>
+        <>
             <div
               aria-label="Accounts controls"
               className="sportsbook-review-bar"
@@ -1005,7 +987,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                           className={selectedId === rowId ? "is-selected-row" : undefined}
                           key={rowId}
                           onClick={() => void selectRow(rowId)}
-                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {visibleTableColumns.map((column) => (
                             <td
@@ -1058,8 +1039,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               position="bottom"
               totalRows={filteredRows.length}
             />
-          </>
-        ) : null}
+        </>
       </section>
 
       {isFilterModalOpen && typeof document !== "undefined"
