@@ -267,6 +267,10 @@ textarea {
   border-bottom: 1px solid var(--outline);
 }
 
+.top-app-bar-public {
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 30rem) auto;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -898,12 +902,146 @@ textarea {
 }
 
 .auth-panel {
+  align-items: center;
   width: min(36rem, 100%);
+  text-align: center;
+}
+
+.auth-panel .brand-logo-login {
+  object-position: center;
 }
 
 .auth-google-button {
-  align-self: start;
+  align-self: center;
+  gap: 0.65rem;
   text-decoration: none;
+}
+
+.google-brand-icon {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  padding: 0.12rem;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.auth-registration-link {
+  color: var(--primary-strong);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+.fund-manager-identity-shell {
+  z-index: 46;
+}
+
+.fund-manager-identity-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 3rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  background: var(--surface-container);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fund-manager-identity-trigger:hover,
+.fund-manager-identity-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--outline));
+  background: var(--primary-soft);
+}
+
+.fund-manager-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--surface-strong);
+  font-weight: 850;
+  line-height: 1;
+}
+
+html[data-theme="dark"] .fund-manager-avatar {
+  color: var(--bg);
+}
+
+.fund-manager-role-chip {
+  white-space: nowrap;
+}
+
+.fund-manager-identity-panel {
+  width: min(22rem, calc(100vw - 2rem));
+  min-width: min(22rem, calc(100vw - 2rem));
+}
+
+.fund-manager-identity-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--outline);
+}
+
+.fund-manager-identity-summary > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.fund-manager-identity-summary strong,
+.fund-manager-identity-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fund-manager-identity-summary small {
+  color: var(--muted);
+}
+
+.fund-manager-account-details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+  overflow: hidden;
+}
+
+.fund-manager-account-details > div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.4fr) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  background: var(--surface-container);
+}
+
+.fund-manager-account-details > div + div {
+  border-top: 1px solid var(--outline);
+}
+
+.fund-manager-account-details dt {
+  color: var(--muted);
+}
+
+.fund-manager-account-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 750;
 }
 
 .icon-button.ledger-toolbar-add-action {
@@ -12547,6 +12685,10 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
     justify-content: flex-end;
   }
 
+  .fund-manager-role-chip {
+    display: none;
+  }
+
   .summary-menu-button {
     flex: 1 1 auto;
     width: 100%;
@@ -12626,8 +12768,20 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
     justify-content: space-between;
   }
 
+  .top-app-bar-public .top-bar-actions {
+    width: auto;
+    justify-self: end;
+  }
+
   .global-search-results {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .fund-manager-account-details > div {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
   }
 }
 

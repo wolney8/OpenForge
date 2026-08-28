@@ -1,4 +1,6 @@
 import { BrandLogo } from "@/components/brand-logo";
+import { GoogleBrandIcon } from "@/components/google-brand-icon";
+import Link from "next/link";
 
 const errorMessages: Record<string, string> = {
   invalid_oauth_state: "The sign-in request expired or could not be verified. Please try again.",
@@ -8,7 +10,9 @@ const errorMessages: Record<string, string> = {
 };
 
 function safeNextPath(value: string | undefined) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/profiles";
+  return value?.startsWith("/") && !value.startsWith("//")
+    ? value
+    : "/profiles?view=performance";
 }
 
 export default async function LoginPage({
@@ -25,11 +29,7 @@ export default async function LoginPage({
     <main className="page-shell auth-page">
       <section className="hero-panel stack auth-panel" data-pd-id="auth.login.panel">
         <BrandLogo className="brand-logo-login" priority />
-        <span className="eyebrow">Fund Manager</span>
-        <h1>Sign in to Plum Duff</h1>
-        <p className="lede">
-          Use the authorised Founder Google account to manage Profiles and tracker data.
-        </p>
+        <h1>Sign In</h1>
         {error ? <p className="error-text" role="alert">{error}</p> : null}
         {signedOut ? <p className="success-text" role="status">You have signed out.</p> : null}
         <a
@@ -37,12 +37,12 @@ export default async function LoginPage({
           data-pd-id="auth.google.sign-in"
           href={`/api/auth/google/login?next=${encodeURIComponent(next)}`}
         >
-          <span aria-hidden="true" className="material-symbols-outlined">login</span>
-          <span>Continue with Google</span>
+          <GoogleBrandIcon />
+          <span>Sign in with Google</span>
         </a>
-        <p className="field-hint">
-          Google verifies identity. Plum Duff separately checks the Founder allowlist before granting access.
-        </p>
+        <Link className="auth-registration-link" data-pd-id="auth.registration" href="/register">
+          Register for an account
+        </Link>
       </section>
     </main>
   );

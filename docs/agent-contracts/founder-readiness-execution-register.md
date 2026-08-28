@@ -47,6 +47,13 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004D | Shell consistency | Preserve canonical shell geometry, light/dark tokens, focus and responsive behaviour | UI consistency enforcer | COMPLETE |
 | PD-FR-004E | Security matrix | Record current owner access and the deferred Subscriber boundary for every protected surface | Founder authentication and shell contract | COMPLETE |
 | PD-FR-004F | OAuth deployment setup | Record exact local/Vercel callback, consent and environment configuration | Founder Google OAuth setup | NEEDS VERIFICATION |
+| PD-FR-004G | Login UX | Reduce login to branding, Sign In, Google action and registration entry using canonical auth controls | Auth panel and primary action patterns | COMPLETE |
+| PD-FR-004H | Registration stub | Add a public `/register` route that records future Subscriber registration without enabling it | Public auth shell | COMPLETE |
+| PD-FR-004I | Fund Manager account | Add protected read-only identity and security details at `/account` | Settings content panels and semantic chips | COMPLETE |
+| PD-FR-004J | Authenticated identity shell | Show a compact Fund Manager identity trigger with account and logout actions | Canonical app menu and chip patterns | COMPLETE |
+| PD-FR-004K | Post-auth destination | Send normal direct sign-in to the Fund Manager performance dashboard while preserving safe requested routes | OAuth state/redirect contract | COMPLETE |
+| PD-FR-004L | Public auth shell | Show branding and theme only on login/register; hide search, drawer, notifications, account and tracker theme controls | Canonical application shell | COMPLETE |
+| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | NEEDS VERIFICATION |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -87,9 +94,15 @@ expands every Profile; current-Profile context retains a direct Dashboard route.
 Vercel configuration is recorded in `docs/deployment/founder-google-oauth-setup.md`.
 
 Automated auth, shell, search, route and build checks must pass before this tranche leaves
-`NEEDS VERIFICATION`. Real Google local and Vercel callback smoke tests still require the Fund
-Manager's Google/Vercel secret configuration. Until those checks pass, the hosted classification
+`NEEDS VERIFICATION`. The real Google Vercel callback smoke test still requires production
+verification by the Fund Manager. Until that check passes, the hosted classification
 remains **HOSTED PREVIEW ONLY - NO REAL FINANCIAL DATA** and `PD-FR-005` must not start.
+
+The Fund Manager completed the local allowlisted Google login and logout smoke test on 2026-08-28.
+The production Vercel callback remains the final `PD-FR-004` verification gate. The public auth
+shell now contains only branding, Sign In, Google action, registration stub and theme control.
+Authenticated pages show a compact Fund Manager identity menu linked to protected `/account`.
+Direct login defaults to `/profiles?view=performance`; a safe protected `next` route still wins.
 
 `PD-AUDIT-REPORT-001` remains an explicitly unrelated, pre-existing reporting test mismatch: the
 fee queue fixture expects two items while current fixture state produces three. It is not absorbed

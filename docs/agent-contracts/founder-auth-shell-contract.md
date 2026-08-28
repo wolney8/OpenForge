@@ -16,9 +16,15 @@ Next validates the same signed session before protected pages. FastAPI independe
 before every non-public API read or mutation. Removing an email from the allowlist revokes access
 on the next request even if a signed cookie has not expired.
 
-Public endpoints are limited to `/login`, `/api/auth/*`, `/healthz` and `/config-summary`.
+Public endpoints are limited to `/login`, the registration stub at `/register`, `/api/auth/*`,
+`/healthz` and `/config-summary`.
 Profile, notification, settings and Fund Manager pages are protected. All application API routes,
 including global search, are protected by the API middleware.
+
+The normal direct sign-in destination is the Fund Manager performance dashboard at
+`/profiles?view=performance`. A safe protected `next` path captured by the route gate takes
+precedence so a user can resume the requested task. Authenticated identity details are read-only
+at `/account`; Google remains authoritative for name and email.
 
 ## Search
 
@@ -41,6 +47,8 @@ When already inside a Profile, a compact current-Profile context provides a dire
 | Surface | Unauthenticated | Founder / Fund Manager | Future Subscriber | Server/API status |
 |---|---|---|---|---|
 | Login and Google callback | Allowed | Allowed | Reusable later | Public auth endpoints only |
+| Registration stub | Allowed | Allowed | Future entry point | No registration API yet |
+| Fund Manager account | Redirect to login | Own identity details | Denied / deferred | Protected session API |
 | Home / Fund Manager dashboard | Redirect to login | Allowed | Denied / deferred | Protected page and API |
 | Profiles directory and creation | Redirect to login | Allowed | Denied / deferred | Protected page and API |
 | Profile tracker routes | Redirect to login | Allowed | Own Profile only / deferred | Protected page and API |

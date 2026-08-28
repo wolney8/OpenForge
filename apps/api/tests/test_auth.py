@@ -124,15 +124,18 @@ def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
     with configured_auth():
         monkeypatch.setattr("openforge_api.auth.httpx.AsyncClient", FakeAsyncClient)
         client = TestClient(app, follow_redirects=False)
-        login_response = client.get("/auth/google/login?next=/profiles")
+        login_response = client.get("/auth/google/login")
         state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
         callback_response = client.get(
             f"/auth/google/callback?code=synthetic-code&state={state}"
         )
         assert callback_response.status_code == 302
-        assert callback_response.headers["location"] == "/profiles"
+        assert callback_response.headers["location"] == "/profiles?view=performance"
         assert SESSION_COOKIE_NAME in callback_response.cookies
-        assert client.get("/auth/session").json()["role"] == "fund_manager"
+        session = client.get("/auth/session").json()
+        assert session["role"] == "fund_manager"
+        assert session["name"] == "Founder"
+        assert session["email"] == "founder@example.invalid"
         assert client.get("/search?query=profiles").status_code == 200
 
         logout_response = client.post("/auth/logout")

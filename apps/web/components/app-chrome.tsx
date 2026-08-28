@@ -7,6 +7,7 @@ import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue } from "@/components/financial-value";
+import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -95,6 +96,7 @@ function resolveProfileId(pathname: string): string | null {
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isPublicAuthRoute = pathname === "/login" || pathname === "/register";
   const resolvedProfileId = resolveProfileId(pathname ?? "");
   const activeProfileId = resolvedProfileId ?? defaultProfileId;
   const isInsideProfile = resolvedProfileId !== null;
@@ -172,6 +174,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [unsavedPrompt]);
 
   useEffect(() => {
+    if (isPublicAuthRoute) {
+      setActiveProfiles([]);
+      return;
+    }
     let isActive = true;
     const profilesUrl = `${apiBaseUrl}/profiles`;
     const cachedProfiles = readCachedJson<ProfileHeaderRecord[]>(profilesUrl);
@@ -200,7 +206,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         window.cancelAnimationFrame(cachedFrame);
       }
     };
-  }, [headerRefreshKey]);
+  }, [headerRefreshKey, isPublicAuthRoute]);
 
   useEffect(() => {
     const refreshHeaderForProfile = (event: Event) => {
@@ -542,9 +548,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <div className="app-frame">
-        <header className="top-app-bar" data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
+        <header className={`top-app-bar${isPublicAuthRoute ? " top-app-bar-public" : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
-            <div className="app-menu-shell">
+            {!isPublicAuthRoute ? <div className="app-menu-shell">
               <button
                 aria-expanded={appMenuOpen}
                 aria-controls="app-navigation-drawer"
@@ -562,8 +568,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               >
                 <span aria-hidden="true" className="material-symbols-outlined">menu</span>
               </button>
-            </div>
-            <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href="/">
+            </div> : null}
+            <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href={isPublicAuthRoute ? "/login" : "/"}>
               <BrandLogo priority variant="mark" />
             </Link>
             <div>
@@ -571,9 +577,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <div className="brand-subtitle">{brandSubtitle}</div>
             </div>
           </div>
-          {pathname !== "/login" ? <GlobalSearch /> : <div />}
+          {!isPublicAuthRoute ? <GlobalSearch /> : <div aria-hidden="true" />}
           <div className="top-bar-actions">
-            {isInsideProfile ? (
+            {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <button
                   aria-expanded={trackerMenuOpen}
@@ -731,12 +737,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             ) : null}
-            <NotificationCentre />
-            <BackLayThemeToggle />
+            {!isPublicAuthRoute ? <NotificationCentre /> : null}
+            {!isPublicAuthRoute ? <BackLayThemeToggle /> : null}
+            {!isPublicAuthRoute ? <FundManagerIdentityMenu /> : null}
             <ThemeToggle />
           </div>
         </header>
-        <Suspense fallback={null}>
+        {!isPublicAuthRoute ? <Suspense fallback={null}>
           <AppNavigationDrawer
             activeProfileId={activeProfileId}
             isInsideProfile={isInsideProfile}
@@ -746,7 +753,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             profileSubtitle={profileSubtitle}
             triggerRef={appMenuTriggerRef}
           />
-        </Suspense>
+        </Suspense> : null}
         <div className="main-shell" id="main-content">
           {children}
         </div>

@@ -4,10 +4,22 @@ test.describe("Login to profiles shell", () => {
   test("moves from login to profiles to the selected profile tracker", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "Sign in to Plum Duff" })).toBeVisible();
-    const googleLink = page.getByRole("link", { name: "Continue with Google" });
+    await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
+    const googleLink = page.getByRole("link", { name: "Sign in with Google" });
     await googleLink.focus();
     await expect(googleLink).toBeFocused();
+    await expect(googleLink.locator(".google-brand-icon")).toBeVisible();
+    await expect(page.locator('[data-pd-id="auth.registration"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-navigation.trigger"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="global-search.input"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="notifications.trigger"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-shell.theme-toggle"]')).toBeVisible();
+
+    await page.locator('[data-pd-id="auth.registration"]').click();
+    await expect(page).toHaveURL(/\/register$/);
+    await expect(page.getByRole("heading", { name: "Registration" })).toBeVisible();
+    await expect(page.getByText("Subscriber registration is not available yet.")).toBeVisible();
+    await page.locator('[data-pd-id="auth.registration.back"]').click();
 
     // Local Playwright keeps authentication disabled; hosted environments exercise OAuth.
     await page.goto("/profiles");

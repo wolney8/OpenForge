@@ -140,7 +140,7 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
 def _safe_next_path(value: str | None) -> str:
     if value and value.startswith("/") and not value.startswith("//"):
         return value
-    return "/profiles"
+    return "/profiles?view=performance"
 
 
 def _cookie_secure() -> bool:

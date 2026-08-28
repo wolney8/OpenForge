@@ -27,5 +27,6 @@ export const config = {
     "/profiles/:path*",
     "/notifications/:path*",
     "/settings/:path*",
+    "/account/:path*",
   ],
 };

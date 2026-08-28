@@ -612,3 +612,15 @@ cause, prevention rule and regression test.
   shell must remain inside a Suspense boundary for production prerendering.
 - Test added: `apps/web/proxy.test.ts`, `apps/api/tests/test_auth.py`,
   `tests/e2e/global-search.spec.ts` and `tests/e2e/app-navigation-drawer.spec.ts`.
+
+## 2026-08-28: Public auth pages exposed authenticated shell controls
+
+- Area: login/registration shell and Fund Manager identity access.
+- Root cause: the application chrome only hid global search on `/login`, leaving navigation,
+  notifications and tracker theme controls visible before authentication; it also had no
+  canonical representation of the authenticated principal.
+- Prevention: public auth routes render branding plus the global theme toggle only. Authenticated
+  routes use one compact identity trigger composed from the canonical menu and semantic-chip
+  patterns, with protected account details and logout inside it.
+- Test added: `tests/e2e/login-profiles-shell.spec.ts`,
+  `tests/e2e/fund-manager-identity-shell.spec.ts` and `apps/web/proxy.test.ts`.

@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 const originalEnvironment = { ...process.env };
 const secret = "synthetic-session-secret-at-least-32-bytes";
@@ -38,6 +38,17 @@ describe("application route proxy", () => {
     expect(response.headers.get("location")).toBe(
       "http://localhost:3010/login?next=%2Fprofiles%3Fview%3Dreports"
     );
+  });
+
+  it("protects the Fund Manager account route while leaving registration public", async () => {
+    const protectedRequest = new NextRequest("http://localhost:3010/account");
+    const protectedResponse = await proxy(protectedRequest);
+    expect(protectedResponse.status).toBe(307);
+    expect(protectedResponse.headers.get("location")).toBe(
+      "http://localhost:3010/login?next=%2Faccount"
+    );
+
+    expect(config.matcher).not.toContain("/register");
   });
 
   it("allows an allowlisted current Fund Manager session", async () => {
