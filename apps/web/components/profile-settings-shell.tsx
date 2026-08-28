@@ -2,6 +2,7 @@
 
 import { KeyboardEvent, useEffect, useState } from "react";
 
+import { AccountAuthoritySettings } from "@/components/account-authority-settings";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
@@ -11,6 +12,7 @@ import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
   { id: "defaults", label: "Defaults" },
+  { id: "accounts", label: "Accounts" },
   { id: "import-export", label: "Import/Export" },
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
@@ -122,6 +124,15 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           role="tabpanel"
         >
           <TrackerDateSettings profileId={profileId} />
+        </section>
+        <section
+          aria-labelledby="profile-settings-tab-accounts"
+          className="analytics-tab-panel"
+          hidden={activeSection !== "accounts"}
+          id="profile-settings-panel-accounts"
+          role="tabpanel"
+        >
+          <AccountAuthoritySettings profileId={profileId} />
         </section>
         <section
           aria-labelledby="profile-settings-tab-import-export"

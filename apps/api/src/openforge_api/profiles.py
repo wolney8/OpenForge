@@ -88,6 +88,7 @@ class ProfileOnboardingAccountPayload(BaseModel):
     counts_in_cash_total: bool = True
     restrictions: list[str] = Field(default_factory=list, max_length=12)
     notes: str = Field(default="", max_length=1000)
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
 
 
 class ProfileOnboardingQuickActionPayload(BaseModel):
@@ -268,6 +269,30 @@ def create_profile_onboarding_route(
                 detail="Main bank must reference an active global Bank provider",
             )
 
+    selected_exchanges = [
+        account
+        for account in payload.accounts
+        if active_records[account.catalogue_id].account_type == "Exchange"
+    ]
+    if not selected_exchanges:
+        raise HTTPException(
+            status_code=422,
+            detail="Select at least one Exchange for this Profile",
+        )
+    exchanges_without_commission = [
+        account.catalogue_id
+        for account in selected_exchanges
+        if account.commission_rate is None
+    ]
+    if exchanges_without_commission:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Each selected Exchange requires a Profile commission rate",
+                "catalogue_ids": exchanges_without_commission,
+            },
+        )
+
     active_quick_actions: dict[str, dict[str, object]] = {}
     for preset in list_fund_manager_combo_presets(active_only=True):
         try:
@@ -297,6 +322,7 @@ def create_profile_onboarding_route(
         )
 
     resolved_accounts: list[dict[str, object]] = []
+    exchange_commissions: list[dict[str, str]] = []
     current_cash_snapshot = Decimal("0")
     default_exchange_name = ""
     for selected in payload.accounts:
@@ -312,6 +338,14 @@ def create_profile_onboarding_route(
             current_cash_snapshot += selected.opening_balance
         if provider.account_type == "Exchange" and not default_exchange_name:
             default_exchange_name = provider.brand_name
+        if provider.account_type == "Exchange":
+            assert selected.commission_rate is not None
+            exchange_commissions.append(
+                {
+                    "exchange_name": provider.brand_name,
+                    "commission_rate": str(selected.commission_rate),
+                }
+            )
         resolved_accounts.append(
             {
                 "account_id": f"AC-{uuid4().hex[:8].upper()}",
@@ -359,6 +393,7 @@ def create_profile_onboarding_route(
         current_cash_snapshot=f"{current_cash_snapshot:.2f}",
         default_exchange_name=default_exchange_name,
         accounts=resolved_accounts,
+        exchange_commissions=exchange_commissions,
         quick_actions=[action.model_dump() for action in payload.quick_actions],
     )
     try:

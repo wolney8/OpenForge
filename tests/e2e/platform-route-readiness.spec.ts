@@ -54,15 +54,15 @@ test("Settings exposes the workbook-owned profile authorities", async ({ page })
 
   await page.getByRole("tab", { name: "Lists" }).click();
   await expect(page.getByText("Exchanges", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Sportsbook and free-bet offer names", { exact: true })).toBeVisible();
-  await expect(page.getByText("Casino offer names", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sportsbook And Free Bet Offer Names", { exact: true })).toBeVisible();
+  await expect(page.getByText("Casino Offer Names", { exact: true })).toBeVisible();
 
   await page.getByRole("tab", { name: "Commission" }).click();
   await expect(page.getByLabel("Exchange commission settings")).toBeVisible();
   expect(duplicateKeyMessages).toEqual([]);
 
-  await page.getByRole("tab", { name: "Account Access" }).click();
-  await expect(page.getByLabel("Account authority settings")).toBeVisible();
+  await page.getByRole("tab", { name: "Accounts" }).click();
+  await expect(page.getByLabel("Profile Account Catalogue settings")).toBeVisible();
 });
 
 test("Dashboard and Reports expose distinct selected-range and formal-period views", async ({

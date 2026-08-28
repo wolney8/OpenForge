@@ -126,6 +126,7 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   }
   await page.getByLabel("Bookmaker A opening balance").fill("25.00");
   await page.getByLabel("Exchange A opening balance").fill("50.00");
+  await page.getByLabel("Exchange A commission").fill("0.02");
   await page.getByLabel("Bank A opening balance").fill("75.00");
   await page.getByLabel("Main Bank Account").selectOption("BANK-DEMO-001");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -143,6 +144,10 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   expect(submitted).toBeDefined();
   expect(submitted?.enabled_modules).not.toContain("casino-offers");
   expect(submitted?.accounts).toHaveLength(3);
+  expect(submitted?.accounts).toContainEqual(expect.objectContaining({
+    catalogue_id: "EXCHANGE-DEMO-001",
+    commission_rate: "0.02",
+  }));
   expect(submitted?.main_bank_catalogue_id).toBe("BANK-DEMO-001");
   expect(submitted?.quick_actions).toEqual([
     {
@@ -171,6 +176,31 @@ test("Profile onboarding stages block forward navigation until required identity
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("p.error-text[role='alert']")).toContainText("Enter a display name");
+});
+
+test("Profile onboarding requires an Exchange and its commission before continuing", async ({ page }) => {
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+  await page.goto("/profiles/new");
+  await page.getByLabel("Display Name").fill("Synthetic Profile");
+  await page.getByLabel("Profile Code").fill("PROFILE-EXCHANGE");
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+
+  await expect(page.getByText("Select At Least One Exchange.")).toBeVisible();
+  await page.getByLabel("Use Bookmaker A").check();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator("p.error-text[role='alert']")).toContainText("Select at least one Exchange");
+
+  await page.getByLabel("Use Exchange A").check();
+  await expect(page.getByText("Enter The Exchange Commission.")).toBeVisible();
+  await page.getByLabel("Exchange A commission").fill("0.02");
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Quick Actions" })).toBeVisible();
 });
 
 test("Profile onboarding Cancel uses the shared unsaved-change guard", async ({ page }) => {

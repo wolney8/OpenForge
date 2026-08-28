@@ -41,6 +41,8 @@ Required onboarding inputs:
 - weekly Extra Place loss budget where Extra Place is enabled;
 - profile-account relationships selected from the global catalogue, with lifecycle, restriction
   and opening-value data entered explicitly;
+- at least one selected Exchange, with an explicit Profile-owned decimal commission rate for each
+  selected Exchange; no silent commission default is permitted;
 - required global Quick Action inheritance and up to four optional Profile favourites per enabled
   ledger. Profile-specific permitted-default overrides remain managed in Profile Settings after
   creation.
@@ -55,6 +57,9 @@ Required onboarding inputs:
   unsaved-change route guard; it is not a modal.
 - The importer may only open after a profile has reached `created` and has a verified pre-import
   backup.
+- Profile creation persists selected accounts and Exchange commissions atomically. Existing
+  Profiles use Settings > Accounts to add, reactivate or archive catalogue-backed relationships;
+  the final active Exchange cannot be archived.
 
 ## Migration workflow
 
@@ -99,6 +104,10 @@ Never audit secrets or raw workbook cell dumps.
 - repeated Profile creation does not bypass Profile/account authority validation or leak state;
 - disabled modules are unavailable to the profile but do not remove historical data;
 - global catalogue edits do not mutate profile overrides;
+- onboarding rejects a missing Exchange or missing Exchange commission without partially writing
+  the Profile;
+- Profile Settings account changes cannot mutate global provider metadata or remove the final
+  active Exchange;
 - one profile's onboarding changes cannot affect another profile;
 - import is blocked without a verified backup, approved map and explicit approval;
 - staged reconciliation detects counts or financial controls that differ;

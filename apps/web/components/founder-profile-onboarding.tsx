@@ -35,6 +35,7 @@ type SelectedAccount = {
   counts_in_cash_total: boolean;
   restrictions: string[];
   notes: string;
+  commission_rate: string;
 };
 
 type QuickActionPreset = {
@@ -56,7 +57,7 @@ type SelectedQuickAction = {
 
 type Stage = "profile" | "modules" | "accounts" | "quick-actions" | "review";
 
-type AccountColumnKey = "use" | "provider" | "type" | "status" | "opening_balance" | "cash_total";
+type AccountColumnKey = "use" | "provider" | "type" | "status" | "opening_balance" | "commission" | "cash_total";
 type AccountSortKey = "provider" | "type" | "status" | "opening_balance";
 
 const stages: Array<{ id: Stage; label: string }> = [
@@ -104,6 +105,7 @@ const accountColumns: Array<{ key: AccountColumnKey; label: string }> = [
   { key: "type", label: "Type" },
   { key: "status", label: "Status" },
   { key: "opening_balance", label: "Opening Balance" },
+  { key: "commission", label: "Commission" },
   { key: "cash_total", label: "Cash Total" },
 ];
 
@@ -113,6 +115,7 @@ const initialAccountColumnWidths: Record<AccountColumnKey, number> = {
   type: 160,
   status: 230,
   opening_balance: 210,
+  commission: 180,
   cash_total: 160,
 };
 
@@ -314,6 +317,7 @@ export function ProfileOnboarding() {
           counts_in_cash_total: true,
           restrictions: [],
           notes: "",
+          commission_rate: "",
         },
       };
     });
@@ -406,7 +410,22 @@ export function ProfileOnboarding() {
       return alwaysOnModules.every((module) => modules[module.id]);
     }
     if (target === "accounts") {
-      return !profile.main_bank_catalogue_id || Boolean(selectedAccounts[profile.main_bank_catalogue_id]);
+      const selectedExchanges = selectedRecords.filter(
+        (record) => record.account_type === "Exchange",
+      );
+      return Boolean(
+        selectedExchanges.length &&
+        selectedExchanges.every((exchange) => {
+          const commission = selectedAccounts[exchange.catalogue_id]?.commission_rate.trim();
+          return Boolean(
+            commission &&
+            Number.isFinite(Number(commission)) &&
+            Number(commission) >= 0 &&
+            Number(commission) <= 1
+          );
+        }) &&
+        (!profile.main_bank_catalogue_id || selectedAccounts[profile.main_bank_catalogue_id])
+      );
     }
     return true;
   }
@@ -423,13 +442,26 @@ export function ProfileOnboarding() {
       return { stage, field: "modules", message: "Review The Enabled Modules, Then Continue." };
     }
     if (stage === "accounts") {
-      return { stage, field: "accounts", message: "Select The Profile Accounts, Then Continue." };
+      const selectedExchanges = selectedRecords.filter(
+        (record) => record.account_type === "Exchange",
+      );
+      if (!selectedExchanges.length) {
+        return { stage, field: "accounts", message: "Select At Least One Exchange." };
+      }
+      const invalidExchange = selectedExchanges.find((exchange) => {
+        const commission = selectedAccounts[exchange.catalogue_id]?.commission_rate.trim();
+        return !commission || !Number.isFinite(Number(commission)) || Number(commission) < 0 || Number(commission) > 1;
+      });
+      if (invalidExchange) {
+        return { stage, field: `commission-${invalidExchange.catalogue_id}`, message: "Enter The Exchange Commission." };
+      }
+      return { stage, field: "accounts", message: "Review The Profile Accounts, Then Continue." };
     }
     if (stage === "quick-actions") {
       return { stage, field: "quick-actions", message: "Review Optional Quick Actions, Then Continue." };
     }
     return { stage: "review" as Stage, field: "create-profile", message: "Review The Profile And Create It." };
-  }, [profile.display_name, profile.profile_code, stage]);
+  }, [profile.display_name, profile.profile_code, selectedAccounts, selectedRecords, stage]);
   const onboardingTabs: LedgerEditorTabDefinition[] = stages.map((item, index) => {
     const priorInvalid = stages.slice(0, index).some((prior) => !stageIsValid(prior.id));
     const status = priorInvalid
@@ -462,7 +494,7 @@ export function ProfileOnboarding() {
   function goNext() {
     setError("");
     if (!stageIsValid(stage)) {
-      setError(stage === "profile" ? "Enter a display name and an uppercase Profile code." : "Review the required selections before continuing.");
+      setError(stage === "profile" ? "Enter a display name and an uppercase Profile code." : stage === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
       return;
     }
     const index = stages.findIndex((item) => item.id === stage);
@@ -484,7 +516,7 @@ export function ProfileOnboarding() {
       .find((item) => !stageIsValid(item.id));
     if (invalidStage) {
       setStage(invalidStage.id);
-      setError(invalidStage.id === "profile" ? "Enter a display name and an uppercase Profile code." : "Review the required selections before continuing.");
+      setError(invalidStage.id === "profile" ? "Enter a display name and an uppercase Profile code." : invalidStage.id === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
       return;
     }
     setError("");
@@ -626,6 +658,7 @@ export function ProfileOnboarding() {
                     <td><span className="table-chip table-chip-muted">{record.account_type}</span></td>
                     <td>{selected ? <label className="field-control table-inline-control"><span className="sr-only">{record.brand_name} Profile status</span><select aria-label={`${record.brand_name} Profile status`} onChange={(event) => updateSelectedAccount(record.catalogue_id, { status: event.target.value })} value={selected.status}>{accountStatuses.map((status) => <option key={status}>{status}</option>)}</select></label> : <span className="table-status">Not selected</span>}</td>
                     <td>{selected ? <label className="field-control table-inline-control"><span className="sr-only">{record.brand_name} opening balance</span><FinancialTextInput ariaLabel={`${record.brand_name} opening balance`} dataPdId={`profile-onboarding.account.${record.catalogue_id}.balance`} id={`profile-onboarding-${record.catalogue_id}-balance`} onBlur={() => updateSelectedAccount(record.catalogue_id, { opening_balance: normalizeTwoDecimals(selected.opening_balance) })} onChange={(value) => updateSelectedAccount(record.catalogue_id, { opening_balance: value })} value={selected.opening_balance} /></label> : "—"}</td>
+                    <td>{selected && record.account_type === "Exchange" ? <label className={`field-control table-inline-control${guidedTarget.field === `commission-${record.catalogue_id}` && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field={`commission-${record.catalogue_id}`}><span className="sr-only">{record.brand_name} commission</span><input aria-label={`${record.brand_name} commission`} inputMode="decimal" max="1" min="0" onChange={(event) => updateSelectedAccount(record.catalogue_id, { commission_rate: event.target.value })} placeholder="0.02" step="0.001" type="number" value={selected.commission_rate} /></label> : "—"}</td>
                     <td>{selected ? <label className="profile-filter-chip is-selected"><input checked={selected.counts_in_cash_total} onChange={(event) => updateSelectedAccount(record.catalogue_id, { counts_in_cash_total: event.target.checked })} type="checkbox" /><span>Included</span></label> : "—"}</td>
                   </tr>;
                 }) : <tr><td className="empty-cell" colSpan={accountColumns.length}>No GB providers match the current filters.</td></tr>}</tbody>

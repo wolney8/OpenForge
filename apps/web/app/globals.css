@@ -11198,6 +11198,11 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   table-layout: fixed;
 }
 
+.profile-account-authority-table {
+  min-width: 1310px;
+  table-layout: fixed;
+}
+
 .profile-onboarding-provider-cell {
   display: flex;
   min-width: 0;

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -11,9 +12,11 @@ from openforge_api.db import (
     create_account,
     get_account,
     get_bookmaker_catalogue_entry,
+    get_profile,
     list_accounts,
     list_bookmaker_catalogue,
     update_account,
+    upsert_profile_exchange_commission,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/accounts", tags=["accounts"])
@@ -108,6 +111,14 @@ class AccountResponse(AccountPayload):
     updated_at: str
 
 
+class ProfileAccountCatalogueSelectionPayload(BaseModel):
+    selected: bool
+    status: StatusValue = "Not Signed Up"
+    current_balance: str = Field(default="0.00", max_length=40)
+    counts_in_cash_total: bool = True
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+
+
 def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     values = payload.model_dump()
     legacy_lifecycle, legacy_restrictions = LEGACY_ACCOUNT_STATES.get(
@@ -182,6 +193,107 @@ def build_account_response(record: object) -> AccountResponse:
 @router.get("", response_model=list[AccountResponse])
 def list_profile_accounts(profile_id: str) -> list[AccountResponse]:
     return [build_account_response(row) for row in list_accounts(profile_id)]
+
+
+@router.put(
+    "/catalogue-selection/{catalogue_id}",
+    response_model=AccountResponse,
+)
+def set_profile_catalogue_account_selection(
+    profile_id: str,
+    catalogue_id: str,
+    payload: ProfileAccountCatalogueSelectionPayload,
+) -> AccountResponse:
+    if get_profile(profile_id) is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    catalogue = load_master_account_catalogue()
+    provider = next(
+        (
+            record
+            for record in catalogue.records
+            if record.catalogue_id == catalogue_id and record.status == "Active"
+        ),
+        None,
+    )
+    if provider is None:
+        raise HTTPException(status_code=422, detail="Active Account Catalogue entry not found")
+
+    existing = next(
+        (row for row in list_accounts(profile_id) if row.catalogue_id == catalogue_id),
+        None,
+    )
+    if not payload.selected and existing is None:
+        raise HTTPException(status_code=404, detail="Profile account selection not found")
+    if not payload.selected and provider.account_type == "Exchange":
+        other_exchanges = [
+            row
+            for row in list_accounts(profile_id)
+            if row.account_id != existing.account_id
+            and row.type == "Exchange"
+            and row.lifecycle_status != "Archived"
+            and row.status != "Archived"
+        ]
+        if not other_exchanges:
+            raise HTTPException(
+                status_code=422,
+                detail="A Profile must retain at least one Exchange",
+            )
+    if payload.selected and provider.account_type == "Exchange" and payload.commission_rate is None:
+        raise HTTPException(
+            status_code=422,
+            detail="An Exchange commission rate is required",
+        )
+
+    type_value: AccountTypeValue = (
+        "Bookie" if provider.account_type == "Bookmaker" else provider.account_type
+    )
+    status: StatusValue = payload.status if payload.selected else "Archived"
+    lifecycle: LifecycleValue = (
+        LEGACY_ACCOUNT_STATES.get(status.casefold(), ("Active", []))[0]
+        if payload.selected
+        else "Archived"
+    )
+    account_payload = AccountPayload(
+        account_id=existing.account_id if existing else None,
+        catalogue_id=provider.catalogue_id,
+        bookmaker_id=existing.bookmaker_id if existing else None,
+        account=provider.brand_name,
+        type=type_value,
+        counts_in_cash_total=payload.counts_in_cash_total,
+        channel=", ".join(
+            {"web": "Online", "mobile": "Mobile", "retail": "Retail"}[channel]
+            for channel in provider.operating_channels
+        ) or "Unknown",
+        status=status,
+        lifecycle_status=lifecycle,
+        restrictions=[] if existing is None else json.loads(existing.restrictions_json),
+        current_balance=(
+            payload.current_balance if payload.selected else existing.current_balance
+        ),
+        pending_withdrawal_amount=(
+            existing.pending_withdrawal_amount if existing else "0.00"
+        ),
+        last_balance_update=existing.last_balance_update if existing else "",
+        group_name=provider.operator_group,
+        platform=provider.platform,
+        sign_up_date=existing.sign_up_date if existing else "",
+        notes=existing.notes if existing else "",
+    )
+    resolved = resolve_catalogue_fields(account_payload)
+    saved = (
+        update_account(profile_id, existing.account_id, resolved)
+        if existing
+        else create_account(profile_id, resolved)
+    )
+    assert saved is not None
+    if payload.selected and provider.account_type == "Exchange":
+        assert payload.commission_rate is not None
+        upsert_profile_exchange_commission(
+            profile_id,
+            provider.brand_name,
+            str(payload.commission_rate),
+        )
+    return build_account_response(saved)
 
 
 @router.get("/{account_id}", response_model=AccountResponse)

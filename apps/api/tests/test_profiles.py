@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
 from openforge_api.db import (
+    connect,
     count_profile_audit_rows,
     list_profile_quick_add_loadout_favourites,
 )
@@ -91,6 +92,7 @@ def profile_onboarding_payload() -> dict[str, object]:
                 "status": "Active",
                 "opening_balance": "50.00",
                 "counts_in_cash_total": True,
+                "commission_rate": "0.02",
             },
             {
                 "catalogue_id": "BANK-DEMO-001",
@@ -242,6 +244,10 @@ def test_profile_onboarding_creates_settings_and_catalogue_accounts_atomically(
         "BANK-DEMO-001",
     }
     assert all(account["profile_id"] == profile_id for account in accounts)
+    commissions = client.get(f"/profiles/{profile_id}/exchange-commissions").json()
+    assert [(row["exchange_name"], row["commission_rate"]) for row in commissions] == [
+        ("Exchange A", "0.02")
+    ]
     favourites = list_profile_quick_add_loadout_favourites(profile_id)
     assert [(row.preset_id, row.ledger_type, row.favourite_order) for row in favourites] == [
         (quick_action_id, "Sportsbook", 1)
@@ -273,6 +279,53 @@ def test_profile_onboarding_rejects_duplicate_code_without_partial_writes(
     connection.close()
     assert profile_count == 1
     assert profile_account_count == 3
+
+
+def test_profile_onboarding_requires_exchange_and_commission_without_partial_write(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+
+    no_exchange = profile_onboarding_payload()
+    no_exchange["accounts"] = [
+        account
+        for account in no_exchange["accounts"]
+        if account["catalogue_id"] != "EXCHANGE-DEMO-001"
+    ]
+    missing_exchange = client.post("/profiles/onboarding", json=no_exchange)
+    assert missing_exchange.status_code == 422
+    assert missing_exchange.json()["detail"] == "Select at least one Exchange for this Profile"
+
+    no_commission = profile_onboarding_payload()
+    exchange = next(
+        account
+        for account in no_commission["accounts"]
+        if account["catalogue_id"] == "EXCHANGE-DEMO-001"
+    )
+    exchange.pop("commission_rate")
+    missing_commission = client.post("/profiles/onboarding", json=no_commission)
+    assert missing_commission.status_code == 422
+    assert missing_commission.json()["detail"]["catalogue_ids"] == [
+        "EXCHANGE-DEMO-001"
+    ]
+
+    with connect() as connection:
+        profile_count = connection.execute(
+            "SELECT COUNT(*) FROM profiles WHERE profile_code = 'PROFILE-001'"
+        ).fetchone()[0]
+        commission_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM profile_exchange_commissions
+            WHERE profile_id IN (
+              SELECT profile_id FROM profiles WHERE profile_code = 'PROFILE-001'
+            )
+            """
+        ).fetchone()[0]
+    assert profile_count == 0
+    assert commission_count == 0
 
 
 def test_profile_onboarding_can_be_reused_for_isolated_profiles(tmp_path: Path) -> None:

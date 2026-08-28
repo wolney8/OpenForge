@@ -20,6 +20,8 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003D | Profile financial/jurisdiction inputs | Format bankroll/fees consistently and default operating jurisdiction to GB | Financial input and Account Catalogue availability rules | COMPLETE |
 | PD-FR-003E | Onboarding Accounts table | Add eight-row pagination, sorting, resizing and consistent provider/status/balance controls | Signed-off ledger table controls | COMPLETE |
 | PD-FR-003F | Subscriber provisioning boundary | Registration approval creates or claims the same Profile type; it does not introduce another Profile model | Subscriber registration contract | COMPLETE |
+| PD-FR-003G | Exchange calculation authority | Require at least one selected Exchange and an explicit Profile commission during onboarding | Profile onboarding and financial-safety contracts | COMPLETE |
+| PD-FR-003H | Existing Profile account authority | Let Fund Managers add, reactivate or archive catalogue-backed Profile accounts without mutating global providers | Global catalogue/Profile state contract | COMPLETE |
 | PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -75,10 +77,22 @@ favourites in one transaction. Sportsbook, Free Bets and Cash Adjustments remain
 Casino and Extra Places can be disabled without removing historical rows. Required global Quick
 Actions remain inherited and cannot be disabled during onboarding.
 
+Every created Profile must select at least one Exchange and store an explicit decimal commission
+for each selected Exchange. Profile creation writes the selected accounts and commissions in the
+same transaction, so a failed commission check cannot leave a partial Profile. Existing Profiles
+manage the same catalogue-backed relationships from Profile Settings > Accounts. That surface can
+add or reactivate Bookmakers, Exchanges and Banks, archive unused relationships, and edit
+Profile-owned balances/statuses; it cannot change global provider identity or archive the last
+active Exchange.
+
 The implementation uses active GB global Account Catalogue identities and does not copy editable
 global provider metadata into Profile settings. Invalid providers, duplicate codes and invalid
 Quick Actions fail before any partial Profile is written. Focused automated coverage is complete;
 Fund Manager synthetic-data smoke verification remains recommended before using the flow operationally.
+
+Focused Exchange-authority verification on 2026-08-28 passed 22 Profile/account API tests, all
+226 web unit tests, four focused onboarding/Settings Playwright checks, web typecheck, web lint,
+targeted Ruff and `git diff --check`.
 
 The founder is the first operational use of this shared flow, not a special one-off Profile type.
 Later subscriber identity/invitation work will authorize access to an existing Profile rather than

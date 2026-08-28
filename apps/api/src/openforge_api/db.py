@@ -5240,6 +5240,7 @@ def create_profile_with_onboarding(
     timestamp = utc_now()
     profile_id = payload.get("profile_id") or f"profile-{uuid4().hex[:12]}"
     accounts = payload.get("accounts", [])
+    exchange_commissions = payload.get("exchange_commissions", [])
     quick_actions = payload.get("quick_actions", [])
     with connect() as connection:
         duplicate = connection.execute(
@@ -5382,6 +5383,22 @@ def create_profile_with_onboarding(
                 profile_id=profile_id,
                 action="onboarded",
                 payload=account_record,
+            )
+
+        for exchange in exchange_commissions:
+            connection.execute(
+                """
+                INSERT INTO profile_exchange_commissions (
+                  profile_id, exchange_name, commission_rate, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    profile_id,
+                    exchange["exchange_name"],
+                    exchange["commission_rate"],
+                    timestamp,
+                    timestamp,
+                ),
             )
 
         for action in quick_actions:
@@ -5940,7 +5957,8 @@ def create_fund_manager_combo_preset(
               offer_name, fixture_type, default_back_stake, minimum_back_odds,
               game, cash_stake, credit_amount, bonus_amount, wager_multiplier,
               required_spins, spin_stake, free_spins_awarded, free_spins_value,
-              default_strategy, allowed_strategies_json, quick_add_json, status, version, sort_order,
+              default_strategy, allowed_strategies_json, quick_add_json,
+              status, version, sort_order,
               created_at, updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,

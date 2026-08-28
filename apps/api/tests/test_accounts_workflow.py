@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
-from openforge_api.db import count_account_audit_rows
+from openforge_api.db import connect, count_account_audit_rows
 from openforge_api.main import app
 
 
@@ -67,6 +67,32 @@ def create_catalogue_bookmaker(client: TestClient, brand_name: str) -> dict[str,
     )
     catalogue_path.write_text(json.dumps(master), encoding="utf-8")
     return created
+
+
+def add_master_provider(
+    account_type: str,
+    brand_name: str,
+    catalogue_id: str,
+) -> None:
+    catalogue_path = Path(settings.account_catalogue_source)
+    master = json.loads(catalogue_path.read_text(encoding="utf-8"))
+    master["records"].append(
+        {
+            "catalogue_id": catalogue_id,
+            "account_type": account_type,
+            "operating_jurisdictions": ["GB"],
+            "operating_subdivisions": [],
+            "operating_channels": ["web", "mobile"],
+            "brand_name": brand_name,
+            "short_display_name": brand_name,
+            "operator_group": "Synthetic Group",
+            "platform": "Synthetic Platform",
+            "foreground_colour": "#FFFFFF",
+            "background_colour": "#455A64",
+            "source": "Synthetic fixture",
+        }
+    )
+    catalogue_path.write_text(json.dumps(master), encoding="utf-8")
 
 
 def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
@@ -220,3 +246,81 @@ def test_account_creation_requires_a_canonical_provider(tmp_path: Path) -> None:
     )
     assert created.status_code == 201
     assert created.json()["account"] == provider["brand_name"]
+
+
+def test_profile_catalogue_selection_requires_exchange_commission_and_retains_one_exchange(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    add_master_provider("Exchange", "Exchange A", "EXCHANGE-A")
+    add_master_provider("Exchange", "Exchange B", "EXCHANGE-B")
+    client = TestClient(app)
+    profile_id = "profile-catalogue-selection-001"
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profiles (
+              profile_id, display_name, profile_code, status, tracking_start_date,
+              management_fee_percent, investment_fee_percent, current_cash_snapshot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                profile_id,
+                "Catalogue Selection Profile",
+                "CATALOGUE-SELECTION-001",
+                "Active",
+                "2026-08-28",
+                "0.00",
+                "0.00",
+                "0.00",
+            ),
+        )
+
+    missing_commission = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-A",
+        json={"selected": True, "status": "Active", "current_balance": "10.00"},
+    )
+    assert missing_commission.status_code == 422
+
+    first = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-A",
+        json={
+            "selected": True,
+            "status": "Active",
+            "current_balance": "10.00",
+            "commission_rate": "0.02",
+        },
+    )
+    assert first.status_code == 200
+    assert first.json()["catalogue_id"] == "EXCHANGE-A"
+    commissions = client.get(
+        f"/profiles/{profile_id}/exchange-commissions"
+    ).json()
+    assert [(row["exchange_name"], row["commission_rate"]) for row in commissions] == [
+        ("Exchange A", "0.02")
+    ]
+
+    last_exchange = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-A",
+        json={"selected": False},
+    )
+    assert last_exchange.status_code == 422
+    assert last_exchange.json()["detail"] == "A Profile must retain at least one Exchange"
+
+    second = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-B",
+        json={
+            "selected": True,
+            "status": "Active",
+            "current_balance": "0.00",
+            "commission_rate": "0.015",
+        },
+    )
+    assert second.status_code == 200
+    archived = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-A",
+        json={"selected": False},
+    )
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "Archived"
+    assert archived.json()["lifecycle_status"] == "Archived"
