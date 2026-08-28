@@ -1,6 +1,6 @@
 export function FundManagerSiteSettings() {
   return (
-    <section className="content-subpanel stack" data-pd-id="fund-manager-site-settings.section">
+    <section className="content-panel stack" data-pd-id="fund-manager-site-settings.section">
       <div>
         <span className="eyebrow">Fund Manager only</span>
         <h2>Site Settings</h2>

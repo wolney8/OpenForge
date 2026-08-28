@@ -22,11 +22,11 @@ test("Casino common combo prefills an unsaved profile-aware draft", async ({ pag
   const beforeCount = (await beforeRows.json()).length;
 
   try {
-    await page.goto("/settings");
-    await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
-    await settingsDialog.getByLabel("Search common bet combos").fill("Demo Casino Spins Combo");
-    await settingsDialog.getByRole("button", { name: "Edit Demo Casino Spins Combo" }).first().click();
+    await page.goto("/settings#quick-actions");
+    const settingsSection = page.locator('[data-pd-id="common-bet-combos.section"]');
+    await settingsSection.getByLabel("Search common bet combos").fill("Demo Casino Spins Combo");
+    await settingsSection.getByRole("button", { name: "Edit Demo Casino Spins Combo" }).first().click();
+    const settingsDialog = page.getByRole("dialog", { name: "Edit common bet combo" });
     await expect(settingsDialog.getByLabel("Combo ledger")).toHaveValue("Casino");
     await expect(settingsDialog.getByLabel("Game / Slot")).toHaveValue("Demo Slot");
     await expect(settingsDialog.getByLabel("Preferred Strategy")).toHaveCount(0);
@@ -42,8 +42,8 @@ test("Casino common combo prefills an unsaved profile-aware draft", async ({ pag
     await expect(editor.getByLabel("Offer type")).toHaveValue("Free Spins");
     await expect(editor.getByLabel("Offer name")).toHaveValue("Demo Weekly Spins");
     await expect(editor.getByLabel("Game / slot")).toHaveValue("Demo Slot");
-    await expect(editor.getByLabel("Free spins awarded")).toHaveValue("20.00");
-    await expect(editor.getByLabel("Converted win amount")).toHaveValue("2.00");
+    await expect(editor.locator("label").filter({ hasText: "Free spins awarded" }).locator("input")).toHaveValue("20.00");
+    await expect(editor.locator("label").filter({ hasText: "Converted win amount" }).locator("input")).toHaveValue("2.00");
     await expect(editor.getByLabel("Date started")).toHaveValue("");
     await expect(editor.getByLabel("Date settling")).toHaveCount(0);
 

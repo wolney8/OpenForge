@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
@@ -97,7 +98,9 @@ export function CommonBetComboSettings() {
   const [rows, setRows] = useState<CommonBetCombo[]>([]);
   const [bookmakers, setBookmakers] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Archived" | "All">("Active");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
   const [bookmakerSearch, setBookmakerSearch] = useState("");
   const [draft, setDraft] = useState<CommonBetCombo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -138,11 +141,15 @@ export function CommonBetComboSettings() {
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (!showArchived && row.status === "Archived") return false;
+      if (statusFilter !== "All" && row.status !== statusFilter) return false;
       return !query || [row.name, row.ledger_type, ...(row.bookmakers || []), row.bookmaker, row.offer_type, row.bet_type]
         .some((value) => value.toLowerCase().includes(query));
     });
-  }, [rows, search, showArchived]);
+  }, [rows, search, statusFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedRows = visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const visibleBookmakers = useMemo(() => {
     const query = bookmakerSearch.trim().toLowerCase();
@@ -168,10 +175,10 @@ export function CommonBetComboSettings() {
     return `${values.length} bookmakers`;
   }
 
-  function openDialog() {
-    setDraft(null);
-    setSearch("");
-    setShowArchived(false);
+  function openEditor(row?: CommonBetCombo) {
+    setDraft(row
+      ? { ...row, bookmakers: row.bookmakers?.length ? row.bookmakers : row.bookmaker ? [row.bookmaker] : [] }
+      : { ...emptyDraft, sort_order: rows.length * 10 + 10 });
     setBookmakerSearch("");
     setError("");
     setIsOpen(true);
@@ -180,8 +187,6 @@ export function CommonBetComboSettings() {
   function closeDialog() {
     setIsOpen(false);
     setDraft(null);
-    setSearch("");
-    setShowArchived(false);
     setBookmakerSearch("");
     setError("");
   }
@@ -207,6 +212,7 @@ export function CommonBetComboSettings() {
       return;
     }
     setMessage(`${isEditing ? "Updated" : "Added"} ${draft.name}.`);
+    setIsOpen(false);
     setDraft(null);
     await load();
     setIsSaving(false);
@@ -223,48 +229,33 @@ export function CommonBetComboSettings() {
           <article className="stat-card"><span>Ledger Coverage</span><strong>{new Set(rows.filter((row) => row.status === "Active" && row.quick_add.enabled).flatMap((row) => row.quick_add.supported_ledgers)).size}</strong><small>Ledgers with actions</small></article>
           <article className="stat-card"><span>Archived</span><strong>{rows.filter((row) => row.status === "Archived").length}</strong><small>Retained for history</small></article>
         </section>
-        <button
-          className="button-link settings-card-action"
-          data-pd-id="common-bet-combos.manage"
-          onClick={openDialog}
-          type="button"
-        >
-          Manage Templates
-        </button>
+        {isLoading ? <LedgerLoadingIndicator label="Loading common bet combos" /> : null}
+        {error && !isOpen ? <p className="error-text" role="alert">{error}</p> : null}
+        <div className="table-toolbar settings-table-toolbar common-bet-combo-toolbar" data-pd-id="common-bet-combos.controls">
+          <label className="field-control table-search-field"><span>Search</span><input aria-label="Search common bet combos" data-pd-id="common-bet-combos.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label>
+          <div className="settings-table-filter-group">
+            <label className="field-control table-filter-field"><span>Status</span><select data-pd-id="common-bet-combos.status-filter" onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }} value={statusFilter}><option>Active</option><option>Archived</option><option>All</option></select></label>
+            <button className="button-link icon-text-action" data-pd-id="common-bet-combos.add" onClick={() => openEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Combo</span></button>
+          </div>
+        </div>
+        <LedgerPagination ariaLabel="Quick Actions" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={visibleRows.length} />
+        <div className="table-scroll" data-pd-id="common-bet-combos.table-scroll">
+          <table className="data-table"><thead><tr><th>Name</th><th>Ledger</th><th>Offer</th><th>Bookmaker</th><th>Status</th><th>Action</th></tr></thead><tbody>
+            {paginatedRows.map((row) => <tr key={row.preset_id}><td>{row.name}</td><td>{row.ledger_type}</td><td>{row.offer_type || "Not set"}</td><td>{bookmakerSummary(row)}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={`Edit ${row.name}`} className="icon-button" onClick={() => openEditor(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}
+            {!paginatedRows.length ? <tr><td className="dialog-table-empty-cell" colSpan={6}>No Quick Actions match these controls.</td></tr> : null}
+          </tbody></table>
+        </div>
+        <LedgerPagination ariaLabel="Quick Actions" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={visibleRows.length} />
       </section>
       {isOpen && typeof document !== "undefined" ? createPortal((
         <div className="modal-backdrop modal-backdrop-elevated">
-          <section aria-label="Manage common bet combos" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal common-bet-combo-modal" data-pd-id="common-bet-combos.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
+          <section aria-label={draft?.preset_id ? "Edit common bet combo" : "Add common bet combo"} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal common-bet-combo-modal" data-pd-id="common-bet-combos.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
             <header className="workflow-editor-modal-header">
-              <div><span className="eyebrow">Fund Manager Settings</span><h2>Common Bet Combos</h2></div>
+              <div><span className="eyebrow">Fund Manager Settings</span><h2>{draft?.preset_id ? "Edit Quick Action" : "Add Quick Action"}</h2></div>
               <button aria-label="Close common bet combos" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
             <div className="workflow-editor-modal-body stack common-bet-combo-body settings-management-modal-body">
-              {isLoading ? <LedgerLoadingIndicator label="Loading common bet combos" /> : null}
               {error ? <p className="error-text" role="alert">{error}</p> : null}
-              {!isLoading && !draft ? (
-                <>
-                  <div className="table-toolbar common-bet-combo-toolbar">
-                    <label className="field-control table-search-field"><span>Search</span><input aria-label="Search common bet combos" data-pd-id="common-bet-combos.search" onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
-                    <label className={`profile-filter-chip common-bet-combo-archive-toggle${showArchived ? " is-selected" : ""}`}>
-                      <input
-                        checked={showArchived}
-                        data-pd-id="common-bet-combos.show-archived"
-                        onChange={(event) => setShowArchived(event.target.checked)}
-                        type="checkbox"
-                      />
-                      <span>Show Archived</span>
-                    </label>
-                    <button className="button-link icon-text-action" data-pd-id="common-bet-combos.add" onClick={() => setDraft({ ...emptyDraft, sort_order: rows.length * 10 + 10 })} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Combo</span></button>
-                  </div>
-                  <div className="dialog-table-viewport" data-pd-id="common-bet-combos.table-scroll">
-                    <table className="data-table"><thead><tr><th>Name</th><th>Ledger</th><th>Offer</th><th>Bookmaker</th><th>Status</th><th>Action</th></tr></thead><tbody>
-                      {visibleRows.map((row) => <tr key={row.preset_id}><td>{row.name}</td><td>{row.ledger_type}</td><td>{row.offer_type || "Not set"}</td><td>{bookmakerSummary(row)}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={`Edit ${row.name}`} className="icon-button" onClick={() => setDraft({ ...row, bookmakers: row.bookmakers?.length ? row.bookmakers : row.bookmaker ? [row.bookmaker] : [] })} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}
-                      {!visibleRows.length ? <tr><td className="dialog-table-empty-cell" colSpan={6}>No Quick Actions match these controls.</td></tr> : null}
-                    </tbody></table>
-                  </div>
-                </>
-              ) : null}
               {draft ? (
                 <div className="stack common-bet-combo-editor" data-pd-id="common-bet-combos.editor">
                   <div className="form-grid common-bet-combo-form-grid">
@@ -282,7 +273,7 @@ export function CommonBetComboSettings() {
                 </div>
               ) : null}
             </div>
-            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={() => draft ? setDraft(null) : closeDialog()} type="button">{draft ? "Back to Combos" : "Close"}</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Combo"}</span></button> : null}</footer>
+            <footer className="workflow-editor-modal-footer"><button className="button-link" disabled={isSaving} onClick={closeDialog} type="button">Cancel</button>{draft ? <button className="modal-primary-button" disabled={!draft.name.trim() || isSaving} onClick={() => void save()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save Combo"}</span></button> : null}</footer>
           </section>
         </div>
       ), document.body) : null}

@@ -78,6 +78,13 @@ use the canonical primitive and computed styling.
 - Loading states show only controls that intentionally remain available. Do not leave duplicate or
   misleading close/actions visible.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
+- Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
+  for a genuinely nested card, inset section or secondary surface; do not use it to create a
+  visually smaller peer tab.
+- Settings authority data follows the signed-off inline table pattern: contextual search occupies
+  the left half, filters/actions occupy the right, and shared pagination appears above and below
+  the table. Reserve modal surfaces for add/edit/confirmation rather than duplicating the full
+  authority table in a dialog.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
 
 ## 4. Required automated evidence

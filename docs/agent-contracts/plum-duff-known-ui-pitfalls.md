@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-28: Peer Settings tabs used different panel and table structures
+
+- Area: Fund Manager Account Catalogue, Tracker Lists, Database, Site Settings and Quick Actions.
+- Root cause: peer tabs independently selected `content-panel` or `content-subpanel`, used
+  route-specific toolbar grids, and placed one authority table inside a management dialog.
+- Prevention: peer top-level Settings tabs use `content-panel stack`; authority tables render
+  inline with the shared left-search/right-filter toolbar and top/bottom pagination. Modals are for
+  add/edit/confirmation only. Nested cards may continue to use `content-subpanel stack`.
+- Test: `tests/e2e/settings-modal-consistency.spec.ts` checks panel parity, toolbar geometry,
+  inline Quick Actions pagination and bounded editor geometry in desktop and reduced dark views.
+
 ## 2026-08-28: Settings dialogs inherited fixed ledger-editor height
 
 - Area: Profile Lists, Profile Quick Actions, Fund Manager Quick Actions and Database dialogs.

@@ -37,6 +37,10 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-PR-030 | Fund Manager > Quick Actions | Add stat cards for active, required, archived and ledger coverage. | VERIFIED |
 | PD-PR-031 | Fund Manager > Tracker Lists | Add stat cards for active, archived, authority types and current-list values. | VERIFIED |
 | PD-PR-032 | Fund Manager > Database | Add stat cards for verified, failed, total and storage size. | VERIFIED |
+| PD-PR-033 | Fund Manager > Quick Actions | Render the Quick Actions authority table directly on the Settings page with shared eight-row top/bottom pagination; reserve the dialog for add/edit only. | VERIFIED |
+| PD-PR-034 | Fund Manager Settings data tabs | Align Account Catalogue, Tracker Lists, Database and Quick Actions toolbars: half-width search on the left and filter controls on the right. | VERIFIED |
+| PD-PR-035 | Fund Manager Settings panels | Use `content-panel stack` for equivalent top-level tab content; retain `content-subpanel stack` only for genuine nested cards/sections. | VERIFIED |
+| PD-PR-036 | Platform UI consistency | Complete a retrospective repeated-pattern audit, fix unambiguous LOW-risk Settings drift and register MEDIUM/HIGH-risk consolidation for review. | VERIFIED |
 
 ## Boundaries
 
@@ -54,7 +58,12 @@ approved Settings and Quick Actions batch until it is signed off.
 - Settings correction coverage: Profile offer-name CRUD and adaptive geometry, Profile Quick Action
   body portal/centering, Fund Manager Account Catalogue/Quick Actions/Tracker Lists/Database summary
   cards, and Quick Actions/Database dialog geometry pass focused Playwright coverage.
-- Remaining Fund Manager review: visual confirmation of the corrected dialogs in the local UI.
+- Fund Manager table parity coverage: inline Quick Actions add/edit flow and pagination, shared
+  toolbar geometry/order, top-level panel classes, responsive dark/reduced viewport behaviour and
+  keyboard dialog operation pass focused Playwright coverage.
+- Web validation: 223 unit tests, lint, typecheck and production build pass. The build retains the
+  pre-existing dynamic filesystem trace warning in `lib/local-db.ts`.
+- Remaining Fund Manager review: visual confirmation of the inline tables and toolbars in the local UI.
 
 ## Requirement Mapping
 
@@ -75,6 +84,9 @@ approved Settings and Quick Actions batch until it is signed off.
   blocked-provider state.
 - **Modal geometry:** PD-PR-010 owns the shared table viewport used by Common Bet Combos and the
   offer-name managers.
+- **Fund Manager table parity:** PD-PR-033 through PD-PR-035 make Database the inline-table and
+  pagination reference, use a shared search/filter toolbar across data tabs, and reserve
+  `content-subpanel` for nested content.
 
 ## Whole-Profile Transfer Boundary
 

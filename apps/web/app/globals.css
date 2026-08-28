@@ -11162,6 +11162,49 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 }
 
+/* Fund Manager Settings authority pages share one search/filter geometry. */
+.settings-table-toolbar {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(16rem, 1fr);
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.settings-table-toolbar > .table-search-field {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.settings-table-filter-group {
+  display: flex;
+  min-width: 0;
+  align-items: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.settings-table-filter-group > .field-control {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.settings-table-secondary-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 860px) {
+  .settings-table-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-table-filter-group,
+  .settings-table-secondary-actions {
+    justify-content: flex-start;
+  }
+}
+
 .spreadsheet-review-modal > * {
   min-width: 0;
   max-width: 100%;

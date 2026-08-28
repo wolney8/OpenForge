@@ -99,7 +99,6 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   page,
 }) => {
   await page.goto("/settings#quick-actions");
-  const comboManageButton = page.locator('[data-pd-id="common-bet-combos.manage"]');
   const comboSection = page.locator('[data-pd-id="common-bet-combos.section"]');
   await expect(comboSection).toBeVisible();
   const summary = comboSection.getByLabel("Quick Action summary");
@@ -107,20 +106,14 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   await expect(summary.getByText("Required", { exact: true })).toBeVisible();
   await expect(summary.getByText("Ledger Coverage", { exact: true })).toBeVisible();
   await expect(summary.getByText("Archived", { exact: true })).toBeVisible();
-  const comboActionGeometry = await Promise.all([
-    comboManageButton.boundingBox(),
-    comboSection.boundingBox(),
-  ]);
-  expect(comboActionGeometry[0]).not.toBeNull();
-  expect(comboActionGeometry[1]).not.toBeNull();
-  expect(comboActionGeometry[0]!.width).toBeLessThan(comboActionGeometry[1]!.width / 2);
-  await page.getByRole("button", { name: "Manage Templates" }).click();
-  const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
-  await expect(settingsDialog).toBeVisible();
+  await expect(comboSection.getByLabel("Quick Actions top controls")).toBeVisible();
+  await comboSection.getByLabel("Search common bet combos").fill("Midnite - Bet Builder Club");
   await expect(
-    settingsDialog.getByRole("cell", { name: "Midnite - Bet Builder Club", exact: true })
+    comboSection.getByRole("cell", { name: "Midnite - Bet Builder Club", exact: true })
   ).toBeVisible();
-  await settingsDialog.getByRole("button", { name: "Add Combo" }).click();
+  await comboSection.getByRole("button", { name: "Add Combo" }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Add common bet combo" });
+  await expect(settingsDialog).toBeVisible();
   const bookmakerChoices = settingsDialog.locator(
     '[data-pd-id="common-bet-combos.editor"] .common-bet-combo-choice-grid .profile-filter-chip'
   );
@@ -150,26 +143,23 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   expect(dialogGeometry.contentSized, JSON.stringify(dialogGeometry)).toBe(true);
   expect(dialogGeometry.centred, JSON.stringify(dialogGeometry)).toBe(true);
   await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
-  await page.getByRole("button", { name: "Manage Templates" }).click();
-  await expect(settingsDialog.getByRole("button", { name: "Add Combo" })).toBeVisible();
-  await expect(settingsDialog.locator('[data-pd-id="common-bet-combos.editor"]')).toHaveCount(0);
-  await expect(settingsDialog.getByText("Show Archived", { exact: true })).toBeVisible();
-  await settingsDialog.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
-  await settingsDialog.getByLabel("Status").selectOption("Archived");
-  await settingsDialog.getByRole("button", { name: "Save Combo" }).click();
+  await comboSection.getByLabel("Search common bet combos").fill("Unibet - Daily Uniboosts");
+  await comboSection.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit common bet combo" });
+  await editDialog.getByLabel("Status").selectOption("Archived");
+  await editDialog.getByRole("button", { name: "Save Combo" }).click();
   await page.getByRole("button", { name: "Dismiss notification" }).click();
   await expect(
-    settingsDialog.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
+    comboSection.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
   ).toHaveCount(0);
-  await settingsDialog.locator('[data-pd-id="common-bet-combos.show-archived"]').check();
+  await comboSection.locator('[data-pd-id="common-bet-combos.status-filter"]').selectOption("Archived");
   await expect(
-    settingsDialog.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
+    comboSection.getByRole("cell", { name: "Unibet - Daily Uniboosts", exact: true })
   ).toBeVisible();
-  await settingsDialog.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
-  await settingsDialog.getByLabel("Status").selectOption("Active");
-  await settingsDialog.getByRole("button", { name: "Save Combo" }).click();
+  await comboSection.getByRole("button", { name: "Edit Unibet - Daily Uniboosts" }).click();
+  await editDialog.getByLabel("Status").selectOption("Active");
+  await editDialog.getByRole("button", { name: "Save Combo" }).click();
   await page.getByRole("button", { name: "Dismiss notification" }).click();
-  await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
 
   await page.goto("/profiles");
   await page.getByRole("button", { name: "Add Opportunity" }).click();
