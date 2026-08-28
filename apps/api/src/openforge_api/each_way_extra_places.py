@@ -15,6 +15,7 @@ from openforge_api.db import (
     get_profile_exchange_commission,
     get_profile_exchange_commission_map,
     list_each_way_extra_places,
+    profile_module_enabled,
     update_each_way_extra_place,
 )
 
@@ -192,6 +193,8 @@ def get_profile_each_way_extra_place(
 def create_profile_each_way_extra_place(
     profile_id: str, payload: EachWayExtraPlacePayload
 ) -> dict[str, object]:
+    if not profile_module_enabled(profile_id, "each-way-extra-places"):
+        raise HTTPException(status_code=403, detail="Extra Places is disabled for this Profile")
     values = _with_profile_commissions(profile_id, payload.model_dump())
     return build_response(create_each_way_extra_place(profile_id, values))
 

@@ -15,6 +15,9 @@ from openforge_api.config import settings
 router = APIRouter(prefix="/account-catalogue/source", tags=["account-catalogue"])
 
 EvidenceField = Literal[
+    "account_type",
+    "brand_name",
+    "short_display_name",
     "operating_jurisdictions",
     "operating_subdivisions",
     "operating_channels",
@@ -26,6 +29,8 @@ EvidenceField = Literal[
     "licence_status",
     "canonical_domain",
     "status",
+    "foreground_colour",
+    "background_colour",
 ]
 
 

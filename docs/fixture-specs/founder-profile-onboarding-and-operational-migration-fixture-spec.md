@@ -1,6 +1,6 @@
-# Fixture Spec: Founder Profile Onboarding and Operational Migration
+# Fixture Spec: Profile Onboarding and Founder Operational Migration
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-08-28_
 
 ## Contract covered
 
@@ -13,7 +13,7 @@ Never add an operational workbook, copied row, real identity, URL, account numbe
 
 | ID | Scenario | Expected result |
 |---|---|---|
-| FOM-001 | Founder creates profile with required always-on modules | Sportsbook, Free Bets and Cash Adjustments enabled; audit entry created |
+| FOM-001 | Fund Manager creates a Profile with required always-on modules | Sportsbook, Free Bets and Cash Adjustments enabled; audit entry created |
 | FOM-002 | Founder disables Casino and Extra Place | Those new-entry routes are unavailable only for that profile |
 | FOM-003 | Founder sets Extra Place weekly loss budget | Explicit budget persists only when Extra Place is enabled |
 | FOM-004 | Founder links active catalogue bookmaker with opening balance | Account is profile-scoped and eligible for permitted ledgers |
@@ -25,3 +25,9 @@ Never add an operational workbook, copied row, real identity, URL, account numbe
 | FOM-010 | Financial control total mismatch | Reconciliation fails with ledger-level variance |
 | FOM-011 | Unauthenticated hosted request | Protected profile/import endpoint is denied |
 | FOM-012 | Authenticated owner requests another owner's profile | Denied without leaking profile data |
+| FOM-013 | Founder selects an unknown or inactive global Quick Action | Creation is rejected and no partial Profile is written |
+| FOM-014 | Founder selects an optional Quick Action for a disabled module | Review rejects the action; required actions remain inherited only for eligible modules |
+| FOM-015 | Founder creates a Profile with a selected main bank and opening balances | Catalogue identities and Profile-owned values persist atomically; cash snapshot equals included opening balances |
+| FOM-016 | Fund Manager repeats onboarding for a second Profile | A separate Profile is created with isolated settings/accounts; no first-Profile state is reused |
+| FOM-017 | Workbook account name resolves to a catalogue alias | Profile account state is staged against the stable catalogue ID; no global provider is created |
+| FOM-018 | Workbook includes active/restricted account state plus ledger rows | Dry run reports Profile account state and per-ledger row counts before any write |

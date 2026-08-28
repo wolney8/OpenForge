@@ -17,6 +17,7 @@ from openforge_api.db import (
     delete_casino_offer,
     get_casino_offer,
     list_casino_offers,
+    profile_module_enabled,
     update_casino_offer,
 )
 
@@ -136,6 +137,8 @@ def create_profile_casino_offer(
     profile_id: str,
     payload: CasinoOfferPayload,
 ) -> CasinoOfferResponse:
+    if not profile_module_enabled(profile_id, "casino-offers"):
+        raise HTTPException(status_code=403, detail="Casino Offers is disabled for this Profile")
     created = create_casino_offer(
         profile_id,
         {

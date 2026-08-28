@@ -1,6 +1,6 @@
 # Global Account Catalogue and Profile State Contract
 
-Status: Implemented ownership boundary; provider-source consolidation deferred before cutover
+Status: Implemented ownership boundary; master Account Catalogue is the new-selection authority
 
 ## Purpose
 
@@ -12,11 +12,13 @@ isolation and historical account state.
 
 - `data/reference/master-account-catalogue.json` is the validated Fund Manager source for
   provider metadata and supports Exchange, Bank, and Bookmaker records.
-- The legacy SQLite `bookmaker_catalogue` table remains the runtime selection authority for
-  existing Bookie profile accounts and remains compatible with current records.
-- These are not yet one persisted canonical source. The safe reconciliation requires a stable-ID
-  migration with profile-reference impact review before founder workbook cutover. Until then,
-  neither source may silently create or remap the other by display name.
+- New Profile onboarding and new Profile account creation resolve Bookmakers, Exchanges and Banks
+  only from the active Fund Manager Account Catalogue using stable `catalogue_id` values.
+- The legacy SQLite `bookmaker_catalogue` remains a compatibility/display source for existing
+  Bookie records until its references are migrated. It must not supply additional onboarding or
+  Add Account options, and it must never override master-catalogue identity by display name.
+- Existing legacy rows are preserved until the workbook/account reconciliation can map each one
+  to a stable master-catalogue identity without inventing or silently changing a provider.
 
 ## Fund Manager-owned catalogue
 
@@ -63,6 +65,8 @@ records compatible with its account type and operational eligibility.
 
 ## Import boundary
 
-Profile spreadsheet import resolves provider names against the runtime provider authority. It may create
-profile account state only after staging, reconciliation, explicit confirmation, and conflict
-review. It must not create a new canonical provider from a workbook value.
+Profile spreadsheet import resolves provider names and aliases against the Fund Manager Account
+Catalogue. It may create Profile account state only after staging, reconciliation, explicit
+confirmation, and conflict review. It must not create a new canonical provider from a workbook
+value. Workbook rows supply Profile-owned status, restrictions, balances and ledger activity;
+they do not supply or replace global provider identity.

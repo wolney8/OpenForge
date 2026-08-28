@@ -221,6 +221,37 @@ def test_verified_master_account_requires_evidence(tmp_path: Path, monkeypatch) 
     assert "Verified catalogue records require evidence" in response.json()["detail"]
 
 
+def test_catalogue_evidence_can_support_provider_identity_and_brand_theme(
+    tmp_path: Path, monkeypatch
+) -> None:
+    payload = catalogue_payload()
+    payload["records"][0]["confidence"] = "Verified"
+    payload["records"][0]["evidence"] = [
+        {
+            "source_url": "https://example.invalid/provider",
+            "source_title": "Synthetic provider source",
+            "publisher": "Synthetic Publisher",
+            "checked_at": "2026-08-28",
+            "supports": [
+                "account_type",
+                "brand_name",
+                "short_display_name",
+                "foreground_colour",
+                "background_colour",
+            ],
+            "notes": "Synthetic evidence only.",
+        }
+    ]
+    source_path = tmp_path / "identity-evidence-catalogue.json"
+    source_path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+
+    response = TestClient(app).get("/account-catalogue/source")
+
+    assert response.status_code == 200
+    assert response.json()["records"][0]["confidence"] == "Verified"
+
+
 def test_fund_manager_can_add_and_edit_master_account_record(
     tmp_path: Path, monkeypatch
 ) -> None:

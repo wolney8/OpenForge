@@ -1,7 +1,15 @@
 type ApiValidationIssue = {
   loc?: unknown[];
   msg?: unknown;
+  input?: unknown;
 };
+
+function formatRejectedInput(input: unknown): string {
+  if (typeof input === "string" || typeof input === "number" || typeof input === "boolean") {
+    return ` (received: ${String(input)})`;
+  }
+  return "";
+}
 
 function formatValidationIssue(issue: ApiValidationIssue): string {
   const location = Array.isArray(issue.loc)
@@ -11,7 +19,8 @@ function formatValidationIssue(issue: ApiValidationIssue): string {
         .join(" › ")
     : "";
   const message = typeof issue.msg === "string" ? issue.msg : "Invalid value";
-  return location ? `${location}: ${message}` : message;
+  const rejectedInput = formatRejectedInput(issue.input);
+  return location ? `${location}: ${message}${rejectedInput}` : `${message}${rejectedInput}`;
 }
 
 export function formatApiErrorBody(body: string, fallback = "Request failed."): string {

@@ -22,4 +22,22 @@ describe("formatApiErrorBody", () => {
       "Import failed."
     );
   });
+
+  it("identifies the rejected scalar value in a structured validation error", () => {
+    expect(
+      formatApiErrorBody(
+        JSON.stringify({
+          detail: [
+            {
+              loc: ["body", "catalogue", "records", 102, "evidence", 1, "supports", 0],
+              msg: "Input should be an allowed evidence field",
+              input: "brand_name",
+            },
+          ],
+        })
+      )
+    ).toBe(
+      "records › 102 › evidence › 1 › supports › 0: Input should be an allowed evidence field (received: brand_name)"
+    );
+  });
 });

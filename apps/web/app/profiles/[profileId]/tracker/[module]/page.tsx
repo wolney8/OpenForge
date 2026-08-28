@@ -9,7 +9,7 @@ import { SportsbookWorkflowShell } from "@/components/sportsbook-workflow-shell"
 import { TrackerSummaryShell } from "@/components/tracker-summary-shell";
 import { TrackerModuleTable } from "@/components/tracker-module-table";
 import { trackerModuleDefinitions, trackerTableModules } from "@/lib/tracker-modules";
-import { getModuleRows, getProfile } from "@/lib/tracker-data";
+import { getModuleRows, getProfile, getProfileOnboarding } from "@/lib/tracker-data";
 import type { TrackerModuleKey } from "@/lib/tracker-types";
 import {
   parseFeeReviewRecordIds,
@@ -46,6 +46,15 @@ export default async function TrackerModulePage({
 
   if (!profile || !moduleDefinition) {
     notFound();
+  }
+
+  const onboarding = await getProfileOnboarding(profileId);
+  if (
+    onboarding &&
+    (module === "casino-offers" || module === "each-way-extra-places") &&
+    !onboarding.enabled_modules.includes(module)
+  ) {
+    redirect(`/profiles/${profileId}/tracker/dashboard`);
   }
 
   const feeReviewLedgerByModule: Partial<Record<keyof typeof trackerModuleDefinitions, FeeReviewLedger>> = {

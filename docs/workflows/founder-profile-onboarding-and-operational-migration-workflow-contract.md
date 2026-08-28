@@ -1,10 +1,11 @@
-# Workflow Contract: Founder Profile Onboarding and Operational Migration
+# Workflow Contract: Profile Onboarding and Founder Operational Migration
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-08-28_
 
 ## Status and scope
 
-- Status: Planned; implementation requires a secure hosted runtime and owner authentication.
+- Status: Reusable Profile onboarding implemented locally and awaiting Fund Manager verification. Hosted
+  operational use still requires owner authentication and the Neon runtime.
 - Owner: Fund Manager.
 - Profile scoped: Yes.
 - Related planning gate: `docs/planning/founder-operational-migration-readiness.md`.
@@ -12,15 +13,17 @@ _Last updated: 2026-08-27_
 
 ## User goal
 
-The Fund Manager creates their own operational profile, configures its permitted modules, accounts,
-balances and defaults, then safely stages and reconciles their current tracker workbook before a
-parallel workbook/Plum Duff run.
+The Fund Manager creates an isolated Profile, configures its permitted modules, accounts, balances
+and defaults, and may repeat the same workflow for later subscriber Profiles. The founder's first
+Profile then safely stages and reconciles the current tracker workbook before a parallel
+workbook/Plum Duff run.
 
 ## Scope
 
-The workflow must use the existing profile model. It must not create a second registration system
-or expose subscriber registration, public sign-up, account credentials, or automatic account
-creation.
+The workflow uses one reusable Profile model and is not founder-exclusive. It does not create a
+second registration system or expose subscriber registration, public sign-up, account credentials,
+or automatic account creation. A later subscriber invitation grants scoped access to an existing
+Profile; it does not use a different Profile schema or duplicate this onboarding workflow.
 
 Required onboarding inputs:
 
@@ -30,12 +33,14 @@ Required onboarding inputs:
 - weekly Extra Place loss budget where Extra Place is enabled;
 - profile-account relationships selected from the global catalogue, with lifecycle, restriction
   and opening-value data entered explicitly;
-- profile Quick Add Loadout enablement and permitted default overrides.
+- required global Quick Action inheritance and up to four optional Profile favourites per enabled
+  ledger. Profile-specific permitted-default overrides remain managed in Profile Settings after
+  creation.
 
 ## Route and states
 
-- Entry: Fund Manager Dashboard -> Add profile -> founder onboarding.
-- States: `profile_details`, `modules`, `accounts_and_opening_values`, `loadouts`,
+- Entry: Fund Manager Dashboard -> Add profile -> Profile onboarding.
+- States: `profile_details`, `modules`, `accounts_and_opening_values`, `quick_actions`,
   `review_ready`, `created`.
 - The importer may only open after a profile has reached `created` and has a verified pre-import
   backup.
@@ -44,7 +49,7 @@ Required onboarding inputs:
 
 1. Receive the operational workbook through the sensitive source path; inspect sheet names and
    headings only until a source map is approved.
-2. Create the founder profile and its explicit module/account authority.
+2. Create the selected Profile and its explicit module/account authority.
 3. Map workbook sheets to the existing import contracts. Unknown source columns remain visible in
    review; they are never silently discarded.
 4. Stage a dry run to the selected profile and present counts, unmatched identities, rejected
@@ -80,7 +85,7 @@ Never audit secrets or raw workbook cell dumps.
 
 ## Tests required
 
-- founder profile creation does not bypass profile/account authority validation;
+- repeated Profile creation does not bypass Profile/account authority validation or leak state;
 - disabled modules are unavailable to the profile but do not remove historical data;
 - global catalogue edits do not mutate profile overrides;
 - one profile's onboarding changes cannot affect another profile;
@@ -90,6 +95,6 @@ Never audit secrets or raw workbook cell dumps.
 
 ## Playwright path
 
-Use synthetic profiles/accounts only: create founder profile -> configure modules/accounts/opening
-values -> review -> create -> start dry run -> inspect blocked/approved states. The workbook import
-path must use synthetic fixtures and never a real workbook.
+Use synthetic profiles/accounts only: create two isolated Profiles -> configure modules/accounts/
+opening values -> review -> create -> start founder dry run -> inspect blocked/approved states. The
+workbook import path must use synthetic fixtures and never a real workbook.

@@ -1,6 +1,7 @@
 # Founder Operational Migration Readiness
 
-_Status: planned release gate. This document authorises no real-data import or hosted cutover._
+_Status: active release gate. Reusable Profile onboarding is implemented locally; this document authorises
+no real-data import or hosted cutover._
 
 ## Objective
 
@@ -17,18 +18,21 @@ The API still has a local SQLite runtime. Neon connectivity, schema rehearsal, s
 verification exist, but the PostgreSQL runtime adapter and approved cutover are not complete.
 Profile selection is also not a substitute for authenticated Fund Manager access.
 
-## Founder Profile Onboarding
+## Reusable Profile Onboarding
 
-The Fund Manager creates the founder profile through the existing profile model, then configures:
+The Fund Manager creates the founder Profile, and later subscriber Profiles, through the same
+existing profile model at
+`/profiles/new`, then configures:
 
 - profile name, code, tracking start and fee settings;
 - enabled ledger modules;
 - weekly Extra Place loss budget;
 - eligible bookmaker, exchange, bank and cash accounts, including account lifecycle/restriction
   status and opening balances;
-- profile Quick Add Loadouts and account-specific overrides.
+- required global Quick Actions and optional Profile favourites. Account-specific overrides remain
+  available through Profile settings after creation.
 
-Proposed module policy for confirmation during implementation:
+Implemented module policy:
 
 | Module | Onboarding rule |
 | --- | --- |
@@ -38,7 +42,9 @@ Proposed module policy for confirmation during implementation:
 | Casino Offers | profile-toggleable |
 | Extra Place | profile-toggleable |
 
-No onboarding action may create an account silently or bypass the global account catalogue.
+No onboarding action may create an account silently or bypass the Fund Manager Account Catalogue.
+Future subscriber access attaches authorization to an existing isolated Profile; it does not
+create a second onboarding or Profile model.
 
 ## Migration Sequence
 
@@ -47,7 +53,8 @@ No onboarding action may create an account silently or bypass the global account
    data, screenshots or extracts.
 2. **Profile setup**: create and configure the founder profile, its account authorities, opening
    values, enabled modules and defaults before any row import.
-3. **Importer mapping**: map the supplied workbook to the existing account, Sportsbook, Free Bet,
+3. **Importer mapping**: resolve workbook provider aliases to stable Account Catalogue IDs; extract
+   Profile-owned signup/status/restriction/balance state; then map the supplied workbook to the existing account, Sportsbook, Free Bet,
    Casino, Cash Adjustment and Extra Place import contracts. Unknown columns remain visible in
    review and never disappear silently.
 4. **Dry run**: stage all rows to the selected profile. Report source-to-destination counts,

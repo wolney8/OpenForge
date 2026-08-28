@@ -71,6 +71,7 @@ LEGACY_ACCOUNT_STATES: dict[str, tuple[LifecycleValue, list[RestrictionValue]]] 
 
 class AccountPayload(BaseModel):
     account_id: str | None = Field(default=None, max_length=64)
+    catalogue_id: str | None = Field(default=None, max_length=64)
     bookmaker_id: str | None = Field(default=None, max_length=64)
     account: str = Field(min_length=1, max_length=120)
     type: AccountTypeValue
@@ -118,26 +119,33 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
         list(dict.fromkeys([*legacy_restrictions, *payload.restrictions]))
     )
     values.pop("restrictions", None)
+    master_catalogue = load_master_account_catalogue()
+    expected_master_type = "Bookmaker" if payload.type == "Bookie" else payload.type
+    master_entry = next(
+        (
+            record
+            for record in master_catalogue.records
+            if record.account_type == expected_master_type
+            and (
+                (payload.catalogue_id and record.catalogue_id == payload.catalogue_id)
+                or (
+                    not payload.catalogue_id
+                    and record.brand_name.casefold() == payload.account.strip().casefold()
+                )
+            )
+            and record.status == "Active"
+        ),
+        None,
+    )
+    if master_entry is None:
+        raise HTTPException(status_code=422, detail="Account catalogue entry not found")
+    values["catalogue_id"] = master_entry.catalogue_id
     if payload.type != "Bookie":
-        master_type = "Exchange" if payload.type == "Exchange" else "Bank"
-        catalogue = load_master_account_catalogue()
-        entry = next(
-            (
-                record
-                for record in catalogue.records
-                if record.account_type == master_type
-                and record.brand_name.casefold() == payload.account.strip().casefold()
-                and record.status == "Active"
-            ),
-            None,
-        )
-        if entry is None:
-            raise HTTPException(status_code=422, detail="Account catalogue entry not found")
         values["bookmaker_id"] = None
         values.update(
-            account=entry.brand_name,
-            group_name=entry.operator_group,
-            platform=entry.platform,
+            account=master_entry.brand_name,
+            group_name=master_entry.operator_group,
+            platform=master_entry.platform,
         )
         return values
     catalogue = (
@@ -152,24 +160,11 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
             None,
         )
     )
-    if catalogue is None:
-        raise HTTPException(status_code=422, detail="Bookmaker catalogue entry not found")
-    master_catalogue = load_master_account_catalogue()
-    master_entry = next(
-        (
-            record
-            for record in master_catalogue.records
-            if record.account_type == "Bookmaker"
-            and record.brand_name.casefold() == catalogue.brand_name.casefold()
-            and record.status == "Active"
-        ),
-        None,
-    )
-    values["bookmaker_id"] = catalogue.bookmaker_id
+    values["bookmaker_id"] = catalogue.bookmaker_id if catalogue is not None else None
     values.update(
-        account=master_entry.brand_name if master_entry else catalogue.brand_name,
-        group_name=master_entry.operator_group if master_entry else catalogue.operator_group,
-        platform=master_entry.platform if master_entry else catalogue.platform,
+        account=master_entry.brand_name,
+        group_name=master_entry.operator_group,
+        platform=master_entry.platform,
     )
     return values
 

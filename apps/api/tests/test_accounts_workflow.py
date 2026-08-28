@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -13,6 +14,23 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    settings.account_catalogue_source = str(tmp_path / "master-account-catalogue.json")
+    Path(settings.account_catalogue_source).write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "catalogue_name": "Synthetic Accounts Workflow Catalogue",
+                "updated_at": "2026-08-28",
+                "default_operating_context": {
+                    "jurisdiction": "GB",
+                    "subdivision": "",
+                    "channels": ["web", "mobile"],
+                },
+                "records": [],
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def create_catalogue_bookmaker(client: TestClient, brand_name: str) -> dict[str, object]:
@@ -28,7 +46,27 @@ def create_catalogue_bookmaker(client: TestClient, brand_name: str) -> dict[str,
         },
     )
     assert response.status_code == 201
-    return response.json()
+    created = response.json()
+    catalogue_path = Path(settings.account_catalogue_source)
+    master = json.loads(catalogue_path.read_text(encoding="utf-8"))
+    master["records"].append(
+        {
+            "catalogue_id": f"BOOKMAKER-TEST-{len(master['records']) + 1:03d}",
+            "account_type": "Bookmaker",
+            "operating_jurisdictions": ["GB"],
+            "operating_subdivisions": [],
+            "operating_channels": ["web", "mobile"],
+            "brand_name": brand_name,
+            "short_display_name": brand_name[:32],
+            "operator_group": "Demo Group",
+            "platform": "Demo Platform",
+            "foreground_colour": "#FFFFFF",
+            "background_colour": "#455A64",
+            "source": "Synthetic fixture",
+        }
+    )
+    catalogue_path.write_text(json.dumps(master), encoding="utf-8")
+    return created
 
 
 def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:

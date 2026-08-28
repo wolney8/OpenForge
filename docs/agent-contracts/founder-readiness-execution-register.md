@@ -9,10 +9,14 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 |---|---|---|---|---|
 | PD-FR-001 | Notifications | Reconcile triggers, timing, templates, routes, lifecycle, preferences and security tags | Fund Manager notification centre contract | COMPLETE |
 | PD-FR-002 | Account Catalogue | Fix structured import errors, validate rollback/conflicts and reconcile any partial attempt | Existing catalogue import/preflight workflow | COMPLETE |
-| PD-FR-003 | Founder Profile | Provide the minimum owner Profile onboarding using global providers plus Profile-owned state | Existing Profile and Accounts flows | NOT STARTED |
+| PD-FR-002A | Catalogue evidence import | Accept evidence for contracted provider identity/theme fields and identify rejected values | Master Account Catalogue schema | NEEDS VERIFICATION |
+| PD-FR-003 | Profile onboarding | Provide reusable Fund Manager-created Profile onboarding using global providers plus Profile-owned state | Existing Profile and Accounts flows | NEEDS VERIFICATION |
+| PD-FR-003A | Reusable onboarding | Use one repeatable Profile flow for founder now and subscriber Profiles later | `/profiles/new` and Profile isolation contract | NEEDS VERIFICATION |
+| PD-FR-003B | Provider authority | Make the Fund Manager Account Catalogue the only new Profile/account provider source | Global catalogue/Profile state contract | NEEDS VERIFICATION |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
+| PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
 | PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | NOT STARTED |
 | PD-FR-008 | Founder import | Import the real workbook transactionally only after all safety gates pass | Explicit confirmation required | BLOCKED |
 | PD-FR-009 | Reconciliation | Reconcile Profile, account, ledger and report totals against the live workbook | Workbook remains reconciliation authority | BLOCKED |
@@ -54,9 +58,27 @@ Focused verification on 2026-08-28 passed ten Account Catalogue API tests, all 2
 three Account Catalogue Playwright tests, web typecheck, web lint, targeted Ruff and
 `git diff --check`.
 
+## PD-FR-003 Reusable Profile Onboarding
+
+The local onboarding flow can be repeated to create isolated Profiles with explicit module authority, catalogue-linked
+Profile account state, opening balances, a main bank, Profile settings and optional Quick Action
+favourites in one transaction. Sportsbook, Free Bets and Cash Adjustments remain mandatory;
+Casino and Extra Places can be disabled without removing historical rows. Required global Quick
+Actions remain inherited and cannot be disabled during onboarding.
+
+The implementation uses active global Account Catalogue identities and does not copy editable
+global provider metadata into Profile settings. Invalid providers, duplicate codes and invalid
+Quick Actions fail before any partial Profile is written. Focused automated coverage is complete;
+Fund Manager synthetic-data smoke verification remains required before this item is signed off.
+
+The founder is the first operational use of this shared flow, not a special one-off Profile type.
+Later subscriber identity/invitation work will authorize access to an existing Profile rather than
+creating another onboarding architecture. Workbook extraction remains `PD-FR-006A` and is blocked
+from real-data execution until owner authentication and Neon persistence pass their safety gates.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import
-reconciliation, Founder Profile creation, owner-only authentication, Vercel protection, Neon CRUD,
+reconciliation, reusable Profile onboarding, owner-only authentication, Vercel protection, Neon CRUD,
 recovery verification, anonymised dry-run fixtures and an understandable reconciliation report all
 pass.

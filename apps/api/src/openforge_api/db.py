@@ -359,6 +359,19 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_onboarding_settings (
+          profile_id TEXT PRIMARY KEY,
+          iteration_number INTEGER NOT NULL DEFAULT 1,
+          starting_bankroll TEXT NOT NULL DEFAULT '0.00',
+          main_bank_catalogue_id TEXT NOT NULL DEFAULT '',
+          enabled_modules_json TEXT NOT NULL DEFAULT '[]',
+          preferences_json TEXT NOT NULL DEFAULT '{}',
+          onboarding_status TEXT NOT NULL DEFAULT 'created',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS profile_lookup_values (
           lookup_value_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -457,6 +470,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS accounts (
           account_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
+          catalogue_id TEXT,
           bookmaker_id TEXT,
           account TEXT NOT NULL,
           type TEXT NOT NULL,
@@ -1010,6 +1024,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "TEXT NOT NULL DEFAULT ''",
     )
     ensure_column(connection, "accounts", "bookmaker_id", "TEXT")
+    ensure_column(connection, "accounts", "catalogue_id", "TEXT")
     ensure_column(
         connection,
         "fund_manager_combo_presets",
@@ -4706,6 +4721,19 @@ class ProfileTrackerSettingsRecord:
 
 
 @dataclass(frozen=True)
+class ProfileOnboardingSettingsRecord:
+    profile_id: str
+    iteration_number: int
+    starting_bankroll: str
+    main_bank_catalogue_id: str
+    enabled_modules_json: str
+    preferences_json: str
+    onboarding_status: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
 class ProfileLookupValueRecord:
     lookup_value_id: str
     profile_id: str
@@ -4801,6 +4829,7 @@ class ProfileQuickActionRecord:
 class AccountRecord:
     account_id: str
     profile_id: str
+    catalogue_id: str | None
     bookmaker_id: str | None
     account: str
     type: str
@@ -4907,6 +4936,12 @@ def map_tracker_settings_row(row: sqlite3.Row) -> ProfileTrackerSettingsRecord:
     record = dict(row)
     record["use_global_date_range_toggle"] = bool(record["use_global_date_range_toggle"])
     return ProfileTrackerSettingsRecord(**record)
+
+
+def map_profile_onboarding_settings_row(
+    row: sqlite3.Row,
+) -> ProfileOnboardingSettingsRecord:
+    return ProfileOnboardingSettingsRecord(**dict(row))
 
 
 def map_lookup_value_row(row: sqlite3.Row) -> ProfileLookupValueRecord:
@@ -5173,6 +5208,209 @@ def get_profile(profile_id: str) -> ProfileRecord | None:
             (profile_id,),
         ).fetchone()
     return map_profile_row(row) if row else None
+
+
+def get_profile_onboarding_settings(
+    profile_id: str,
+) -> ProfileOnboardingSettingsRecord | None:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM profile_onboarding_settings WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+    return None if row is None else map_profile_onboarding_settings_row(row)
+
+
+def profile_module_enabled(profile_id: str, module: str) -> bool:
+    """Existing profiles remain compatible; onboarded profiles use explicit authority."""
+    record = get_profile_onboarding_settings(profile_id)
+    if record is None:
+        return True
+    try:
+        enabled_modules = json.loads(record.enabled_modules_json)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(enabled_modules, list) and module in enabled_modules
+
+
+def create_profile_with_onboarding(
+    payload: dict[str, Any],
+) -> tuple[ProfileRecord, ProfileOnboardingSettingsRecord]:
+    """Create the Profile, settings, and selected catalogue accounts atomically."""
+    timestamp = utc_now()
+    profile_id = payload.get("profile_id") or f"profile-{uuid4().hex[:12]}"
+    accounts = payload.get("accounts", [])
+    quick_actions = payload.get("quick_actions", [])
+    with connect() as connection:
+        duplicate = connection.execute(
+            "SELECT 1 FROM profiles WHERE profile_code = ?",
+            (payload["profile_code"],),
+        ).fetchone()
+        if duplicate is not None:
+            raise ValueError("Profile code must be unique")
+
+        connection.execute(
+            """
+            INSERT INTO profiles (
+              profile_id, display_name, profile_code, status, tracking_start_date,
+              management_fee_percent, investment_fee_percent, current_cash_snapshot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                profile_id,
+                payload["display_name"],
+                payload["profile_code"],
+                payload.get("status", "Active"),
+                payload["tracking_start_date"],
+                payload.get("management_fee_percent", "0.00"),
+                payload.get("investment_fee_percent", "0.00"),
+                payload["current_cash_snapshot"],
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_tracker_settings (
+              profile_id, active_date_preset, custom_start_date, custom_end_date,
+              range_back_days, range_forward_days, mug_bet_frequency_days,
+              free_bet_expiry_alert_window_days, use_global_date_range_toggle,
+              this_month_mode, default_free_bet_underlay_factor,
+              default_free_bet_overlay_factor, default_bonus_retention_percent,
+              default_exchange_name, dashboard_view_mode, weekly_profit_target,
+              monthly_profit_target, annual_profit_target,
+              weekly_extra_place_loss_budget, created_at, updated_at
+            ) VALUES (?, ?, '', '', 0, 0, 14, 3, 1, 'Calendar', '0.928', '1.3',
+              '0.7', ?, 'High-Density', '', '', '', ?, ?, ?)
+            """,
+            (
+                profile_id,
+                payload.get("active_date_preset", "This Month"),
+                payload.get("default_exchange_name", ""),
+                payload.get("weekly_extra_place_loss_budget", "15.00"),
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_onboarding_settings (
+              profile_id, iteration_number, starting_bankroll,
+              main_bank_catalogue_id, enabled_modules_json, preferences_json,
+              onboarding_status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'created', ?, ?)
+            """,
+            (
+                profile_id,
+                payload.get("iteration_number", 1),
+                payload.get("starting_bankroll", "0.00"),
+                payload.get("main_bank_catalogue_id", ""),
+                json.dumps(payload["enabled_modules"], sort_keys=True),
+                json.dumps(payload.get("preferences", {}), sort_keys=True),
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_audit (
+              audit_id, profile_id, action, changed_at, payload_json
+            ) VALUES (?, ?, 'profile_created_via_onboarding', ?, ?)
+            """,
+            (
+                f"profile-audit-{uuid4().hex}",
+                profile_id,
+                timestamp,
+                json.dumps(
+                    {
+                        "enabled_modules": payload["enabled_modules"],
+                        "iteration_number": payload.get("iteration_number", 1),
+                        "selected_catalogue_ids": [
+                            account["catalogue_id"] for account in accounts
+                        ],
+                        "selected_quick_actions": [
+                            {
+                                "preset_id": action["preset_id"],
+                                "ledger_type": action["ledger_type"],
+                            }
+                            for action in quick_actions
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+            ),
+        )
+        for account in accounts:
+            account_id = account.get("account_id") or f"AC-{uuid4().hex[:8].upper()}"
+            account_record = {
+                "account_id": account_id,
+                "profile_id": profile_id,
+                "catalogue_id": account["catalogue_id"],
+                "bookmaker_id": account.get("bookmaker_id"),
+                "account": account["account"],
+                "type": account["type"],
+                "counts_in_cash_total": int(bool(account["counts_in_cash_total"])),
+                "channel": account.get("channel", "Unknown"),
+                "status": account["status"],
+                "lifecycle_status": account["lifecycle_status"],
+                "restrictions_json": account.get("restrictions_json", "[]"),
+                "current_balance": account["current_balance"],
+                "pending_withdrawal_amount": account.get(
+                    "pending_withdrawal_amount", "0.00"
+                ),
+                "last_balance_update": account.get("last_balance_update", timestamp),
+                "group_name": account.get("group_name", ""),
+                "platform": account.get("platform", ""),
+                "sign_up_date": account.get("sign_up_date", ""),
+                "notes": account.get("notes", ""),
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            connection.execute(
+                """
+                INSERT INTO accounts (
+                  account_id, profile_id, catalogue_id, bookmaker_id, account, type,
+                  counts_in_cash_total, channel, status, lifecycle_status,
+                  restrictions_json, current_balance, pending_withdrawal_amount,
+                  last_balance_update, group_name, platform, sign_up_date, notes,
+                  created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                tuple(account_record.values()),
+            )
+            write_account_audit_entry(
+                connection=connection,
+                account_id=account_id,
+                profile_id=profile_id,
+                action="onboarded",
+                payload=account_record,
+            )
+
+        for action in quick_actions:
+            connection.execute(
+                """
+                INSERT INTO profile_quick_add_loadout_favourites (
+                  profile_id, preset_id, ledger_type, favourite_order,
+                  created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    profile_id,
+                    action["preset_id"],
+                    action["ledger_type"],
+                    action["favourite_order"],
+                    timestamp,
+                    timestamp,
+                ),
+            )
+
+        profile_row = connection.execute(
+            "SELECT * FROM profiles WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        onboarding_row = connection.execute(
+            "SELECT * FROM profile_onboarding_settings WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+    assert profile_row is not None and onboarding_row is not None
+    return map_profile_row(profile_row), map_profile_onboarding_settings_row(onboarding_row)
 
 
 def update_profile_metadata(
@@ -7462,6 +7700,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
     record = {
         "account_id": payload.get("account_id") or f"AC-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
+        "catalogue_id": payload.get("catalogue_id"),
         "bookmaker_id": payload.get("bookmaker_id"),
         "account": payload["account"],
         "type": payload["type"],
@@ -7486,6 +7725,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
             INSERT INTO accounts (
               account_id,
               profile_id,
+              catalogue_id,
               bookmaker_id,
               account,
               type,
@@ -7503,7 +7743,7 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
               notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -7529,6 +7769,7 @@ def update_account(
         return None
 
     updated = {
+        "catalogue_id": payload.get("catalogue_id"),
         "bookmaker_id": payload.get("bookmaker_id"),
         "account": payload["account"],
         "type": payload["type"],
@@ -7551,6 +7792,7 @@ def update_account(
             """
             UPDATE accounts
             SET
+              catalogue_id = ?,
               bookmaker_id = ?,
               account = ?,
               type = ?,
@@ -7570,6 +7812,7 @@ def update_account(
             WHERE profile_id = ? AND account_id = ?
             """,
             (
+                updated["catalogue_id"],
                 updated["bookmaker_id"],
                 updated["account"],
                 updated["type"],
