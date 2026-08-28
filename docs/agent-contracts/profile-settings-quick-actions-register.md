@@ -44,6 +44,9 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-UI-GOV-001 | UI operating guidance | Make reuse-before-creation and complete issue-batch reconciliation mandatory across agent, review, checklist and iconography guidance. | COMPLETE |
 | PD-UI-GOV-002 | Retrospective UI audit | Make bounded repeated-pattern inventory mandatory; fix LOW-risk drift and record MEDIUM/HIGH changes for review. | COMPLETE |
 | PD-PR-037 | Fund Manager and Profile Settings actions | Reuse the `Add Account` primary action treatment for equivalent create/manage actions. On authority pages, place the primary action below stat cards in the right Search/filter toolbar group before pagination. | COMPLETE |
+| PD-PR-038 | Fund Manager Settings > Account Catalogue toolbar | Keep Account Type and Status filters in the upper right control row; place Export, Import and Add Account together beneath them in one right-aligned action row. | COMPLETE |
+| PD-PR-039 | Fund Manager Settings > Account Catalogue import action | Rename `Check catalogue import` to `Import` while retaining the existing non-destructive preflight behaviour. | COMPLETE |
+| PD-PR-040 | Fund Manager Settings > Account Catalogue copy | Remove the catalogue-import explanatory preamble from the inline authority page and legacy management view. | COMPLETE |
 
 ## Boundaries
 

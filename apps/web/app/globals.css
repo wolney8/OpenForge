@@ -5745,11 +5745,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   overflow: auto;
 }
 
-.account-catalogue-import-help {
-  max-width: 48rem;
-  margin: 0;
-}
-
 .filter-dialog-clear-button {
   margin-left: auto;
   flex: 0 0 auto;
@@ -11190,6 +11185,24 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   min-width: 0;
 }
 
+.account-catalogue-control-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.account-catalogue-filter-row,
+.account-catalogue-action-row {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.account-catalogue-filter-row > .field-control {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
 .settings-table-secondary-actions {
   justify-content: flex-end;
 }
@@ -11202,6 +11215,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .settings-table-filter-group,
   .settings-table-secondary-actions {
     justify-content: flex-start;
+  }
+
+  .account-catalogue-filter-row,
+  .account-catalogue-action-row {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 

@@ -12,6 +12,29 @@ test("Fund Manager can inspect and prepare account catalogue changes from the ta
   await expect(summary.getByText("Active Providers", { exact: true })).toBeVisible();
   await expect(catalogue.locator('[data-pd-id="account-catalogue.table-scroll"]')).toBeVisible();
   await expect(catalogue.getByLabel("Account Catalogue top controls").getByText("Rows per page")).toBeVisible();
+  await expect(catalogue.getByRole("link", { name: "Export", exact: true })).toBeVisible();
+  await expect(catalogue.getByRole("button", { name: "Import", exact: true })).toBeVisible();
+  await expect(catalogue.getByText("Check catalogue import validates", { exact: false })).toHaveCount(0);
+
+  const controlGeometry = await catalogue.locator('[data-pd-id="account-catalogue.controls"]').evaluate((element) => {
+    const filters = element.querySelector<HTMLElement>(".account-catalogue-filter-row");
+    const actions = element.querySelector<HTMLElement>(".account-catalogue-action-row");
+    if (!filters || !actions) return null;
+    const filterRect = filters.getBoundingClientRect();
+    const actionRect = actions.getBoundingClientRect();
+    const actionControls = Array.from(actions.querySelectorAll<HTMLElement>("a, button"))
+      .map((control) => control.getBoundingClientRect());
+    return {
+      actionsBelowFilters: actionRect.top >= filterRect.bottom,
+      actionsShareRow: actionControls.every((rect) => Math.abs(rect.top - actionControls[0].top) < 2),
+      rightAligned: Math.abs(actionRect.right - filterRect.right) < 2,
+    };
+  });
+  expect(controlGeometry).not.toBeNull();
+  expect(controlGeometry!.actionsBelowFilters, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.actionsShareRow, JSON.stringify(controlGeometry)).toBe(true);
+  expect(controlGeometry!.rightAligned, JSON.stringify(controlGeometry)).toBe(true);
+
   await catalogue.getByLabel("Search Account Catalogue").fill("Smarkets");
   await expect(catalogue.getByRole("cell", { name: "Smarkets", exact: true })).toBeVisible();
 

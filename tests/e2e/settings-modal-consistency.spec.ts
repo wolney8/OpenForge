@@ -56,7 +56,7 @@ test("Fund Manager data tabs share panel and search-filter geometry", async ({ p
 
     const primaryAction = section.getByRole("button", { name: actionLabel, exact: true });
     await expect(primaryAction).toHaveClass(/modal-primary-button/);
-    await expect(primaryAction.locator("xpath=.." )).toHaveClass(/settings-table-filter-group/);
+    await expect(primaryAction.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' settings-table-filter-group ')][1]")).toHaveCount(1);
     const actionStyle = await primaryAction.evaluate((element) => {
       const style = getComputedStyle(element);
       return { height: style.height, radius: style.borderRadius, background: style.backgroundColor, color: style.color };
