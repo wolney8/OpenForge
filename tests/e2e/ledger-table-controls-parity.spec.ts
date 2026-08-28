@@ -126,7 +126,27 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
 
 test("Accounts uses canonical table controls, sorting, resizing, and neutral cash chips", async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 900 });
+  await page.addInitScript(() => {
+    if (!window.sessionStorage.getItem("accounts-hydration-tested")) {
+      window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "true");
+      window.sessionStorage.setItem("accounts-hydration-tested", "true");
+    }
+  });
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("Hydration failed")) {
+      hydrationErrors.push(message.text());
+    }
+  });
   await page.goto("/profiles/profile-demo-001/tracker/accounts");
+
+  await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
+  await expect.poll(() => hydrationErrors).toEqual([]);
+  await page.evaluate(() => {
+    window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "false");
+  });
+  await page.reload();
+  await expect.poll(() => hydrationErrors).toEqual([]);
 
   const quickView = page.getByRole("region", { name: "Account quick view" });
   await expect(quickView).toBeVisible();
@@ -195,6 +215,32 @@ test("Accounts uses canonical table controls, sorting, resizing, and neutral cas
 });
 
 test("Accounts Add Account uses the global catalogue for every provider type", async ({ page }) => {
+  let accountRequests = 0;
+  let accounts: Record<string, unknown>[] = [];
+  await page.route("**/profiles/profile-demo-001/accounts", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ contentType: "application/json", json: accounts, status: 200 });
+      return;
+    }
+    accountRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const request = route.request().postDataJSON() as Record<string, unknown>;
+    const saved = {
+      ...request,
+      account_id: "AC-CANONICAL-BANK",
+      profile_id: "profile-demo-001",
+      bookmaker_id: null,
+      restrictions: [],
+      pending_withdrawal_amount: "0.00",
+      last_balance_update: "",
+      sign_up_date: "",
+      notes: "",
+      created_at: "2026-08-28T12:00:00Z",
+      updated_at: "2026-08-28T12:00:00Z",
+    };
+    accounts = [saved];
+    await route.fulfill({ contentType: "application/json", json: saved, status: 201 });
+  });
   await page.route("**/account-catalogue/source", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -288,4 +334,14 @@ test("Accounts Add Account uses the global catalogue for every provider type", a
     "Exchange",
   );
   await expect(editor.getByLabel("Exchange commission")).toBeVisible();
+
+  await accountSelect.selectOption("BANK-CANONICAL-A");
+  const createButton = editor.getByRole("button", { name: "Create" });
+  await createButton.evaluate((element) => {
+    (element as HTMLButtonElement).click();
+    (element as HTMLButtonElement).click();
+  });
+  await expect(editor.getByRole("button", { name: "Saving" })).toBeDisabled();
+  await expect(editor).toHaveCount(0);
+  expect(accountRequests).toBe(1);
 });

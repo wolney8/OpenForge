@@ -34,6 +34,8 @@ workbook cutover are explicitly excluded._
 | PD-PR-026 | Accounts table controls | Column dragging now uses the rendered header width, default pagination is eight rows, and Type/Status widths protect chips. | DONE |
 | PD-PR-027 | Accounts editor | Restrictions are M3 pressed chips; Channel and editor-open toasts are removed; horizontal editor overflow is contained. | DONE |
 | PD-PR-028 | Profile provider inheritance | New accounts only select global catalogue providers; Not Signed Up filtering is available. Legacy duplicate/synthetic rows remain for an explicit, audited reconciliation. | PARTIALLY COMPLETE |
+| PD-PR-028A | Profile account management authority | Profile Accounts is the sole catalogue relationship/state editor; Profile Settings no longer duplicates the workflow. | VERIFIED |
+| PD-PR-028B | Duplicate provider writes | Repeated Create requests are rejected and account removal archives history while protecting the final Exchange. | VERIFIED |
 | PD-PR-029 | Accounts toolbar and filters | Search/loadouts/actions use stable toolbar slots; active controls carry the shared red badge/glow; issue filtering and modal spacing match ledger controls. | DONE |
 | PD-PR-030 | Accounts provider badges | The API overlays legacy bookmaker IDs with canonical global presentation metadata, so Accounts and ledger badges share one palette. | DONE |
 | PD-PR-031 | Extra Places operational routing | Fund Manager and report links use the `all-issues` Extra Places route state, which the ledger reads deterministically. | DONE |

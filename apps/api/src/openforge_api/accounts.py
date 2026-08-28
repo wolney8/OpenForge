@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
+    DuplicateProfileAccountError,
     create_account,
     create_account_with_exchange_commission,
     get_account,
@@ -224,8 +225,18 @@ def set_profile_catalogue_account_selection(
     if provider is None:
         raise HTTPException(status_code=422, detail="Active Account Catalogue entry not found")
 
+    expected_type = "Bookie" if provider.account_type == "Bookmaker" else provider.account_type
     existing = next(
-        (row for row in list_accounts(profile_id) if row.catalogue_id == catalogue_id),
+        (
+            row
+            for row in list_accounts(profile_id)
+            if row.catalogue_id == catalogue_id
+            or (
+                row.catalogue_id is None
+                and row.type == expected_type
+                and row.account.casefold() == provider.brand_name.casefold()
+            )
+        ),
         None,
     )
     if not payload.selected and existing is None:
@@ -250,9 +261,7 @@ def set_profile_catalogue_account_selection(
             detail="An Exchange commission rate is required",
         )
 
-    type_value: AccountTypeValue = (
-        "Bookie" if provider.account_type == "Bookmaker" else provider.account_type
-    )
+    type_value: AccountTypeValue = expected_type
     status: StatusValue = payload.status if payload.selected else "Archived"
     lifecycle: LifecycleValue = (
         LEGACY_ACCOUNT_STATES.get(status.casefold(), ("Active", []))[0]
@@ -286,11 +295,14 @@ def set_profile_catalogue_account_selection(
         notes=existing.notes if existing else "",
     )
     resolved = resolve_catalogue_fields(account_payload)
-    saved = (
-        update_account(profile_id, existing.account_id, resolved)
-        if existing
-        else create_account(profile_id, resolved)
-    )
+    try:
+        saved = (
+            update_account(profile_id, existing.account_id, resolved)
+            if existing
+            else create_account(profile_id, resolved)
+        )
+    except DuplicateProfileAccountError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     assert saved is not None
     if payload.selected and provider.account_type == "Exchange":
         assert payload.commission_rate is not None
@@ -317,11 +329,32 @@ def create_profile_account(profile_id: str, payload: AccountCreatePayload) -> Ac
             status_code=422,
             detail="An Exchange commission rate is required",
         )
-    created = create_account_with_exchange_commission(
-        profile_id,
-        resolve_catalogue_fields(payload),
-        str(payload.commission_rate) if payload.type == "Exchange" else None,
+    resolved = resolve_catalogue_fields(payload)
+    existing = next(
+        (
+            row
+            for row in list_accounts(profile_id)
+            if row.catalogue_id == resolved["catalogue_id"]
+            or (
+                row.account.casefold() == str(resolved["account"]).casefold()
+                and row.type == resolved["type"]
+            )
+        ),
+        None,
     )
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="This Account Catalogue provider is already linked to the Profile",
+        )
+    try:
+        created = create_account_with_exchange_commission(
+            profile_id,
+            resolved,
+            str(payload.commission_rate) if payload.type == "Exchange" else None,
+        )
+    except DuplicateProfileAccountError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return build_account_response(created)
 
 
@@ -334,4 +367,49 @@ def update_profile_account(
     updated = update_account(profile_id, account_id, resolve_catalogue_fields(payload))
     if updated is None:
         raise HTTPException(status_code=404, detail="Account not found for this profile")
+    return build_account_response(updated)
+
+
+@router.delete("/{account_id}", response_model=AccountResponse)
+def archive_profile_account(profile_id: str, account_id: str) -> AccountResponse:
+    existing = get_account(profile_id, account_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Account not found for this profile")
+    if existing.type == "Exchange":
+        other_exchanges = [
+            row
+            for row in list_accounts(profile_id)
+            if row.account_id != account_id
+            and row.type == "Exchange"
+            and row.lifecycle_status != "Archived"
+            and row.status != "Archived"
+        ]
+        if not other_exchanges:
+            raise HTTPException(
+                status_code=422,
+                detail="A Profile must retain at least one Exchange",
+            )
+    updated = update_account(
+        profile_id,
+        account_id,
+        {
+            "catalogue_id": existing.catalogue_id,
+            "bookmaker_id": existing.bookmaker_id,
+            "account": existing.account,
+            "type": existing.type,
+            "counts_in_cash_total": False,
+            "channel": existing.channel,
+            "status": "Archived",
+            "lifecycle_status": "Archived",
+            "restrictions_json": existing.restrictions_json,
+            "current_balance": existing.current_balance,
+            "pending_withdrawal_amount": existing.pending_withdrawal_amount,
+            "last_balance_update": existing.last_balance_update,
+            "group_name": existing.group_name,
+            "platform": existing.platform,
+            "sign_up_date": existing.sign_up_date,
+            "notes": existing.notes,
+        },
+    )
+    assert updated is not None
     return build_account_response(updated)

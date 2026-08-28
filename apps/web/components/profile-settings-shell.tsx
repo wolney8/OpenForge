@@ -2,17 +2,17 @@
 
 import { KeyboardEvent, useEffect, useState } from "react";
 
-import { AccountAuthoritySettings } from "@/components/account-authority-settings";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
+import { ProfileDemographicsSettings } from "@/components/profile-demographics-settings";
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { ProfileQuickAddLoadoutSettings } from "@/components/profile-quick-add-loadout-settings";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
 import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
+  { id: "demographics", label: "Demographics" },
   { id: "defaults", label: "Defaults" },
-  { id: "accounts", label: "Accounts" },
   { id: "import-export", label: "Import/Export" },
   { id: "offer-lists", label: "Lists" },
   { id: "commission", label: "Commission" },
@@ -26,7 +26,7 @@ function isSettingsSection(value: string): value is SettingsSection {
 }
 
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("defaults");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("demographics");
   const [profileName, setProfileName] = useState(profileId);
 
   useEffect(() => {
@@ -51,6 +51,10 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
   useEffect(() => {
     const syncFromHash = () => {
       const rawHashSection = window.location.hash.slice(1);
+      if (rawHashSection === "accounts") {
+        window.location.replace(`/profiles/${profileId}/tracker/accounts`);
+        return;
+      }
       const hashSection = rawHashSection === "spreadsheet-transfer"
         ? "import-export"
         : rawHashSection === "quick-add"
@@ -64,7 +68,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
       window.clearTimeout(timeoutId);
       window.removeEventListener("hashchange", syncFromHash);
     };
-  }, []);
+  }, [profileId]);
 
   function selectSection(section: SettingsSection) {
     setActiveSection(section);
@@ -117,6 +121,15 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
         </div>
 
         <section
+          aria-labelledby="profile-settings-tab-demographics"
+          className="analytics-tab-panel"
+          hidden={activeSection !== "demographics"}
+          id="profile-settings-panel-demographics"
+          role="tabpanel"
+        >
+          <ProfileDemographicsSettings />
+        </section>
+        <section
           aria-labelledby="profile-settings-tab-defaults"
           className="analytics-tab-panel"
           hidden={activeSection !== "defaults"}
@@ -124,15 +137,6 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
           role="tabpanel"
         >
           <TrackerDateSettings profileId={profileId} />
-        </section>
-        <section
-          aria-labelledby="profile-settings-tab-accounts"
-          className="analytics-tab-panel"
-          hidden={activeSection !== "accounts"}
-          id="profile-settings-panel-accounts"
-          role="tabpanel"
-        >
-          <AccountAuthoritySettings profileId={profileId} />
         </section>
         <section
           aria-labelledby="profile-settings-tab-import-export"

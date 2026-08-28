@@ -20,6 +20,10 @@ database_operation_lock = threading.RLock()
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 
 
+class DuplicateProfileAccountError(ValueError):
+    """Raised when a Profile already references the same canonical provider."""
+
+
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -2746,6 +2750,28 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
         "updated_at": utc_now(),
     }
     with connect() as connection:
+        duplicate = connection.execute(
+            """
+            SELECT account_id
+            FROM accounts
+            WHERE profile_id = ?
+              AND (
+                (catalogue_id IS NOT NULL AND catalogue_id = ?)
+                OR (LOWER(account) = LOWER(?) AND type = ?)
+              )
+            LIMIT 1
+            """,
+            (
+                profile_id,
+                record["catalogue_id"],
+                record["account"],
+                record["type"],
+            ),
+        ).fetchone()
+        if duplicate is not None:
+            raise DuplicateProfileAccountError(
+                "This Account Catalogue provider is already linked to the Profile"
+            )
         connection.execute(
             """
             INSERT INTO sportsbook_bets (

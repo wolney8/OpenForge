@@ -1,12 +1,47 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import { usePathname } from "next/navigation";
 
 export const TRACKER_ROUTE_RESELECT_EVENT = "openforge:tracker-route-reselected";
 
 let bodyScrollLockCount = 0;
 let previousBodyOverflow: string | null = null;
+const PERSISTED_STATE_EVENT = "plum-duff:persisted-state-change";
+const persistedStateCache = new Map<string, { raw: string | null; value: unknown }>();
+
+function notifyPersistedStateChange(storageKey: string) {
+  window.dispatchEvent(
+    new CustomEvent<{ storageKey: string }>(PERSISTED_STATE_EVENT, {
+      detail: { storageKey },
+    })
+  );
+}
+
+function subscribeToPersistedState(storageKey: string, onStoreChange: () => void) {
+  const handleLocalChange = (event: Event) => {
+    if ((event as CustomEvent<{ storageKey?: string }>).detail?.storageKey === storageKey) {
+      onStoreChange();
+    }
+  };
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === storageKey) onStoreChange();
+  };
+  window.addEventListener(PERSISTED_STATE_EVENT, handleLocalChange);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(PERSISTED_STATE_EVENT, handleLocalChange);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
 
 export function dispatchTrackerRouteReselect(href: string) {
   window.dispatchEvent(
@@ -17,25 +52,26 @@ export function dispatchTrackerRouteReselect(href: string) {
 }
 
 export function usePersistedBoolean(storageKey: string, defaultValue: boolean) {
-  const [value, setValue] = useState(() => {
-    if (typeof window === "undefined") {
-      return defaultValue;
-    }
-
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => subscribeToPersistedState(storageKey, onStoreChange),
+    [storageKey]
+  );
+  const getSnapshot = useCallback(() => {
     const storedValue = window.localStorage.getItem(storageKey);
-    if (storedValue === "true") {
-      return true;
-    }
-    if (storedValue === "false") {
-      return false;
-    }
+    if (storedValue === "true") return true;
+    if (storedValue === "false") return false;
     return defaultValue;
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, value ? "true" : "false");
-  }, [storageKey, value]);
-
+  }, [defaultValue, storageKey]);
+  const getServerSnapshot = useCallback(() => defaultValue, [defaultValue]);
+  const value = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const setValue: Dispatch<SetStateAction<boolean>> = useCallback(
+    (nextValue) => {
+      const resolved = typeof nextValue === "function" ? nextValue(getSnapshot()) : nextValue;
+      window.localStorage.setItem(storageKey, resolved ? "true" : "false");
+      notifyPersistedStateChange(storageKey);
+    },
+    [getSnapshot, storageKey]
+  );
   return [value, setValue] as const;
 }
 
@@ -44,31 +80,44 @@ export function usePersistedState<T>(
   defaultValue: T,
   preferDefaultValue = false
 ) {
-  const [value, setValue] = useState<T>(() => {
-    if (typeof window === "undefined") {
-      return defaultValue;
+  const [initialDefault] = useState(defaultValue);
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => subscribeToPersistedState(storageKey, onStoreChange),
+    [storageKey]
+  );
+  const getSnapshot = useCallback(() => {
+    const raw = window.localStorage.getItem(storageKey);
+    const cached = persistedStateCache.get(storageKey);
+    if (cached?.raw === raw) return cached.value as T;
+    if (preferDefaultValue && !cached) {
+      persistedStateCache.set(storageKey, { raw, value: initialDefault });
+      return initialDefault;
     }
-
-    if (preferDefaultValue) {
-      return defaultValue;
+    let parsed = initialDefault;
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw) as T;
+      } catch {
+        parsed = initialDefault;
+      }
     }
-
-    const storedValue = window.localStorage.getItem(storageKey);
-    if (!storedValue) {
-      return defaultValue;
-    }
-
-    try {
-      return JSON.parse(storedValue) as T;
-    } catch {
-      return defaultValue;
-    }
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(value));
-  }, [storageKey, value]);
-
+    persistedStateCache.set(storageKey, { raw, value: parsed });
+    return parsed;
+  }, [initialDefault, preferDefaultValue, storageKey]);
+  const getServerSnapshot = useCallback(() => initialDefault, [initialDefault]);
+  const value = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const setValue: Dispatch<SetStateAction<T>> = useCallback(
+    (nextValue) => {
+      const resolved = typeof nextValue === "function"
+        ? (nextValue as (current: T) => T)(getSnapshot())
+        : nextValue;
+      const raw = JSON.stringify(resolved);
+      persistedStateCache.set(storageKey, { raw, value: resolved });
+      window.localStorage.setItem(storageKey, raw);
+      notifyPersistedStateChange(storageKey);
+    },
+    [getSnapshot, storageKey]
+  );
   return [value, setValue] as const;
 }
 

@@ -23,6 +23,12 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003G | Exchange calculation authority | Require at least one selected Exchange and an explicit Profile commission during onboarding | Profile onboarding and financial-safety contracts | COMPLETE |
 | PD-FR-003H | Existing Profile account authority | Let Fund Managers add, reactivate or archive catalogue-backed Profile accounts without mutating global providers | Global catalogue/Profile state contract | COMPLETE |
 | PD-FR-003I | Accounts editor provider authority | Replace the legacy bookmaker-only Add Account selector with grouped canonical Bookmaker, Exchange and Bank providers | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003J | Accounts render regression | Make shared persisted ledger state SSR-stable so stored collapse values cannot cause hydration failure | Ledger UI persistence contract | COMPLETE |
+| PD-FR-003K | Profile account surface consolidation | Use Profile Accounts as the sole relationship/state editor and remove the duplicate Settings editor | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003K1 | Duplicate Profile provider prevention | Reject duplicate canonical or matching legacy provider relationships at API preflight and persistence write boundaries | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003K2 | Profile provider removal | Archive a Profile provider while retaining history and protecting the final active Exchange | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003K3 | Profile account offer availability | Show eligible configured Common Bet Combo / Quick Action offers in the consolidated account editor | Quick Actions and global catalogue contracts | COMPLETE |
+| PD-FR-003L | Profile demographics settings | Replace the removed Settings Accounts tab with a non-persisting demographic and protected-financial placeholder | Authentication and hosted persistence gates | DEFERRED |
 | PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -81,10 +87,15 @@ Actions remain inherited and cannot be disabled during onboarding.
 Every created Profile must select at least one Exchange and store an explicit decimal commission
 for each selected Exchange. Profile creation writes the selected accounts and commissions in the
 same transaction, so a failed commission check cannot leave a partial Profile. Existing Profiles
-manage the same catalogue-backed relationships from Profile Settings > Accounts. That surface can
+manage the same catalogue-backed relationships from Profile > Accounts. That sole surface can
 add or reactivate Bookmakers, Exchanges and Banks, archive unused relationships, and edit
 Profile-owned balances/statuses; it cannot change global provider identity or archive the last
 active Exchange.
+
+The former Profile Settings Accounts editor has been removed; its legacy hash redirects to the
+Accounts route. The Account editor resolves configured offer availability from the existing Quick
+Action/Common Bet Combo authority. Duplicate providers are rejected both before the API write and
+inside the serialized persistence boundary, while archival retains historical references.
 
 The Accounts ledger Add Account editor uses the same authority. Its single grouped Account selector
 lists active, operating-context-eligible Bookmakers, Exchanges and Banks from the Fund Manager

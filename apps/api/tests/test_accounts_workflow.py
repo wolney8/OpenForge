@@ -312,6 +312,37 @@ def test_account_creation_supports_canonical_exchange_and_bank_providers(
     assert bank.json()["catalogue_id"] == "BANK-A"
     assert bank.json()["type"] == "Bank"
 
+    duplicate_bank = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "catalogue_id": "BANK-A",
+            "account": "Bank A",
+            "type": "Bank",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Active",
+        },
+    )
+    assert duplicate_bank.status_code == 409
+    assert duplicate_bank.json()["detail"] == (
+        "This Account Catalogue provider is already linked to the Profile"
+    )
+    assert len(
+        [
+            row
+            for row in client.get("/profiles/profile-demo-001/accounts").json()
+            if row["catalogue_id"] == "BANK-A"
+        ]
+    ) == 1
+
+    archived_bank = client.delete(
+        f"/profiles/profile-demo-001/accounts/{bank.json()['account_id']}"
+    )
+    assert archived_bank.status_code == 200
+    assert archived_bank.json()["status"] == "Archived"
+    assert archived_bank.json()["lifecycle_status"] == "Archived"
+    assert archived_bank.json()["counts_in_cash_total"] is False
+
 
 def test_profile_catalogue_selection_requires_exchange_commission_and_retains_one_exchange(
     tmp_path: Path,
@@ -358,6 +389,18 @@ def test_profile_catalogue_selection_requires_exchange_commission_and_retains_on
     )
     assert first.status_code == 200
     assert first.json()["catalogue_id"] == "EXCHANGE-A"
+    repeated = client.put(
+        f"/profiles/{profile_id}/accounts/catalogue-selection/EXCHANGE-A",
+        json={
+            "selected": True,
+            "status": "Active",
+            "current_balance": "12.00",
+            "commission_rate": "0.02",
+        },
+    )
+    assert repeated.status_code == 200
+    assert repeated.json()["account_id"] == first.json()["account_id"]
+    assert len(client.get(f"/profiles/{profile_id}/accounts").json()) == 1
     commissions = client.get(
         f"/profiles/{profile_id}/exchange-commissions"
     ).json()

@@ -12,13 +12,22 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await page.goto(settingsPath);
 
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
+  const demographics = tabs.getByRole("tab", { name: "Demographics" });
   const defaults = tabs.getByRole("tab", { name: "Defaults" });
   const importExport = tabs.getByRole("tab", { name: "Import/Export" });
 
-  await expect(defaults).toHaveAttribute("aria-selected", "true");
+  await expect(demographics).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: /Settings for .* Profile/ })).toBeVisible();
-  await expect(page.getByRole("tabpanel", { name: "Defaults" })).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Demographics" })).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Defaults" })).toBeHidden();
   await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeHidden();
+  await expect(page.getByLabel("Profile demographics").getByLabel("Full Name")).toBeDisabled();
+
+  await demographics.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(defaults).toBeFocused();
+  await expect(defaults).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(`${settingsPath}#defaults`);
   await expect(
     page.getByLabel("Tracker date settings").getByRole("button", { name: "Save" })
   ).toBeDisabled();
@@ -32,7 +41,6 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
     )
     .toEqual(["on", "off"]);
 
-  await defaults.focus();
   await page.keyboard.press("ArrowRight");
   await expect(importExport).toBeFocused();
   await expect(importExport).toHaveAttribute("aria-selected", "true");
@@ -169,116 +177,12 @@ test("profile Quick Action editor is body-portalled and content-sized", async ({
   expect(geometry.pageOverflow).toBe(false);
 });
 
-test("Profile Accounts reuses the global catalogue and protects the last Exchange", async ({ page }) => {
-  await page.setViewportSize({ width: 1000, height: 900 });
-  const catalogue = {
-    schema_version: "1.0",
-    catalogue_name: "Synthetic Settings Catalogue",
-    updated_at: "2026-08-28",
-    default_operating_context: { jurisdiction: "GB", subdivision: "", channels: ["web"] },
-    records: [
-      {
-        catalogue_id: "BOOKMAKER-A",
-        account_type: "Bookmaker",
-        operating_jurisdictions: ["GB"],
-        operating_subdivisions: [],
-        operating_channels: ["web"],
-        brand_name: "Bookmaker A",
-        short_display_name: "Bookmaker A",
-        operator_group: "Synthetic Group",
-        platform: "Synthetic Platform",
-        status: "Active",
-        foreground_colour: "#FFFFFF",
-        background_colour: "#C62828",
-      },
-      {
-        catalogue_id: "EXCHANGE-A",
-        account_type: "Exchange",
-        operating_jurisdictions: ["GB"],
-        operating_subdivisions: [],
-        operating_channels: ["web"],
-        brand_name: "Exchange A",
-        short_display_name: "Exchange A",
-        operator_group: "Synthetic Group",
-        platform: "Synthetic Platform",
-        status: "Active",
-        foreground_colour: "#FFFFFF",
-        background_colour: "#00695C",
-      },
-    ],
-  };
-  let accounts = [
-    {
-      account_id: "AC-EXCHANGE-A",
-      catalogue_id: "EXCHANGE-A",
-      account: "Exchange A",
-      type: "Exchange",
-      status: "Active",
-      lifecycle_status: "Active",
-      current_balance: "20.00",
-      counts_in_cash_total: true,
-    },
-  ];
-  let submittedBody: Record<string, unknown> | null = null;
-
-  await page.route("**/account-catalogue/source", async (route) => {
-    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
-  });
-  await page.route("**/profiles/profile-demo-001/accounts", async (route) => {
-    await route.fulfill({ contentType: "application/json", body: JSON.stringify(accounts) });
-  });
-  await page.route("**/profiles/profile-demo-001/exchange-commissions", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify([
-        { profile_id: "profile-demo-001", exchange_name: "Exchange A", commission_rate: "0.02" },
-      ]),
-    });
-  });
-  await page.route(
-    "**/profiles/profile-demo-001/accounts/catalogue-selection/BOOKMAKER-A",
-    async (route) => {
-      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
-      const created = {
-        account_id: "AC-BOOKMAKER-A",
-        catalogue_id: "BOOKMAKER-A",
-        account: "Bookmaker A",
-        type: "Bookie",
-        status: submittedBody.status,
-        lifecycle_status: "Active",
-        current_balance: submittedBody.current_balance,
-        counts_in_cash_total: true,
-      };
-      accounts = [...accounts, created];
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify(created) });
-    },
-  );
+test("Profile Settings removes duplicate account management and redirects its legacy hash", async ({ page }) => {
+  await page.goto(settingsPath);
+  const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
+  await expect(tabs.getByRole("tab", { name: "Accounts" })).toHaveCount(0);
 
   await page.goto(`${settingsPath}#accounts`);
-  const panel = page.getByRole("tabpanel", { name: "Accounts" });
-  await expect(panel).toBeVisible();
-  await expect(panel.getByRole("heading", { name: "Choose Accounts" })).toBeVisible();
-  await expect(panel.getByLabel("Profile Account Catalogue rows per page").first()).toHaveValue("8");
-  const exchangeArchive = panel.getByRole("button", { name: "Archive Exchange A" });
-  await expect(exchangeArchive).toBeDisabled();
-  await expect(exchangeArchive).toHaveAttribute("title", /retain at least one Exchange/);
-
-  await panel.getByLabel("Search Profile Account Catalogue").fill("Bookmaker A");
-  const brand = panel.locator(".account-brand-pill", { hasText: "Bookmaker A" });
-  await expect(brand).toHaveCSS("background-color", "rgb(198, 40, 40)");
-  await panel.getByLabel("Bookmaker A Profile status").selectOption("Active");
-  await panel.getByRole("button", { name: "Add" }).click();
-  await expect.poll(() => submittedBody).not.toBeNull();
-  expect(submittedBody).toMatchObject({ selected: true, status: "Active" });
-
-  const geometry = await panel.evaluate((element) => ({
-    pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-    localOverflow: Boolean(
-      element.querySelector<HTMLElement>(".table-scroll")?.scrollWidth &&
-      element.querySelector<HTMLElement>(".table-scroll")!.scrollWidth >
-        element.querySelector<HTMLElement>(".table-scroll")!.clientWidth
-    ),
-  }));
-  expect(geometry.pageOverflow, JSON.stringify(geometry)).toBe(false);
-  expect(geometry.localOverflow, JSON.stringify(geometry)).toBe(true);
+  await expect(page).toHaveURL("/profiles/profile-demo-001/tracker/accounts");
+  await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
 });

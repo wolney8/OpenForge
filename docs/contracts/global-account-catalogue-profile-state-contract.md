@@ -47,6 +47,20 @@ Each account record remains profile scoped and owns:
 Profile records never mutate global provider metadata. A profile may only select catalogue
 records compatible with its account type and operational eligibility.
 
+Each Profile may have only one relationship to a canonical provider. Creation is rejected when
+the same `catalogue_id`, or an unmigrated legacy row with the same provider name and type, already
+exists for that Profile. This invariant is enforced again inside the persistence write boundary so
+repeated or concurrent Create actions cannot create a second relationship.
+
+Profile account removal is archival: the relationship is marked Archived, excluded from current
+cash totals, and retained for historical ledger/audit references. The final active Exchange cannot
+be removed because calculation workflows require an explicit Profile Exchange and commission.
+Reactivating an archived provider updates the existing relationship rather than creating another.
+
+Offer availability displayed for a Profile account is resolved from the existing Fund Manager
+Common Bet Combo / Quick Action authority and its Profile eligibility overrides. It is not copied
+into the account row as another source of provider or offer metadata.
+
 ## Transfer rules
 
 - Global catalogue export returns the validated master source with stable IDs.
@@ -59,8 +73,12 @@ records compatible with its account type and operational eligibility.
 ## Settings ownership
 
 - Fund Manager Settings: global catalogue and global template/loadout definitions.
-- Profile Settings: profile defaults, spreadsheet transfer, profile commission overrides,
-  profile account state/authority summary, and profile eligibility/favourite loadout controls.
+- Profile Accounts: the sole Profile relationship/state management surface. It adds canonical
+  providers, edits balances/status/restrictions, displays resolved offer availability, and archives
+  relationships without exposing global provider identity fields for editing.
+- Profile Settings: demographics, profile defaults, spreadsheet transfer, profile commission
+  overrides, and profile eligibility/favourite loadout controls. A legacy `#accounts` deep link
+  redirects to Profile Accounts rather than maintaining a second account editor.
 - Profile lookup lists must not create global providers, exchanges, groups, or platforms.
 
 ## Import boundary

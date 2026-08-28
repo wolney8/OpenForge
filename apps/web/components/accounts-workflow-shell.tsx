@@ -85,6 +85,17 @@ type ExchangeCommissionRecord = {
   commission_rate: string;
 };
 
+type ProfileOfferAction = {
+  preset_id: string;
+  label: string;
+  ledger_type: string;
+  bookmaker: string;
+  availability: "eligible" | "limited" | "blocked";
+  availability_reason: string;
+  enabled: boolean;
+  archived: boolean;
+};
+
 type AccountTableMode =
   | "All"
   | "Recent"
@@ -239,6 +250,11 @@ function parseChannels(value: string) {
     .filter(Boolean);
 }
 
+async function readApiError(response: Response, fallback: string) {
+  const body = await response.json().catch(() => null) as { detail?: string } | null;
+  return typeof body?.detail === "string" ? body.detail : fallback;
+}
+
 function hasAccountIssue(row: AccountRecord) {
   return (
     row.lifecycle_status === "Not Signed Up" ||
@@ -267,6 +283,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
   const [masterAccountCatalogue, setMasterAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [exchangeCommissions, setExchangeCommissions] = useState<ExchangeCommissionRecord[]>([]);
+  const [offerActions, setOfferActions] = useState<ProfileOfferAction[]>([]);
   const exchangeCommissionsRef = useRef<ExchangeCommissionRecord[]>([]);
   const [masterAccountContext, setMasterAccountContext] = useState<MasterAccountOperatingContext>({
     jurisdiction: "",
@@ -296,10 +313,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [pageSize, setPageSize] = useState(8);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
   const filterDialogRef = useRef<HTMLElement | null>(null);
   const isCreatingDraftRef = useRef(false);
+  const saveInFlightRef = useRef(false);
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
@@ -411,6 +431,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           exchangeCommissionsRef.current = commissions;
           setExchangeCommissions(commissions);
         }),
+        fetch(
+          `${apiBaseUrl}/fund-manager/common-bet-combos/profile-overrides/${profileId}?include_hidden=true`,
+          { cache: "no-store" }
+        ).then(async (response) => {
+          if (!response.ok) return;
+          setOfferActions((await response.json()) as ProfileOfferAction[]);
+        }),
       ]).catch((error: Error) => {
         setErrorMessage(error.message);
       });
@@ -432,12 +459,37 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         masterAccountContext.channels,
         masterAccountContext.subdivision
       ))
+      .filter((record) => !rows.some((row) => {
+        const expectedType = record.account_type === "Bookmaker" ? "Bookie" : record.account_type;
+        return row.catalogue_id === record.catalogue_id || (
+          row.type === expectedType && row.account.toLocaleLowerCase() === record.brand_name.toLocaleLowerCase()
+        );
+      }))
       .sort((left, right) =>
         left.account_type.localeCompare(right.account_type, "en-GB") ||
         left.brand_name.localeCompare(right.brand_name, "en-GB", { numeric: true })
       ),
-    [masterAccountCatalogue, masterAccountContext]
+    [masterAccountCatalogue, masterAccountContext, rows]
   );
+
+  const selectedOfferActions = useMemo(() => {
+    const accountName = formState.account.trim().toLocaleLowerCase();
+    if (!accountName) return [];
+    const unique = new Map<string, ProfileOfferAction>();
+    for (const action of offerActions) {
+      if (
+        action.enabled &&
+        !action.archived &&
+        action.availability !== "blocked" &&
+        action.bookmaker.trim().toLocaleLowerCase() === accountName
+      ) {
+        unique.set(`${action.ledger_type}:${action.label}`, action);
+      }
+    }
+    return [...unique.values()].sort((left, right) =>
+      left.ledger_type.localeCompare(right.ledger_type) || left.label.localeCompare(right.label)
+    );
+  }, [formState.account, offerActions]);
 
   const accountQuickView = useMemo(() => {
     const activeAccounts = rows.filter((row) => row.status === "Active").length;
@@ -688,6 +740,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveInFlightRef.current || isSaving || isArchiving) return;
     setErrorMessage("");
     const isEditing = Boolean(selectedId);
     if (!isEditing && !formState.catalogue_id) {
@@ -710,35 +763,66 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       : `${apiBaseUrl}/profiles/${profileId}/accounts`;
     const method = isEditing ? "PUT" : "POST";
 
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...formState,
-        commission_rate:
-          !isEditing && formState.type === "Exchange"
-            ? formState.commission_rate
-            : undefined,
-        status: formState.lifecycle_status,
-        last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
-      }),
-    });
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formState,
+          commission_rate:
+            !isEditing && formState.type === "Exchange"
+              ? formState.commission_rate
+              : undefined,
+          status: formState.lifecycle_status,
+          last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
+        }),
+      });
 
-    if (!response.ok) {
-      setErrorMessage(await response.text());
-      return;
+      if (!response.ok) {
+        setErrorMessage(await readApiError(response, "Account could not be saved."));
+        return;
+      }
+
+      const saved = (await response.json()) as AccountRecord;
+      isCreatingDraftRef.current = false;
+      await loadRows(null);
+      setWorkflowVisible(false);
+      setTableCollapsed(false);
+      setStatusMessage(
+        isEditing
+          ? `Updated account ${saved.account_id}.`
+          : `Created account ${saved.account_id}.`
+      );
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
     }
+  }
 
-    const saved = (await response.json()) as AccountRecord;
-    isCreatingDraftRef.current = false;
-    await loadRows(null);
-    setWorkflowVisible(false);
-    setTableCollapsed(false);
-    setStatusMessage(
-      isEditing
-        ? `Updated account ${saved.account_id}.`
-        : `Created account ${saved.account_id}.`
-    );
+  async function archiveSelectedAccount() {
+    if (!selectedRow || isSaving || isArchiving) return;
+    if (!window.confirm(`Remove ${selectedRow.account} from this Profile? Historical records will be retained.`)) return;
+    setErrorMessage("");
+    setIsArchiving(true);
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/profiles/${profileId}/accounts/${selectedRow.account_id}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) {
+        setErrorMessage(await readApiError(response, "Account could not be removed from the Profile."));
+        return;
+      }
+      isCreatingDraftRef.current = false;
+      await loadRows(null);
+      setWorkflowVisible(false);
+      setTableCollapsed(false);
+      setStatusMessage(`${selectedRow.account} was removed from this Profile.`);
+    } finally {
+      setIsArchiving(false);
+    }
   }
 
   return (
@@ -1214,6 +1298,24 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               ))}
             </div>
           </section>
+          <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-offers-title">
+            <span className="field-label" id="account-offers-title">Available Offers</span>
+            {selectedOfferActions.length ? (
+              <div className="review-chip-row" aria-label="Available account offers">
+                {selectedOfferActions.map((action) => (
+                  <span
+                    className={`review-chip${action.availability === "limited" ? " is-warning" : " is-active"}`}
+                    key={`${action.preset_id}:${action.ledger_type}`}
+                    title={action.availability_reason || `${action.ledger_type} Quick Action`}
+                  >
+                    {action.label}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="field-support-text">No configured offer actions currently target this account.</p>
+            )}
+          </section>
           <label className="field-control">
             <span>Current balance</span>
             <input
@@ -1296,13 +1398,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               value={formState.notes}
             />
           </label>
+              {errorMessage ? <p className="field-span-2 error-text" role="alert">{errorMessage}</p> : null}
               <div className="field-span-2 workflow-editor-footer" data-pd-id="accounts.editor.footer">
                 <div className="workflow-editor-footer-primary">
-                <button className="review-chip review-chip-copy" disabled={isPending} type="submit">
-                  {selectedId ? "Save" : "Create"}
+                <button className="modal-primary-button" disabled={isPending || isSaving || isArchiving} type="submit">
+                  {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
+                  <span>{isSaving ? "Saving" : selectedId ? "Save" : "Create"}</span>
                 </button>
-                <button className="review-chip" disabled={isPending} onClick={handleResetForm} type="button">Revert</button>
-                <button className="review-chip" disabled={isPending} onClick={() => void closeEditor()} type="button">Cancel</button>
+                {selectedRow ? (
+                  <button className="button-link destructive-action" disabled={isPending || isSaving || isArchiving} onClick={() => void archiveSelectedAccount()} type="button">
+                    {isArchiving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">archive</span>}
+                    <span>{isArchiving ? "Removing" : "Remove from Profile"}</span>
+                  </button>
+                ) : null}
+                <button className="review-chip" disabled={isPending || isSaving || isArchiving} onClick={handleResetForm} type="button">Revert</button>
+                <button className="review-chip" disabled={isPending || isSaving || isArchiving} onClick={() => void closeEditor()} type="button">Cancel</button>
                 </div>
               </div>
             </form>
