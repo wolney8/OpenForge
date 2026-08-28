@@ -19,6 +19,7 @@ export function BrandLogo({
       height={500}
       priority={priority}
       src={platformBrand.logoPath}
+      unoptimized
       width={731}
     />
   );

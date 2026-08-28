@@ -58,6 +58,8 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004M2 | Services routing parity | Explicitly route API traffic to FastAPI and all remaining traffic to Next.js using the Vercel Services contract | Vercel Next.js + FastAPI starter | NEEDS VERIFICATION |
 | PD-FR-004M3 | Production environment audit | Reconcile required OAuth variable names/scopes without exposing values | Founder OAuth deployment contract | NEEDS VERIFICATION |
 | PD-FR-004M4 | Hosted OAuth smoke test | Verify health, Google redirect/callback, owner session, protected API, refresh and logout on the production domain | Vercel OAuth checklist | BLOCKED |
+| PD-FR-004M5 | Hosted FastAPI startup | Package the real API source, Python dependencies and runtime reference data in the Vercel backend service; preserve public auth paths beneath the hosted `/api` mount | Vercel Services FastAPI packaging contract | IN PROGRESS |
+| PD-FR-004M6 | Hosted public brand asset | Render the canonical public logo without depending on the unavailable Next image optimizer route | Canonical BrandLogo component | IN PROGRESS |
 | PD-FR-004N | Public auth brand alignment | Centre the canonical Plum Duff logo within the public auth card | Canonical auth panel | COMPLETE |
 | PD-FR-004O | Public auth chrome and theme | Remove the application top bar from public auth routes; retain stored theme and default to dark | Canonical application shell and theme resolver | COMPLETE |
 | PD-FR-004P | Login heading cleanup | Remove the redundant Sign In heading from the login card | Canonical auth panel | COMPLETE |

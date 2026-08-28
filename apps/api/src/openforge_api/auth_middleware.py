@@ -20,7 +20,7 @@ class OwnerAuthenticationMiddleware:
             await self.app(scope, receive, send)
             return
 
-        path = str(scope.get("path", ""))
+        path = _application_path(scope)
         if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
             await self.app(scope, receive, send)
             return
@@ -46,3 +46,11 @@ def _cookie_value(cookie_header: str, name: str) -> str:
         if separator and key == name:
             return value
     return ""
+
+
+def _application_path(scope: Scope) -> str:
+    path = str(scope.get("path", ""))
+    root_path = str(scope.get("root_path", "")).rstrip("/")
+    if root_path and path.startswith(f"{root_path}/"):
+        return path[len(root_path) :]
+    return path

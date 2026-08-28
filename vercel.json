@@ -6,9 +6,9 @@
       "framework": "nextjs"
     },
     "backend": {
-      "root": "api/",
+      "root": ".",
       "framework": "fastapi",
-      "entrypoint": "index:app"
+      "entrypoint": "api.index:app"
     }
   },
   "rewrites": [
