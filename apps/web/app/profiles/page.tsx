@@ -31,9 +31,15 @@ export default async function ProfilesPage({
         </aside>
       </section>
       <CrossProfileAnalytics
+        initialTab={
+          query.view === "performance" || query.view === "reports" || query.view === "profiles"
+            ? query.view
+            : "profiles"
+        }
         initialDetailProfileId={typeof query.profile === "string" ? query.profile : undefined}
         initialFeeReviewMonth={typeof query.feeReview === "string" ? query.feeReview : undefined}
         initialOpportunityId={typeof query.opportunity === "string" ? query.opportunity : undefined}
+        key={typeof query.view === "string" ? query.view : "profiles"}
         profiles={analyticsProfiles}
       />
     </main>

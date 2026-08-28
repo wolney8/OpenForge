@@ -1,5 +1,6 @@
 import { findProfile, listModuleRows, listProfiles } from "./local-db";
-import { apiBaseUrl } from "./api";
+import { AUTH_SESSION_COOKIE } from "./auth-session";
+import { getServerApiBaseUrl, serverAuthenticationRequired } from "./api";
 import type { ProfileSummary, TrackerModuleKey, TrackerRow } from "./tracker-types";
 
 type ApiProfile = {
@@ -32,23 +33,45 @@ function mapApiProfile(profile: ApiProfile): ProfileSummary {
   };
 }
 
+async function authenticatedApiFetch(path: string): Promise<Response> {
+  let sessionToken = "";
+  try {
+    const { cookies } = await import("next/headers");
+    sessionToken = (await cookies()).get(AUTH_SESSION_COOKIE)?.value ?? "";
+  } catch {
+    // Unit tests and local static tooling can run outside a Next request context.
+  }
+  const headers = new Headers();
+  if (sessionToken) headers.set("Cookie", `${AUTH_SESSION_COOKIE}=${sessionToken}`);
+  return fetch(`${getServerApiBaseUrl()}${path}`, {
+    cache: "no-store",
+    headers,
+  });
+}
+
+function allowLocalFallback(): boolean {
+  return !serverAuthenticationRequired();
+}
+
 export async function getProfiles(): Promise<ProfileSummary[]> {
   try {
-    const response = await fetch(`${apiBaseUrl}/profiles`, { cache: "no-store" });
+    const response = await authenticatedApiFetch("/profiles");
     if (!response.ok) throw new Error("Profiles API unavailable");
     return ((await response.json()) as ApiProfile[]).map(mapApiProfile);
-  } catch {
+  } catch (error) {
+    if (!allowLocalFallback()) throw error;
     return listProfiles();
   }
 }
 
 export async function getProfile(profileId: string): Promise<ProfileSummary | undefined> {
   try {
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}`, { cache: "no-store" });
+    const response = await authenticatedApiFetch(`/profiles/${profileId}`);
     if (response.status === 404) return undefined;
     if (!response.ok) throw new Error("Profile API unavailable");
     return mapApiProfile((await response.json()) as ApiProfile);
-  } catch {
+  } catch (error) {
+    if (!allowLocalFallback()) throw error;
     return findProfile(profileId);
   }
 }
@@ -57,12 +80,11 @@ export async function getProfileOnboarding(
   profileId: string
 ): Promise<ProfileOnboardingSettings | null> {
   try {
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/onboarding`, {
-      cache: "no-store",
-    });
+    const response = await authenticatedApiFetch(`/profiles/${profileId}/onboarding`);
     if (!response.ok) return null;
     return (await response.json()) as ProfileOnboardingSettings | null;
-  } catch {
+  } catch (error) {
+    if (!allowLocalFallback()) throw error;
     return null;
   }
 }

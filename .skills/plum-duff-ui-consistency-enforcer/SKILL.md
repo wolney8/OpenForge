@@ -96,6 +96,15 @@ use the canonical primitive and computed styling.
 - Standard Search controls use the canonical `table-search-field` surface and signed-off toolbar
   input height. Use a practical 13.75rem minimum and a responsive width up to 30rem where layout
   permits; do not create route-specific search heights or undersized search pills.
+- The canonical application shell uses three stable regions: brand/navigation trigger, global
+  search, and account/theme/notification actions. At reduced widths these regions reflow without
+  changing control semantics, hiding the search, or creating page-level horizontal overflow.
+- The global drawer contains stable Fund Manager destinations, not an expanding list of Profiles.
+  Profile discovery belongs in the searchable Profiles surface; current-profile context may expose
+  one direct route without duplicating the full Profile command menu.
+- Global search reuses `table-search-field`, provides grouped loading/empty/error states and
+  keyboard navigation, and receives only server-authorized results. Never build an unprotected
+  client-side index of Profile or account data.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
 
 ## 3a. Retrospective audit boundary

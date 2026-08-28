@@ -58,6 +58,13 @@ Required initial route model to preserve in planning:
 - Every profile-owned tracker record must be isolated, usually by `profile_id`.
 - No profile may see another profile's accounts, bets, balances, reports, notes, or derived metrics.
 
+## Authentication and authorization rule
+
+- Authentication proves identity; it does not grant a role. Fund Manager access requires a
+  server-validated session plus explicit owner authorization.
+- Protect browser routes and API reads/mutations independently. Client-side hiding is never an
+  authorization boundary, and search results must be filtered by the same server-side authority.
+
 ## Cash-first tracker calculation rule
 
 Plum Duff must preserve the workbook's cash-first principle:

@@ -598,3 +598,17 @@ cause, prevention rule and regression test.
 - Root cause:
 - Prevention:
 - Test added:
+
+## 2026-08-28: Shell search or navigation bypassed request/runtime constraints
+
+- Area: authenticated application shell, global search and Fund Manager drawer.
+- Root cause: server-rendered data calls, Next route protection and FastAPI authorization can run
+  in different runtimes; treating one of them as the only gate creates either leaked data or
+  authenticated pages that cannot load.
+- Prevention: Next validates the signed owner session before protected pages, FastAPI independently
+  validates every protected API read/mutation, and server fetches forward only the session cookie.
+  Global search remains a server-authorized endpoint and the drawer lists stable global routes
+  rather than loading an unbounded Profile submenu. Components using `useSearchParams` in the app
+  shell must remain inside a Suspense boundary for production prerendering.
+- Test added: `apps/web/proxy.test.ts`, `apps/api/tests/test_auth.py`,
+  `tests/e2e/global-search.spec.ts` and `tests/e2e/app-navigation-drawer.spec.ts`.

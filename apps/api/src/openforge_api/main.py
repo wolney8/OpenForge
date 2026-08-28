@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from openforge_api.account_catalogue_source import router as account_catalogue_source_router
+from openforge_api.auth import router as auth_router
+from openforge_api.auth_middleware import OwnerAuthenticationMiddleware
 from openforge_api.accounts import router as accounts_router
 from openforge_api.backups import router as backups_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
@@ -14,6 +16,7 @@ from openforge_api.database_provider import router as database_provider_router
 from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.each_way_extra_places import router as each_way_extra_places_router
 from openforge_api.free_bets import router as free_bets_router
+from openforge_api.global_search import router as global_search_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.fund_manager_lookup_values import router as fund_manager_lookup_values_router
 from openforge_api.imports import router as imports_router
@@ -25,6 +28,7 @@ from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
 
 app = FastAPI(title=settings.app_name)
+app.add_middleware(OwnerAuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -34,6 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(profiles_router)
+app.include_router(auth_router)
+app.include_router(global_search_router)
 app.include_router(account_catalogue_source_router)
 app.include_router(accounts_router)
 app.include_router(balance_snapshots_router)

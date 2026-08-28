@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue } from "@/components/financial-value";
+import { GlobalSearch } from "@/components/global-search";
 import { NotificationCentre } from "@/components/notification-centre";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
@@ -570,6 +571,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <div className="brand-subtitle">{brandSubtitle}</div>
             </div>
           </div>
+          {pathname !== "/login" ? <GlobalSearch /> : <div />}
           <div className="top-bar-actions">
             {isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
@@ -734,16 +736,17 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <AppNavigationDrawer
-          activeProfileId={activeProfileId}
-          activeProfiles={activeProfiles}
-          isInsideProfile={isInsideProfile}
-          isOpen={appMenuOpen}
-          onClose={closeAppMenu}
-          profileName={profileName}
-          profileSubtitle={profileSubtitle}
-          triggerRef={appMenuTriggerRef}
-        />
+        <Suspense fallback={null}>
+          <AppNavigationDrawer
+            activeProfileId={activeProfileId}
+            isInsideProfile={isInsideProfile}
+            isOpen={appMenuOpen}
+            onClose={closeAppMenu}
+            profileName={profileName}
+            profileSubtitle={profileSubtitle}
+            triggerRef={appMenuTriggerRef}
+          />
+        </Suspense>
         <div className="main-shell" id="main-content">
           {children}
         </div>

@@ -1,17 +1,19 @@
 const configuredApiBaseUrl = process.env.NEXT_PUBLIC_OPENFORGE_API_BASE_URL?.trim();
-const browserHostname = typeof window !== "undefined" ? window.location.hostname : null;
-const localApiHost =
-  browserHostname && ["localhost", "127.0.0.1"].includes(browserHostname)
-    ? browserHostname
-    : "127.0.0.1";
-const localApiBaseUrl = `http://${localApiHost}:8010`;
-const isLocalBrowser =
-  typeof window !== "undefined" &&
-  ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
 export const apiBaseUrl =
   configuredApiBaseUrl && configuredApiBaseUrl.length > 0
     ? configuredApiBaseUrl.replace(/\/+$/, "")
-    : typeof window === "undefined" || isLocalBrowser
-      ? localApiBaseUrl
-      : "/api";
+    : "/api";
+
+export function getServerApiBaseUrl(): string {
+  const configuredInternalUrl = process.env.OPENFORGE_INTERNAL_API_BASE_URL?.trim();
+  if (configuredInternalUrl) return configuredInternalUrl.replace(/\/+$/, "");
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) return `https://${vercelUrl.replace(/\/+$/, "")}/api`;
+
+  return "http://127.0.0.1:8010";
+}
+
+export function serverAuthenticationRequired(): boolean {
+  return process.env.OPENFORGE_AUTH_REQUIRED === "true" || Boolean(process.env.VERCEL);
+}

@@ -15,18 +15,15 @@ test.describe("Global application navigation drawer", () => {
     await trigger.click();
     await expect(drawer).toBeVisible();
     await expect(closeButton).toBeFocused();
-    await expect(page.locator('[data-pd-id="app-navigation.fund-manager-dashboard"]')).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
-    await expect(page.locator('[data-pd-id="app-navigation.fund-manager-dashboard"]')).toContainText("Home");
     await expect(page.locator('[data-pd-id="app-navigation.profiles"]')).toHaveAttribute(
       "aria-current",
       "page"
     );
-    await page.locator('[data-pd-id="app-navigation.profiles"]').click();
-    await expect(page.locator('[data-pd-id^="app-navigation.profile."]').first()).toBeVisible();
-    await expect(page.locator('[data-pd-id^="app-navigation.profile."]')).toHaveCount(2);
+    await expect(page.locator('[data-pd-id="app-navigation.home"]')).toContainText("Home");
+    await expect(page.locator('[data-pd-id^="app-navigation.profile."]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-navigation.account-catalogue"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-navigation.notifications"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-navigation.reports"]')).toBeVisible();
 
     const openState = await page.evaluate(() => ({
       appFrameInert: document.querySelector(".app-frame")?.hasAttribute("inert"),
@@ -39,7 +36,7 @@ test.describe("Global application navigation drawer", () => {
     expect(openState.scrollWidth).toBeLessThanOrEqual(openState.clientWidth + 1);
 
     await expect(page.locator('[data-pd-id="app-navigation.registration-requests"]')).toContainText(
-      "Registration requests"
+      "Registration Requests"
     );
     await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toContainText("Logout");
     await page.locator('[data-pd-id="app-navigation.logout"]').focus();
@@ -99,5 +96,20 @@ test.describe("Global application navigation drawer", () => {
     await page.locator('[data-pd-id="app-navigation.settings"]').click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(drawer).toBeHidden();
+  });
+
+  test("reports a failed logout instead of claiming the session ended", async ({ page }) => {
+    await page.route("**/api/auth/logout", async (route) => {
+      await route.fulfill({ status: 503, body: "Unavailable" });
+    });
+    await page.goto("/profiles");
+    await page.locator('[data-pd-id="app-navigation.trigger"]').click();
+    await page.locator('[data-pd-id="app-navigation.logout"]').click();
+
+    await expect(page.locator(".app-navigation-drawer .error-text")).toHaveText(
+      "Could not sign out. Please try again."
+    );
+    await expect(page).toHaveURL(/\/profiles$/);
+    await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toBeEnabled();
   });
 });

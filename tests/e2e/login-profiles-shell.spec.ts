@@ -4,11 +4,13 @@ test.describe("Login to profiles shell", () => {
   test("moves from login to profiles to the selected profile tracker", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "Fund Manager login" })).toBeVisible();
-    const profilesLink = page.getByRole("link", { name: "Open profiles" });
-    await profilesLink.focus();
-    await expect(profilesLink).toBeFocused();
-    await profilesLink.click();
+    await expect(page.getByRole("heading", { name: "Sign in to Plum Duff" })).toBeVisible();
+    const googleLink = page.getByRole("link", { name: "Continue with Google" });
+    await googleLink.focus();
+    await expect(googleLink).toBeFocused();
+
+    // Local Playwright keeps authentication disabled; hosted environments exercise OAuth.
+    await page.goto("/profiles");
 
     await expect(page).toHaveURL(/\/profiles$/);
     await expect(page.getByRole("heading", { name: "Fund Manager Dashboard" })).toBeVisible();

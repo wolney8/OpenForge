@@ -69,7 +69,7 @@ type ProfileDescriptor = {
   investmentFeePercent: string;
 };
 
-type AnalyticsTab = "profiles" | "performance" | "exposure" | "fees" | "reports";
+export type AnalyticsTab = "profiles" | "performance" | "exposure" | "fees" | "reports";
 type EditableProfileField =
   | "display_name"
   | "profile_code"
@@ -117,6 +117,7 @@ function normalizeProfileStatus(status: string) {
 }
 
 type CrossProfileAnalyticsProps = {
+  initialTab?: AnalyticsTab;
   profiles: ProfileDescriptor[];
 };
 
@@ -384,6 +385,7 @@ function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
 
 export function CrossProfileAnalytics({
   profiles,
+  initialTab = "profiles",
   initialDetailProfileId,
   initialFeeReviewMonth,
   initialOpportunityId,
@@ -404,7 +406,7 @@ export function CrossProfileAnalytics({
   const [trackerSettings, setTrackerSettings] = useState<Map<string, TrackerSettingsRecord>>(new Map());
   const [failures, setFailures] = useState<ProfileLoadFailure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>("profiles");
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab);
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryStatus, setDirectoryStatus] = useState("all");
   const [directoryPage, setDirectoryPage] = useState(1);
@@ -421,6 +423,7 @@ export function CrossProfileAnalytics({
   const [feeReviewProfileId, setFeeReviewProfileId] = useState<string | null>(
     initialDetailProfileId && initialFeeReviewMonth ? initialDetailProfileId : null
   );
+
   const [feeReviewMonth, setFeeReviewMonth] = useState(initialFeeReviewMonth ?? "");
   const [feeCentreMonth, setFeeCentreMonth] = useState(() => getPreviousMonthValue());
   const [feeBreakdownProfileId, setFeeBreakdownProfileId] = useState<string | null>(null);

@@ -40,8 +40,13 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-003U | Canonical Search control | Establish responsive standard Search geometry for touched table surfaces | UI consistency enforcer | COMPLETE |
 | PD-FR-003V | Profile Settings architecture | Map existing controls into General, Defaults, Preferences and Import/Export; add explicit Security and Subscriber stubs | Profile Settings shell | COMPLETE |
 | PD-FR-003W | Fund Manager Profiles overview | Retain `/profiles` as the operational directory and expose explicit future Subscriber/access states | Existing Fund Manager Profiles directory | COMPLETE |
-| PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
-| PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
+| PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Founder authentication and shell contract | NEEDS VERIFICATION |
+| PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Founder authentication and shell contract | NEEDS VERIFICATION |
+| PD-FR-004B | Global search | Add an authorized, grouped, keyboard-operable shell search for current safe entities | Canonical Search and shell patterns | COMPLETE |
+| PD-FR-004C | Global navigation | Replace expanding Profile shortcuts with stable Fund Manager destinations and current-Profile context | Canonical drawer and Profiles directory | COMPLETE |
+| PD-FR-004D | Shell consistency | Preserve canonical shell geometry, light/dark tokens, focus and responsive behaviour | UI consistency enforcer | COMPLETE |
+| PD-FR-004E | Security matrix | Record current owner access and the deferred Subscriber boundary for every protected surface | Founder authentication and shell contract | COMPLETE |
+| PD-FR-004F | OAuth deployment setup | Record exact local/Vercel callback, consent and environment configuration | Founder Google OAuth setup | NEEDS VERIFICATION |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -50,6 +55,8 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-009 | Reconciliation | Reconcile Profile, account, ledger and report totals against the live workbook | Workbook remains reconciliation authority | BLOCKED |
 | PD-FR-010 | Real-data gate | Classify hosted state and prevent real-data use until auth, Neon, recovery and import checks pass | Security and data-safety rules | IN PROGRESS |
 | PD-FR-011 | Vercel readiness | Verify production env, OAuth callbacks, sessions, protected APIs, writes and error handling | Existing Vercel deployment | NOT STARTED |
+| PD-AUDIT-REPORT-001 | Reporting regression fixture | Reconcile the pre-existing cross-profile fee queue fixture expecting two entries while current data produces three | Cross-profile reporting tests; unrelated to PD-FR-004 | DEFERRED |
+| PD-AUDIT-API-001 | Existing API regression suite | Reconcile pre-existing Account Catalogue authority assumptions and the untouched Sportsbook `db.py` `catalogue_id` failure affecting 46 full-suite tests | API baseline outside PD-FR-004 | DEFERRED |
 
 ## PD-FR-001 Notification Matrix
 
@@ -65,6 +72,39 @@ persistence belongs to `PD-FR-005`. The API emits immutable Fund Manager audienc
 and the client rejects malformed subscriber-scoped items as defence in depth. Authenticated
 server-side owner enforcement is not complete until `PD-FR-004`; therefore the current hosted
 classification remains **HOSTED PREVIEW ONLY - NO REAL FINANCIAL DATA**.
+
+## PD-FR-004 Founder Authentication And Shell
+
+FastAPI now owns Google authorization-code exchange with PKCE/state validation and issues a
+short-lived signed HttpOnly session. A verified Google identity receives Fund Manager authority
+only when its normalized email remains in the explicit owner allowlist. Next validates that same
+session before protected pages, while FastAPI independently validates all application API reads
+and mutations. Logout clears both session and OAuth state cookies.
+
+The canonical top bar now includes an authorized grouped search over Fund Manager destinations,
+Profiles and active global providers. The global drawer contains stable destinations and no longer
+expands every Profile; current-Profile context retains a direct Dashboard route. Exact local and
+Vercel configuration is recorded in `docs/deployment/founder-google-oauth-setup.md`.
+
+Automated auth, shell, search, route and build checks must pass before this tranche leaves
+`NEEDS VERIFICATION`. Real Google local and Vercel callback smoke tests still require the Fund
+Manager's Google/Vercel secret configuration. Until those checks pass, the hosted classification
+remains **HOSTED PREVIEW ONLY - NO REAL FINANCIAL DATA** and `PD-FR-005` must not start.
+
+`PD-AUDIT-REPORT-001` remains an explicitly unrelated, pre-existing reporting test mismatch: the
+fee queue fixture expects two items while current fixture state produces three. It is not absorbed
+into the authentication tranche and does not block its focused checks.
+
+Focused verification passed five auth/API tests (including the mounted Vercel `/api` boundary),
+229 web unit tests, six shell/search Playwright tests, web typecheck, web lint, targeted Ruff,
+production build and `git diff --check`. The production build retains the pre-existing dynamic
+filesystem tracing warning from `apps/web/lib/local-db.ts`.
+
+The repository-wide API run produced 235 passes and 46 pre-existing failures in untouched
+Account Catalogue, Sportsbook, fee, opportunity, notification and import paths. The failures
+include an untouched `create_sportsbook_bet` `KeyError: catalogue_id` and catalogue-authority
+fixture assumptions affected by the existing local source. They are tracked as
+`PD-AUDIT-API-001`; no auth-focused test failed and this tranche does not silently absorb them.
 
 Focused verification on 2026-08-28 passed 15 notification/backup API tests, 223 web unit tests,
 four notification-centre/preferences Playwright tests, six Free Bet/Settings Playwright tests,
