@@ -1,7 +1,17 @@
 # Profile Settings And Quick Actions Register
 
-Status labels follow the corrective-change cadence in `AGENTS.md`. This register owns the
-approved Settings and Quick Actions batch until it is signed off.
+Status labels follow the corrective-change cadence in `AGENTS.md`. The Fund Manager signed off
+this Settings, Quick Actions and Account Catalogue tranche on 2026-08-28.
+
+## Fund Manager Sign-Off
+
+- **Status:** COMPLETE and approved for the current local-first baseline.
+- **Approved surfaces:** Profile Settings, Fund Manager Settings authority tabs, Quick Actions,
+  offer-name lists, exchange commission interaction and Account Catalogue controls.
+- **Deliberate boundary:** whole-profile transfer remains deferred under `PD-PR-018` until the
+  workbook-cutover contract and hosted security/persistence gates are complete.
+- **Next tranche:** notification trigger, timing, template, routing, preference and security-tag
+  consistency.
 
 | ID | Surface | Requested behaviour / supplied reference | Status |
 | --- | --- | --- | --- |
@@ -73,7 +83,8 @@ approved Settings and Quick Actions batch until it is signed off.
   list and Quick Action entry controls use the same treatment.
 - Web validation: 223 unit tests, lint, typecheck and production build pass. The build retains the
   pre-existing dynamic filesystem trace warning in `lib/local-db.ts`.
-- Remaining Fund Manager review: visual confirmation of the inline tables and toolbars in the local UI.
+- Fund Manager visual confirmation of the inline Settings tables and Account Catalogue control
+  rows passed on 2026-08-28.
 
 ## Requirement Mapping
 
