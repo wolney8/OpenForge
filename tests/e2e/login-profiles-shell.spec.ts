@@ -17,6 +17,11 @@ test.describe("Login to profiles shell", () => {
     await expect(page.locator('[data-pd-id="app-shell.theme-toggle"]')).toHaveCount(0);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
+    const cookieNotice = page.locator('[data-pd-id="cookie-notice"]');
+    if (await cookieNotice.isVisible()) {
+      await cookieNotice.getByRole("button", { name: "Understood" }).click();
+    }
+
     const panelBox = await page.locator('[data-pd-id="auth.login.panel"]').boundingBox();
     const logoBox = await page.locator(".brand-logo-login").boundingBox();
     const googleBox = await googleLink.boundingBox();

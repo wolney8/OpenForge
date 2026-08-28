@@ -81,7 +81,10 @@ def test_health_and_oauth_routes_remain_public_when_data_routes_are_protected() 
     with configured_auth():
         client = TestClient(app, follow_redirects=False)
         assert client.get("/healthz").status_code == 200
-        assert client.get("/profiles").status_code == 401
+        protected_response = client.get("/profiles")
+        assert protected_response.status_code == 401
+        assert protected_response.json() == {"detail": "Access unavailable"}
+        assert client.get("/config-summary").status_code == 401
 
         login_response = client.get("/auth/google/login?next=/notifications")
         assert login_response.status_code == 302

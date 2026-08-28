@@ -10,6 +10,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationCentre } from "@/components/notification-centre";
+import { SessionInactivityGuard } from "@/components/session-inactivity-guard";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
@@ -93,10 +94,20 @@ function resolveProfileId(pathname: string): string | null {
   return profileId === "new" ? null : profileId;
 }
 
+function isAuthenticatedApplicationPath(pathname: string): boolean {
+  return pathname === "/" || ["/profiles", "/notifications", "/settings", "/account"].some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublicAuthRoute = pathname === "/login" || pathname === "/register";
+  const isPublicAuthRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/cookies" ||
+    !isAuthenticatedApplicationPath(pathname ?? "");
   const resolvedProfileId = resolveProfileId(pathname ?? "");
   const activeProfileId = resolvedProfileId ?? defaultProfileId;
   const isInsideProfile = resolvedProfileId !== null;
@@ -753,6 +764,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             triggerRef={appMenuTriggerRef}
           />
         </Suspense> : null}
+        {!isPublicAuthRoute ? <SessionInactivityGuard /> : null}
         <div className="main-shell" id="main-content">
           {children}
         </div>

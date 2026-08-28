@@ -16,14 +16,29 @@ Next validates the same signed session before protected pages. FastAPI independe
 before every non-public API read or mutation. Removing an email from the allowlist revokes access
 on the next request even if a signed cookie has not expired.
 
-Public endpoints are limited to `/login`, the registration stub at `/register`, `/api/auth/*`,
-`/healthz` and `/config-summary`.
+Public endpoints are limited to `/login`, the registration stub at `/register`, the Cookie Policy
+at `/cookies`, `/api/auth/*` and `/healthz`. Runtime configuration summaries require an authorized
+session.
 Profile, notification, settings and Fund Manager pages are protected. All application API routes,
 including global search, are protected by the API middleware.
 
 Public authentication pages render without the application top bar. They use centred canonical
 branding, retain the locally stored light/dark preference and default to dark when no preference
-exists. Public copy remains role-neutral until onboarding.
+exists. Public copy, OAuth failures, missing routes and generic errors remain role- and
+domain-neutral until onboarding. Detailed configuration and authentication diagnostics remain in
+server logs rather than public responses.
+
+The authenticated account Security surface offers an optional inactivity logout. It is disabled
+by default, uses 30 minutes when first enabled, and supports 15, 30, 60, 120 and 240 minutes. A
+canonical warning dialog appears during the final minute. Logout clears the server-issued cookie;
+browser activity and logout signals synchronize open tabs. Until PostgreSQL persistence exists,
+the per-email preference is browser-local and is explicitly migration-bound to `PD-FR-005`.
+
+Current browser technologies are limited to required OAuth/session cookies and local browser
+storage used for security, selected theme/interface preferences, local workflow continuity and
+notices. No analytics, advertising or marketing technology is loaded. The public `/cookies` policy
+and first-visit required-storage notice therefore do not fabricate optional consent choices. The
+reviewed inventory is maintained in `docs/reference/browser-storage-cookie-inventory.md`.
 
 The normal direct sign-in destination is the Fund Manager performance dashboard at
 `/profiles?view=performance`. A safe protected `next` path captured by the route gate takes

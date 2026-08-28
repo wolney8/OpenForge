@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -58,9 +60,10 @@ def _base64url_decode(value: str) -> bytes:
 def _require_session_secret() -> str:
     secret = settings.auth_session_secret
     if len(secret.encode("utf-8")) < 32:
+        logger.error("Authentication session secret is missing or shorter than 32 bytes")
         raise HTTPException(
             status_code=503,
-            detail="Authentication is not configured: session secret must be at least 32 bytes",
+            detail="Unable to continue",
         )
     return secret
 
@@ -154,7 +157,8 @@ def _callback_uri() -> str:
 @router.get("/google/login")
 def google_login(next: str | None = None) -> RedirectResponse:
     if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
+        logger.error("Google OAuth client configuration is incomplete")
+        raise HTTPException(status_code=503, detail="Unable to continue")
     _require_session_secret()
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)

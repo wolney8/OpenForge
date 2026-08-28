@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 
 export function ConfirmationDialog({
   busy = false,
+  busyLabel = "Removing",
+  cancelLabel = "Cancel",
   confirmLabel,
+  confirmTone = "destructive",
   description,
   onCancel,
   onConfirm,
@@ -12,7 +15,10 @@ export function ConfirmationDialog({
   title,
 }: {
   busy?: boolean;
+  busyLabel?: string;
+  cancelLabel?: string;
   confirmLabel: string;
+  confirmTone?: "destructive" | "primary";
   description: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -42,10 +48,15 @@ export function ConfirmationDialog({
         <h2 id="shared-confirmation-title">{title}</h2>
         <p>{description}</p>
         <div className="tracker-nav tracker-nav-right">
-          <button className="button-link" disabled={busy} onClick={onCancel} type="button">Cancel</button>
-          <button className="button-link destructive-action" disabled={busy} onClick={onConfirm} type="button">
+          <button className="button-link" disabled={busy} onClick={onCancel} type="button">{cancelLabel}</button>
+          <button
+            className={confirmTone === "primary" ? "modal-primary-button" : "button-link destructive-action"}
+            disabled={busy}
+            onClick={onConfirm}
+            type="button"
+          >
             {busy ? <span aria-hidden="true" className="button-spinner" /> : null}
-            <span>{busy ? "Removing" : confirmLabel}</span>
+            <span>{busy ? busyLabel : confirmLabel}</span>
           </button>
         </div>
       </div>

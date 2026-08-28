@@ -9,6 +9,17 @@ export default defineConfig({
     trace: "off",
     video: "off",
     screenshot: "off",
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://127.0.0.1:3010",
+          localStorage: [
+            { name: "pd-required-storage-notice", value: "acknowledged" },
+          ],
+        },
+      ],
+    },
   },
   webServer: [
     {

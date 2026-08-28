@@ -9,7 +9,7 @@ export default function RegisterPage() {
         <h1>Registration</h1>
         <p className="lede">Registration is not available yet.</p>
         <Link className="button-link" data-pd-id="auth.registration.back" href="/login">
-          Back to Sign In
+          Return to sign in
         </Link>
       </section>
     </main>

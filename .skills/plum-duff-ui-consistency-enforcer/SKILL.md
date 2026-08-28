@@ -110,6 +110,11 @@ use the canonical primitive and computed styling.
   exists. The authenticated shell represents the current principal with one
   compact identity trigger built from the existing menu, avatar and semantic-chip patterns; its
   account and logout actions must not become a separate auth-specific navigation system.
+- Canonical page and Settings tab navigation remains in the established static document-flow
+  location. It must not become content-following, newly sticky/fixed/floating, or independently
+  scrolling unless the approved feature explicitly requires that behaviour. Reuse the shared tab
+  rail and verify its computed position plus scroll geometry rather than patching route-specific
+  offsets.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
 
 ## 3a. Retrospective audit boundary

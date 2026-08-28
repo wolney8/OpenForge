@@ -3,6 +3,16 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-28: Settings tabs followed content after gaining sticky positioning
+
+- Area: Profile Settings and Fund Manager Settings tab rails.
+- Root cause: the shared `profile-settings-tab-list` acquired `position: sticky` and a top-bar
+  offset, changing a normal-flow navigation rail into a content-following control.
+- Prevention: canonical page tabs remain static in document flow unless a separately approved
+  workflow requires sticky navigation. Do not add route-specific position offsets to compensate.
+- Test added: `tests/e2e/profile-settings-sections.spec.ts` checks computed static positioning and
+  confirms the rail moves with its owning page content during document scroll.
+
 ## 2026-08-28: Profile Accounts copied or missed global provider presentation
 
 - Area: Profile Accounts table and Add/Edit Account editor.

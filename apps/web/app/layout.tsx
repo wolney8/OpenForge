@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppChrome } from "@/components/app-chrome";
+import { CookieNotice } from "@/components/cookie-notice";
 import { ThemeProvider } from "@/components/theme-provider";
 import { platformBrand } from "@/lib/brand";
 import "./globals.css";
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <AppChrome>{children}</AppChrome>
+          <CookieNotice />
         </ThemeProvider>
       </body>
     </html>

@@ -3299,19 +3299,13 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .profile-settings-tab-list {
-  position: sticky;
-  top: calc(var(--top-app-bar-height, 5.5rem) + 1rem);
-  z-index: 3;
+  position: static;
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 .profile-settings-tab-list + .analytics-tab-panel {
   min-width: 0;
-}
-
-@media (max-width: 760px) {
-  .profile-settings-tab-list {
-    position: static;
-  }
 }
 
 .profile-directory .table-shell table {
@@ -3860,6 +3854,69 @@ html[data-theme="dark"] .notification-count-badge {
 .confirmation-dialog::backdrop {
   background: color-mix(in srgb, var(--bg) 62%, transparent);
   backdrop-filter: blur(6px);
+}
+
+.cookie-notice {
+  position: fixed;
+  z-index: 90;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  width: min(38rem, calc(100vw - 2rem));
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--outline);
+  box-shadow: var(--shadow);
+}
+
+.cookie-notice p {
+  margin: 0;
+}
+
+.legal-page {
+  min-height: 100vh;
+  padding-block: 2rem;
+}
+
+.legal-panel {
+  width: min(68rem, 100%);
+}
+
+.legal-panel .brand-logo-login {
+  align-self: center;
+}
+
+.legal-storage-table {
+  max-width: 100%;
+}
+
+.legal-storage-table table {
+  min-width: 52rem;
+}
+
+.fund-manager-security-controls {
+  gap: 0.85rem;
+}
+
+.fund-manager-security-controls .profile-future-setting-row > span:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.fund-manager-security-controls .profile-future-setting-row small {
+  color: var(--muted);
+}
+
+.fund-manager-timeout-field {
+  width: min(22rem, 100%);
+}
+
+@media (max-width: 640px) {
+  .cookie-notice {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: calc(100vw - 1.5rem);
+  }
 }
 
 @media (max-width: 720px) {

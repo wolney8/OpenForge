@@ -59,6 +59,13 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004P | Login heading cleanup | Remove the redundant Sign In heading from the login card | Canonical auth panel | COMPLETE |
 | PD-FR-004Q | Login content spacing | Preserve consistent spacing between logo, Google action and registration entry | Canonical stack spacing | COMPLETE |
 | PD-FR-004R | Role-neutral public copy | Use neutral registration wording and avoid Profile/Fund Manager/Subscriber terminology before onboarding | Public auth copy boundary | COMPLETE |
+| PD-FR-004S | Neutral public disclosure | Remove domain, role and implementation terminology from public auth and failure states | Founder auth shell contract | COMPLETE |
+| PD-FR-004T | Neutral error boundary | Use one minimal public 404/error state and protect runtime configuration details | Canonical public auth panel and API owner middleware | COMPLETE |
+| PD-FR-004U | Inactivity logout | Add optional browser-local inactivity control, final-minute warning and cross-tab logout | Shared confirmation dialog and server logout endpoint | COMPLETE |
+| PD-FR-004V | Account security controls | Show identity authority, session state, inactivity preference and logout under `/account` | Existing account content panels and Material switch | COMPLETE |
+| PD-FR-004W | Cookie inventory and policy | Record only actual cookies/storage and publish the public `/cookies` policy | Founder auth shell contract | COMPLETE |
+| PD-FR-004X | Required-storage notice | Add a minimal accessible notice without fake optional-consent controls and allow reopening | Existing content panel and action primitives | COMPLETE |
+| PD-FR-004Y | Static tab navigation | Restore Profile/Fund Manager Settings tabs to established normal document flow | Shared analytics tab rail | COMPLETE |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -67,6 +74,11 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-009 | Reconciliation | Reconcile Profile, account, ledger and report totals against the live workbook | Workbook remains reconciliation authority | BLOCKED |
 | PD-FR-010 | Real-data gate | Classify hosted state and prevent real-data use until auth, Neon, recovery and import checks pass | Security and data-safety rules | IN PROGRESS |
 | PD-FR-011 | Vercel readiness | Verify production env, OAuth callbacks, sessions, protected APIs, writes and error handling | Existing Vercel deployment | NOT STARTED |
+| PD-FR-012A | Searchable domains | Define authorized search coverage for providers, Profiles, accounts, ledgers, events and reports | Search Results workspace plan | DEFERRED |
+| PD-FR-012B | Federated search service | Extend current authorized API queries without creating a duplicate external index | Search Results workspace plan | DEFERRED |
+| PD-FR-012C | Search Results workspace | Add an actionable paginated results route using existing ledger/report primitives | Search Results workspace plan | DEFERRED |
+| PD-FR-012D | Search Profile scope | Support current, selected and all-authorized Profile scopes | Search Results workspace plan | DEFERRED |
+| PD-FR-012E | Search aggregates | Reuse contracted reporting calculations for balances, exposure and P&L; never fabricate totals | Search Results workspace plan | DEFERRED |
 | PD-AUDIT-REPORT-001 | Reporting regression fixture | Reconcile the pre-existing cross-profile fee queue fixture expecting two entries while current data produces three | Cross-profile reporting tests; unrelated to PD-FR-004 | DEFERRED |
 | PD-AUDIT-API-001 | Existing API regression suite | Reconcile pre-existing Account Catalogue authority assumptions and the untouched Sportsbook `db.py` `catalogue_id` failure affecting 46 full-suite tests | API baseline outside PD-FR-004 | DEFERRED |
 
@@ -130,6 +142,22 @@ filesystem tracing warning from `apps/web/lib/local-db.ts`.
 The final public-auth cleanup passed 229 web unit tests, three focused login/identity Playwright
 tests, web lint, web typecheck, production build and `git diff --check`. The authenticated shell
 retains its account and logout behavior; public login/register pages expose no application top bar.
+
+The pre-auth hardening pass completed `PD-FR-004S` through `PD-FR-004Y`. Public OAuth failures,
+unknown routes and generic errors now use neutral copy and no authenticated application chrome;
+`/config-summary` requires an authenticated owner session. `/account` provides the optional
+browser-local inactivity preference with 15, 30, 60, 120 and 240 minute choices, a canonical
+final-minute warning and server logout. Activity and logout signals synchronize tabs. The actual
+cookie/storage inventory is recorded at `docs/reference/browser-storage-cookie-inventory.md`; no
+optional tracking technology is present, so the first-visit surface is an accurate required-storage
+notice rather than fabricated consent choices. Profile and Fund Manager Settings tabs are restored
+to normal document flow after removal of the unintended shared sticky positioning.
+
+Verification on 2026-08-28 passed 231 web unit tests, five focused auth API tests, 14 focused
+Playwright checks (including responsive/light-mode policy, inactivity warning/logout, cross-tab
+logout and static tab geometry), web typecheck, web lint, production build and `git diff --check`.
+The build retains the pre-existing dynamic filesystem tracing warning. Production Vercel Services
+routing and the real hosted OAuth callback remain `PD-FR-004M`; this pass does not start Neon.
 
 The repository-wide API run produced 235 passes and 46 pre-existing failures in untouched
 Account Catalogue, Sportsbook, fee, opportunity, notification and import paths. The failures

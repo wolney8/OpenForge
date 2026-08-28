@@ -1,6 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  DEFAULT_SESSION_SECURITY_PREFERENCE,
+  loadSessionSecurityPreference,
+  saveSessionSecurityPreference,
+  SESSION_LOGOUT_STORAGE_KEY,
+  SESSION_TIMEOUT_OPTIONS,
+  type SessionSecurityPreference,
+  type SessionTimeoutMinutes,
+} from "@/lib/session-inactivity";
+import { COOKIE_NOTICE_OPEN_EVENT } from "@/lib/storage-consent";
 
 export type FundManagerSession = {
   authenticated: true;
@@ -11,8 +22,13 @@ export type FundManagerSession = {
 };
 
 export function FundManagerAccountPage() {
+  const router = useRouter();
   const [session, setSession] = useState<FundManagerSession | null>(null);
   const [failed, setFailed] = useState(false);
+  const [preference, setPreference] = useState<SessionSecurityPreference>(
+    DEFAULT_SESSION_SECURITY_PREFERENCE
+  );
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -22,7 +38,10 @@ export function FundManagerAccountPage() {
         return response.json() as Promise<FundManagerSession>;
       })
       .then((value) => {
-        if (active) setSession(value);
+        if (active) {
+          setSession(value);
+          setPreference(loadSessionSecurityPreference(value.email));
+        }
       })
       .catch(() => {
         if (active) setFailed(true);
@@ -31,6 +50,21 @@ export function FundManagerAccountPage() {
       active = false;
     };
   }, []);
+
+  function updatePreference(next: SessionSecurityPreference) {
+    setPreference(next);
+    if (session) saveSessionSecurityPreference(session.email, next);
+  }
+
+  async function logout() {
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+    } finally {
+      window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+      router.replace("/login?signed_out=1");
+    }
+  }
 
   return (
     <main className="page-shell stack">
@@ -62,17 +96,70 @@ export function FundManagerAccountPage() {
           <span className="eyebrow">Security</span>
           <h2>Access</h2>
         </div>
-        <p className="field-hint">
-          Google controls your name and email. Additional account and security controls will appear here as they become available.
-        </p>
         {session ? (
-          <div className="profile-future-setting-row">
-            <span>Current session</span>
-            <span className="table-chip table-chip-status-placed">
-              Active until {new Date(session.expires_at * 1000).toLocaleString("en-GB")}
-            </span>
+          <div className="stack fund-manager-security-controls">
+            <div className="profile-future-setting-row">
+              <span>Current session</span>
+              <span className="table-chip table-chip-status-placed">
+                Active until {new Date(session.expires_at * 1000).toLocaleString("en-GB")}
+              </span>
+            </div>
+            <div className="profile-future-setting-row">
+              <span>
+                <strong>Auto Logout</strong>
+                <small>End this session after a period without activity.</small>
+              </span>
+              <button
+                aria-pressed={preference.autoLogoutEnabled}
+                className={`material-switch${preference.autoLogoutEnabled ? " is-selected" : ""}`}
+                data-pd-id="fund-manager-account.auto-logout"
+                onClick={() => updatePreference({ ...preference, autoLogoutEnabled: !preference.autoLogoutEnabled })}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span>
+                <span>{preference.autoLogoutEnabled ? "On" : "Off"}</span>
+              </button>
+            </div>
+            {preference.autoLogoutEnabled ? (
+              <label className="field-control fund-manager-timeout-field">
+                <span>Inactivity period</span>
+                <select
+                  data-pd-id="fund-manager-account.auto-logout-timeout"
+                  onChange={(event) => updatePreference({
+                    ...preference,
+                    timeoutMinutes: Number(event.target.value) as SessionTimeoutMinutes,
+                  })}
+                  value={preference.timeoutMinutes}
+                >
+                  {SESSION_TIMEOUT_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>{minutes < 60 ? `${minutes} minutes` : `${minutes / 60} ${minutes === 60 ? "hour" : "hours"}`}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <footer className="settings-action-row">
+              <button
+                className="button-link"
+                data-pd-id="fund-manager-account.cookie-information"
+                onClick={() => window.dispatchEvent(new Event(COOKIE_NOTICE_OPEN_EVENT))}
+                type="button"
+              >
+                Cookie information
+              </button>
+              <button
+                className="button-link destructive-action"
+                data-pd-id="fund-manager-account.logout"
+                disabled={isLoggingOut}
+                onClick={() => void logout()}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">logout</span>
+                <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+              </button>
+            </footer>
           </div>
         ) : null}
+        <p className="field-hint">Additional security controls will appear here when they are available.</p>
       </section>
     </main>
   );

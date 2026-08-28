@@ -67,6 +67,19 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   expect(duplicateKeyErrors).toEqual([]);
 });
 
+test("profile settings tabs remain in normal document flow", async ({ page }) => {
+  await page.goto(settingsPath);
+  const tabs = page.getByRole("tablist", { name: "Profile settings sections" });
+  await expect(tabs).toBeVisible();
+  const before = await tabs.boundingBox();
+  const position = await tabs.evaluate((element) => getComputedStyle(element).position);
+  expect(position).toBe("static");
+  await page.evaluate(() => window.scrollTo({ top: 700, behavior: "instant" }));
+  const after = await tabs.boundingBox();
+  if (!before || !after) throw new Error("Expected settings tab geometry");
+  expect(after.y).toBeLessThan(before.y - 500);
+});
+
 test("offer-name managers portal above settings and persist an added value", async ({ page }) => {
   const uniqueValue = `Playwright offer ${Date.now()}`;
   await page.goto(`${settingsPath}#offer-lists`);
