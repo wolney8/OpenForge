@@ -11,9 +11,10 @@ export function FundManagerIdentityMenu() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [session, setSession] = useState<FundManagerSession | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [openPathname, setOpenPathname] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
+  const isOpen = openPathname === pathname;
 
   useEffect(() => {
     let active = true;
@@ -34,18 +35,14 @@ export function FundManagerIdentityMenu() {
   }, []);
 
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!isOpen) return;
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) setOpenPathname(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      setIsOpen(false);
+      setOpenPathname(null);
       window.requestAnimationFrame(() => triggerRef.current?.focus());
     };
     document.addEventListener("mousedown", handlePointerDown);
@@ -84,7 +81,7 @@ export function FundManagerIdentityMenu() {
         aria-label={`Open account menu for ${session.name}, Fund Manager`}
         className="fund-manager-identity-trigger"
         data-pd-id="fund-manager-identity.trigger"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => setOpenPathname((current) => current === pathname ? null : pathname)}
         ref={triggerRef}
         title={`${session.name} · Fund Manager`}
         type="button"
@@ -112,7 +109,7 @@ export function FundManagerIdentityMenu() {
           className="profile-command-add-action"
           data-pd-id="fund-manager-identity.account"
           href="/account"
-          onClick={() => setIsOpen(false)}
+          onClick={() => setOpenPathname(null)}
         >
           <span aria-hidden="true" className="material-symbols-outlined">manage_accounts</span>
           <span>My Account</span>

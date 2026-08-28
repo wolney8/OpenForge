@@ -21,6 +21,10 @@ Public endpoints are limited to `/login`, the registration stub at `/register`, 
 Profile, notification, settings and Fund Manager pages are protected. All application API routes,
 including global search, are protected by the API middleware.
 
+Public authentication pages render without the application top bar. They use centred canonical
+branding, retain the locally stored light/dark preference and default to dark when no preference
+exists. Public copy remains role-neutral until onboarding.
+
 The normal direct sign-in destination is the Fund Manager performance dashboard at
 `/profiles?view=performance`. A safe protected `next` path captured by the route gate takes
 precedence so a user can resume the requested task. Authenticated identity details are read-only

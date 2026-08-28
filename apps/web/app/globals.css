@@ -897,17 +897,20 @@ textarea {
 
 .auth-page {
   display: grid;
-  min-height: calc(100vh - var(--top-app-bar-height, 5.5rem));
+  min-height: 100vh;
   place-items: center;
 }
 
 .auth-panel {
   align-items: center;
+  gap: 2rem;
   width: min(36rem, 100%);
   text-align: center;
 }
 
 .auth-panel .brand-logo-login {
+  justify-self: center;
+  margin-inline: auto;
   object-position: center;
 }
 

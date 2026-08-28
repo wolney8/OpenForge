@@ -105,8 +105,9 @@ use the canonical primitive and computed styling.
 - Global search reuses `table-search-field`, provides grouped loading/empty/error states and
   keyboard navigation, and receives only server-authorized results. Never build an unprotected
   client-side index of Profile or account data.
-- Public authentication routes retain canonical branding and theme control but hide all
-  authenticated shell actions. The authenticated shell represents the current principal with one
+- Public authentication routes render without the authenticated application top bar. They retain
+  canonical centred branding and the locally stored theme, defaulting to dark when no preference
+  exists. The authenticated shell represents the current principal with one
   compact identity trigger built from the existing menu, avatar and semantic-chip patterns; its
   account and logout actions must not become a separate auth-specific navigation system.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.

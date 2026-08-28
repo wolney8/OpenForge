@@ -4,7 +4,7 @@ test.describe("Login to profiles shell", () => {
   test("moves from login to profiles to the selected profile tracker", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign In" })).toHaveCount(0);
     const googleLink = page.getByRole("link", { name: "Sign in with Google" });
     await googleLink.focus();
     await expect(googleLink).toBeFocused();
@@ -13,12 +13,21 @@ test.describe("Login to profiles shell", () => {
     await expect(page.locator('[data-pd-id="app-navigation.trigger"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="global-search.input"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="notifications.trigger"]')).toHaveCount(0);
-    await expect(page.locator('[data-pd-id="app-shell.theme-toggle"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-shell.theme-toggle"]')).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    const panelBox = await page.locator('[data-pd-id="auth.login.panel"]').boundingBox();
+    const logoBox = await page.locator(".brand-logo-login").boundingBox();
+    const googleBox = await googleLink.boundingBox();
+    if (!panelBox || !logoBox || !googleBox) throw new Error("Expected login geometry");
+    expect(Math.abs(logoBox.x + logoBox.width / 2 - (panelBox.x + panelBox.width / 2))).toBeLessThan(2);
+    expect(googleBox.y - (logoBox.y + logoBox.height)).toBeGreaterThanOrEqual(16);
 
     await page.locator('[data-pd-id="auth.registration"]').click();
     await expect(page).toHaveURL(/\/register$/);
     await expect(page.getByRole("heading", { name: "Registration" })).toBeVisible();
-    await expect(page.getByText("Subscriber registration is not available yet.")).toBeVisible();
+    await expect(page.getByText("Registration is not available yet.")).toBeVisible();
     await page.locator('[data-pd-id="auth.registration.back"]').click();
 
     // Local Playwright keeps authentication disabled; hosted environments exercise OAuth.

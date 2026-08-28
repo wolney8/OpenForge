@@ -29,7 +29,6 @@ export default async function LoginPage({
     <main className="page-shell auth-page">
       <section className="hero-panel stack auth-panel" data-pd-id="auth.login.panel">
         <BrandLogo className="brand-logo-login" priority />
-        <h1>Sign In</h1>
         {error ? <p className="error-text" role="alert">{error}</p> : null}
         {signedOut ? <p className="success-text" role="status">You have signed out.</p> : null}
         <a

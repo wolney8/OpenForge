@@ -175,7 +175,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isPublicAuthRoute) {
-      setActiveProfiles([]);
       return;
     }
     let isActive = true;
@@ -548,7 +547,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <div className="app-frame">
-        <header className={`top-app-bar${isPublicAuthRoute ? " top-app-bar-public" : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
+        {!isPublicAuthRoute ? <header className="top-app-bar" data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
             {!isPublicAuthRoute ? <div className="app-menu-shell">
               <button
@@ -742,7 +741,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {!isPublicAuthRoute ? <FundManagerIdentityMenu /> : null}
             <ThemeToggle />
           </div>
-        </header>
+        </header> : null}
         {!isPublicAuthRoute ? <Suspense fallback={null}>
           <AppNavigationDrawer
             activeProfileId={activeProfileId}

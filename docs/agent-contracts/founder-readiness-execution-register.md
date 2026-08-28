@@ -54,6 +54,11 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004K | Post-auth destination | Send normal direct sign-in to the Fund Manager performance dashboard while preserving safe requested routes | OAuth state/redirect contract | COMPLETE |
 | PD-FR-004L | Public auth shell | Show branding and theme only on login/register; hide search, drawer, notifications, account and tracker theme controls | Canonical application shell | COMPLETE |
 | PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | BLOCKED |
+| PD-FR-004N | Public auth brand alignment | Centre the canonical Plum Duff logo within the public auth card | Canonical auth panel | COMPLETE |
+| PD-FR-004O | Public auth chrome and theme | Remove the application top bar from public auth routes; retain stored theme and default to dark | Canonical application shell and theme resolver | COMPLETE |
+| PD-FR-004P | Login heading cleanup | Remove the redundant Sign In heading from the login card | Canonical auth panel | COMPLETE |
+| PD-FR-004Q | Login content spacing | Preserve consistent spacing between logo, Google action and registration entry | Canonical stack spacing | COMPLETE |
+| PD-FR-004R | Role-neutral public copy | Use neutral registration wording and avoid Profile/Fund Manager/Subscriber terminology before onboarding | Public auth copy boundary | COMPLETE |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -100,7 +105,8 @@ remains **HOSTED PREVIEW ONLY - NO REAL FINANCIAL DATA** and `PD-FR-005` must no
 
 The Fund Manager completed the local allowlisted Google login and logout smoke test on 2026-08-28.
 The production Vercel callback remains the final `PD-FR-004` verification gate. The public auth
-shell now contains only branding, Sign In, Google action, registration stub and theme control.
+shell now contains only centred branding, the Google action and a role-neutral registration stub.
+It has no application top bar; it retains the locally stored theme and defaults to dark.
 Authenticated pages show a compact Fund Manager identity menu linked to protected `/account`.
 Direct login defaults to `/profiles?view=performance`; a safe protected `next` route still wins.
 
@@ -120,6 +126,10 @@ Focused verification passed five auth/API tests (including the mounted Vercel `/
 229 web unit tests, eight shell/search Playwright tests, web typecheck, web lint, targeted Ruff,
 production build and `git diff --check`. The production build retains the pre-existing dynamic
 filesystem tracing warning from `apps/web/lib/local-db.ts`.
+
+The final public-auth cleanup passed 229 web unit tests, three focused login/identity Playwright
+tests, web lint, web typecheck, production build and `git diff --check`. The authenticated shell
+retains its account and logout behavior; public login/register pages expose no application top bar.
 
 The repository-wide API run produced 235 passes and 46 pre-existing failures in untouched
 Account Catalogue, Sportsbook, fee, opportunity, notification and import paths. The failures

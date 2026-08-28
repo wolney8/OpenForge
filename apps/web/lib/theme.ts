@@ -8,11 +8,12 @@ export function resolveTheme(
   storedTheme: string | null | undefined,
   prefersDark: boolean
 ): ThemeMode {
+  void prefersDark;
   if (storedTheme === "light" || storedTheme === "dark") {
     return storedTheme;
   }
 
-  return prefersDark ? "dark" : "light";
+  return "dark";
 }
 
 export function resolveBackLayTheme(
