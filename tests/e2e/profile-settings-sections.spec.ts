@@ -56,7 +56,9 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
 test("offer-name managers portal above settings and persist an added value", async ({ page }) => {
   const uniqueValue = `Playwright offer ${Date.now()}`;
   await page.goto(`${settingsPath}#offer-lists`);
-  await page.getByRole("button", { name: "Manage" }).first().click();
+  const manageButton = page.getByRole("button", { name: "Manage" }).first();
+  await expect(manageButton).toHaveClass(/modal-primary-button/);
+  await manageButton.click();
 
   const dialog = page.getByRole("dialog", { name: "Manage Sportsbook And Free Bet Offer Names" });
   await expect(dialog).toBeVisible();
@@ -64,7 +66,9 @@ test("offer-name managers portal above settings and persist an added value", asy
   expect(await dialog.evaluate((element) => element.parentElement?.parentElement === document.body)).toBe(true);
 
   await dialog.getByLabel("Add offer name").fill(uniqueValue);
-  await dialog.getByRole("button", { name: "Add Value" }).click();
+  const addValueButton = dialog.getByRole("button", { name: "Add Value" });
+  await expect(addValueButton).toHaveClass(/modal-primary-button/);
+  await addValueButton.click();
   await expect(dialog.getByText(uniqueValue, { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: `Delete ${uniqueValue}` }).click();
   await expect(dialog.getByText(uniqueValue, { exact: true })).toHaveCount(0);
@@ -140,7 +144,9 @@ test("empty offer-name lists remain compact and keep canonical rounded inputs", 
 
 test("profile Quick Action editor is body-portalled and content-sized", async ({ page }) => {
   await page.goto(`${settingsPath}#quick-actions`);
-  await page.getByRole("button", { name: "Add Action" }).first().click();
+  const addActionButton = page.getByRole("button", { name: "Add Action" }).first();
+  await expect(addActionButton).toHaveClass(/modal-primary-button/);
+  await addActionButton.click();
 
   const dialog = page.getByRole("dialog", { name: "Add Profile Quick Action" });
   await expect(dialog).toBeVisible();

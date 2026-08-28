@@ -173,6 +173,13 @@ against established Plum Duff equivalents and provide automated geometry, overfl
 theme and accessibility evidence before asking the user to smoke test it. Unverified UI work must
 be reported as incomplete, not handed to the user to discover basic consistency defects.
 
+Reuse before creation is mandatory. For every changed panel, toolbar, modal, table, action, field,
+chip or icon, identify the nearest signed-off Plum Duff equivalent and reuse its component, class,
+tokens, geometry and behaviour. Do not introduce or rename a variant unless the existing semantics
+genuinely do not fit and the exception is recorded before implementation. The signed-off
+application is the visual source of truth when older documentation differs, unless the current
+request explicitly approves a redesign.
+
 ## Task cadence
 
 Use the workflow in `docs/codex/task-cadence.md`.
@@ -206,15 +213,26 @@ Short version:
 ## Corrective change batches
 
 - Treat every user-supplied list of UX defects, styling corrections, bugs, or adjustments as one
-  tracked batch. Assign every item a `PD-FIX-###` ID and record its area, requested behaviour,
-  supplied selector/reference, and status in the corrective change batch register.
-- Use only `QUEUED`, `INVESTIGATING`, `NEEDS-INFO`, `IN-PROGRESS`, `BLOCKED`, `VERIFIED`, or
-  `DONE`. Never silently omit an item. Ask one precise question for `NEEDS-INFO`; state the
+  tracked batch. Assign every item a stable `PD-FIX-###` or current register ID and record its area,
+  requested behaviour, supplied selector/reference, signed-off equivalent and status before editing.
+- Use `NOT STARTED`, `IN PROGRESS`, `NEEDS CLARIFICATION`, `BLOCKED`, `NEEDS VERIFICATION`, or
+  `COMPLETE` for new batches. Existing historical registers may retain their original status labels.
+  Never silently omit an item. Ask one precise question for `NEEDS CLARIFICATION`; state the
   concrete blocker for `BLOCKED`.
-- Mark an item `DONE` only after implementation, applicable automated checks, and focused
+- Mark an item `COMPLETE` only after implementation, applicable automated checks, and focused
   nearby/shared-pattern verification. Reconcile every supplied ID in a concise final table.
 - Use shared Plum Duff primitives and check all affected equivalents before adding a local CSS
   correction. Create GitHub tracking only for durable product scope or meaningful deferred bugs.
+
+## Retrospective UI consistency audit
+
+- Maintain a bounded inventory of repeated panels, headings, actions, fields, chips, cards, tables,
+  toolbars, filters, pagination, dialogs, tabs, themes and responsive treatments.
+- Assign every mismatch an audit ID, identify its signed-off reference and classify blast radius as
+  LOW, MEDIUM or HIGH. Fix only unambiguous LOW-risk drift in the active scope. Record MEDIUM/HIGH
+  consolidation for review rather than mass-refactoring signed-off UI.
+- When a repeated inconsistency is discovered, update the consistency enforcer, known-pitfalls
+  register and focused regression coverage so the rule survives future sessions.
 
 ## Durable feature parity
 

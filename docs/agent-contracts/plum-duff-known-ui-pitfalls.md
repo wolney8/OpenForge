@@ -3,6 +3,20 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-28: Settings primary actions drifted into secondary pills and page headers
+
+- Area: Fund Manager Account Catalogue, Tracker Lists, Database, Quick Actions and equivalent
+  Profile Settings actions.
+- Root cause: semantically equivalent create/manage actions independently used `button-link`,
+  `settings-card-action` or `modal-primary-button`, and some rendered in page headers rather than
+  the signed-off authority toolbar action slot.
+- Prevention: Settings create/manage actions use `modal-primary-button`. Authority-page primary
+  actions render below stat cards in the right filter/action group, aligned with Search and filters,
+  before pagination. Secondary export/preflight utilities remain secondary.
+- Test: `tests/e2e/settings-modal-consistency.spec.ts` compares primary action class, parent slot,
+  dimensions, radius and theme styling across all Fund Manager authority tabs; Profile Settings
+  coverage checks equivalent Manage/Add controls.
+
 ## 2026-08-28: Peer Settings tabs used different panel and table structures
 
 - Area: Fund Manager Account Catalogue, Tracker Lists, Database, Site Settings and Quick Actions.

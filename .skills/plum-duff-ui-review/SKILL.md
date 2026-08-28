@@ -23,14 +23,18 @@ loading state or accessibility review.
 
 1. Identify the user workflow and process-state preconditions.
 2. Search current, sibling and shared implementations for equivalent controls.
-3. Identify existing components, CSS primitives and semantic tokens before editing.
-4. Check public-facing Plum Duff naming.
-5. Check semantic structure, labels, accessible names, keyboard/focus and `data-pd-id` coverage.
-6. Check light/dark contrast, responsive reflow and page/dialog/table overflow.
-7. Define enabled, disabled, loading, success and error states.
-8. Add focused unit/Playwright coverage, including geometry/style parity for repeated defects.
-9. Complete the UI checklist and update the pitfalls/backlog documents when needed.
-10. Satisfy the consistency-enforcer evidence gate before declaring the UI ready for smoke testing.
+3. Record every supplied issue ID, selector/reference and canonical signed-off equivalent before editing.
+4. Identify existing components, CSS primitives and semantic tokens before editing.
+5. Check public-facing Plum Duff naming.
+6. Check semantic structure, labels, accessible names, keyboard/focus and `data-pd-id` coverage.
+7. Check light/dark contrast, responsive reflow and page/dialog/table overflow.
+8. Define enabled, disabled, loading, success and error states.
+9. Add focused unit/Playwright coverage, including geometry/style parity for repeated defects.
+10. Complete the UI checklist and update the pitfalls/backlog documents when needed.
+11. Reconcile every issue ID and satisfy the consistency-enforcer evidence gate before smoke testing.
+
+For retrospective audits, fix only unambiguous LOW-risk drift. Register MEDIUM/HIGH-impact
+consolidation for explicit review instead of changing signed-off surfaces opportunistically.
 
 ## Stop conditions
 

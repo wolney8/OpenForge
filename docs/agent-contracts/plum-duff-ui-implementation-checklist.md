@@ -11,6 +11,7 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Search for an existing Plum Duff component or CSS primitive.
 - [ ] Search the current and related routes for equivalent controls.
 - [ ] Record the canonical Plum Duff equivalent for each changed surface/control.
+- [ ] Assign/preserve an issue ID for every supplied item and record any supplied selector/reference.
 - [ ] Confirm all public-facing naming uses Plum Duff.
 
 ## Components and tokens
@@ -21,6 +22,7 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Equivalent controls match size, border, surface, typography, focus and state styling.
 - [ ] Platform Material Symbols convention used for established icon actions.
 - [ ] Positive/create, secondary, tertiary and destructive actions use the shared action token set.
+- [ ] Settings create/manage actions use the canonical primary action and authority-toolbar slot.
 - [ ] Delete actions use the shared red Material `delete` icon and close actions use the shared red
       Material `close` icon.
 - [ ] Icons inside buttons/pills are centre-aligned and match neighbouring action icon dimensions.
@@ -64,4 +66,5 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Action/icon dimensions, alignment and semantic destructive styling asserted where actions changed.
 - [ ] Light/dark contrast regression updated where colours changed.
 - [ ] Known-mistakes register updated if this fixes a repeated issue.
+- [ ] Every original issue ID reconciled; no item omitted or marked complete without verification.
 - [ ] Lint, typecheck and relevant tests recorded in the completion report.

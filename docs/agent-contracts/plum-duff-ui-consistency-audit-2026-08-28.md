@@ -14,6 +14,7 @@ redesign of signed-off surfaces.
 | PD-AUD-005 | Viewport modal shells and focus lifecycle | Settings dialogs use several shells (`fund-manager-settings-modal`, catalogue modal and workflow editor variants). | HIGH | Do not mass-consolidate. Specify a shared Settings dialog contract/component before migration. |
 | PD-AUD-006 | Shared toolbar class for semantically equivalent controls | Route-specific toolbar classes duplicate responsive layout declarations. | LOW | Shared layout consolidated; route classes retained only as stable hooks/local semantics. |
 | PD-AUD-007 | Nested secondary cards use `content-subpanel stack` | Site Settings contains nested subpanels inside its top-level panel. | LOW | Intentionally retained: these are genuine secondary cards, not peer tab containers. |
+| PD-AUD-008 | Account Catalogue `modal-primary-button` in the authority toolbar | Quick Actions and Database used secondary pills; Database and Tracker Lists placed primary actions in page headers. | LOW | Fixed by reusing the primary action variant and right-side Settings toolbar slot; equivalent Profile Settings actions use the same variant. |
 
 ## Inventory Result
 

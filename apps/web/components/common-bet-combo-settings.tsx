@@ -235,7 +235,7 @@ export function CommonBetComboSettings() {
           <label className="field-control table-search-field"><span>Search</span><input aria-label="Search common bet combos" data-pd-id="common-bet-combos.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label>
           <div className="settings-table-filter-group">
             <label className="field-control table-filter-field"><span>Status</span><select data-pd-id="common-bet-combos.status-filter" onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }} value={statusFilter}><option>Active</option><option>Archived</option><option>All</option></select></label>
-            <button className="button-link icon-text-action" data-pd-id="common-bet-combos.add" onClick={() => openEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Combo</span></button>
+            <button className="modal-primary-button icon-text-action" data-pd-id="common-bet-combos.add" onClick={() => openEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Combo</span></button>
           </div>
         </div>
         <LedgerPagination ariaLabel="Quick Actions" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={visibleRows.length} />

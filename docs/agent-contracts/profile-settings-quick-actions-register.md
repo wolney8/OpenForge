@@ -41,6 +41,9 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-PR-034 | Fund Manager Settings data tabs | Align Account Catalogue, Tracker Lists, Database and Quick Actions toolbars: half-width search on the left and filter controls on the right. | VERIFIED |
 | PD-PR-035 | Fund Manager Settings panels | Use `content-panel stack` for equivalent top-level tab content; retain `content-subpanel stack` only for genuine nested cards/sections. | VERIFIED |
 | PD-PR-036 | Platform UI consistency | Complete a retrospective repeated-pattern audit, fix unambiguous LOW-risk Settings drift and register MEDIUM/HIGH-risk consolidation for review. | VERIFIED |
+| PD-UI-GOV-001 | UI operating guidance | Make reuse-before-creation and complete issue-batch reconciliation mandatory across agent, review, checklist and iconography guidance. | COMPLETE |
+| PD-UI-GOV-002 | Retrospective UI audit | Make bounded repeated-pattern inventory mandatory; fix LOW-risk drift and record MEDIUM/HIGH changes for review. | COMPLETE |
+| PD-PR-037 | Fund Manager and Profile Settings actions | Reuse the `Add Account` primary action treatment for equivalent create/manage actions. On authority pages, place the primary action below stat cards in the right Search/filter toolbar group before pagination. | COMPLETE |
 
 ## Boundaries
 
@@ -61,6 +64,9 @@ approved Settings and Quick Actions batch until it is signed off.
 - Fund Manager table parity coverage: inline Quick Actions add/edit flow and pagination, shared
   toolbar geometry/order, top-level panel classes, responsive dark/reduced viewport behaviour and
   keyboard dialog operation pass focused Playwright coverage.
+- Settings primary-action coverage: Account Catalogue, Tracker Lists, Database and Quick Actions
+  share the `modal-primary-button` treatment and right toolbar slot; equivalent Profile Settings
+  list and Quick Action entry controls use the same treatment.
 - Web validation: 223 unit tests, lint, typecheck and production build pass. The build retains the
   pre-existing dynamic filesystem trace warning in `lib/local-db.ts`.
 - Remaining Fund Manager review: visual confirmation of the inline tables and toolbars in the local UI.

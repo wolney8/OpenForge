@@ -45,6 +45,19 @@ Protocol 3: Behavioral Contracts for Action Icons
   - Use documented threshold ranges.
   - Keep displayed values rounded as specified by product rules.
 
+Settings Primary Actions
+
+- In Fund Manager and Profile Settings tabbed pages, positive create/manage actions use the shared
+  `modal-primary-button` treatment; do not substitute a neutral `button-link` pill for an equivalent
+  primary action.
+- On Settings authority tables, the primary action sits in the right-hand filter/action group on
+  the same row as the left-hand Search field. It appears below the stat cards and before pagination.
+- Use Material Symbol `add` for create actions, `backup` for database-backup management and
+  `edit_note` for list-management entry points. Keep visible text beside the icon; these are not
+  icon-only controls.
+- Secondary utilities such as export or preflight validation retain secondary treatment and must
+  not visually compete with the single primary action.
+
 Ledger Semantic Icons
 
 - Sportsbook Bets: Material Symbol `sports`.

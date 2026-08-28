@@ -20,13 +20,14 @@ test("Fund Manager settings sections render proper summary cards", async ({ page
 test("Fund Manager data tabs share panel and search-filter geometry", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 820 });
   const settingsTabs = [
-    ["catalogue", "account-catalogue.section"],
-    ["lists", "fund-manager-authorities.section"],
-    ["database", "database-backups.section"],
-    ["quick-actions", "common-bet-combos.section"],
+    ["catalogue", "account-catalogue.section", "Add Account"],
+    ["lists", "fund-manager-authorities.section", "Add Value"],
+    ["database", "database-backups.section", "Manage Database Backups"],
+    ["quick-actions", "common-bet-combos.section", "Add Combo"],
   ] as const;
+  let canonicalActionStyle: { height: string; radius: string; background: string; color: string } | null = null;
 
-  for (const [hash, sectionId] of settingsTabs) {
+  for (const [hash, sectionId, actionLabel] of settingsTabs) {
     await page.goto(`/settings#${hash}`);
     const section = page.locator(`[data-pd-id="${sectionId}"]`);
     await expect(section).toBeVisible();
@@ -52,6 +53,16 @@ test("Fund Manager data tabs share panel and search-filter geometry", async ({ p
     expect(geometry!.searchShare, `${hash}: ${JSON.stringify(geometry)}`).toBeGreaterThan(0.44);
     expect(geometry!.searchShare, `${hash}: ${JSON.stringify(geometry)}`).toBeLessThan(0.52);
     expect(geometry!.filterShare, `${hash}: ${JSON.stringify(geometry)}`).toBeGreaterThan(0.44);
+
+    const primaryAction = section.getByRole("button", { name: actionLabel, exact: true });
+    await expect(primaryAction).toHaveClass(/modal-primary-button/);
+    await expect(primaryAction.locator("xpath=.." )).toHaveClass(/settings-table-filter-group/);
+    const actionStyle = await primaryAction.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { height: style.height, radius: style.borderRadius, background: style.backgroundColor, color: style.color };
+    });
+    if (!canonicalActionStyle) canonicalActionStyle = actionStyle;
+    else expect(actionStyle, `${hash}: ${JSON.stringify(actionStyle)}`).toEqual(canonicalActionStyle);
   }
 
   await page.goto("/settings#site-settings");
@@ -68,6 +79,7 @@ test("Fund Manager Quick Actions uses an inline paginated table and bounded edit
   await expect(section.getByLabel("Quick Actions bottom controls")).toBeVisible();
   await page.getByRole("button", { name: "Add Combo" }).click();
   const dialog = page.getByRole("dialog", { name: "Add common bet combo" });
+  await expect(page.getByRole("button", { name: "Add Combo" })).toHaveClass(/modal-primary-button/);
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Combo ledger")).toBeVisible();
 

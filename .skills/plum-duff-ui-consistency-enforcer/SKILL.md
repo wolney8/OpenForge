@@ -37,6 +37,10 @@ applicable categories:
 Search shared components and CSS first. Identify one canonical existing implementation for each
 pattern. Never use the current broken element as its own reference.
 
+Before editing, assign or preserve an ID for every user-reported item and record the affected area,
+request, supplied selector/reference, canonical equivalent and status. No item may disappear when
+the batch is reconciled.
+
 ## 2. Build a consistency matrix
 
 Before changing markup or CSS, compare the affected control with its canonical equivalent:
@@ -85,7 +89,18 @@ use the canonical primitive and computed styling.
   the left half, filters/actions occupy the right, and shared pagination appears above and below
   the table. Reserve modal surfaces for add/edit/confirmation rather than duplicating the full
   authority table in a dialog.
+- In Fund Manager and Profile Settings only, equivalent positive create/manage controls use
+  `modal-primary-button`. Authority-page primary actions sit in the right filter/action group below
+  stat cards, aligned with Search and filters, before pagination. Secondary utilities remain
+  visually secondary.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
+
+## 3a. Retrospective audit boundary
+
+Inventory repeated UI patterns when drift is discovered. Give every mismatch an audit ID,
+canonical reference and LOW/MEDIUM/HIGH blast-radius rating. Fix unambiguous LOW-risk drift only;
+record MEDIUM/HIGH changes for review and do not use an audit as permission for a platform-wide
+redesign. Update the known-pitfalls register and regression coverage for recurring defects.
 
 ## 4. Required automated evidence
 

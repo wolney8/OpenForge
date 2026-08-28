@@ -131,7 +131,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
           {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
           <div className="table-toolbar dialog-table-toolbar">
             <label className="field-control settings-dialog-field"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createValue(); } }} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
-            <button className="button-link icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
+            <button className="modal-primary-button icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
           </div>
           <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">
             <table className="data-table"><thead><tr><th>Offer Name</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
@@ -158,7 +158,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
         {sections.map((section) => (
           <article className="content-subpanel stack settings-action-card" key={section.lookupType}>
             <div><span className="eyebrow">Profile List</span><h2>{section.title}</h2><p className="field-hint">{valuesByType[section.lookupType]?.length ?? 0} values</p></div>
-            <button className="button-link settings-card-action" data-pd-id={`profile-settings.offer-names.${section.lookupType}.manage`} onClick={() => setActiveType(section.lookupType)} type="button">Manage</button>
+            <button className="modal-primary-button icon-text-action settings-card-action" data-pd-id={`profile-settings.offer-names.${section.lookupType}.manage`} onClick={() => setActiveType(section.lookupType)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span><span>Manage</span></button>
           </article>
         ))}
       </div>
