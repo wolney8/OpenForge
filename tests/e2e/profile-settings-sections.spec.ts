@@ -87,7 +87,7 @@ test("casino offer names support add, edit, and delete in an adaptive dialog", a
     const input = element.querySelector("input");
     return {
       insideViewport: rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
-      contentSized: rect.height < innerHeight - 24,
+      contentSized: rect.height <= Math.min(680, innerHeight - 48),
       inputRadius: input ? Number.parseFloat(getComputedStyle(input).borderRadius) : 0,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };
@@ -108,6 +108,36 @@ test("casino offer names support add, edit, and delete in an adaptive dialog", a
   await expect(dialog.getByText(editedValue, { exact: true })).toHaveCount(0);
 });
 
+test("empty offer-name lists remain compact and keep canonical rounded inputs", async ({ page }) => {
+  await page.route("**/profiles/profile-demo-001/lookup-values", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ contentType: "application/json", body: "[]" });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto(`${settingsPath}#offer-lists`);
+  await page.getByRole("button", { name: "Manage" }).nth(1).click();
+
+  const dialog = page.getByRole("dialog", { name: "Manage Casino Offer Names" });
+  await expect(dialog.getByText("No casino offer name values yet.")).toBeVisible();
+  const geometry = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const input = element.querySelector<HTMLInputElement>(".settings-dialog-field input");
+    const inputStyle = input ? getComputedStyle(input) : null;
+    return {
+      height: rect.height,
+      centred: Math.abs((rect.top + rect.bottom) / 2 - innerHeight / 2) < 8,
+      radius: Number.parseFloat(inputStyle?.borderRadius ?? "0"),
+      insideViewport: rect.top >= 24 && rect.bottom <= innerHeight - 24,
+    };
+  });
+  expect(geometry.height, JSON.stringify(geometry)).toBeLessThan(420);
+  expect(geometry.centred, JSON.stringify(geometry)).toBe(true);
+  expect(geometry.radius, JSON.stringify(geometry)).toBeGreaterThan(16);
+  expect(geometry.insideViewport, JSON.stringify(geometry)).toBe(true);
+});
+
 test("profile Quick Action editor is body-portalled and content-sized", async ({ page }) => {
   await page.goto(`${settingsPath}#quick-actions`);
   await page.getByRole("button", { name: "Add Action" }).first().click();
@@ -122,7 +152,7 @@ test("profile Quick Action editor is body-portalled and content-sized", async ({
     const rect = element.getBoundingClientRect();
     return {
       insideViewport: rect.top >= 0 && rect.left >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth,
-      contentSized: rect.height < innerHeight - 24,
+      contentSized: rect.height < 520,
       centred: Math.abs((rect.top + rect.bottom) / 2 - innerHeight / 2) < 8,
       pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };

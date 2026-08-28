@@ -239,7 +239,7 @@ export function CommonBetComboSettings() {
               <div><span className="eyebrow">Fund Manager Settings</span><h2>Common Bet Combos</h2></div>
               <button aria-label="Close common bet combos" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
-            <div className="workflow-editor-modal-body stack common-bet-combo-body">
+            <div className="workflow-editor-modal-body stack common-bet-combo-body settings-management-modal-body">
               {isLoading ? <LedgerLoadingIndicator label="Loading common bet combos" /> : null}
               {error ? <p className="error-text" role="alert">{error}</p> : null}
               {!isLoading && !draft ? (
@@ -260,6 +260,7 @@ export function CommonBetComboSettings() {
                   <div className="dialog-table-viewport" data-pd-id="common-bet-combos.table-scroll">
                     <table className="data-table"><thead><tr><th>Name</th><th>Ledger</th><th>Offer</th><th>Bookmaker</th><th>Status</th><th>Action</th></tr></thead><tbody>
                       {visibleRows.map((row) => <tr key={row.preset_id}><td>{row.name}</td><td>{row.ledger_type}</td><td>{row.offer_type || "Not set"}</td><td>{bookmakerSummary(row)}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={`Edit ${row.name}`} className="icon-button" onClick={() => setDraft({ ...row, bookmakers: row.bookmakers?.length ? row.bookmakers : row.bookmaker ? [row.bookmaker] : [] })} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}
+                      {!visibleRows.length ? <tr><td className="dialog-table-empty-cell" colSpan={6}>No Quick Actions match these controls.</td></tr> : null}
                     </tbody></table>
                   </div>
                 </>

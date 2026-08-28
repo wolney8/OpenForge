@@ -47,6 +47,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
     lookupType,
     dedupeOptions(getLookupValuesByType(rows, lookupType)).map((value) => rows.find((row) => row.lookup_type === lookupType && row.option_value === value)).filter((row): row is LookupValueRecord => Boolean(row)),
   ])) as Partial<Record<LookupValueType, LookupValueRecord[]>>, [rows]);
+  const activeRows = activeSection ? valuesByType[activeSection.lookupType] ?? [] : [];
 
   const closeDialog = useCallback(() => {
     setActiveType(null);
@@ -126,7 +127,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
           <div><span className="eyebrow">Profile Settings</span><h2>{activeSection.title}</h2></div>
           <button aria-label={`Close ${activeSection.title}`} className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
         </header>
-        <div className="workflow-editor-modal-body stack dialog-table-modal-body">
+        <div className="workflow-editor-modal-body stack dialog-table-modal-body lookup-values-modal-body">
           {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
           <div className="table-toolbar dialog-table-toolbar">
             <label className="field-control settings-dialog-field"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createValue(); } }} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
@@ -134,13 +135,14 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
           </div>
           <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">
             <table className="data-table"><thead><tr><th>Offer Name</th><th>Updated</th><th>Actions</th></tr></thead><tbody>
-              {(valuesByType[activeSection.lookupType] ?? []).map((row) => (
+              {activeRows.map((row) => (
                 <tr key={row.lookup_value_id}>
-                  <td>{editingId === row.lookup_value_id ? <input aria-label={`Edit ${row.option_value}`} onChange={(event) => setEditingValue(event.target.value)} value={editingValue} /> : row.option_value}</td>
+                  <td>{editingId === row.lookup_value_id ? <input aria-label={`Edit ${row.option_value}`} className="dialog-table-edit-input" onChange={(event) => setEditingValue(event.target.value)} value={editingValue} /> : row.option_value}</td>
                   <td>{new Date(row.updated_at).toLocaleDateString()}</td>
                   <td><div className="table-action-group">{editingId === row.lookup_value_id ? <><button className="icon-button" aria-label={`Save ${row.option_value}`} disabled={Boolean(pendingAction)} onClick={() => void saveValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span></button><button className="icon-button" aria-label="Cancel edit" onClick={() => { setEditingId(null); setEditingValue(""); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></> : <button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => { setEditingId(row.lookup_value_id); setEditingValue(row.option_value); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>}<button aria-label={`Delete ${row.option_value}`} className="icon-button destructive-icon-button" disabled={Boolean(pendingAction)} onClick={() => void deleteValue(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
                 </tr>
               ))}
+              {!activeRows.length ? <tr><td className="dialog-table-empty-cell" colSpan={3}>No {activeSection.singularLabel} values yet.</td></tr> : null}
             </tbody></table>
           </div>
         </div>

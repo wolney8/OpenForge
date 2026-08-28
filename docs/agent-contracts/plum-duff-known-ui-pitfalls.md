@@ -529,6 +529,20 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/extra-place-ledger-parity.spec.ts` verifies the purple cue, fast row
   feedback, dark hover contrast and zero transition duration during a theme swap.
 
+## 2026-08-28: Page loading overlays escaped into Settings dialogs
+
+- Area: Profile list and Quick Action dialogs; Fund Manager Quick Actions and Database dialogs.
+- Root cause: the shared ledger loading indicator is an absolutely positioned page overlay. When
+  reused inside a content-sized Settings dialog it anchored outside the intended body, making the
+  dialog appear empty or viewport-height. Empty list tables also lacked an explicit compact state.
+- Prevention: adaptive Settings dialogs must localise ledger loading indicators as static content,
+  keep only their body/table viewport scrollable, and render an explicit compact empty row. Dialog
+  geometry tests must cover populated, empty and loading states rather than only checking that a
+  dialog is smaller than the browser viewport.
+- Test added: `tests/e2e/profile-settings-sections.spec.ts` and
+  `tests/e2e/settings-modal-consistency.spec.ts` cover empty-list sizing, CRUD, centred dialogs,
+  summary cards and reduced dark-mode geometry.
+
 ### YYYY-MM-DD: Short issue name
 
 - Area:

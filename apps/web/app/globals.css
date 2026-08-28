@@ -10208,6 +10208,8 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 /* Settings dialogs size to their content; signed-off ledger editors retain fixed workflow height. */
 .modal-panel.workflow-editor-modal.fund-manager-settings-modal.settings-adaptive-modal {
+  width: min(960px, 100%);
+  max-width: 100%;
   height: auto;
   max-height: calc(100dvh - 3rem);
   align-self: center;
@@ -10220,6 +10222,21 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   max-height: calc(100dvh - 12rem);
   padding: 1.25rem 1.35rem;
   overflow: auto;
+}
+
+/* Ledger loading uses a page overlay by default. Settings dialogs need a local, content-sized state. */
+.settings-adaptive-modal .ledger-loading-overlay {
+  position: static;
+  inset: auto;
+  min-height: 8rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--surface-container);
+  backdrop-filter: none;
+}
+
+.settings-adaptive-modal .ledger-loading-indicator {
+  align-self: center;
 }
 
 .settings-dialog-form-grid {
@@ -10282,9 +10299,47 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .dialog-table-modal-body {
   min-width: 0;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   padding: 1.25rem 1.35rem;
   overflow: hidden;
+}
+
+.lookup-values-modal {
+  width: min(880px, calc(100vw - 2rem));
+}
+
+.lookup-values-modal-body,
+.settings-management-modal-body {
+  align-content: start;
+}
+
+.lookup-values-modal .dialog-table-viewport {
+  max-block-size: min(24rem, calc(100dvh - 20rem));
+}
+
+.dialog-table-edit-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--field-control-radius, 1.35rem);
+  background: var(--surface-container);
+  color: var(--text);
+}
+
+.dialog-table-empty-cell {
+  height: 5.5rem;
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+
+.profile-quick-action-modal {
+  width: min(880px, calc(100vw - 2rem));
+}
+
+.profile-quick-action-modal .settings-adaptive-modal-body {
+  align-content: start;
+  gap: 1rem;
 }
 
 .dialog-table-toolbar {

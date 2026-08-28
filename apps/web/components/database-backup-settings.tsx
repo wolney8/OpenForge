@@ -411,7 +411,7 @@ export function DatabaseBackupSettings() {
                   </button>
                 </header>
 
-                <div className="workflow-editor-modal-body stack database-backups-body">
+                <div className="workflow-editor-modal-body stack database-backups-body settings-management-modal-body">
                   {isLoading || isImporting || isRestoring ? (
                     <LedgerLoadingIndicator
                       dataPdId="database-backups.loading"
