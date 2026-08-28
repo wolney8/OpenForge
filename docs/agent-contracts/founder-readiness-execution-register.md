@@ -64,7 +64,10 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004U | Inactivity logout | Add optional browser-local inactivity control, final-minute warning and cross-tab logout | Shared confirmation dialog and server logout endpoint | COMPLETE |
 | PD-FR-004V | Account security controls | Show identity authority, session state, inactivity preference and logout under `/account` | Existing account content panels and Material switch | COMPLETE |
 | PD-FR-004W | Cookie inventory and policy | Record only actual cookies/storage and publish the public `/cookies` policy | Founder auth shell contract | COMPLETE |
+| PD-FR-004W1 | Cookie policy public chrome | Remove the logo and legal preamble from the public policy page | Minimal public error/auth surfaces | COMPLETE |
+| PD-FR-004W2 | Cookie policy table fit | Keep the policy table readable without page-level horizontal scrolling | Canonical contained table surface | COMPLETE |
 | PD-FR-004X | Required-storage notice | Add a minimal accessible notice without fake optional-consent controls and allow reopening | Existing content panel and action primitives | COMPLETE |
+| PD-FR-004X1 | Required-storage notice alignment | Centre the notice bar and its content at the bottom of the visible viewport | Canonical content panel and tracker navigation | COMPLETE |
 | PD-FR-004Y | Static tab navigation | Restore Profile/Fund Manager Settings tabs to established normal document flow | Shared analytics tab rail | COMPLETE |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |

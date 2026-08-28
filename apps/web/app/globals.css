@@ -3859,18 +3859,24 @@ html[data-theme="dark"] .notification-count-badge {
 .cookie-notice {
   position: fixed;
   z-index: 90;
-  right: 1rem;
   bottom: 1rem;
+  left: 50%;
   display: grid;
-  width: min(38rem, calc(100vw - 2rem));
+  width: min(46rem, calc(100vw - 2rem));
   gap: 1rem;
   padding: 1rem;
+  transform: translateX(-50%);
   border: 1px solid var(--outline);
   box-shadow: var(--shadow);
+  text-align: center;
 }
 
 .cookie-notice p {
   margin: 0;
+}
+
+.cookie-notice .tracker-nav {
+  justify-content: center;
 }
 
 .legal-page {
@@ -3882,16 +3888,38 @@ html[data-theme="dark"] .notification-count-badge {
   width: min(68rem, 100%);
 }
 
-.legal-panel .brand-logo-login {
-  align-self: center;
-}
-
-.legal-storage-table {
+.table-shell.legal-storage-table {
   max-width: 100%;
+  overflow-x: hidden;
 }
 
-.legal-storage-table table {
-  min-width: 52rem;
+.table-shell.legal-storage-table table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.legal-storage-table col:nth-child(1) {
+  width: 24%;
+}
+
+.legal-storage-table col:nth-child(2) {
+  width: 23%;
+}
+
+.legal-storage-table col:nth-child(3) {
+  width: 31%;
+}
+
+.legal-storage-table col:nth-child(4) {
+  width: 22%;
+}
+
+.table-shell.legal-storage-table th,
+.table-shell.legal-storage-table td {
+  padding: 0.75rem 0.55rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .fund-manager-security-controls {
@@ -3913,7 +3941,6 @@ html[data-theme="dark"] .notification-count-badge {
 
 @media (max-width: 640px) {
   .cookie-notice {
-    right: 0.75rem;
     bottom: 0.75rem;
     width: calc(100vw - 1.5rem);
   }

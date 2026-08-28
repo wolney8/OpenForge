@@ -24,12 +24,19 @@ test.describe("pre-auth privacy and session controls", () => {
     await page.goto("/login");
     const notice = page.locator('[data-pd-id="cookie-notice"]');
     await expect(notice).toBeVisible();
+    const noticeBox = await notice.boundingBox();
+    expect(noticeBox).not.toBeNull();
+    expect(Math.abs((noticeBox?.x ?? 0) + (noticeBox?.width ?? 0) / 2 - 195)).toBeLessThanOrEqual(2);
+    expect(Math.abs((noticeBox?.y ?? 0) + (noticeBox?.height ?? 0) - 832)).toBeLessThanOrEqual(2);
+    await expect(notice).toHaveCSS("text-align", "center");
     await expect(notice.getByRole("button", { name: "Accept All" })).toHaveCount(0);
     await expect(notice.getByRole("button", { name: "Reject Optional" })).toHaveCount(0);
     await notice.getByRole("link", { name: "Cookie Policy" }).click();
     await expect(page.getByRole("heading", { name: "Cookie Policy" })).toBeVisible();
+    await expect(page.locator('[data-pd-id="legal.cookies"] img')).toHaveCount(0);
     await expect(page.getByText("No analytics, advertising or marketing cookies are loaded.")).toBeVisible();
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+    await expect.poll(() => page.locator(".legal-storage-table").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     await page.evaluate(() => window.localStorage.setItem("openforge-theme", "light"));
