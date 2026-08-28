@@ -1,6 +1,6 @@
 # Profile Import/Export Readiness Audit
 
-Last audited: 2026-08-27
+Last audited: 2026-08-28
 
 ## Result
 
@@ -25,7 +25,9 @@ It also exports Accounts, Sportsbook Bets, Free Bets, Casino Offers, and Cash Ad
 - Extra Place / EP Catcher has no supported profile import/export mapping yet.
 - No verified source map or reconciliation fixture exists for the founder's live workbook.
 - No full round-trip assertion covers every supported profile export/import module.
-- Global catalogue bulk import requires a confirmation/apply workflow after preflight.
+- Global catalogue bulk import now has validated preflight, explicit apply, archive-on-omission,
+  conflict blocking, atomic replacement and a local recovery backup. Stable-id consolidation with
+  legacy Profile provider rows remains a separate founder-cutover gate.
 - Hosted persistent runtime and owner authentication are intentionally out of scope for this
   corrective pass; existing deployment guidance remains hosted preview only.
 

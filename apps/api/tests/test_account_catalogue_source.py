@@ -103,6 +103,94 @@ def test_master_account_catalogue_export_and_preflight_do_not_mutate_source(
     assert json.loads(source_path.read_text(encoding="utf-8")) == source_payload
 
 
+def test_master_account_catalogue_apply_is_atomic_and_archives_omissions(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    backup_path = tmp_path / "backups"
+    source_path.write_text(json.dumps(catalogue_payload()), encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    monkeypatch.setattr(settings, "backup_directory", str(backup_path))
+    client = TestClient(app)
+    candidate = catalogue_payload()
+    candidate["records"] = [
+        {**candidate["records"][0], "short_display_name": "Exchange A Updated"},
+        {
+            **candidate["records"][1],
+            "catalogue_id": "BOOKMAKER-DEMO-001",
+            "account_type": "Bookmaker",
+            "brand_name": "Bookmaker A",
+            "short_display_name": "Bookmaker A",
+        },
+    ]
+
+    response = client.post(
+        "/account-catalogue/source/import/apply", json={"catalogue": candidate}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["added_catalogue_ids"] == ["BOOKMAKER-DEMO-001"]
+    assert response.json()["updated_catalogue_ids"] == ["EXCHANGE-DEMO-001"]
+    assert response.json()["archived_catalogue_ids"] == ["BANK-DEMO-001"]
+    saved = json.loads(source_path.read_text(encoding="utf-8"))
+    saved_by_id = {row["catalogue_id"]: row for row in saved["records"]}
+    assert saved_by_id["EXCHANGE-DEMO-001"]["short_display_name"] == "Exchange A Updated"
+    assert saved_by_id["BANK-DEMO-001"]["status"] == "Archived"
+    assert len(list((backup_path / "account-catalogue").glob("*.json"))) == 1
+
+
+def test_master_account_catalogue_apply_conflict_rolls_back_without_backup(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    backup_path = tmp_path / "backups"
+    original = json.dumps(catalogue_payload())
+    source_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    monkeypatch.setattr(settings, "backup_directory", str(backup_path))
+    candidate = catalogue_payload()
+    candidate["records"] = [
+        {
+            **candidate["records"][0],
+            "catalogue_id": "EXCHANGE-RENAMED-001",
+        },
+        candidate["records"][1],
+    ]
+
+    response = TestClient(app).post(
+        "/account-catalogue/source/import/apply", json={"catalogue": candidate}
+    )
+
+    assert response.status_code == 409
+    assert "retained historical providers" in response.json()["detail"]
+    assert source_path.read_text(encoding="utf-8") == original
+    assert not backup_path.exists()
+
+
+def test_master_account_catalogue_invalid_import_never_mutates_source(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    original = json.dumps(catalogue_payload())
+    source_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    client = TestClient(app)
+
+    malformed_response = client.post(
+        "/account-catalogue/source/import/apply",
+        content="{not-json",
+        headers={"Content-Type": "application/json"},
+    )
+    schema_response = client.post(
+        "/account-catalogue/source/import/apply",
+        json={"catalogue": {"schema_version": "1.0", "records": [{}]}},
+    )
+
+    assert malformed_response.status_code == 422
+    assert schema_response.status_code == 422
+    assert source_path.read_text(encoding="utf-8") == original
+
+
 def test_master_account_catalogue_rejects_duplicate_ids(
     tmp_path: Path, monkeypatch
 ) -> None:

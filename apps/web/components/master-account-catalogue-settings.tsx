@@ -7,6 +7,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { formatApiErrorBody } from "@/lib/api-error";
 import type {
   MasterAccountCatalogue,
   MasterAccountCatalogueRecord,
@@ -25,6 +26,10 @@ type ImportPreflightResult = {
   added_catalogue_ids: string[];
   updated_catalogue_ids: string[];
   removed_catalogue_ids: string[];
+};
+
+type ImportApplyResult = ImportPreflightResult & {
+  archived_catalogue_ids: string[];
 };
 
 function createBlankRecord(): MasterAccountCatalogueRecord {
@@ -67,15 +72,6 @@ function generatedCatalogueId(accountType: MasterAccountType, brandName: string)
   return `${accountType.toUpperCase()}-${slug}`;
 }
 
-function responseError(body: string): string {
-  try {
-    const parsed = JSON.parse(body) as { detail?: string };
-    return parsed.detail ?? body;
-  } catch {
-    return body;
-  }
-}
-
 export function MasterAccountCatalogueSettings() {
   const [catalogue, setCatalogue] = useState<MasterAccountCatalogue | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -95,6 +91,7 @@ export function MasterAccountCatalogueSettings() {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [importPreflight, setImportPreflight] = useState<ImportPreflightResult | null>(null);
+  const [importCandidate, setImportCandidate] = useState<MasterAccountCatalogue | null>(null);
 
   const loadCatalogue = useCallback(async () => {
     setIsLoading(true);
@@ -104,7 +101,7 @@ export function MasterAccountCatalogueSettings() {
         cache: "no-store",
       });
       if (!response.ok) {
-        throw new Error(responseError(await response.text()));
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to load Account Catalogue."));
       }
       setCatalogue((await response.json()) as MasterAccountCatalogue);
     } finally {
@@ -203,19 +200,56 @@ export function MasterAccountCatalogueSettings() {
     if (!file) return;
     setErrorMessage("");
     setImportPreflight(null);
+    setImportCandidate(null);
     try {
-      const catalogue = JSON.parse(await file.text()) as MasterAccountCatalogue;
+      let catalogue: MasterAccountCatalogue;
+      try {
+        catalogue = JSON.parse(await file.text()) as MasterAccountCatalogue;
+      } catch {
+        throw new Error("Catalogue file is not valid JSON.");
+      }
       const response = await fetch(`${apiBaseUrl}/account-catalogue/source/import/preflight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ catalogue }),
       });
-      if (!response.ok) throw new Error(responseError(await response.text()));
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Catalogue validation failed."));
+      }
       setImportPreflight((await response.json()) as ImportPreflightResult);
+      setImportCandidate(catalogue);
+      setStatusMessage("Catalogue file validated. Review the changes before applying them.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to validate catalogue file.");
     } finally {
       if (importFileRef.current) importFileRef.current.value = "";
+    }
+  }
+
+  async function applyImport() {
+    if (!importCandidate || !importPreflight || isSaving) return;
+    setIsSaving(true);
+    setErrorMessage("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/account-catalogue/source/import/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ catalogue: importCandidate }),
+      });
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Catalogue import failed."));
+      }
+      const result = (await response.json()) as ImportApplyResult;
+      await loadCatalogue();
+      setImportPreflight(null);
+      setImportCandidate(null);
+      setStatusMessage(
+        `Account Catalogue imported: ${result.added_catalogue_ids.length} added, ${result.updated_catalogue_ids.length} updated, ${result.archived_catalogue_ids.length} archived.`
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Catalogue import failed.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -242,7 +276,7 @@ export function MasterAccountCatalogueSettings() {
         }
       );
       if (!response.ok) {
-        throw new Error(responseError(await response.text()));
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to save account."));
       }
       await loadCatalogue();
       setEditingRecord(null);
@@ -268,7 +302,7 @@ export function MasterAccountCatalogueSettings() {
         }
       );
       if (!response.ok) {
-        throw new Error(responseError(await response.text()));
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to update account."));
       }
       await loadCatalogue();
       setEditingRecord(null);
@@ -283,6 +317,7 @@ export function MasterAccountCatalogueSettings() {
   return (
     <section className="content-panel stack" aria-labelledby="master-account-catalogue-title" data-pd-id="account-catalogue.section">
       <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} />
+      <StatusToast message={!isOpen ? errorMessage : ""} onDismiss={() => setErrorMessage("")} tone="error" />
       <div className="sportsbook-page-header">
         <div>
           <span className="eyebrow">Universal authority</span>
@@ -299,7 +334,6 @@ export function MasterAccountCatalogueSettings() {
         ))}
         <article className="stat-card"><span>Active Providers</span><strong>{catalogue?.records.filter((record) => record.status === "Active").length ?? 0}</strong><small>Available to profiles</small></article>
       </section>
-      {errorMessage && !isOpen ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       {isLoading && !catalogue ? <LedgerLoadingIndicator label="Loading Account Catalogue" /> : null}
       <div className="table-toolbar settings-table-toolbar account-catalogue-toolbar" data-pd-id="account-catalogue.controls">
         <label className="field-control table-search-field"><span>Search accounts</span><input aria-label="Search Account Catalogue" data-pd-id="account-catalogue.search" onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" value={query} /></label>
@@ -314,7 +348,7 @@ export function MasterAccountCatalogueSettings() {
         <input accept="application/json" aria-label="Choose account catalogue JSON file to import" className="sr-only" onChange={(event) => void preflightImport(event.target.files?.[0])} ref={importFileRef} type="file" />
         <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">Import</button>
       </div>
-      {importPreflight ? <section aria-live="polite" className="content-subpanel stack"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Missing {importPreflight.removed_catalogue_ids.length}</span></section> : null}
+      {importPreflight ? <section aria-live="polite" className="content-subpanel stack" data-pd-id="account-catalogue.import-review"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Archive {importPreflight.removed_catalogue_ids.length}</span><div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="account-catalogue.import-apply" disabled={isSaving} onClick={() => void applyImport()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">upload_file</span>}<span>{isSaving ? "Importing" : "Apply Import"}</span></button><button className="button-link" disabled={isSaving} onClick={() => { setImportPreflight(null); setImportCandidate(null); }} type="button">Cancel</button></div></section> : null}
       <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="top" totalRows={sortedRecords.length} />
       <LedgerTableScroll dataPdId="account-catalogue.table-scroll">
         <table className="data-table account-catalogue-table"><thead><tr>
@@ -361,126 +395,16 @@ export function MasterAccountCatalogueSettings() {
 
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
 
-            {editingRecord ? (
-              <AccountCatalogueForm
-                draft={draft}
-                isNew={!editingRecord.catalogue_id}
-                isSaving={isSaving}
-                key={editingRecord.catalogue_id || "new-account"}
-                onBack={() => setEditingRecord(null)}
-                onChange={setDraft}
-                onSubmit={saveRecord}
-                onToggleArchive={() => void toggleArchive(editingRecord)}
-              />
-            ) : (
-              <>
-                <div className="tracker-nav account-catalogue-transfer-actions">
-                  <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>
-                    Export catalogue
-                  </a>
-                  <input
-                    accept="application/json"
-                    aria-label="Choose account catalogue JSON file to validate"
-                    className="sr-only"
-                    onChange={(event) => void preflightImport(event.target.files?.[0])}
-                    ref={importFileRef}
-                    type="file"
-                  />
-                  <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">
-                    Import
-                  </button>
-                </div>
-                {importPreflight ? (
-                  <section aria-live="polite" className="content-subpanel stack">
-                    <strong>Import check passed</strong>
-                    <span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span>
-                    <span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Missing {importPreflight.removed_catalogue_ids.length}</span>
-                    <p className="lede">No changes have been applied. A confirmed, audited replacement workflow is required before bulk catalogue changes.</p>
-                  </section>
-                ) : null}
-                <div className="account-catalogue-toolbar">
-                  <label className="field-control table-search-field">
-                    <span>Search accounts</span>
-                    <input
-                      aria-label="Search Account Catalogue"
-                      data-pd-id="account-catalogue.search"
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setPage(1);
-                      }}
-                      type="search"
-                      value={query}
-                    />
-                  </label>
-                  <label className="field-control table-filter-field">
-                    <span>Account type</span>
-                    <select
-                      data-pd-id="account-catalogue.type-filter"
-                      onChange={(event) => {
-                        setTypeFilter(event.target.value as MasterAccountType | "All");
-                        setPage(1);
-                      }}
-                      value={typeFilter}
-                    >
-                      <option>All</option>
-                      {accountTypes.map((accountType) => <option key={accountType}>{accountType}</option>)}
-                    </select>
-                  </label>
-                  <label className="field-control table-filter-field">
-                    <span>Status</span>
-                    <select
-                      data-pd-id="account-catalogue.status-filter"
-                      onChange={(event) => {
-                        setStatusFilter(event.target.value as "All" | "Active" | "Archived");
-                        setPage(1);
-                      }}
-                      value={statusFilter}
-                    >
-                      <option>All</option><option>Active</option><option>Archived</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="table-scroll account-catalogue-table-scroll" data-pd-id="account-catalogue.table-scroll">
-                  <table className="data-table account-catalogue-table">
-                    <thead>
-                      <tr><th>Type</th><th>Brand</th><th>Operator Details</th><th>Availability</th><th>Status</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {visibleRecords.map((record) => (
-                        <tr key={record.catalogue_id}>
-                          <td><span className="table-chip table-chip-muted">{record.account_type}</span></td>
-                          <td>
-                            <span
-                              className="account-brand-pill"
-                              data-pd-id="account-catalogue.brand-pill"
-                              style={{ backgroundColor: record.background_colour, color: record.foreground_colour }}
-                            >
-                              {record.brand_name}
-                            </span>
-                          </td>
-                          <td><span>{record.operator_group || "No group"}</span><span className="table-status">{record.platform || "No platform"}</span></td>
-                          <td>{record.operating_jurisdictions.join(", ") || "Unverified"}<span className="table-status">{record.operating_channels.join(", ") || "No verified channels"}</span></td>
-                          <td><span className={`table-chip ${record.status === "Active" ? "table-chip-status-placed" : "table-chip-muted"}`}>{record.status}</span></td>
-                          <td>
-                            <div className="tracker-nav account-catalogue-actions">
-                              <button aria-label={`Edit ${record.brand_name}`} className="icon-button" onClick={() => beginEdit(record)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <footer className="modal-sticky-footer">
-                  <span className="table-status">{filteredRecords.length} accounts · Page {page} of {totalPages}</span>
-                  <div className="tracker-nav">
-                    <button className="button-link" data-pd-id="account-catalogue.add" onClick={beginAdd} type="button">Add Account</button>
-                    <button className="button-link" disabled={page === 1} onClick={() => setPage((current) => current - 1)} type="button">Previous</button>
-                    <button className="button-link" disabled={page === totalPages} onClick={() => setPage((current) => current + 1)} type="button">Next</button>
-                  </div>
-                </footer>
-              </>
-            )}
+            <AccountCatalogueForm
+              draft={draft}
+              isNew={!editingRecord.catalogue_id}
+              isSaving={isSaving}
+              key={editingRecord.catalogue_id || "new-account"}
+              onBack={() => setEditingRecord(null)}
+              onChange={setDraft}
+              onSubmit={saveRecord}
+              onToggleArchive={() => void toggleArchive(editingRecord)}
+            />
             {isLoading ? <LedgerLoadingIndicator label="Refreshing Account Catalogue" /> : null}
           </section>
         </div>

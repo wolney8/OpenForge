@@ -8,7 +8,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | ID | Area | Requirement | Reference | Status |
 |---|---|---|---|---|
 | PD-FR-001 | Notifications | Reconcile triggers, timing, templates, routes, lifecycle, preferences and security tags | Fund Manager notification centre contract | COMPLETE |
-| PD-FR-002 | Account Catalogue | Fix structured import errors, validate rollback/conflicts and reconcile any partial attempt | Existing catalogue import/preflight workflow | NOT STARTED |
+| PD-FR-002 | Account Catalogue | Fix structured import errors, validate rollback/conflicts and reconcile any partial attempt | Existing catalogue import/preflight workflow | COMPLETE |
 | PD-FR-003 | Founder Profile | Provide the minimum owner Profile onboarding using global providers plus Profile-owned state | Existing Profile and Accounts flows | NOT STARTED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
@@ -38,6 +38,21 @@ four notification-centre/preferences Playwright tests, six Free Bet/Settings Pla
 web typecheck, web lint and `git diff --check`. Live public GitHub inspection found no dedicated
 notification-centre issue; do not create a duplicate if authenticated issue reconciliation later
 finds private or closed coverage.
+
+## PD-FR-002 Account Catalogue Import Findings
+
+The previous Import control performed preflight only and could not partially write provider data.
+Its unhelpful `[object Object],[object Object]` message came from coercing FastAPI's structured
+validation array into a JavaScript Error string. The corrected workflow formats field-specific
+validation messages, requires an explicit reviewed Apply action, archives omitted providers,
+blocks stable-id/name conflicts, validates the complete replacement and creates a local recovery
+backup before atomic replacement. It never mutates Profile account rows or silently remaps their
+provider relationships. Hosted durability remains blocked on `PD-FR-005` because this authority is
+still file-backed.
+
+Focused verification on 2026-08-28 passed ten Account Catalogue API tests, all 225 web unit tests,
+three Account Catalogue Playwright tests, web typecheck, web lint, targeted Ruff and
+`git diff --check`.
 
 ## Safety Gate
 

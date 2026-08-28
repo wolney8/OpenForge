@@ -1,6 +1,6 @@
 # Master Account Catalogue Source Contract
 
-Last updated: 2026-07-16
+Last updated: 2026-08-28
 
 ## Status
 
@@ -38,8 +38,15 @@ personal data, cookies, tokens, or login details. Those remain profile-scoped da
 - `POST /account-catalogue/source/records` adds one validated Fund Manager catalogue record.
 - `PUT /account-catalogue/source/records/:catalogueId` edits or archives one record while keeping
   its stable catalogue id.
+- `POST /account-catalogue/source/import/preflight` validates and compares a complete candidate
+  without mutating the active source.
+- `POST /account-catalogue/source/import/apply` applies the reviewed candidate only after full
+  validation. Omitted providers are archived rather than deleted so historical links remain
+  resolvable.
 - Every successful add or edit creates a timestamped local backup of the previous JSON source and
   replaces the source atomically only after full-catalogue validation passes.
+- Every successful catalogue import creates the same timestamped recovery backup and atomic
+  replacement. Invalid JSON, schema errors and retained-provider conflicts make no file changes.
 - The Fund Manager Account Catalogue editor is the in-platform authoring surface for Bookmaker,
   Exchange, and Bank records. Profile account status, balances, restrictions, and credentials are
   not editable there.
@@ -50,8 +57,8 @@ personal data, cookies, tokens, or login details. Those remain profile-scoped da
 - Exchange and Bank entries may populate universal choices in profile Accounts editors.
 - Bookmaker source rows do not silently overwrite the linked database catalogue or historical
   account rows.
-- A future Fund Manager Settings synchronisation action must show an add/change/archive preview,
-  require explicit confirmation, create a verified backup, and audit the result.
+- The Fund Manager import workflow shows add/change/archive counts and requires an explicit Apply
+  action after preflight. It never mutates Profile account state or silently remaps provider ids.
 - Runtime profile-account or legacy bookmaker-database edits must not be silently exported back
   into the authoring file.
 - An empty jurisdiction or channel list means availability is unverified and blocks automatic
@@ -79,19 +86,19 @@ The catalogue is a maintained authority, not a claim that every currently operat
 been independently verified. New or uncertain entries must use `Unverified` confidence until the
 Fund Manager supplies an approved source.
 
-## Authoring and Deferred Database Synchronisation
+## Authoring and Import
 
 Direct Fund Manager JSON authoring is implemented with validated add, edit, archive/restore, and
 local backup behaviour. Hard deletion is intentionally unavailable so historical references remain
 resolvable.
 
-The separate database synchronisation phase must still add:
+Validated export, non-mutating preflight, explicit whole-catalogue apply, conflict blocking and
+archive-on-omission are implemented for the JSON authority. The future PostgreSQL cutover must
+retain these transaction and recovery guarantees while moving the authority off local disk.
 
-- preview/import from the JSON source
-- explicit add, update, and archive selections
-- conflict handling for linked historical records
-- export of a safe catalogue copy
-- Bookmaker, Exchange, and Bank database links using a general account-catalogue id
+Bookmaker, Exchange, and Bank profile links still require stable-id runtime consolidation before
+founder workbook cutover. Catalogue import must not be described as completing that separate
+relationship migration.
 
 ## Gated Profile Availability Settings
 

@@ -11,7 +11,7 @@ workbook cutover are explicitly excluded._
 | PD-PR-003 | Profile Accounts filters | Filter dialog, custom filters, search-right and Restricted/Active/Bookie/Exchange loadouts. | NEEDS VERIFICATION |
 | PD-PR-004 | Profile Accounts summary | Five profile-scoped, non-misleading account stat cards. | NEEDS VERIFICATION |
 | PD-PR-005 | Global account ownership | Contract and UI ownership boundary recorded; legacy bookmaker runtime source remains a pre-cutover consolidation task. | COMPLETE |
-| PD-PR-006 | Global catalogue transfer | Validated export and non-mutating import preflight available; confirmed bulk apply is deferred. | COMPLETE |
+| PD-PR-006 | Global catalogue transfer | Validated export, preflight and explicit atomic apply are available; omitted providers archive and conflicts block. | COMPLETE |
 | PD-PR-007 | Cash Adjustments table | Existing shared ledger table alignment, action reachability and horizontal behaviour audited. | NEEDS VERIFICATION |
 | PD-PR-008 | Profile Reports | Actionable open/action-required metrics and canonical bookmaker badges. | NEEDS VERIFICATION |
 | PD-PR-009 | Profile Settings data integrity | Deduplicate exchange option values before rendering to remove duplicate `10Bet` React keys. | NEEDS VERIFICATION |
@@ -41,7 +41,7 @@ workbook cutover are explicitly excluded._
 | PD-PR-033 | Extra Places filter dialog | Added the shared destructive clear control to the dialog footer, beside the normal completion action. | DONE |
 | PD-PR-034 | Accounts toolbar geometry | Reused the exact signed-off Extra Places control hierarchy. Fund Manager visual sign-off recorded. | DONE |
 | PD-PR-035 | Legacy profile provider reconciliation | Define an audited mapping from legacy profile account rows to global catalogue providers; no automatic deletion or replacement of financial history. | NEEDS-INFO |
-| PD-PR-036 | Catalogue import explanation | Settings now explains that catalogue import check is JSON validation/preflight only and cannot alter providers or Profile account state. | DONE |
+| PD-PR-036 | Catalogue import workflow | Settings validates and reviews catalogue changes before explicit apply; it cannot alter Profile account state. | DONE |
 | PD-PR-037 | Profile Settings information architecture | Rename Spreadsheet to Import/Export and replace in-page offer-name CRUD with canonical list dialogs. | VERIFIED |
 | PD-PR-038 | Exchange commission interaction | Replace per-row Save with validated debounced autosave, persistent session success state and last-updated display. | VERIFIED |
 | PD-PR-039 | Quick Actions authority | Extend the existing Common Bet Combo authority with Fund Manager-enforced and Profile-owned action rules. | VERIFIED |
@@ -49,7 +49,7 @@ workbook cutover are explicitly excluded._
 | PD-PR-041 | Module security metadata | Define central declarative Fund Manager/Subscriber action policy metadata for modules, settings, quick actions and notifications; server enforcement is held for authentication. | COMPLETE |
 | PD-PR-042 | Settings dialog table geometry | Provide a reusable dialog-table viewport so data rows cannot underlap visible table headers. | NEEDS VERIFICATION |
 | PD-PR-DEFER-001 | Provider source consolidation | Safely migrate legacy `bookmaker_catalogue` and master catalogue into one stable-ID persisted authority. | DEFERRED |
-| PD-PR-DEFER-002 | Global catalogue apply | Add audited, confirmed bulk apply with profile-reference impact resolution after source consolidation. | DEFERRED |
+| PD-PR-DEFER-002 | Profile-provider reconciliation | Map legacy Profile provider rows to stable catalogue IDs with explicit impact review after source consolidation. | DEFERRED |
 | PD-PR-DEFER-003 | Extra Place transfer | Add staged Extra Place import/export mapping and fixture reconciliation before founder cutover. | DEFERRED |
 
 ## Protected behaviour
@@ -68,9 +68,10 @@ workbook cutover are explicitly excluded._
 - Profile account state currently persists in the `accounts` table and carries balance, lifecycle,
   restrictions, channel, notes and profile display/commission overrides.
 - Any catalogue mutation remains local-runtime only until the later PostgreSQL/hosted cutover.
-- `Check catalogue import` accepts an exported JSON catalogue and reports its add/update/missing
-  provider diff without writing data. To reconcile existing legacy profile rows, the Fund Manager
-  must first supply the authoritative catalogue export. The later confirmed migration must show
+- Catalogue import accepts an exported JSON catalogue, reports add/update/archive changes and
+  requires explicit confirmation before an atomic source replacement. It does not update Profile
+  account rows. To reconcile existing legacy profile rows, the Fund Manager must first supply the
+  authoritative catalogue export. The later confirmed migration must show
   each old provider-to-canonical-provider mapping, affected profile accounts and any row that
   requires explicit retention or deletion approval.
 - Legacy profile account rows are not deleted or silently reassigned. A later catalogue reconciliation

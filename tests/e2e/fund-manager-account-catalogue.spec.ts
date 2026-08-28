@@ -100,3 +100,79 @@ test("Fund Manager can inspect and prepare account catalogue changes from the ta
   );
   expect(hasPageOverflow).toBe(false);
 });
+
+test("Account Catalogue import requires reviewed apply and reports completion", async ({ page }) => {
+  await page.route("**/account-catalogue/source/import/preflight", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        valid: true,
+        incoming_record_count: 2,
+        current_record_count: 3,
+        added_catalogue_ids: ["BOOKMAKER-DEMO-001"],
+        updated_catalogue_ids: ["EXCHANGE-DEMO-001"],
+        removed_catalogue_ids: ["BANK-DEMO-001"],
+        requires_explicit_apply: true,
+      },
+      status: 200,
+    });
+  });
+  await page.route("**/account-catalogue/source/import/apply", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        valid: true,
+        incoming_record_count: 2,
+        current_record_count: 3,
+        added_catalogue_ids: ["BOOKMAKER-DEMO-001"],
+        updated_catalogue_ids: ["EXCHANGE-DEMO-001"],
+        removed_catalogue_ids: ["BANK-DEMO-001"],
+        archived_catalogue_ids: ["BANK-DEMO-001"],
+        requires_explicit_apply: false,
+      },
+      status: 200,
+    });
+  });
+  await page.goto("/settings#catalogue");
+
+  await page.getByLabel("Choose account catalogue JSON file to import").setInputFiles({
+    buffer: Buffer.from(JSON.stringify({ schema_version: "1.0", records: [] })),
+    mimeType: "application/json",
+    name: "synthetic-catalogue.json",
+  });
+
+  const review = page.locator('[data-pd-id="account-catalogue.import-review"]');
+  await expect(review).toContainText("Added 1 · Updated 1 · Archive 1");
+  await review.getByRole("button", { name: "Apply Import" }).click();
+  await expect(page.getByText("Account Catalogue imported: 1 added, 1 updated, 1 archived.")).toBeVisible();
+  await expect(review).toHaveCount(0);
+});
+
+test("Account Catalogue import renders structured validation errors", async ({ page }) => {
+  await page.route("**/account-catalogue/source/import/preflight", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        detail: [
+          {
+            loc: ["body", "catalogue", "records", 0, "brand_name"],
+            msg: "Field required",
+            type: "missing",
+          },
+        ],
+      },
+      status: 422,
+    });
+  });
+  await page.goto("/settings#catalogue");
+
+  await page.getByLabel("Choose account catalogue JSON file to import").setInputFiles({
+    buffer: Buffer.from(JSON.stringify({ schema_version: "1.0", records: [{}] })),
+    mimeType: "application/json",
+    name: "invalid-catalogue.json",
+  });
+
+  await expect(page.getByText("records › 0 › brand_name: Field required")).toBeVisible();
+  await expect(page.getByText("[object Object]", { exact: false })).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="account-catalogue.import-review"]')).toHaveCount(0);
+});

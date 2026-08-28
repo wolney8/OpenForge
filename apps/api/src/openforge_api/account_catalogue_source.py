@@ -227,6 +227,10 @@ class MasterAccountCataloguePreflightResult(BaseModel):
     requires_explicit_apply: bool
 
 
+class MasterAccountCatalogueApplyResult(MasterAccountCataloguePreflightResult):
+    archived_catalogue_ids: list[str]
+
+
 def load_master_account_catalogue(path: Path | None = None) -> MasterAccountCatalogue:
     catalogue_path = path or settings.account_catalogue_source_path
     raw = json.loads(catalogue_path.read_text(encoding="utf-8"))
@@ -318,6 +322,60 @@ def preflight_master_account_catalogue_import(
         updated_catalogue_ids=updated,
         removed_catalogue_ids=removed,
         requires_explicit_apply=True,
+    )
+
+
+@router.post("/import/apply", response_model=MasterAccountCatalogueApplyResult)
+def apply_master_account_catalogue_import(
+    payload: MasterAccountCataloguePreflight,
+) -> MasterAccountCatalogueApplyResult:
+    current = _load_catalogue_for_request()
+    incoming = payload.catalogue
+    current_by_id = {record.catalogue_id: record for record in current.records}
+    incoming_by_id = {record.catalogue_id: record for record in incoming.records}
+    added = sorted(set(incoming_by_id) - set(current_by_id))
+    removed = sorted(set(current_by_id) - set(incoming_by_id))
+    updated = sorted(
+        catalogue_id
+        for catalogue_id in set(incoming_by_id) & set(current_by_id)
+        if incoming_by_id[catalogue_id] != current_by_id[catalogue_id]
+    )
+
+    # Omitted providers are archived rather than deleted so historical Profile links remain valid.
+    archived_records = [
+        current_by_id[catalogue_id].model_copy(update={"status": "Archived"})
+        for catalogue_id in removed
+    ]
+    try:
+        replacement = MasterAccountCatalogue.model_validate(
+            {
+                **incoming.model_dump(mode="json"),
+                "updated_at": _current_timestamp(),
+                "records": [
+                    *[record.model_dump(mode="json") for record in incoming.records],
+                    *[record.model_dump(mode="json") for record in archived_records],
+                ],
+            }
+        )
+    except ValidationError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Catalogue import conflicts with retained historical providers: "
+                f"{error}"
+            ),
+        ) from error
+
+    _persist_master_account_catalogue(replacement)
+    return MasterAccountCatalogueApplyResult(
+        valid=True,
+        incoming_record_count=len(incoming_by_id),
+        current_record_count=len(current_by_id),
+        added_catalogue_ids=added,
+        updated_catalogue_ids=updated,
+        removed_catalogue_ids=removed,
+        requires_explicit_apply=False,
+        archived_catalogue_ids=removed,
     )
 
 
