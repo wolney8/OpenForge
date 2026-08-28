@@ -53,7 +53,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004J | Authenticated identity shell | Show a compact Fund Manager identity trigger with account and logout actions | Canonical app menu and chip patterns | COMPLETE |
 | PD-FR-004K | Post-auth destination | Send normal direct sign-in to the Fund Manager performance dashboard while preserving safe requested routes | OAuth state/redirect contract | COMPLETE |
 | PD-FR-004L | Public auth shell | Show branding and theme only on login/register; hide search, drawer, notifications, account and tracker theme controls | Canonical application shell | COMPLETE |
-| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | NEEDS VERIFICATION |
+| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | BLOCKED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -104,12 +104,20 @@ shell now contains only branding, Sign In, Google action, registration stub and 
 Authenticated pages show a compact Fund Manager identity menu linked to protected `/account`.
 Direct login defaults to `/profiles?view=performance`; a safe protected `next` route still wins.
 
+Production was redeployed from `5a13bd7` on 2026-08-28. The current frontend is live (`/register`
+returns 200 and `/account` redirects to login), but `/api/healthz` and
+`/api/auth/google/login` are still handled by the Next.js service and return its HTML 404. GitHub
+reports a successful Vercel deployment, so this is not a stale commit. The Vercel project remains
+configured with the `Next.js` Framework Preset rather than `Services`; change the project preset to
+`Services`, retain repository root as the Root Directory, and redeploy before completing the
+production OAuth smoke test. Neon remains blocked until this gate passes.
+
 `PD-AUDIT-REPORT-001` remains an explicitly unrelated, pre-existing reporting test mismatch: the
 fee queue fixture expects two items while current fixture state produces three. It is not absorbed
 into the authentication tranche and does not block its focused checks.
 
 Focused verification passed five auth/API tests (including the mounted Vercel `/api` boundary),
-229 web unit tests, six shell/search Playwright tests, web typecheck, web lint, targeted Ruff,
+229 web unit tests, eight shell/search Playwright tests, web typecheck, web lint, targeted Ruff,
 production build and `git diff --check`. The production build retains the pre-existing dynamic
 filesystem tracing warning from `apps/web/lib/local-db.ts`.
 

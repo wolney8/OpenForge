@@ -52,6 +52,12 @@ so it exactly matches the registered callback.
 
 ## Vercel Environment
 
+In Vercel **Settings > Build and Deployment**, set the Framework Preset to `Services` and keep the
+project Root Directory at the repository root. `vercel.json` owns the `apps/web/` Next.js service,
+the `api/` FastAPI service and the `/api/*` rewrite. A `Next.js` project preset builds only the web
+service, so `/api/healthz` and `/api/auth/google/login` return the frontend 404 even when the Python
+application and OAuth configuration are correct.
+
 Set these encrypted variables for Production in the single Plum Duff Vercel project, then redeploy:
 
 ```dotenv
