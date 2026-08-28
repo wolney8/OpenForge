@@ -102,6 +102,11 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   const comboManageButton = page.locator('[data-pd-id="common-bet-combos.manage"]');
   const comboSection = page.locator('[data-pd-id="common-bet-combos.section"]');
   await expect(comboSection).toBeVisible();
+  const summary = comboSection.getByLabel("Quick Action summary");
+  await expect(summary.getByText("Active Actions", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Required", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Ledger Coverage", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Archived", { exact: true })).toBeVisible();
   const comboActionGeometry = await Promise.all([
     comboManageButton.boundingBox(),
     comboSection.boundingBox(),
@@ -109,7 +114,7 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   expect(comboActionGeometry[0]).not.toBeNull();
   expect(comboActionGeometry[1]).not.toBeNull();
   expect(comboActionGeometry[0]!.width).toBeLessThan(comboActionGeometry[1]!.width / 2);
-  await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
+  await page.getByRole("button", { name: "Manage Templates" }).click();
   const settingsDialog = page.getByRole("dialog", { name: "Manage common bet combos" });
   await expect(settingsDialog).toBeVisible();
   await expect(
@@ -133,6 +138,8 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       pageScrollWidth: document.documentElement.scrollWidth,
+      contentSized: rect.height < window.innerHeight - 24,
+      centred: Math.abs((rect.top + rect.bottom) / 2 - window.innerHeight / 2) < 8,
     };
   });
   expect(dialogGeometry.left).toBeGreaterThanOrEqual(0);
@@ -140,8 +147,10 @@ test("Fund Manager can manage and apply a common bet combo without creating rows
   expect(dialogGeometry.top).toBeGreaterThanOrEqual(0);
   expect(dialogGeometry.bottom).toBeLessThanOrEqual(dialogGeometry.viewportHeight);
   expect(dialogGeometry.pageScrollWidth).toBeLessThanOrEqual(dialogGeometry.viewportWidth);
+  expect(dialogGeometry.contentSized, JSON.stringify(dialogGeometry)).toBe(true);
+  expect(dialogGeometry.centred, JSON.stringify(dialogGeometry)).toBe(true);
   await settingsDialog.getByRole("button", { name: "Close common bet combos" }).click();
-  await page.getByRole("button", { name: "Manage Common Bet Combos" }).click();
+  await page.getByRole("button", { name: "Manage Templates" }).click();
   await expect(settingsDialog.getByRole("button", { name: "Add Combo" })).toBeVisible();
   await expect(settingsDialog.locator('[data-pd-id="common-bet-combos.editor"]')).toHaveCount(0);
   await expect(settingsDialog.getByText("Show Archived", { exact: true })).toBeVisible();
@@ -195,6 +204,11 @@ test("Tracker Lists uses the Fund Manager table-first settings pattern", async (
   await page.goto("/settings#lists");
   const authorityManageButton = page.locator('[data-pd-id="fund-manager-authorities.add"]');
   const authoritySection = page.locator('[data-pd-id="fund-manager-authorities.section"]');
+  const summary = authoritySection.getByLabel("Tracker List summary");
+  await expect(summary.getByText("Active Values", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Archived Values", { exact: true })).toBeVisible();
+  await expect(summary.getByText("List Types", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Current List", { exact: true })).toBeVisible();
   const authorityActionGeometry = await Promise.all([
     authorityManageButton.boundingBox(),
     authoritySection.boundingBox(),

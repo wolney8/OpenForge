@@ -71,12 +71,27 @@ test("Fund Manager creates and verifies a contained local database backup", asyn
   });
 
   await page.setViewportSize({ width: 900, height: 720 });
-  await page.goto("/settings");
+  await page.goto("/settings#database");
+
+  const summary = page.getByLabel("Database Backup summary");
+  await expect(summary.getByText("Total Backups", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Verified", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Failed Checks", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Stored Size", { exact: true })).toBeVisible();
 
   const openButton = page.getByRole("button", { name: "Manage Database Backups" });
   await openButton.click();
   const dialog = page.getByRole("dialog", { name: "Database Backups" });
   await expect(dialog).toBeVisible();
+  const initialGeometry = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      contentSized: rect.height < innerHeight - 24,
+      centred: Math.abs((rect.top + rect.bottom) / 2 - innerHeight / 2) < 8,
+    };
+  });
+  expect(initialGeometry.contentSized, JSON.stringify(initialGeometry)).toBe(true);
+  expect(initialGeometry.centred, JSON.stringify(initialGeometry)).toBe(true);
   await expect(page.getByText("No local backups yet")).toBeVisible();
   await expect(dialog.getByText("Deferred", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Close Database Backups" })).toBeFocused();
@@ -240,7 +255,7 @@ test("Fund Manager exports, previews and restores a full local database package"
   });
 
   await page.setViewportSize({ width: 900, height: 720 });
-  await page.goto("/settings");
+  await page.goto("/settings#database");
   await page.getByRole("button", { name: "Manage Database Backups" }).click();
   const dialog = page.getByRole("dialog", { name: "Database Backups" });
 

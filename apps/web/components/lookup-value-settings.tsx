@@ -121,7 +121,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
 
   const dialog = activeSection ? (
     <div className="modal-backdrop modal-backdrop-elevated" data-pd-id="profile-settings.offer-names.backdrop">
-      <section aria-label={`Manage ${activeSection.title}`} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal lookup-values-modal" data-pd-id={`profile-settings.offer-names.${activeSection.lookupType}.dialog`} ref={dialogRef} role="dialog" tabIndex={-1}>
+      <section aria-label={`Manage ${activeSection.title}`} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal lookup-values-modal" data-pd-id={`profile-settings.offer-names.${activeSection.lookupType}.dialog`} ref={dialogRef} role="dialog" tabIndex={-1}>
         <header className="workflow-editor-modal-header">
           <div><span className="eyebrow">Profile Settings</span><h2>{activeSection.title}</h2></div>
           <button aria-label={`Close ${activeSection.title}`} className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
@@ -129,7 +129,7 @@ export function LookupValueSettings({ profileId }: { profileId: string }) {
         <div className="workflow-editor-modal-body stack dialog-table-modal-body">
           {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
           <div className="table-toolbar dialog-table-toolbar">
-            <label className="field-control"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createValue(); } }} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
+            <label className="field-control settings-dialog-field"><span>Add {activeSection.singularLabel}</span><input data-initial-focus onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createValue(); } }} placeholder={`Enter ${activeSection.singularLabel}`} value={draft} /></label>
             <button className="button-link icon-text-action" disabled={!draft.trim() || Boolean(pendingAction)} onClick={() => void createValue()} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>{pendingAction === "create" ? "Adding" : "Add Value"}</span></button>
           </div>
           <div className="dialog-table-viewport" data-pd-id="profile-settings.offer-names.table-viewport">

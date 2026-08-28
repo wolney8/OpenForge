@@ -10206,6 +10206,71 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   border-top: 1px solid var(--outline);
 }
 
+/* Settings dialogs size to their content; signed-off ledger editors retain fixed workflow height. */
+.modal-panel.workflow-editor-modal.fund-manager-settings-modal.settings-adaptive-modal {
+  height: auto;
+  max-height: calc(100dvh - 3rem);
+  align-self: center;
+}
+
+.settings-adaptive-modal .workflow-editor-modal-body,
+.settings-adaptive-modal-body {
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(100dvh - 12rem);
+  padding: 1.25rem 1.35rem;
+  overflow: auto;
+}
+
+.settings-dialog-form-grid {
+  align-items: start;
+  gap: 1rem 1.25rem;
+}
+
+.settings-dialog-field,
+.settings-dialog-field input,
+.settings-adaptive-modal .field-control,
+.settings-adaptive-modal .field-control input,
+.settings-adaptive-modal .field-control select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-dialog-field input,
+.settings-adaptive-modal .field-control input,
+.settings-adaptive-modal .field-control select {
+  border-radius: var(--field-control-radius, 1.35rem);
+}
+
+.settings-stat-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-stat-strip .stat-card {
+  min-height: 7rem;
+}
+
+.settings-stat-strip .stat-card > span {
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-stat-strip .stat-card > strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 1.45rem;
+}
+
+.settings-stat-strip .stat-card > small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
 .common-bet-combo-body {
   min-width: 0;
   min-height: 0;
@@ -10384,6 +10449,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 @media (max-width: 760px) {
   .settings-card-grid { grid-template-columns: 1fr; }
+  .settings-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dialog-table-toolbar { grid-template-columns: 1fr; }
   .quick-actions-ledger-header,
   .quick-action-row { align-items: stretch; flex-direction: column; }

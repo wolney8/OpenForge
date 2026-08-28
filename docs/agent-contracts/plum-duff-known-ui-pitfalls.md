@@ -3,6 +3,16 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-08-28: Settings dialogs inherited fixed ledger-editor height
+
+- Area: Profile Lists, Profile Quick Actions, Fund Manager Quick Actions and Database dialogs.
+- Root cause: compact settings dialogs reused the fixed-height `workflow-editor-modal` shell without
+  an adaptive settings-specific height rule; some nested dialogs also omitted the body portal.
+- Prevention: viewport settings dialogs portal to `document.body`, use `settings-adaptive-modal`,
+  and confine overflow to their body or table viewport. Do not alter signed-off ledger editor size.
+- Test: Profile Settings and Fund Manager settings Playwright assert viewport containment, local
+  scrolling and that compact dialog height follows its content rather than ledger editor height.
+
 ## 2026-08-25: Extra Place payout fraction was treated as a place-count boundary
 
 - Area: Extra Place calculation and settlement editor.

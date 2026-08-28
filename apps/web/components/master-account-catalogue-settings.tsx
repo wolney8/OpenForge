@@ -289,14 +289,16 @@ export function MasterAccountCatalogueSettings() {
           <h2 id="master-account-catalogue-title">Account Catalogue</h2>
         </div>
       </div>
-      <div className="meta-grid">
+      <section className="stat-strip settings-stat-strip" aria-label="Account Catalogue summary">
         {accountTypes.map((accountType) => (
-          <dl key={accountType}>
-            <dt>{accountType === "Bookmaker" ? "Bookmakers" : `${accountType}s`}</dt>
-            <dd>{catalogue?.records.filter((record) => record.account_type === accountType).length ?? 0}</dd>
-          </dl>
+          <article className="stat-card" key={accountType}>
+            <span>{accountType === "Bookmaker" ? "Bookmakers" : `${accountType}s`}</span>
+            <strong>{catalogue?.records.filter((record) => record.account_type === accountType).length ?? 0}</strong>
+            <small>Global providers</small>
+          </article>
         ))}
-      </div>
+        <article className="stat-card"><span>Active Providers</span><strong>{catalogue?.records.filter((record) => record.status === "Active").length ?? 0}</strong><small>Available to profiles</small></article>
+      </section>
       {errorMessage && !isOpen ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       {isLoading && !catalogue ? <LedgerLoadingIndicator label="Loading Account Catalogue" /> : null}
       <div className="table-toolbar account-catalogue-toolbar" data-pd-id="account-catalogue.controls">

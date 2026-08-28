@@ -5,6 +5,11 @@ test("Fund Manager can inspect and prepare account catalogue changes from the ta
 
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   const catalogue = page.locator('[data-pd-id="account-catalogue.section"]');
+  const summary = catalogue.getByLabel("Account Catalogue summary");
+  await expect(summary.getByText("Bookmakers", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Exchanges", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Banks", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Active Providers", { exact: true })).toBeVisible();
   await expect(catalogue.locator('[data-pd-id="account-catalogue.table-scroll"]')).toBeVisible();
   await expect(catalogue.getByLabel("Account Catalogue top controls").getByText("Rows per page")).toBeVisible();
   await catalogue.getByLabel("Search Account Catalogue").fill("Smarkets");

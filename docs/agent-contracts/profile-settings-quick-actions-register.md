@@ -14,11 +14,11 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-PR-007 | Profile Settings > Quick Actions | Rename `Quick Add` to `Quick Actions`; group actions by ledger; distinguish global and profile-owned actions. | VERIFIED |
 | PD-PR-008 | Quick Action authority | Add required global enforcement, constrained profile overrides, typed profile-owned actions, ordering/archive/audit persistence and resolved API output. | VERIFIED |
 | PD-PR-009 | Quick Action carousel | Resolve global required actions first, then profile favourites/actions, to a four-slot ledger carousel with blocked-provider explanations. | VERIFIED |
-| PD-PR-010 | Fund Manager Common Bet Combos / Offer dialogs | Use a shared scrollable dialog table viewport with sticky headers so body rows cannot underlap headers. | NEEDS VERIFICATION |
+| PD-PR-010 | Fund Manager Common Bet Combos / Offer dialogs | Use a shared scrollable dialog table viewport with sticky headers so body rows cannot underlap headers. | VERIFIED |
 | PD-PR-011 | Fund Manager Settings tabs | Move Quick Actions to the final tab position, matching Profile Settings. | VERIFIED |
 | PD-PR-012 | Fund Manager Account Catalogue | Present catalogue records in the shared ledger table pattern: search, filter, sorting and eight-row pagination. | VERIFIED |
 | PD-PR-013 | Fund Manager Tracker Lists | Present tracker lists in the shared ledger table pattern: search, filter, sorting and eight-row pagination. | VERIFIED |
-| PD-PR-014 | Fund Manager Database Backup | Present backup history/status in the shared ledger table pattern: search, filter, sorting and eight-row pagination. | NEEDS VERIFICATION |
+| PD-PR-014 | Fund Manager Database Backup | Present backup history/status in the shared ledger table pattern: search, filter, sorting and eight-row pagination. | VERIFIED |
 | PD-PR-015 | Fund Manager Site Settings | Add a clearly deferred Site Settings tab stub covering platform, Fund Manager, profile-admin, onboarding, billing, mail and announcement scope. | VERIFIED |
 | PD-PR-016 | Profile Settings copy | Remove non-actionable load/ready preambles from Defaults and Lists. | VERIFIED |
 | PD-PR-017 | Profile Defaults save state | Replace the Saved chip with the existing Save control, enabled only when data changes. | VERIFIED |
@@ -26,6 +26,17 @@ approved Settings and Quick Actions batch until it is signed off.
 | PD-PR-019 | Offer-name dialogs | Portal dialogs above the frame with correct modal layering, local scroll, focus and visible footer. | VERIFIED |
 | PD-PR-020 | Offer-name dialog actions | Restore adding Sportsbook/Free Bet and Casino values, including error/success feedback and regression coverage. | VERIFIED |
 | PD-PR-021 | Settings security tags | Extend the declarative module policy to the new Site Settings scope; runtime enforcement remains held for authentication. | VERIFIED |
+| PD-PR-022 | Profile Settings > Lists dialogs | Remove excessive unused dialog height while retaining a bounded local table scroll region. | VERIFIED |
+| PD-PR-023 | Profile Settings > Lists inputs | Match canonical rounded field geometry in normal and focused states. | VERIFIED |
+| PD-PR-024 | Profile Settings > Casino Offer Names | Restore add, edit and delete parity and add dedicated regression coverage. | VERIFIED |
+| PD-PR-025 | Profile Settings > Quick Actions dialog | Portal and centre the dialog within the viewport instead of page-relative placement. | VERIFIED |
+| PD-PR-026 | Profile Settings > Quick Actions form | Apply canonical modal body, title, field and footer spacing without large unused regions. | VERIFIED |
+| PD-PR-027 | Fund Manager > Quick Actions dialog | Remove empty modal space while preserving local table/editor scrolling. | VERIFIED |
+| PD-PR-028 | Fund Manager > Database dialog | Remove empty modal space while preserving backup controls and local scrolling. | VERIFIED |
+| PD-PR-029 | Fund Manager > Account Catalogue | Replace summary metadata with proper stat cards derived from catalogue records. | VERIFIED |
+| PD-PR-030 | Fund Manager > Quick Actions | Add stat cards for active, required, archived and ledger coverage. | VERIFIED |
+| PD-PR-031 | Fund Manager > Tracker Lists | Add stat cards for active, archived, authority types and current-list values. | VERIFIED |
+| PD-PR-032 | Fund Manager > Database | Add stat cards for verified, failed, total and storage size. | VERIFIED |
 
 ## Boundaries
 
@@ -40,8 +51,10 @@ approved Settings and Quick Actions batch until it is signed off.
   metadata are covered by focused pytest tests.
 - Web contracts: quick-action ordering/capping has unit coverage; Profile Settings keyboard tabs
   and deep links have focused Playwright coverage.
-- Remaining Fund Manager review: visual geometry of the offer-name dialogs, commission saved state,
-  Quick Action hierarchy and carousel at desktop/reduced widths.
+- Settings correction coverage: Profile offer-name CRUD and adaptive geometry, Profile Quick Action
+  body portal/centering, Fund Manager Account Catalogue/Quick Actions/Tracker Lists/Database summary
+  cards, and Quick Actions/Database dialog geometry pass focused Playwright coverage.
+- Remaining Fund Manager review: visual confirmation of the corrected dialogs in the local UI.
 
 ## Requirement Mapping
 

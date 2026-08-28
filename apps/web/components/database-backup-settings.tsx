@@ -368,6 +368,12 @@ export function DatabaseBackupSettings() {
     <>
       <section className="content-panel stack" data-pd-id="database-backups.section">
         <div className="sportsbook-page-header"><div><span className="eyebrow">Local data protection</span><h2>Database Backups</h2></div><button aria-haspopup="dialog" className="button-link settings-card-action" data-pd-id="database-backups.open" onClick={() => setIsOpen(true)} ref={openButtonRef} type="button">Manage Database Backups</button></div>
+        <section className="stat-strip settings-stat-strip" aria-label="Database Backup summary">
+          <article className="stat-card"><span>Total Backups</span><strong>{snapshots.length}</strong><small>Local recovery points</small></article>
+          <article className="stat-card"><span>Verified</span><strong>{snapshots.filter((snapshot) => snapshot.status === "verified").length}</strong><small>Integrity checks passed</small></article>
+          <article className="stat-card"><span>Failed Checks</span><strong>{snapshots.filter((snapshot) => snapshot.status !== "verified").length}</strong><small>Require Fund Manager review</small></article>
+          <article className="stat-card"><span>Stored Size</span><strong>{formatBytes(snapshots.reduce((total, snapshot) => total + snapshot.byte_size, 0))}</strong><small>Across local backups</small></article>
+        </section>
         {error && !isOpen ? <p className="error-text" role="alert">{error}</p> : null}
         {isLoading && !snapshots.length ? <LedgerLoadingIndicator label="Loading database backups" /> : null}
         <div className="table-toolbar"><label className="field-control table-search-field"><span>Search backups</span><input aria-label="Search database backups" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label><label className="field-control table-filter-field"><span>State</span><select aria-label="Filter database backup state" onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }} value={statusFilter}><option>All</option><option>Verified</option><option>Verification Failed</option></select></label></div>
@@ -382,7 +388,7 @@ export function DatabaseBackupSettings() {
               <section
                 aria-labelledby="database-backups-title"
                 aria-modal="true"
-                className="modal-panel workflow-editor-modal fund-manager-settings-modal database-backups-modal"
+                className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal database-backups-modal"
                 data-pd-id="database-backups.dialog"
                 ref={dialogRef}
                 role="dialog"

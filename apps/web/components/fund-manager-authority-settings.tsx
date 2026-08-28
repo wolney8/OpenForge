@@ -161,6 +161,12 @@ export function FundManagerAuthoritySettings() {
     <>
       <section className="content-panel stack" data-pd-id="fund-manager-authorities.section">
         <div className="sportsbook-page-header"><div><span className="eyebrow">Universal tracker authority</span><h2>Tracker Lists</h2></div><button className="modal-primary-button" data-pd-id="fund-manager-authorities.add" onClick={openCreate} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Value</span></button></div>
+        <section className="stat-strip settings-stat-strip" aria-label="Tracker List summary">
+          <article className="stat-card"><span>Active Values</span><strong>{rows.filter((row) => row.status === "Active").length}</strong><small>Available tracker options</small></article>
+          <article className="stat-card"><span>Archived Values</span><strong>{rows.filter((row) => row.status === "Archived").length}</strong><small>Retained for history</small></article>
+          <article className="stat-card"><span>List Types</span><strong>{new Set(rows.map((row) => row.lookup_type)).size}</strong><small>Configured authorities</small></article>
+          <article className="stat-card"><span>Current List</span><strong>{rows.filter((row) => row.lookup_type === typeFilter).length}</strong><small>{authorityLabels[typeFilter]}</small></article>
+        </section>
         {isLoading && !rows.length ? <LedgerLoadingIndicator label="Loading tracker lists" /> : null}
         {error ? <p className="error-text" role="alert">{error}</p> : null}
         <div className="table-toolbar fund-manager-authority-toolbar"><label className="field-control table-filter-field"><span>List</span><select data-pd-id="fund-manager-authorities.list-filter" onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} value={typeFilter}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field-control table-search-field"><span>Search</span><input aria-label="Search Fund Manager tracker list" data-pd-id="fund-manager-authorities.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label></div>
