@@ -117,6 +117,7 @@ class ProfileOnboardingCreatePayload(BaseModel):
     ] = "This Month"
     iteration_number: int = Field(default=1, ge=1, le=9999)
     starting_bankroll: Decimal = Field(default=Decimal("0"), ge=0)
+    operating_jurisdiction: Literal["GB"] = "GB"
     enabled_modules: list[ProfileModule]
     weekly_extra_place_loss_budget: Decimal = Field(
         default=Decimal("15"), ge=0
@@ -244,6 +245,21 @@ def create_profile_onboarding_route(
                 "catalogue_ids": missing_ids,
             },
         )
+    unavailable_ids = sorted(
+        account.catalogue_id
+        for account in payload.accounts
+        if payload.operating_jurisdiction
+        not in active_records[account.catalogue_id].operating_jurisdictions
+    )
+    if unavailable_ids:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Selected accounts must support the Profile operating jurisdiction",
+                "operating_jurisdiction": payload.operating_jurisdiction,
+                "catalogue_ids": unavailable_ids,
+            },
+        )
     if payload.main_bank_catalogue_id:
         main_bank = active_records.get(payload.main_bank_catalogue_id)
         if main_bank is None or main_bank.account_type != "Bank":
@@ -327,6 +343,10 @@ def create_profile_onboarding_route(
         )
 
     values = payload.model_dump()
+    values["preferences"] = {
+        **payload.preferences,
+        "operating_jurisdiction": payload.operating_jurisdiction,
+    }
     values.update(
         profile_id=f"profile-{uuid4().hex[:12]}",
         tracking_start_date=payload.tracking_start_date.isoformat(),

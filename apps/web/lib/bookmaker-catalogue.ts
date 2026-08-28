@@ -34,6 +34,7 @@ export type MasterAccountCatalogueRecord = {
   source: string;
   confidence: "Verified" | "Likely" | "Unverified";
   last_verified_date: string;
+  introduced_at: string;
   evidence: MasterAccountCatalogueEvidence[];
 };
 

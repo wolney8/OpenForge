@@ -10918,7 +10918,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .account-catalogue-table {
-  min-width: 860px;
+  min-width: 940px;
 }
 
 .account-catalogue-table th,
@@ -11191,6 +11191,37 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .account-catalogue-transfer-row {
   width: 100%;
+}
+
+.profile-onboarding-accounts-table {
+  min-width: 1160px;
+  table-layout: fixed;
+}
+
+.profile-onboarding-provider-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.profile-onboarding-provider-cell .table-status {
+  flex-basis: 100%;
+}
+
+.table-inline-control {
+  min-width: 0;
+  margin: 0;
+}
+
+.table-inline-control > select,
+.table-inline-control .financial-text-input {
+  min-height: 3rem;
+}
+
+.founder-onboarding-actions {
+  justify-content: space-between;
 }
 
 @media (max-width: 860px) {

@@ -12,7 +12,7 @@ test("Fund Manager can inspect and prepare account catalogue changes from the ta
   await expect(summary.getByText("Active Providers", { exact: true })).toBeVisible();
   await expect(catalogue.locator('[data-pd-id="account-catalogue.table-scroll"]')).toBeVisible();
   await expect(catalogue.getByLabel("Account Catalogue top controls").getByText("Rows per page")).toBeVisible();
-  await expect(catalogue.getByRole("link", { name: "Export", exact: true })).toBeVisible();
+  await expect(catalogue.getByRole("button", { name: "Export", exact: true })).toBeVisible();
   await expect(catalogue.getByRole("button", { name: "Import", exact: true })).toBeVisible();
   await expect(catalogue.getByText("Check catalogue import validates", { exact: false })).toHaveCount(0);
 
@@ -146,6 +146,16 @@ test("Account Catalogue import requires reviewed apply and reports completion", 
   await review.getByRole("button", { name: "Apply Import" }).click();
   await expect(page.getByText("Account Catalogue imported: 1 added, 1 updated, 1 archived.")).toBeVisible();
   await expect(review).toHaveCount(0);
+  const transferNotification = await page.evaluate(() => {
+    const stored = window.localStorage.getItem("plum-duff:fund-manager-local-notifications:v1");
+    const notifications = stored ? JSON.parse(stored) as Array<Record<string, unknown>> : [];
+    return notifications.find((item) => item.notification_type === "catalogue_transfer_status");
+  });
+  expect(transferNotification).toMatchObject({
+    href: "/settings#catalogue",
+    security_tag: "fund_manager_only",
+    tone: "success",
+  });
 });
 
 test("Account Catalogue import renders structured validation errors", async ({ page }) => {
@@ -172,7 +182,17 @@ test("Account Catalogue import renders structured validation errors", async ({ p
     name: "invalid-catalogue.json",
   });
 
-  await expect(page.getByText("records › 0 › brand_name: Field required")).toBeVisible();
+  await expect(page.getByText("records › 0 › brand_name: Field required", { exact: true })).toBeVisible();
   await expect(page.getByText("[object Object]", { exact: false })).toHaveCount(0);
   await expect(page.locator('[data-pd-id="account-catalogue.import-review"]')).toHaveCount(0);
+  const failureNotification = await page.evaluate(() => {
+    const stored = window.localStorage.getItem("plum-duff:fund-manager-local-notifications:v1");
+    const notifications = stored ? JSON.parse(stored) as Array<Record<string, unknown>> : [];
+    return notifications.find((item) => item.notification_type === "catalogue_transfer_status");
+  });
+  expect(failureNotification).toMatchObject({
+    href: "/settings#catalogue",
+    security_tag: "fund_manager_only",
+    tone: "danger",
+  });
 });

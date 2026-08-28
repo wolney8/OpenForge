@@ -5,8 +5,8 @@ _Last updated: 2026-08-28_
 ## 1. Workflow name
 
 - Name: Fund Manager notification centre
-- Initial notification sources: database backup reminders, active partial-lay reminders and
-  free-bet follow-up reminders
+- Initial notification sources: database backup reminders, active partial-lay reminders,
+  free-bet follow-up reminders and Account Catalogue transfer results
 
 ## 2. User goal
 
@@ -93,6 +93,7 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 | Database backup reminder | No verified backup, seven days since the latest verified backup, or 25 changed tracker rows since that backup | Fund Manager | `fund_manager_only` | Database Backup Reminders |
 | Partial-lay reminder | Manual active or reopened task; re-alerts on the due day, four hours before due, and two hours before due | Fund Manager | `fund_manager_only` | Partial Lay Reminders |
 | Free-bet follow-up reminder | Manual active or reopened task; re-alerts on the due day, four hours before due, and two hours before due | Fund Manager | `fund_manager_only` | Free Bet Follow-Up Reminders |
+| Account Catalogue transfer | An Account Catalogue import or export succeeds or fails; emitted once when the transfer completes | Fund Manager | `fund_manager_only` | Account Catalogue Transfers |
 
 No other source may enter the shared feed without an approved workflow contract, deterministic
 fixtures, a preference label, an audience decision, and a security tag. Automatic free-bet expiry,
@@ -113,6 +114,7 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
 - the three-dot action menu contains `Mark all as read` and `Clear notifications`
 - the bell popover provides `View all notifications`; the history page permits bulk mark-read and
   bulk clear only for the current filtered retained set
+- Account Catalogue transfer cards deep-link to `/settings#catalogue` and never mutate providers
 - task cards use a green Material completion action; destructive clearing requires inline
   confirmation rather than a nested modal
 - disabled actions remain unavailable when their exact preconditions are false

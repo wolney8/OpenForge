@@ -59,6 +59,7 @@ function masterFixture(
     source: "Synthetic fixture",
     confidence: "Unverified",
     last_verified_date: "",
+    introduced_at: "",
     evidence: [],
     ...overrides,
   };

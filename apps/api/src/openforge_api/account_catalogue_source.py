@@ -136,6 +136,7 @@ class MasterAccountCatalogueRecord(BaseModel):
     source: str = Field(default="", max_length=300)
     confidence: Literal["Verified", "Likely", "Unverified"] = "Unverified"
     last_verified_date: str = Field(default="", max_length=20)
+    introduced_at: str = Field(default="", max_length=40)
     evidence: list[CatalogueEvidence] = Field(default_factory=list)
 
     @field_validator("catalogue_id")
@@ -236,10 +237,56 @@ class MasterAccountCatalogueApplyResult(MasterAccountCataloguePreflightResult):
     archived_catalogue_ids: list[str]
 
 
+class ArchiveCatalogueRecordsPayload(BaseModel):
+    catalogue_ids: list[str] = Field(min_length=1, max_length=500)
+
+    @field_validator("catalogue_ids")
+    @classmethod
+    def normalize_catalogue_ids(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().upper() for value in values if value.strip()]
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("catalogue_ids must not contain duplicates")
+        return normalized
+
+
+class ArchiveCatalogueRecordsResult(BaseModel):
+    archived_catalogue_ids: list[str]
+    missing_catalogue_ids: list[str]
+
+
 def load_master_account_catalogue(path: Path | None = None) -> MasterAccountCatalogue:
     catalogue_path = path or settings.account_catalogue_source_path
     raw = json.loads(catalogue_path.read_text(encoding="utf-8"))
-    return MasterAccountCatalogue.model_validate(raw)
+    catalogue = MasterAccountCatalogue.model_validate(raw)
+    if path is not None:
+        return catalogue
+
+    # Preserve the introduction date for the latest import even when the source predates this
+    # metadata field. The private recovery backup is the authoritative before-image.
+    backup_directory = settings.backup_path / "account-catalogue"
+    backups = sorted(
+        backup_directory.glob(f"{catalogue_path.stem}-*{catalogue_path.suffix}"),
+        key=lambda candidate: candidate.stat().st_mtime,
+        reverse=True,
+    )
+    if not backups:
+        return catalogue
+    try:
+        previous = MasterAccountCatalogue.model_validate(
+            json.loads(backups[0].read_text(encoding="utf-8"))
+        )
+    except (OSError, json.JSONDecodeError, ValidationError):
+        return catalogue
+    previous_ids = {record.catalogue_id for record in previous.records}
+    records = [
+        record.model_copy(
+            update={"introduced_at": catalogue.updated_at}
+        )
+        if not record.introduced_at and record.catalogue_id not in previous_ids
+        else record
+        for record in catalogue.records
+    ]
+    return catalogue.model_copy(update={"records": records})
 
 
 def _current_timestamp() -> str:
@@ -351,13 +398,26 @@ def apply_master_account_catalogue_import(
         current_by_id[catalogue_id].model_copy(update={"status": "Archived"})
         for catalogue_id in removed
     ]
+    introduced_at = _current_timestamp()
+    incoming_records = [
+        record.model_copy(
+            update={
+                "introduced_at": (
+                    introduced_at
+                    if record.catalogue_id in added
+                    else current_by_id[record.catalogue_id].introduced_at
+                )
+            }
+        )
+        for record in incoming.records
+    ]
     try:
         replacement = MasterAccountCatalogue.model_validate(
             {
                 **incoming.model_dump(mode="json"),
                 "updated_at": _current_timestamp(),
                 "records": [
-                    *[record.model_dump(mode="json") for record in incoming.records],
+                    *[record.model_dump(mode="json") for record in incoming_records],
                     *[record.model_dump(mode="json") for record in archived_records],
                 ],
             }
@@ -391,6 +451,9 @@ def create_master_account_catalogue_record(
     payload: MasterAccountCatalogueRecord,
 ) -> MasterAccountCatalogueRecord:
     catalogue = _load_catalogue_for_request()
+    payload = payload.model_copy(
+        update={"introduced_at": payload.introduced_at or _current_timestamp()}
+    )
     try:
         updated = MasterAccountCatalogue.model_validate(
             {
@@ -407,6 +470,42 @@ def create_master_account_catalogue_record(
 
     _persist_master_account_catalogue(updated)
     return payload
+
+
+@router.post("/records/archive", response_model=ArchiveCatalogueRecordsResult)
+def archive_master_account_catalogue_records(
+    payload: ArchiveCatalogueRecordsPayload,
+) -> ArchiveCatalogueRecordsResult:
+    """Archive selected providers atomically; never hard-delete Profile authorities."""
+    catalogue = _load_catalogue_for_request()
+    requested_ids = set(payload.catalogue_ids)
+    current_ids = {record.catalogue_id for record in catalogue.records}
+    found_ids = sorted(requested_ids & current_ids)
+    missing_ids = sorted(requested_ids - current_ids)
+    if missing_ids:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Every selected provider must exist before the archive is applied",
+                "catalogue_ids": missing_ids,
+            },
+        )
+    replacement = catalogue.model_copy(
+        update={
+            "updated_at": _current_timestamp(),
+            "records": [
+                record.model_copy(update={"status": "Archived"})
+                if record.catalogue_id in requested_ids
+                else record
+                for record in catalogue.records
+            ],
+        }
+    )
+    _persist_master_account_catalogue(replacement)
+    return ArchiveCatalogueRecordsResult(
+        archived_catalogue_ids=found_ids,
+        missing_catalogue_ids=missing_ids,
+    )
 
 
 @router.put(

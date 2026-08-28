@@ -1,19 +1,31 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { inferStatusToastTone, type StatusToastTone } from "@/lib/status-toast";
 
 type StatusToastProps = {
   message: string;
   onDismiss?: () => void;
   tone?: StatusToastTone;
+  durationMs?: number;
 };
 
-export function StatusToast({ message, onDismiss, tone }: StatusToastProps) {
+export function StatusToast({ durationMs, message, onDismiss, tone }: StatusToastProps) {
+  const resolvedTone = tone ?? inferStatusToastTone(message);
+
+  useEffect(() => {
+    if (!message || !onDismiss) return;
+    const timeoutId = window.setTimeout(
+      onDismiss,
+      durationMs ?? (resolvedTone === "error" ? 8000 : 5000),
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [durationMs, message, onDismiss, resolvedTone]);
+
   if (!message || message.startsWith("Loading ")) {
     return null;
   }
-
-  const resolvedTone = tone ?? inferStatusToastTone(message);
 
   return (
     <div

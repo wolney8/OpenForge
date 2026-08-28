@@ -324,6 +324,26 @@ def test_profile_onboarding_rejects_unknown_catalogue_provider(tmp_path: Path) -
     assert "active global catalogue providers" in response.json()["detail"]["message"]
 
 
+def test_profile_onboarding_rejects_provider_outside_operating_jurisdiction(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    catalogue_path = Path(settings.account_catalogue_source)
+    catalogue = json.loads(catalogue_path.read_text(encoding="utf-8"))
+    catalogue["records"][0]["operating_jurisdictions"] = ["IE"]
+    catalogue_path.write_text(json.dumps(catalogue), encoding="utf-8")
+    payload = profile_onboarding_payload()
+    payload["accounts"] = [payload["accounts"][0]]
+    payload["main_bank_catalogue_id"] = ""
+
+    response = TestClient(app).post("/profiles/onboarding", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["operating_jurisdiction"] == "GB"
+    assert response.json()["detail"]["catalogue_ids"] == ["BOOKMAKER-DEMO-001"]
+
+
 def test_profile_onboarding_rejects_unknown_quick_action_without_partial_write(
     tmp_path: Path,
 ) -> None:

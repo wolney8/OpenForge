@@ -9,10 +9,18 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 |---|---|---|---|---|
 | PD-FR-001 | Notifications | Reconcile triggers, timing, templates, routes, lifecycle, preferences and security tags | Fund Manager notification centre contract | COMPLETE |
 | PD-FR-002 | Account Catalogue | Fix structured import errors, validate rollback/conflicts and reconcile any partial attempt | Existing catalogue import/preflight workflow | COMPLETE |
-| PD-FR-002A | Catalogue evidence import | Accept evidence for contracted provider identity/theme fields and identify rejected values | Master Account Catalogue schema | NEEDS VERIFICATION |
-| PD-FR-003 | Profile onboarding | Provide reusable Fund Manager-created Profile onboarding using global providers plus Profile-owned state | Existing Profile and Accounts flows | NEEDS VERIFICATION |
-| PD-FR-003A | Reusable onboarding | Use one repeatable Profile flow for founder now and subscriber Profiles later | `/profiles/new` and Profile isolation contract | NEEDS VERIFICATION |
-| PD-FR-003B | Provider authority | Make the Fund Manager Account Catalogue the only new Profile/account provider source | Global catalogue/Profile state contract | NEEDS VERIFICATION |
+| PD-FR-002A | Catalogue evidence import | Accept evidence for contracted provider identity/theme fields and identify rejected values | Master Account Catalogue schema | COMPLETE |
+| PD-FR-002B | Catalogue bulk management | Clear staged imports and bulk archive providers without breaking Profile references | Account Catalogue authority workflow | COMPLETE |
+| PD-FR-002C | Catalogue feedback | Auto-dismiss transfer toasts and retain import/export success or failure in Notifications | Signed-off toast and notification patterns | COMPLETE |
+| PD-FR-002D | New provider discovery | Persist provider introduction time and show a New tag during Profile account selection | Master Account Catalogue schema | COMPLETE |
+| PD-FR-003 | Profile onboarding | Provide reusable Fund Manager-created Profile onboarding using global providers plus Profile-owned state | Existing Profile and Accounts flows | COMPLETE |
+| PD-FR-003A | Reusable onboarding | Use one repeatable Profile flow for founder now and subscriber Profiles later | `/profiles/new` and Profile isolation contract | COMPLETE |
+| PD-FR-003B | Provider authority | Make the Fund Manager Account Catalogue the only new Profile/account provider source | Global catalogue/Profile state contract | COMPLETE |
+| PD-FR-003C | Guided onboarding | Use the signed-off stepper, guided access, dirty-route guard and explicit Cancel on the non-modal page | Ledger editor stepper and unsaved-change guard | COMPLETE |
+| PD-FR-003D | Profile financial/jurisdiction inputs | Format bankroll/fees consistently and default operating jurisdiction to GB | Financial input and Account Catalogue availability rules | COMPLETE |
+| PD-FR-003E | Onboarding Accounts table | Add eight-row pagination, sorting, resizing and consistent provider/status/balance controls | Signed-off ledger table controls | COMPLETE |
+| PD-FR-003F | Subscriber provisioning boundary | Registration approval creates or claims the same Profile type; it does not introduce another Profile model | Subscriber registration contract | COMPLETE |
+| PD-FR-004A | Fund Manager identity role | Attach full Fund Manager authority to an authenticated user identity, never to a client-side Profile toggle | Fund Manager authentication contract | BLOCKED |
 | PD-FR-004 | Authentication | Add Google OAuth, owner allowlist, server sessions, route/API/mutation protection and logout | Existing security metadata; no cosmetic login | NOT STARTED |
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
@@ -30,6 +38,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | Database backup | Fund Manager; `fund_manager_only` | No verified backup, 7 days stale, or 25 changed tracker rows | Stable latest-backup/no-backup identity | `/settings#database` | Stage-aware read; local clear; no source mutation | Database Backup Reminders | COMPLETE |
 | Partial lay | Fund Manager; `fund_manager_only` | Active/reopened; due day, 4h and 2h re-alert stages | Profile + row + reminder-change identity | Profile Sportsbook row | Stage-aware read; local clear; audited resolve/dismiss | Partial Lay Reminders | COMPLETE |
 | Free-bet follow-up | Fund Manager; `fund_manager_only` | Active/reopened; due day, 4h and 2h re-alert stages | Profile + row + reminder-change identity | Profile Free Bet row | Stage-aware read; local clear; audited resolve/dismiss | Free Bet Follow-Up Reminders | COMPLETE |
+| Account Catalogue transfer | Fund Manager; `fund_manager_only` | Import/export succeeds or fails | One local result per completed transfer | `/settings#catalogue` | Standard read/clear; no provider mutation | Account Catalogue Transfers | COMPLETE |
 
 Current read, clear and preference state is intentionally local-first browser state. Durable hosted
 persistence belongs to `PD-FR-005`. The API emits immutable Fund Manager audience/security tags,
@@ -54,9 +63,9 @@ backup before atomic replacement. It never mutates Profile account rows or silen
 provider relationships. Hosted durability remains blocked on `PD-FR-005` because this authority is
 still file-backed.
 
-Focused verification on 2026-08-28 passed ten Account Catalogue API tests, all 225 web unit tests,
-three Account Catalogue Playwright tests, web typecheck, web lint, targeted Ruff and
-`git diff --check`.
+Focused verification on 2026-08-28 passed the Account Catalogue and Profile onboarding API tests,
+all 226 web unit tests, five focused Account Catalogue/Profile onboarding Playwright tests, web
+typecheck, web lint and `git diff --check`.
 
 ## PD-FR-003 Reusable Profile Onboarding
 
@@ -66,15 +75,21 @@ favourites in one transaction. Sportsbook, Free Bets and Cash Adjustments remain
 Casino and Extra Places can be disabled without removing historical rows. Required global Quick
 Actions remain inherited and cannot be disabled during onboarding.
 
-The implementation uses active global Account Catalogue identities and does not copy editable
+The implementation uses active GB global Account Catalogue identities and does not copy editable
 global provider metadata into Profile settings. Invalid providers, duplicate codes and invalid
 Quick Actions fail before any partial Profile is written. Focused automated coverage is complete;
-Fund Manager synthetic-data smoke verification remains required before this item is signed off.
+Fund Manager synthetic-data smoke verification remains recommended before using the flow operationally.
 
 The founder is the first operational use of this shared flow, not a special one-off Profile type.
 Later subscriber identity/invitation work will authorize access to an existing Profile rather than
 creating another onboarding architecture. Workbook extraction remains `PD-FR-006A` and is blocked
 from real-data execution until owner authentication and Neon persistence pass their safety gates.
+
+The access model deliberately separates data ownership from identity authority. A Profile is the
+isolated tracker/account container used for the founder and subscribers. A Fund Manager is an
+authenticated user role that may administer Profiles. Subscriber registration will call the same
+Profile provisioning service after approval; `PD-FR-004` must enforce the Fund Manager role on the
+server before any UI may offer a full-security assignment.
 
 ## Safety Gate
 

@@ -9,10 +9,12 @@ const catalogue = {
       short_display_name: "Bookmaker A",
       operator_group: "Synthetic Group",
       platform: "Synthetic Platform",
+      operating_jurisdictions: ["GB"],
       operating_channels: ["web"],
       foreground_colour: "#FFFFFF",
       background_colour: "#B71C1C",
       status: "Active",
+      introduced_at: "2026-08-27T12:00:00Z",
     },
     {
       catalogue_id: "EXCHANGE-DEMO-001",
@@ -21,10 +23,12 @@ const catalogue = {
       short_display_name: "Exchange A",
       operator_group: "Synthetic Group",
       platform: "Synthetic Platform",
+      operating_jurisdictions: ["GB"],
       operating_channels: ["web"],
       foreground_colour: "#FFFFFF",
       background_colour: "#1565C0",
       status: "Active",
+      introduced_at: "",
     },
     {
       catalogue_id: "BANK-DEMO-001",
@@ -33,10 +37,26 @@ const catalogue = {
       short_display_name: "Bank A",
       operator_group: "Synthetic Group",
       platform: "Synthetic Platform",
+      operating_jurisdictions: ["GB"],
       operating_channels: ["web", "mobile"],
       foreground_colour: "#FFFFFF",
       background_colour: "#455A64",
       status: "Active",
+      introduced_at: "",
+    },
+    {
+      catalogue_id: "BOOKMAKER-US-DEMO-001",
+      account_type: "Bookmaker",
+      brand_name: "US Bookmaker",
+      short_display_name: "US Bookmaker",
+      operator_group: "Synthetic Group",
+      platform: "Synthetic Platform",
+      operating_jurisdictions: ["US"],
+      operating_channels: ["web"],
+      foreground_colour: "#FFFFFF",
+      background_colour: "#263238",
+      status: "Active",
+      introduced_at: "2026-08-27T12:00:00Z",
     },
   ],
 };
@@ -91,13 +111,16 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   await page.getByLabel("Display Name").fill("Synthetic Profile");
   await page.getByLabel("Profile Code").fill("profile-001");
   await expect(page.getByLabel("Profile Code")).toHaveValue("PROFILE-001");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Enabled Modules" })).toBeVisible();
   await page.getByText("Casino Offers", { exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Profile Accounts" })).toBeVisible();
+  await expect(page.getByLabel("Profile onboarding accounts top controls").getByText("Rows per page")).toBeVisible();
+  await expect(page.getByText("New", { exact: true })).toBeVisible();
+  await expect(page.getByText("US Bookmaker", { exact: true })).toHaveCount(0);
   for (const name of ["Bookmaker A", "Exchange A", "Bank A"]) {
     await page.getByLabel(`Use ${name}`).check();
   }
@@ -105,12 +128,12 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   await page.getByLabel("Exchange A opening balance").fill("50.00");
   await page.getByLabel("Bank A opening balance").fill("75.00");
   await page.getByLabel("Main Bank Account").selectOption("BANK-DEMO-001");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Quick Actions" })).toBeVisible();
   await expect(page.getByText("Required Cash Action", { exact: true })).toBeVisible();
   await page.getByText("Synthetic Sportsbook Action", { exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Review Profile" })).toBeVisible();
   await expect(page.getByText("£ 150.00")).toBeVisible();
@@ -144,7 +167,29 @@ test("Profile onboarding stages block forward navigation until required identity
   });
   await page.goto("/profiles/new");
 
-  await page.getByRole("tab", { name: "Review" }).click();
+  await expect(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-disabled", "true");
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("p.error-text[role='alert']")).toContainText("Enter a display name");
+});
+
+test("Profile onboarding Cancel uses the shared unsaved-change guard", async ({ page }) => {
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+  await page.goto("/profiles/new");
+
+  await page.getByLabel("Display Name").fill("Unsaved Profile");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  await expect(guard).toBeVisible();
+  await guard.getByRole("button", { name: "Keep Editing", exact: true }).click();
+  await expect(page).toHaveURL(/\/profiles\/new$/);
+
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("dialog", { name: "Unsaved tracker changes" }).getByRole("button", { name: "Discard Changes" }).click();
+  await expect(page).toHaveURL(/\/profiles$/);
 });

@@ -20,14 +20,22 @@ workbook/Plum Duff run.
 
 ## Scope
 
-The workflow uses one reusable Profile model and is not founder-exclusive. It does not create a
-second registration system or expose subscriber registration, public sign-up, account credentials,
-or automatic account creation. A later subscriber invitation grants scoped access to an existing
-Profile; it does not use a different Profile schema or duplicate this onboarding workflow.
+The workflow uses one reusable Profile model and is not founder-exclusive. A Fund Manager can use
+it repeatedly for managed subscribers and can create an ordinary tracker Profile for their own
+operational data. A later subscriber registration is a reviewed request: approval invokes the same
+Profile provisioning service and schema rather than a second onboarding implementation. It must
+not activate a Profile or grant access before Fund Manager approval.
+
+Fund Manager authority belongs to the authenticated user identity and server-side role/allowlist,
+not to a client-editable Profile toggle. A Fund Manager may also be linked to their own tracker
+Profile, but that Profile link does not confer administrative authority. Subscriber identities are
+linked only to approved Profile IDs and cannot acquire the Fund Manager role through onboarding.
 
 Required onboarding inputs:
 
 - profile display name, code, tracking start and fee settings;
+- operating jurisdiction, initially GB, which limits selectable providers to active catalogue
+  records supporting that jurisdiction;
 - enabled modules: Sportsbook, Free Bets and Cash Adjustments always enabled; Casino and Extra
   Place separately toggleable;
 - weekly Extra Place loss budget where Extra Place is enabled;
@@ -39,9 +47,12 @@ Required onboarding inputs:
 
 ## Route and states
 
-- Entry: Fund Manager Dashboard -> Add profile -> Profile onboarding.
+- Entry: Fund Manager Dashboard -> Add profile -> Profile onboarding. Later subscriber registration
+  enters the same provisioning boundary only after approval.
 - States: `profile_details`, `modules`, `accounts_and_opening_values`, `quick_actions`,
   `review_ready`, `created`.
+- The page uses an in-page stepper, guided access, deterministic keyboard order, Cancel, and an
+  unsaved-change route guard; it is not a modal.
 - The importer may only open after a profile has reached `created` and has a verified pre-import
   backup.
 

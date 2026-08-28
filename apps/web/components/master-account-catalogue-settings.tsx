@@ -8,6 +8,8 @@ import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { confirmDestructiveAction } from "@/lib/use-unsaved-changes-guard";
+import { addOrReplaceLocalFundManagerNotification } from "@/lib/notifications";
 import type {
   MasterAccountCatalogue,
   MasterAccountCatalogueRecord,
@@ -55,6 +57,7 @@ function createBlankRecord(): MasterAccountCatalogueRecord {
     source: "Fund Manager entry",
     confidence: "Unverified",
     last_verified_date: "",
+    introduced_at: "",
     evidence: [],
   };
 }
@@ -70,6 +73,11 @@ function generatedCatalogueId(accountType: MasterAccountType, brandName: string)
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return `${accountType.toUpperCase()}-${slug}`;
+}
+
+function isRecentlyIntroduced(value: string): boolean {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && Date.now() - timestamp <= 30 * 24 * 60 * 60 * 1000;
 }
 
 export function MasterAccountCatalogueSettings() {
@@ -92,6 +100,7 @@ export function MasterAccountCatalogueSettings() {
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [importPreflight, setImportPreflight] = useState<ImportPreflightResult | null>(null);
   const [importCandidate, setImportCandidate] = useState<MasterAccountCatalogue | null>(null);
+  const [selectedCatalogueIds, setSelectedCatalogueIds] = useState<Set<string>>(new Set());
 
   const loadCatalogue = useCallback(async () => {
     setIsLoading(true);
@@ -196,6 +205,34 @@ export function MasterAccountCatalogueSettings() {
     setIsOpen(true);
   }
 
+  function recordTransferNotification(
+    operation: "import" | "export",
+    succeeded: boolean,
+    message: string,
+  ) {
+    const createdAt = new Date().toISOString();
+    addOrReplaceLocalFundManagerNotification({
+      notification_id: `catalogue-transfer:${operation}:${createdAt}`,
+      notification_type: "catalogue_transfer_status",
+      title: `Account Catalogue ${operation} ${succeeded ? "completed" : "failed"}`,
+      ledger_label: "Account Catalogue",
+      bookmaker_label: "Fund Manager Settings",
+      message,
+      profile_id: "fund-manager",
+      profile_name: "Fund Manager",
+      record_id: `account-catalogue-${operation}`,
+      href: "/settings#catalogue",
+      created_at: createdAt,
+      tone: succeeded ? "success" : "danger",
+    });
+  }
+
+  function clearImportReview() {
+    setImportPreflight(null);
+    setImportCandidate(null);
+    if (importFileRef.current) importFileRef.current.value = "";
+  }
+
   async function preflightImport(file: File | undefined) {
     if (!file) return;
     setErrorMessage("");
@@ -220,7 +257,9 @@ export function MasterAccountCatalogueSettings() {
       setImportCandidate(catalogue);
       setStatusMessage("Catalogue file validated. Review the changes before applying them.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to validate catalogue file.");
+      const message = error instanceof Error ? error.message : "Unable to validate catalogue file.";
+      setErrorMessage(message);
+      recordTransferNotification("import", false, message);
     } finally {
       if (importFileRef.current) importFileRef.current.value = "";
     }
@@ -246,8 +285,96 @@ export function MasterAccountCatalogueSettings() {
       setStatusMessage(
         `Account Catalogue imported: ${result.added_catalogue_ids.length} added, ${result.updated_catalogue_ids.length} updated, ${result.archived_catalogue_ids.length} archived.`
       );
+      recordTransferNotification(
+        "import",
+        true,
+        `${result.added_catalogue_ids.length} added, ${result.updated_catalogue_ids.length} updated, and ${result.archived_catalogue_ids.length} archived.`,
+      );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Catalogue import failed.");
+      const message = error instanceof Error ? error.message : "Catalogue import failed.";
+      setErrorMessage(message);
+      recordTransferNotification("import", false, message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function exportCatalogue() {
+    setErrorMessage("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/account-catalogue/source/export.json`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Catalogue export failed."));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "plum-duff-account-catalogue.json";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      const message = "Account Catalogue export downloaded.";
+      setStatusMessage(message);
+      recordTransferNotification("export", true, message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Catalogue export failed.";
+      setErrorMessage(message);
+      recordTransferNotification("export", false, message);
+    }
+  }
+
+  function toggleCatalogueSelection(catalogueId: string) {
+    setSelectedCatalogueIds((current) => {
+      const next = new Set(current);
+      if (next.has(catalogueId)) next.delete(catalogueId);
+      else next.add(catalogueId);
+      return next;
+    });
+  }
+
+  function toggleVisibleCatalogueSelection() {
+    const selectableIds = visibleRecords
+      .filter((record) => record.status === "Active")
+      .map((record) => record.catalogue_id);
+    setSelectedCatalogueIds((current) => {
+      const next = new Set(current);
+      const allSelected = selectableIds.length > 0 && selectableIds.every((id) => next.has(id));
+      for (const id of selectableIds) {
+        if (allSelected) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function archiveSelectedProviders() {
+    const catalogueIds = [...selectedCatalogueIds];
+    if (!catalogueIds.length || isSaving) return;
+    const confirmed = await confirmDestructiveAction({
+      confirmLabel: "Archive Providers",
+      title: "Archive selected providers?",
+      message: `${catalogueIds.length} selected provider${catalogueIds.length === 1 ? "" : "s"} will be unavailable for new Profile selections. Existing Profile links are retained.`,
+    });
+    if (!confirmed) return;
+    setIsSaving(true);
+    setErrorMessage("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/account-catalogue/source/records/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ catalogue_ids: catalogueIds }),
+      });
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to archive selected providers."));
+      }
+      const result = await response.json() as { archived_catalogue_ids: string[]; missing_catalogue_ids: string[] };
+      await loadCatalogue();
+      setSelectedCatalogueIds(new Set());
+      setStatusMessage(`${result.archived_catalogue_ids.length} provider${result.archived_catalogue_ids.length === 1 ? "" : "s"} archived.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to archive selected providers.");
     } finally {
       setIsSaving(false);
     }
@@ -344,17 +471,19 @@ export function MasterAccountCatalogueSettings() {
         </div>
       </div>
       <div className="tracker-nav settings-table-secondary-actions account-catalogue-transfer-row" data-pd-id="account-catalogue.transfer-actions">
-        <a className="button-link" download href={`${apiBaseUrl}/account-catalogue/source/export.json`}>Export</a>
+        <button className="button-link" onClick={() => void exportCatalogue()} type="button">Export</button>
         <input accept="application/json" aria-label="Choose account catalogue JSON file to import" className="sr-only" onChange={(event) => void preflightImport(event.target.files?.[0])} ref={importFileRef} type="file" />
         <button className="button-link" onClick={() => importFileRef.current?.click()} type="button">Import</button>
+        <button className="danger-button" disabled={!selectedCatalogueIds.size || isSaving} onClick={() => void archiveSelectedProviders()} type="button">Archive Selected</button>
       </div>
-      {importPreflight ? <section aria-live="polite" className="content-subpanel stack" data-pd-id="account-catalogue.import-review"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Archive {importPreflight.removed_catalogue_ids.length}</span><div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="account-catalogue.import-apply" disabled={isSaving} onClick={() => void applyImport()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">upload_file</span>}<span>{isSaving ? "Importing" : "Apply Import"}</span></button><button className="button-link" disabled={isSaving} onClick={() => { setImportPreflight(null); setImportCandidate(null); }} type="button">Cancel</button></div></section> : null}
+      {importPreflight ? <section aria-live="polite" className="content-subpanel stack" data-pd-id="account-catalogue.import-review"><strong>Import check passed</strong><span>{importPreflight.incoming_record_count} incoming records; {importPreflight.current_record_count} current.</span><span>Added {importPreflight.added_catalogue_ids.length} · Updated {importPreflight.updated_catalogue_ids.length} · Archive {importPreflight.removed_catalogue_ids.length}</span><div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="account-catalogue.import-apply" disabled={isSaving} onClick={() => void applyImport()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">upload_file</span>}<span>{isSaving ? "Importing" : "Apply Import"}</span></button><button className="button-link" disabled={isSaving} onClick={clearImportReview} type="button">Clear Import</button></div></section> : null}
       <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="top" totalRows={sortedRecords.length} />
       <LedgerTableScroll dataPdId="account-catalogue.table-scroll">
         <table className="data-table account-catalogue-table"><thead><tr>
+          <th><label className="checkbox-control"><input aria-label="Select active providers on this page" checked={visibleRecords.some((record) => record.status === "Active") && visibleRecords.filter((record) => record.status === "Active").every((record) => selectedCatalogueIds.has(record.catalogue_id))} onChange={toggleVisibleCatalogueSelection} type="checkbox" /><span className="sr-only">Select page</span></label></th>
           {([['type', 'Type'], ['brand', 'Brand']] as const).map(([key, label]) => <th aria-sort={sort.key === key ? sort.direction === "asc" ? "ascending" : "descending" : "none"} key={key}><button className={`table-sort-button${sort.key === key ? " is-active" : ""}`} onClick={() => toggleSort(key)} type="button">{label}<span aria-hidden="true" className="material-symbols-outlined">{sort.key === key && sort.direction === "desc" ? "arrow_downward" : "arrow_upward"}</span></button></th>)}
           <th>Operator Details</th><th>Availability</th><th aria-sort={sort.key === "status" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button className={`table-sort-button${sort.key === "status" ? " is-active" : ""}`} onClick={() => toggleSort("status")} type="button">Status<span aria-hidden="true" className="material-symbols-outlined">{sort.key === "status" && sort.direction === "desc" ? "arrow_downward" : "arrow_upward"}</span></button></th><th>Actions</th>
-        </tr></thead><tbody>{visibleRecords.map((record) => <tr key={record.catalogue_id}><td><span className="table-chip table-chip-muted">{record.account_type}</span></td><td><span className="account-brand-pill" data-pd-id="account-catalogue.brand-pill" style={{ backgroundColor: record.background_colour, color: record.foreground_colour }}>{record.brand_name}</span></td><td><span>{record.operator_group || "No group"}</span><span className="table-status">{record.platform || "No platform"}</span></td><td>{record.operating_jurisdictions.join(", ") || "Unverified"}<span className="table-status">{record.operating_channels.join(", ") || "No verified channels"}</span></td><td><span className={`table-chip ${record.status === "Active" ? "table-chip-status-placed" : "table-chip-muted"}`}>{record.status}</span></td><td><div className="tracker-nav account-catalogue-actions"><button aria-label={`Edit ${record.brand_name}`} className="icon-button" onClick={() => beginEdit(record)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></div></td></tr>)}</tbody></table>
+        </tr></thead><tbody>{visibleRecords.map((record) => <tr key={record.catalogue_id}><td><label className="checkbox-control"><input aria-label={`Select ${record.brand_name}`} checked={selectedCatalogueIds.has(record.catalogue_id)} disabled={record.status !== "Active"} onChange={() => toggleCatalogueSelection(record.catalogue_id)} type="checkbox" /><span className="sr-only">Select</span></label></td><td><span className="table-chip table-chip-muted">{record.account_type}</span></td><td><span className="tracker-nav"><span className="account-brand-pill" data-pd-id="account-catalogue.brand-pill" style={{ backgroundColor: record.background_colour, color: record.foreground_colour }}>{record.brand_name}</span>{isRecentlyIntroduced(record.introduced_at) ? <span className="table-chip table-chip-warning">New</span> : null}</span></td><td><span>{record.operator_group || "No group"}</span><span className="table-status">{record.platform || "No platform"}</span></td><td>{record.operating_jurisdictions.join(", ") || "Unverified"}<span className="table-status">{record.operating_channels.join(", ") || "No verified channels"}</span></td><td><span className={`table-chip ${record.status === "Active" ? "table-chip-status-placed" : "table-chip-muted"}`}>{record.status}</span></td><td><div className="tracker-nav account-catalogue-actions"><button aria-label={`Edit ${record.brand_name}`} className="icon-button" onClick={() => beginEdit(record)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></div></td></tr>)}</tbody></table>
       </LedgerTableScroll>
       <LedgerPagination ariaLabel="Account Catalogue" currentPage={page} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} pageCount={totalPages} pageSize={pageSize} position="bottom" totalRows={sortedRecords.length} />
 

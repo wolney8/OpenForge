@@ -79,6 +79,7 @@ def test_master_account_catalogue_export_and_preflight_do_not_mutate_source(
     source_payload = catalogue_payload()
     source_path.write_text(json.dumps(source_payload), encoding="utf-8")
     monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    monkeypatch.setattr(settings, "backup_directory", str(tmp_path / "backups"))
     client = TestClient(app)
 
     export_response = client.get("/account-catalogue/source/export.json")
@@ -136,7 +137,52 @@ def test_master_account_catalogue_apply_is_atomic_and_archives_omissions(
     saved_by_id = {row["catalogue_id"]: row for row in saved["records"]}
     assert saved_by_id["EXCHANGE-DEMO-001"]["short_display_name"] == "Exchange A Updated"
     assert saved_by_id["BANK-DEMO-001"]["status"] == "Archived"
+    assert saved_by_id["BOOKMAKER-DEMO-001"]["introduced_at"]
     assert len(list((backup_path / "account-catalogue").glob("*.json"))) == 1
+
+
+def test_master_account_catalogue_bulk_archive_is_atomic(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    backup_path = tmp_path / "backups"
+    source_path.write_text(json.dumps(catalogue_payload()), encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    monkeypatch.setattr(settings, "backup_directory", str(backup_path))
+
+    response = TestClient(app).post(
+        "/account-catalogue/source/records/archive",
+        json={"catalogue_ids": ["EXCHANGE-DEMO-001", "BANK-DEMO-001"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "archived_catalogue_ids": ["BANK-DEMO-001", "EXCHANGE-DEMO-001"],
+        "missing_catalogue_ids": [],
+    }
+    saved = json.loads(source_path.read_text(encoding="utf-8"))
+    assert {record["status"] for record in saved["records"]} == {"Archived"}
+    assert len(list((backup_path / "account-catalogue").glob("*.json"))) == 1
+
+
+def test_master_account_catalogue_bulk_archive_rejects_unknown_ids_without_write(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source_path = tmp_path / "master-account-catalogue.json"
+    backup_path = tmp_path / "backups"
+    original = json.dumps(catalogue_payload())
+    source_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(settings, "account_catalogue_source", str(source_path))
+    monkeypatch.setattr(settings, "backup_directory", str(backup_path))
+
+    response = TestClient(app).post(
+        "/account-catalogue/source/records/archive",
+        json={"catalogue_ids": ["MISSING-DEMO-001"]},
+    )
+
+    assert response.status_code == 422
+    assert source_path.read_text(encoding="utf-8") == original
+    assert not backup_path.exists()
 
 
 def test_master_account_catalogue_apply_conflict_rolls_back_without_backup(

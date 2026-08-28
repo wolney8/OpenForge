@@ -28,6 +28,7 @@ The master source may contain public or Fund Manager-maintained reference metada
 - active/archive state
 - accessible display colours and approved local logo path
 - source, confidence, and verification date
+- introduction timestamp used to surface recently added providers during Profile account selection
 
 It must never contain profile ids, balances, restrictions, account-health state, credentials,
 personal data, cookies, tokens, or login details. Those remain profile-scoped database records.
@@ -43,6 +44,8 @@ personal data, cookies, tokens, or login details. Those remain profile-scoped da
 - `POST /account-catalogue/source/import/apply` applies the reviewed candidate only after full
   validation. Omitted providers are archived rather than deleted so historical links remain
   resolvable.
+- `POST /account-catalogue/source/records/archive` atomically archives a reviewed set of stable
+  provider IDs. Unknown IDs reject the whole request; hard deletion is unavailable.
 - Every successful add or edit creates a timestamped local backup of the previous JSON source and
   replaces the source atomically only after full-catalogue validation passes.
 - Every successful catalogue import creates the same timestamped recovery backup and atomic
@@ -59,6 +62,10 @@ personal data, cookies, tokens, or login details. Those remain profile-scoped da
   account rows.
 - The Fund Manager import workflow shows add/change/archive counts and requires an explicit Apply
   action after preflight. It never mutates Profile account state or silently remaps provider ids.
+- Import and export completion/failure use timed UI feedback and create a retained Fund Manager
+  notification. A staged preflight can be cleared without changing the catalogue.
+- Newly added records retain `introduced_at`; Profile account selection shows a `New` marker for
+  the first 30 days without changing provider eligibility.
 - Runtime profile-account or legacy bookmaker-database edits must not be silently exported back
   into the authoring file.
 - An empty jurisdiction or channel list means availability is unverified and blocks automatic

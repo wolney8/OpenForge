@@ -87,6 +87,13 @@ export const fundManagerNotificationTypes = [
       "Tracks free-bet review tasks until the free bet is resolved or its relevant lifecycle date has passed.",
     timing: "When active or reopened, then on the due day, 4 hours before, and 2 hours before.",
   },
+  {
+    id: "catalogue_transfer_status",
+    label: "Account Catalogue Transfers",
+    description:
+      "Records successful and failed Fund Manager Account Catalogue imports and exports.",
+    timing: "Immediately after an import or export completes or fails.",
+  },
 ] as const;
 
 export type FundManagerNotificationTypeId =
@@ -101,6 +108,7 @@ export const defaultFundManagerNotificationPreferences: FundManagerNotificationP
   database_backup_reminder: true,
   partial_lay_reminder: true,
   free_bet_follow_up_reminder: true,
+  catalogue_transfer_status: true,
 };
 
 const knownFundManagerNotificationTypeIds = new Set<string>(
