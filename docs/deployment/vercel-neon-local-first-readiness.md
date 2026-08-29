@@ -1,18 +1,14 @@
 # Vercel and Neon Local-First Readiness
 
-This note records the current deployment boundary for Plum Duff while the runtime database remains
-local-first.
+This note records the Vercel-to-Neon activation boundary.
 
 ## Current State
 
 - Vercel can be used for web/API deployment testing only after environment variables are configured
   deliberately for the target environment.
-- The current preferred hosted-development target is documented in
-  `docs/deployment/vercel-neon-dev-target.md`: Vercel-first hosting with Neon as the intended
-  managed database target, while local SQLite remains the live runtime until Neon runtime cutover
-  is implemented.
-- Local SQLite remains the authoritative runtime database until Issue `#75` implements and validates
-  the PostgreSQL runtime adapter and explicit Fund Manager cutover workflow.
+- Local development remains SQLite by default.
+- Vercel Production becomes Neon authoritative only when `OPENFORGE_DATABASE_MODE=neon` is set.
+- The PostgreSQL runtime adapter and transactional migrations are implemented.
 - Neon is approved as a future managed PostgreSQL target only when Plum Duff uses an isolated
   database/project and a dedicated connection string.
 - A reachable Neon schema does not mean runtime cutover is approved.
@@ -39,18 +35,15 @@ Latest local check on 2026-08-20:
 - Neon database: `plum-duff-app-db`
 - Neon isolation: isolated
 - remote schema: expected tables present, no missing or extra tables
-- runtime cutover: blocked
+- runtime adapter: verified against Neon with synthetic data
+- hosted runtime activation: awaiting Vercel environment switch and authenticated smoke
 
-Current blockers:
-
-- PostgreSQL runtime adapter is not implemented;
-- explicit Fund Manager runtime cutover confirmation is not implemented;
-- staged Neon data verification must pass for the current rehearsal state before runtime cutover can
-  be approved.
+Current blocker: the deployed Production environment must run the current commit with
+`OPENFORGE_DATABASE_MODE=neon`, followed by the authenticated persistence smoke.
 
 ## Runtime Rules
 
-- Do not set production/Vercel runtime to Neon as authoritative until Issue `#75` is complete.
+- Do not import real workbook data until the hosted persistence and recovery smoke passes.
 - Do not silently fall back from Neon writes to local writes after cutover; that would create
   split-brain data.
 - Do not use the AI Diary database/schema/role for Plum Duff runtime data.

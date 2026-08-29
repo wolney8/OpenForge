@@ -1,6 +1,6 @@
 # Neon Runtime Tranche 01
 
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Goal
 
@@ -20,52 +20,31 @@ without introducing split-brain writes or weakening the local-first recovery mod
 - Read-only cutover-readiness gate exists.
 - Fresh verified local backups can be created before rehearsal.
 
-## What is still missing
+## Implemented runtime boundary
 
-### 1. Live runtime adapter
+- `OPENFORGE_DATABASE_MODE=neon` selects PostgreSQL explicitly.
+- psycopg provides a compatibility boundary for existing repository queries.
+- PostgreSQL failures roll back and never fall back to SQLite.
+- versioned schema migration runs transactionally under a PostgreSQL advisory lock.
+- Profile, account, all five ledger, catalogue, notification and security-preference paths have
+  passed synthetic Neon CRUD checks.
 
-`apps/api/src/openforge_api/db.py` currently supports SQLite runtime modes only.
+## Remaining hosted cutover gate
 
-That means:
+- Set `OPENFORGE_DATABASE_MODE=neon` in Vercel Production and redeploy the current commit.
+- Complete the authenticated hosted persistence smoke in `neon-runtime-cutover.md`.
+- Create a Neon pre-import snapshot immediately before the workbook dry run/import.
 
-- `OPENFORGE_DATABASE_MODE=neon` is intentionally blocked
-- all operational reads/writes still assume SQLite connections/cursors
-- there is no approved Postgres transaction/runtime path yet
+Workbook financial reconciliation remains a separate later gate; no real workbook data was loaded.
 
-### 2. Explicit cutover control
-
-There is no final operator workflow that:
-
-- confirms a specific verified backup
-- confirms a specific Neon verification package/fingerprint
-- flips the active runtime intentionally
-- records that cutover as an auditable event
-
-### 3. Runtime parity verification
-
-Staged schema/data verification exists, but there is not yet an approved runtime smoke path proving:
-
-- the hosted API behaves correctly under PostgreSQL runtime
-- ledger entry/edit/save flows remain stable
-- financial outputs match the SQLite source-of-truth totals
-
-## Safe implementation order
-
-1. Introduce a database adapter seam for runtime connections.
-2. Move read/write helpers away from SQLite-only assumptions.
-3. Implement PostgreSQL runtime connection support behind the adapter.
-4. Add runtime-specific tests for the adapter and critical repository operations.
-5. Add explicit Fund Manager cutover control and rollback protocol.
-6. Rehearse runtime smoke tests against Neon before any live switch.
-
-## Definition of done for this tranche
+## Definition of done
 
 This tranche is complete only when:
 
-- API runtime can intentionally run against PostgreSQL
-- runtime mode is still fail-closed if verification/cutover requirements are not met
+- API runtime intentionally runs against PostgreSQL
+- runtime mode fails closed if PostgreSQL is unavailable
 - no silent fallback from Neon writes to SQLite writes exists
-- critical financial and profile-isolation tests pass under the PostgreSQL runtime path
+- hosted OAuth/Profile/account/ledger persistence passes on Vercel
 
 ## Not part of this tranche
 

@@ -80,13 +80,13 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | IN PROGRESS |
 | PD-FR-005A | Hosted Dashboard runtime diagnosis | Trace the hosted Dashboard failure and separate runtime defects from persistence prerequisites | Profile API and hosted fail-closed storage contract | COMPLETE |
 | PD-FR-005B | Account Catalogue source audit | Record the bundled JSON source, current mutation durability and the canonical-seed plus durable-overlay target | Account Catalogue authority contract | COMPLETE |
-| PD-FR-005C | PostgreSQL runtime adapter | Route authoritative API reads/writes through psycopg in explicit Neon mode without SQLite fallback | Local database/cloud backup contract | IN PROGRESS |
-| PD-FR-005D | Deterministic migrations | Add versioned, transactional PostgreSQL schema migration and verification | Existing PostgreSQL schema plan | NOT STARTED |
-| PD-FR-005E | Founder Profile bootstrap | Persist a reusable owner-created Profile and associate it with the authenticated Founder identity | Existing Profile onboarding workflow | NOT STARTED |
-| PD-FR-005F | Profile Account persistence | Persist catalogue references, balances and Profile-specific account state with isolation and duplicate protection | Existing Profile Accounts contract | NOT STARTED |
-| PD-FR-005G | Ledger persistence | Verify Sportsbook, Free Bets, Casino, Extra Places and Cash Adjustments through PostgreSQL | Existing ledger APIs and calculation contracts | NOT STARTED |
-| PD-FR-005H | Notification/settings persistence | Persist notification state/preferences and currently durable Profile/Fund Manager settings | Notification and Settings contracts | NOT STARTED |
-| PD-FR-005I | Neon backup/recovery | Record and verify a pre-import recovery point and current-plan restore limitations | Local database/cloud backup contract | NOT STARTED |
+| PD-FR-005C | PostgreSQL runtime adapter | Route authoritative API reads/writes through psycopg in explicit Neon mode without SQLite fallback | Local database/cloud backup contract | COMPLETE |
+| PD-FR-005D | Deterministic migrations | Add versioned, transactional PostgreSQL schema migration and verification | Existing PostgreSQL schema plan | COMPLETE |
+| PD-FR-005E | Founder Profile bootstrap | Persist a reusable owner-created Profile and associate it with the authenticated Founder identity | Existing Profile onboarding workflow | NEEDS VERIFICATION |
+| PD-FR-005F | Profile Account persistence | Persist catalogue references, balances and Profile-specific account state with isolation and duplicate protection | Existing Profile Accounts contract | NEEDS VERIFICATION |
+| PD-FR-005G | Ledger persistence | Verify Sportsbook, Free Bets, Casino, Extra Places and Cash Adjustments through PostgreSQL | Existing ledger APIs and calculation contracts | NEEDS VERIFICATION |
+| PD-FR-005H | Notification/settings persistence | Persist notification state/preferences and currently durable Profile/Fund Manager settings | Notification and Settings contracts | NEEDS VERIFICATION |
+| PD-FR-005I | Neon backup/recovery | Record and verify a pre-import recovery point and current-plan restore limitations | Local database/cloud backup contract | NEEDS VERIFICATION |
 | PD-FR-005J | Hosted persistence verification | Verify owner-only Profile, account, setting and representative ledger persistence on Vercel | Founder hosted persistence checklist | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -101,7 +101,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-012D | Search Profile scope | Support current, selected and all-authorized Profile scopes | Search Results workspace plan | DEFERRED |
 | PD-FR-012E | Search aggregates | Reuse contracted reporting calculations for balances, exposure and P&L; never fabricate totals | Search Results workspace plan | DEFERRED |
 | PD-AUDIT-REPORT-001 | Reporting regression fixture | Reconcile the pre-existing cross-profile fee queue fixture expecting two entries while current data produces three | Cross-profile reporting tests; unrelated to PD-FR-004 | DEFERRED |
-| PD-AUDIT-API-001 | Existing API regression suite | Reconcile pre-existing Account Catalogue authority assumptions and the untouched Sportsbook `db.py` `catalogue_id` failure affecting 46 full-suite tests | API baseline outside PD-FR-004 | DEFERRED |
+| PD-AUDIT-API-001 | Existing API regression suite | Reconcile pre-existing Account Catalogue authority assumptions; the Sportsbook optional-`catalogue_id` defect found by PostgreSQL CRUD is fixed under PD-FR-005G | API baseline outside PD-FR-004 | PARTIALLY COMPLETE |
 
 ## PD-FR-001 Notification Matrix
 

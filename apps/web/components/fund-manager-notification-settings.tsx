@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   fundManagerNotificationTypes,
   loadFundManagerNotificationPreferences,
+  loadPersistedNotificationPreferences,
+  persistNotificationPreferences,
   saveFundManagerNotificationPreferences,
   type FundManagerNotificationPreferences,
   type FundManagerNotificationTypeId,
@@ -29,19 +31,36 @@ export function FundManagerNotificationSettings() {
     [preferences, pristinePreferences]
   );
 
+  useEffect(() => {
+    let active = true;
+    void loadPersistedNotificationPreferences().then((persisted) => {
+      if (!active || !persisted) return;
+      setPreferences(copyPreferences(persisted));
+      setPristinePreferences(copyPreferences(persisted));
+      saveFundManagerNotificationPreferences(persisted);
+      setStatusMessage("Notification preferences loaded.");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function updatePreference(notificationType: FundManagerNotificationTypeId, enabled: boolean) {
     setPreferences((current) => ({ ...current, [notificationType]: enabled }));
     setStatusMessage("Unsaved notification preference changes.");
   }
 
-  function savePreferences() {
+  async function savePreferences() {
     setIsSaving(true);
-    window.setTimeout(() => {
+    const saved = await persistNotificationPreferences(preferences);
+    if (saved) {
       saveFundManagerNotificationPreferences(preferences);
       setPristinePreferences(copyPreferences(preferences));
-      setIsSaving(false);
       setStatusMessage("Notification preferences saved.");
-    }, 180);
+    } else {
+      setStatusMessage("Unable to save notification preferences.");
+    }
+    setIsSaving(false);
   }
 
   return (
@@ -114,7 +133,7 @@ export function FundManagerNotificationSettings() {
           className="modal-primary-button"
           data-pd-id="fund-manager-notifications.save"
           disabled={!isDirty || isSaving}
-          onClick={savePreferences}
+          onClick={() => void savePreferences()}
           type="button"
         >
           {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}

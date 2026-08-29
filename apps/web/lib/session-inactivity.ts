@@ -78,3 +78,42 @@ export function saveSessionSecurityPreference(
     new CustomEvent(SESSION_SECURITY_PREFERENCE_EVENT, { detail: { email } })
   );
 }
+
+export async function loadPersistedSessionSecurityPreference(): Promise<SessionSecurityPreference | null> {
+  try {
+    const response = await fetch("/api/auth/security-preference", {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      auto_logout_enabled?: unknown;
+      timeout_minutes?: unknown;
+    };
+    return normalizeSessionSecurityPreference({
+      autoLogoutEnabled: payload.auto_logout_enabled,
+      timeoutMinutes: payload.timeout_minutes,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function persistSessionSecurityPreference(
+  preference: SessionSecurityPreference
+): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/security-preference", {
+      body: JSON.stringify({
+        auto_logout_enabled: preference.autoLogoutEnabled,
+        timeout_minutes: preference.timeoutMinutes,
+      }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      method: "PUT",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

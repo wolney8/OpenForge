@@ -15,9 +15,11 @@ from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 from openforge_api.config import settings
+from openforge_api.postgres_runtime import connect_postgres
 
 database_operation_lock = threading.RLock()
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
+SUPPORTED_POSTGRES_RUNTIME_MODES = {"neon", "postgres", "postgresql"}
 
 
 class DuplicateProfileAccountError(ValueError):
@@ -26,6 +28,213 @@ class DuplicateProfileAccountError(ValueError):
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def postgres_runtime_enabled() -> bool:
+    return settings.database_mode.strip().lower() in SUPPORTED_POSTGRES_RUNTIME_MODES
+
+
+def upsert_fund_manager_user(
+    *, email: str, google_subject: str, display_name: str
+) -> None:
+    if not postgres_runtime_enabled():
+        return
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_users (
+              email, google_subject, display_name, role, oauth_provider,
+              created_at, updated_at, last_login_at
+            ) VALUES (?, ?, ?, 'fund_manager', 'google', ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+              google_subject = excluded.google_subject,
+              display_name = excluded.display_name,
+              updated_at = excluded.updated_at,
+              last_login_at = excluded.last_login_at
+            """,
+            (
+                email.casefold(),
+                google_subject,
+                display_name,
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
+        )
+
+
+def link_fund_manager_profile(*, email: str, profile_id: str) -> None:
+    if not postgres_runtime_enabled():
+        return
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_profile_links (
+              email, profile_id, is_primary, created_at
+            ) VALUES (
+              ?, ?,
+              CASE WHEN EXISTS (
+                SELECT 1 FROM fund_manager_profile_links WHERE email = ?
+              ) THEN 0 ELSE 1 END,
+              ?
+            )
+            ON CONFLICT(email, profile_id) DO NOTHING
+            """,
+            (email.casefold(), profile_id, email.casefold(), timestamp),
+        )
+
+
+def get_fund_manager_security_preference(email: str) -> dict[str, Any]:
+    if not postgres_runtime_enabled():
+        return {"auto_logout_enabled": False, "timeout_minutes": 30, "updated_at": ""}
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT auto_logout_enabled, timeout_minutes, updated_at
+            FROM fund_manager_security_preferences
+            WHERE email = ?
+            """,
+            (email.casefold(),),
+        ).fetchone()
+    if row is None:
+        return {"auto_logout_enabled": False, "timeout_minutes": 30, "updated_at": ""}
+    return {
+        "auto_logout_enabled": bool(row["auto_logout_enabled"]),
+        "timeout_minutes": int(row["timeout_minutes"]),
+        "updated_at": str(row["updated_at"]),
+    }
+
+
+def upsert_fund_manager_security_preference(
+    *, email: str, auto_logout_enabled: bool, timeout_minutes: int
+) -> dict[str, Any]:
+    if timeout_minutes not in {15, 30, 60, 120, 240}:
+        raise ValueError("Unsupported inactivity timeout")
+    if not postgres_runtime_enabled():
+        return {
+            "auto_logout_enabled": auto_logout_enabled,
+            "timeout_minutes": timeout_minutes,
+            "updated_at": "",
+        }
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_security_preferences (
+              email, auto_logout_enabled, timeout_minutes, updated_at
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+              auto_logout_enabled = excluded.auto_logout_enabled,
+              timeout_minutes = excluded.timeout_minutes,
+              updated_at = excluded.updated_at
+            """,
+            (email.casefold(), int(auto_logout_enabled), timeout_minutes, timestamp),
+        )
+    return {
+        "auto_logout_enabled": auto_logout_enabled,
+        "timeout_minutes": timeout_minutes,
+        "updated_at": timestamp,
+    }
+
+
+def get_notification_user_state(email: str) -> dict[str, list[str]]:
+    if not postgres_runtime_enabled():
+        return {"read_keys": [], "dismissed_ids": []}
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT notification_id
+            FROM notification_user_state
+            WHERE email = ?
+            ORDER BY notification_id
+            """,
+            (email.casefold(),),
+        ).fetchall()
+    keys = [str(row["notification_id"]) for row in rows]
+    return {
+        "read_keys": [key.removeprefix("read:") for key in keys if key.startswith("read:")],
+        "dismissed_ids": [
+            key.removeprefix("clear:") for key in keys if key.startswith("clear:")
+        ],
+    }
+
+
+def replace_notification_user_state(
+    *, email: str, read_keys: list[str], dismissed_ids: list[str]
+) -> dict[str, list[str]]:
+    normalized_read = sorted({value.strip() for value in read_keys if value.strip()})
+    normalized_dismissed = sorted(
+        {value.strip() for value in dismissed_ids if value.strip()}
+    )
+    if not postgres_runtime_enabled():
+        return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM notification_user_state WHERE email = ?",
+            (email.casefold(),),
+        )
+        for key in normalized_read:
+            connection.execute(
+                """
+                INSERT INTO notification_user_state (
+                  email, notification_id, read_at, cleared_at, updated_at
+                ) VALUES (?, ?, ?, NULL, ?)
+                """,
+                (email.casefold(), f"read:{key}", timestamp, timestamp),
+            )
+        for notification_id in normalized_dismissed:
+            connection.execute(
+                """
+                INSERT INTO notification_user_state (
+                  email, notification_id, read_at, cleared_at, updated_at
+                ) VALUES (?, ?, NULL, ?, ?)
+                """,
+                (email.casefold(), f"clear:{notification_id}", timestamp, timestamp),
+            )
+    return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
+
+
+def get_notification_preferences(email: str) -> dict[str, bool]:
+    if not postgres_runtime_enabled():
+        return {}
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT notification_type, enabled
+            FROM notification_preferences
+            WHERE email = ?
+            ORDER BY notification_type
+            """,
+            (email.casefold(),),
+        ).fetchall()
+    return {str(row["notification_type"]): bool(row["enabled"]) for row in rows}
+
+
+def replace_notification_preferences(
+    *, email: str, preferences: dict[str, bool]
+) -> dict[str, bool]:
+    normalized = {key.strip(): bool(value) for key, value in preferences.items() if key.strip()}
+    if not postgres_runtime_enabled():
+        return normalized
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM notification_preferences WHERE email = ?",
+            (email.casefold(),),
+        )
+        for notification_type, enabled in sorted(normalized.items()):
+            connection.execute(
+                """
+                INSERT INTO notification_preferences (
+                  email, notification_type, enabled, updated_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (email.casefold(), notification_type, int(enabled), timestamp),
+            )
+    return normalized
 
 
 def load_tracker_seed() -> dict[str, Any] | None:
@@ -245,27 +454,37 @@ def parse_seed_bool(value: Any) -> bool:
 
 
 @contextmanager
-def connect() -> Iterator[sqlite3.Connection]:
+def connect() -> Iterator[Any]:
     with database_operation_lock:
         database_mode = settings.database_mode.strip().lower() or "local"
+        if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
+            postgres_connection = connect_postgres(settings.neon_database_url)
+            try:
+                yield postgres_connection
+                postgres_connection.commit()
+            except Exception:
+                postgres_connection.rollback()
+                raise
+            finally:
+                postgres_connection.close()
+            return
         if database_mode not in SUPPORTED_SQLITE_RUNTIME_MODES:
             raise RuntimeError(
                 "Database mode "
-                f"{settings.database_mode!r} is not supported by the current SQLite runtime "
-                "adapter. Neon/PostgreSQL cutover must use an explicit runtime adapter before "
-                "writes are allowed, to prevent split-brain data."
+                f"{settings.database_mode!r} is not a supported runtime adapter. "
+                "Use local, recovery-local, or neon to prevent split-brain data."
             )
         database_path = settings.database_path
         database_path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(database_path)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
+        sqlite_connection = sqlite3.connect(database_path)
+        sqlite_connection.row_factory = sqlite3.Row
+        sqlite_connection.execute("PRAGMA foreign_keys = ON")
         try:
-            initialize_database(connection)
-            yield connection
-            connection.commit()
+            initialize_database(sqlite_connection)
+            yield sqlite_connection
+            sqlite_connection.commit()
         finally:
-            connection.close()
+            sqlite_connection.close()
 
 
 def initialize_database(connection: sqlite3.Connection) -> None:
@@ -2750,28 +2969,6 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
         "updated_at": utc_now(),
     }
     with connect() as connection:
-        duplicate = connection.execute(
-            """
-            SELECT account_id
-            FROM accounts
-            WHERE profile_id = ?
-              AND (
-                (catalogue_id IS NOT NULL AND catalogue_id = ?)
-                OR (LOWER(account) = LOWER(?) AND type = ?)
-              )
-            LIMIT 1
-            """,
-            (
-                profile_id,
-                record["catalogue_id"],
-                record["account"],
-                record["type"],
-            ),
-        ).fetchone()
-        if duplicate is not None:
-            raise DuplicateProfileAccountError(
-                "This Account Catalogue provider is already linked to the Profile"
-            )
         connection.execute(
             """
             INSERT INTO sportsbook_bets (
@@ -3070,7 +3267,15 @@ def list_sportsbook_partial_lay_reminder_audit(
             WHERE profile_id = ?
               AND sportsbook_bet_id = ?
               AND action LIKE 'partial_lay_reminder_%'
-            ORDER BY changed_at DESC, rowid DESC
+            ORDER BY changed_at DESC,
+              CASE action
+                WHEN 'partial_lay_reminder_reopened' THEN 4
+                WHEN 'partial_lay_reminder_resolved' THEN 3
+                WHEN 'partial_lay_reminder_updated' THEN 2
+                WHEN 'partial_lay_reminder_created' THEN 1
+                ELSE 0
+              END DESC,
+              audit_id DESC
             """,
             (profile_id, sportsbook_bet_id),
         ).fetchall()
@@ -3108,7 +3313,8 @@ def list_partial_lay_notifications() -> list[dict[str, Any]]:
                   WHERE sportsbook_bet_audit.profile_id = sportsbook_bets.profile_id
                     AND sportsbook_bet_audit.sportsbook_bet_id = sportsbook_bets.sportsbook_bet_id
                     AND sportsbook_bet_audit.action LIKE 'partial_lay_reminder_%'
-                  ORDER BY sportsbook_bet_audit.changed_at DESC, sportsbook_bet_audit.rowid DESC
+                  ORDER BY sportsbook_bet_audit.changed_at DESC,
+                           sportsbook_bet_audit.audit_id DESC
                   LIMIT 1
                 ),
                 sportsbook_bets.updated_at
@@ -3554,7 +3760,7 @@ def list_multi_profile_opportunity_targets(opportunity_id: str) -> list[dict[str
             FROM multi_profile_opportunity_targets t
             JOIN profiles p ON p.profile_id = t.profile_id
             WHERE t.opportunity_id = ?
-            ORDER BY p.display_name COLLATE NOCASE, t.bookmaker COLLATE NOCASE, t.created_at
+            ORDER BY LOWER(p.display_name), LOWER(t.bookmaker), t.created_at
             """,
             (opportunity_id,),
         ).fetchall()
@@ -3568,7 +3774,7 @@ def list_multi_profile_opportunities(*, include_complete: bool = False) -> list[
             SELECT *
             FROM multi_profile_opportunities
             WHERE ? = 1 OR state = 'In Progress'
-            ORDER BY updated_at DESC, rowid DESC
+            ORDER BY updated_at DESC, opportunity_id DESC
             """,
             (int(include_complete),),
         ).fetchall()
@@ -3605,7 +3811,7 @@ def get_most_used_profile_exchange(profile_id: str) -> str:
             FROM sportsbook_bets
             WHERE profile_id = ? AND TRIM(exchange_name) != ''
             GROUP BY exchange_name
-            ORDER BY usage_count DESC, exchange_name COLLATE NOCASE
+            ORDER BY usage_count DESC, LOWER(exchange_name)
             LIMIT 1
             """,
             (profile_id,),
@@ -3952,7 +4158,15 @@ def list_free_bet_follow_up_reminder_audit(
             WHERE profile_id = ?
               AND free_bet_id = ?
               AND action LIKE 'follow_up_reminder_%'
-            ORDER BY changed_at DESC, rowid DESC
+            ORDER BY changed_at DESC,
+              CASE action
+                WHEN 'free_bet_follow_up_reminder_reopened' THEN 4
+                WHEN 'free_bet_follow_up_reminder_resolved' THEN 3
+                WHEN 'free_bet_follow_up_reminder_updated' THEN 2
+                WHEN 'free_bet_follow_up_reminder_created' THEN 1
+                ELSE 0
+              END DESC,
+              audit_id DESC
             """,
             (profile_id, free_bet_id),
         ).fetchall()
@@ -3992,7 +4206,7 @@ def list_free_bet_follow_up_notifications() -> list[dict[str, Any]]:
                   WHERE free_bet_audit.profile_id = free_bets.profile_id
                     AND free_bet_audit.free_bet_id = free_bets.free_bet_id
                     AND free_bet_audit.action LIKE 'follow_up_reminder_%'
-                  ORDER BY free_bet_audit.changed_at DESC, free_bet_audit.rowid DESC
+                  ORDER BY free_bet_audit.changed_at DESC, free_bet_audit.audit_id DESC
                   LIMIT 1
                 ),
                 free_bets.updated_at
@@ -5007,7 +5221,7 @@ def list_bookmaker_catalogue(*, include_archived: bool = True) -> list[Bookmaker
             SELECT *
             FROM bookmaker_catalogue
             WHERE ? = 1 OR status <> 'Archived'
-            ORDER BY brand_name COLLATE NOCASE, bookmaker_id
+            ORDER BY LOWER(brand_name), bookmaker_id
             """,
             (int(include_archived),),
         ).fetchall()
@@ -5209,7 +5423,7 @@ def list_profiles() -> list[ProfileRecord]:
               investment_fee_percent,
               current_cash_snapshot
             FROM profiles
-            ORDER BY display_name COLLATE NOCASE
+            ORDER BY LOWER(display_name)
             """
         ).fetchall()
     return [map_profile_row(row) for row in rows]
@@ -6269,7 +6483,7 @@ def list_profile_quick_actions(
             SELECT * FROM profile_quick_actions
             WHERE profile_id = ? {where_clause}
             ORDER BY ledger_type ASC, is_favourite DESC, favourite_order ASC,
-                     sort_order ASC, label COLLATE NOCASE ASC, action_id ASC
+                     sort_order ASC, LOWER(label) ASC, action_id ASC
             """,
             (profile_id,),
         ).fetchall()

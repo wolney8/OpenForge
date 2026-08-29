@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
@@ -14,6 +14,7 @@ from openforge_api.db import (
     create_profile_with_onboarding,
     get_profile,
     get_profile_onboarding_settings,
+    link_fund_manager_profile,
     list_fund_manager_combo_presets,
     list_profiles,
     update_profile_metadata,
@@ -226,6 +227,7 @@ def get_profile_onboarding_route(profile_id: str) -> ProfileOnboardingResponse |
 )
 def create_profile_onboarding_route(
     payload: ProfileOnboardingCreatePayload,
+    request: Request,
 ) -> ProfileOnboardingCreateResponse:
     catalogue = load_master_account_catalogue()
     active_records = {
@@ -400,6 +402,9 @@ def create_profile_onboarding_route(
         profile, onboarding = create_profile_with_onboarding(values)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    auth_session = getattr(request.state, "auth_session", None)
+    if auth_session is not None:
+        link_fund_manager_profile(email=auth_session.email, profile_id=profile.profile_id)
     return ProfileOnboardingCreateResponse(
         profile=ProfileResponse.model_validate(profile.__dict__),
         onboarding=ProfileOnboardingResponse(

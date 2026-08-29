@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from openforge_api.config import settings
+from openforge_api.db import connect
 
 router = APIRouter(prefix="/account-catalogue/source", tags=["account-catalogue"])
 
@@ -255,6 +256,26 @@ class ArchiveCatalogueRecordsResult(BaseModel):
 
 
 def load_master_account_catalogue(path: Path | None = None) -> MasterAccountCatalogue:
+    if path is None and settings.database_mode.strip().lower() in {
+        "neon",
+        "postgres",
+        "postgresql",
+    }:
+        with connect() as connection:
+            row = connection.execute(
+                """
+                SELECT document_json
+                FROM account_catalogue_documents
+                WHERE document_id = 'master-account-catalogue'
+                """
+            ).fetchone()
+        if row is not None:
+            return MasterAccountCatalogue.model_validate_json(row["document_json"])
+
+        seed = load_master_account_catalogue(settings.account_catalogue_source_path)
+        _persist_master_account_catalogue(seed)
+        return seed
+
     catalogue_path = path or settings.account_catalogue_source_path
     raw = json.loads(catalogue_path.read_text(encoding="utf-8"))
     catalogue = MasterAccountCatalogue.model_validate(raw)
@@ -294,6 +315,34 @@ def _current_timestamp() -> str:
 
 
 def _persist_master_account_catalogue(catalogue: MasterAccountCatalogue) -> None:
+    if settings.database_mode.strip().lower() in {"neon", "postgres", "postgresql"}:
+        timestamp = _current_timestamp()
+        with connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO account_catalogue_documents (
+                  document_id, schema_version, catalogue_name, document_json,
+                  source_updated_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(document_id) DO UPDATE SET
+                  schema_version = excluded.schema_version,
+                  catalogue_name = excluded.catalogue_name,
+                  document_json = excluded.document_json,
+                  source_updated_at = excluded.source_updated_at,
+                  updated_at = excluded.updated_at
+                """,
+                (
+                    "master-account-catalogue",
+                    catalogue.schema_version,
+                    catalogue.catalogue_name,
+                    catalogue.model_dump_json(),
+                    catalogue.updated_at,
+                    timestamp,
+                    timestamp,
+                ),
+            )
+        return
+
     source_path = settings.account_catalogue_source_path
     source_path.parent.mkdir(parents=True, exist_ok=True)
 

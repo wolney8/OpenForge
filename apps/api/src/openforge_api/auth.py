@@ -14,8 +14,14 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
+from pydantic import BaseModel
 
 from openforge_api.config import settings
+from openforge_api.db import (
+    get_fund_manager_security_preference,
+    upsert_fund_manager_security_preference,
+    upsert_fund_manager_user,
+)
 
 SESSION_COOKIE_NAME = "pd_session"
 OAUTH_STATE_COOKIE_NAME = "pd_oauth_state"
@@ -25,6 +31,11 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 logger = logging.getLogger(__name__)
+
+
+class SecurityPreferencePayload(BaseModel):
+    auto_logout_enabled: bool
+    timeout_minutes: int
 
 
 @dataclass(frozen=True)
@@ -138,6 +149,15 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
         )
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def require_request_session(request: Request) -> AuthSession:
+    session = getattr(request.state, "auth_session", None)
+    if not isinstance(session, AuthSession):
+        session = read_session_token(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    if session is None or session.email.casefold() not in settings.owner_emails:
+        raise HTTPException(status_code=401, detail="Access unavailable")
+    return session
 
 
 def _safe_next_path(value: str | None) -> str:
@@ -260,6 +280,12 @@ async def google_callback(
         response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
         return response
 
+    upsert_fund_manager_user(
+        email=email,
+        google_subject=subject,
+        display_name=str(identity.get("name", email)),
+    )
+
     session_token = create_session_token(
         subject=subject,
         email=email,
@@ -303,3 +329,24 @@ def logout() -> Response:
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
     return response
+
+
+@router.get("/security-preference")
+def get_security_preference(request: Request) -> dict[str, Any]:
+    session = require_request_session(request)
+    return get_fund_manager_security_preference(session.email)
+
+
+@router.put("/security-preference")
+def put_security_preference(
+    request: Request, payload: SecurityPreferencePayload
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    try:
+        return upsert_fund_manager_security_preference(
+            email=session.email,
+            auto_logout_enabled=payload.auto_logout_enabled,
+            timeout_minutes=payload.timeout_minutes,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error

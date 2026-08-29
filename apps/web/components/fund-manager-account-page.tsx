@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
+  loadPersistedSessionSecurityPreference,
   loadSessionSecurityPreference,
+  persistSessionSecurityPreference,
   saveSessionSecurityPreference,
   SESSION_LOGOUT_STORAGE_KEY,
   SESSION_TIMEOUT_OPTIONS,
@@ -37,10 +39,14 @@ export function FundManagerAccountPage() {
         if (!response.ok) throw new Error("Session unavailable");
         return response.json() as Promise<FundManagerSession>;
       })
-      .then((value) => {
+      .then(async (value) => {
         if (active) {
           setSession(value);
-          setPreference(loadSessionSecurityPreference(value.email));
+          const persisted = await loadPersistedSessionSecurityPreference();
+          if (!active) return;
+          const resolved = persisted ?? loadSessionSecurityPreference(value.email);
+          setPreference(resolved);
+          saveSessionSecurityPreference(value.email, resolved);
         }
       })
       .catch(() => {
@@ -53,7 +59,10 @@ export function FundManagerAccountPage() {
 
   function updatePreference(next: SessionSecurityPreference) {
     setPreference(next);
-    if (session) saveSessionSecurityPreference(session.email, next);
+    if (session) {
+      saveSessionSecurityPreference(session.email, next);
+      void persistSessionSecurityPreference(next);
+    }
   }
 
   async function logout() {

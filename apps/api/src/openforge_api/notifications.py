@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from openforge_api.auth import require_request_session
 from openforge_api.db import (
     count_tracker_rows_created_after,
+    get_notification_preferences,
+    get_notification_user_state,
     list_backup_snapshot_records,
     list_free_bet_follow_up_notifications,
     list_partial_lay_notifications,
+    replace_notification_preferences,
+    replace_notification_user_state,
 )
 
 router = APIRouter(prefix="/fund-manager/notifications", tags=["fund-manager-notifications"])
@@ -37,6 +42,15 @@ class FundManagerNotificationResponse(BaseModel):
     href: str
     completion_href: str
     tone: str
+
+
+class NotificationStatePayload(BaseModel):
+    read_keys: list[str]
+    dismissed_ids: list[str]
+
+
+class NotificationPreferencesPayload(BaseModel):
+    preferences: dict[str, bool]
 
 
 def parse_timestamp(value: str) -> datetime | None:
@@ -122,7 +136,9 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
 
 
 @router.get("", response_model=list[FundManagerNotificationResponse])
-def list_fund_manager_notifications() -> list[FundManagerNotificationResponse]:
+def list_fund_manager_notifications(
+    request: Request,
+) -> list[FundManagerNotificationResponse]:
     now = datetime.now(UTC)
     notifications: list[FundManagerNotificationResponse] = []
     backup_notification = backup_reminder_notification(now)
@@ -238,11 +254,61 @@ def list_fund_manager_notifications() -> list[FundManagerNotificationResponse]:
             )
         )
 
+    session = getattr(request.state, "auth_session", None)
+    preferences = (
+        get_notification_preferences(str(session.email)) if session is not None else {}
+    )
+    permitted = [
+        notification
+        for notification in notifications
+        if preferences.get(notification.notification_type, True)
+    ]
     return sorted(
-        notifications,
+        permitted,
         key=lambda notification: (
             notification.task_state == "done",
             parse_timestamp(notification.due_at) or datetime.max.replace(tzinfo=UTC),
             notification.profile_name.casefold(),
         ),
+    )
+
+
+@router.get("/state", response_model=NotificationStatePayload)
+def notification_state(request: Request) -> NotificationStatePayload:
+    session = require_request_session(request)
+    return NotificationStatePayload(**get_notification_user_state(session.email))
+
+
+@router.put("/state", response_model=NotificationStatePayload)
+def update_notification_state(
+    request: Request, payload: NotificationStatePayload
+) -> NotificationStatePayload:
+    session = require_request_session(request)
+    return NotificationStatePayload(
+        **replace_notification_user_state(
+            email=session.email,
+            read_keys=payload.read_keys,
+            dismissed_ids=payload.dismissed_ids,
+        )
+    )
+
+
+@router.get("/preferences", response_model=NotificationPreferencesPayload)
+def notification_preferences(request: Request) -> NotificationPreferencesPayload:
+    session = require_request_session(request)
+    return NotificationPreferencesPayload(
+        preferences=get_notification_preferences(session.email)
+    )
+
+
+@router.put("/preferences", response_model=NotificationPreferencesPayload)
+def update_notification_preferences(
+    request: Request, payload: NotificationPreferencesPayload
+) -> NotificationPreferencesPayload:
+    session = require_request_session(request)
+    return NotificationPreferencesPayload(
+        preferences=replace_notification_preferences(
+            email=session.email,
+            preferences=payload.preferences,
+        )
     )

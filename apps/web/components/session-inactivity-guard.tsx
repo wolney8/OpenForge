@@ -5,6 +5,7 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import {
   inactivityRemainingMs,
+  loadPersistedSessionSecurityPreference,
   loadSessionSecurityPreference,
   SESSION_ACTIVITY_STORAGE_KEY,
   SESSION_LOGOUT_STORAGE_KEY,
@@ -48,10 +49,13 @@ export function SessionInactivityGuard() {
         if (!response.ok) throw new Error("Session unavailable");
         return response.json() as Promise<FundManagerSession>;
       })
-      .then((value) => {
+      .then(async (value) => {
         if (!active) return;
         setSession(value);
-        setPreference(loadSessionSecurityPreference(value.email));
+        const persisted = await loadPersistedSessionSecurityPreference();
+        if (!active) return;
+        const resolved = persisted ?? loadSessionSecurityPreference(value.email);
+        setPreference(resolved);
         if (!window.localStorage.getItem(SESSION_ACTIVITY_STORAGE_KEY)) markActivity(true);
       })
       .catch(() => undefined);

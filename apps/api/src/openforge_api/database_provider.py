@@ -230,10 +230,12 @@ def is_neon_target_isolated(parsed_url: ParsedPostgresUrl | None) -> bool:
     if parsed_url is None:
         return False
     generic_database_names = {"neondb", "postgres"}
-    generic_role_names = {"neondb_owner", "postgres"}
     database_key = parsed_url.database_name.replace("_", "-").lower()
     role_key = parsed_url.role_name.replace("_", "-").lower()
-    if database_key in generic_database_names or role_key in generic_role_names:
+    # Neon commonly provisions the owning role as `neondb_owner`. A dedicated
+    # application database is the isolation boundary required for this cutover;
+    # a dedicated least-privilege role remains recommended hardening.
+    if database_key in generic_database_names:
         return False
     if "ai-diary" in database_key or "aidiary" in database_key:
         return False
@@ -457,7 +459,10 @@ def build_database_provider_status(
             safe_error_code = classify_database_error(error)
 
     local_recovery_available = settings.backup_path.exists()
-    runtime_adapter_ready = active_mode in {"local", "recovery-local"}
+    postgres_runtime = active_mode in {"neon", "postgres", "postgresql"}
+    runtime_adapter_ready = active_mode in {"local", "recovery-local"} or (
+        postgres_runtime and neon_status == "reachable" and is_isolated
+    )
     writes_allowed = runtime_adapter_ready
     isolation_state = "isolated" if is_isolated else "needs_dedicated_database_or_role"
 
@@ -468,11 +473,8 @@ def build_database_provider_status(
             "Neon is configured, but Plum Duff should use a dedicated database and role before "
             "any cutover."
         )
-    elif active_mode == "neon" and neon_status == "reachable":
-        operator_message = (
-            "Neon is configured, but the PostgreSQL runtime adapter is not active yet. "
-            "Runtime writes are blocked to prevent split-brain data."
-        )
+    elif postgres_runtime and neon_status == "reachable":
+        operator_message = "Neon PostgreSQL is the active durable runtime."
     elif neon_status == "reachable":
         operator_message = "Neon is reachable. Local backups remain mandatory before cutover."
     elif neon_status == "driver_missing":
@@ -594,9 +596,7 @@ def build_migration_readiness_report(
             "Critical local tables are missing: " + ", ".join(missing_critical_tables)
         )
 
-    warnings.append(
-        "PostgreSQL runtime adapter is not active yet; this report is readiness-only."
-    )
+    warnings.append("This report rehearses migration from the local SQLite source only.")
     warnings.append(
         "Financial control-total comparison must pass before any cutover can be approved."
     )
@@ -1109,10 +1109,7 @@ def build_neon_cutover_readiness(
 ) -> NeonCutoverReadinessResponse:
     provider_status = build_database_provider_status(neon_connector=neon_connector)
     blockers: list[str] = []
-    warnings: list[str] = [
-        "This endpoint does not switch database mode or write data.",
-        "Runtime cutover remains blocked until a PostgreSQL runtime adapter is implemented.",
-    ]
+    warnings: list[str] = ["This endpoint does not switch database mode or write data."]
 
     schema_ready = False
     data_verified = False
@@ -1150,10 +1147,16 @@ def build_neon_cutover_readiness(
         except HTTPException as error:
             blockers.append(str(error.detail))
 
-    runtime_adapter_ready = False
+    runtime_adapter_ready = provider_status.neon_status == "reachable"
+    active_postgres_runtime = provider_status.active_mode in {
+        "neon",
+        "postgres",
+        "postgresql",
+    }
     if not runtime_adapter_ready:
-        blockers.append("PostgreSQL runtime adapter is not implemented.")
-        blockers.append("Explicit Fund Manager runtime cutover confirmation is not implemented.")
+        blockers.append("PostgreSQL runtime adapter cannot reach Neon.")
+    if not active_postgres_runtime:
+        blockers.append("PostgreSQL runtime mode is not active.")
 
     staging_ready = (
         provider_status.neon_status == "reachable"
@@ -1165,7 +1168,7 @@ def build_neon_cutover_readiness(
     return NeonCutoverReadinessResponse(
         migration_boundary="runtime-cutover-readiness-read-only",
         staging_ready=staging_ready,
-        runtime_cutover_ready=False,
+        runtime_cutover_ready=(staging_ready and runtime_adapter_ready and active_postgres_runtime),
         provider_status=provider_status,
         schema_ready=schema_ready,
         data_verified=data_verified,

@@ -15,9 +15,12 @@ import {
   getUnreadNotificationCount,
   getVisibleNotifications,
   isNotificationUnread,
+  loadPersistedNotificationPreferences,
+  loadPersistedNotificationState,
   loadFundManagerNotificationPreferences,
   markNotificationsRead,
   normalizeNotificationViewState,
+  persistNotificationState,
   type FundManagerNotification,
   type NotificationViewState,
 } from "@/lib/notifications";
@@ -65,16 +68,25 @@ export function NotificationCentre() {
       setAttentionNow(Date.now());
       setIsLoading(true);
       try {
-        const response = await fetch(`${apiBaseUrl}/fund-manager/notifications`, {
-          cache: "no-store",
-        });
+        const [response, persistedState, persistedPreferences] = await Promise.all([
+          fetch(`${apiBaseUrl}/fund-manager/notifications`, {
+            cache: "no-store",
+            credentials: "include",
+          }),
+          loadPersistedNotificationState(),
+          loadPersistedNotificationPreferences(),
+        ]);
         if (!response.ok) throw new Error("Unable to load notifications");
         const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
+        if (persistedState) {
+          viewStateRef.current = persistedState;
+          setViewState(persistedState);
+        }
         setNotifications(
           filterFundManagerNotificationsForViewer(
             [...loadLocalFundManagerNotifications(), ...payload],
-            loadFundManagerNotificationPreferences()
+            persistedPreferences ?? loadFundManagerNotificationPreferences()
           )
         );
         setLoadFailed(false);
@@ -159,6 +171,7 @@ export function NotificationCentre() {
     } catch {
       // The in-memory state remains usable when browser storage is unavailable.
     }
+    void persistNotificationState(nextState);
   };
 
   const visibleNotifications = getVisibleNotifications(notifications, viewState);

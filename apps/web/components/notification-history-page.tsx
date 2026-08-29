@@ -14,9 +14,12 @@ import {
   getUnreadNotificationCount,
   isNotificationUnread,
   loadFundManagerNotificationPreferences,
+  loadPersistedNotificationPreferences,
+  loadPersistedNotificationState,
   loadLocalFundManagerNotifications,
   markNotificationsRead,
   normalizeNotificationViewState,
+  persistNotificationState,
   type FundManagerNotification,
   type NotificationHistoryStatus,
   type NotificationViewState,
@@ -53,14 +56,22 @@ export function NotificationHistoryPage() {
     const refresh = async () => {
       setNow(new Date());
       try {
-        const response = await fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store" });
+        const [response, persistedState, persistedPreferences] = await Promise.all([
+          fetch(`${apiBaseUrl}/fund-manager/notifications`, {
+            cache: "no-store",
+            credentials: "include",
+          }),
+          loadPersistedNotificationState(),
+          loadPersistedNotificationPreferences(),
+        ]);
         if (!response.ok) throw new Error("Unable to load notifications");
         const remote = (await response.json()) as FundManagerNotification[];
         if (!active) return;
+        if (persistedState) setViewState(persistedState);
         setNotifications(
           filterFundManagerNotificationsForViewer(
             [...loadLocalFundManagerNotifications(), ...remote],
-            loadFundManagerNotificationPreferences()
+            persistedPreferences ?? loadFundManagerNotificationPreferences()
           )
         );
         setLoadFailed(false);
@@ -87,6 +98,7 @@ export function NotificationHistoryPage() {
   const persistState = (next: NotificationViewState) => {
     setViewState(next);
     window.localStorage.setItem(FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(next));
+    void persistNotificationState(next);
     window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
   };
   const types = useMemo(

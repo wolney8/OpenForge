@@ -1,3 +1,5 @@
+import { apiBaseUrl } from "./api";
+
 export const FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT =
   "plum-duff:fund-manager-notifications-refresh";
 export const FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY =
@@ -194,6 +196,74 @@ export function saveFundManagerNotificationPreferences(
     JSON.stringify(normalizeFundManagerNotificationPreferences(preferences))
   );
   window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+}
+
+export async function loadPersistedNotificationState(): Promise<NotificationViewState | null> {
+  try {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/notifications/state`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      dismissed_ids?: unknown;
+      read_keys?: unknown;
+    };
+    return normalizeNotificationViewState({
+      dismissedIds: payload.dismissed_ids,
+      readKeys: payload.read_keys,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function persistNotificationState(
+  state: NotificationViewState
+): Promise<void> {
+  try {
+    await fetch(`${apiBaseUrl}/fund-manager/notifications/state`, {
+      body: JSON.stringify({
+        dismissed_ids: state.dismissedIds,
+        read_keys: state.readKeys,
+      }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      method: "PUT",
+    });
+  } catch {
+    // Local state remains available when the durable service is offline.
+  }
+}
+
+export async function loadPersistedNotificationPreferences(): Promise<FundManagerNotificationPreferences | null> {
+  try {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/notifications/preferences`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { preferences?: unknown };
+    return normalizeFundManagerNotificationPreferences(payload.preferences);
+  } catch {
+    return null;
+  }
+}
+
+export async function persistNotificationPreferences(
+  preferences: FundManagerNotificationPreferences
+): Promise<boolean> {
+  try {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/notifications/preferences`, {
+      body: JSON.stringify({ preferences }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      method: "PUT",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export function filterNotificationsByPreferences(

@@ -69,10 +69,13 @@ def healthcheck() -> dict[str, str]:
 
 @app.get("/config-summary")
 def config_summary() -> dict[str, str]:
+    database_mode = settings.database_mode.strip().lower() or "local"
     return {
         "environment": settings.environment,
-        "database_mode": settings.database_mode,
-        "runtime_adapter": "sqlite-only",
+        "database_mode": database_mode,
+        "runtime_adapter": (
+            "postgresql" if database_mode in {"neon", "postgres", "postgresql"} else "sqlite"
+        ),
         "database_url_scheme": settings.database_url.split(":", 1)[0],
         "neon_configured": str(bool(settings.neon_database_url.strip())).lower(),
         "backup_directory": settings.backup_directory,

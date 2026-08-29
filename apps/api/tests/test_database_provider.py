@@ -87,7 +87,7 @@ def test_provider_status_accepts_dedicated_neon_identity(tmp_path: Path) -> None
     assert status.writes_allowed is True
 
 
-def test_provider_status_blocks_neon_runtime_until_adapter_exists(tmp_path: Path) -> None:
+def test_provider_status_enables_dedicated_neon_runtime(tmp_path: Path) -> None:
     configure_temp_settings(tmp_path)
     settings.database_mode = "neon"
     settings.neon_database_url = (
@@ -100,12 +100,11 @@ def test_provider_status_blocks_neon_runtime_until_adapter_exists(tmp_path: Path
 
     assert status.neon_status == "reachable"
     assert status.isolation_state == "isolated"
-    assert status.writes_allowed is False
-    assert "runtime adapter" in status.operator_message
-    assert "blocked" in status.operator_message.lower()
+    assert status.writes_allowed is True
+    assert "active durable runtime" in status.operator_message
 
 
-def test_sqlite_connect_blocks_neon_runtime_mode(tmp_path: Path) -> None:
+def test_neon_runtime_requires_explicit_connection_url(tmp_path: Path) -> None:
     configure_temp_settings(tmp_path)
     settings.database_mode = "neon"
 
@@ -113,8 +112,7 @@ def test_sqlite_connect_blocks_neon_runtime_mode(tmp_path: Path) -> None:
         with connect():
             pass
     except RuntimeError as error:
-        assert "not supported" in str(error)
-        assert "split-brain" in str(error)
+        assert "OPENFORGE_NEON_DATABASE_URL" in str(error)
     else:
         raise AssertionError("SQLite connect should block Neon mode without adapter")
 
@@ -192,7 +190,7 @@ def test_migration_readiness_allows_rehearsal_only_after_backup_and_reachable_ne
     assert report.ready_for_rehearsal is True
     assert report.ready_for_cutover is False
     assert report.blockers == []
-    assert any("runtime adapter is not active" in warning for warning in report.warnings)
+    assert any("rehearses migration" in warning for warning in report.warnings)
 
 
 def test_migration_readiness_blocks_stale_verified_backup(tmp_path: Path) -> None:
@@ -730,7 +728,7 @@ def test_neon_cutover_readiness_reports_verified_staging_but_blocks_runtime(
     assert response.schema_ready is True
     assert response.data_verified is True
     assert response.runtime_cutover_ready is False
-    assert "PostgreSQL runtime adapter is not implemented." in response.blockers
+    assert "PostgreSQL runtime mode is not active." in response.blockers
     assert response.package_fingerprint == package_preview.package_fingerprint
 
 
