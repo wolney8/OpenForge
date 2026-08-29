@@ -152,6 +152,11 @@ function normalizeTwoDecimals(value: string): string {
   return formatDecimalInput(value, { emptyValue: "0.00" });
 }
 
+function isValidPercentagePoints(value: string): boolean {
+  const parsed = Number(value);
+  return value.trim() !== "" && Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+}
+
 function isRecentlyIntroduced(value?: string): boolean {
   const timestamp = Date.parse(value ?? "");
   return Number.isFinite(timestamp) && Date.now() - timestamp <= 30 * 24 * 60 * 60 * 1000;
@@ -183,8 +188,8 @@ export function ProfileOnboarding() {
     active_date_preset: "This Month",
     iteration_number: "1",
     starting_bankroll: "0.00",
-    management_fee_percent: "0.00",
-    investment_fee_percent: "0.00",
+    management_fee_percent: "25.00",
+    investment_fee_percent: "25.00",
     main_bank_catalogue_id: "",
     operating_jurisdiction: profileOnboardingJurisdiction,
   });
@@ -424,7 +429,12 @@ export function ProfileOnboarding() {
 
   function stageIsValid(target: Stage) {
     if (target === "profile") {
-      return Boolean(profile.display_name.trim() && /^[A-Z0-9-]{3,32}$/.test(profile.profile_code));
+      return Boolean(
+        profile.display_name.trim() &&
+        /^[A-Z0-9-]{3,32}$/.test(profile.profile_code) &&
+        isValidPercentagePoints(profile.management_fee_percent) &&
+        isValidPercentagePoints(profile.investment_fee_percent)
+      );
     }
     if (target === "modules") {
       return alwaysOnModules.every((module) => modules[module.id]);
@@ -458,6 +468,12 @@ export function ProfileOnboarding() {
     if (!/^[A-Z0-9-]{3,32}$/.test(profile.profile_code)) {
       return { stage: "profile" as Stage, field: "profile-code", message: "Enter An Uppercase Profile Code." };
     }
+    if (!isValidPercentagePoints(profile.management_fee_percent)) {
+      return { stage: "profile" as Stage, field: "management-fee", message: "Enter The Management Fee Percentage." };
+    }
+    if (!isValidPercentagePoints(profile.investment_fee_percent)) {
+      return { stage: "profile" as Stage, field: "investment-fee", message: "Enter The Investment Fee Percentage." };
+    }
     if (stage === "modules") {
       return { stage, field: "modules", message: "Review The Enabled Modules, Then Continue." };
     }
@@ -481,7 +497,15 @@ export function ProfileOnboarding() {
       return { stage, field: "quick-actions", message: "Review Optional Quick Actions, Then Continue." };
     }
     return { stage: "review" as Stage, field: "create-profile", message: "Review The Profile And Create It." };
-  }, [profile.display_name, profile.profile_code, selectedAccounts, selectedRecords, stage]);
+  }, [
+    profile.display_name,
+    profile.investment_fee_percent,
+    profile.management_fee_percent,
+    profile.profile_code,
+    selectedAccounts,
+    selectedRecords,
+    stage,
+  ]);
   const onboardingTabs: LedgerEditorTabDefinition[] = stages.map((item, index) => {
     const priorInvalid = stages.slice(0, index).some((prior) => !stageIsValid(prior.id));
     const status = priorInvalid
@@ -514,7 +538,7 @@ export function ProfileOnboarding() {
   function goNext() {
     setError("");
     if (!stageIsValid(stage)) {
-      setError(stage === "profile" ? "Enter a display name and an uppercase Profile code." : stage === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
+      setError(stage === "profile" ? "Complete the Profile identity and fee percentages." : stage === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
       return;
     }
     const index = stages.findIndex((item) => item.id === stage);
@@ -536,7 +560,7 @@ export function ProfileOnboarding() {
       .find((item) => !stageIsValid(item.id));
     if (invalidStage) {
       setStage(invalidStage.id);
-      setError(invalidStage.id === "profile" ? "Enter a display name and an uppercase Profile code." : invalidStage.id === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
+      setError(invalidStage.id === "profile" ? "Complete the Profile identity and fee percentages." : invalidStage.id === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
       return;
     }
     setError("");
@@ -630,9 +654,9 @@ export function ProfileOnboarding() {
             <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
             <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
             <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
-            <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} /></label>
-            <label className="field-control"><span>Management Fee (%)</span><input inputMode="decimal" min="0" onBlur={() => setProfileValue("management_fee_percent", normalizeTwoDecimals(profile.management_fee_percent))} onChange={(event) => setProfileValue("management_fee_percent", event.target.value)} step="0.01" type="number" value={profile.management_fee_percent} /></label>
-            <label className="field-control"><span>Investment Fee (%)</span><input inputMode="decimal" min="0" onBlur={() => setProfileValue("investment_fee_percent", normalizeTwoDecimals(profile.investment_fee_percent))} onChange={(event) => setProfileValue("investment_fee_percent", event.target.value)} step="0.01" type="number" value={profile.investment_fee_percent} /></label>
+            <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" clearInitialZeroOnFocus dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} valueTone={parseAmount(profile.starting_bankroll) > 0 ? "positive" : "neutral"} /></label>
+            <label className={`field-control${guidedTarget.field === "management-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="management-fee"><span>Management Fee</span><PercentageTextInput ariaLabel="Management Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.management-fee" id="profile-onboarding-management-fee" onChange={(value) => setProfileValue("management_fee_percent", value)} value={profile.management_fee_percent} valueMode="percentage-points" /></label>
+            <label className={`field-control${guidedTarget.field === "investment-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="investment-fee"><span>Investment Fee</span><PercentageTextInput ariaLabel="Investment Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.investment-fee" id="profile-onboarding-investment-fee" onChange={(value) => setProfileValue("investment_fee_percent", value)} value={profile.investment_fee_percent} valueMode="percentage-points" /></label>
             <label className="field-control"><span>Operating Jurisdiction</span><select disabled value={profile.operating_jurisdiction}><option value="GB">United Kingdom (GB)</option></select></label>
           </div>
         </section>

@@ -116,6 +116,11 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005J26 | Profile Dashboard entry consistency | Route directory, recent-menu and detail actions to the canonical Profile Dashboard | Existing Profile tracker Dashboard | COMPLETE |
 | PD-FR-005J27 | Onboarding lifecycle repeatability | Verify Profiles to Add Profile to persisted management/archive uses one onboarding flow | Existing founder/Profile onboarding | COMPLETE |
 | PD-FR-005J28 | Temporary Profile lifecycle cleanup | Verify the hosted `Vercel` Profile through edit/navigation/recency, then archive it via the supported UI | Existing Profile `Archived` lifecycle status | NEEDS VERIFICATION |
+| PD-FR-005J29 | Onboarding starting-bankroll entry | Apply the canonical bold financial field and clear only the untouched zero default until registration prefill exists | Existing `FinancialTextInput` | COMPLETE |
+| PD-FR-005J30 | Onboarding fee entry | Default management and investment fees to 25%, accept percentage-point entry and format with the canonical percent suffix | Existing `PercentageTextInput` and Profile fee contract | COMPLETE |
+| PD-FR-005J31 | Single onboarding navigation guard | Close shell drawers for platform confirmation and prevent a second native unload prompt after approved discard | Existing app confirmation and unsaved-change guard | COMPLETE |
+| PD-FR-005J32 | Delayed top-bar state | Keep authenticated top-bar controls stable and expose accessible loading indicators while identity, notifications or Profile summary load | Existing `button-spinner` and shell loading hierarchy | COMPLETE |
+| PD-FR-005J33 | Local development services | Run the repository-standard web and API services on their established ports for local smoke testing | Existing `dev:web` and `dev:api` commands | COMPLETE |
 | PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -177,6 +182,16 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 - `PD-FR-005J15`: the Fund Manager-created hosted `Vercel` Profile is intentional temporary test
   data. It must remain available for this tranche's smoke test and then be removed through the
   normal Profile lifecycle before workbook migration begins.
+- `PD-FR-005J29` to `PD-FR-005J33`: Profile onboarding now reuses the canonical adorned financial
+  surface for starting bankroll and percentage-point fees. The untouched bankroll zero and default
+  25% fees clear once for immediate entry, then format to two decimals without changing the
+  established Profile fee storage unit. Registration prefill remains dependent on the deferred
+  registration form and will use the same Profile field rather than a second source. Platform
+  confirmations close shell popovers and suppress only the approved navigation's native unload
+  prompt. Identity, notification and Profile-summary controls retain stable accessible loading
+  feedback. Verification passed 245 web unit tests, 15 focused API tests and 10 focused Playwright
+  checks, plus web lint/typecheck/build, targeted Ruff and `git diff --check` on 2026-08-29. Full
+  API mypy retains five pre-existing diagnostics outside this corrective batch.
 
 ## PD-FR-001 Notification Matrix
 

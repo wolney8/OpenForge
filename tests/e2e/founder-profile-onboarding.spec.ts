@@ -132,18 +132,24 @@ test("Profile onboarding reuses canonical input geometry in both themes", async 
     const geometry = await page.evaluate(() => {
       const textInput = document.querySelector<HTMLInputElement>("label[data-guided-field='profile-code'] input");
       const moneyInput = document.querySelector<HTMLElement>("[data-pd-id='profile-onboarding.starting-bankroll']")?.parentElement;
-      if (!textInput || !moneyInput) throw new Error("Expected onboarding controls were not rendered");
+      const percentageInput = document.querySelector<HTMLElement>("[data-pd-id='profile-onboarding.management-fee']")?.parentElement;
+      if (!textInput || !moneyInput || !percentageInput) throw new Error("Expected onboarding controls were not rendered");
       const textStyles = getComputedStyle(textInput);
       const moneyStyles = getComputedStyle(moneyInput);
+      const percentageStyles = getComputedStyle(percentageInput);
       return {
         moneyHeight: moneyInput.getBoundingClientRect().height,
         moneyRadius: moneyStyles.borderRadius,
+        percentageHeight: percentageInput.getBoundingClientRect().height,
+        percentageRadius: percentageStyles.borderRadius,
         textHeight: textInput.getBoundingClientRect().height,
         textRadius: textStyles.borderRadius,
       };
     });
     expect(Math.abs(geometry.moneyHeight - geometry.textHeight)).toBeLessThanOrEqual(1);
     expect(geometry.moneyRadius).toBe(geometry.textRadius);
+    expect(Math.abs(geometry.percentageHeight - geometry.textHeight)).toBeLessThanOrEqual(1);
+    expect(geometry.percentageRadius).toBe(geometry.textRadius);
   }
 
   await expect(profileCode).toBeVisible();
@@ -176,12 +182,21 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   await expect(page.getByRole("heading", { name: "Create Profile" })).toBeVisible();
   const startingBankroll = page.getByLabel("Starting Bankroll");
   await startingBankroll.click();
-  await expect.poll(() => startingBankroll.evaluate((input: HTMLInputElement) => ({
-    end: input.selectionEnd,
-    start: input.selectionStart,
-  }))).toEqual({ end: 4, start: 0 });
+  await expect(startingBankroll).toHaveValue("");
   await page.keyboard.type("25.5");
+  const managementFee = page.getByLabel("Management Fee");
+  const investmentFee = page.getByLabel("Investment Fee");
+  await expect(managementFee).toHaveValue("25.00");
+  await expect(investmentFee).toHaveValue("25.00");
+  await managementFee.click();
+  await expect(managementFee).toHaveValue("");
+  await managementFee.fill("30");
+  await investmentFee.click();
+  await expect(managementFee).toHaveValue("30.00");
+  await expect(investmentFee).toHaveValue("");
+  await investmentFee.fill("20");
   await page.getByLabel("Display Name").click();
+  await expect(investmentFee).toHaveValue("20.00");
   await expect(startingBankroll).toHaveValue("25.50");
   await page.getByLabel("Display Name").fill("Synthetic Profile");
   await page.getByLabel("Profile Code").fill("profile-001");
@@ -239,6 +254,8 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   expect(submittedAccounts.find((account) => account.catalogue_id === "BANK-DEMO-001"))
     .not.toHaveProperty("commission_rate");
   expect(submitted?.main_bank_catalogue_id).toBe("BANK-DEMO-001");
+  expect(submitted?.management_fee_percent).toBe("30.00");
+  expect(submitted?.investment_fee_percent).toBe("20.00");
   expect(submitted?.quick_actions).toEqual([
     {
       preset_id: "COMBO-FOUNDER-DEMO-001",
@@ -265,7 +282,7 @@ test("Profile onboarding stages block forward navigation until required identity
   await expect(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-disabled", "true");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("p.error-text[role='alert']")).toContainText("Enter a display name");
+  await expect(page.locator("p.error-text[role='alert']")).toContainText("Complete the Profile identity");
 });
 
 test("Profile onboarding requires an Exchange and its commission before continuing", async ({ page }) => {
@@ -314,4 +331,30 @@ test("Profile onboarding Cancel uses the shared unsaved-change guard", async ({ 
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("dialog", { name: "Unsaved tracker changes" }).getByRole("button", { name: "Discard Changes" }).click();
   await expect(page).toHaveURL(/\/profiles$/);
+});
+
+test("Profile onboarding drawer navigation uses one platform guard and closes the drawer", async ({ page }) => {
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+  const nativeDialogs: string[] = [];
+  page.on("dialog", async (dialog) => {
+    nativeDialogs.push(dialog.type());
+    await dialog.dismiss();
+  });
+  await page.goto("/profiles/new");
+
+  await page.getByLabel("Display Name").fill("Unsaved Profile");
+  await page.locator('[data-pd-id="app-navigation.trigger"]').click();
+  await page.locator('[data-pd-id="app-navigation.dashboard"]').click();
+
+  const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  await expect(guard).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Plum Duff navigation" })).toBeHidden();
+  await guard.getByRole("button", { name: "Discard Changes" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(nativeDialogs).toEqual([]);
 });

@@ -6,6 +6,9 @@ const defaultMessage =
   "Unsaved changes will be discarded.";
 
 const activeUnsavedGuards = new Map<symbol, string>();
+export const APP_CONFIRMATION_OPEN_EVENT = "plum-duff:app-confirmation-open";
+
+let allowNextDocumentNavigation = false;
 
 type UnsavedChangesPromptRequest = {
   accessibleName: string;
@@ -35,6 +38,7 @@ function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
 export function requestAppConfirmation(
   request: Omit<UnsavedChangesPromptRequest, "resolve">
 ): Promise<boolean> {
+  window.dispatchEvent(new Event(APP_CONFIRMATION_OPEN_EVENT));
   if (!promptHandler) {
     // Browser unload cannot be replaced by app UI; this fallback is only for
     // calls made before the app-level prompt controller has mounted.
@@ -124,6 +128,7 @@ export function useUnsavedChangesGuard(
     activeUnsavedGuards.set(activeGuardId, message);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowNextDocumentNavigation) return;
       event.preventDefault();
       event.returnValue = message;
     };
@@ -163,6 +168,10 @@ export function useUnsavedChangesGuard(
 
       void requestUnsavedChangesConfirmation(message).then((confirmed) => {
         if (confirmed) {
+          allowNextDocumentNavigation = true;
+          window.setTimeout(() => {
+            allowNextDocumentNavigation = false;
+          }, 1_000);
           window.location.assign(destination.href);
         }
       });

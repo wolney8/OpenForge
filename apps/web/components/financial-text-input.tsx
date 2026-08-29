@@ -13,6 +13,7 @@ type FinancialTextInputProps = {
   value: string;
   valueTone?: "neutral" | "positive" | "negative";
   allowNegative?: boolean;
+  clearInitialZeroOnFocus?: boolean;
 };
 
 // Keep the currency adornment and editable value in one visual field surface.
@@ -25,11 +26,12 @@ export function FinancialTextInput({
   value,
   valueTone = "neutral",
   allowNegative = true,
+  clearInitialZeroOnFocus = false,
 }: FinancialTextInputProps) {
   const handledInitialZeroRef = useRef(false);
 
   return (
-    <span className={`financial-text-input financial-text-input-${valueTone}`}>
+    <span className={`adorned-text-input financial-text-input financial-text-input-${valueTone}`}>
       <span aria-hidden="true" className="financial-text-input-prefix">£</span>
       <input
         aria-label={ariaLabel}
@@ -41,7 +43,11 @@ export function FinancialTextInput({
         onFocus={(event) => {
           if (!handledInitialZeroRef.current && isExplicitZero(value)) {
             handledInitialZeroRef.current = true;
-            event.currentTarget.select();
+            if (clearInitialZeroOnFocus) {
+              onChange("");
+            } else {
+              event.currentTarget.select();
+            }
           }
         }}
         value={value}

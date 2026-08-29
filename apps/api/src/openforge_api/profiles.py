@@ -113,8 +113,8 @@ class ProfileOnboardingCreatePayload(BaseModel):
         min_length=3, max_length=32, pattern=r"^[A-Z0-9-]+$"
     )
     tracking_start_date: date
-    management_fee_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
-    investment_fee_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
+    management_fee_percent: Decimal = Field(default=Decimal("25"), ge=0, le=100)
+    investment_fee_percent: Decimal = Field(default=Decimal("25"), ge=0, le=100)
     active_date_preset: Literal[
         "Today",
         "This Week",

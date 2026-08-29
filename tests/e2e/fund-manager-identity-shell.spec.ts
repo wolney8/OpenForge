@@ -46,4 +46,38 @@ test.describe("Fund Manager identity shell", () => {
     await page.locator('[data-pd-id="fund-manager-identity.logout"]').click();
     await expect(page).toHaveURL(/\/login\?signed_out=1$/);
   });
+
+  test("keeps delayed identity and notification controls visibly loading", async ({ page }) => {
+    let releaseSession: (() => void) | undefined;
+    let releaseNotifications: (() => void) | undefined;
+    const sessionGate = new Promise<void>((resolve) => {
+      releaseSession = resolve;
+    });
+    const notificationGate = new Promise<void>((resolve) => {
+      releaseNotifications = resolve;
+    });
+    await page.unroute("**/api/auth/session");
+    await page.route("**/api/auth/session", async (route) => {
+      await sessionGate;
+      await route.fulfill({ contentType: "application/json", json: session, status: 200 });
+    });
+    await page.route("**/fund-manager/notifications", async (route) => {
+      await notificationGate;
+      await route.fulfill({ contentType: "application/json", json: [], status: 200 });
+    });
+
+    await page.goto("/profiles");
+    await expect(page.locator('[data-pd-id="fund-manager-identity.loading"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="notifications.trigger"]')).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    releaseSession?.();
+    releaseNotifications?.();
+    await expect(page.locator('[data-pd-id="fund-manager-identity.trigger"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="notifications.trigger"]')).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+  });
 });

@@ -39,6 +39,7 @@ import {
 } from "@/lib/recent-profiles";
 import { beginShellLoading } from "@/lib/shell-loading";
 import {
+  APP_CONFIRMATION_OPEN_EVENT,
   confirmUnsavedTrackerChanges,
   useUnsavedChangesPromptController,
 } from "@/lib/use-unsaved-changes-guard";
@@ -190,6 +191,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [unsavedPrompt]);
+
+  useEffect(() => {
+    const closeShellDrawersForConfirmation = () => {
+      setAppMenuOpen(false);
+      setTrackerMenuOpen(false);
+      setProfileSearch("");
+      setSelectedCommandProfileId(null);
+    };
+    window.addEventListener(APP_CONFIRMATION_OPEN_EVENT, closeShellDrawersForConfirmation);
+    return () => {
+      window.removeEventListener(APP_CONFIRMATION_OPEN_EVENT, closeShellDrawersForConfirmation);
+    };
+  }, []);
 
   useEffect(() => {
     if (isPublicAuthRoute) {
@@ -517,6 +531,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     isInsideProfile && headerSummary?.profileId === activeProfileId
       ? headerSummary.overallPnl
       : null;
+  const profileSummaryLoading =
+    isInsideProfile && headerSummary?.profileId !== activeProfileId;
   const brandSubtitle = "Tracker platform";
   const recentProfileName =
     activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ??
@@ -615,6 +631,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <button
+                  aria-busy={profileSummaryLoading}
                   aria-expanded={trackerMenuOpen}
                   aria-controls="profile-command-popover"
                   aria-haspopup="dialog"
@@ -636,8 +653,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                   <span className="summary-menu-copy">
                     <strong>{profileName}</strong>
                     <span className="summary-menu-subtitle">
-                      <span>Total P&L for {profileRangeLabel}</span>
-                      {typeof profileOverallPnl === "number" ? (
+                      {profileSummaryLoading ? (
+                        <>
+                          <span aria-hidden="true" className="button-spinner" />
+                          <span>Loading Profile summary</span>
+                        </>
+                      ) : (
+                        <span>Total P&amp;L for {profileRangeLabel}</span>
+                      )}
+                      {!profileSummaryLoading && typeof profileOverallPnl === "number" ? (
                         <>
                           <span aria-hidden="true" className="summary-menu-separator">•</span>
                           <FinancialValue

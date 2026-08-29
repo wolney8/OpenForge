@@ -33,7 +33,12 @@ linked only to approved Profile IDs and cannot acquire the Fund Manager role thr
 
 Required onboarding inputs:
 
-- profile display name, code, tracking start and fee settings;
+- profile display name, code, tracking start and fee settings. Management and investment fees
+  default independently to 25%, accept human percentage-point entry, display a `%` suffix and
+  persist two-decimal percentage-point values;
+- starting bankroll. Until an approved registration form supplies this value, the untouched zero
+  default clears on first entry; a future registration value must prefill the same canonical field
+  and must not be treated as an untouched default;
 - operating jurisdiction, initially GB, which limits selectable providers to active catalogue
   records supporting that jurisdiction;
 - enabled modules: Sportsbook, Free Bets and Cash Adjustments always enabled; Casino and Extra
@@ -54,7 +59,9 @@ Required onboarding inputs:
 - States: `profile_details`, `modules`, `accounts_and_opening_values`, `quick_actions`,
   `review_ready`, `created`.
 - The page uses an in-page stepper, guided access, deterministic keyboard order, Cancel, and an
-  unsaved-change route guard; it is not a modal.
+  unsaved-change route guard; it is not a modal. A platform confirmation takes precedence over and
+  closes shell drawers/popovers, and an approved navigation must not trigger a second native
+  browser confirmation.
 - The importer may only open after a profile has reached `created` and has a verified pre-import
   backup.
 - Profile creation persists selected accounts and Exchange commissions atomically. Existing

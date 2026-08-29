@@ -255,6 +255,23 @@ def test_profile_onboarding_creates_settings_and_catalogue_accounts_atomically(
     assert count_profile_audit_rows(profile_id) == 1
 
 
+def test_profile_onboarding_defaults_both_fee_percentages_to_twenty_five(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+    payload = profile_onboarding_payload()
+    payload.pop("management_fee_percent")
+    payload.pop("investment_fee_percent")
+
+    response = client.post("/profiles/onboarding", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["profile"]["management_fee_percent"] == "25.00"
+    assert response.json()["profile"]["investment_fee_percent"] == "25.00"
+
+
 def test_profile_onboarding_accepts_zero_exchange_commission_and_blank_optional_commissions(
     tmp_path: Path,
 ) -> None:

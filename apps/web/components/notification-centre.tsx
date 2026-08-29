@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { APP_CONFIRMATION_OPEN_EVENT } from "@/lib/use-unsaved-changes-guard";
 import {
   filterFundManagerNotificationsForViewer,
   loadLocalFundManagerNotifications,
@@ -53,7 +54,7 @@ export function NotificationCentre() {
   const [exitingId, setExitingId] = useState("");
   const [completionAnnouncement, setCompletionAnnouncement] = useState("");
   const [actionError, setActionError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attentionNow, setAttentionNow] = useState(() => Date.now());
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -116,6 +117,17 @@ export function NotificationCentre() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, handleRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const closeForAppConfirmation = () => {
+      setIsOpen(false);
+      setIsActionsOpen(false);
+    };
+    window.addEventListener(APP_CONFIRMATION_OPEN_EVENT, closeForAppConfirmation);
+    return () => {
+      window.removeEventListener(APP_CONFIRMATION_OPEN_EVENT, closeForAppConfirmation);
     };
   }, []);
 
@@ -296,6 +308,7 @@ export function NotificationCentre() {
   return (
     <div className="notification-centre app-menu-shell" ref={shellRef}>
       <button
+        aria-busy={isLoading}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={
@@ -315,9 +328,13 @@ export function NotificationCentre() {
         ref={triggerRef}
         type="button"
       >
-        <span aria-hidden="true" className="material-symbols-outlined">
-          {visibleCount > 0 ? "notifications_active" : "notifications"}
-        </span>
+        {isLoading && notifications.length === 0 ? (
+          <span aria-hidden="true" className="button-spinner" />
+        ) : (
+          <span aria-hidden="true" className="material-symbols-outlined">
+            {visibleCount > 0 ? "notifications_active" : "notifications"}
+          </span>
+        )}
         {unreadCount > 0 ? (
           <span aria-hidden="true" className="notification-count-badge">
             {formatUnreadNotificationCount(unreadCount)}

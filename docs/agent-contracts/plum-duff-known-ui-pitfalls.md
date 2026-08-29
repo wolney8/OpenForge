@@ -634,6 +634,18 @@ cause, prevention rule and regression test.
   `tests/e2e/founder-profile-onboarding.spec.ts` cover shorthand money, zero selection and
   percentage-to-decimal commission conversion.
 
+## 2026-08-29: Shell drawers and native unload prompts competed with platform confirmations
+
+- Area: Profile onboarding and authenticated shell navigation.
+- Root cause: the document-level unsaved-change capture handler intercepted drawer links before
+  their close handlers ran, then a confirmed full-page navigation reached the still-active native
+  `beforeunload` guard.
+- Prevention: opening any platform confirmation dispatches the shared shell-close event. A
+  confirmed document navigation receives a one-use unload bypass while the platform guard remains
+  authoritative; direct browser close/reload continues to use `beforeunload`.
+- Test added: `tests/e2e/founder-profile-onboarding.spec.ts` verifies the drawer closes, one platform
+  dialog appears and no native dialog follows Discard Changes.
+
 ## 2026-08-28: Shell search or navigation bypassed request/runtime constraints
 
 - Area: authenticated application shell, global search and Fund Manager drawer.
