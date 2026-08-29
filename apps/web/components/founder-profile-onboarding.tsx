@@ -39,6 +39,21 @@ type SelectedAccount = {
   commission_rate: string;
 };
 
+type SelectedAccountPayload = Omit<SelectedAccount, "commission_rate"> & {
+  commission_rate?: string;
+};
+
+function serializeSelectedAccounts(
+  accounts: Record<string, SelectedAccount>,
+): SelectedAccountPayload[] {
+  return Object.values(accounts).map(({ commission_rate: commissionRate, ...account }) => {
+    const normalizedCommission = commissionRate.trim();
+    return normalizedCommission
+      ? { ...account, commission_rate: normalizedCommission }
+      : account;
+  });
+}
+
 type QuickActionPreset = {
   preset_id: string;
   name: string;
@@ -540,7 +555,7 @@ export function ProfileOnboarding() {
           iteration_number: Number(profile.iteration_number),
           enabled_modules: enabledModules,
           weekly_extra_place_loss_budget: weeklyExtraPlaceBudget,
-          accounts: Object.values(selectedAccounts),
+          accounts: serializeSelectedAccounts(selectedAccounts),
           quick_actions: Object.values(selectedQuickActions),
           preferences: { operating_jurisdiction: profile.operating_jurisdiction },
         }),

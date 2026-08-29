@@ -155,7 +155,7 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   }
   await page.getByLabel("Bookmaker A opening balance").fill("25.00");
   await page.getByLabel("Exchange A opening balance").fill("50.00");
-  await page.getByLabel("Exchange A commission").fill("0.02");
+  await page.getByLabel("Exchange A commission").fill("0.00");
   await page.getByLabel("Bank A opening balance").fill("75.00");
   await page.getByLabel("Main Bank Account").selectOption("BANK-DEMO-001");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -175,8 +175,13 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   expect(submitted?.accounts).toHaveLength(3);
   expect(submitted?.accounts).toContainEqual(expect.objectContaining({
     catalogue_id: "EXCHANGE-DEMO-001",
-    commission_rate: "0.02",
+    commission_rate: "0.00",
   }));
+  const submittedAccounts = submitted?.accounts as Array<Record<string, unknown>>;
+  expect(submittedAccounts.find((account) => account.catalogue_id === "BOOKMAKER-DEMO-001"))
+    .not.toHaveProperty("commission_rate");
+  expect(submittedAccounts.find((account) => account.catalogue_id === "BANK-DEMO-001"))
+    .not.toHaveProperty("commission_rate");
   expect(submitted?.main_bank_catalogue_id).toBe("BANK-DEMO-001");
   expect(submitted?.quick_actions).toEqual([
     {

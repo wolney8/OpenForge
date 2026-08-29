@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
@@ -90,6 +90,13 @@ class ProfileOnboardingAccountPayload(BaseModel):
     restrictions: list[str] = Field(default_factory=list, max_length=12)
     notes: str = Field(default="", max_length=1000)
     commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+
+    @field_validator("commission_rate", mode="before")
+    @classmethod
+    def normalize_blank_commission(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
 
 class ProfileOnboardingQuickActionPayload(BaseModel):

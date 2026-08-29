@@ -96,6 +96,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005J6 | Account Catalogue runtime authority | Confirm canonical seed plus Neon-managed document ownership and preserve Profile references | Account Catalogue authority contract | COMPLETE |
 | PD-FR-005J7 | Authenticated hosted application smoke | Verify Dashboard, Profile settings, Accounts and representative ledgers through the deployed UI/API paths | Founder hosted persistence checklist | NOT STARTED |
 | PD-FR-005J8 | Neon pre-import recovery point | Create or verify the named Neon recovery point after hosted application smoke succeeds | Neon recovery procedure | BLOCKED |
+| PD-FR-005J9 | Founder onboarding commission serialization | Omit blank optional commissions while preserving valid zero Exchange commission values during Profile creation | Reusable Profile onboarding contract | COMPLETE |
 | PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -143,6 +144,10 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 - `PD-FR-005J6`: the bundled catalogue JSON is the immutable bootstrap seed. The active managed
   document lives in Neon, and Profile Accounts reference it by stable `catalogue_id`; provider
   branding is resolved rather than copied into editable Profile state.
+- `PD-FR-005J9`: Profile onboarding previously submitted `commission_rate: ""` for every selected
+  Bookmaker and Bank, causing request validation to fail before the transactional create began.
+  The client now omits empty optional commissions and preserves `0.00`; the API normalizes stale
+  blank optional values while retaining the explicit selected-Exchange commission requirement.
 
 ## PD-FR-001 Notification Matrix
 

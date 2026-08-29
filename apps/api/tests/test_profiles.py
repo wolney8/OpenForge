@@ -255,6 +255,32 @@ def test_profile_onboarding_creates_settings_and_catalogue_accounts_atomically(
     assert count_profile_audit_rows(profile_id) == 1
 
 
+def test_profile_onboarding_accepts_zero_exchange_commission_and_blank_optional_commissions(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+    payload = profile_onboarding_payload()
+    for account in payload["accounts"]:
+        account["commission_rate"] = ""
+    exchange = next(
+        account
+        for account in payload["accounts"]
+        if account["catalogue_id"] == "EXCHANGE-DEMO-001"
+    )
+    exchange["commission_rate"] = "0.00"
+
+    response = client.post("/profiles/onboarding", json=payload)
+
+    assert response.status_code == 201
+    profile_id = response.json()["profile"]["profile_id"]
+    commissions = client.get(f"/profiles/{profile_id}/exchange-commissions").json()
+    assert [(row["exchange_name"], row["commission_rate"]) for row in commissions] == [
+        ("Exchange A", "0.00")
+    ]
+
+
 def test_profile_onboarding_rejects_duplicate_code_without_partial_writes(
     tmp_path: Path,
 ) -> None:
