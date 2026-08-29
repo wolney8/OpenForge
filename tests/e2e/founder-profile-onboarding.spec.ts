@@ -84,6 +84,35 @@ const quickActions = [
   },
 ];
 
+test("Profile onboarding distinguishes a pending catalogue from an empty catalogue", async ({ page }) => {
+  let releaseCatalogue: (() => void) | undefined;
+  const catalogueGate = new Promise<void>((resolve) => {
+    releaseCatalogue = resolve;
+  });
+  await page.route("**/account-catalogue/source", async (route) => {
+    await catalogueGate;
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+
+  await page.goto("/profiles/new");
+  await page.getByLabel("Display Name").fill("Loading State Profile");
+  await page.getByLabel("Profile Code").fill("loading-001");
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+
+  const loadingState = page
+    .getByRole("status")
+    .filter({ hasText: "Loading Account Catalogue" });
+  await expect(loadingState).toBeVisible();
+  await expect(page.getByText("No GB providers match the current filters.")).toHaveCount(0);
+  releaseCatalogue?.();
+  await expect(loadingState).toBeHidden();
+  await expect(page.getByText("Bookmaker A", { exact: true })).toBeVisible();
+});
+
 test("Profile onboarding uses catalogue authority and saves optional Quick Actions", async ({ page }) => {
   let submitted: Record<string, unknown> | undefined;
   await page.route("**/account-catalogue/source", async (route) => {

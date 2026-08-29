@@ -7,6 +7,7 @@ import {
   type AnalyticsTab,
   type ProfileDescriptor,
 } from "@/components/cross-profile-analytics";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 
 type ApiProfile = {
   profile_id: string;
@@ -94,7 +95,26 @@ export function FundManagerDashboardLoader({
   }
 
   if (profiles === null || linkedProfileIds === null) {
-    return <main aria-busy="true" aria-label="Loading Dashboard" className="page-shell" />;
+    return (
+      <main aria-busy="true" aria-label="Loading Dashboard" className="page-shell stack">
+        <section className="hero-panel split-hero">
+          <div className="stack">
+            <span className="eyebrow">Fund Manager</span>
+            <h1>Fund Manager Dashboard</h1>
+          </div>
+          <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
+            <span className="eyebrow">Active profiles</span>
+            <strong aria-hidden="true">—</strong>
+          </aside>
+        </section>
+        <section className="content-panel stack tracker-summary-shell sportsbook-page-shell">
+          <LedgerLoadingIndicator
+            dataPdId="fund-manager-dashboard.loading"
+            label="Loading Fund Manager Dashboard"
+          />
+        </section>
+      </main>
+    );
   }
 
   return (

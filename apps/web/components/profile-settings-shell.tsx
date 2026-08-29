@@ -3,6 +3,7 @@
 import { KeyboardEvent, useEffect, useState } from "react";
 
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
 import { ProfileGeneralSettings } from "@/components/profile-demographics-settings";
 import { ProfileSecuritySettings, ProfileSubscriberSettings } from "@/components/profile-future-access-settings";
@@ -29,6 +30,7 @@ function isSettingsSection(value: string): value is SettingsSection {
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [profileName, setProfileName] = useState(profileId);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   useEffect(() => {
     let isActive = true;
@@ -42,6 +44,9 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
       })
       .catch(() => {
         if (isActive) setProfileName(profileId);
+      })
+      .finally(() => {
+        if (isActive) setIsProfileLoading(false);
       });
 
     return () => {
@@ -96,10 +101,19 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
 
   return (
     <section className="stack profile-settings-shell">
-      <section className="content-panel stack sportsbook-page-shell">
+      <section
+        aria-busy={isProfileLoading}
+        className="content-panel stack sportsbook-page-shell"
+      >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Settings for {profileName} Profile</h1>
         </div>
+        {isProfileLoading ? (
+          <LedgerLoadingIndicator
+            dataPdId="profile-settings.loading"
+            label="Loading Profile Settings"
+          />
+        ) : null}
         <div
           aria-label="Profile settings sections"
           className="analytics-tab-list profile-settings-tab-list"

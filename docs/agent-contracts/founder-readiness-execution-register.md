@@ -88,14 +88,15 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005H | Notification/settings persistence | Persist notification state/preferences and currently durable Profile/Fund Manager settings | Notification and Settings contracts | NEEDS VERIFICATION |
 | PD-FR-005I | Neon backup/recovery | Record and verify a pre-import recovery point and current-plan restore limitations | Local database/cloud backup contract | NEEDS VERIFICATION |
 | PD-FR-005J | Hosted persistence verification | Verify owner-only Profile, account, setting and representative ledger persistence on Vercel | Founder hosted persistence checklist | NOT STARTED |
-| PD-FR-005J1 | Production runtime configuration | Verify the deployed backend is explicitly using Neon with a configured server-only URL and no local fallback | Protected config summary and Vercel Production environment | IN PROGRESS |
-| PD-FR-005J2 | Hosted Dashboard regression | Restore the authenticated `/profiles?view=performance` application data path and support a valid bootstrap/empty state | Fund Manager Dashboard and Profile API | NEEDS VERIFICATION |
+| PD-FR-005J1 | Production runtime configuration | Verify the deployed backend is explicitly using Neon with a configured server-only URL and no local fallback | Protected config summary and Vercel Production environment | COMPLETE |
+| PD-FR-005J2 | Hosted Dashboard regression | Restore the authenticated `/profiles?view=performance` application data path and support a valid bootstrap/empty state | Fund Manager Dashboard and Profile API | COMPLETE |
 | PD-FR-005J3 | Hosted Profile Account update regression | Trace and fix the existing-account save 500 through the real UI/API/PostgreSQL path with safe feedback | Consolidated Profile Accounts workflow | NEEDS VERIFICATION |
 | PD-FR-005J4 | Server-enforced inactivity expiry | Enforce the saved Auto Logout preference on protected API/session access rather than relying on a browser timer | Owner authentication and security preference contracts | NEEDS VERIFICATION |
 | PD-FR-005J5 | Founder identity/Profile association | Verify or establish a persisted primary Profile link for the authenticated Founder without importing workbook data | Reusable Profile onboarding contract | IN PROGRESS |
 | PD-FR-005J6 | Account Catalogue runtime authority | Confirm canonical seed plus Neon-managed document ownership and preserve Profile references | Account Catalogue authority contract | COMPLETE |
 | PD-FR-005J7 | Authenticated hosted application smoke | Verify Dashboard, Profile settings, Accounts and representative ledgers through the deployed UI/API paths | Founder hosted persistence checklist | NOT STARTED |
 | PD-FR-005J8 | Neon pre-import recovery point | Create or verify the named Neon recovery point after hosted application smoke succeeds | Neon recovery procedure | BLOCKED |
+| PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
 | PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | NOT STARTED |
@@ -116,11 +117,15 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 - `PD-FR-005J1`: Production settings cannot be enumerated from this workspace because no Vercel
   project/CLI session is linked. The public health endpoint now fails closed unless the hosted
   function is explicitly configured for PostgreSQL/Neon and can execute a database query. The
-  protected config summary remains the authenticated non-secret configuration check.
+  protected config summary remains the authenticated non-secret configuration check. On
+  2026-08-29, the deployed health endpoint returned `200 {"status":"ok"}` after the Production
+  Neon variables were applied, and a direct server-only connection check succeeded.
 - `PD-FR-005J2`: every Dashboard source endpoint succeeds directly against Neon. The Vercel-only
   failure came from the server-rendered page calling the public deployment URL from inside the
   same deployment. Dashboard bootstrap now uses the authenticated browser same-origin API path and
-  distinguishes loading, no-Profile setup and genuine service failure.
+  distinguishes loading, no-Profile setup and genuine service failure. The Fund Manager verified
+  the hosted `Create the first Profile` state on 2026-08-29; this is the expected state until an
+  authenticated identity creates its primary Profile link.
 - `PD-FR-005J3`: canonical existing Account updates succeed directly against Neon. The deployed
   failure is consistent with the hosted function not using the same Neon runtime as the frontend;
   many seeded demo rows are also legacy and lack `catalogue_id`. The API now logs unexpected update

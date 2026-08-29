@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { apiBaseUrl } from "@/lib/api";
@@ -638,7 +639,17 @@ export function ProfileOnboarding() {
             <label className="field-control table-search-field"><span>Search Accounts</span><input aria-label="Search global Account Catalogue for onboarding" onChange={(event) => { setSearch(event.target.value); setAccountPage(1); }} type="search" value={search} /></label>
             <div className="settings-table-filter-group"><label className="field-control table-filter-field"><span>Account Type</span><select onChange={(event) => { setTypeFilter(event.target.value as typeof typeFilter); setAccountPage(1); }} value={typeFilter}><option>All</option><option>Bookmaker</option><option>Exchange</option><option>Bank</option></select></label></div>
           </div>
-          {catalogueState === "loading" ? <p aria-live="polite">Loading Account Catalogue…</p> : null}
+          {catalogueState === "loading" ? (
+            <section
+              aria-busy="true"
+              className="tracker-summary-shell sportsbook-page-shell"
+            >
+              <LedgerLoadingIndicator
+                dataPdId="profile-onboarding.account-catalogue.loading"
+                label="Loading Account Catalogue"
+              />
+            </section>
+          ) : null}
           {catalogueState === "error" ? <p className="error-text" role="alert">Account Catalogue could not be loaded. Profile creation is blocked.</p> : null}
           {catalogueState === "ready" ? <>
             <LedgerPagination ariaLabel="Profile onboarding accounts" currentPage={effectiveAccountPage} onPageChange={setAccountPage} onPageSizeChange={(nextSize) => { setAccountPageSize(nextSize); setAccountPage(1); }} pageCount={accountPageCount} pageSize={accountPageSize} position="top" totalRows={sortedCatalogue.length} />

@@ -8,6 +8,7 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
@@ -359,6 +360,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [pageSize, setPageSize] = useState(8);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] = useState(false);
@@ -478,9 +480,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           if (!response.ok) return;
           setOfferActions((await response.json()) as ProfileOfferAction[]);
         }),
-      ]).catch((error: Error) => {
-        setErrorMessage(error.message);
-      });
+      ])
+        .catch((error: Error) => {
+          setErrorMessage(error.message);
+        })
+        .finally(() => setIsInitialLoading(false));
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -903,10 +907,19 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   return (
     <section className="stack">
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      <section className="content-panel stack sportsbook-page-shell">
+      <section
+        aria-busy={isInitialLoading}
+        className="content-panel stack sportsbook-page-shell"
+      >
         <div className="sportsbook-page-header accounts-page-header">
           <h1 className="sportsbook-page-title">Accounts</h1>
         </div>
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator
+            dataPdId="profile-accounts.loading"
+            label="Loading Profile Accounts"
+          />
+        ) : null}
         <section className="stat-strip" aria-label="Account quick view">
           <article className="stat-card">
             <span className="eyebrow">Active accounts</span>

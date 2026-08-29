@@ -609,6 +609,18 @@ cause, prevention rule and regression test.
 - Prevention:
 - Test added:
 
+## 2026-08-29: Pending founder data appeared as empty or blank content
+
+- Area: Fund Manager Dashboard, Profile Accounts, Founder onboarding and Profile Settings.
+- Root cause: client-owned data started from empty arrays, identifiers or blank page shells without
+  an explicit initial request state, so hosted latency exposed transient zero values and layout
+  pop-in.
+- Prevention: asynchronous data surfaces must distinguish loading, empty, error and populated
+  states, reuse `LedgerLoadingIndicator` in a stable relative shell and expose `aria-busy`. Do not
+  add artificial delays or show zero/empty copy before the request resolves.
+- Test added: `tests/e2e/ledger-loading-parity.spec.ts` delays Dashboard and Profile Account data and
+  verifies the shared loading state remains visible until resolution.
+
 ## 2026-08-28: Shell search or navigation bypassed request/runtime constraints
 
 - Area: authenticated application shell, global search and Fund Manager drawer.

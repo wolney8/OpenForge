@@ -81,6 +81,11 @@ use the canonical primitive and computed styling.
 - Equivalent actions occupy stable slots so rows align when an optional action is absent.
 - Loading states show only controls that intentionally remain available. Do not leave duplicate or
   misleading close/actions visible.
+- Every asynchronous data surface must distinguish `loading`, `empty`, `error` and `populated`
+  states. Pending data must never render as an authoritative zero value or empty dataset. Reuse
+  `LedgerLoadingIndicator` inside the established stable shell, expose `aria-busy`, preserve the
+  known final geometry where practical, and never add an artificial delay. Verify light/dark and
+  reduced-motion behaviour before handoff.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
 - Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
   for a genuinely nested card, inset section or secondary surface; do not use it to create a
