@@ -56,12 +56,25 @@ class Settings(BaseSettings):
 
     @property
     def authentication_required(self) -> bool:
-        hosted_environment = self.environment.strip().lower() in {
+        return self.auth_required or self.hosted_environment
+
+    @property
+    def hosted_environment(self) -> bool:
+        return self.environment.strip().lower() in {
             "production",
             "preview",
             "vercel",
-        }
-        return self.auth_required or hosted_environment or bool(os.getenv("VERCEL"))
+        } or bool(os.getenv("VERCEL"))
+
+    @property
+    def hosted_persistence_ready(self) -> bool:
+        return (
+            not self.hosted_environment
+            or (
+                self.database_mode.strip().lower() in {"neon", "postgres", "postgresql"}
+                and bool(self.neon_database_url.strip())
+            )
+        )
 
     @property
     def owner_emails(self) -> set[str]:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from decimal import Decimal
 from typing import Literal
 
@@ -22,6 +23,7 @@ from openforge_api.db import (
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/accounts", tags=["accounts"])
+logger = logging.getLogger(__name__)
 
 AccountTypeValue = Literal["Bookie", "Exchange", "Bank"]
 CHANNEL_LABELS = {"Online", "Mobile", "Retail", "Unknown"}
@@ -364,7 +366,19 @@ def update_profile_account(
     account_id: str,
     payload: AccountPayload,
 ) -> AccountResponse:
-    updated = update_account(profile_id, account_id, resolve_catalogue_fields(payload))
+    try:
+        updated = update_account(profile_id, account_id, resolve_catalogue_fields(payload))
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception(
+            "Profile Account update failed",
+            extra={"profile_id": profile_id, "account_id": account_id},
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Account could not be saved. Please try again.",
+        ) from error
     if updated is None:
         raise HTTPException(status_code=404, detail="Account not found for this profile")
     return build_account_response(updated)

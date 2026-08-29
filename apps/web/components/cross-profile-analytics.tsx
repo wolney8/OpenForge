@@ -59,7 +59,7 @@ import {
   feeCentreStateLabels,
 } from "@/lib/fee-centre-status";
 
-type ProfileDescriptor = {
+export type ProfileDescriptor = {
   profileId: string;
   displayName: string;
   profileCode: string;

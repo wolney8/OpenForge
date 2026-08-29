@@ -147,6 +147,43 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     assert count_account_audit_rows("profile-demo-001", created["account_id"]) >= 2
 
 
+def test_account_update_returns_safe_feedback_for_persistence_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    bookmaker = create_catalogue_bookmaker(client, "Safe Failure Book")
+    payload = {
+        "account": "Safe Failure Book",
+        "bookmaker_id": bookmaker["bookmaker_id"],
+        "type": "Bookie",
+        "counts_in_cash_total": True,
+        "channel": "Online",
+        "status": "Active",
+        "current_balance": "25.00",
+        "pending_withdrawal_amount": "0.00",
+        "last_balance_update": "",
+        "group_name": "Demo Group",
+        "platform": "Demo Platform",
+    }
+    created = client.post("/profiles/profile-demo-001/accounts", json=payload).json()
+
+    def fail_update(*args, **kwargs):
+        raise RuntimeError("synthetic persistence detail")
+
+    monkeypatch.setattr("openforge_api.accounts.update_account", fail_update)
+    response = client.put(
+        f"/profiles/profile-demo-001/accounts/{created['account_id']}",
+        json=payload,
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Account could not be saved. Please try again."
+    }
+    assert "synthetic persistence detail" not in response.text
+
+
 def test_seed_rows_load_into_dedicated_accounts_table(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)

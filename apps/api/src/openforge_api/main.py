@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from openforge_api.account_catalogue_source import router as account_catalogue_source_router
+from openforge_api.accounts import router as accounts_router
 from openforge_api.auth import router as auth_router
 from openforge_api.auth_middleware import OwnerAuthenticationMiddleware
-from openforge_api.accounts import router as accounts_router
 from openforge_api.backups import router as backups_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
 from openforge_api.bookmaker_catalogue import router as bookmaker_catalogue_router
@@ -13,12 +14,13 @@ from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.common_bet_combos import router as common_bet_combos_router
 from openforge_api.config import settings
 from openforge_api.database_provider import router as database_provider_router
-from openforge_api.exchange_settings import router as exchange_settings_router
+from openforge_api.db import connect
 from openforge_api.each_way_extra_places import router as each_way_extra_places_router
+from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.free_bets import router as free_bets_router
-from openforge_api.global_search import router as global_search_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.fund_manager_lookup_values import router as fund_manager_lookup_values_router
+from openforge_api.global_search import router as global_search_router
 from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
@@ -62,8 +64,16 @@ app.include_router(tracker_settings_router)
 app.include_router(lookup_values_router)
 
 
-@app.get("/healthz")
-def healthcheck() -> dict[str, str]:
+@app.get("/healthz", response_model=None)
+def healthcheck() -> dict[str, str] | JSONResponse:
+    if not settings.hosted_persistence_ready:
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+    if settings.hosted_environment:
+        try:
+            with connect() as connection:
+                connection.execute("SELECT 1").fetchone()
+        except Exception:
+            return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok"}
 
 
@@ -78,6 +88,7 @@ def config_summary() -> dict[str, str]:
         ),
         "database_url_scheme": settings.database_url.split(":", 1)[0],
         "neon_configured": str(bool(settings.neon_database_url.strip())).lower(),
+        "hosted_persistence_ready": str(settings.hosted_persistence_ready).lower(),
         "backup_directory": settings.backup_directory,
         "account_catalogue_source": settings.account_catalogue_source,
         "hosted_api_mount_prefix": "/api",

@@ -88,8 +88,10 @@ export async function loadPersistedSessionSecurityPreference(): Promise<SessionS
     if (!response.ok) return null;
     const payload = (await response.json()) as {
       auto_logout_enabled?: unknown;
+      configured?: unknown;
       timeout_minutes?: unknown;
     };
+    if (payload.configured === false) return null;
     return normalizeSessionSecurityPreference({
       autoLogoutEnabled: payload.auto_logout_enabled,
       timeoutMinutes: payload.timeout_minutes,

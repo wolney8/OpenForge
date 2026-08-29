@@ -1,0 +1,140 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  CrossProfileAnalytics,
+  type AnalyticsTab,
+  type ProfileDescriptor,
+} from "@/components/cross-profile-analytics";
+
+type ApiProfile = {
+  profile_id: string;
+  display_name: string;
+  profile_code: string;
+  status: string;
+  tracking_start_date: string;
+  management_fee_percent: string;
+  investment_fee_percent: string;
+};
+
+function mapProfile(profile: ApiProfile): ProfileDescriptor {
+  return {
+    profileId: profile.profile_id,
+    displayName: profile.display_name,
+    profileCode: profile.profile_code,
+    status: profile.status,
+    trackingStartDate: profile.tracking_start_date,
+    managementFeePercent: profile.management_fee_percent,
+    investmentFeePercent: profile.investment_fee_percent,
+  };
+}
+
+export function FundManagerDashboardLoader({
+  initialTab,
+  initialDetailProfileId,
+  initialFeeReviewMonth,
+  initialOpportunityId,
+}: {
+  initialTab: AnalyticsTab;
+  initialDetailProfileId?: string;
+  initialFeeReviewMonth?: string;
+  initialOpportunityId?: string;
+}) {
+  const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
+  const [linkedProfileIds, setLinkedProfileIds] = useState<string[] | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      fetch("/api/profiles", {
+        cache: "no-store",
+        credentials: "include",
+        signal: controller.signal,
+      }),
+      fetch("/api/auth/session", {
+        cache: "no-store",
+        credentials: "include",
+        signal: controller.signal,
+      }),
+    ]).then(async ([profilesResponse, sessionResponse]) => {
+      if (profilesResponse.status === 401) {
+        window.location.replace("/login?error=session_expired");
+        return;
+      }
+      if (!profilesResponse.ok) {
+        throw new Error("Dashboard data is temporarily unavailable.");
+      }
+      const session = sessionResponse.ok
+        ? (await sessionResponse.json()) as { linked_profile_ids?: string[] }
+        : {};
+      setProfiles(((await profilesResponse.json()) as ApiProfile[]).map(mapProfile));
+      setLinkedProfileIds(session.linked_profile_ids ?? []);
+    }).catch((reason: unknown) => {
+      if (!controller.signal.aborted) {
+        setError(reason instanceof Error ? reason.message : "Dashboard data is temporarily unavailable.");
+      }
+    });
+    return () => controller.abort();
+  }, []);
+
+  if (error) {
+    return (
+      <main className="page-shell stack">
+        <section className="content-panel stack" role="alert">
+          <h1>Unable to load Dashboard</h1>
+          <p>{error}</p>
+          <button className="modal-primary-button" onClick={() => window.location.reload()} type="button">
+            Try again
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (profiles === null || linkedProfileIds === null) {
+    return <main aria-busy="true" aria-label="Loading Dashboard" className="page-shell" />;
+  }
+
+  return (
+    <main className="page-shell stack">
+      <section className="hero-panel split-hero">
+        <div className="stack">
+          <span className="eyebrow">Fund Manager</span>
+          <h1>Fund Manager Dashboard</h1>
+        </div>
+        <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
+          <span className="eyebrow">Active profiles</span>
+          <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
+        </aside>
+      </section>
+      {linkedProfileIds.length === 0 && profiles.length > 0 ? (
+        <section className="content-panel split-panel profile-bootstrap-callout">
+          <div>
+            <span className="eyebrow">Founder Profile</span>
+            <h2>Complete Profile setup</h2>
+            <p>Create the Profile that will own your settings, accounts and tracker records.</p>
+          </div>
+          <Link className="modal-primary-button button-link" href="/profiles/new">Create Profile</Link>
+        </section>
+      ) : null}
+      {profiles.length === 0 ? (
+        <section className="content-panel stack">
+          <h2>Create the first Profile</h2>
+          <p>Set up a Profile before adding accounts or tracker records.</p>
+          <Link className="modal-primary-button button-link" href="/profiles/new">Create Profile</Link>
+        </section>
+      ) : (
+        <CrossProfileAnalytics
+          initialTab={initialTab}
+          initialDetailProfileId={initialDetailProfileId}
+          initialFeeReviewMonth={initialFeeReviewMonth}
+          initialOpportunityId={initialOpportunityId}
+          key={initialTab}
+          profiles={profiles}
+        />
+      )}
+    </main>
+  );
+}

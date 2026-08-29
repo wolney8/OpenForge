@@ -4,7 +4,7 @@ from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from openforge_api.auth import SESSION_COOKIE_NAME, read_session_token
+from openforge_api.auth import SESSION_COOKIE_NAME, validate_request_session
 from openforge_api.config import settings
 
 PUBLIC_PATHS = {"/healthz"}
@@ -26,8 +26,8 @@ class OwnerAuthenticationMiddleware:
             return
 
         cookie_header = Headers(scope=scope).get("cookie", "")
-        session = read_session_token(_cookie_value(cookie_header, SESSION_COOKIE_NAME))
-        if session is None or session.email.casefold() not in settings.owner_emails:
+        session = validate_request_session(_cookie_value(cookie_header, SESSION_COOKIE_NAME))
+        if session is None:
             response = JSONResponse(
                 {"detail": "Access unavailable"},
                 status_code=401,

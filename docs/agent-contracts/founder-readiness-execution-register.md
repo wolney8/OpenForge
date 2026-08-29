@@ -69,7 +69,7 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004R | Role-neutral public copy | Use neutral registration wording and avoid Profile/Fund Manager/Subscriber terminology before onboarding | Public auth copy boundary | COMPLETE |
 | PD-FR-004S | Neutral public disclosure | Remove domain, role and implementation terminology from public auth and failure states | Founder auth shell contract | COMPLETE |
 | PD-FR-004T | Neutral error boundary | Use one minimal public 404/error state and protect runtime configuration details | Canonical public auth panel and API owner middleware | COMPLETE |
-| PD-FR-004U | Inactivity logout | Add optional browser-local inactivity control, final-minute warning and cross-tab logout | Shared confirmation dialog and server logout endpoint | COMPLETE |
+| PD-FR-004U | Inactivity logout | Enforce optional inactivity expiry through a durable server session, with final-minute warning and cross-tab logout | Shared confirmation dialog and server session contract | COMPLETE |
 | PD-FR-004V | Account security controls | Show identity authority, session state, inactivity preference and logout under `/account` | Existing account content panels and Material switch | COMPLETE |
 | PD-FR-004W | Cookie inventory and policy | Record only actual cookies/storage and publish the public `/cookies` policy | Founder auth shell contract | COMPLETE |
 | PD-FR-004W1 | Cookie policy public chrome | Remove the logo and legal preamble from the public policy page | Minimal public error/auth surfaces | COMPLETE |
@@ -88,6 +88,14 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005H | Notification/settings persistence | Persist notification state/preferences and currently durable Profile/Fund Manager settings | Notification and Settings contracts | NEEDS VERIFICATION |
 | PD-FR-005I | Neon backup/recovery | Record and verify a pre-import recovery point and current-plan restore limitations | Local database/cloud backup contract | NEEDS VERIFICATION |
 | PD-FR-005J | Hosted persistence verification | Verify owner-only Profile, account, setting and representative ledger persistence on Vercel | Founder hosted persistence checklist | NOT STARTED |
+| PD-FR-005J1 | Production runtime configuration | Verify the deployed backend is explicitly using Neon with a configured server-only URL and no local fallback | Protected config summary and Vercel Production environment | IN PROGRESS |
+| PD-FR-005J2 | Hosted Dashboard regression | Restore the authenticated `/profiles?view=performance` application data path and support a valid bootstrap/empty state | Fund Manager Dashboard and Profile API | NEEDS VERIFICATION |
+| PD-FR-005J3 | Hosted Profile Account update regression | Trace and fix the existing-account save 500 through the real UI/API/PostgreSQL path with safe feedback | Consolidated Profile Accounts workflow | NEEDS VERIFICATION |
+| PD-FR-005J4 | Server-enforced inactivity expiry | Enforce the saved Auto Logout preference on protected API/session access rather than relying on a browser timer | Owner authentication and security preference contracts | NEEDS VERIFICATION |
+| PD-FR-005J5 | Founder identity/Profile association | Verify or establish a persisted primary Profile link for the authenticated Founder without importing workbook data | Reusable Profile onboarding contract | IN PROGRESS |
+| PD-FR-005J6 | Account Catalogue runtime authority | Confirm canonical seed plus Neon-managed document ownership and preserve Profile references | Account Catalogue authority contract | COMPLETE |
+| PD-FR-005J7 | Authenticated hosted application smoke | Verify Dashboard, Profile settings, Accounts and representative ledgers through the deployed UI/API paths | Founder hosted persistence checklist | NOT STARTED |
+| PD-FR-005J8 | Neon pre-import recovery point | Create or verify the named Neon recovery point after hosted application smoke succeeds | Neon recovery procedure | BLOCKED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
 | PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | NOT STARTED |
@@ -102,6 +110,34 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-012E | Search aggregates | Reuse contracted reporting calculations for balances, exposure and P&L; never fabricate totals | Search Results workspace plan | DEFERRED |
 | PD-AUDIT-REPORT-001 | Reporting regression fixture | Reconcile the pre-existing cross-profile fee queue fixture expecting two entries while current data produces three | Cross-profile reporting tests; unrelated to PD-FR-004 | DEFERRED |
 | PD-AUDIT-API-001 | Existing API regression suite | Reconcile pre-existing Account Catalogue authority assumptions; the Sportsbook optional-`catalogue_id` defect found by PostgreSQL CRUD is fixed under PD-FR-005G | API baseline outside PD-FR-004 | PARTIALLY COMPLETE |
+
+## Hosted Persistence Debug Findings
+
+- `PD-FR-005J1`: Production settings cannot be enumerated from this workspace because no Vercel
+  project/CLI session is linked. The public health endpoint now fails closed unless the hosted
+  function is explicitly configured for PostgreSQL/Neon and can execute a database query. The
+  protected config summary remains the authenticated non-secret configuration check.
+- `PD-FR-005J2`: every Dashboard source endpoint succeeds directly against Neon. The Vercel-only
+  failure came from the server-rendered page calling the public deployment URL from inside the
+  same deployment. Dashboard bootstrap now uses the authenticated browser same-origin API path and
+  distinguishes loading, no-Profile setup and genuine service failure.
+- `PD-FR-005J3`: canonical existing Account updates succeed directly against Neon. The deployed
+  failure is consistent with the hosted function not using the same Neon runtime as the frontend;
+  many seeded demo rows are also legacy and lack `catalogue_id`. The API now logs unexpected update
+  failures server-side and returns a safe authenticated error, while the Account editor catches
+  failed function/network requests instead of raising an unhandled UI exception. The exact hosted
+  save path remains subject to post-deploy verification.
+- `PD-FR-005J4`: the previous cookie was a signed 12-hour bearer token and Auto Logout was only a
+  browser timer. Sessions now include a random server-side ID, are persisted/revoked in Neon, and
+  validate inactivity on every protected API request. Browser activity explicitly refreshes the
+  server timestamp; background data polling does not. Existing browser preferences are migrated to
+  Neon on first authenticated use.
+- `PD-FR-005J5`: the inspected Neon database has no persisted Fund Manager identity/Profile link.
+  A successful OAuth callback in correctly configured Neon mode creates the identity; the existing
+  reusable Create Profile workflow creates the primary link. No founder-only Profile model is added.
+- `PD-FR-005J6`: the bundled catalogue JSON is the immutable bootstrap seed. The active managed
+  document lives in Neon, and Profile Accounts reference it by stable `catalogue_id`; provider
+  branding is resolved rather than copied into editable Profile state.
 
 ## PD-FR-001 Notification Matrix
 

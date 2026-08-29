@@ -18,9 +18,14 @@ from pydantic import BaseModel
 
 from openforge_api.config import settings
 from openforge_api.db import (
+    create_fund_manager_session,
     get_fund_manager_security_preference,
+    list_fund_manager_profile_links,
+    revoke_fund_manager_session,
+    touch_fund_manager_session,
     upsert_fund_manager_security_preference,
     upsert_fund_manager_user,
+    validate_fund_manager_session,
 )
 
 SESSION_COOKIE_NAME = "pd_session"
@@ -40,6 +45,7 @@ class SecurityPreferencePayload(BaseModel):
 
 @dataclass(frozen=True)
 class AuthSession:
+    session_id: str
     subject: str
     email: str
     name: str
@@ -49,6 +55,7 @@ class AuthSession:
 
     def as_dict(self) -> dict[str, str | int]:
         return {
+            "sid": self.session_id,
             "sub": self.subject,
             "email": self.email,
             "name": self.name,
@@ -111,17 +118,27 @@ def _verify_payload(token: str, *, secret: str | None = None) -> dict[str, Any] 
 
 
 def create_session_token(
-    *, subject: str, email: str, name: str, now: int | None = None, secret: str | None = None
+    *, subject: str, email: str, name: str, now: int | None = None,
+    secret: str | None = None, session_id: str | None = None
 ) -> str:
     issued_at = int(time.time()) if now is None else now
+    resolved_session_id = session_id or secrets.token_urlsafe(32)
+    expires_at = issued_at + settings.auth_session_ttl_seconds
+    create_fund_manager_session(
+        session_id=resolved_session_id,
+        email=email,
+        last_activity_at=issued_at,
+        absolute_expires_at=expires_at,
+    )
     return _sign_payload(
         AuthSession(
+            session_id=resolved_session_id,
             subject=subject,
             email=email.casefold(),
             name=name,
             role="fund_manager",
             issued_at=issued_at,
-            expires_at=issued_at + settings.auth_session_ttl_seconds,
+            expires_at=expires_at,
         ).as_dict(),
         secret=secret,
     )
@@ -140,6 +157,7 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
         if not str(payload["sub"]).strip() or not str(payload["email"]).strip():
             return None
         return AuthSession(
+            session_id=str(payload["sid"]),
             subject=str(payload["sub"]),
             email=str(payload["email"]),
             name=str(payload.get("name", "Fund Manager")),
@@ -151,11 +169,25 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
         return None
 
 
+def validate_request_session(token: str, *, now: int | None = None) -> AuthSession | None:
+    session = read_session_token(token)
+    if session is None or session.email.casefold() not in settings.owner_emails:
+        return None
+    checked_at = int(time.time()) if now is None else now
+    if not validate_fund_manager_session(
+        session_id=session.session_id,
+        email=session.email,
+        now=checked_at,
+    ):
+        return None
+    return session
+
+
 def require_request_session(request: Request) -> AuthSession:
     session = getattr(request.state, "auth_session", None)
     if not isinstance(session, AuthSession):
-        session = read_session_token(request.cookies.get(SESSION_COOKIE_NAME, ""))
-    if session is None or session.email.casefold() not in settings.owner_emails:
+        session = validate_request_session(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    if session is None:
         raise HTTPException(status_code=401, detail="Access unavailable")
     return session
 
@@ -309,8 +341,8 @@ async def google_callback(
 
 @router.get("/session")
 def get_session(request: Request) -> JSONResponse:
-    session = read_session_token(request.cookies.get(SESSION_COOKIE_NAME, ""))
-    if session is None or session.email.casefold() not in settings.owner_emails:
+    session = validate_request_session(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    if session is None:
         return JSONResponse({"authenticated": False}, status_code=401)
     return JSONResponse(
         {
@@ -319,12 +351,16 @@ def get_session(request: Request) -> JSONResponse:
             "name": session.name,
             "role": session.role,
             "expires_at": session.expires_at,
+            "linked_profile_ids": list_fund_manager_profile_links(session.email),
         }
     )
 
 
 @router.post("/logout", status_code=204)
-def logout() -> Response:
+def logout(request: Request) -> Response:
+    session = read_session_token(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    if session is not None:
+        revoke_fund_manager_session(session_id=session.session_id, now=int(time.time()))
     response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
@@ -337,16 +373,34 @@ def get_security_preference(request: Request) -> dict[str, Any]:
     return get_fund_manager_security_preference(session.email)
 
 
+@router.post("/activity", status_code=204)
+def record_activity(request: Request) -> Response:
+    session = require_request_session(request)
+    if not touch_fund_manager_session(
+        session_id=session.session_id,
+        email=session.email,
+        now=int(time.time()),
+    ):
+        raise HTTPException(status_code=401, detail="Access unavailable")
+    return Response(status_code=204)
+
+
 @router.put("/security-preference")
 def put_security_preference(
     request: Request, payload: SecurityPreferencePayload
 ) -> dict[str, Any]:
     session = require_request_session(request)
     try:
-        return upsert_fund_manager_security_preference(
+        preference = upsert_fund_manager_security_preference(
             email=session.email,
             auto_logout_enabled=payload.auto_logout_enabled,
             timeout_minutes=payload.timeout_minutes,
         )
+        touch_fund_manager_session(
+            session_id=session.session_id,
+            email=session.email,
+            now=int(time.time()),
+        )
+        return preference
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error

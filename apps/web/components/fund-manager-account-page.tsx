@@ -47,6 +47,7 @@ export function FundManagerAccountPage() {
           const resolved = persisted ?? loadSessionSecurityPreference(value.email);
           setPreference(resolved);
           saveSessionSecurityPreference(value.email, resolved);
+          if (persisted === null) void persistSessionSecurityPreference(resolved);
         }
       })
       .catch(() => {

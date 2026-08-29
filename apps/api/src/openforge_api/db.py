@@ -18,6 +18,8 @@ from openforge_api.config import settings
 from openforge_api.postgres_runtime import connect_postgres
 
 database_operation_lock = threading.RLock()
+local_fund_manager_sessions: dict[str, dict[str, Any]] = {}
+local_fund_manager_security_preferences: dict[str, dict[str, Any]] = {}
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 SUPPORTED_POSTGRES_RUNTIME_MODES = {"neon", "postgres", "postgresql"}
 
@@ -86,9 +88,33 @@ def link_fund_manager_profile(*, email: str, profile_id: str) -> None:
         )
 
 
+def list_fund_manager_profile_links(email: str) -> list[str]:
+    if not postgres_runtime_enabled():
+        return []
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT profile_id
+            FROM fund_manager_profile_links
+            WHERE email = ?
+            ORDER BY is_primary DESC, created_at, profile_id
+            """,
+            (email.casefold(),),
+        ).fetchall()
+    return [str(row["profile_id"]) for row in rows]
+
+
 def get_fund_manager_security_preference(email: str) -> dict[str, Any]:
     if not postgres_runtime_enabled():
-        return {"auto_logout_enabled": False, "timeout_minutes": 30, "updated_at": ""}
+        return local_fund_manager_security_preferences.get(
+            email.casefold(),
+            {
+                "auto_logout_enabled": False,
+                "timeout_minutes": 30,
+                "updated_at": "",
+                "configured": False,
+            },
+        )
     with connect() as connection:
         row = connection.execute(
             """
@@ -99,11 +125,17 @@ def get_fund_manager_security_preference(email: str) -> dict[str, Any]:
             (email.casefold(),),
         ).fetchone()
     if row is None:
-        return {"auto_logout_enabled": False, "timeout_minutes": 30, "updated_at": ""}
+        return {
+            "auto_logout_enabled": False,
+            "timeout_minutes": 30,
+            "updated_at": "",
+            "configured": False,
+        }
     return {
         "auto_logout_enabled": bool(row["auto_logout_enabled"]),
         "timeout_minutes": int(row["timeout_minutes"]),
         "updated_at": str(row["updated_at"]),
+        "configured": True,
     }
 
 
@@ -113,11 +145,14 @@ def upsert_fund_manager_security_preference(
     if timeout_minutes not in {15, 30, 60, 120, 240}:
         raise ValueError("Unsupported inactivity timeout")
     if not postgres_runtime_enabled():
-        return {
+        preference = {
             "auto_logout_enabled": auto_logout_enabled,
             "timeout_minutes": timeout_minutes,
-            "updated_at": "",
+            "updated_at": utc_now(),
+            "configured": True,
         }
+        local_fund_manager_security_preferences[email.casefold()] = preference
+        return preference
     timestamp = utc_now()
     with connect() as connection:
         connection.execute(
@@ -136,7 +171,117 @@ def upsert_fund_manager_security_preference(
         "auto_logout_enabled": auto_logout_enabled,
         "timeout_minutes": timeout_minutes,
         "updated_at": timestamp,
+        "configured": True,
     }
+
+
+def create_fund_manager_session(
+    *, session_id: str, email: str, last_activity_at: int, absolute_expires_at: int
+) -> None:
+    record = {
+        "session_id": session_id,
+        "email": email.casefold(),
+        "last_activity_at": last_activity_at,
+        "absolute_expires_at": absolute_expires_at,
+        "revoked_at": None,
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+    }
+    if not postgres_runtime_enabled():
+        with database_operation_lock:
+            local_fund_manager_sessions[session_id] = record
+        return
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_sessions (
+              session_id, email, last_activity_at, absolute_expires_at,
+              revoked_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, NULL, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+              email = excluded.email,
+              last_activity_at = excluded.last_activity_at,
+              absolute_expires_at = excluded.absolute_expires_at,
+              revoked_at = NULL,
+              updated_at = excluded.updated_at
+            """,
+            (
+                session_id,
+                record["email"],
+                last_activity_at,
+                absolute_expires_at,
+                record["created_at"],
+                record["updated_at"],
+            ),
+        )
+
+
+def validate_fund_manager_session(
+    *, session_id: str, email: str, now: int
+) -> bool:
+    if not postgres_runtime_enabled():
+        with database_operation_lock:
+            row = local_fund_manager_sessions.get(session_id)
+    else:
+        with connect() as connection:
+            row = connection.execute(
+                """
+                SELECT email, last_activity_at, absolute_expires_at, revoked_at
+                FROM fund_manager_sessions
+                WHERE session_id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+    if row is None or str(row["email"]).casefold() != email.casefold():
+        return False
+    if row["revoked_at"] is not None or int(row["absolute_expires_at"]) <= now:
+        return False
+    preference = get_fund_manager_security_preference(email)
+    if preference["auto_logout_enabled"]:
+        inactivity_seconds = int(preference["timeout_minutes"]) * 60
+        if int(row["last_activity_at"]) + inactivity_seconds <= now:
+            revoke_fund_manager_session(session_id=session_id, now=now)
+            return False
+    return True
+
+
+def touch_fund_manager_session(*, session_id: str, email: str, now: int) -> bool:
+    if not validate_fund_manager_session(session_id=session_id, email=email, now=now):
+        return False
+    if not postgres_runtime_enabled():
+        with database_operation_lock:
+            local_fund_manager_sessions[session_id]["last_activity_at"] = now
+            local_fund_manager_sessions[session_id]["updated_at"] = utc_now()
+        return True
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE fund_manager_sessions
+            SET last_activity_at = ?, updated_at = ?
+            WHERE session_id = ? AND email = ? AND revoked_at IS NULL
+            """,
+            (now, utc_now(), session_id, email.casefold()),
+        )
+    return True
+
+
+def revoke_fund_manager_session(*, session_id: str, now: int) -> None:
+    if not postgres_runtime_enabled():
+        with database_operation_lock:
+            row = local_fund_manager_sessions.get(session_id)
+            if row is not None:
+                row["revoked_at"] = now
+                row["updated_at"] = utc_now()
+        return
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE fund_manager_sessions
+            SET revoked_at = ?, updated_at = ?
+            WHERE session_id = ? AND revoked_at IS NULL
+            """,
+            (now, utc_now(), session_id),
+        )
 
 
 def get_notification_user_state(email: str) -> dict[str, list[str]]:

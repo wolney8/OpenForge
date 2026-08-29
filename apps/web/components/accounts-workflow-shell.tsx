@@ -869,6 +869,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           ? `Updated account ${saved.account_id}.`
           : `Created account ${saved.account_id}.`
       );
+    } catch {
+      setErrorMessage("Account could not be saved. Please try again.");
     } finally {
       saveInFlightRef.current = false;
       setIsSaving(false);

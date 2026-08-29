@@ -18,7 +18,8 @@ redeploys without duplicating provider metadata into Profile Accounts.
 | Domain | Previous source | Neon behaviour |
 |---|---|---|
 | Fund Manager identity | Signed session only | OAuth identity and Profile links persist |
-| Security preferences | Browser local storage | Per-email PostgreSQL preference; browser storage is fallback |
+| Security preferences | Browser local storage | Per-email PostgreSQL preference; existing browser state bootstraps the first durable value |
+| Fund Manager sessions | Signed 12-hour cookie only | Signed cookie plus revocable PostgreSQL session and server-enforced inactivity |
 | Profiles/settings | SQLite/fixture seed | Existing Profile/onboarding tables |
 | Profile Accounts | SQLite/fixture seed | Catalogue-linked Profile state, balances and restrictions |
 | Account Catalogue | Bundled JSON/local file | JSON seeds one durable catalogue document; edits use Neon |
@@ -36,7 +37,9 @@ redeploys without duplicating provider metadata into Profile Accounts.
 2. Keep `OPENFORGE_NEON_DATABASE_URL` server-only and scoped to Production.
 3. Redeploy the exact current `main` commit.
 4. Confirm authenticated `/api/config-summary` reports `postgresql`.
-5. Complete Profile, account, setting and representative ledger persistence smoke checks.
+5. Confirm public `/api/healthz` returns `200`; it now checks both explicit Neon mode and a real
+   database query without exposing configuration or credentials.
+6. Complete Profile, account, setting and representative ledger persistence smoke checks.
 
 ## Recovery before founder import
 

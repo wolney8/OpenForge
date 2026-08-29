@@ -63,6 +63,23 @@ RUNTIME_EXTENSION_STATEMENTS = (
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS fund_manager_sessions (
+      session_id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      last_activity_at BIGINT NOT NULL,
+      absolute_expires_at BIGINT NOT NULL,
+      revoked_at BIGINT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CONSTRAINT fk_fund_manager_sessions_user
+        FOREIGN KEY (email) REFERENCES fund_manager_users(email) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_fund_manager_sessions_email
+      ON fund_manager_sessions(email)
+    """,
+    """
     CREATE TABLE IF NOT EXISTS notification_user_state (
       email TEXT NOT NULL,
       notification_id TEXT NOT NULL,

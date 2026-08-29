@@ -7,6 +7,7 @@ import {
   inactivityRemainingMs,
   loadPersistedSessionSecurityPreference,
   loadSessionSecurityPreference,
+  persistSessionSecurityPreference,
   SESSION_ACTIVITY_STORAGE_KEY,
   SESSION_LOGOUT_STORAGE_KEY,
   SESSION_SECURITY_PREFERENCE_EVENT,
@@ -29,6 +30,15 @@ export function SessionInactivityGuard() {
     lastActivityWriteRef.current = now;
     window.localStorage.setItem(SESSION_ACTIVITY_STORAGE_KEY, String(now));
     setWarningOpen(false);
+    void fetch("/api/auth/activity", {
+      credentials: "include",
+      method: "POST",
+    }).then((response) => {
+      if (response.status === 401) {
+        window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+        window.location.replace("/login?error=session_expired");
+      }
+    }).catch(() => undefined);
   }, []);
 
   const logout = useCallback(async (reason: "expired" | "manual") => {
@@ -46,7 +56,15 @@ export function SessionInactivityGuard() {
     let active = true;
     void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
       .then((response) => {
-        if (!response.ok) throw new Error("Session unavailable");
+        if (!response.ok) {
+          if (
+            response.status === 401 &&
+            !["localhost", "127.0.0.1"].includes(window.location.hostname)
+          ) {
+            window.location.replace("/login?error=session_expired");
+          }
+          throw new Error("Session unavailable");
+        }
         return response.json() as Promise<FundManagerSession>;
       })
       .then(async (value) => {
@@ -56,7 +74,8 @@ export function SessionInactivityGuard() {
         if (!active) return;
         const resolved = persisted ?? loadSessionSecurityPreference(value.email);
         setPreference(resolved);
-        if (!window.localStorage.getItem(SESSION_ACTIVITY_STORAGE_KEY)) markActivity(true);
+        if (persisted === null) void persistSessionSecurityPreference(resolved);
+        markActivity(true);
       })
       .catch(() => undefined);
     return () => {

@@ -13,8 +13,15 @@ from openforge_api.auth import (
     SESSION_COOKIE_NAME,
     create_session_token,
     read_session_token,
+    validate_request_session,
 )
 from openforge_api.config import settings
+from openforge_api.db import (
+    local_fund_manager_security_preferences,
+    local_fund_manager_sessions,
+    touch_fund_manager_session,
+    upsert_fund_manager_security_preference,
+)
 from openforge_api.main import app
 
 
@@ -35,8 +42,12 @@ def configured_auth() -> Iterator[None]:
     settings.google_oauth_client_id = "synthetic-client-id"
     settings.google_oauth_client_secret = "synthetic-client-secret"
     try:
+        local_fund_manager_sessions.clear()
+        local_fund_manager_security_preferences.clear()
         yield
     finally:
+        local_fund_manager_sessions.clear()
+        local_fund_manager_security_preferences.clear()
         for field, value in previous.items():
             setattr(settings, field, value)
 
@@ -50,7 +61,9 @@ def test_session_tokens_reject_tampering_expiry_and_non_owner_access() -> None:
             now=2_000_000_000,
         )
         assert read_session_token(token) is not None
-        assert read_session_token(f"{token[:-1]}x") is None
+        encoded_payload, encoded_signature = token.split(".", 1)
+        tampered_signature = ("A" if encoded_signature[0] != "A" else "B") + encoded_signature[1:]
+        assert read_session_token(f"{encoded_payload}.{tampered_signature}") is None
 
         expired = create_session_token(
             subject="google-founder-001",
@@ -98,6 +111,88 @@ def test_health_and_oauth_routes_remain_public_when_data_routes_are_protected() 
         assert query["code_challenge_method"] == ["S256"]
         assert query["scope"] == ["openid email profile"]
         assert OAUTH_STATE_COOKIE_NAME in login_response.cookies
+
+
+def test_hosted_health_fails_closed_without_neon(monkeypatch) -> None:
+    with configured_auth():
+        monkeypatch.setattr(settings, "environment", "production")
+        monkeypatch.setattr(settings, "database_mode", "local")
+        monkeypatch.setattr(settings, "neon_database_url", "")
+        client = TestClient(app)
+
+        response = client.get("/healthz")
+
+        assert response.status_code == 503
+        assert response.json() == {"status": "unavailable"}
+
+
+def test_hosted_health_fails_closed_when_neon_is_unreachable(monkeypatch) -> None:
+    with configured_auth():
+        monkeypatch.setattr(settings, "environment", "production")
+        monkeypatch.setattr(settings, "database_mode", "neon")
+        monkeypatch.setattr(settings, "neon_database_url", "postgresql://configured.invalid/db")
+
+        @contextmanager
+        def unavailable_database() -> Iterator[None]:
+            raise RuntimeError("synthetic database outage")
+            yield
+
+        monkeypatch.setattr("openforge_api.main.connect", unavailable_database)
+        client = TestClient(app)
+
+        response = client.get("/healthz")
+
+        assert response.status_code == 503
+        assert response.json() == {"status": "unavailable"}
+
+
+def test_server_session_enforces_inactivity_and_activity_reset() -> None:
+    with configured_auth():
+        start = 2_000_000_000
+        token = create_session_token(
+            subject="google-founder-001",
+            email="founder@example.invalid",
+            name="Founder",
+            now=start,
+        )
+        session = read_session_token(token)
+        assert session is not None
+        upsert_fund_manager_security_preference(
+            email=session.email,
+            auto_logout_enabled=True,
+            timeout_minutes=15,
+        )
+
+        assert validate_request_session(token, now=start + 899) is not None
+        assert touch_fund_manager_session(
+            session_id=session.session_id,
+            email=session.email,
+            now=start + 800,
+        )
+        assert validate_request_session(token, now=start + 1_699) is not None
+        assert validate_request_session(token, now=start + 1_700) is None
+
+
+def test_auto_logout_off_uses_absolute_session_expiry() -> None:
+    with configured_auth():
+        start = 2_000_000_000
+        token = create_session_token(
+            subject="google-founder-001",
+            email="founder@example.invalid",
+            name="Founder",
+            now=start,
+        )
+        upsert_fund_manager_security_preference(
+            email="founder@example.invalid",
+            auto_logout_enabled=False,
+            timeout_minutes=15,
+        )
+
+        assert validate_request_session(token, now=start + 3_600) is not None
+        assert validate_request_session(
+            token,
+            now=start + settings.auth_session_ttl_seconds,
+        ) is None
 
 
 def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:

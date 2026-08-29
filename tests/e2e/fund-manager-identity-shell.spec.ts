@@ -13,6 +13,9 @@ test.describe("Fund Manager identity shell", () => {
     await page.route("**/api/auth/session", async (route) => {
       await route.fulfill({ contentType: "application/json", json: session, status: 200 });
     });
+    await page.route("**/api/auth/activity", async (route) => {
+      await route.fulfill({ status: 204 });
+    });
   });
 
   test("shows the authenticated role and opens account details", async ({ page }) => {
