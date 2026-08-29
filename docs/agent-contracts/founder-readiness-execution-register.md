@@ -53,11 +53,13 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004J | Authenticated identity shell | Show a compact Fund Manager identity trigger with account and logout actions | Canonical app menu and chip patterns | COMPLETE |
 | PD-FR-004K | Post-auth destination | Send normal direct sign-in to the Fund Manager performance dashboard while preserving safe requested routes | OAuth state/redirect contract | COMPLETE |
 | PD-FR-004L | Public auth shell | Show branding and theme only on login/register; hide search, drawer, notifications, account and tracker theme controls | Canonical application shell | COMPLETE |
-| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | IN PROGRESS |
+| PD-FR-004M | Production deployment verification | Verify current Vercel API routing, callback, protected routes, Founder session and logout | Vercel OAuth checklist | COMPLETE |
 | PD-FR-004M1 | Hosted route diagnosis | Identify the exact production OAuth request and service that returns the public 404 | Live response headers plus Services routing contract | COMPLETE |
 | PD-FR-004M2 | Services routing parity | Explicitly route API traffic to FastAPI and all remaining traffic to Next.js using the Vercel Services contract | Vercel Next.js + FastAPI starter | COMPLETE |
-| PD-FR-004M3 | Production environment audit | Reconcile required OAuth variable names/scopes without exposing values | Founder OAuth deployment contract | NEEDS VERIFICATION |
-| PD-FR-004M4 | Hosted OAuth smoke test | Verify health, Google redirect/callback, owner session, protected API, refresh and logout on the production domain | Vercel OAuth checklist | NEEDS VERIFICATION |
+| PD-FR-004M3 | Production environment audit | Reconcile required OAuth variable names/scopes without exposing values | Founder OAuth deployment contract | COMPLETE |
+| PD-FR-004M4 | Hosted OAuth smoke test | Verify health, Google redirect/callback, owner session, protected API, refresh and logout on the production domain | Vercel OAuth checklist | COMPLETE |
+| PD-FR-004K1 | Hosted post-auth destination | Treat a root login return target as the normal Fund Manager Dashboard destination while preserving specific protected-route returns | OAuth state/redirect contract | COMPLETE |
+| PD-FR-004T1 | Neutral error action alignment | Centre canonical actions on the shared neutral error surface | Canonical public error panel | COMPLETE |
 | PD-FR-004M5 | Hosted FastAPI startup | Package the real API source, Python dependencies and runtime reference data in the Vercel backend service; preserve public auth paths beneath the hosted `/api` mount | Vercel Services FastAPI packaging contract | COMPLETE |
 | PD-FR-004M6 | Hosted public brand asset | Render the canonical public logo without depending on the unavailable Next image optimizer route | Canonical BrandLogo component | COMPLETE |
 | PD-FR-004N | Public auth brand alignment | Centre the canonical Plum Duff logo within the public auth card | Canonical auth panel | COMPLETE |
@@ -75,7 +77,17 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-004X | Required-storage notice | Add a minimal accessible notice without fake optional-consent controls and allow reopening | Existing content panel and action primitives | COMPLETE |
 | PD-FR-004X1 | Required-storage notice alignment | Centre the notice bar and its content at the bottom of the visible viewport | Canonical content panel and tracker navigation | COMPLETE |
 | PD-FR-004Y | Static tab navigation | Restore Profile/Fund Manager Settings tabs to established normal document flow | Shared analytics tab rail | COMPLETE |
-| PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | NOT STARTED |
+| PD-FR-005 | Persistence | Complete PostgreSQL runtime support and verified Vercel-to-Neon persistence | Existing Vercel wrapper and database contracts | IN PROGRESS |
+| PD-FR-005A | Hosted Dashboard runtime diagnosis | Trace the hosted Dashboard failure and separate runtime defects from persistence prerequisites | Profile API and hosted fail-closed storage contract | COMPLETE |
+| PD-FR-005B | Account Catalogue source audit | Record the bundled JSON source, current mutation durability and the canonical-seed plus durable-overlay target | Account Catalogue authority contract | COMPLETE |
+| PD-FR-005C | PostgreSQL runtime adapter | Route authoritative API reads/writes through psycopg in explicit Neon mode without SQLite fallback | Local database/cloud backup contract | IN PROGRESS |
+| PD-FR-005D | Deterministic migrations | Add versioned, transactional PostgreSQL schema migration and verification | Existing PostgreSQL schema plan | NOT STARTED |
+| PD-FR-005E | Founder Profile bootstrap | Persist a reusable owner-created Profile and associate it with the authenticated Founder identity | Existing Profile onboarding workflow | NOT STARTED |
+| PD-FR-005F | Profile Account persistence | Persist catalogue references, balances and Profile-specific account state with isolation and duplicate protection | Existing Profile Accounts contract | NOT STARTED |
+| PD-FR-005G | Ledger persistence | Verify Sportsbook, Free Bets, Casino, Extra Places and Cash Adjustments through PostgreSQL | Existing ledger APIs and calculation contracts | NOT STARTED |
+| PD-FR-005H | Notification/settings persistence | Persist notification state/preferences and currently durable Profile/Fund Manager settings | Notification and Settings contracts | NOT STARTED |
+| PD-FR-005I | Neon backup/recovery | Record and verify a pre-import recovery point and current-plan restore limitations | Local database/cloud backup contract | NOT STARTED |
+| PD-FR-005J | Hosted persistence verification | Verify owner-only Profile, account, setting and representative ledger persistence on Vercel | Founder hosted persistence checklist | NOT STARTED |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
 | PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | NOT STARTED |

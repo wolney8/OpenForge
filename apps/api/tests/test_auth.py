@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 from fastapi.testclient import TestClient
 
+from openforge_api import auth as auth_module
 from openforge_api.auth import (
     OAUTH_STATE_COOKIE_NAME,
     SESSION_COOKIE_NAME,
@@ -144,6 +145,17 @@ def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
         logout_response = client.post("/auth/logout")
         assert logout_response.status_code == 204
         assert client.get("/profiles").status_code == 401
+
+
+def test_root_return_target_uses_fund_manager_dashboard(monkeypatch) -> None:
+    with configured_auth():
+        client = TestClient(app, follow_redirects=False)
+        login_response = client.get("/auth/google/login?next=/")
+        state_cookie = login_response.cookies[OAUTH_STATE_COOKIE_NAME]
+        state_payload = auth_module._verify_payload(state_cookie)
+
+        assert state_payload is not None
+        assert state_payload["next"] == "/profiles?view=performance"
 
 
 def test_google_callback_rejects_verified_identity_outside_owner_allowlist(monkeypatch) -> None:

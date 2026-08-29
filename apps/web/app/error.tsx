@@ -7,7 +7,7 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
   return (
     <PublicErrorState
       action={
-        <div className="tracker-nav">
+        <div className="tracker-nav public-error-actions">
           <button className="modal-primary-button" onClick={reset} type="button">Try again</button>
           <Link className="button-link" href="/login">Return to sign in</Link>
         </div>

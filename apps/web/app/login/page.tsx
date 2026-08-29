@@ -1,5 +1,6 @@
 import { BrandLogo } from "@/components/brand-logo";
 import { GoogleBrandIcon } from "@/components/google-brand-icon";
+import { normalizePostAuthDestination } from "@/lib/auth-redirect";
 import Link from "next/link";
 
 const errorMessages: Record<string, string> = {
@@ -10,12 +11,6 @@ const errorMessages: Record<string, string> = {
   session_expired: "Your session ended. Sign in to continue.",
 };
 
-function safeNextPath(value: string | undefined) {
-  return value?.startsWith("/") && !value.startsWith("//")
-    ? value
-    : "/profiles?view=performance";
-}
-
 export default async function LoginPage({
   searchParams,
 }: {
@@ -23,7 +18,9 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const error = typeof params.error === "string" ? errorMessages[params.error] : null;
-  const next = safeNextPath(typeof params.next === "string" ? params.next : undefined);
+  const next = normalizePostAuthDestination(
+    typeof params.next === "string" ? params.next : undefined
+  );
   const signedOut = params.signed_out === "1";
 
   return (

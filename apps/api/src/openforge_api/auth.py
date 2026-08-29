@@ -141,6 +141,8 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
 
 
 def _safe_next_path(value: str | None) -> str:
+    if value in {"/", "/login"}:
+        return "/profiles?view=performance"
     if value and value.startswith("/") and not value.startswith("//"):
         return value
     return "/profiles?view=performance"

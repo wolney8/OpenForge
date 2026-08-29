@@ -920,6 +920,10 @@ textarea {
   text-decoration: none;
 }
 
+.public-error-actions {
+  justify-content: center;
+}
+
 .google-brand-icon {
   display: block;
   width: 1.35rem;
