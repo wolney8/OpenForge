@@ -194,10 +194,10 @@ def require_request_session(request: Request) -> AuthSession:
 
 def _safe_next_path(value: str | None) -> str:
     if value in {"/", "/login"}:
-        return "/profiles?view=performance"
+        return "/"
     if value and value.startswith("/") and not value.startswith("//"):
         return value
-    return "/profiles?view=performance"
+    return "/"
 
 
 def _cookie_secure() -> bool:

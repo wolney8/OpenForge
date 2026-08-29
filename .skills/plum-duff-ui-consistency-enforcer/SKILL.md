@@ -82,10 +82,12 @@ use the canonical primitive and computed styling.
 - Loading states show only controls that intentionally remain available. Do not leave duplicate or
   misleading close/actions visible.
 - Every asynchronous data surface must distinguish `loading`, `empty`, `error` and `populated`
-  states. Pending data must never render as an authoritative zero value or empty dataset. Reuse
-  `LedgerLoadingIndicator` inside the established stable shell, expose `aria-busy`, preserve the
-  known final geometry where practical, and never add an artificial delay. Verify light/dark and
-  reduced-motion behaviour before handoff.
+  states. Pending data must never render as an authoritative zero value or empty dataset. Follow
+  the canonical loading hierarchy: meaningful application route/data transitions use the thin
+  shell progress line directly beneath the authenticated header; structured content uses
+  `LedgerLoadingIndicator` or a layout-preserving skeleton inside its stable shell; a small
+  isolated action uses the canonical button spinner; empty and error states remain semantically
+  distinct. Never add an artificial delay. Verify light/dark and reduced-motion behaviour.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
 - Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
   for a genuinely nested card, inset section or secondary surface; do not use it to create a
@@ -104,9 +106,10 @@ use the canonical primitive and computed styling.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
   search, and account/theme/notification actions. At reduced widths these regions reflow without
   changing control semantics, hiding the search, or creating page-level horizontal overflow.
-- The global drawer contains stable Fund Manager destinations, not an expanding list of Profiles.
-  Profile discovery belongs in the searchable Profiles surface; current-profile context may expose
-  one direct route without duplicating the full Profile command menu.
+- The global drawer contains stable Fund Manager destinations and must never render an unbounded
+  Profile roster. It may expose a bounded maximum of three browser-recent Profiles plus `View all`
+  and `Add Profile`; full discovery and management remain in the searchable Profiles surface.
+  Recent links always open the canonical Profile Dashboard and archived Profiles are excluded.
 - Global search reuses `table-search-field`, provides grouped loading/empty/error states and
   keyboard navigation, and receives only server-authorized results. Never build an unprotected
   client-side index of Profile or account data.

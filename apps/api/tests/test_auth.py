@@ -229,13 +229,18 @@ def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
             f"/auth/google/callback?code=synthetic-code&state={state}"
         )
         assert callback_response.status_code == 302
-        assert callback_response.headers["location"] == "/profiles?view=performance"
+        assert callback_response.headers["location"] == "/"
         assert SESSION_COOKIE_NAME in callback_response.cookies
         session = client.get("/auth/session").json()
         assert session["role"] == "fund_manager"
         assert session["name"] == "Founder"
         assert session["email"] == "founder@example.invalid"
-        assert client.get("/search?query=profiles").status_code == 200
+        search_response = client.get("/search?query=profiles")
+        assert search_response.status_code == 200
+        assert any(
+            result["result_id"] == "navigation-profiles" and result["href"] == "/profiles"
+            for result in search_response.json()
+        )
 
         logout_response = client.post("/auth/logout")
         assert logout_response.status_code == 204
@@ -250,7 +255,7 @@ def test_root_return_target_uses_fund_manager_dashboard(monkeypatch) -> None:
         state_payload = auth_module._verify_payload(state_cookie)
 
         assert state_payload is not None
-        assert state_payload["next"] == "/profiles?view=performance"
+        assert state_payload["next"] == "/"
 
 
 def test_google_callback_rejects_verified_identity_outside_owner_allowlist(monkeypatch) -> None:

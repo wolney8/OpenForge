@@ -14,8 +14,12 @@ const scenarios = [
 
 test.describe("Cross-ledger loading parity", () => {
   test("Fund Manager Dashboard distinguishes loading from its empty Profile state", async ({ page }) => {
+    let releaseProfiles: (() => void) | undefined;
+    const profilesGate = new Promise<void>((resolve) => {
+      releaseProfiles = resolve;
+    });
     await page.route("**/api/profiles**", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      await profilesGate;
       await route.fulfill({ body: "[]", contentType: "application/json", status: 200 });
     });
     await page.route("**/api/auth/session**", async (route) => {
@@ -36,14 +40,16 @@ test.describe("Cross-ledger loading parity", () => {
       await route.fulfill({ status: 204 });
     });
 
-    await page.goto("/profiles?view=performance");
+    const navigation = page.goto("/");
 
     const loadingState = page
       .getByRole("status")
-      .filter({ hasText: "Loading Fund Manager Dashboard" });
+      .filter({ hasText: "Loading Dashboard" });
     await expect(page.getByRole("main")).toHaveAttribute("aria-busy", "true");
     await expect(loadingState).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create the first Profile" })).toHaveCount(0);
+    releaseProfiles?.();
+    await navigation;
     await expect(loadingState).toBeHidden();
     await expect(page.getByRole("heading", { name: "Create the first Profile" })).toBeVisible();
   });

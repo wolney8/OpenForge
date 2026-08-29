@@ -103,6 +103,19 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005J13 | Shared financial input behaviour | Centralize decimal sanitising, shorthand entry, two-decimal blur formatting and one-time default-zero selection | Existing `FinancialTextInput` | COMPLETE |
 | PD-FR-005J14 | Onboarding commission entry | Display Exchange commission as a percentage while preserving decimal-fraction storage, explicit zero and blank/null distinction | Existing commission API/calculation contract | COMPLETE |
 | PD-FR-005J15 | Temporary hosted Profile cleanup | Retain the `Vercel` test Profile through hosted onboarding smoke, then remove/archive it through the supported lifecycle | Profile lifecycle workflow | NEEDS VERIFICATION |
+| PD-FR-005J16 | Profile management route restoration | Restore `/profiles` as the existing Profile directory and management surface rather than the global Dashboard | Existing `CrossProfileAnalytics` directory | COMPLETE |
+| PD-FR-005J17 | Profile creation navigation | Expose the existing onboarding from the Profiles page and bounded Profiles drawer section | Existing `/profiles/new` onboarding | COMPLETE |
+| PD-FR-005J18 | Recent Profile drawer | Show at most three genuinely browser-recent Profiles with View all and Add Profile actions | Existing application navigation drawer and Profile Dashboard route | COMPLETE |
+| PD-FR-005J19 | Founder route consolidation | Make `/` the canonical Dashboard, `/profiles` the directory, `/reports` reports, and redirect legacy query routes | Existing authenticated shell and route guards | COMPLETE |
+| PD-FR-005J20 | Root stub and logo navigation | Remove the obsolete authenticated root stub and keep the authenticated logo routed to Dashboard | Existing application brand link | COMPLETE |
+| PD-FR-005J21 | Dashboard naming | Replace duplicated Fund Manager headings with one scoped `Dashboard` heading | Existing page-heading hierarchy and role badge | COMPLETE |
+| PD-FR-005J22 | Dashboard control-bar sizing | Give Profile scope and Date Range controls canonical usable dimensions, spacing and responsive wrapping | Existing M3 analytics picker controls | COMPLETE |
+| PD-FR-005J23 | Dashboard analytics controls | Retain only supported Profile scope and date controls in the analytics bar | Existing reporting filters | COMPLETE |
+| PD-FR-005J24 | Global shell loading progress | Add a no-layout-shift top progress indicator for meaningful authenticated route transitions | Existing Material linear progress and application shell | COMPLETE |
+| PD-FR-005J25 | Component loading parity | Preserve local skeleton/indicator states alongside the global transition bar | Existing `LedgerLoadingIndicator` | COMPLETE |
+| PD-FR-005J26 | Profile Dashboard entry consistency | Route directory, recent-menu and detail actions to the canonical Profile Dashboard | Existing Profile tracker Dashboard | COMPLETE |
+| PD-FR-005J27 | Onboarding lifecycle repeatability | Verify Profiles to Add Profile to persisted management/archive uses one onboarding flow | Existing founder/Profile onboarding | COMPLETE |
+| PD-FR-005J28 | Temporary Profile lifecycle cleanup | Verify the hosted `Vercel` Profile through edit/navigation/recency, then archive it via the supported UI | Existing Profile `Archived` lifecycle status | NEEDS VERIFICATION |
 | PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -203,7 +216,7 @@ The production Vercel callback remains the final `PD-FR-004` verification gate. 
 shell now contains only centred branding, the Google action and a role-neutral registration stub.
 It has no application top bar; it retains the locally stored theme and defaults to dark.
 Authenticated pages show a compact Fund Manager identity menu linked to protected `/account`.
-Direct login defaults to `/profiles?view=performance`; a safe protected `next` route still wins.
+Direct login defaults to the canonical Dashboard at `/`; a safe protected `next` route still wins.
 
 Production was redeployed from `5a13bd7` on 2026-08-28. The current frontend is live (`/register`
 returns 200 and `/account` redirects to login), but `/api/healthz` and
@@ -353,6 +366,36 @@ No control was deleted or moved into Fund Manager Settings. `/profiles` remains 
 operational Profile directory with search, status filtering, financial/open-position context and
 direct Profile actions. Subscriber and authentication columns deliberately show unavailable future
 state until their authoritative models exist.
+
+## Profile Lifecycle And Shell Routing Checkpoint
+
+`PD-FR-005J16` through `PD-FR-005J27` restore the existing Profile directory as the canonical
+`/profiles` management surface instead of creating a second implementation. The authenticated root
+`/` is the cross-Profile Dashboard, `/reports` is the global reports view, and legacy
+`/profiles?view=performance`, `/profiles?view=reports` and `/performance` requests redirect to those
+canonical routes. Profile directory, drawer and recent-menu actions consistently open
+`/profiles/{profile_id}/tracker/dashboard`; Add Profile continues to use the existing
+`/profiles/new` onboarding.
+
+Profile archival uses the existing `Archived` lifecycle status and retains historical tracker data.
+The application drawer limits recents to three Profile IDs recorded from genuine browser access,
+then resolves those IDs against the current non-archived API catalogue. This browser-local recency
+is intentionally a navigation preference, not a competing Profile authority; a future cross-device
+recent-access field may replace it when that requirement is approved. Archive completion refreshes
+the shell catalogue immediately so archived Profiles leave recent navigation without a reload.
+
+The authenticated shell now owns a three-pixel, no-layout-shift route/data progress line beneath
+the header. Existing structured surfaces retain `LedgerLoadingIndicator` skeleton/section feedback;
+the global line does not replace component loading, empty or error states. Dashboard analytics retain
+only the supported Profile scope and date range controls, with canonical desktop dimensions and
+single-column responsive wrapping.
+
+Verification on 2026-08-29 passed 245 web unit tests, 10 focused auth/API tests, seven focused
+navigation/lifecycle Playwright checks plus the Dashboard loading-state check, web typecheck, web
+lint and production build. The build retains the pre-existing dynamic filesystem tracing warning
+from `apps/web/lib/local-db.ts`. `PD-FR-005J28` remains a hosted Fund Manager smoke gate: use the
+temporary `Vercel` Profile to verify edit/navigation/recency and then archive it through the Profile
+directory before founder workbook dry-run begins.
 
 ## Safety Gate
 

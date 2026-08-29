@@ -1,45 +1,10 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getProfile } from "@/lib/tracker-data";
+import { redirect } from "next/navigation";
 
-type ProfilePageProps = {
-  params: Promise<{
-    profileId: string;
-  }>;
-};
-
-export default async function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ profileId: string }>;
+}) {
   const { profileId } = await params;
-  const profile = await getProfile(profileId);
-
-  if (!profile) {
-    notFound();
-  }
-
-  return (
-    <main className="page-shell">
-      <section className="content-panel stack">
-        <span className="eyebrow">Profile</span>
-        <h1>{profile.displayName}</h1>
-        <div className="meta-grid">
-          <dl>
-            <dt>Profile code</dt>
-            <dd>{profile.profileCode}</dd>
-          </dl>
-          <dl>
-            <dt>Status</dt>
-            <dd>{profile.status}</dd>
-          </dl>
-          <dl>
-            <dt>Current Account Cash</dt>
-            <dd>{profile.currentCashSnapshot}</dd>
-          </dl>
-        </div>
-        <div className="tracker-nav">
-          <Link href={`/profiles/${profile.profileId}/tracker`}>Enter tracker</Link>
-          <Link href="/profiles">Back to roster</Link>
-        </div>
-      </section>
-    </main>
-  );
+  redirect(`/profiles/${profileId}/tracker/dashboard`);
 }

@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
 import { platformBrand } from "@/lib/brand";
+import { recordRecentProfile, resolveRecentProfiles } from "@/lib/recent-profiles";
+
+type ProfileNavigationRecord = {
+  profile_id: string;
+  display_name: string;
+  status?: string;
+};
 
 type AppNavigationDrawerProps = {
   activeProfileId: string;
+  availableProfiles: ProfileNavigationRecord[];
   isInsideProfile: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -25,8 +33,7 @@ const focusableSelector = [
 const subscribeToPortalAvailability = () => () => undefined;
 
 const navigationItems = [
-  { id: "home", href: "/profiles?view=performance", label: "Home", icon: "space_dashboard" },
-  { id: "profiles", href: "/profiles?view=profiles", label: "Profiles", icon: "group" },
+  { id: "dashboard", href: "/", label: "Dashboard", icon: "space_dashboard" },
   {
     id: "registration-requests",
     href: "/profiles/requests",
@@ -40,12 +47,13 @@ const navigationItems = [
     icon: "account_balance",
   },
   { id: "notifications", href: "/notifications", label: "Notifications", icon: "notifications" },
-  { id: "reports", href: "/profiles?view=reports", label: "Reports", icon: "summarize" },
+  { id: "reports", href: "/reports", label: "Reports", icon: "summarize" },
   { id: "settings", href: "/settings", label: "Settings", icon: "settings" },
 ] as const;
 
 export function AppNavigationDrawer({
   activeProfileId,
+  availableProfiles,
   isInsideProfile,
   isOpen,
   onClose,
@@ -55,10 +63,10 @@ export function AppNavigationDrawer({
 }: AppNavigationDrawerProps) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const [locationHash, setLocationHash] = useState("");
+  const [profilesExpanded, setProfilesExpanded] = useState(pathname.startsWith("/profiles"));
   const portalReady = useSyncExternalStore(
     subscribeToPortalAvailability,
     () => true,
@@ -121,17 +129,16 @@ export function AppNavigationDrawer({
   }, [isOpen, onClose, triggerRef]);
 
   if (!portalReady) return null;
+  const recentProfiles = resolveRecentProfiles(window.localStorage, availableProfiles);
 
-  const currentView = searchParams.get("view") ?? "profiles";
   const itemIsActive = (id: (typeof navigationItems)[number]["id"]) => {
-    if (id === "home") return pathname === "/profiles" && currentView === "performance";
-    if (id === "profiles") return pathname === "/profiles" && currentView === "profiles";
+    if (id === "dashboard") return pathname === "/" || pathname === "/performance";
     if (id === "registration-requests") return pathname === "/profiles/requests";
     if (id === "account-catalogue") {
       return pathname === "/settings" && locationHash === "#catalogue";
     }
     if (id === "notifications") return pathname === "/notifications";
-    if (id === "reports") return pathname === "/profiles" && currentView === "reports";
+    if (id === "reports") return pathname === "/reports";
     return id === "settings" && pathname === "/settings";
   };
 
@@ -180,7 +187,68 @@ export function AppNavigationDrawer({
         </header>
 
         <nav aria-label="Primary navigation" className="app-navigation-drawer-list">
-          {navigationItems.map((item) => {
+          {navigationItems.slice(0, 1).map((item) => {
+            const isActive = itemIsActive(item.id);
+            return (
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                className={`app-navigation-drawer-link${isActive ? " is-active" : ""}`}
+                data-pd-id={`app-navigation.${item.id}`}
+                href={item.href}
+                key={item.id}
+                onClick={onClose}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <div className="app-navigation-drawer-profile-group">
+            <button
+              aria-expanded={profilesExpanded}
+              className={`app-navigation-drawer-link app-navigation-drawer-button${pathname.startsWith("/profiles") ? " is-active" : ""}`}
+              data-pd-id="app-navigation.profiles"
+              onClick={() => setProfilesExpanded((current) => !current)}
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">group</span>
+              <span>Profiles</span>
+              <span aria-hidden="true" className="material-symbols-outlined app-navigation-expand-icon">
+                {profilesExpanded ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+            {profilesExpanded ? (
+              <div className="app-navigation-profile-links" data-pd-id="app-navigation.recent-profiles">
+                {recentProfiles.map((profile) => (
+                  <Link
+                    className="app-navigation-drawer-link app-navigation-drawer-sublink"
+                    data-pd-id={`app-navigation.profile.${profile.profile_id}`}
+                    href={`/profiles/${profile.profile_id}/tracker/dashboard`}
+                    key={profile.profile_id}
+                    onClick={() => {
+                      recordRecentProfile(window.localStorage, {
+                        profileId: profile.profile_id,
+                        displayName: profile.display_name,
+                      });
+                      onClose();
+                    }}
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">person</span>
+                    <span>{profile.display_name}</span>
+                  </Link>
+                ))}
+                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.view-all" href="/profiles" onClick={onClose}>
+                  <span aria-hidden="true" className="material-symbols-outlined">list</span>
+                  <span>View all Profiles</span>
+                </Link>
+                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.add" href="/profiles/new" onClick={onClose}>
+                  <span aria-hidden="true" className="material-symbols-outlined">person_add</span>
+                  <span>Add Profile</span>
+                </Link>
+              </div>
+            ) : null}
+          </div>
+          {navigationItems.slice(1).map((item) => {
             const isActive = itemIsActive(item.id);
             return (
               <Link

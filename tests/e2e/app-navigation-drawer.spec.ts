@@ -15,12 +15,11 @@ test.describe("Global application navigation drawer", () => {
     await trigger.click();
     await expect(drawer).toBeVisible();
     await expect(closeButton).toBeFocused();
-    await expect(page.locator('[data-pd-id="app-navigation.profiles"]')).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
-    await expect(page.locator('[data-pd-id="app-navigation.home"]')).toContainText("Home");
+    await expect(page.locator('[data-pd-id="app-navigation.profiles"]')).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator('[data-pd-id="app-navigation.dashboard"]')).toContainText("Dashboard");
     await expect(page.locator('[data-pd-id^="app-navigation.profile."]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-navigation.profiles.view-all"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-navigation.profiles.add"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.account-catalogue"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.notifications"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.reports"]')).toBeVisible();
@@ -52,6 +51,32 @@ test.describe("Global application navigation drawer", () => {
     await backdrop.click({ position: { x: 1000, y: 400 } });
     await expect(drawer).toBeHidden();
     await expect(trigger).toBeFocused();
+  });
+
+  test("shows a bounded recent Profile list and opens the canonical Profile Dashboard", async ({ page }) => {
+    await page.goto("/profiles/profile-demo-001/tracker/dashboard");
+    await page.locator('[data-pd-id="app-navigation.trigger"]').click();
+
+    const recentLinks = page.locator('[data-pd-id^="app-navigation.profile."]');
+    await expect(recentLinks).toHaveCount(1);
+    await expect(recentLinks.first()).toHaveAttribute(
+      "href",
+      "/profiles/profile-demo-001/tracker/dashboard"
+    );
+    await recentLinks.first().click();
+    await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/dashboard$/);
+  });
+
+  test("uses canonical Dashboard and Profiles routes", async ({ page }) => {
+    await page.goto("/profiles?view=performance");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+
+    await page.locator('[data-pd-id="app-navigation.trigger"]').click();
+    await page.locator('[data-pd-id="app-navigation.profiles"]').click();
+    await page.locator('[data-pd-id="app-navigation.profiles.view-all"]').click();
+    await expect(page).toHaveURL(/\/profiles$/);
+    await expect(page.getByRole("heading", { name: "Profiles", exact: true }).first()).toBeVisible();
   });
 
   test("preserves profile context and fits mobile, theme, and reduced-motion states", async ({ page }) => {

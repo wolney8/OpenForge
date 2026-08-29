@@ -24,9 +24,9 @@ NAVIGATION_RESULTS = (
     GlobalSearchResult(
         result_id="navigation-home",
         group="Navigation",
-        title="Home",
-        subtitle="Fund Manager dashboard",
-        href="/profiles?view=performance",
+        title="Dashboard",
+        subtitle="Combined Profile overview",
+        href="/",
         icon="space_dashboard",
     ),
     GlobalSearchResult(
@@ -34,7 +34,7 @@ NAVIGATION_RESULTS = (
         group="Navigation",
         title="Profiles",
         subtitle="Profile directory",
-        href="/profiles?view=profiles",
+        href="/profiles",
         icon="group",
     ),
     GlobalSearchResult(
@@ -66,7 +66,7 @@ NAVIGATION_RESULTS = (
         group="Navigation",
         title="Reports",
         subtitle="Cross-profile reporting",
-        href="/profiles?view=reports",
+        href="/reports",
         icon="summarize",
     ),
     GlobalSearchResult(

@@ -1,4 +1,4 @@
-export const FUND_MANAGER_DASHBOARD_PATH = "/profiles?view=performance";
+export const FUND_MANAGER_DASHBOARD_PATH = "/";
 
 export function normalizePostAuthDestination(value: string | null | undefined): string {
   if (!value || value === "/" || value === "/login") {

@@ -267,6 +267,38 @@ textarea {
   border-bottom: 1px solid var(--outline);
 }
 
+.shell-loading-progress {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  z-index: 1;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.shell-loading-progress.is-active {
+  opacity: 1;
+}
+
+.shell-loading-progress > span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0.8rem color-mix(in srgb, var(--primary) 58%, transparent);
+  animation: shell-loading-progress 900ms ease-in-out infinite;
+}
+
+@keyframes shell-loading-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
+}
+
 .top-app-bar-public {
   grid-template-columns: minmax(15rem, 1fr) minmax(0, 30rem) auto;
 }
@@ -432,6 +464,28 @@ textarea {
 
 .app-navigation-drawer-link .material-symbols-outlined {
   font-size: 1.35rem;
+}
+
+.app-navigation-drawer-profile-group,
+.app-navigation-profile-links {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.app-navigation-drawer-profile-group {
+  margin: 0;
+}
+
+.app-navigation-drawer-sublink {
+  min-height: 3rem;
+  margin-left: 1.15rem;
+  padding-left: 0.8rem;
+  font-size: 0.92rem;
+}
+
+.app-navigation-expand-icon {
+  justify-self: end;
 }
 
 .app-navigation-drawer-context {
@@ -3213,30 +3267,31 @@ html[data-theme="dark"] .notification-count-badge {
 
 .fund-manager-control-bar.is-directory {
   grid-template-columns:
-    minmax(0, 1.1fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.95fr);
+    minmax(18rem, 1.4fr)
+    minmax(14rem, 0.8fr)
+    minmax(22rem, 1.4fr);
 }
 
 .fund-manager-control-bar.is-analytics {
   grid-template-columns:
-    minmax(0, 1.1fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.95fr);
+    minmax(18rem, 0.9fr)
+    minmax(22rem, 1.4fr);
 }
 
 .fund-manager-control-bar .profile-report-picker {
   align-self: center;
+  width: 100%;
+}
+
+.fund-manager-control-bar .profile-report-picker summary {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .fund-manager-control-bar .compact-report-controls {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
 }
 
 .fund-manager-control-slot-search {
@@ -3249,7 +3304,27 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .fund-manager-control-slot-range {
-  grid-column: 4 / 6;
+  grid-column: 2;
+}
+
+.fund-manager-control-bar.is-directory .fund-manager-control-slot-search {
+  grid-column: 1;
+}
+
+.fund-manager-control-bar.is-directory .fund-manager-control-slot-status {
+  grid-column: 2;
+}
+
+.fund-manager-control-bar.is-directory .fund-manager-control-slot-range {
+  grid-column: 3;
+}
+
+.fund-manager-control-bar.is-analytics .fund-manager-control-slot-profile {
+  grid-column: 1;
+}
+
+.fund-manager-control-bar.is-analytics .fund-manager-control-slot-range {
+  grid-column: 2;
 }
 
 .fund-manager-control-bar .m3-picker-field,
@@ -4020,6 +4095,17 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shell-loading-progress,
+  .shell-loading-progress > span {
+    transition: none;
+    animation: none;
+  }
+
+  .shell-loading-progress > span {
+    width: 100%;
+    transform: none;
+  }
+
   .fee-period-action-required {
     animation: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
@@ -4217,9 +4303,15 @@ html[data-theme="dark"] .notification-count-badge {
   }
 
   .fund-manager-control-bar,
-  .fund-manager-control-bar.is-directory,
-  .fund-manager-control-bar.is-analytics {
+  .fund-manager-control-bar.is-directory {
     grid-template-columns: 1fr;
+  }
+
+  .cross-profile-analytics .fund-manager-control-bar.is-analytics {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .fund-manager-control-bar .compact-report-controls,
@@ -4227,6 +4319,10 @@ html[data-theme="dark"] .notification-count-badge {
   .profile-report-picker,
   .profile-report-picker summary {
     width: 100%;
+  }
+
+  .fund-manager-control-bar [class*="fund-manager-control-slot-"] {
+    grid-column: 1;
   }
 
   .directory-pagination {

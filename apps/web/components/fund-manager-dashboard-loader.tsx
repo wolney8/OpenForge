@@ -8,6 +8,7 @@ import {
   type ProfileDescriptor,
 } from "@/components/cross-profile-analytics";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 
 type ApiProfile = {
   profile_id: string;
@@ -36,18 +37,22 @@ export function FundManagerDashboardLoader({
   initialDetailProfileId,
   initialFeeReviewMonth,
   initialOpportunityId,
+  pageKind = "dashboard",
 }: {
   initialTab: AnalyticsTab;
   initialDetailProfileId?: string;
   initialFeeReviewMonth?: string;
   initialOpportunityId?: string;
+  pageKind?: "dashboard" | "profiles" | "reports";
 }) {
   const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
   const [linkedProfileIds, setLinkedProfileIds] = useState<string[] | null>(null);
   const [error, setError] = useState("");
+  const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Dashboard";
 
   useEffect(() => {
     const controller = new AbortController();
+    beginShellLoading();
     void Promise.all([
       fetch("/api/profiles", {
         cache: "no-store",
@@ -76,15 +81,20 @@ export function FundManagerDashboardLoader({
       if (!controller.signal.aborted) {
         setError(reason instanceof Error ? reason.message : "Dashboard data is temporarily unavailable.");
       }
+    }).finally(() => {
+      if (!controller.signal.aborted) endShellLoading();
     });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      endShellLoading();
+    };
   }, []);
 
   if (error) {
     return (
       <main className="page-shell stack">
         <section className="content-panel stack" role="alert">
-          <h1>Unable to load Dashboard</h1>
+          <h1>Unable to load {pageTitle}</h1>
           <p>{error}</p>
           <button className="modal-primary-button" onClick={() => window.location.reload()} type="button">
             Try again
@@ -96,11 +106,10 @@ export function FundManagerDashboardLoader({
 
   if (profiles === null || linkedProfileIds === null) {
     return (
-      <main aria-busy="true" aria-label="Loading Dashboard" className="page-shell stack">
+      <main aria-busy="true" aria-label={`Loading ${pageTitle}`} className="page-shell stack">
         <section className="hero-panel split-hero">
           <div className="stack">
-            <span className="eyebrow">Fund Manager</span>
-            <h1>Fund Manager Dashboard</h1>
+            <h1>{pageTitle}</h1>
           </div>
           <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
             <span className="eyebrow">Active profiles</span>
@@ -110,7 +119,7 @@ export function FundManagerDashboardLoader({
         <section className="content-panel stack tracker-summary-shell sportsbook-page-shell">
           <LedgerLoadingIndicator
             dataPdId="fund-manager-dashboard.loading"
-            label="Loading Fund Manager Dashboard"
+            label={`Loading ${pageTitle}`}
           />
         </section>
       </main>
@@ -121,15 +130,14 @@ export function FundManagerDashboardLoader({
     <main className="page-shell stack">
       <section className="hero-panel split-hero">
         <div className="stack">
-          <span className="eyebrow">Fund Manager</span>
-          <h1>Fund Manager Dashboard</h1>
+          <h1>{pageTitle}</h1>
         </div>
         <aside className="shell-note stack profile-dashboard-hero-summary" aria-label="Profile dashboard summary">
           <span className="eyebrow">Active profiles</span>
           <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
         </aside>
       </section>
-      {linkedProfileIds.length === 0 && profiles.length > 0 ? (
+      {pageKind === "dashboard" && linkedProfileIds.length === 0 && profiles.length > 0 ? (
         <section className="content-panel split-panel profile-bootstrap-callout">
           <div>
             <span className="eyebrow">Founder Profile</span>
@@ -141,7 +149,7 @@ export function FundManagerDashboardLoader({
       ) : null}
       {profiles.length === 0 ? (
         <section className="content-panel stack">
-          <h2>Create the first Profile</h2>
+          <h2>{pageKind === "profiles" ? "No Profiles yet" : "Create the first Profile"}</h2>
           <p>Set up a Profile before adding accounts or tracker records.</p>
           <Link className="modal-primary-button button-link" href="/profiles/new">Create Profile</Link>
         </section>

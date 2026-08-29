@@ -11,6 +11,7 @@ import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationCentre } from "@/components/notification-centre";
 import { SessionInactivityGuard } from "@/components/session-inactivity-guard";
+import { ShellLoadingProgress } from "@/components/shell-loading-progress";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
 import { platformBrand } from "@/lib/brand";
@@ -32,6 +33,11 @@ import {
 } from "@/lib/tracker-summary";
 import { TRACKER_DATA_UPDATED_EVENT } from "@/lib/tracker-data-events";
 import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
+import {
+  PROFILE_DIRECTORY_UPDATED_EVENT,
+  recordRecentProfile,
+} from "@/lib/recent-profiles";
+import { beginShellLoading } from "@/lib/shell-loading";
 import {
   confirmUnsavedTrackerChanges,
   useUnsavedChangesPromptController,
@@ -95,9 +101,10 @@ function resolveProfileId(pathname: string): string | null {
 }
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
-  return pathname === "/" || ["/profiles", "/notifications", "/settings", "/account"].some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
+  return pathname === "/" ||
+    ["/profiles", "/reports", "/performance", "/notifications", "/settings", "/account"].some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
@@ -196,7 +203,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       cachedFrame = window.requestAnimationFrame(() => {
         if (!isActive) return;
         setActiveProfiles(
-          cachedProfiles.filter((item) => (item.status ?? "active").trim().toLowerCase() === "active")
+          cachedProfiles.filter((item) => (item.status ?? "active").trim().toLowerCase() !== "archived")
         );
       });
     }
@@ -204,7 +211,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       .then((profiles) => {
         if (!isActive) return;
         setActiveProfiles(
-          profiles.filter((item) => (item.status ?? "active").trim().toLowerCase() === "active")
+          profiles.filter((item) => (item.status ?? "active").trim().toLowerCase() !== "archived")
         );
       })
       .catch(() => {
@@ -224,12 +231,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       if (detail?.profileId && detail.profileId !== activeProfileId) return;
       setHeaderRefreshKey((current) => current + 1);
     };
+    const refreshProfileDirectory = () => setHeaderRefreshKey((current) => current + 1);
 
     window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
     window.addEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
+    window.addEventListener(PROFILE_DIRECTORY_UPDATED_EVENT, refreshProfileDirectory);
     return () => {
       window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, refreshHeaderForProfile);
       window.removeEventListener(TRACKER_DATA_UPDATED_EVENT, refreshHeaderForProfile);
+      window.removeEventListener(PROFILE_DIRECTORY_UPDATED_EVENT, refreshProfileDirectory);
     };
   }, [activeProfileId]);
 
@@ -508,6 +518,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? headerSummary.overallPnl
       : null;
   const brandSubtitle = "Tracker platform";
+  const recentProfileName =
+    activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ??
+    (headerSummary?.profileId === activeProfileId ? headerSummary.profileName : "");
+
+  useEffect(() => {
+    if (!isInsideProfile || !recentProfileName) return;
+    recordRecentProfile(window.localStorage, {
+      profileId: activeProfileId,
+      displayName: recentProfileName,
+    });
+  }, [activeProfileId, isInsideProfile, recentProfileName]);
+
   const filteredActiveProfiles = activeProfiles.filter((profile) =>
     profile.display_name.toLocaleLowerCase().includes(profileSearch.trim().toLocaleLowerCase())
   );
@@ -549,6 +571,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     setProfileSearch("");
     setSelectedCommandProfileId(null);
     setTrackerMenuOpen(false);
+    beginShellLoading();
     router.push(href);
   };
 
@@ -669,7 +692,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                       </button>
                     </div>
                   </div>
-                  <div className="profile-command-profile-list" aria-label="Active profiles">
+                  <div className="profile-command-profile-list" aria-label="Available profiles">
                     {filteredActiveProfiles.length > 0 ? (
                       filteredActiveProfiles.map((profile) => {
                         const isCurrentProfile = profile.profile_id === activeProfileId;
@@ -752,10 +775,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {!isPublicAuthRoute ? <FundManagerIdentityMenu /> : null}
             <ThemeToggle />
           </div>
+          <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute ? <Suspense fallback={null}>
           <AppNavigationDrawer
             activeProfileId={activeProfileId}
+            availableProfiles={activeProfiles}
             isInsideProfile={isInsideProfile}
             isOpen={appMenuOpen}
             onClose={closeAppMenu}

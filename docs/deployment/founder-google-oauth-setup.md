@@ -86,8 +86,8 @@ required later.
 4. Log out and confirm direct page access redirects and `/api/profiles` returns 401.
 5. Repeat on `https://plum-duff.vercel.app` after redeployment.
 
-Direct sign-in without a retained protected destination returns to
-`/profiles?view=performance`. A valid `next` path captured by the protected-route redirect is
+Direct sign-in without a retained protected destination returns to the canonical Dashboard at
+`/`. A valid `next` path captured by the protected-route redirect is
 preserved instead.
 
 Real financial data remains prohibited until this OAuth gate and the later Neon persistence and

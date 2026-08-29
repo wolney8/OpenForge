@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { beginShellLoading } from "@/lib/shell-loading";
+import { PROFILE_DIRECTORY_UPDATED_EVENT } from "@/lib/recent-profiles";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue } from "./financial-value";
 import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
@@ -394,6 +397,7 @@ export function CrossProfileAnalytics({
   initialFeeReviewMonth?: string;
   initialOpportunityId?: string;
 }) {
+  const router = useRouter();
   const [profileRecords, setProfileRecords] = useState(profiles);
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
   const [customStart, setCustomStart] = useState("");
@@ -418,6 +422,7 @@ export function CrossProfileAnalytics({
   } | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditError, setProfileEditError] = useState("");
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [drawerNavigationLabel, setDrawerNavigationLabel] = useState("");
   const [opportunityDialogOpen, setOpportunityDialogOpen] = useState(Boolean(initialOpportunityId));
   const [feeReviewProfileId, setFeeReviewProfileId] = useState<string | null>(
@@ -879,6 +884,21 @@ export function CrossProfileAnalytics({
   }
 
   function selectTab(tab: AnalyticsTab) {
+    if (tab === "profiles") {
+      beginShellLoading();
+      router.push("/profiles");
+      return;
+    }
+    if (tab === "performance") {
+      beginShellLoading();
+      router.push("/");
+      return;
+    }
+    if (tab === "reports") {
+      beginShellLoading();
+      router.push("/reports");
+      return;
+    }
     setActiveTab(tab);
   }
 
@@ -892,7 +912,7 @@ export function CrossProfileAnalytics({
     if (nextIndex === currentIndex) return;
     event.preventDefault();
     const nextTab = analyticsTabs[nextIndex].id;
-    setActiveTab(nextTab);
+    selectTab(nextTab);
     document.getElementById(`analytics-tab-${nextTab}`)?.focus();
   }
 
@@ -974,6 +994,52 @@ export function CrossProfileAnalytics({
     } finally {
       setIsSavingProfile(false);
     }
+  }
+
+  async function archiveProfile() {
+    if (!detailProfile || isSavingProfile) return;
+    setIsSavingProfile(true);
+    setProfileEditError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${detailProfile.profileId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Archived" }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(body?.detail || `Profile archive failed with status ${response.status}`);
+      }
+      const updated = (await response.json()) as ProfileApiResponse;
+      setProfileRecords((current) =>
+        current.map((profile) =>
+          profile.profileId === updated.profile_id ? { ...profile, status: updated.status } : profile
+        )
+      );
+      window.dispatchEvent(
+        new CustomEvent(PROFILE_DIRECTORY_UPDATED_EVENT, {
+          detail: { profileId: updated.profile_id },
+        })
+      );
+      setArchiveConfirmOpen(false);
+      detailDialogRef.current?.close();
+    } catch (error) {
+      setProfileEditError(error instanceof Error ? error.message : "Profile archive failed");
+      setArchiveConfirmOpen(false);
+      window.requestAnimationFrame(() => detailDialogRef.current?.showModal());
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  function openArchiveConfirmation() {
+    detailDialogRef.current?.close();
+    setArchiveConfirmOpen(true);
+  }
+
+  function cancelArchiveConfirmation() {
+    setArchiveConfirmOpen(false);
+    window.requestAnimationFrame(() => detailDialogRef.current?.showModal());
   }
 
   function handleInlineEditKeyDown(
@@ -1195,9 +1261,11 @@ export function CrossProfileAnalytics({
       </div>
       <div className="workflow-panel-header">
         <div className="stack-tight">
-          <span className="eyebrow">Fund Manager control</span>
+          <span className="eyebrow">Portfolio control</span>
           <div className="section-heading-row">
-            <h2 id="combined-analytics-title">Profiles and combined analytics</h2>
+            <h2 id="combined-analytics-title">
+              {activeTab === "profiles" ? "Profile management" : "Combined analytics"}
+            </h2>
             <AccessScopeBadge />
           </div>
         </div>
@@ -1683,13 +1751,21 @@ export function CrossProfileAnalytics({
         </section>
         <div className="section-heading-row">
           <div>
-            <span className="eyebrow">Fund Manager Directory</span>
+            <span className="eyebrow">Profile management</span>
             <h2 id="profile-directory-title">Profiles</h2>
           </div>
           <div className="tracker-nav profile-directory-heading-actions">
             <span className="profile-picker-count">{directoryProfiles.length} shown</span>
+            <Link
+              className="modal-primary-button button-link"
+              data-pd-id="profiles.add-profile"
+              href="/profiles/new"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">person_add</span>
+              Add Profile
+            </Link>
             <button
-              className="modal-primary-button"
+              className="button-link"
               data-pd-id="profiles.opportunity.add"
               onClick={() => setOpportunityDialogOpen(true)}
               type="button"
@@ -1967,6 +2043,18 @@ export function CrossProfileAnalytics({
               >
                 <span aria-hidden="true" className="material-symbols-outlined">summarize</span>
               </Link>
+              {normalizeProfileStatus(detailProfile.status) !== "Archived" ? (
+                <button
+                  aria-label={`Archive ${detailProfile.displayName}`}
+                  className="icon-button icon-button-destructive"
+                  data-pd-id="profiles.drawer.archive"
+                  onClick={openArchiveConfirmation}
+                  title={`Archive ${detailProfile.displayName}`}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">archive</span>
+                </button>
+              ) : null}
             </nav>
             {drawerNavigationLabel ? (
               <div className="profile-drawer-loading" role="status">
@@ -1977,6 +2065,51 @@ export function CrossProfileAnalytics({
           </div>
         ) : null}
       </dialog>
+      {archiveConfirmOpen && detailProfile ? (
+        <div className="modal-backdrop modal-backdrop-elevated unsaved-changes-backdrop">
+          <section
+            aria-label={`Archive ${detailProfile.displayName}`}
+            aria-modal="true"
+            className="modal-panel unsaved-changes-dialog"
+            data-pd-id="profiles.archive.dialog"
+            role="alertdialog"
+          >
+            <header className="section-heading-row">
+              <div>
+                <span className="eyebrow">Profile lifecycle</span>
+                <h2>Archive Profile?</h2>
+              </div>
+              <button
+                aria-label="Cancel Profile archive"
+                className="dialog-close-button"
+                onClick={cancelArchiveConfirmation}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <p>
+              Archive {detailProfile.displayName}? Its historical tracker data is retained, but it
+              will no longer appear as an active recent Profile.
+            </p>
+            <footer className="workflow-editor-modal-footer">
+              <button className="button-link" onClick={cancelArchiveConfirmation} type="button">
+                Cancel
+              </button>
+              <button
+                className="icon-button icon-button-destructive icon-text-action"
+                data-pd-id="profiles.archive.confirm"
+                disabled={isSavingProfile}
+                onClick={() => void archiveProfile()}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">archive</span>
+                <span>{isSavingProfile ? "Archiving" : "Archive Profile"}</span>
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       {detailProfile && feeReviewProfileId === detailProfile.profileId ? (
         <FeePeriodReviewDialog
           initialMonth={feeReviewMonth || initialFeeReviewMonth}

@@ -15,5 +15,5 @@ export default async function TrackerPage({ params }: TrackerPageProps) {
     notFound();
   }
 
-  redirect(`/profiles/${profile.profileId}/tracker/sportsbook-bets`);
+  redirect(`/profiles/${profile.profileId}/tracker/dashboard`);
 }
