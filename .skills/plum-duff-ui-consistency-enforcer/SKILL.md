@@ -103,6 +103,11 @@ use the canonical primitive and computed styling.
 - Standard Search controls use the canonical `table-search-field` surface and signed-off toolbar
   input height. Use a practical 13.75rem minimum and a responsive width up to 30rem where layout
   permits; do not create route-specific search heights or undersized search pills.
+- Workbook migration is Profile-scoped and reuses the Profile Import/Export surface. Upload uses
+  the canonical file/field controls and primary analysis action; review reuses ledger table,
+  filters, loadouts, pagination, financial/provider chips and confirmation patterns. A missing run
+  is an actionable empty state, never a local-filesystem error. Do not add a permanent global
+  Import Review navigation item or expose raw uploaded files through UI URLs.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
   search, and account/theme/notification actions. At reduced widths these regions reflow without
   changing control semantics, hiding the search, or creating page-level horizontal overflow.

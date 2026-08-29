@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { StatusToast } from "@/components/status-toast";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
-  loadPersistedSessionSecurityPreference,
   loadSessionSecurityPreference,
   persistSessionSecurityPreference,
   saveSessionSecurityPreference,
@@ -21,6 +21,11 @@ export type FundManagerSession = {
   expires_at: number;
   name: string;
   role: "fund_manager";
+  session_policy?: {
+    auto_logout_enabled: boolean;
+    preference_configured: boolean;
+    timeout_minutes: number;
+  };
 };
 
 export function FundManagerAccountPage() {
@@ -31,6 +36,7 @@ export function FundManagerAccountPage() {
     DEFAULT_SESSION_SECURITY_PREFERENCE
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -42,12 +48,24 @@ export function FundManagerAccountPage() {
       .then(async (value) => {
         if (active) {
           setSession(value);
-          const persisted = await loadPersistedSessionSecurityPreference();
-          if (!active) return;
-          const resolved = persisted ?? loadSessionSecurityPreference(value.email);
+          const legacyPreference = loadSessionSecurityPreference(value.email);
+          const policy = value.session_policy;
+          const resolved = policy?.preference_configured
+            ? {
+                autoLogoutEnabled: policy.auto_logout_enabled,
+                timeoutMinutes: policy.timeout_minutes as SessionTimeoutMinutes,
+              }
+            : legacyPreference;
+          if (!policy?.preference_configured) {
+            const saved = await persistSessionSecurityPreference(resolved);
+            if (!active) return;
+            if (!saved) {
+              setFailed(true);
+              return;
+            }
+          }
           setPreference(resolved);
           saveSessionSecurityPreference(value.email, resolved);
-          if (persisted === null) void persistSessionSecurityPreference(resolved);
         }
       })
       .catch(() => {
@@ -58,12 +76,16 @@ export function FundManagerAccountPage() {
     };
   }, []);
 
-  function updatePreference(next: SessionSecurityPreference) {
-    setPreference(next);
-    if (session) {
-      saveSessionSecurityPreference(session.email, next);
-      void persistSessionSecurityPreference(next);
+  async function updatePreference(next: SessionSecurityPreference) {
+    if (!session) return;
+    const saved = await persistSessionSecurityPreference(next);
+    if (!saved) {
+      setStatusMessage("Security preference was not saved. Try again.");
+      return;
     }
+    setPreference(next);
+    saveSessionSecurityPreference(session.email, next);
+    setStatusMessage("Security preference saved.");
   }
 
   async function logout() {
@@ -78,6 +100,7 @@ export function FundManagerAccountPage() {
 
   return (
     <main className="page-shell stack">
+      <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} />
       <section className="hero-panel stack">
         <span className="eyebrow">Fund Manager</span>
         <h1>My Account</h1>
@@ -123,7 +146,7 @@ export function FundManagerAccountPage() {
                 aria-pressed={preference.autoLogoutEnabled}
                 className={`material-switch${preference.autoLogoutEnabled ? " is-selected" : ""}`}
                 data-pd-id="fund-manager-account.auto-logout"
-                onClick={() => updatePreference({ ...preference, autoLogoutEnabled: !preference.autoLogoutEnabled })}
+                onClick={() => void updatePreference({ ...preference, autoLogoutEnabled: !preference.autoLogoutEnabled })}
                 type="button"
               >
                 <span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span>
@@ -135,7 +158,7 @@ export function FundManagerAccountPage() {
                 <span>Inactivity period</span>
                 <select
                   data-pd-id="fund-manager-account.auto-logout-timeout"
-                  onChange={(event) => updatePreference({
+                  onChange={(event) => void updatePreference({
                     ...preference,
                     timeoutMinutes: Number(event.target.value) as SessionTimeoutMinutes,
                   })}

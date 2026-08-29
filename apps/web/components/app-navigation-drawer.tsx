@@ -46,12 +46,6 @@ const navigationItems = [
     label: "Account Catalogue",
     icon: "account_balance",
   },
-  {
-    id: "import-review",
-    href: "/imports/founder/review",
-    label: "Import Review",
-    icon: "fact_check",
-  },
   { id: "notifications", href: "/notifications", label: "Notifications", icon: "notifications" },
   { id: "reports", href: "/reports", label: "Reports", icon: "summarize" },
   { id: "settings", href: "/settings", label: "Settings", icon: "settings" },

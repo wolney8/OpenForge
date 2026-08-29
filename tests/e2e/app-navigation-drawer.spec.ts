@@ -23,6 +23,7 @@ test.describe("Global application navigation drawer", () => {
     await expect(page.locator('[data-pd-id="app-navigation.account-catalogue"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.notifications"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.reports"]')).toBeVisible();
+    await expect(page.getByRole("link", { name: "Import Review" })).toHaveCount(0);
 
     const openState = await page.evaluate(() => ({
       appFrameInert: document.querySelector(".app-frame")?.hasAttribute("inert"),

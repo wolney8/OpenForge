@@ -36,9 +36,7 @@ def postgres_runtime_enabled() -> bool:
     return settings.database_mode.strip().lower() in SUPPORTED_POSTGRES_RUNTIME_MODES
 
 
-def upsert_fund_manager_user(
-    *, email: str, google_subject: str, display_name: str
-) -> None:
+def upsert_fund_manager_user(*, email: str, google_subject: str, display_name: str) -> None:
     if not postgres_runtime_enabled():
         return
     timestamp = utc_now()
@@ -216,9 +214,7 @@ def create_fund_manager_session(
         )
 
 
-def validate_fund_manager_session(
-    *, session_id: str, email: str, now: int
-) -> bool:
+def validate_fund_manager_session(*, session_id: str, email: str, now: int) -> bool:
     if not postgres_runtime_enabled():
         with database_operation_lock:
             row = local_fund_manager_sessions.get(session_id)
@@ -243,6 +239,49 @@ def validate_fund_manager_session(
             revoke_fund_manager_session(session_id=session_id, now=now)
             return False
     return True
+
+
+def get_fund_manager_session_status(
+    *, session_id: str, email: str, now: int
+) -> dict[str, Any] | None:
+    if not postgres_runtime_enabled():
+        with database_operation_lock:
+            row = local_fund_manager_sessions.get(session_id)
+    else:
+        with connect() as connection:
+            row = connection.execute(
+                """
+                SELECT email, last_activity_at, absolute_expires_at, revoked_at, updated_at
+                FROM fund_manager_sessions WHERE session_id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+    if row is None or str(row["email"]).casefold() != email.casefold():
+        return None
+    preference = get_fund_manager_security_preference(email)
+    inactivity_expires_at = None
+    if preference["auto_logout_enabled"]:
+        inactivity_expires_at = (
+            int(row["last_activity_at"]) + int(preference["timeout_minutes"]) * 60
+        )
+    effective_expires_at = min(
+        int(row["absolute_expires_at"]),
+        inactivity_expires_at
+        if inactivity_expires_at is not None
+        else int(row["absolute_expires_at"]),
+    )
+    return {
+        "server_persisted": postgres_runtime_enabled(),
+        "auto_logout_enabled": bool(preference["auto_logout_enabled"]),
+        "timeout_minutes": int(preference["timeout_minutes"]),
+        "preference_configured": bool(preference["configured"]),
+        "last_activity_at": int(row["last_activity_at"]),
+        "inactivity_expires_at": inactivity_expires_at,
+        "absolute_expires_at": int(row["absolute_expires_at"]),
+        "effective_expires_at": effective_expires_at,
+        "revoked": row["revoked_at"] is not None,
+        "valid_now": row["revoked_at"] is None and effective_expires_at > now,
+    }
 
 
 def touch_fund_manager_session(*, session_id: str, email: str, now: int) -> bool:
@@ -300,9 +339,7 @@ def get_notification_user_state(email: str) -> dict[str, list[str]]:
     keys = [str(row["notification_id"]) for row in rows]
     return {
         "read_keys": [key.removeprefix("read:") for key in keys if key.startswith("read:")],
-        "dismissed_ids": [
-            key.removeprefix("clear:") for key in keys if key.startswith("clear:")
-        ],
+        "dismissed_ids": [key.removeprefix("clear:") for key in keys if key.startswith("clear:")],
     }
 
 
@@ -310,9 +347,7 @@ def replace_notification_user_state(
     *, email: str, read_keys: list[str], dismissed_ids: list[str]
 ) -> dict[str, list[str]]:
     normalized_read = sorted({value.strip() for value in read_keys if value.strip()})
-    normalized_dismissed = sorted(
-        {value.strip() for value in dismissed_ids if value.strip()}
-    )
+    normalized_dismissed = sorted({value.strip() for value in dismissed_ids if value.strip()})
     if not postgres_runtime_enabled():
         return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
     timestamp = utc_now()
@@ -921,6 +956,68 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
           FOREIGN KEY (import_batch_id) REFERENCES import_batches(import_batch_id)
         );
+
+        CREATE TABLE IF NOT EXISTS profile_import_runs (
+          import_run_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          owner_email TEXT NOT NULL,
+          source_filename TEXT NOT NULL,
+          workbook_checksum TEXT NOT NULL,
+          workbook_size_bytes INTEGER NOT NULL,
+          effective_at TEXT NOT NULL,
+          mapping_version TEXT NOT NULL,
+          status TEXT NOT NULL,
+          summary_json TEXT NOT NULL,
+          reconciliation_json TEXT NOT NULL,
+          raw_workbook_retained INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          UNIQUE (profile_id, workbook_checksum, mapping_version)
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_review_items (
+          import_run_id TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          import_id TEXT NOT NULL,
+          source_fingerprint TEXT NOT NULL,
+          source_sheet TEXT NOT NULL,
+          source_row INTEGER NOT NULL,
+          source_record_id TEXT NOT NULL,
+          category TEXT NOT NULL,
+          item_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (import_run_id, item_id),
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_review_decisions (
+          import_run_id TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          workbook_checksum TEXT NOT NULL,
+          mapping_version TEXT NOT NULL,
+          source_fingerprint TEXT NOT NULL,
+          decision_json TEXT NOT NULL,
+          actor_email TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (import_run_id, item_id),
+          FOREIGN KEY (import_run_id, item_id)
+            REFERENCES profile_import_review_items(import_run_id, item_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_runs_profile_updated
+          ON profile_import_runs(profile_id, updated_at);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_review_items_profile
+          ON profile_import_review_items(profile_id, import_run_id);
 
         CREATE TABLE IF NOT EXISTS backup_snapshots (
           backup_snapshot_id TEXT PRIMARY KEY,
@@ -5709,9 +5806,7 @@ def create_profile_with_onboarding(
                     {
                         "enabled_modules": payload["enabled_modules"],
                         "iteration_number": payload.get("iteration_number", 1),
-                        "selected_catalogue_ids": [
-                            account["catalogue_id"] for account in accounts
-                        ],
+                        "selected_catalogue_ids": [account["catalogue_id"] for account in accounts],
                         "selected_quick_actions": [
                             {
                                 "preset_id": action["preset_id"],
@@ -5739,9 +5834,7 @@ def create_profile_with_onboarding(
                 "lifecycle_status": account["lifecycle_status"],
                 "restrictions_json": account.get("restrictions_json", "[]"),
                 "current_balance": account["current_balance"],
-                "pending_withdrawal_amount": account.get(
-                    "pending_withdrawal_amount", "0.00"
-                ),
+                "pending_withdrawal_amount": account.get("pending_withdrawal_amount", "0.00"),
                 "last_balance_update": account.get("last_balance_update", timestamp),
                 "group_name": account.get("group_name", ""),
                 "platform": account.get("platform", ""),
@@ -6461,7 +6554,9 @@ def upsert_profile_quick_add_loadout_override(
         defaults_json = (
             json.dumps(payload["defaults"], sort_keys=True)
             if payload.get("defaults") is not None
-            else str(existing["defaults_json"]) if existing is not None else "{}"
+            else str(existing["defaults_json"])
+            if existing is not None
+            else "{}"
         )
         connection.execute(
             """

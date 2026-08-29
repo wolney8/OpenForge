@@ -20,6 +20,7 @@ from openforge_api.config import settings
 from openforge_api.db import (
     create_fund_manager_session,
     get_fund_manager_security_preference,
+    get_fund_manager_session_status,
     list_fund_manager_profile_links,
     revoke_fund_manager_session,
     touch_fund_manager_session,
@@ -118,8 +119,13 @@ def _verify_payload(token: str, *, secret: str | None = None) -> dict[str, Any] 
 
 
 def create_session_token(
-    *, subject: str, email: str, name: str, now: int | None = None,
-    secret: str | None = None, session_id: str | None = None
+    *,
+    subject: str,
+    email: str,
+    name: str,
+    now: int | None = None,
+    secret: str | None = None,
+    session_id: str | None = None,
 ) -> str:
     issued_at = int(time.time()) if now is None else now
     resolved_session_id = session_id or secrets.token_urlsafe(32)
@@ -344,6 +350,11 @@ def get_session(request: Request) -> JSONResponse:
     session = validate_request_session(request.cookies.get(SESSION_COOKIE_NAME, ""))
     if session is None:
         return JSONResponse({"authenticated": False}, status_code=401)
+    policy = get_fund_manager_session_status(
+        session_id=session.session_id,
+        email=session.email,
+        now=int(time.time()),
+    )
     return JSONResponse(
         {
             "authenticated": True,
@@ -352,6 +363,7 @@ def get_session(request: Request) -> JSONResponse:
             "role": session.role,
             "expires_at": session.expires_at,
             "linked_profile_ids": list_fund_manager_profile_links(session.email),
+            "session_policy": policy,
         }
     )
 
@@ -386,9 +398,7 @@ def record_activity(request: Request) -> Response:
 
 
 @router.put("/security-preference")
-def put_security_preference(
-    request: Request, payload: SecurityPreferencePayload
-) -> dict[str, Any]:
+def put_security_preference(request: Request, payload: SecurityPreferencePayload) -> dict[str, Any]:
     session = require_request_session(request)
     try:
         preference = upsert_fund_manager_security_preference(

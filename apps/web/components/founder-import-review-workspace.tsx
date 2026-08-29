@@ -67,6 +67,7 @@ type ReviewItem = {
 };
 
 type Workspace = {
+  run_status?: string;
   metadata: {
     source_filename: string;
     effective_at: string;
@@ -223,9 +224,9 @@ async function responseMessage(response: Response) {
   return "Unable to update the import review.";
 }
 
-async function fetchWorkspaceData() {
+async function fetchWorkspaceData(profileId: string, importRunId: string) {
   const [reviewResponse, catalogueResponse] = await Promise.all([
-    fetch(`${apiBaseUrl}/fund-manager/import-review`, {
+    fetch(`${apiBaseUrl}/profiles/${profileId}/workbook-imports/${importRunId}`, {
       credentials: "include",
       cache: "no-store",
     }),
@@ -245,7 +246,14 @@ async function fetchWorkspaceData() {
   };
 }
 
-export function FounderImportReviewWorkspace() {
+export function FounderImportReviewWorkspace({
+  profileId,
+  importRunId,
+}: {
+  profileId: string;
+  importRunId: string;
+}) {
+  const reviewApi = `${apiBaseUrl}/profiles/${profileId}/workbook-imports/${importRunId}`;
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [catalogue, setCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -269,6 +277,7 @@ export function FounderImportReviewWorkspace() {
     action: string;
     description: string;
   } | null>(null);
+  const [approvalAcknowledged, setApprovalAcknowledged] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
 
@@ -276,7 +285,7 @@ export function FounderImportReviewWorkspace() {
     setLoading(true);
     setError("");
     try {
-      const result = await fetchWorkspaceData();
+      const result = await fetchWorkspaceData(profileId, importRunId);
       setWorkspace(result.review);
       setCatalogue(result.catalogue);
     } catch (caught) {
@@ -288,7 +297,7 @@ export function FounderImportReviewWorkspace() {
 
   useEffect(() => {
     let active = true;
-    void fetchWorkspaceData()
+    void fetchWorkspaceData(profileId, importRunId)
       .then((result) => {
         if (!active) return;
         setWorkspace(result.review);
@@ -303,7 +312,7 @@ export function FounderImportReviewWorkspace() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [importRunId, profileId]);
 
   useEffect(() => {
     const dialog = editing ? editorRef.current : filterOpen ? filterRef.current : null;
@@ -359,7 +368,7 @@ export function FounderImportReviewWorkspace() {
     if (!editing || !draft) return;
     setSaving(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/fund-manager/import-review/decisions/${editing.item_id}`, {
+      const response = await fetch(`${reviewApi}/decisions/${editing.item_id}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -404,7 +413,7 @@ export function FounderImportReviewWorkspace() {
     if (!batchPreview) return;
     setSaving(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/fund-manager/import-review/decisions/batch`, {
+      const response = await fetch(`${reviewApi}/decisions/batch`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -431,7 +440,7 @@ export function FounderImportReviewWorkspace() {
   async function rerun() {
     setSaving(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/fund-manager/import-review/rerun`, {
+      const response = await fetch(`${reviewApi}/rerun`, {
         method: "POST",
         credentials: "include",
       });
@@ -446,7 +455,31 @@ export function FounderImportReviewWorkspace() {
     }
   }
 
-  if (loading) return <section className="content-panel stack"><LedgerLoadingIndicator label="Loading founder import review" /></section>;
+  async function approveReview() {
+    if (!workspace?.reconciliation.import_ready || !approvalAcknowledged) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/approve`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workbook_checksum: workspace.metadata.workbook_checksum,
+          acknowledged: true,
+        }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      setWorkspace((current) => current ? { ...current, run_status: "READY_APPROVED" } : current);
+      setApprovalAcknowledged(false);
+      setMessage("Workbook dry run approved. No Profile data was imported.");
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to approve the workbook review.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <section className="content-panel stack"><LedgerLoadingIndicator label="Loading Profile import review" /></section>;
   if (error || !workspace) return <section className="content-panel stack"><span className="eyebrow">Import review</span><h1>Unable to load review</h1><p className="error-text" role="alert">{error}</p><button className="button-link" onClick={() => void loadWorkspace()} type="button">Try again</button></section>;
 
   return <>
@@ -503,6 +536,14 @@ export function FounderImportReviewWorkspace() {
         </table>
       </LedgerTableScroll>
       <LedgerPagination ariaLabel="Import review" currentPage={effectivePage} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />
+      <section className="content-subpanel stack-tight" aria-label="Import readiness approval">
+        <strong>{workspace.run_status === "READY_APPROVED" ? "Dry run approved" : workspace.reconciliation.import_ready ? "Ready for approval" : "Review required"}</strong>
+        <span>{workspace.reconciliation.import_ready ? "Approval records readiness only. It does not import Accounts or ledger rows." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
+        {workspace.reconciliation.import_ready && workspace.run_status !== "READY_APPROVED" ? <div className="tracker-nav">
+          <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>I confirm this checksum and reconciliation are ready for the later import gate.</span></label>
+          <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>
+        </div> : null}
+      </section>
       <p className="field-support-text">{workspace.metadata.source_filename} · {workspace.metadata.mapping_version} · checksum {workspace.metadata.workbook_checksum.slice(0, 12)}… · no production import performed</p>
     </section>
 

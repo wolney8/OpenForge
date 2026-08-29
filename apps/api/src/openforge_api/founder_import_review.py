@@ -412,14 +412,142 @@ def _build_items() -> tuple[dict[str, Any], list[dict[str, Any]]]:
         "original_partial_count": int(
             readiness.get("readiness", {}).get("partial_rows_requiring_mapping_decisions", 0)
         ),
-        "provider_conflict_count": int(
-            readiness.get("readiness", {}).get("provider_conflicts", 0)
-        ),
+        "provider_conflict_count": int(readiness.get("readiness", {}).get("provider_conflicts", 0)),
         "historical_ep_count": int(
             readiness.get("readiness", {}).get("historical_ep_rows_requiring_review", 0)
         ),
         "real_import_performed": False,
     }, items
+
+
+def build_review_items_from_dry_run(
+    result: dict[str, Any], content: bytes
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Build review rows directly from an in-memory dry run for hosted uploads."""
+    metadata = result["metadata"]
+    checksum = str(metadata["sha256"])
+    account_rows = {row.source_row: row for row in parse_account_xlsx(content).rows}
+    parsed_ledgers = {definition.key: definition.parser(content) for definition in LEDGERS}
+    items: list[dict[str, Any]] = []
+
+    missing_names = {
+        str(record.get("workbook_name", ""))
+        for record in result["accounts"].get("resolutions", [])
+        if record.get("classification") in {"MISSING", "AMBIGUOUS"}
+    }
+    account_validation = {
+        int(row["source_row"]): row for row in result["accounts"].get("validation_rows", [])
+    }
+    for source_row, row in account_rows.items():
+        if _first(row.fields, "Account") not in missing_names:
+            continue
+        validation_row = account_validation[source_row]
+        items.append(
+            _review_item(
+                checksum=checksum,
+                import_id=str(validation_row["import_key"]),
+                source_sheet="Accounts",
+                source_row=source_row,
+                source_record_id=row.source_record_id,
+                fields=row.fields,
+                issue_types=["missing_provider"],
+                reason="Provider is not resolved in the global Account Catalogue.",
+                target="Existing provider, validated catalogue candidate, or historical provider",
+                confidence="blocked",
+                category="missing_provider",
+            )
+        )
+
+    for definition in LEDGERS:
+        rows_by_number = {row.source_row: row for row in parsed_ledgers[definition.key].rows}
+        for validation_row in result["ledgers"][definition.key].get("validation_rows", []):
+            if validation_row.get("migration_state") != "partial":
+                continue
+            row = rows_by_number[int(validation_row["source_row"])]
+            errors = validation_row.get("errors", [])
+            issues = _issue_types(errors, row.fields, definition.key)
+            items.append(
+                _review_item(
+                    checksum=checksum,
+                    import_id=str(validation_row["import_key"]),
+                    source_sheet=definition.sheet_name,
+                    source_row=row.source_row,
+                    source_record_id=row.source_record_id,
+                    fields=row.fields,
+                    issue_types=issues,
+                    reason="; ".join(str(error.get("message", "")) for error in errors),
+                    target=_proposed_target(definition.key, issues),
+                    confidence="review_required",
+                    category=f"{definition.key}_partial",
+                )
+            )
+
+    sports_rows = {row.source_row: row for row in parse_sportsbook_xlsx(content).rows}
+    for ep_row in result["extra_places"].get("rows", []):
+        ep_source_row = sports_rows[int(ep_row["source_row"])]
+        import_id = stable_import_key(
+            "Sportsbook Bets",
+            ep_source_row.source_row,
+            ep_source_row.source_record_id,
+            ep_source_row.fields,
+        )
+        item = _review_item(
+            checksum=checksum,
+            import_id=import_id,
+            source_sheet="Sportsbook Bets",
+            source_row=ep_source_row.source_row,
+            source_record_id=ep_source_row.source_record_id,
+            fields=ep_source_row.fields,
+            issue_types=["historical_extra_place"],
+            reason="Current Extra Place fields are absent from this historical Sportsbook row.",
+            target="Historical Extra Place or retained Sportsbook EP row",
+            confidence="insufficient_historical_data",
+            category="historical_extra_place",
+        )
+        item["missing_fields"] = ep_row.get("missing_fields", [])
+        items.append(item)
+
+    readiness = result["readiness"]
+    return {
+        "source_filename": metadata["source_filename"],
+        "effective_at": metadata["effective_at"],
+        "workbook_checksum": checksum,
+        "mapping_version": metadata["mapping_version"],
+        "original_partial_count": int(readiness["partial_rows_requiring_mapping_decisions"]),
+        "provider_conflict_count": int(readiness["provider_conflicts"]),
+        "historical_ep_count": int(readiness["historical_ep_rows_requiring_review"]),
+        "real_import_performed": False,
+    }, items
+
+
+def apply_review_decisions(
+    metadata: dict[str, Any],
+    items: list[dict[str, Any]],
+    decisions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    valid_decisions = 0
+    stale_decisions = 0
+    reviewed_items: list[dict[str, Any]] = []
+    for source_item in items:
+        item = dict(source_item)
+        decision = decisions.get(item["item_id"])
+        if decision and decision.get("source_fingerprint") == item["source_fingerprint"]:
+            item["decision"] = decision
+            item["review_status"] = decision["status"]
+            valid_decisions += 1
+        else:
+            if decision:
+                stale_decisions += 1
+            item["decision"] = None
+            item["review_status"] = "UNREVIEWED"
+        reviewed_items.append(item)
+    return {
+        "metadata": metadata,
+        "items": reviewed_items,
+        "reconciliation": _reconciliation(
+            metadata, reviewed_items, valid_decisions, stale_decisions
+        ),
+    }
 
 
 def _principal_email(request: Request) -> str:
@@ -453,9 +581,17 @@ def _reconciliation(
     valid_decisions: int,
     stale_decisions: int,
 ) -> dict[str, Any]:
-    counts = {status: 0 for status in (
-        "UNREVIEWED", "REVIEWED_ACCEPTED", "REVIEWED_OVERRIDDEN", "DEFERRED", "EXCLUDED", "BLOCKED"
-    )}
+    counts = {
+        status: 0
+        for status in (
+            "UNREVIEWED",
+            "REVIEWED_ACCEPTED",
+            "REVIEWED_OVERRIDDEN",
+            "DEFERRED",
+            "EXCLUDED",
+            "BLOCKED",
+        )
+    }
     for item in items:
         counts[item["review_status"]] += 1
     partial_items = [item for item in items if item["category"].endswith("_partial")]
@@ -610,9 +746,7 @@ def put_founder_import_review_batch(
             "override_fields": (
                 {"calculation_provenance": "imported_historical"}
                 if payload.action == "historical_imported_calculation"
-                else {
-                    "canonical_text_rule": "truncate_to_200_with_full_source_preserved"
-                }
+                else {"canonical_text_rule": "truncate_to_200_with_full_source_preserved"}
                 if payload.action == "preserve_and_shorten"
                 else {"offer_name": "Historical Casino Offer", "label_generated": True}
             ),

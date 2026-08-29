@@ -1,5 +1,5 @@
-import { FounderImportReviewWorkspace } from "@/components/founder-import-review-workspace";
+import { redirect } from "next/navigation";
 
 export default function FounderImportReviewPage() {
-  return <FounderImportReviewWorkspace />;
+  redirect("/profiles");
 }

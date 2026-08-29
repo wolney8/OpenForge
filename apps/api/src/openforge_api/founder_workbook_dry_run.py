@@ -370,11 +370,7 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
         )
     resolution_counts = Counter(item.classification for item in resolutions)
     pending_withdrawals = sum(
-        (
-            _decimal(row.fields.get("PendingWithdrawalAmount"))
-            or Decimal("0")
-        )
-        for row in parsed.rows
+        (_decimal(row.fields.get("PendingWithdrawalAmount")) or Decimal("0")) for row in parsed.rows
     )
     return {
         "schema": {
@@ -449,10 +445,7 @@ def _ledger_report(content: bytes, definition: LedgerDefinition) -> JsonObject:
             }
         )
     partial = sum(item["migration_state"] == "partial" for item in rows)
-    settled = sum(
-        item["status"].casefold() in definition.settled_statuses
-        for item in rows
-    )
+    settled = sum(item["status"].casefold() in definition.settled_statuses for item in rows)
     if definition.key == "cash_adjustments":
         settled = len(rows) - partial
     return {
@@ -526,9 +519,7 @@ def missing_extra_place_fields(fields: JsonObject) -> list[str]:
         "finishing_position": ("FinishingPosition",),
     }
     return [
-        label
-        for label, names in required.items()
-        if not str(_first_value(fields, names)).strip()
+        label for label, names in required.items() if not str(_first_value(fields, names)).strip()
     ]
 
 
@@ -547,10 +538,7 @@ def _report_blocks(content: bytes) -> JsonObject:
             "rows": [
                 [cells.get(f"{chr(column)}{row}", "") for column in column_range]
                 for row in range(6, 100)
-                if any(
-                    str(cells.get(f"{chr(column)}{row}", "")).strip()
-                    for column in column_range
-                )
+                if any(str(cells.get(f"{chr(column)}{row}", "")).strip() for column in column_range)
             ],
             "classification": "RECONCILIATION ONLY",
         }
@@ -637,15 +625,11 @@ def _period_reconciliation(
             (
                 row
                 for row in reports[period]["rows"]
-                if str(row[0])[:10] == report_keys[period]
-                or str(row[0]) == report_keys[period]
+                if str(row[0])[:10] == report_keys[period] or str(row[0]) == report_keys[period]
             ),
             None,
         )
-        workbook = [
-            _decimal(report_row[index]) if report_row else None
-            for index in range(1, 5)
-        ]
+        workbook = [_decimal(report_row[index]) if report_row else None for index in range(1, 5)]
         calculated_total = sum(calculated)
         output[period] = {
             "period_key": report_keys[period],
@@ -662,9 +646,7 @@ def _period_reconciliation(
                 "total": None if workbook[3] is None else f"{workbook[3]:.2f}",
             },
             "difference": (
-                None
-                if workbook[3] is None
-                else f"{calculated_total - workbook[3]:.2f}"
+                None if workbook[3] is None else f"{calculated_total - workbook[3]:.2f}"
             ),
         }
     return output
@@ -676,7 +658,24 @@ def build_founder_workbook_dry_run(
     effective_at: str,
     catalogue_path: Path | None = None,
 ) -> JsonObject:
-    content = workbook_path.read_bytes()
+    return build_founder_workbook_dry_run_bytes(
+        workbook_path.read_bytes(),
+        source_filename=workbook_path.name,
+        source_path=str(workbook_path.resolve()),
+        effective_at=effective_at,
+        catalogue_path=catalogue_path,
+    )
+
+
+def build_founder_workbook_dry_run_bytes(
+    content: bytes,
+    *,
+    source_filename: str,
+    effective_at: str,
+    source_path: str = "uploaded-workbook",
+    catalogue_path: Path | None = None,
+) -> JsonObject:
+    """Analyse workbook bytes without retaining or mutating the uploaded source."""
     catalogue = load_master_account_catalogue(catalogue_path)
     account_report = _account_report(content, catalogue)
     ledgers = {definition.key: _ledger_report(content, definition) for definition in LEDGERS}
@@ -686,14 +685,13 @@ def build_founder_workbook_dry_run(
     blocked = account_report["blocked_count"]
     partial = sum(ledger["summary"]["partial"] for ledger in ledgers.values())
     provider_blockers = sum(
-        account_report["resolution_counts"].get(state, 0)
-        for state in ("AMBIGUOUS", "MISSING")
+        account_report["resolution_counts"].get(state, 0) for state in ("AMBIGUOUS", "MISSING")
     )
     ep_blockers = ep_report["classification_counts"].get("insufficient_historical_data", 0)
     return {
         "metadata": {
-            "source_filename": workbook_path.name,
-            "source_path": str(workbook_path.resolve()),
+            "source_filename": source_filename,
+            "source_path": source_path,
             "effective_at": effective_at,
             "sha256": checksum,
             "size_bytes": len(content),
@@ -741,9 +739,7 @@ def build_founder_workbook_dry_run(
         "reconciliation": _period_reconciliation(ledgers, reports, effective_at),
         "readiness": {
             "status": (
-                "BLOCKED"
-                if blocked or partial or provider_blockers or ep_blockers
-                else "PASSED"
+                "BLOCKED" if blocked or partial or provider_blockers or ep_blockers else "PASSED"
             ),
             "validation_blocked_rows": blocked,
             "partial_rows_requiring_mapping_decisions": partial,
@@ -777,9 +773,7 @@ def write_private_artifacts(result: JsonObject, output_directory: Path) -> list[
         },
         "row-validation-errors.json": {
             "accounts": result["accounts"]["validation_rows"],
-            "ledgers": {
-                key: value["validation_rows"] for key, value in result["ledgers"].items()
-            },
+            "ledgers": {key: value["validation_rows"] for key, value in result["ledgers"].items()},
         },
         "reconciliation-summary.json": {
             "accounts": {
@@ -802,9 +796,7 @@ def write_private_artifacts(result: JsonObject, output_directory: Path) -> list[
             "readiness": result["readiness"],
             "idempotency": {
                 "accounts": result["accounts"]["idempotency"],
-                "ledgers": {
-                    key: value["idempotency"] for key, value in result["ledgers"].items()
-                },
+                "ledgers": {key: value["idempotency"] for key, value in result["ledgers"].items()},
             },
         },
     }

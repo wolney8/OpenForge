@@ -142,6 +142,27 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-007R15 | Reviewed dry-run rerun | Rebuild the dry run with compatible decisions and report resolved, remaining, excluded, deferred, P&L and row-count impact | Founder dry-run analyzer | COMPLETE |
 | PD-FR-007R16 | Import review UI consistency | Reuse canonical tables, filters, loadouts, dialogs, financial/provider chips, loading and accessibility behaviour | UI consistency enforcer and iconography protocols | COMPLETE |
 | PD-FR-007R17 | Real-import safety gate | Keep review and rerun read-only with no production Profile or ledger writes | Founder import safety gate | COMPLETE |
+| PD-FR-007H1 | Profile import ownership | Move workbook migration and review under one explicit target Profile | Profile Import/Export and existing review workspace | COMPLETE |
+| PD-FR-007H2 | Hosted workbook upload | Validate and analyse authenticated `.xlsx` bytes without repository/runtime file dependencies | Existing XLSX parser and Profile import controls | COMPLETE |
+| PD-FR-007H3 | Workbook privacy | Process raw bytes in memory, retain no workbook blob/path and require checksum re-upload for later import | Data safety rules | COMPLETE |
+| PD-FR-007H4 | Durable review decisions | Persist checksum/version/fingerprint-bound decisions in Neon | Existing deterministic review contract | COMPLETE |
+| PD-FR-007H5 | Import run lifecycle | Persist Profile target, effective timestamp, mapping version, counts and explicit review/readiness state | Existing import lifecycle conventions | COMPLETE |
+| PD-FR-007H6 | Effective timestamp | Require explicit timezone-aware workbook effective time independent of filename | Founder snapshot contract | COMPLETE |
+| PD-FR-007H7 | Hosted review source | Load review exceptions from the authenticated import run and show an upload empty state when absent | Canonical empty/error states | COMPLETE |
+| PD-FR-007H8 | Dry-run regression oracle | Reproduce the 29 August checksum, account totals, ledger counts and reconciliation from upload bytes | Private developer dry-run evidence | COMPLETE |
+| PD-FR-007H9 | Production inactivity audit | Expose and enforce safe server-calculated session policy/deadline metadata | Server session and security preference contract | NEEDS VERIFICATION |
+| PD-FR-007H10 | Browser/session model | Keep the persistent cookie subordinate to server absolute and inactivity expiry | Authentication contract | COMPLETE |
+| PD-FR-007H11 | Accelerated expiry proof | Verify expiry/activity reset/stale-cookie rejection with injected test time | Auth tests | COMPLETE |
+| PD-FR-007H12 | Neon source matrix | Classify production source, table and durability for every founder-use domain | Database provider contract | COMPLETE |
+| PD-FR-007H13 | Persistence diagnostic | Show a protected, secret-free System persistence status in Fund Manager Settings | Existing Site Settings and stat/table patterns | COMPLETE |
+| PD-FR-007H14 | Real UI persistence smoke | Verify Profile, Account, preference and ledger writes across logout/redeploy | Hosted application checklist | NEEDS VERIFICATION |
+| PD-FR-007H15 | Explicit Profile destination | Reject workbook analysis when the target Profile does not exist | Profile isolation contract | COMPLETE |
+| PD-FR-007H16 | Import UI consistency | Reuse canonical upload, loading, table, chip, filter, modal and pagination patterns | UI consistency enforcer and iconography protocols | COMPLETE |
+| PD-FR-007H17 | Import navigation | Remove permanent global Import Review navigation and retain a legacy redirect | Canonical drawer and Profile Settings | COMPLETE |
+| PD-FR-007H18 | Real-import gate | Allow readiness approval only; do not expose a production write operation | Founder import safety gate | COMPLETE |
+| PD-FR-007H19 | Hosted workflow verification | Verify upload, review persistence, rerun and session expiry on Vercel | Founder hosted import checklist | NEEDS VERIFICATION |
+| PD-FR-007H20 | Safe hosted-workflow release | Isolate, commit, push and deploy only the hosted import/session/persistence tranche | Repository branch and data-safety rules | COMPLETE |
+| PD-FR-007H21 | Annual £2.18 reconciliation trace | Identify the exact row/date-axis cause without changing financial calculations | Private dry-run evidence and reconciliation contract | COMPLETE |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |

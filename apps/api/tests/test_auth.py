@@ -86,6 +86,14 @@ def test_session_tokens_reject_tampering_expiry_and_non_owner_access() -> None:
         client.cookies.set(SESSION_COOKIE_NAME, token)
         assert client.get("/profiles").status_code == 200
 
+        session_response = client.get("/auth/session")
+        assert session_response.status_code == 200
+        assert session_response.json()["session_policy"]["server_persisted"] is False
+        assert (
+            session_response.json()["session_policy"]["effective_expires_at"]
+            == 2_000_000_000 + settings.auth_session_ttl_seconds
+        )
+
         settings.auth_owner_emails = "different-owner@example.invalid"
         assert client.get("/profiles").status_code == 401
         assert client.get("/auth/session").status_code == 401
@@ -105,9 +113,7 @@ def test_health_and_oauth_routes_remain_public_when_data_routes_are_protected() 
         location = urlparse(login_response.headers["location"])
         query = parse_qs(location.query)
         assert location.netloc == "accounts.google.com"
-        assert query["redirect_uri"] == [
-            "http://localhost:3010/api/auth/google/callback"
-        ]
+        assert query["redirect_uri"] == ["http://localhost:3010/api/auth/google/callback"]
         assert query["code_challenge_method"] == ["S256"]
         assert query["scope"] == ["openid email profile"]
         assert OAUTH_STATE_COOKIE_NAME in login_response.cookies
@@ -189,10 +195,13 @@ def test_auto_logout_off_uses_absolute_session_expiry() -> None:
         )
 
         assert validate_request_session(token, now=start + 3_600) is not None
-        assert validate_request_session(
-            token,
-            now=start + settings.auth_session_ttl_seconds,
-        ) is None
+        assert (
+            validate_request_session(
+                token,
+                now=start + settings.auth_session_ttl_seconds,
+            )
+            is None
+        )
 
 
 def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
@@ -225,9 +234,7 @@ def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
         client = TestClient(app, follow_redirects=False)
         login_response = client.get("/auth/google/login")
         state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
-        callback_response = client.get(
-            f"/auth/google/callback?code=synthetic-code&state={state}"
-        )
+        callback_response = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
         assert callback_response.status_code == 302
         assert callback_response.headers["location"] == "/"
         assert SESSION_COOKIE_NAME in callback_response.cookies
@@ -288,9 +295,7 @@ def test_google_callback_rejects_verified_identity_outside_owner_allowlist(monke
         client = TestClient(app, follow_redirects=False)
         login_response = client.get("/auth/google/login")
         state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
-        callback_response = client.get(
-            f"/auth/google/callback?code=synthetic-code&state={state}"
-        )
+        callback_response = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
         assert callback_response.status_code == 302
         assert callback_response.headers["location"] == "/login?error=not_authorized"
         assert SESSION_COOKIE_NAME not in callback_response.cookies

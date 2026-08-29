@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
+import { ProfileWorkbookMigration } from "@/components/profile-workbook-migration";
 import { apiBaseUrl } from "@/lib/api";
 import { formatFinancialValue } from "@/lib/financial-display";
 
@@ -559,6 +560,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
 
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
+    <ProfileWorkbookMigration profileId={profileId} />
     <section className="content-subpanel stack spreadsheet-transfer-panel">
       <div className="workflow-panel-header">
         <div><span className="eyebrow">Profile data</span><h2>Import/Export</h2></div>

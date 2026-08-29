@@ -32,6 +32,8 @@ from openforge_api.postgres_schema import build_postgres_data_load_plan, build_p
 
 
 def configure_temp_settings(tmp_path: Path) -> None:
+    settings.environment = "local"
+    settings.auth_required = False
     settings.database_mode = "local"
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
@@ -51,6 +53,24 @@ def test_provider_status_defaults_to_local_without_exposing_secrets(tmp_path: Pa
     assert payload["neon_status"] == "not_configured"
     assert payload["writes_allowed"] is True
     assert "database_url" not in payload
+    assert "password" not in str(payload).lower()
+
+
+def test_persistence_status_reports_domains_without_credentials(tmp_path: Path) -> None:
+    configure_temp_settings(tmp_path)
+    client = TestClient(app)
+
+    response = client.get("/fund-manager/database/persistence-status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["database"] == "Local SQLite"
+    assert payload["connected"] is True
+    domains = {entry["domain"]: entry for entry in payload["domains"]}
+    assert domains["Profiles"]["table"] == "profiles"
+    assert domains["Profile import runs"]["table"] == "profile_import_runs"
+    assert domains["Import review decisions"]["available"] is True
+    assert "database_url" not in str(payload).lower()
     assert "password" not in str(payload).lower()
 
 
@@ -246,6 +266,9 @@ def test_postgres_schema_plan_generates_current_tracker_tables(tmp_path: Path) -
     assert "sportsbook_bets" in plan.table_names
     assert "free_bets" in plan.table_names
     assert "casino_offers" in plan.table_names
+    assert "profile_import_runs" in plan.table_names
+    assert "profile_import_review_items" in plan.table_names
+    assert "profile_import_review_decisions" in plan.table_names
     assert len(plan.schema_signature) == 64
     assert plan.statement_count >= len(plan.table_names)
 

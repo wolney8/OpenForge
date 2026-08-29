@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from openforge_api.config import settings
-from openforge_api.db import connect, list_backup_snapshot_records
+from openforge_api.db import connect, list_backup_snapshot_records, postgres_runtime_enabled
 from openforge_api.migration_control_totals import (
     MigrationControlTotalsResponse,
     build_migration_control_totals,
@@ -319,8 +319,7 @@ def default_neon_data_loader(connection_url: str, insert_order: list[str]) -> in
                     )
                     placeholders = ", ".join(["%s"] * len(column_names))
                     statement = (
-                        f"INSERT INTO {quoted_table} ({quoted_columns}) "
-                        f"VALUES ({placeholders})"
+                        f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({placeholders})"
                     )
                     for row in rows:
                         values = [row[column_name] for column_name in column_names]
@@ -351,9 +350,7 @@ def hash_normalized_table_rows(
         }
         for row in rows
     ]
-    normalized_rows.sort(
-        key=lambda row: json.dumps(row, sort_keys=True, separators=(",", ":"))
-    )
+    normalized_rows.sort(key=lambda row: json.dumps(row, sort_keys=True, separators=(",", ":")))
     table_payload = {
         "table_name": table_name,
         "columns": column_names,
@@ -410,9 +407,7 @@ def default_neon_table_content_fingerprints(
                 quoted_columns = ", ".join(
                     quote_sql_identifier(column_name) for column_name in column_names
                 )
-                cursor.execute(
-                    f"SELECT {quoted_columns} FROM {quote_sql_identifier(table_name)}"
-                )
+                cursor.execute(f"SELECT {quoted_columns} FROM {quote_sql_identifier(table_name)}")
                 rows = [
                     {
                         column_name: value
@@ -526,9 +521,7 @@ def list_local_table_row_counts() -> tuple[str, list[DatabaseTableRowCount]]:
             ORDER BY name
             """
         ).fetchall()
-        signature_source = "\n".join(
-            f"{row['name']}::{row['sql'] or ''}" for row in schema_rows
-        )
+        signature_source = "\n".join(f"{row['name']}::{row['sql'] or ''}" for row in schema_rows)
         schema_signature = hashlib.sha256(signature_source.encode("utf-8")).hexdigest()
 
         row_counts: list[DatabaseTableRowCount] = []
@@ -592,9 +585,7 @@ def build_migration_readiness_report(
     elif not is_backup_fresh_for_rehearsal(backup_created_at):
         blockers.append("Latest verified local backup is older than 24 hours.")
     if missing_critical_tables:
-        blockers.append(
-            "Critical local tables are missing: " + ", ".join(missing_critical_tables)
-        )
+        blockers.append("Critical local tables are missing: " + ", ".join(missing_critical_tables))
 
     warnings.append("This report rehearses migration from the local SQLite source only.")
     warnings.append(
@@ -626,6 +617,74 @@ def build_migration_readiness_report(
 @router.get("/provider-status", response_model=DatabaseProviderStatusResponse)
 def database_provider_status() -> DatabaseProviderStatusResponse:
     return build_database_provider_status()
+
+
+@router.get("/persistence-status")
+def get_persistence_status() -> dict[str, Any]:
+    domains = (
+        ("Fund Manager users", "fund_manager_users", "Neon", "transactional"),
+        ("Authentication sessions", "fund_manager_sessions", "Neon", "transactional"),
+        ("Security preferences", "fund_manager_security_preferences", "Neon", "transactional"),
+        ("Profiles", "profiles", "Neon", "transactional"),
+        ("Profile settings", "profile_settings", "Neon", "transactional"),
+        ("Profile Accounts and balances", "accounts", "Neon", "transactional"),
+        (
+            "Account Catalogue",
+            "account_catalogue_documents",
+            "Neon with version-controlled seed",
+            "reference authority",
+        ),
+        ("Sportsbook Bets", "sportsbook_bets", "Neon", "transactional"),
+        ("Free Bets", "free_bets", "Neon", "transactional"),
+        ("Casino Offers", "casino_offers", "Neon", "transactional"),
+        ("Extra Places", "each_way_extra_places", "Neon", "transactional"),
+        ("Cash Adjustments", "cash_adjustments", "Neon", "transactional"),
+        (
+            "Notifications",
+            "notification_user_state",
+            "Neon plus derived notification queries",
+            "hybrid",
+        ),
+        ("Notification preferences", "notification_preferences", "Neon", "transactional"),
+        ("Profile import runs", "profile_import_runs", "Neon", "transactional"),
+        ("Import review decisions", "profile_import_review_decisions", "Neon", "transactional"),
+        ("Reports", "", "Derived from persisted source ledgers", "derived"),
+    )
+    connected = False
+    existing_tables: set[str] = set()
+    try:
+        with connect() as connection:
+            connection.execute("SELECT 1").fetchone()
+            connected = True
+            if postgres_runtime_enabled():
+                rows = connection.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+                ).fetchall()
+                existing_tables = {str(row["table_name"]) for row in rows}
+            else:
+                rows = connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+                existing_tables = {str(row["name"]) for row in rows}
+    except Exception:
+        connected = False
+    return {
+        "database": "Neon" if postgres_runtime_enabled() else "Local SQLite",
+        "connected": connected,
+        "environment": settings.environment,
+        "runtime_adapter": "postgresql" if postgres_runtime_enabled() else "sqlite",
+        "durable_across_redeploy": postgres_runtime_enabled() and connected,
+        "domains": [
+            {
+                "domain": domain,
+                "source": source,
+                "storage_kind": storage_kind,
+                "table": table,
+                "available": True if not table else table in existing_tables,
+            }
+            for domain, table, source, storage_kind in domains
+        ],
+    }
 
 
 @router.get("/migration-readiness", response_model=DatabaseMigrationReadinessResponse)

@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 const settingsPath = "/profiles/profile-demo-001/tracker/settings";
 
 test("profile settings use keyboard-accessible section tabs and retain deep links", async ({ page }) => {
+  await page.route("**/profiles/profile-demo-001/workbook-imports", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
   const duplicateKeyErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error" && message.text().includes("same key")) {
@@ -53,6 +56,9 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(page).toHaveURL(`${settingsPath}#import-export`);
   await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Import/Export" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workbook dry run" })).toBeVisible();
+  await expect(page.getByLabel("Choose Profile workbook")).toBeVisible();
+  await expect(page.getByText("No workbook awaiting review")).toBeVisible();
 
   await page.keyboard.press("End");
   const subscriber = tabs.getByRole("tab", { name: "Subscriber" });

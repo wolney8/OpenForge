@@ -69,6 +69,9 @@ test("Fund Manager data tabs share panel and search-filter geometry", async ({ p
   const siteSettings = page.locator('[data-pd-id="fund-manager-site-settings.section"]');
   await expect(siteSettings).toHaveClass(/content-panel/);
   await expect(siteSettings).not.toHaveClass(/content-subpanel/);
+  await expect(siteSettings.getByLabel("Production persistence status")).toBeVisible();
+  await expect(siteSettings.getByRole("cell", { name: "Profile import runs" })).toBeVisible();
+  await expect(siteSettings.getByRole("cell", { name: "Import review decisions" })).toBeVisible();
 });
 
 test("Fund Manager Quick Actions uses an inline paginated table and bounded editor", async ({ page }) => {

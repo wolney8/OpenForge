@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import {
+  DEFAULT_SESSION_SECURITY_PREFERENCE,
   inactivityRemainingMs,
-  loadPersistedSessionSecurityPreference,
   loadSessionSecurityPreference,
   persistSessionSecurityPreference,
   SESSION_ACTIVITY_STORAGE_KEY,
@@ -70,11 +70,19 @@ export function SessionInactivityGuard() {
       .then(async (value) => {
         if (!active) return;
         setSession(value);
-        const persisted = await loadPersistedSessionSecurityPreference();
-        if (!active) return;
-        const resolved = persisted ?? loadSessionSecurityPreference(value.email);
+        const policy = value.session_policy;
+        let resolved = policy?.preference_configured
+          ? {
+              autoLogoutEnabled: policy.auto_logout_enabled,
+              timeoutMinutes: policy.timeout_minutes as SessionSecurityPreference["timeoutMinutes"],
+            }
+          : loadSessionSecurityPreference(value.email);
+        if (!policy?.preference_configured) {
+          const saved = await persistSessionSecurityPreference(resolved);
+          if (!active) return;
+          if (!saved) resolved = DEFAULT_SESSION_SECURITY_PREFERENCE;
+        }
         setPreference(resolved);
-        if (persisted === null) void persistSessionSecurityPreference(resolved);
         markActivity(true);
       })
       .catch(() => undefined);

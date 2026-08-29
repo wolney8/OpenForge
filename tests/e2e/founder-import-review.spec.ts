@@ -105,7 +105,7 @@ function workspace() {
 }
 
 async function mockShell(page: Page) {
-  await page.route("**/fund-manager/import-review", async (route) => {
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(workspace()) });
       return;
@@ -134,7 +134,7 @@ async function mockShell(page: Page) {
 
 test("founder review uses canonical controls and exposes explicit EP choices", async ({ page }) => {
   await mockShell(page);
-  await page.goto("/imports/founder/review");
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
 
   await expect(page.getByRole("heading", { name: "Import Review" })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Search import exceptions" })).toBeVisible();
@@ -178,7 +178,7 @@ test("founder review uses canonical controls and exposes explicit EP choices", a
 
 test("safe batch review previews count, rule and examples", async ({ page }) => {
   await mockShell(page);
-  await page.goto("/imports/founder/review");
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
 
   await page.getByRole("button", { name: "Advanced Lay" }).click();
   await page.getByLabel("Select Sportsbook Bets row 42 for batch review").check();
@@ -193,7 +193,7 @@ test("safe batch review previews count, rule and examples", async ({ page }) => 
 
 test("filter modal and missing-provider actions use canonical dialogs", async ({ page }) => {
   await mockShell(page);
-  await page.goto("/imports/founder/review");
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
 
   await page.getByRole("button", { name: "Filter import review" }).click();
   const filters = page.getByRole("dialog", { name: "Filter import review" });
