@@ -11518,6 +11518,15 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   table-layout: fixed;
 }
 
+.founder-onboarding {
+  --field-control-min-height: 2.75rem;
+  --field-control-radius: 0.95rem;
+}
+
+.founder-onboarding .form-grid {
+  align-items: start;
+}
+
 .profile-account-authority-table {
   min-width: 1310px;
   table-layout: fixed;

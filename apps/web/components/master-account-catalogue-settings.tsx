@@ -91,7 +91,7 @@ export function MasterAccountCatalogueSettings() {
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: "type" | "brand" | "status"; direction: "asc" | "desc" }>({ key: "brand", direction: "asc" });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -442,7 +442,7 @@ export function MasterAccountCatalogueSettings() {
   }
 
   return (
-    <section className="content-panel stack" aria-labelledby="master-account-catalogue-title" data-pd-id="account-catalogue.section">
+    <section aria-busy={isLoading && !catalogue} className="content-panel stack sportsbook-page-shell" aria-labelledby="master-account-catalogue-title" data-pd-id="account-catalogue.section">
       <StatusToast message={statusMessage} onDismiss={() => setStatusMessage("")} />
       <StatusToast message={!isOpen ? errorMessage : ""} onDismiss={() => setErrorMessage("")} tone="error" />
       <div className="sportsbook-page-header">
@@ -455,11 +455,11 @@ export function MasterAccountCatalogueSettings() {
         {accountTypes.map((accountType) => (
           <article className="stat-card" key={accountType}>
             <span>{accountType === "Bookmaker" ? "Bookmakers" : `${accountType}s`}</span>
-            <strong>{catalogue?.records.filter((record) => record.account_type === accountType).length ?? 0}</strong>
+            <strong aria-hidden={!catalogue}>{catalogue ? catalogue.records.filter((record) => record.account_type === accountType).length : "—"}</strong>
             <small>Global providers</small>
           </article>
         ))}
-        <article className="stat-card"><span>Active Providers</span><strong>{catalogue?.records.filter((record) => record.status === "Active").length ?? 0}</strong><small>Available to profiles</small></article>
+        <article className="stat-card"><span>Active Providers</span><strong aria-hidden={!catalogue}>{catalogue ? catalogue.records.filter((record) => record.status === "Active").length : "—"}</strong><small>Available to profiles</small></article>
       </section>
       {isLoading && !catalogue ? <LedgerLoadingIndicator label="Loading Account Catalogue" /> : null}
       <div className="table-toolbar settings-table-toolbar account-catalogue-toolbar" data-pd-id="account-catalogue.controls">

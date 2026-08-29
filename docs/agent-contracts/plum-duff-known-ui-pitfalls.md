@@ -621,6 +621,19 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/ledger-loading-parity.spec.ts` delays Dashboard and Profile Account data and
   verifies the shared loading state remains visible until resolution.
 
+## 2026-08-29: Default-zero money fields and commission units increased entry errors
+
+- Area: Profile onboarding money and Exchange commission fields.
+- Root cause: money parsing and first-focus behaviour were duplicated, while Exchange commission
+  exposed the persisted decimal fraction directly and required users to calculate percentages.
+- Prevention: use the shared decimal parser and `FinancialTextInput`; select an untouched zero only
+  on first focus, retain shorthand decimal entry and format money to two decimals on blur. Display
+  commission as a percentage but convert it to the established decimal-fraction API value; blank
+  remains absent and explicit zero remains valid.
+- Test added: `apps/web/lib/decimal-input.test.ts` and
+  `tests/e2e/founder-profile-onboarding.spec.ts` cover shorthand money, zero selection and
+  percentage-to-decimal commission conversion.
+
 ## 2026-08-28: Shell search or navigation bypassed request/runtime constraints
 
 - Area: authenticated application shell, global search and Fund Manager drawer.

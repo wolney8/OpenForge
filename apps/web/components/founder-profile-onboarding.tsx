@@ -8,8 +8,10 @@ import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-e
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { PercentageTextInput } from "@/components/percentage-text-input";
 import { apiBaseUrl } from "@/lib/api";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { formatDecimalInput } from "@/lib/decimal-input";
 import type { LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
@@ -121,7 +123,7 @@ const accountColumns: Array<{ key: AccountColumnKey; label: string }> = [
   { key: "type", label: "Type" },
   { key: "status", label: "Status" },
   { key: "opening_balance", label: "Opening Balance" },
-  { key: "commission", label: "Commission" },
+  { key: "commission", label: "Commission (%)" },
   { key: "cash_total", label: "Cash Total" },
 ];
 
@@ -147,7 +149,7 @@ function parseAmount(value: string) {
 }
 
 function normalizeTwoDecimals(value: string): string {
-  return parseAmount(value).toFixed(2);
+  return formatDecimalInput(value, { emptyValue: "0.00" });
 }
 
 function isRecentlyIntroduced(value?: string): boolean {
@@ -170,6 +172,7 @@ export function ProfileOnboarding() {
   const [accountColumnWidths, setAccountColumnWidths] = useState<Record<AccountColumnKey, number>>(initialAccountColumnWidths);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, SelectedAccount>>({});
   const [quickActionPresets, setQuickActionPresets] = useState<QuickActionPreset[]>([]);
+  const [quickActionsState, setQuickActionsState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedQuickActions, setSelectedQuickActions] = useState<Record<string, SelectedQuickAction>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -241,10 +244,11 @@ export function ProfileOnboarding() {
       .then((payload) => {
         if (active) {
           setQuickActionPresets(payload.filter((preset) => preset.quick_add.enabled));
+          setQuickActionsState("ready");
         }
       })
       .catch(() => {
-        if (active) setQuickActionPresets([]);
+        if (active) setQuickActionsState("error");
       });
     return () => {
       active = false;
@@ -626,7 +630,7 @@ export function ProfileOnboarding() {
             <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
             <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
             <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
-            <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput ariaLabel="Starting Bankroll" dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} /></label>
+            <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} /></label>
             <label className="field-control"><span>Management Fee (%)</span><input inputMode="decimal" min="0" onBlur={() => setProfileValue("management_fee_percent", normalizeTwoDecimals(profile.management_fee_percent))} onChange={(event) => setProfileValue("management_fee_percent", event.target.value)} step="0.01" type="number" value={profile.management_fee_percent} /></label>
             <label className="field-control"><span>Investment Fee (%)</span><input inputMode="decimal" min="0" onBlur={() => setProfileValue("investment_fee_percent", normalizeTwoDecimals(profile.investment_fee_percent))} onChange={(event) => setProfileValue("investment_fee_percent", event.target.value)} step="0.01" type="number" value={profile.investment_fee_percent} /></label>
             <label className="field-control"><span>Operating Jurisdiction</span><select disabled value={profile.operating_jurisdiction}><option value="GB">United Kingdom (GB)</option></select></label>
@@ -642,7 +646,7 @@ export function ProfileOnboarding() {
             {alwaysOnModules.map((module) => <label className="profile-filter-chip is-selected" key={module.id}><input checked disabled type="checkbox" /><span>{module.label}</span><small>Required</small></label>)}
             {optionalModules.map((module) => <label className={`profile-filter-chip${modules[module.id] ? " is-selected" : ""}`} key={module.id}><input checked={modules[module.id]} onChange={(event) => setModuleEnabled(module.id, event.target.checked)} type="checkbox" /><span>{module.label}</span></label>)}
           </div>
-          {modules["each-way-extra-places"] ? <label className="field-control"><span>Weekly Extra Place Loss Budget</span><FinancialTextInput ariaLabel="Weekly Extra Place Loss Budget" dataPdId="profile-onboarding.extra-place-budget" id="profile-onboarding-extra-place-budget" onBlur={() => { setIsDirty(true); setWeeklyExtraPlaceBudget(normalizeTwoDecimals(weeklyExtraPlaceBudget)); }} onChange={(value) => { setIsDirty(true); setWeeklyExtraPlaceBudget(value); }} value={weeklyExtraPlaceBudget} /></label> : null}
+          {modules["each-way-extra-places"] ? <label className="field-control"><span>Weekly Extra Place Loss Budget</span><FinancialTextInput allowNegative={false} ariaLabel="Weekly Extra Place Loss Budget" dataPdId="profile-onboarding.extra-place-budget" id="profile-onboarding-extra-place-budget" onBlur={() => { setIsDirty(true); setWeeklyExtraPlaceBudget(normalizeTwoDecimals(weeklyExtraPlaceBudget)); }} onChange={(value) => { setIsDirty(true); setWeeklyExtraPlaceBudget(value); }} value={weeklyExtraPlaceBudget} /></label> : null}
         </section></LedgerEditorTabPanel>
       ) : null}
 
@@ -683,8 +687,8 @@ export function ProfileOnboarding() {
                     <td><span className="profile-onboarding-provider-cell"><span className="account-brand-pill" style={{ backgroundColor: record.background_colour, color: record.foreground_colour }}>{record.brand_name}</span>{isRecentlyIntroduced(record.introduced_at) ? <span className="table-chip table-chip-warning">New</span> : null}<span className="table-status">{record.operator_group || record.platform || "Global catalogue"}</span></span></td>
                     <td><span className="table-chip table-chip-muted">{record.account_type}</span></td>
                     <td>{selected ? <label className="field-control table-inline-control"><span className="sr-only">{record.brand_name} Profile status</span><select aria-label={`${record.brand_name} Profile status`} onChange={(event) => updateSelectedAccount(record.catalogue_id, { status: event.target.value })} value={selected.status}>{accountStatuses.map((status) => <option key={status}>{status}</option>)}</select></label> : <span className="table-status">Not selected</span>}</td>
-                    <td>{selected ? <label className="field-control table-inline-control"><span className="sr-only">{record.brand_name} opening balance</span><FinancialTextInput ariaLabel={`${record.brand_name} opening balance`} dataPdId={`profile-onboarding.account.${record.catalogue_id}.balance`} id={`profile-onboarding-${record.catalogue_id}-balance`} onBlur={() => updateSelectedAccount(record.catalogue_id, { opening_balance: normalizeTwoDecimals(selected.opening_balance) })} onChange={(value) => updateSelectedAccount(record.catalogue_id, { opening_balance: value })} value={selected.opening_balance} /></label> : "—"}</td>
-                    <td>{selected && record.account_type === "Exchange" ? <label className={`field-control table-inline-control${guidedTarget.field === `commission-${record.catalogue_id}` && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field={`commission-${record.catalogue_id}`}><span className="sr-only">{record.brand_name} commission</span><input aria-label={`${record.brand_name} commission`} inputMode="decimal" max="1" min="0" onChange={(event) => updateSelectedAccount(record.catalogue_id, { commission_rate: event.target.value })} placeholder="0.02" step="0.001" type="number" value={selected.commission_rate} /></label> : "—"}</td>
+                    <td>{selected ? <label className="field-control table-inline-control"><span className="sr-only">{record.brand_name} opening balance</span><FinancialTextInput allowNegative={false} ariaLabel={`${record.brand_name} opening balance`} dataPdId={`profile-onboarding.account.${record.catalogue_id}.balance`} id={`profile-onboarding-${record.catalogue_id}-balance`} onBlur={() => updateSelectedAccount(record.catalogue_id, { opening_balance: normalizeTwoDecimals(selected.opening_balance) })} onChange={(value) => updateSelectedAccount(record.catalogue_id, { opening_balance: value })} value={selected.opening_balance} /></label> : "—"}</td>
+                    <td>{selected && record.account_type === "Exchange" ? <label className={`field-control table-inline-control${guidedTarget.field === `commission-${record.catalogue_id}` && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field={`commission-${record.catalogue_id}`}><span className="sr-only">{record.brand_name} commission (%)</span><PercentageTextInput ariaLabel={`${record.brand_name} commission (%)`} dataPdId={`profile-onboarding.account.${record.catalogue_id}.commission`} id={`profile-onboarding-${record.catalogue_id}-commission`} onChange={(value) => updateSelectedAccount(record.catalogue_id, { commission_rate: value })} value={selected.commission_rate} /></label> : "—"}</td>
                     <td>{selected ? <label className="profile-filter-chip is-selected"><input checked={selected.counts_in_cash_total} onChange={(event) => updateSelectedAccount(record.catalogue_id, { counts_in_cash_total: event.target.checked })} type="checkbox" /><span>Included</span></label> : "—"}</td>
                   </tr>;
                 }) : <tr><td className="empty-cell" colSpan={accountColumns.length}>No GB providers match the current filters.</td></tr>}</tbody>
@@ -700,7 +704,16 @@ export function ProfileOnboarding() {
         <LedgerEditorTabPanel activeTabId={stage} tabId="quick-actions"><section className="analytics-tab-panel stack" data-guided-field="quick-actions">
           <h2>Quick Actions</h2>
           <p className="field-hint">Required Fund Manager actions are inherited automatically. Select up to four optional favourites per enabled ledger; defaults can be refined later in Profile Settings.</p>
-          {availableQuickActions.length ? (
+          {quickActionsState === "loading" ? (
+            <section aria-busy="true" className="tracker-summary-shell sportsbook-page-shell">
+              <LedgerLoadingIndicator
+                dataPdId="profile-onboarding.quick-actions.loading"
+                label="Loading Quick Actions"
+              />
+            </section>
+          ) : null}
+          {quickActionsState === "error" ? <p className="error-text" role="alert">Quick Actions could not be loaded. You can continue and configure them later.</p> : null}
+          {quickActionsState === "ready" && availableQuickActions.length ? (
             <div className="settings-card-grid" data-pd-id="founder-onboarding.quick-actions.list">
               {availableQuickActions.map(({ preset, ledger }) => {
                 const key = `${preset.preset_id}:${ledger}`;
@@ -720,7 +733,8 @@ export function ProfileOnboarding() {
                 );
               })}
             </div>
-          ) : <p className="field-hint">No optional Quick Actions are configured for the enabled ledgers. You can create them later in Profile Settings.</p>}
+          ) : null}
+          {quickActionsState === "ready" && !availableQuickActions.length ? <p className="field-hint">No optional Quick Actions are configured for the enabled ledgers. You can create them later in Profile Settings.</p> : null}
         </section></LedgerEditorTabPanel>
       ) : null}
 

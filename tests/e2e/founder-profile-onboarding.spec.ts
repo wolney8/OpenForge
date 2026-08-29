@@ -113,6 +113,43 @@ test("Profile onboarding distinguishes a pending catalogue from an empty catalog
   await expect(page.getByText("Bookmaker A", { exact: true })).toBeVisible();
 });
 
+test("Profile onboarding reuses canonical input geometry in both themes", async ({ page }) => {
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+
+  await page.goto("/profiles/new");
+  const profileCode = page.getByLabel("Profile Code");
+  const bankrollSurface = page.getByLabel("Starting Bankroll").locator("..");
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.evaluate((nextTheme) => {
+      document.documentElement.dataset.theme = nextTheme;
+    }, theme);
+    const geometry = await page.evaluate(() => {
+      const textInput = document.querySelector<HTMLInputElement>("label[data-guided-field='profile-code'] input");
+      const moneyInput = document.querySelector<HTMLElement>("[data-pd-id='profile-onboarding.starting-bankroll']")?.parentElement;
+      if (!textInput || !moneyInput) throw new Error("Expected onboarding controls were not rendered");
+      const textStyles = getComputedStyle(textInput);
+      const moneyStyles = getComputedStyle(moneyInput);
+      return {
+        moneyHeight: moneyInput.getBoundingClientRect().height,
+        moneyRadius: moneyStyles.borderRadius,
+        textHeight: textInput.getBoundingClientRect().height,
+        textRadius: textStyles.borderRadius,
+      };
+    });
+    expect(Math.abs(geometry.moneyHeight - geometry.textHeight)).toBeLessThanOrEqual(1);
+    expect(geometry.moneyRadius).toBe(geometry.textRadius);
+  }
+
+  await expect(profileCode).toBeVisible();
+  await expect(bankrollSurface).toHaveClass(/financial-text-input/);
+});
+
 test("Profile onboarding uses catalogue authority and saves optional Quick Actions", async ({ page }) => {
   let submitted: Record<string, unknown> | undefined;
   await page.route("**/account-catalogue/source", async (route) => {
@@ -137,6 +174,15 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
 
   await page.goto("/profiles/new");
   await expect(page.getByRole("heading", { name: "Create Profile" })).toBeVisible();
+  const startingBankroll = page.getByLabel("Starting Bankroll");
+  await startingBankroll.click();
+  await expect.poll(() => startingBankroll.evaluate((input: HTMLInputElement) => ({
+    end: input.selectionEnd,
+    start: input.selectionStart,
+  }))).toEqual({ end: 4, start: 0 });
+  await page.keyboard.type("25.5");
+  await page.getByLabel("Display Name").click();
+  await expect(startingBankroll).toHaveValue("25.50");
   await page.getByLabel("Display Name").fill("Synthetic Profile");
   await page.getByLabel("Profile Code").fill("profile-001");
   await expect(page.getByLabel("Profile Code")).toHaveValue("PROFILE-001");
@@ -153,9 +199,19 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   for (const name of ["Bookmaker A", "Exchange A", "Bank A"]) {
     await page.getByLabel(`Use ${name}`).check();
   }
-  await page.getByLabel("Bookmaker A opening balance").fill("25.00");
+  const bookmakerBalance = page.getByLabel("Bookmaker A opening balance");
+  await bookmakerBalance.click();
+  await expect.poll(() => bookmakerBalance.evaluate((input: HTMLInputElement) => ({
+    end: input.selectionEnd,
+    start: input.selectionStart,
+  }))).toEqual({ end: 4, start: 0 });
+  await page.keyboard.type("25");
+  await page.getByLabel("Exchange A opening balance").click();
+  await expect(bookmakerBalance).toHaveValue("25.00");
   await page.getByLabel("Exchange A opening balance").fill("50.00");
-  await page.getByLabel("Exchange A commission").fill("0.00");
+  await page.getByLabel("Exchange A commission (%)").fill("0");
+  await page.getByLabel("Bank A opening balance").click();
+  await expect(page.getByLabel("Exchange A commission (%)")).toHaveValue("0.00");
   await page.getByLabel("Bank A opening balance").fill("75.00");
   await page.getByLabel("Main Bank Account").selectOption("BANK-DEMO-001");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -232,7 +288,9 @@ test("Profile onboarding requires an Exchange and its commission before continui
 
   await page.getByLabel("Use Exchange A").check();
   await expect(page.getByText("Enter The Exchange Commission.")).toBeVisible();
-  await page.getByLabel("Exchange A commission").fill("0.02");
+  await page.getByLabel("Exchange A commission (%)").fill("2");
+  await page.getByLabel("Exchange A opening balance").click();
+  await expect(page.getByLabel("Exchange A commission (%)")).toHaveValue("2.00");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Actions" })).toBeVisible();
 });

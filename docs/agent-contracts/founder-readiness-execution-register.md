@@ -97,6 +97,12 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005J7 | Authenticated hosted application smoke | Verify Dashboard, Profile settings, Accounts and representative ledgers through the deployed UI/API paths | Founder hosted persistence checklist | NOT STARTED |
 | PD-FR-005J8 | Neon pre-import recovery point | Create or verify the named Neon recovery point after hosted application smoke succeeds | Neon recovery procedure | BLOCKED |
 | PD-FR-005J9 | Founder onboarding commission serialization | Omit blank optional commissions while preserving valid zero Exchange commission values during Profile creation | Reusable Profile onboarding contract | COMPLETE |
+| PD-FR-005J10 | Founder-path loading consistency | Preserve stable shells and distinguish pending, empty, error and populated states across Dashboard, Profiles, onboarding, Accounts, Notifications, Account Catalogue and Profile Settings | Shared `LedgerLoadingIndicator` pattern | COMPLETE |
+| PD-FR-005J11 | Profile onboarding input parity | Align Profile onboarding fields with canonical field geometry, labels, focus, disabled, theme and responsive behaviour | Signed-off `field-control` and financial input primitives | COMPLETE |
+| PD-FR-005J12 | Notifications input parity | Replace route-local form treatment with canonical search/filter fields and loading state without redesigning Notifications | Signed-off table toolbar controls | COMPLETE |
+| PD-FR-005J13 | Shared financial input behaviour | Centralize decimal sanitising, shorthand entry, two-decimal blur formatting and one-time default-zero selection | Existing `FinancialTextInput` | COMPLETE |
+| PD-FR-005J14 | Onboarding commission entry | Display Exchange commission as a percentage while preserving decimal-fraction storage, explicit zero and blank/null distinction | Existing commission API/calculation contract | COMPLETE |
+| PD-FR-005J15 | Temporary hosted Profile cleanup | Retain the `Vercel` test Profile through hosted onboarding smoke, then remove/archive it through the supported lifecycle | Profile lifecycle workflow | NEEDS VERIFICATION |
 | PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
@@ -148,6 +154,16 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
   Bookmaker and Bank, causing request validation to fail before the transactional create began.
   The client now omits empty optional commissions and preserves `0.00`; the API normalizes stale
   blank optional values while retaining the explicit selected-Exchange commission requirement.
+- `PD-FR-005J10` to `PD-FR-005J14`: the canonical loading and field primitives are the signed-off
+  source. Pending asynchronous data must not display authoritative zero/empty values. Money entry
+  accepts shorthand decimals and selects an untouched default zero only on first focus. Exchange
+  commission is entered as a human percentage (`2.00`) and transported/stored as the existing
+  decimal fraction (`0.02`); blank remains absent and explicit zero remains `0.00`. Unit,
+  typecheck, lint, production-build and focused Playwright verification passed on 2026-08-29,
+  including light/dark input geometry and pending-versus-empty loading states.
+- `PD-FR-005J15`: the Fund Manager-created hosted `Vercel` Profile is intentional temporary test
+  data. It must remain available for this tranche's smoke test and then be removed through the
+  normal Profile lifecycle before workbook migration begins.
 
 ## PD-FR-001 Notification Matrix
 

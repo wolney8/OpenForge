@@ -8,7 +8,7 @@ test("notification panel defaults to New and requires a deliberate hover to mark
   await page.addInitScript(() => {
     window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
   });
-  await page.route(`${apiBaseUrl}/fund-manager/notifications`, async (route) => {
+  await page.route("**/fund-manager/notifications", async (route) => {
     await route.fulfill({
       json: [
         {
@@ -67,7 +67,7 @@ test("notification history retains read notifications until an explicit clear", 
   await page.addInitScript(() => {
     window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
   });
-  await page.route(`${apiBaseUrl}/fund-manager/notifications`, async (route) => {
+  await page.route("**/fund-manager/notifications", async (route) => {
     await route.fulfill({
       json: [
         {
@@ -204,7 +204,7 @@ test("Fund Manager notification centre exposes and locally manages active remind
       (await feedResponse.json()) as Array<Record<string, unknown>>
     ).find((notification) => notification.record_id === sportsbookBetId);
     expect(targetNotification).toBeTruthy();
-    await page.route(`${apiBaseUrl}/fund-manager/notifications`, async (route) => {
+    await page.route("**/fund-manager/notifications", async (route) => {
       const response = await route.fetch();
       const payload = (await response.json()) as Array<Record<string, unknown>>;
       await route.fulfill({
@@ -218,11 +218,10 @@ test("Fund Manager notification centre exposes and locally manages active remind
     const backLayTrigger = page.getByRole("button", {
       name: "Choose back/lay colour theme",
     });
-    for (const route of [
-      "/login",
-      `/profiles/${profileId}/tracker/dashboard`,
-      "/profiles",
-    ]) {
+    await page.goto("/login");
+    await expect(trigger).toHaveCount(0);
+
+    for (const route of [`/profiles/${profileId}/tracker/dashboard`, "/profiles"]) {
       await page.goto(route);
       await expect(trigger).toBeVisible();
     }
