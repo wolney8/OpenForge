@@ -125,6 +125,23 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | COMPLETE |
 | PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | COMPLETE |
 | PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | COMPLETE |
+| PD-FR-007R1 | Founder import review route | Add an authenticated Fund Manager-only review workspace over the current private dry-run artifacts | Canonical Fund Manager page shell and owner middleware | COMPLETE |
+| PD-FR-007R2 | Exception review table | Show decision context, deterministic identity, source trace, findings, proposed target and confidence with signed-off ledger controls | Accounts/Extra Places table toolbar, chips and pagination | COMPLETE |
+| PD-FR-007R3 | Auditable row decisions | Support accept, override target, historical/incomplete, exclude, defer, provider resolution and notes without silent mutation | Existing import review and confirmation patterns | COMPLETE |
+| PD-FR-007R4 | Safe batch review | Preview count, issue pattern, transformation and examples before explicitly confirming non-ambiguous batch decisions | Shared confirmation dialog | COMPLETE |
+| PD-FR-007R5 | Review loadouts and filters | Add the approved exception loadouts plus canonical search and Filter modal | Signed-off ledger loadout/filter controls | COMPLETE |
+| PD-FR-007R6 | Missing provider review | Present Fitzwilliam mapping, catalogue candidate, historical/archive and defer choices without silent provider creation | Fund Manager Account Catalogue authority | COMPLETE |
+| PD-FR-007R7 | Historical Extra Place review | Present Historical Extra Place, retained Sportsbook EP and explicit reasoned reclassification choices for both embedded rows | Extra Place import preparation contract | COMPLETE |
+| PD-FR-007R8 | Historical P&L provenance | Preserve trusted source realised P&L separately from native calculated values without inventing inputs | Financial safety and import provenance rules | COMPLETE |
+| PD-FR-007R9 | Advanced-lay review | Group advanced branch exceptions and allow historical imported-calculation treatment where reconstruction is unsafe | Sportsbook branch-preserving import contract | COMPLETE |
+| PD-FR-007R10 | Legacy text preservation | Preserve full source text in audit context while allowing an approved canonical shortened field | Import traceability contract | COMPLETE |
+| PD-FR-007R11 | Casino fallback review | Offer a generated neutral historical label only through explicit row or batch approval | Casino offer import contract | COMPLETE |
+| PD-FR-007R12 | Free Bet override review | Require an explicit reason, override removal, historical treatment, exclusion or deferral for the reasonless override | Free Bet override contract | COMPLETE |
+| PD-FR-007R13 | Review decision persistence | Store decisions separately by checksum, mapping version, import ID and source fingerprint; reapply only compatible decisions | Private import artifact convention | COMPLETE |
+| PD-FR-007R14 | Review status model | Enforce UNREVIEWED, REVIEWED/ACCEPTED, REVIEWED/OVERRIDDEN, DEFERRED, EXCLUDED and BLOCKED states | Import review lifecycle | COMPLETE |
+| PD-FR-007R15 | Reviewed dry-run rerun | Rebuild the dry run with compatible decisions and report resolved, remaining, excluded, deferred, P&L and row-count impact | Founder dry-run analyzer | COMPLETE |
+| PD-FR-007R16 | Import review UI consistency | Reuse canonical tables, filters, loadouts, dialogs, financial/provider chips, loading and accessibility behaviour | UI consistency enforcer and iconography protocols | COMPLETE |
+| PD-FR-007R17 | Real-import safety gate | Keep review and rerun read-only with no production Profile or ledger writes | Founder import safety gate | COMPLETE |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |

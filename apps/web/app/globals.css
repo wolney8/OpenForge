@@ -2969,6 +2969,106 @@ html[data-theme="dark"] .notification-count-badge {
   }
 }
 
+/* Founder import review reuses ledger controls while retaining source/audit context. */
+.founder-import-review {
+  min-width: 0;
+}
+
+.founder-import-review .extra-place-table-heading-controls {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.import-review-stat-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.import-review-loadouts {
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  width: 100%;
+}
+
+.import-review-table {
+  min-width: 112rem;
+  table-layout: fixed;
+}
+
+.import-review-table th,
+.import-review-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.import-review-table th:nth-child(1) { width: 5rem; }
+.import-review-table th:nth-child(2) { width: 14rem; }
+.import-review-table th:nth-child(3) { width: 15rem; }
+.import-review-table th:nth-child(4) { width: 16rem; }
+.import-review-table th:nth-child(5) { width: 9rem; }
+.import-review-table th:nth-child(6) { width: 15rem; }
+.import-review-table th:nth-child(7) { width: 17rem; }
+.import-review-table th:nth-child(8) { width: 14rem; }
+.import-review-table th:nth-child(9) { width: 6rem; }
+
+.import-review-table td {
+  height: 6rem;
+}
+
+.import-review-table td > strong,
+.import-review-table td > .table-status,
+.import-review-table td > .spreadsheet-row-id {
+  display: block;
+  margin-block: 0.15rem;
+}
+
+.import-review-table details {
+  margin-top: 0.45rem;
+  text-align: left;
+}
+
+.import-review-table details p {
+  color: var(--on-surface-variant);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.import-review-editor-modal {
+  resize: none;
+}
+
+.import-review-dialog-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-review-editor-modal .spreadsheet-row-details {
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.import-review-batch-modal {
+  width: min(44rem, calc(100vw - 2rem));
+}
+
+@media (max-width: 980px) {
+  .import-review-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-review-dialog-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .import-review-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .compact-report-controls {
   display: grid;
   gap: 0.75rem;
