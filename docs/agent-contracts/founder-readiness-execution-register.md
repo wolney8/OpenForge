@@ -122,9 +122,21 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-005J32 | Delayed top-bar state | Keep authenticated top-bar controls stable and expose accessible loading indicators while identity, notifications or Profile summary load | Existing `button-spinner` and shell loading hierarchy | COMPLETE |
 | PD-FR-005J33 | Local development services | Run the repository-standard web and API services on their established ports for local smoke testing | Existing `dev:web` and `dev:api` commands | COMPLETE |
 | PD-UX-LOAD-001 | Founder-path asynchronous states | Distinguish loading, empty, error and populated states on the Dashboard, Profile Accounts, onboarding catalogue and Profile Settings | Shared ledger loading indicator and stable data shells | COMPLETE |
-| PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | NOT STARTED |
-| PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | DEFERRED |
-| PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | NOT STARTED |
+| PD-FR-006 | Workbook mapping | Map the live workbook, including embedded Sportsbook `EP` rows, without inventing data | Existing staging/import workflow | COMPLETE |
+| PD-FR-006A | Workbook Profile extraction | Resolve providers, extract signup/restriction/balance state and map all ledger rows in dry run | Founder migration workflow | COMPLETE |
+| PD-FR-007 | Import dry run | Add anonymised real-schema fixtures, aliases, idempotency and a complete dry-run report | Spreadsheet import contracts | COMPLETE |
+| PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
+| PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
+| PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |
+| PD-FR-006R4 | Profile archive lifecycle | Retain archive as the data-safe lifecycle and exclude archived Profiles from normal recent navigation | Existing Profile archive workflow | COMPLETE |
+| PD-FR-006D1 | Workbook schema discovery | Read the current founder snapshot without modifying it and record sheets, tables and headers | Existing safe XLSX parser | COMPLETE |
+| PD-FR-006D2 | Provider resolution | Resolve workbook accounts against the global catalogue as exact, alias, normalized, ambiguous or missing | Master Account Catalogue authority | COMPLETE |
+| PD-FR-006D3 | Profile settings mapping | Classify Dashboard configuration as importable, derived, legacy or decision-required | Profile onboarding contract | COMPLETE |
+| PD-FR-006D4 | Ledger mapping | Validate Sportsbook, Free Bet, Casino and Cash Adjustment rows against current contracts | Existing import mappers | COMPLETE |
+| PD-FR-006D5 | Historical Extra Place extraction | Detect embedded sportsbook EP rows and classify migration completeness without invented fields | Extra Place contract | COMPLETE |
+| PD-FR-006D6 | Import idempotency | Derive deterministic source identities and prove a repeated simulation is no-op | Existing import source hash contract | COMPLETE |
+| PD-FR-006D7 | Financial reconciliation | Compare mapped ledger periods and account balances with workbook Reports | Existing reconciliation contracts | COMPLETE |
+| PD-FR-006D8 | Private dry-run artifacts | Write private schema, mapping, provider, row-error, EP and readiness reports | Ignored `data/private/imports` convention | COMPLETE |
 | PD-FR-008 | Founder import | Import the real workbook transactionally only after all safety gates pass | Explicit confirmation required | BLOCKED |
 | PD-FR-009 | Reconciliation | Reconcile Profile, account, ledger and report totals against the live workbook | Workbook remains reconciliation authority | BLOCKED |
 | PD-FR-010 | Real-data gate | Classify hosted state and prevent real-data use until auth, Neon, recovery and import checks pass | Security and data-safety rules | IN PROGRESS |

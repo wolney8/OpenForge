@@ -46,25 +46,17 @@ export function FundManagerDashboardLoader({
   pageKind?: "dashboard" | "profiles" | "reports";
 }) {
   const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
-  const [linkedProfileIds, setLinkedProfileIds] = useState<string[] | null>(null);
   const [error, setError] = useState("");
   const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Dashboard";
 
   useEffect(() => {
     const controller = new AbortController();
     beginShellLoading();
-    void Promise.all([
-      fetch("/api/profiles", {
-        cache: "no-store",
-        credentials: "include",
-        signal: controller.signal,
-      }),
-      fetch("/api/auth/session", {
-        cache: "no-store",
-        credentials: "include",
-        signal: controller.signal,
-      }),
-    ]).then(async ([profilesResponse, sessionResponse]) => {
+    void fetch("/api/profiles", {
+      cache: "no-store",
+      credentials: "include",
+      signal: controller.signal,
+    }).then(async (profilesResponse) => {
       if (profilesResponse.status === 401) {
         window.location.replace("/login?error=session_expired");
         return;
@@ -72,11 +64,7 @@ export function FundManagerDashboardLoader({
       if (!profilesResponse.ok) {
         throw new Error("Dashboard data is temporarily unavailable.");
       }
-      const session = sessionResponse.ok
-        ? (await sessionResponse.json()) as { linked_profile_ids?: string[] }
-        : {};
       setProfiles(((await profilesResponse.json()) as ApiProfile[]).map(mapProfile));
-      setLinkedProfileIds(session.linked_profile_ids ?? []);
     }).catch((reason: unknown) => {
       if (!controller.signal.aborted) {
         setError(reason instanceof Error ? reason.message : "Dashboard data is temporarily unavailable.");
@@ -104,7 +92,7 @@ export function FundManagerDashboardLoader({
     );
   }
 
-  if (profiles === null || linkedProfileIds === null) {
+  if (profiles === null) {
     return (
       <main aria-busy="true" aria-label={`Loading ${pageTitle}`} className="page-shell stack">
         <section className="hero-panel split-hero">
@@ -137,16 +125,6 @@ export function FundManagerDashboardLoader({
           <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
         </aside>
       </section>
-      {pageKind === "dashboard" && linkedProfileIds.length === 0 && profiles.length > 0 ? (
-        <section className="content-panel split-panel profile-bootstrap-callout">
-          <div>
-            <span className="eyebrow">Founder Profile</span>
-            <h2>Complete Profile setup</h2>
-            <p>Create the Profile that will own your settings, accounts and tracker records.</p>
-          </div>
-          <Link className="modal-primary-button button-link" href="/profiles/new">Create Profile</Link>
-        </section>
-      ) : null}
       {profiles.length === 0 ? (
         <section className="content-panel stack">
           <h2>{pageKind === "profiles" ? "No Profiles yet" : "Create the first Profile"}</h2>

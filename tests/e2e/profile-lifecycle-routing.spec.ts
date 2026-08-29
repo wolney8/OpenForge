@@ -91,6 +91,21 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(row.getByText("Archived", { exact: true })).toBeVisible();
   });
 
+  test("keeps Dashboard analytics distinct from Profile management", async ({ page }) => {
+    await mockProfileDirectory(page);
+
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true }).first()).toBeVisible();
+    await expect(page.locator("#analytics-panel-performance")).toBeVisible();
+    await expect(page.getByText("Founder Profile", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Complete Profile setup", { exact: true })).toHaveCount(0);
+
+    await page.goto("/profiles");
+    await expect(page.getByRole("heading", { name: "Profiles", exact: true }).first()).toBeVisible();
+    await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible();
+    await expect(page.locator("#analytics-panel-performance")).toHaveCount(0);
+  });
+
   test("uses a no-layout-shift shell progress line and canonical responsive analytics controls", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await mockProfileDirectory(page);

@@ -1,10 +1,10 @@
 # Profile Import/Export Readiness Audit
 
-Last audited: 2026-08-28
+Last audited: 2026-08-29
 
 ## Result
 
-**PARTIAL - do not use for founder cutover yet.**
+**PARTIAL - founder snapshot dry run completed; do not perform the real cutover yet.**
 
 The current staged importer supports synthetic/workbook-shaped imports for Accounts,
 Sportsbook Bets, Free Bets, Casino Offers, Cash Adjustments, Settings, and Reports. It has
@@ -22,8 +22,12 @@ It also exports Accounts, Sportsbook Bets, Free Bets, Casino Offers, and Cash Ad
 
 ## Gaps before founder workbook cutover
 
-- Extra Place / EP Catcher has no supported profile import/export mapping yet.
-- No verified source map or reconciliation fixture exists for the founder's live workbook.
+- Historical Extra Place rows can now be detected in Sportsbook Bets, but rows without place
+  terms, paid-place boundaries, place-lay data or finishing position remain review-only. Missing
+  values are never invented.
+- The founder snapshot has a read-only schema map, provider-resolution report, deterministic
+  source identities and financial reconciliation artifacts under the ignored private import
+  directory. The real cutover remains blocked by the row/provider decisions recorded there.
 - No full round-trip assertion covers every supported profile export/import module.
 - Global catalogue bulk import now has validated preflight, explicit apply, archive-on-omission,
   conflict blocking, atomic replacement and a local recovery backup. Stable-id consolidation with
@@ -33,7 +37,8 @@ It also exports Accounts, Sportsbook Bets, Free Bets, Casino Offers, and Cash Ad
 
 ## Required next cutover gate
 
-1. Freeze and map the supplied founder workbook without committing raw data.
-2. Add synthetic representative fixtures, including EP Catcher mapping.
-3. Run a local dry run, record row/financial reconciliation, and obtain explicit approval.
-4. Complete persistent runtime and owner authentication gates before importing real data.
+1. Resolve every provider conflict in the private provider-resolution report.
+2. Approve or implement mappings for every partial legacy row, including advanced lay branches and
+   over-length legacy text, without truncating source data silently.
+3. Decide how incomplete historical EP rows will be retained in the new EP ledger.
+4. Re-run the dry run against the final fresh cutover snapshot and obtain explicit approval.
