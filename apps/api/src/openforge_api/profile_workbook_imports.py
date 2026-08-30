@@ -239,6 +239,16 @@ def _account_change_reconciliation(
         for row in existing
         if row.account_id not in matched_ids
     ]
+    balance_writes_for_new_accounts = sum(
+        row["action"] == "create"
+        and any(change["field"] == "current_balance" for change in row["changes"])
+        for row in entries
+    )
+    balance_updates_for_existing_accounts = sum(
+        bool(row["existing_account_id"])
+        and any(change["field"] == "current_balance" for change in row["changes"])
+        for row in entries
+    )
     return {
         "default_absent_strategy": absent_strategy,
         "allowed_absent_strategies": [
@@ -257,6 +267,8 @@ def _account_change_reconciliation(
                 any(change["field"] == "current_balance" for change in row["changes"])
                 for row in entries
             ),
+            "balance_writes_for_new_accounts": balance_writes_for_new_accounts,
+            "balance_updates_for_existing_accounts": balance_updates_for_existing_accounts,
             "statuses_to_update": sum(
                 any(change["field"] == "status" for change in row["changes"])
                 for row in entries
@@ -266,7 +278,13 @@ def _account_change_reconciliation(
                 row["action"] == "blocked" for row in entries
             ),
             "profile_accounts_absent_from_workbook": len(absent),
+            "workbook_accounts_accounted": len(entries),
+            "resolved_workbook_accounts": sum(row["action"] != "blocked" for row in entries),
         },
+        "count_overlap_rule": (
+            "Balance updates include point-in-time balance writes for newly created Accounts, "
+            "so New and Balance updates can overlap."
+        ),
         "global_metadata_rule": (
             "Catalogue metadata remains global; only Profile-specific state is planned."
         ),

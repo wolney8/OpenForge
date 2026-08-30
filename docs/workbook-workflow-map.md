@@ -145,6 +145,18 @@ Workflow role:
 7. Apply final override only if needed and explain it in notes
 8. Link resulting free bet if applicable
 
+### Sportsbook opportunity import boundary
+
+- `Prospecting` or `Not Placed` with a blank or `Pending` result proves that the workbook row was
+  not executed, regardless of whether the offer was a welcome, reload, recurring or other offer.
+- These rows are source-accounted as non-transactional opportunities and retain workbook checksum,
+  source row, source ID and deterministic import identity.
+- Until a contracted opportunity-pipeline import target exists, they are excluded automatically
+  from transactional Sportsbook import and contribute `0.00` imported betting P&L.
+- A placed or settled welcome/reload row imports normally. Offer labels never decide execution state.
+- Contradictory lifecycle evidence, such as a prospecting status with a settled result, remains a
+  review item rather than being silently excluded.
+
 ### Free-bet workflow
 
 1. Create or locate free-bet row

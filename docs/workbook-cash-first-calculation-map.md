@@ -65,6 +65,15 @@ OpenForge must keep separate:
 - settled/final value
 - manual override value
 
+### Non-executed opportunity placeholders
+
+Workbook Sportsbook opportunities can carry placeholder/current values before any bet is placed.
+When lifecycle state is `Prospecting` or `Not Placed` with a blank or pending result, that value is
+preserved as source evidence but is not imported as transactional betting P&L. The import plan uses
+`0.00` while keeping the row accounted through deterministic source provenance. Offer name or type
+does not control this rule; an executed welcome or reload bet continues through normal cash-first
+mapping.
+
 ## Free-bet current-value behaviour
 
 ### Open or pending rows

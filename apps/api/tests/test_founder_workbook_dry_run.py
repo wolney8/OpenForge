@@ -7,6 +7,7 @@ from openforge_api.founder_workbook_dry_run import (
     LedgerDefinition,
     _ledger_report,
     _period_reconciliation,
+    is_non_transactional_sportsbook_opportunity,
     missing_extra_place_fields,
     normalize_legacy_account_fields,
     resolve_provider,
@@ -60,6 +61,84 @@ def test_stable_import_key_is_repeatable_and_changes_with_source_data() -> None:
 
     assert first == repeated
     assert changed != first
+
+
+def test_only_lifecycle_proven_unplaced_sportsbook_rows_are_non_transactional() -> None:
+    assert is_non_transactional_sportsbook_opportunity(
+        {"Status": "Not Placed", "Result": "Pending", "OfferType": "Welcome"}
+    )
+    assert is_non_transactional_sportsbook_opportunity(
+        {"Status": "Prospecting", "Result": "", "OfferType": "Daily Reload"}
+    )
+    assert not is_non_transactional_sportsbook_opportunity(
+        {"Status": "Placed", "Result": "Pending", "OfferType": "Welcome"}
+    )
+    assert not is_non_transactional_sportsbook_opportunity(
+        {"Status": "Prospecting", "Result": "Win", "OfferType": "Daily Reload"}
+    )
+
+
+def test_non_transactional_sportsbook_row_is_accounted_without_imported_pnl_or_review() -> None:
+    parsed = SimpleNamespace(
+        table_name="Synthetic_Sportsbook",
+        table_reference="A1:F3",
+        headers=("QualBetID", "Status", "Result", "OfferType", "NetPnL"),
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id="DEMO-PROSPECT",
+                outside_table_range=False,
+                fields={
+                    "Status": "Not Placed",
+                    "Result": "Pending",
+                    "OfferType": "Welcome",
+                    "NetPnL": "-25.00",
+                },
+            ),
+            SimpleNamespace(
+                source_row=3,
+                source_record_id="DEMO-PLACED",
+                outside_table_range=False,
+                fields={
+                    "Status": "Placed",
+                    "Result": "Pending",
+                    "OfferType": "Welcome",
+                    "NetPnL": "-2.00",
+                },
+            ),
+        ],
+    )
+    definition = LedgerDefinition(
+        key="sportsbook",
+        sheet_name="Sportsbook Bets",
+        mapping_version="test-v1",
+        parser=lambda _content: parsed,
+        mapper=lambda _fields: (
+            {},
+            [{"code": "invalid_sportsbook_payload", "message": "Missing execution fields"}],
+        ),
+        settled_statuses=frozenset({"settled"}),
+        open_statuses=frozenset({"prospecting", "not placed", "placed"}),
+        formal_report_statuses=None,
+        pnl_fields=("NetPnL",),
+        report_date_fields=("DateSettling",),
+        settlement_date_fields=("DateSettling",),
+        liability_fields=(),
+    )
+
+    report = _ledger_report(b"synthetic", definition, effective_date=date(2026, 8, 29))
+    prospect, placed = report["validation_rows"]
+
+    assert prospect["action"] == "exclude_non_transactional"
+    assert prospect["migration_state"] == "non_transactional"
+    assert prospect["source_pnl"] == "-25.00"
+    assert prospect["imported_current_pnl"] == "0.00"
+    assert prospect["pnl_normalization"] == "non_transactional_sportsbook_zero_import_value"
+    assert placed["action"] == "review"
+    assert report["summary"]["source_rows"] == 2
+    assert report["summary"]["accounted_rows"] == 2
+    assert report["summary"]["non_transactional"] == 1
+    assert report["summary"]["partial"] == 1
 
 
 def test_legacy_account_values_are_normalized_without_erasing_source_semantics() -> None:
@@ -161,6 +240,7 @@ def test_future_open_rows_keep_current_value_and_do_not_become_exceptions() -> N
         "mapped": 3,
         "partial": 1,
         "rejected": 0,
+        "non_transactional": 0,
         "duplicates": 0,
         "accounted_rows": 4,
         "open": 2,
@@ -176,6 +256,7 @@ def test_future_open_rows_keep_current_value_and_do_not_become_exceptions() -> N
         "future_settling_open": 1,
         "future_settling_open_current_pnl": "-2.00",
         "future_settled_review": 1,
+        "non_transactional_rows": [],
     }
     rows = {row["source_record_id"]: row for row in report["validation_rows"]}
     assert rows["FB-FUTURE-OPEN"]["migration_state"] == "mapped"

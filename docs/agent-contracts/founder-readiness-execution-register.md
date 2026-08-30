@@ -178,6 +178,9 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-007H34 | Reachable review loadouts | Keep every loadout reachable through a bounded horizontal rail and canonical arrow controls | Extra Places loadout rail | COMPLETE |
 | PD-FR-007H35 | Review-to-next workflow | Add Save & next and evidence-rich safe batch confirmation | Existing modal footer and batch confirmation | COMPLETE |
 | PD-FR-007H36 | Import semantic protection | Retain workbook-first calculations, deterministic IDs, provider resolution, EP options and decision semantics unchanged | Import review and financial regression tests | COMPLETE |
+| PD-FR-007H46 | Non-executed Sportsbook opportunities | Auto-classify lifecycle-proven Prospecting/Not Placed pending rows as source-accounted non-transactional opportunities with zero imported betting P&L | Workbook workflow and cash-first contracts | COMPLETE |
+| PD-FR-007H47 | Prospecting review/P&L baseline | Remove non-executed opportunities from manual review and decision-caused P&L impact without changing workbook report reconciliation | Import review reconciliation | COMPLETE |
+| PD-FR-007H48 | Profile Account plan count clarity | Explain that new Account creation and point-in-time balance writes overlap and show the new/existing balance-write split | Existing Profile Account change reconciliation | COMPLETE |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |
@@ -485,6 +488,7 @@ directory before founder workbook dry-run begins.
 - `PD-FR-007H40` COMPLETE: pre-execution Free Bets do not require strategy or event data solely because they have not been placed.
 - `PD-FR-007H41` COMPLETE: an unplaced £10 Free Bet retains face value and imports with £0.00 current P&L rather than -£10.
 - `PD-FR-007H42` COMPLETE: the private regression oracle now produces 44 partial ledger rows (23 Sportsbook, 9 Free Bet, 12 Casino) instead of 114; all source rows remain accounted for.
+- `PD-FR-007H46` COMPLETE: mapping v4 reclassifies five lifecycle-proven non-executed rows in the retained private oracle, reducing it to 39 partial ledger rows and 42 total review items while preserving 710/710 ledger-row accounting and zero week/month/year reconciliation differences. The newer hosted workbook must be re-uploaded because raw upload bytes are intentionally not retained.
 - `PD-FR-007H43` COMPLETE: non-imported workbook review runs can be deleted with canonical destructive confirmation; completed/importing runs remain protected.
 - `PD-FR-007H44` COMPLETE: unnecessary upload preamble was removed and the existing form/action geometry retained.
 - `PD-FR-007H45` COMPLETE: review evidence sections use separate canonical stacked subpanels rather than concatenated headings/text.

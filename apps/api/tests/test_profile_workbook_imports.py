@@ -97,10 +97,11 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         == f"/profiles/profile-import-test/imports/{import_run_id}/review"
         for item in import_notifications
     )
-    assert workspace["metadata"]["original_partial_count"] == 44
+    assert workspace["metadata"]["original_partial_count"] == 39
     assert workspace["metadata"]["provider_conflict_count"] == 1
     assert workspace["metadata"]["historical_ep_count"] == 2
-    assert len(workspace["items"]) == 47
+    assert len(workspace["items"]) == 42
+    assert workspace["reconciliation"]["pnl_impact"] == "0.00"
     assert workspace["source_summary"]["accounts"]["row_count"] == 120
     assert workspace["source_summary"]["accounts"]["balances"] == {
         "Bookmaker": "666.12",
@@ -110,11 +111,22 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     assert workspace["source_summary"]["accounts"]["pending_withdrawals"] == "50.00"
     account_changes = workspace["source_summary"]["accounts"]["change_reconciliation"]
     assert account_changes["counts"]["new_profile_accounts"] == 119
+    assert account_changes["counts"]["balances_to_update"] == 103
+    assert account_changes["counts"]["balance_writes_for_new_accounts"] == 103
+    assert account_changes["counts"]["balance_updates_for_existing_accounts"] == 0
+    assert account_changes["counts"]["workbook_accounts_accounted"] == 120
+    assert account_changes["counts"]["resolved_workbook_accounts"] == 119
     assert account_changes["counts"]["workbook_accounts_not_found_globally"] == 1
     assert account_changes["default_absent_strategy"] == "leave_unchanged"
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["source_rows"] == 502
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 479
-    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 23
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 18
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["non_transactional"] == 5
+    assert len(
+        workspace["source_summary"]["ledgers"]["sportsbook"][
+            "non_transactional_rows"
+        ]
+    ) == 5
     assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 9
     assert workspace["source_summary"]["ledgers"]["casino"]["partial"] == 12
     assert workspace["source_summary"]["ledgers"]["cash_adjustments"]["mapped"] == 23
@@ -138,7 +150,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
 
     reloaded = client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert reloaded.status_code == 200
-    assert len(reloaded.json()["items"]) == 47
+    assert len(reloaded.json()["items"]) == 42
 
     advanced_lay = next(
         item for item in workspace["items"] if "advanced_lay" in item["issue_types"]
@@ -177,7 +189,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
     ).json()
     assert rerun_workspace["run_status"] == "REVIEW_REQUIRED"
-    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 43
+    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 38
     assert rerun_workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
     assert {
         event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]

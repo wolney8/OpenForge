@@ -42,7 +42,10 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v3"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v4"
+
+NON_TRANSACTIONAL_SPORTSBOOK_STATUSES = frozenset({"prospecting", "not placed"})
+NON_TRANSACTIONAL_SPORTSBOOK_RESULTS = frozenset({"", "pending"})
 
 SnapshotClassification = Literal["EXACT", "ALIAS", "NORMALIZED", "AMBIGUOUS", "MISSING"]
 JsonObject = dict[str, Any]
@@ -261,6 +264,16 @@ def _decimal(value: object) -> Decimal | None:
     return parsed if parsed.is_finite() else None
 
 
+def is_non_transactional_sportsbook_opportunity(fields: JsonObject) -> bool:
+    """Return true only when workbook lifecycle state proves no bet was executed."""
+    status = str(fields.get("Status", "")).strip().casefold()
+    result = str(fields.get("Result", "")).strip().casefold()
+    return (
+        status in NON_TRANSACTIONAL_SPORTSBOOK_STATUSES
+        and result in NON_TRANSACTIONAL_SPORTSBOOK_RESULTS
+    )
+
+
 def _first_value(fields: JsonObject, names: tuple[str, ...]) -> object:
     for name in names:
         value = fields.get(name, "")
@@ -446,11 +459,19 @@ def _ledger_report(
     date_quality_counts: Counter[str] = Counter()
     future_open_examples: list[JsonObject] = []
     future_settled_examples: list[JsonObject] = []
+    non_transactional_rows: list[JsonObject] = []
     settled_count = 0
     open_count = 0
     for row in parsed.rows:
         mapped_result = definition.mapper(row.fields)
         errors = list(mapped_result[1])
+        is_non_transactional = (
+            definition.key == "sportsbook"
+            and is_non_transactional_sportsbook_opportunity(row.fields)
+        )
+        if is_non_transactional:
+            # Execution-only validation does not apply to an opportunity that was never bet.
+            errors = []
         key = stable_import_key(
             definition.sheet_name,
             row.source_row,
@@ -468,7 +489,7 @@ def _ledger_report(
             strategy_counts[strategy] += 1
         is_cash_adjustment = definition.key == "cash_adjustments"
         is_settled = is_cash_adjustment or normalized_status in definition.settled_statuses
-        is_open = normalized_status in definition.open_statuses
+        is_open = normalized_status in definition.open_statuses and not is_non_transactional
         if is_settled:
             settled_count += 1
         elif is_open:
@@ -477,6 +498,8 @@ def _ledger_report(
         if source_pnl is not None:
             raw_source_pnl_total += source_pnl
         pnl = source_pnl
+        if is_non_transactional:
+            pnl = Decimal("0")
         if (
             definition.key == "free_bets"
             and normalized_status in {"prospecting", "available", "not yet awarded"}
@@ -564,13 +587,39 @@ def _ledger_report(
                     "source_record_id": row.source_record_id,
                 }
             )
-        migration_state = "mapped" if not errors else "partial"
+        migration_state = (
+            "partial"
+            if errors
+            else "non_transactional"
+            if is_non_transactional
+            else "mapped"
+        )
+        action = (
+            "review"
+            if errors
+            else "exclude_non_transactional"
+            if is_non_transactional
+            else "insert"
+        )
+        if is_non_transactional:
+            non_transactional_rows.append(
+                {
+                    "source_row": row.source_row,
+                    "source_record_id": row.source_record_id,
+                    "import_key": key,
+                    "status": status,
+                    "source_pnl": "" if source_pnl is None else f"{source_pnl:.2f}",
+                    "imported_pnl": "0.00",
+                    "classification": "non_executed_sportsbook_opportunity",
+                    "source_provenance_retained": True,
+                }
+            )
         rows.append(
             {
                 "source_row": row.source_row,
                 "source_record_id": row.source_record_id,
                 "import_key": key,
-                "action": "insert" if not errors else "review",
+                "action": action,
                 "migration_state": migration_state,
                 "errors": errors,
                 "outside_table_range": row.outside_table_range,
@@ -578,7 +627,9 @@ def _ledger_report(
                 "source_pnl": "" if source_pnl is None else f"{source_pnl:.2f}",
                 "imported_current_pnl": "" if pnl is None else f"{pnl:.2f}",
                 "pnl_normalization": (
-                    "unplaced_free_bet_zero_current_value"
+                    "non_transactional_sportsbook_zero_import_value"
+                    if is_non_transactional and source_pnl is not None and pnl != source_pnl
+                    else "unplaced_free_bet_zero_current_value"
                     if source_pnl is not None and pnl != source_pnl
                     else ""
                 ),
@@ -590,6 +641,8 @@ def _ledger_report(
             }
         )
     partial = sum(item["migration_state"] == "partial" for item in rows)
+    mapped = sum(item["migration_state"] == "mapped" for item in rows)
+    non_transactional = len(non_transactional_rows)
     return {
         "schema": {
             "sheet": definition.sheet_name,
@@ -601,14 +654,15 @@ def _ledger_report(
         },
         "summary": {
             "source_rows": len(rows),
-            "mapped": len(rows) - partial,
+            "mapped": mapped,
             "partial": partial,
             "rejected": 0,
+            "non_transactional": non_transactional,
             "duplicates": duplicate_count,
             "accounted_rows": len(rows),
             "open": open_count,
             "settled": settled_count,
-            "other_state": len(rows) - open_count - settled_count,
+            "other_state": len(rows) - open_count - settled_count - non_transactional,
             "source_pnl_total": f"{raw_source_pnl_total:.2f}",
             "imported_current_or_realised_pnl_total": f"{pnl_total:.2f}",
             "pnl_normalization_impact": f"{pnl_total - raw_source_pnl_total:.2f}",
@@ -619,6 +673,7 @@ def _ledger_report(
             "future_settling_open": date_quality_counts["valid_future_open"],
             "future_settling_open_current_pnl": f"{future_open_current_pnl:.2f}",
             "future_settled_review": date_quality_counts["future_settled_review"],
+            "non_transactional_rows": non_transactional_rows,
         },
         "status_counts": dict(sorted(status_counts.items())),
         "strategy_counts": dict(sorted(strategy_counts.items())),
