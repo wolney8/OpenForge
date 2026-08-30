@@ -1235,11 +1235,24 @@ def reconciliation_warning(fields: dict[str, JsonScalar]) -> dict[str, str] | No
     )
 
 
+def normalize_workbook_match_strategy(value: JsonScalar) -> str:
+    """Translate workbook vocabulary to the existing canonical ledger strategy."""
+    text = str(value or "").strip()
+    if text.casefold() in {"*no exchange*", "no exchange"}:
+        return "No Lay"
+    return text
+
+
 def map_sportsbook_import_fields(
     fields: dict[str, JsonScalar],
 ) -> tuple[dict[str, JsonScalar], list[dict[str, str]]]:
+    normalized_fields = dict(fields)
+    normalized_fields["MatchStrategy"] = normalize_workbook_match_strategy(
+        fields.get("MatchStrategy", "")
+    )
     mapped: dict[str, JsonScalar] = {
-        target: fields.get(source, "") for source, target in SPORTSBOOK_SOURCE_MAP.items()
+        target: normalized_fields.get(source, "")
+        for source, target in SPORTSBOOK_SOURCE_MAP.items()
     }
     mapped.update(
         {
@@ -1252,9 +1265,9 @@ def map_sportsbook_import_fields(
         }
     )
     errors: list[dict[str, str]] = []
-    match_strategy = field_text(fields, "MatchStrategy")
+    match_strategy = field_text(normalized_fields, "MatchStrategy")
     outcome_count = field_text(fields, "OutcomeCount")
-    has_advanced_branch = any(
+    has_advanced_branch = match_strategy != "No Lay" and any(
         field_text(fields, name) for name in SPORTSBOOK_ADVANCED_BRANCH_FIELDS
     )
     branch_json = field_text(fields, "MultiLayOutcomesJson")
@@ -1273,7 +1286,8 @@ def map_sportsbook_import_fields(
                 )
             )
     if (
-        (
+        match_strategy != "No Lay"
+        and (
             match_strategy in {"Partial Lay", "Multilay", "Multilay-Underlay"}
             or (outcome_count and outcome_count != "1")
             or has_advanced_branch
@@ -1303,8 +1317,13 @@ def map_sportsbook_import_fields(
 def map_free_bet_import_fields(
     fields: dict[str, JsonScalar],
 ) -> tuple[dict[str, JsonScalar], list[dict[str, str]]]:
+    normalized_fields = dict(fields)
+    normalized_fields["MatchStrategy"] = normalize_workbook_match_strategy(
+        fields.get("MatchStrategy", "")
+    )
     mapped: dict[str, JsonScalar] = {
-        target: fields.get(source, "") for source, target in FREE_BET_SOURCE_MAP.items()
+        target: normalized_fields.get(source, "")
+        for source, target in FREE_BET_SOURCE_MAP.items()
     }
     mapped["lay_commission_1"] = ""
     errors: list[dict[str, str]] = []

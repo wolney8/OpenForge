@@ -282,3 +282,25 @@ def test_available_free_bet_without_matching_plan_resolves_as_zero_value_placeho
         "0.00 until conversion inputs are entered."
         in result.calculation_notes
     )
+
+
+def test_unplaced_ten_pound_free_bet_has_zero_current_value_without_strategy() -> None:
+    result = calculate_free_bet_current_value(
+        FreeBetCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="FB-UNPLACED-TEN",
+            status="Prospecting",
+            result="Pending",
+            retention_mode="SNR",
+            free_bet_value="10.00",
+            back_odds="",
+            match_strategy="",
+        ),
+        as_of_datetime=datetime(2026, 7, 1, 12, 0, 0),
+    )
+
+    assert result.calculation_state == "resolved"
+    assert result.projected_current_pnl == Decimal("0.00")
+    assert result.reporting_value == Decimal("0.00")
+    assert result.actual_net_pnl is None
+    assert result.final_net_pnl is None

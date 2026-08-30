@@ -42,7 +42,7 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v2"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v3"
 
 SnapshotClassification = Literal["EXACT", "ALIAS", "NORMALIZED", "AMBIGUOUS", "MISSING"]
 JsonObject = dict[str, Any]
@@ -374,7 +374,7 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
         if balance is not None and canonical_type in balances:
             balances[canonical_type] += balance
         normalized_fields, transformations = normalize_legacy_account_fields(row.fields)
-        _mapped, errors, warnings = map_account_import_fields(normalized_fields)
+        mapped, errors, warnings = map_account_import_fields(normalized_fields)
         key = stable_import_key(parsed.table_name, row.source_row, row.source_record_id, row.fields)
         if key in seen_keys:
             repeat_no_ops += 1
@@ -388,6 +388,10 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
                 "warnings": warnings,
                 "transformations": transformations,
                 "import_key": key,
+                "catalogue_id": resolution.catalogue_id or "",
+                "canonical_brand": resolution.canonical_brand or "",
+                "account_type": canonical_type,
+                "mapped_profile_state": mapped,
             }
         )
     resolution_counts = Counter(item.classification for item in resolutions)
@@ -430,6 +434,7 @@ def _ledger_report(
     keys: set[str] = set()
     duplicate_count = 0
     pnl_total = Decimal("0")
+    raw_source_pnl_total = Decimal("0")
     reportable_pnl_total = Decimal("0")
     realised_pnl_total = Decimal("0")
     open_current_pnl_total = Decimal("0")
@@ -468,7 +473,17 @@ def _ledger_report(
             settled_count += 1
         elif is_open:
             open_count += 1
-        pnl = _decimal(_first_value(row.fields, definition.pnl_fields))
+        source_pnl = _decimal(_first_value(row.fields, definition.pnl_fields))
+        if source_pnl is not None:
+            raw_source_pnl_total += source_pnl
+        pnl = source_pnl
+        if (
+            definition.key == "free_bets"
+            and normalized_status in {"prospecting", "available", "not yet awarded"}
+            and str(row.fields.get("Result", "")).strip().casefold() == "pending"
+            and not str(row.fields.get("MatchStrategy", "")).strip()
+        ):
+            pnl = Decimal("0")
         if pnl is not None:
             pnl_total += pnl
             if is_settled:
@@ -560,7 +575,13 @@ def _ledger_report(
                 "errors": errors,
                 "outside_table_range": row.outside_table_range,
                 "status": status,
-                "source_pnl": "" if pnl is None else f"{pnl:.2f}",
+                "source_pnl": "" if source_pnl is None else f"{source_pnl:.2f}",
+                "imported_current_pnl": "" if pnl is None else f"{pnl:.2f}",
+                "pnl_normalization": (
+                    "unplaced_free_bet_zero_current_value"
+                    if source_pnl is not None and pnl != source_pnl
+                    else ""
+                ),
                 "current_worst_case_pnl": ("" if pnl is None or not is_open else f"{pnl:.2f}"),
                 "realised_pnl": "" if pnl is None or not is_settled else f"{pnl:.2f}",
                 "source_date": settlement_date,
@@ -588,7 +609,9 @@ def _ledger_report(
             "open": open_count,
             "settled": settled_count,
             "other_state": len(rows) - open_count - settled_count,
-            "source_pnl_total": f"{pnl_total:.2f}",
+            "source_pnl_total": f"{raw_source_pnl_total:.2f}",
+            "imported_current_or_realised_pnl_total": f"{pnl_total:.2f}",
+            "pnl_normalization_impact": f"{pnl_total - raw_source_pnl_total:.2f}",
             "reportable_pnl_total": f"{reportable_pnl_total:.2f}",
             "realised_settled_pnl": f"{realised_pnl_total:.2f}",
             "open_current_worst_case_pnl": f"{open_current_pnl_total:.2f}",

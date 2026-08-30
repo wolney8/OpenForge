@@ -46,7 +46,7 @@ MatchStrategyValue = Literal["Standard", "Underlay", "Overlay", "Custom", "No La
 
 class FreeBetPayload(BaseModel):
     free_bet_id: str | None = Field(default=None, max_length=64)
-    event_name: str = Field(min_length=1, max_length=200)
+    event_name: str = Field(default="", max_length=200)
     offer_text: str = Field(default="", max_length=200)
     bookmaker: str = Field(min_length=1, max_length=120)
     offer_type: str = Field(default="", max_length=120)
@@ -58,7 +58,7 @@ class FreeBetPayload(BaseModel):
     retention_mode: RetentionModeValue
     free_bet_value: str = Field(default="", max_length=40)
     back_odds: str = Field(default="", max_length=40)
-    match_strategy: MatchStrategyValue
+    match_strategy: MatchStrategyValue | Literal[""] = ""
     lay_odds_1: str = Field(default="", max_length=40)
     lay_actual: str = Field(default="", max_length=40)
     lay_matched_stake_1: str = Field(default="", max_length=40)
@@ -82,6 +82,11 @@ class FreeBetPayload(BaseModel):
         if self.manual_override_value and not self.manual_override_reason.strip():
             msg = "manual_override_reason is required when manual_override_value is provided"
             raise ValueError(msg)
+        pre_execution = {"Prospecting", "Available", "Not Yet Awarded"}
+        if self.status not in pre_execution and not self.match_strategy:
+            raise ValueError("match_strategy is required once a Free Bet is placed or resolved")
+        if self.status not in pre_execution and not self.event_name:
+            raise ValueError("event_name is required once a Free Bet is placed or resolved")
         return self
 
 

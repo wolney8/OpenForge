@@ -477,6 +477,19 @@ from `apps/web/lib/local-db.ts`. `PD-FR-005J28` remains a hosted Fund Manager sm
 temporary `Vercel` Profile to verify edit/navigation/recency and then archive it through the Profile
 directory before founder workbook dry-run begins.
 
+## Import Review Semantics And Accounts Pass
+
+- `PD-FR-007H37` COMPLETE: a non-interactive review-table row click or Space key toggles its existing multi-select checkbox state.
+- `PD-FR-007H38` COMPLETE: dry runs include a target-Profile Account change plan for creates, matches, balance/status updates, unchanged, unresolved and absent accounts.
+- `PD-FR-007H39` COMPLETE: workbook `*No Exchange*` normalizes to canonical `No Lay`; no Exchange or lay fields are invented.
+- `PD-FR-007H40` COMPLETE: pre-execution Free Bets do not require strategy or event data solely because they have not been placed.
+- `PD-FR-007H41` COMPLETE: an unplaced £10 Free Bet retains face value and imports with £0.00 current P&L rather than -£10.
+- `PD-FR-007H42` COMPLETE: the private regression oracle now produces 44 partial ledger rows (23 Sportsbook, 9 Free Bet, 12 Casino) instead of 114; all source rows remain accounted for.
+- `PD-FR-007H43` COMPLETE: non-imported workbook review runs can be deleted with canonical destructive confirmation; completed/importing runs remain protected.
+- `PD-FR-007H44` COMPLETE: unnecessary upload preamble was removed and the existing form/action geometry retained.
+- `PD-FR-007H45` COMPLETE: review evidence sections use separate canonical stacked subpanels rather than concatenated headings/text.
+- `PD-FR-007H46` NEEDS VERIFICATION: hosted smoke must confirm prior background analysis, notifications, persisted decisions, reset, Save & next, batch review, compact table, loadouts and P&L impact remain intact.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import

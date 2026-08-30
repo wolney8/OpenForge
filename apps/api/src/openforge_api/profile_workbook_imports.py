@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.auth import require_request_session
-from openforge_api.db import connect
+from openforge_api.db import connect, list_accounts
 from openforge_api.founder_import_review import (
     ACTION_STATUS,
     SAFE_BATCH_ACTIONS,
@@ -79,6 +79,12 @@ class ResetDecisionsPayload(BaseModel):
     confirmed: bool
 
 
+class AccountAbsenceStrategyPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: str = Field(pattern="^(leave_unchanged|archive|deactivate)$")
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -128,6 +134,9 @@ def _summary(result: dict[str, Any]) -> dict[str, Any]:
                 if key in result["accounts"]
             },
             "row_count": len(result["accounts"].get("validation_rows", [])),
+            "change_reconciliation": result["accounts"].get(
+                "change_reconciliation", {}
+            ),
         },
         "profile_settings": result["profile_settings"],
         "ledgers": {key: value["summary"] for key, value in result["ledgers"].items()},
@@ -137,6 +146,131 @@ def _summary(result: dict[str, Any]) -> dict[str, Any]:
         },
         "reports": result["reports"],
         "readiness": result["readiness"],
+    }
+
+
+def _normalise_comparable(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value or "").strip()
+
+
+def _account_change_reconciliation(
+    profile_id: str,
+    account_report: dict[str, Any],
+    *,
+    absent_strategy: str = "leave_unchanged",
+) -> dict[str, Any]:
+    existing = list_accounts(profile_id)
+    by_catalogue = {
+        row.catalogue_id: row for row in existing if row.catalogue_id
+    }
+    by_name_type = {
+        (row.account.casefold(), row.type.casefold()): row for row in existing
+    }
+    matched_ids: set[str] = set()
+    entries: list[dict[str, Any]] = []
+    comparable_fields = (
+        "current_balance",
+        "pending_withdrawal_amount",
+        "status",
+        "channel",
+        "counts_in_cash_total",
+        "last_balance_update",
+        "sign_up_date",
+        "notes",
+    )
+    for source in account_report.get("validation_rows", []):
+        mapped = source.get("mapped_profile_state", {})
+        catalogue_id = str(source.get("catalogue_id", ""))
+        account_name = str(mapped.get("account", "")).strip()
+        account_type = str(mapped.get("type", "")).strip()
+        current = by_catalogue.get(catalogue_id) if catalogue_id else None
+        if current is None:
+            current = by_name_type.get((account_name.casefold(), account_type.casefold()))
+        if source.get("errors"):
+            action = "blocked"
+            changes: list[dict[str, str]] = []
+        elif current is None:
+            action = "create"
+            changes = [
+                {
+                    "field": field,
+                    "from": "",
+                    "to": _normalise_comparable(mapped.get(field)),
+                }
+                for field in comparable_fields
+                if _normalise_comparable(mapped.get(field))
+            ]
+        else:
+            matched_ids.add(current.account_id)
+            changes = []
+            for field in comparable_fields:
+                before = _normalise_comparable(getattr(current, field))
+                after = _normalise_comparable(mapped.get(field))
+                if before != after:
+                    changes.append({"field": field, "from": before, "to": after})
+            action = "update" if changes else "unchanged"
+        entries.append(
+            {
+                "source_row": source.get("source_row"),
+                "import_key": source.get("import_key"),
+                "catalogue_id": catalogue_id,
+                "canonical_brand": source.get("canonical_brand", account_name),
+                "account_type": source.get("account_type", account_type),
+                "existing_account_id": current.account_id if current else "",
+                "action": action,
+                "changes": changes,
+                "profile_state": {
+                    field: mapped.get(field) for field in comparable_fields
+                },
+            }
+        )
+    absent = [
+        {
+            "account_id": row.account_id,
+            "catalogue_id": row.catalogue_id or "",
+            "account": row.account,
+            "type": row.type,
+            "current_balance": row.current_balance,
+            "status": row.status,
+            "planned_action": absent_strategy,
+        }
+        for row in existing
+        if row.account_id not in matched_ids
+    ]
+    return {
+        "default_absent_strategy": absent_strategy,
+        "allowed_absent_strategies": [
+            "leave_unchanged",
+            "archive",
+            "deactivate",
+        ],
+        "entries": entries,
+        "existing_absent_from_workbook": absent,
+        "counts": {
+            "new_profile_accounts": sum(row["action"] == "create" for row in entries),
+            "existing_profile_accounts_matched": sum(
+                bool(row["existing_account_id"]) for row in entries
+            ),
+            "balances_to_update": sum(
+                any(change["field"] == "current_balance" for change in row["changes"])
+                for row in entries
+            ),
+            "statuses_to_update": sum(
+                any(change["field"] == "status" for change in row["changes"])
+                for row in entries
+            ),
+            "unchanged_accounts": sum(row["action"] == "unchanged" for row in entries),
+            "workbook_accounts_not_found_globally": sum(
+                row["action"] == "blocked" for row in entries
+            ),
+            "profile_accounts_absent_from_workbook": len(absent),
+        },
+        "global_metadata_rule": (
+            "Catalogue metadata remains global; only Profile-specific state is planned."
+        ),
+        "dry_run_only": True,
     }
 
 
@@ -354,6 +488,10 @@ def _analyse_workbook_job(
             source_path="authenticated-upload",
             effective_at=effective_at,
         )
+        result["accounts"]["change_reconciliation"] = _account_change_reconciliation(
+            profile_id,
+            result["accounts"],
+        )
         metadata, items = build_review_items_from_dry_run(result, content)
         total_rows = sum(
             int(ledger.get("summary", {}).get("source_rows", 0))
@@ -550,6 +688,70 @@ def get_profile_workbook_import(
 ) -> dict[str, Any]:
     require_request_session(request)
     return _workspace(profile_id, import_run_id)
+
+
+@router.put("/{import_run_id}/account-absence-strategy")
+def put_profile_workbook_account_absence_strategy(
+    profile_id: str,
+    import_run_id: str,
+    payload: AccountAbsenceStrategyPayload,
+    request: Request,
+) -> dict[str, Any]:
+    require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    reconciliation = run["summary"].get("accounts", {}).get("change_reconciliation")
+    if not reconciliation:
+        raise HTTPException(status_code=409, detail="Account reconciliation is not ready")
+    reconciliation["default_absent_strategy"] = payload.strategy
+    for row in reconciliation.get("existing_absent_from_workbook", []):
+        row["planned_action"] = payload.strategy
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE profile_import_runs
+            SET summary_json = ?, updated_at = ?
+            WHERE profile_id = ? AND import_run_id = ?
+            """,
+            (_json(run["summary"]), _now(), profile_id, import_run_id),
+        )
+    return _workspace(profile_id, import_run_id)
+
+
+@router.delete("/{import_run_id}", status_code=204)
+def delete_profile_workbook_import(
+    profile_id: str,
+    import_run_id: str,
+    request: Request,
+) -> None:
+    require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    if run["status"] in {"ANALYSING", "IMPORTING", "COMPLETE"}:
+        raise HTTPException(
+            status_code=409,
+            detail="This import run cannot be deleted in its current state",
+        )
+    with connect() as connection:
+        connection.execute(
+            """
+            DELETE FROM profile_import_review_decisions
+            WHERE profile_id = ? AND import_run_id = ?
+            """,
+            (profile_id, import_run_id),
+        )
+        connection.execute(
+            """
+            DELETE FROM profile_import_review_items
+            WHERE profile_id = ? AND import_run_id = ?
+            """,
+            (profile_id, import_run_id),
+        )
+        connection.execute(
+            """
+            DELETE FROM profile_import_runs
+            WHERE profile_id = ? AND import_run_id = ?
+            """,
+            (profile_id, import_run_id),
+        )
 
 
 @router.put("/{import_run_id}/decisions/{item_id}")

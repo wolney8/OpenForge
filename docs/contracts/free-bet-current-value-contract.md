@@ -98,7 +98,7 @@ It supports:
 | `retention_mode` | enum | Yes | free-bet row | entered | Yes | `SNR` or `SR` |
 | `free_bet_value` | money | Yes | free-bet row | entered | Yes | main value input |
 | `back_odds` | decimal | Yes | free-bet row | entered | Yes | main odds input |
-| `match_strategy` | enum | Yes | free-bet row | entered | Yes | `Standard`, `Underlay`, `Overlay`, `Custom`, `No Lay`, `Partial Lay` |
+| `match_strategy` | enum | Conditional | free-bet row | entered | Yes | optional while pre-execution; required once placed/resolved |
 | `lay_odds_1` | decimal | No | free-bet row | entered | Yes | required except some no-lay/custom cases |
 | `exchange` | string | No | free-bet row | entered | Yes | commission lookup |
 | `lay_actual` | money | No | free-bet row | entered/override | Yes | takes precedence when supplied |
@@ -175,6 +175,8 @@ Scenario formulas:
 
 Current-value formula:
 
+- an unplaced `Prospecting`, `Available`, or `Not Yet Awarded` row with `Pending` result and no matching plan retains `free_bet_value` separately but has `projected_current_pnl = 0.00`
+- face value is not a cash loss: a £10 unplaced Free Bet must not be interpreted as `-£10` P&L
 - if row is open/pending:
   - `min(scenario_pnl_if_back_wins, scenario_pnl_if_lay_wins)`
 

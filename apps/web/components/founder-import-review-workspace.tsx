@@ -102,6 +102,27 @@ type Workspace = {
       future_settling_open: number;
       open_exposure: string;
     }>;
+    accounts?: {
+      change_reconciliation?: {
+        default_absent_strategy: "leave_unchanged" | "archive" | "deactivate";
+        counts: Record<string, number>;
+        entries: Array<{
+          source_row: number;
+          canonical_brand: string;
+          account_type: string;
+          action: string;
+          changes: Array<{ field: string; from: string; to: string }>;
+        }>;
+        existing_absent_from_workbook: Array<{
+          account_id: string;
+          account: string;
+          type: string;
+          current_balance: string;
+          status: string;
+          planned_action: string;
+        }>;
+      };
+    };
   };
   financial_reconciliation?: Record<"week" | "month" | "year", {
     period_key: string;
@@ -484,6 +505,39 @@ export function FounderImportReviewWorkspace({
     setDraft(initialDraft(item));
   }
 
+  function toggleSelected(itemId: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }
+
+  function rowInteractionTarget(target: EventTarget | null) {
+    return target instanceof Element
+      && Boolean(target.closest("a,button,input,select,textarea,label,[role='button'],[contenteditable='true']"));
+  }
+
+  async function updateAccountAbsenceStrategy(strategy: string) {
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/account-absence-strategy`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      setWorkspace(await response.json() as Workspace);
+      setMessage("Existing Profile Account absence strategy saved.");
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to save the account strategy.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveDecision(advance = false) {
     if (!editing || !draft) return;
     setSaving(true);
@@ -639,6 +693,7 @@ export function FounderImportReviewWorkspace({
   const job = workspace.source_summary?.job;
   const pnlImpactIsZero = Number(workspace.reconciliation.pnl_impact) === 0;
   const selectedDecisionCount = workspace.items.filter((item) => selected.has(item.item_id) && item.decision).length;
+  const accountChanges = workspace.source_summary?.accounts?.change_reconciliation;
 
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
@@ -674,6 +729,12 @@ export function FounderImportReviewWorkspace({
           return <tr key={period}><td><strong>{period[0].toLocaleUpperCase() + period.slice(1)}</strong><span className="table-status">{reconciliation.period_key}</span></td><td><FinancialValue animate={false} value={reconciliation.workbook_report.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={reconciliation.plum_duff_from_mapped_rows.total} /></td><td><FinancialValue animate={false} value={reconciliation.financial_views.realised_settled_pnl.total} /></td><td><FinancialValue animate={false} value={reconciliation.financial_views.open_current_worst_case_pnl.total} /></td><td><FinancialValue animate={false} value={reconciliation.difference ?? "0.00"} /></td></tr>;
         })}</tbody></table></div>
       </details> : null}
+      {accountChanges ? <details className="content-subpanel stack-tight import-financial-reconciliation">
+        <summary>Profile Account changes · {accountChanges.counts.new_profile_accounts ?? 0} new · {accountChanges.counts.balances_to_update ?? 0} balance updates · {accountChanges.counts.workbook_accounts_not_found_globally ?? 0} unresolved</summary>
+        <div className="tracker-nav"><span className="field-support-text">Global provider metadata remains in the Account Catalogue. This plan contains Profile-specific state only.</span><label className="field-control"><span>Accounts absent from workbook</span><select aria-label="Profile Accounts absent from workbook strategy" disabled={saving} onChange={(event) => void updateAccountAbsenceStrategy(event.target.value)} value={accountChanges.default_absent_strategy}><option value="leave_unchanged">Leave unchanged</option><option value="archive">Archive at import</option><option value="deactivate">Deactivate at import</option></select></label></div>
+        <div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Workbook row</th><th scope="col">Provider</th><th scope="col">Type</th><th scope="col">Planned action</th><th scope="col">Changes</th></tr></thead><tbody>{accountChanges.entries.map((entry) => <tr key={`${entry.source_row}-${entry.canonical_brand}`}><td>{entry.source_row}</td><td>{entry.canonical_brand}</td><td><span className="table-chip table-chip-neutral">{entry.account_type}</span></td><td><span className={`table-chip ${entry.action === "blocked" ? "table-chip-danger" : entry.action === "unchanged" ? "table-chip-neutral" : "table-chip-info"}`}>{entry.action}</span></td><td>{entry.changes.length ? entry.changes.map((change) => change.field.replaceAll("_", " ")).join(", ") : "No changes"}</td></tr>)}</tbody></table></div>
+        {accountChanges.existing_absent_from_workbook.length ? <p className="field-support-text">{accountChanges.existing_absent_from_workbook.length} existing Profile Accounts are absent from this workbook. The selected strategy is recorded explicitly and is not applied during dry run.</p> : null}
+      </details> : null}
       <div aria-label="Import review controls" className="sportsbook-review-bar" role="toolbar">
         <label className="field-control table-search-field"><span className="visually-hidden">Search import exceptions</span><input aria-label="Search import exceptions" onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search import exceptions" type="search" value={search} /></label>
         <div className="extra-place-toolbar-actions">
@@ -701,8 +762,9 @@ export function FounderImportReviewWorkspace({
                 (name) => name.toLocaleLowerCase() === item.context.provider.toLocaleLowerCase()
               )
             ) ?? null;
-            return <tr key={item.item_id}>
-              <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for review action`} checked={selected.has(item.item_id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(item.item_id)) next.delete(item.item_id); else next.add(item.item_id); return next; })} type="checkbox" /></td>
+            const isSelected = selected.has(item.item_id);
+            return <tr aria-selected={isSelected} className={isSelected ? "is-selected-row" : undefined} key={item.item_id} onClick={(event) => { if (!rowInteractionTarget(event.target)) toggleSelected(item.item_id); }} onKeyDown={(event) => { if (event.key === " " && !rowInteractionTarget(event.target)) { event.preventDefault(); toggleSelected(item.item_id); } }} tabIndex={0}>
+              <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for review action`} checked={isSelected} onChange={() => toggleSelected(item.item_id)} type="checkbox" /></td>
               <td><strong>{item.source_sheet} · {item.source_row}</strong><span className="table-status">{item.source_record_id || "No source ID"}</span><span className="spreadsheet-row-id" title={item.import_id}>{item.import_id.slice(0, 18)}…</span></td>
               <td>{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={item.context.event || item.context.offer_name}>{item.context.event || item.context.offer_name || "No event label"}</span></td>
               <td><strong>{item.context.offer_type || "—"}</strong><span className="table-status">{[item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></td>
@@ -761,7 +823,8 @@ export function FounderImportReviewWorkspace({
                 ["Notes / strategy", editing.context.notes],
               ].filter(([, value]) => value).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
             </dl></section>
-            <section className="content-subpanel stack-tight"><span className="eyebrow">Plum Duff interpretation</span><span>{interpretation(editing)}</span><span className="eyebrow">Why review is required</span><span>{reviewReason(editing)}</span></section>
+            <section className="content-subpanel stack-tight"><span className="eyebrow">Plum Duff interpretation</span><span>{interpretation(editing)}</span></section>
+            <section className="content-subpanel stack-tight"><span className="eyebrow">Why review is required</span><span>{reviewReason(editing)}</span></section>
             <div className="form-grid">
               <label className="field-control"><span>Decision</span><select onChange={(event) => setDraft((current) => current ? { ...current, action: event.target.value, targetType: event.target.value === "reclassify" ? "Sportsbook Bet" : current.targetType } : current)} value={draft.action}>{optionsFor(editing).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               {draft.action === "map_existing_provider" ? <label className="field-control"><span>Catalogue provider</span><select onChange={(event) => setDraft((current) => current ? { ...current, catalogueId: event.target.value } : current)} value={draft.catalogueId}><option value="">Select provider</option>{catalogue.map((provider) => <option key={provider.catalogue_id} value={provider.catalogue_id}>{provider.brand_name} · {provider.account_type}</option>)}</select></label> : null}

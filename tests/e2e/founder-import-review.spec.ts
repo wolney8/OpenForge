@@ -85,6 +85,35 @@ function workspace() {
       },
     ],
     source_summary: {
+      accounts: {
+        change_reconciliation: {
+          default_absent_strategy: "leave_unchanged",
+          counts: {
+            new_profile_accounts: 119,
+            existing_profile_accounts_matched: 0,
+            balances_to_update: 0,
+            statuses_to_update: 0,
+            unchanged_accounts: 0,
+            workbook_accounts_not_found_globally: 1,
+            profile_accounts_absent_from_workbook: 1,
+          },
+          entries: [{
+            source_row: 2,
+            canonical_brand: "Demo Bet",
+            account_type: "Bookmaker",
+            action: "create",
+            changes: [{ field: "current_balance", from: "", to: "25.00" }],
+          }],
+          existing_absent_from_workbook: [{
+            account_id: "account-existing",
+            account: "Existing Bet",
+            type: "Bookie",
+            current_balance: "10.00",
+            status: "Active",
+            planned_action: "leave_unchanged",
+          }],
+        },
+      },
       ledgers: {
         sportsbook: {
           source_rows: 502,
@@ -225,6 +254,9 @@ test("founder review uses canonical controls and exposes explicit EP choices", a
   await expect(page.getByText("2026", { exact: true })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Search import exceptions" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Extra Place" })).toBeVisible();
+  await expect(page.getByText(/Profile Account changes · 119 new/)).toBeVisible();
+  await page.getByText(/Profile Account changes · 119 new/).click();
+  await expect(page.getByLabel("Profile Accounts absent from workbook strategy")).toHaveValue("leave_unchanged");
   await expect(page.getByLabel("Import review top controls")).toBeVisible();
   await expect(page.getByLabel("Import review bottom controls")).toBeVisible();
 
@@ -275,6 +307,21 @@ test("safe batch review previews count, rule and examples", async ({ page }) => 
   await expect(confirmation).toContainText("Preserve source realised P&L");
   await expect(confirmation).toContainText("Sportsbook Bets row 42");
   await expect(confirmation).toContainText("does not import or alter workbook rows");
+});
+
+test("review rows toggle selection without hijacking explicit actions", async ({ page }) => {
+  await mockShell(page);
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+
+  const checkbox = page.getByLabel("Select Sportsbook Bets row 42 for review action");
+  const row = checkbox.locator("xpath=ancestor::tr");
+  await row.getByText("Sportsbook Bets · 42").click();
+  await expect(checkbox).toBeChecked();
+  await row.press("Space");
+  await expect(checkbox).not.toBeChecked();
+  await row.getByRole("button", { name: "Review Sportsbook Bets row 42" }).click();
+  await expect(page.getByRole("dialog", { name: "Review import mapping" })).toBeVisible();
+  await expect(checkbox).not.toBeChecked();
 });
 
 test("filter modal and missing-provider actions use canonical dialogs", async ({ page }) => {

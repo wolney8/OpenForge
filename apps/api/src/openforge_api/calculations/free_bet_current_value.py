@@ -15,6 +15,7 @@ LAY_WIN_RESULTS = {"Lay Won", "Lose"}
 SUPPORTED_RETENTION_MODES = {"SNR", "SR"}
 SUPPORTED_STRATEGIES = {"Standard", "Underlay", "Overlay", "No Lay", "Custom", "Partial Lay"}
 PLACEHOLDER_STATUSES = {"Prospecting", "Not Yet Awarded"}
+PRE_EXECUTION_STATUSES = PLACEHOLDER_STATUSES | {"Available"}
 DEFAULT_UNDERLAY_FACTOR = Decimal("0.928")
 DEFAULT_OVERLAY_FACTOR = Decimal("1.300")
 
@@ -167,6 +168,21 @@ def calculate_free_bet_current_value(
             lay_status="Not Laid",
             counts_as_open=counts_as_open,
             is_overdue=is_overdue,
+        )
+
+    if (
+        calculation_input.result == "Pending"
+        and calculation_input.status in PRE_EXECUTION_STATUSES
+        and not calculation_input.match_strategy
+    ):
+        return _build_zero_value_placeholder_result(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note=(
+                "Unplaced free-bet value is retained separately; current bankroll value "
+                "remains 0.00 until placement."
+            ),
         )
 
     if calculation_input.match_strategy not in SUPPORTED_STRATEGIES:

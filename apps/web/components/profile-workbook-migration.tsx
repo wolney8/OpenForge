@@ -5,6 +5,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 
@@ -59,6 +60,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [effectiveAt, setEffectiveAt] = useState(localDateTimeValue);
+  const [deleteRun, setDeleteRun] = useState<ImportRun | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,6 +125,25 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
     }
   }
 
+  async function deleteReview() {
+    if (!deleteRun) return;
+    setAnalysing(true);
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/profiles/${profileId}/workbook-imports/${deleteRun.import_run_id}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      if (!response.ok) throw new Error(await apiError(response));
+      setRuns((current) => current.filter((run) => run.import_run_id !== deleteRun.import_run_id));
+      setMessage("Workbook review deleted. Profile data was not changed.");
+      setDeleteRun(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to delete the workbook review.");
+    } finally {
+      setAnalysing(false);
+    }
+  }
+
   return (
     <>
       <StatusToast message={message} onDismiss={() => setMessage("")} />
@@ -141,11 +162,9 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
           <label className="field-control">
             <span>Workbook effective date and time</span>
             <input onChange={(event) => setEffectiveAt(event.target.value)} type="datetime-local" value={effectiveAt} />
-            <span className="field-hint">Interpreted in this browser&apos;s local timezone.</span>
           </label>
         </div>
-        <div className="tracker-nav">
-          <span className="field-support-text">The workbook is analysed in memory and is not retained after this request.</span>
+        <div className="tracker-nav tracker-nav-right">
           <button className="modal-primary-button icon-text-action" disabled={!file || !effectiveAt || analysing} onClick={() => void analyseWorkbook()} type="button">
             {analysing ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">fact_check</span>}
             <span>{analysing ? "Analysing" : "Analyse workbook"}</span>
@@ -160,7 +179,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
                 <td>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.effective_at))}</td>
                 <td><span className="table-chip table-chip-neutral">{runStatus(run.status)}</span></td>
                 <td><span className="spreadsheet-row-id" title={run.workbook_checksum}>{run.workbook_checksum.slice(0, 12)}…</span></td>
-                <td><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>Review</Link></td>
+                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>Review</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={run.status === "ANALYSING" || run.status === "IMPORTING" || run.status === "COMPLETE"} onClick={() => setDeleteRun(run)} title={run.status === "COMPLETE" ? "Completed imports cannot be deleted" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
               </tr>)}</tbody>
             </table>
           </div>
@@ -171,6 +190,16 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
           </section>
         )}
       </section>
+      <ConfirmationDialog
+        busy={analysing}
+        busyLabel="Deleting"
+        confirmLabel="Delete review"
+        description={`This removes the dry run, review items, decisions and reconciliation for ${deleteRun?.source_filename ?? "this workbook"}. It does not change the source workbook or any Profile data.`}
+        onCancel={() => setDeleteRun(null)}
+        onConfirm={() => void deleteReview()}
+        open={deleteRun !== null}
+        title="Delete workbook review?"
+      />
     </>
   );
 }

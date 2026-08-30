@@ -97,10 +97,10 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         == f"/profiles/profile-import-test/imports/{import_run_id}/review"
         for item in import_notifications
     )
-    assert workspace["metadata"]["original_partial_count"] == 114
+    assert workspace["metadata"]["original_partial_count"] == 44
     assert workspace["metadata"]["provider_conflict_count"] == 1
     assert workspace["metadata"]["historical_ep_count"] == 2
-    assert len(workspace["items"]) == 117
+    assert len(workspace["items"]) == 47
     assert workspace["source_summary"]["accounts"]["row_count"] == 120
     assert workspace["source_summary"]["accounts"]["balances"] == {
         "Bookmaker": "666.12",
@@ -108,10 +108,14 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         "Bank": "302.97",
     }
     assert workspace["source_summary"]["accounts"]["pending_withdrawals"] == "50.00"
+    account_changes = workspace["source_summary"]["accounts"]["change_reconciliation"]
+    assert account_changes["counts"]["new_profile_accounts"] == 119
+    assert account_changes["counts"]["workbook_accounts_not_found_globally"] == 1
+    assert account_changes["default_absent_strategy"] == "leave_unchanged"
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["source_rows"] == 502
-    assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 413
-    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 89
-    assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 13
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 479
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 23
+    assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 9
     assert workspace["source_summary"]["ledgers"]["casino"]["partial"] == 12
     assert workspace["source_summary"]["ledgers"]["cash_adjustments"]["mapped"] == 23
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["accounted_rows"] == 502
@@ -134,7 +138,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
 
     reloaded = client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert reloaded.status_code == 200
-    assert len(reloaded.json()["items"]) == 117
+    assert len(reloaded.json()["items"]) == 47
 
     advanced_lay = next(
         item for item in workspace["items"] if "advanced_lay" in item["issue_types"]
@@ -173,7 +177,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
     ).json()
     assert rerun_workspace["run_status"] == "REVIEW_REQUIRED"
-    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 113
+    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 43
     assert rerun_workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
     assert {
         event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]
@@ -205,6 +209,28 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     )
     assert reset_all.status_code == 200
     assert reset_all.json()["reconciliation"]["valid_decision_count"] == 0
+
+    absence_strategy = client.put(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+        "/account-absence-strategy",
+        json={"strategy": "archive"},
+    )
+    assert absence_strategy.status_code == 200
+    assert (
+        absence_strategy.json()["source_summary"]["accounts"]["change_reconciliation"][
+            "default_absent_strategy"
+        ]
+        == "archive"
+    )
+
+    deleted = client.delete(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+    )
+    assert deleted.status_code == 204
+    assert (
+        client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}").status_code
+        == 404
+    )
 
 
 def test_profile_workbook_upload_rejects_non_xlsx_and_oversize(

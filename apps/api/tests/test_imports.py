@@ -593,6 +593,31 @@ def test_sportsbook_v1_maps_no_lay_without_inventing_exchange_values() -> None:
     assert staged[0]["mapped_fields"]["lay_odds_1"] == ""
 
 
+def test_sportsbook_v1_normalizes_no_exchange_to_no_lay() -> None:
+    case = sportsbook_fixture("SI-006")
+    fields = dict(case["fields"])
+    fields["MatchStrategy"] = "*No Exchange*"
+    fields["LayOdds2"] = "0"
+    fields["LayStake2"] = "0"
+
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Sportsbook Bets",
+                source_record_id="DEMO-NO-EXCHANGE-001",
+                fields=fields,
+            )
+        ],
+        mapping_version="sportsbook-v1",
+        source_lookup=no_existing_source,
+    )
+
+    assert staged[0]["staged_action"] == "insert"
+    assert staged[0]["mapped_fields"]["match_strategy"] == "No Lay"
+    assert staged[0]["mapped_fields"]["exchange_name"] == ""
+
+
 def test_sportsbook_v1_preserves_plum_duff_multi_lay_branch_payload() -> None:
     case = sportsbook_fixture("SI-007")
     fields = case["fields"]

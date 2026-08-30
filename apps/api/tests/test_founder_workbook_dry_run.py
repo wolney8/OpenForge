@@ -167,6 +167,8 @@ def test_future_open_rows_keep_current_value_and_do_not_become_exceptions() -> N
         "settled": 2,
         "other_state": 0,
         "source_pnl_total": "5.00",
+        "imported_current_or_realised_pnl_total": "5.00",
+        "pnl_normalization_impact": "0.00",
         "reportable_pnl_total": "6.00",
         "realised_settled_pnl": "8.00",
         "open_current_worst_case_pnl": "-3.00",

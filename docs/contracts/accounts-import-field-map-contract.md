@@ -60,6 +60,18 @@ boundary as the other issue #12 ledgers.
   explicit-update workflow is approved.
 - Cross-profile source or native account identity collisions block.
 
+## Profile Snapshot Reconciliation
+
+Before approval, the dry run compares every workbook Account against the selected Profile and
+classifies it as create, update, unchanged, or blocked. Balance/status changes are listed
+explicitly. Existing Profile Accounts absent from the workbook require one recorded strategy:
+leave unchanged, archive, or deactivate. Leave unchanged is the safe default; absence never
+silently deletes an Account.
+
+The eventual approved import may replace point-in-time Profile balances and supported operational
+state from the workbook snapshot. It must not copy or mutate global provider branding, operator,
+platform, risk, colour, or identity metadata; those remain Account Catalogue authority.
+
 ## Export
 
 Export the workbook-compatible fifteen-column `Accounts` shape. `LastPromoUsed` is exported as a
