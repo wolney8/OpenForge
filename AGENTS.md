@@ -203,6 +203,21 @@ Short version:
 8. Report changed files and results.
 9. Stop for review.
 
+## Delivery checkpoint rule
+
+Unless the user explicitly says not to commit/push or not to run local services, every completed
+implementation tranche must finish with all of the following:
+
+- **Git checkpoint:** review and isolate the intended diff; commit only intended changes; push to
+  the correct branch; report the commit SHA and push state; explicitly leave unrelated user,
+  private, generated, environment and secret files untouched.
+- **Local runtime:** confirm the repository's required local web/API services are running, restart
+  any stopped service using the canonical development commands, report the final URLs and verify
+  the applicable local health endpoint.
+- **Hosted state:** when a tranche affects Vercel, verify and report whether the new commit is
+  deployed. Never describe hosted behavior as verified when only local tests have run; keep hosted
+  smoke verification as an explicit gate when it still requires the user.
+
 ## Response style
 
 - Keep responses direct, concise, and forward-looking.
