@@ -417,3 +417,84 @@ test("decision impact is explicit and selected reset restores the original revie
   await confirmation.getByRole("button", { name: "Reset selected" }).click();
   await expect(page.getByText("£0.00 change to imported P&L")).toBeVisible();
 });
+
+test("completed import exposes the persisted reconciliation and rollback gate", async ({ page }) => {
+  await mockShell(page);
+  const completed = {
+    ...workspace(),
+    run_status: "COMPLETE",
+    rollback_status: "AVAILABLE",
+    import_result: {
+      status: "COMPLETE",
+      rollback_available: true,
+      post_import_reconciliation: {
+        profile: {
+          profile_id: "profile-demo",
+          profile_name: "Demo Profile",
+          import_run_id: "import-run-demo",
+          workbook_filename: "founder-snapshot.xlsx",
+          checksum: "a".repeat(64),
+          effective_timestamp: "2026-08-29T16:05:00+01:00",
+          mapping_version: "founder-snapshot-v2",
+          import_timestamp: "2026-08-30T12:00:00Z",
+        },
+        accounts: {
+          total_profile_accounts: { expected: 119, actual: 119, difference: 0 },
+        },
+        ledgers: {
+          sportsbook: {
+            expected_imported_rows: 479,
+            actual_persisted_rows: 479,
+            difference: 0,
+            open_rows: 15,
+            settled_rows: 464,
+            excluded_non_transactional_rows: 5,
+            duplicate_count: 0,
+            missing_count: 0,
+          },
+        },
+        financial_reconciliation: {
+          periods: {
+            week: { workbook_dry_run: "61.54", post_import: "61.54", difference: "0.00" },
+            month: { workbook_dry_run: "131.63", post_import: "131.63", difference: "0.00" },
+            year: { workbook_dry_run: "1093.74", post_import: "1093.74", difference: "0.00" },
+          },
+          views: {
+            settled_realised_pnl: { expected: "1054.67", actual: "1054.67", difference: "0.00" },
+            open_current_worst_case_pnl: { expected: "39.07", actual: "39.07", difference: "0.00" },
+            review_decision_pnl_impact: "0.00",
+          },
+        },
+        open_positions: {
+          future_settling_open: { expected: 4, actual: 4, difference: 0 },
+          no_open_row_silently_removed: true,
+          no_open_row_accidentally_settled: true,
+        },
+        review_decisions: { applied: 39, exclusions: 0 },
+        integrity: {
+          deterministic_import_ids: true,
+          duplicate_protection: true,
+          all_expected_source_rows_accounted_for: true,
+          silent_partial_writes: false,
+          import_run_traceability: true,
+        },
+        mismatches: [],
+        rollback_available: true,
+        result: "POST-IMPORT RECONCILIATION: PASSED",
+      },
+    },
+  };
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(completed) });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await expect(page.getByRole("heading", { name: "Post-Import Reconciliation" })).toBeVisible();
+  await expect(page.getByText("POST-IMPORT RECONCILIATION: PASSED")).toBeVisible();
+  await page.getByText("Open positions").click();
+  await expect(page.getByText("future settling open")).toBeVisible();
+  await page.getByRole("button", { name: "Roll back import" }).click();
+  await expect(page.getByRole("dialog", { name: "Roll back this import?" })).toContainText(
+    "import-run-demo",
+  );
+});

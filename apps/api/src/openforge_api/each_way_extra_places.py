@@ -165,9 +165,19 @@ def build_response(
     data = record.__dict__.copy()
     profile_id = str(data["profile_id"])
     resolved = _with_profile_commissions(profile_id, data, commissions)
+    calculation = build_calculation(profile_id, resolved, commissions)
+    if data.get("calculation_provenance") == "imported_historical":
+        imported_value = str(data.get("imported_historical_pnl") or "") or None
+        calculation["current_value"] = imported_value
+        calculation["final_value"] = imported_value if data.get("status") == "Settled" else None
+        calculation["calculation_state"] = "historical_imported"
+        calculation["calculation_notes"] = [
+            "Historical workbook P&L is preserved; missing modern Extra Place inputs "
+            "were not inferred."
+        ]
     return {
         **resolved,
-        **build_calculation(profile_id, resolved, commissions),
+        **calculation,
     }
 
 

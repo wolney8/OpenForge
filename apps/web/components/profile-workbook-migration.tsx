@@ -17,6 +17,12 @@ type ImportRun = {
   mapping_version: string;
   status: string;
   raw_workbook_retained: boolean;
+  approved_at: string;
+  completed_at: string;
+  checkpoint_id: string;
+  rollback_status: string;
+  rolled_back_at: string;
+  row_counts: Record<string, number>;
   updated_at: string;
 };
 
@@ -173,13 +179,16 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         {loading ? <LedgerLoadingIndicator label="Loading workbook reviews" /> : runs.length ? (
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th scope="col">Workbook</th><th scope="col">Effective</th><th scope="col">Status</th><th scope="col">Checksum</th><th scope="col">Actions</th></tr></thead>
+              <thead><tr><th scope="col">Workbook</th><th scope="col">Effective</th><th scope="col">Status</th><th scope="col">Rows</th><th scope="col">Imported</th><th scope="col">Reconciliation / rollback</th><th scope="col">Checksum</th><th scope="col">Actions</th></tr></thead>
               <tbody>{runs.map((run) => <tr key={run.import_run_id}>
                 <td><strong>{run.source_filename}</strong><span className="table-status">{run.mapping_version}</span></td>
                 <td>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.effective_at))}</td>
                 <td><span className="table-chip table-chip-neutral">{runStatus(run.status)}</span></td>
+                <td><strong>{Object.values(run.row_counts ?? {}).reduce((total, value) => total + value, 0)}</strong><span className="table-status">{Object.entries(run.row_counts ?? {}).filter(([, value]) => value).map(([name, value]) => `${name.replaceAll("_", " ")} ${value}`).join(" · ") || "Awaiting analysis"}</span></td>
+                <td>{run.completed_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.completed_at)) : "—"}</td>
+                <td><span className={`table-chip ${run.status === "COMPLETE" ? "table-chip-success" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "table-chip-danger" : "table-chip-neutral"}`}>{run.status === "COMPLETE" ? "Passed" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "Failed" : "Pending"}</span><span className="table-status">{run.rollback_status ? `Rollback ${run.rollback_status.toLocaleLowerCase()}` : "No import writes"}</span></td>
                 <td><span className="spreadsheet-row-id" title={run.workbook_checksum}>{run.workbook_checksum.slice(0, 12)}…</span></td>
-                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>Review</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={run.status === "ANALYSING" || run.status === "IMPORTING" || run.status === "COMPLETE"} onClick={() => setDeleteRun(run)} title={run.status === "COMPLETE" ? "Completed imports cannot be deleted" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{run.completed_at ? "Reconciliation" : "Review"}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED", "ROLLED_BACK"].includes(run.status)} onClick={() => setDeleteRun(run)} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
               </tr>)}</tbody>
             </table>
           </div>

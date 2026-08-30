@@ -74,6 +74,36 @@ type ReviewItem = {
 
 type Workspace = {
   run_status?: string;
+  approved_at?: string;
+  completed_at?: string;
+  rollback_status?: string;
+  rolled_back_at?: string;
+  final_import_summary?: {
+    ready: boolean;
+    blockers: string[];
+    profile: { profile_id: string; profile_name: string };
+    profile_settings: Array<{ field: string; value: string | number; target: string }>;
+    provider_resolutions: Array<ReviewResolution>;
+    historical_ep_resolutions: Array<ReviewResolution>;
+    accounts: Record<string, string | number>;
+    ledgers: Record<string, Record<string, number>>;
+    extra_places: Record<string, unknown>;
+    financial: {
+      open_current_pnl: string;
+      settled_pnl: string;
+      open_exposure: string;
+      review_pnl_impact: string;
+      periods: Record<string, {
+        workbook_report?: { total?: string };
+        difference?: string;
+      }>;
+    };
+    rollback: {
+      application_checkpoint: boolean;
+      neon_platform_restore: string;
+    };
+  };
+  import_result?: ImportResult;
   metadata: {
     source_filename: string;
     effective_at: string;
@@ -157,6 +187,62 @@ type Workspace = {
     import_ready: boolean;
     real_import_performed: false;
   };
+};
+
+type ReviewResolution = {
+  source_sheet: string;
+  source_row: number;
+  category: string;
+  action: string;
+  status: string;
+  target: string;
+  catalogue_id: string;
+  note: string;
+};
+
+type Comparison = {
+  expected: string | number;
+  actual: string | number;
+  difference: string | number;
+};
+
+type PostImportReport = {
+  profile: Record<string, string>;
+  accounts: Record<string, Comparison>;
+  ledgers: Record<string, {
+    expected_imported_rows: number;
+    actual_persisted_rows: number;
+    difference: number;
+    open_rows: number;
+    settled_rows: number;
+    excluded_non_transactional_rows: number;
+    duplicate_count: number;
+    missing_count: number;
+  }>;
+  financial_reconciliation: {
+    periods: Record<string, { workbook_dry_run: string; post_import: string; difference: string }>;
+    views: Record<string, Comparison | string>;
+  };
+  open_positions: Record<string, Comparison | boolean>;
+  review_decisions: Record<string, number>;
+  integrity: Record<string, boolean>;
+  mismatches: Array<Record<string, unknown>>;
+  rollback_available: boolean;
+  result: "POST-IMPORT RECONCILIATION: PASSED" | "POST-IMPORT RECONCILIATION: FAILED";
+};
+
+type ImportResult = {
+  status?: string;
+  import_run_id?: string;
+  checkpoint_id?: string;
+  profile_settings_updated?: number;
+  accounts?: Record<string, number>;
+  ledgers?: Record<string, number>;
+  rows_imported?: number;
+  skipped_non_transactional?: number;
+  duration_seconds?: number;
+  rollback_available?: boolean;
+  post_import_reconciliation?: PostImportReport;
 };
 
 type Draft = {
@@ -390,6 +476,8 @@ export function FounderImportReviewWorkspace({
   } | null>(null);
   const [resetScope, setResetScope] = useState<"all" | "selected" | null>(null);
   const [approvalAcknowledged, setApprovalAcknowledged] = useState(false);
+  const [importConfirmationOpen, setImportConfirmationOpen] = useState(false);
+  const [rollbackConfirmationOpen, setRollbackConfirmationOpen] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
   const loadoutRef = useRef<HTMLDivElement | null>(null);
@@ -682,6 +770,52 @@ export function FounderImportReviewWorkspace({
     }
   }
 
+  async function importWorkbook() {
+    if (!workspace?.final_import_summary?.ready) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/import`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workbook_checksum: workspace.metadata.workbook_checksum,
+          confirmation: "IMPORT WORKBOOK",
+        }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      await loadWorkspace();
+      setMessage("Import complete. Post-import reconciliation is available below.");
+      setImportConfirmationOpen(false);
+    } catch (caught) {
+      await loadWorkspace();
+      setMessage(caught instanceof Error ? caught.message : "Unable to import the workbook safely.");
+      setImportConfirmationOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function rollBackImport() {
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/rollback`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: "ROLL BACK IMPORT" }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      await loadWorkspace();
+      setMessage("Import rolled back and the pre-import Profile checkpoint was restored.");
+      setRollbackConfirmationOpen(false);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to roll back this import.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) return <section className="content-panel stack"><LedgerLoadingIndicator label="Loading Profile import review" /></section>;
   if (error || !workspace) return <section className="content-panel stack"><span className="eyebrow">Import review</span><h1>Unable to load review</h1><p className="error-text" role="alert">{error}</p><button className="button-link" onClick={() => void loadWorkspace()} type="button">Try again</button></section>;
 
@@ -694,6 +828,15 @@ export function FounderImportReviewWorkspace({
   const pnlImpactIsZero = Number(workspace.reconciliation.pnl_impact) === 0;
   const selectedDecisionCount = workspace.items.filter((item) => selected.has(item.item_id) && item.decision).length;
   const accountChanges = workspace.source_summary?.accounts?.change_reconciliation;
+  const finalSummary = workspace.final_import_summary;
+  const importResult = workspace.import_result;
+  const postImportReport = importResult?.post_import_reconciliation;
+  const canImport = workspace.run_status === "READY_APPROVED" && Boolean(finalSummary?.ready);
+  const canRollback = Boolean(
+    importResult?.rollback_available
+    && workspace.rollback_status === "AVAILABLE"
+    && ["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(workspace.run_status ?? ""),
+  );
 
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
@@ -784,13 +927,42 @@ export function FounderImportReviewWorkspace({
       <LedgerPagination ariaLabel="Import review" currentPage={effectivePage} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />
       <section className="content-subpanel stack-tight" aria-label="Import readiness approval">
         <strong>{workspace.run_status === "READY_APPROVED" ? "Dry run approved" : workspace.reconciliation.import_ready ? "Ready for approval" : "Review required"}</strong>
-        <span>{workspace.reconciliation.import_ready ? "Approval records readiness only. It does not import Accounts or ledger rows." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
+        <span>{workspace.reconciliation.import_ready ? "Approval locks this reviewed checksum and enables the controlled import summary." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
         {workspace.reconciliation.import_ready && workspace.run_status !== "READY_APPROVED" ? <div className="tracker-nav">
           <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for the later import gate." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
           <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>
         </div> : null}
       </section>
-      <p className="field-support-text">{workspace.metadata.source_filename} · {workspace.metadata.mapping_version} · checksum {workspace.metadata.workbook_checksum.slice(0, 12)}… · no production import performed</p>
+      {workspace.run_status === "READY_APPROVED" && finalSummary ? <section className="content-subpanel stack" data-pd-id="profile-import.final-summary">
+        <header className="workflow-panel-header"><div><span className="eyebrow">Approved write plan</span><h2>Final import summary</h2></div><span className={`table-chip ${finalSummary.ready ? "table-chip-success" : "table-chip-danger"}`}>{finalSummary.ready ? "Ready" : "Blocked"}</span></header>
+        {finalSummary.blockers.length ? <div className="error-text" role="alert">{finalSummary.blockers.map((blocker) => <span key={blocker}>{blocker}</span>)}</div> : null}
+        <div className="stat-card-grid import-review-stat-grid import-review-compact-stats" aria-label="Final import counts">
+          <article className="stat-card"><span className="eyebrow">Profile settings</span><strong>{finalSummary.profile_settings.length}</strong><span>Fields to update</span></article>
+          <article className="stat-card"><span className="eyebrow">Accounts</span><strong>{finalSummary.accounts.total_source ?? 0}</strong><span>{finalSummary.accounts.create ?? finalSummary.accounts.new_profile_accounts ?? 0} new</span></article>
+          <article className="stat-card"><span className="eyebrow">Ledger rows</span><strong>{Object.values(finalSummary.ledgers).reduce((total, ledger) => total + (ledger.transactional_rows ?? 0), 0)}</strong><span>Transactional rows planned</span></article>
+          <article className="stat-card"><span className="eyebrow">Open current P&amp;L</span><strong><FinancialValue animate={false} value={finalSummary.financial.open_current_pnl} /></strong><span>Worst-case/current cash</span></article>
+          <article className="stat-card"><span className="eyebrow">Settled P&amp;L</span><strong><FinancialValue animate={false} value={finalSummary.financial.settled_pnl} /></strong><span>Realised source value</span></article>
+        </div>
+        <details className="stack-tight"><summary>Profile and Account changes</summary><p>{finalSummary.profile.profile_name} · {finalSummary.profile.profile_id}</p><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Measure</th><th scope="col">Planned value</th></tr></thead><tbody>{Object.entries(finalSummary.accounts).map(([name, value]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{value}</td></tr>)}</tbody></table></div></details>
+        <details className="stack-tight"><summary>Ledger write plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Source</th><th scope="col">Import</th><th scope="col">Non-transactional</th><th scope="col">Historical / partial</th><th scope="col">Open</th><th scope="col">Settled</th></tr></thead><tbody>{Object.entries(finalSummary.ledgers).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.source_rows ?? 0}</td><td>{values.transactional_rows ?? 0}</td><td>{values.non_transactional ?? 0}</td><td>{values.historical_or_partial ?? 0}</td><td>{values.open ?? 0}</td><td>{values.settled ?? 0}</td></tr>)}</tbody></table></div></details>
+        <details className="stack-tight"><summary>Saved blocking-item resolutions</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Source</th><th scope="col">Category</th><th scope="col">Resolution</th><th scope="col">Target</th></tr></thead><tbody>{[...finalSummary.provider_resolutions, ...finalSummary.historical_ep_resolutions].map((resolution) => <tr key={`${resolution.category}-${resolution.source_sheet}-${resolution.source_row}`}><td>{resolution.source_sheet} row {resolution.source_row}</td><td>{resolution.category.replaceAll("_", " ")}</td><td><span className="table-chip table-chip-success">{resolution.action.replaceAll("_", " ")}</span></td><td>{resolution.target || resolution.catalogue_id || "Recorded historical decision"}</td></tr>)}</tbody></table></div></details>
+        <details className="stack-tight"><summary>Financial plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Approved total</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(finalSummary.financial.periods).map(([period, values]) => <tr key={period}><td>{period}</td><td><FinancialValue animate={false} value={values.workbook_report?.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={values.difference ?? "0.00"} /></td></tr>)}</tbody></table></div></details>
+        <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>Import workbook</span></button></div>
+      </section> : null}
+      {postImportReport ? <section className="content-subpanel stack" data-pd-id="profile-import.reconciliation">
+        <header className="workflow-panel-header"><div><span className="eyebrow">Import history</span><h2>Post-Import Reconciliation</h2></div><span className={`table-chip ${postImportReport.result.endsWith("PASSED") ? "table-chip-success" : "table-chip-danger"}`}>{postImportReport.result.replace("POST-IMPORT RECONCILIATION: ", "")}</span></header>
+        <p>{postImportReport.profile.profile_name} · {postImportReport.profile.workbook_filename} · ImportRunID {postImportReport.profile.import_run_id} · checksum {postImportReport.profile.checksum.slice(0, 12)}…</p>
+        <details open><summary>Financial reconciliation</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Workbook / Dry Run</th><th scope="col">Post Import</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(postImportReport.financial_reconciliation.periods).map(([period, values]) => <tr key={period}><td>{period}</td><td><FinancialValue animate={false} value={values.workbook_dry_run} /></td><td><FinancialValue animate={false} value={values.post_import} /></td><td><FinancialValue animate={false} value={values.difference} /></td></tr>)}</tbody></table></div></details>
+        <details><summary>Financial views</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Measure</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(postImportReport.financial_reconciliation.views).map(([name, values]) => typeof values === "string" ? <tr key={name}><td>{name.replaceAll("_", " ")}</td><td colSpan={3}><FinancialValue animate={false} value={values} /></td></tr> : <tr key={name}><td>{name.replaceAll("_", " ")}</td><td><FinancialValue animate={false} value={values.expected} /></td><td><FinancialValue animate={false} value={values.actual} /></td><td><FinancialValue animate={false} value={values.difference} /></td></tr>)}</tbody></table></div></details>
+        <details><summary>Accounts · expected vs actual</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Measure</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(postImportReport.accounts).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.expected}</td><td>{values.actual}</td><td>{values.difference}</td></tr>)}</tbody></table></div></details>
+        <details><summary>Ledgers · persisted rows</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Open</th><th scope="col">Settled</th><th scope="col">Missing</th><th scope="col">Duplicates</th></tr></thead><tbody>{Object.entries(postImportReport.ledgers).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.expected_imported_rows}</td><td>{values.actual_persisted_rows}</td><td>{values.open_rows}</td><td>{values.settled_rows}</td><td>{values.missing_count}</td><td>{values.duplicate_count}</td></tr>)}</tbody></table></div></details>
+        <details><summary>Open positions</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Check</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(postImportReport.open_positions).map(([name, value]) => typeof value === "boolean" ? <tr key={name}><td>{name.replaceAll("_", " ")}</td><td colSpan={3}><span className={`table-chip ${value ? "table-chip-success" : "table-chip-danger"}`}>{value ? "Passed" : "Failed"}</span></td></tr> : <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{value.expected}</td><td>{value.actual}</td><td>{value.difference}</td></tr>)}</tbody></table></div></details>
+        <details><summary>Review decisions and integrity</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Check</th><th scope="col">Value</th></tr></thead><tbody>{Object.entries(postImportReport.review_decisions).map(([name, value]) => <tr key={`decision-${name}`}><td>{name.replaceAll("_", " ")}</td><td>{value}</td></tr>)}{Object.entries(postImportReport.integrity).map(([name, value]) => <tr key={`integrity-${name}`}><td>{name.replaceAll("_", " ")}</td><td><span className={`table-chip ${value ? "table-chip-success" : "table-chip-danger"}`}>{value ? "Passed" : "Failed"}</span></td></tr>)}</tbody></table></div></details>
+        {postImportReport.mismatches.length ? <details className="error-text" open><summary>Reconciliation mismatches</summary><pre>{JSON.stringify(postImportReport.mismatches, null, 2)}</pre></details> : null}
+        <strong>{postImportReport.result}</strong>
+        <div className="tracker-nav"><Link className="button-link" href={`/profiles/${profileId}`}>Open Profile Dashboard</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/accounts`}>View Accounts</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/sportsbook-bets`}>View imported ledgers</Link>{canRollback ? <button className="button-link destructive-action" onClick={() => setRollbackConfirmationOpen(true)} type="button">Roll back import</button> : null}</div>
+      </section> : null}
+      <p className="field-support-text">{workspace.metadata.source_filename} · {workspace.metadata.mapping_version} · checksum {workspace.metadata.workbook_checksum.slice(0, 12)}… · {postImportReport ? "persisted import audit available" : "no production import performed"}</p>
     </section>
 
     {filterOpen && typeof document !== "undefined" ? createPortal(<div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setFilterOpen(false); }}><section aria-labelledby="import-review-filter-title" aria-modal="true" className="modal-panel accounts-filter-modal" ref={filterRef} role="dialog" tabIndex={-1}><header className="modal-sticky-header sportsbook-page-header"><div><span className="eyebrow">Table controls</span><h2 id="import-review-filter-title">Filter import review</h2></div><button aria-label="Close import review filters" className="modal-close-button" onClick={() => setFilterOpen(false)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="form-grid accounts-filter-form-grid"><label className="field-control"><span>Source sheet</span><select onChange={(event) => { setSheetFilter(event.target.value); setPage(1); }} value={sheetFilter}><option value="">All</option>{[...new Set(workspace.items.map((item) => item.source_sheet))].map((sheet) => <option key={sheet}>{sheet}</option>)}</select></label><label className="field-control"><span>Review state</span><select onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} value={statusFilter}><option value="">All</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field-control"><span>Issue type</span><select onChange={(event) => { setIssueFilter(event.target.value); setPage(1); }} value={issueFilter}><option value="">All</option>{[...new Set(workspace.items.flatMap((item) => item.issue_types))].sort().map((issue) => <option key={issue} value={issue}>{labels[issue] ?? issue.replaceAll("_", " ")}</option>)}</select></label></div><div className="tracker-nav"><button className="review-chip" onClick={() => { setStatusFilter(""); setSheetFilter(""); setIssueFilter(""); setPage(1); }} type="button">Clear filters</button><button className="review-chip review-chip-copy" onClick={() => setFilterOpen(false)} type="button">Done</button></div></section></div>, document.body) : null}
@@ -804,6 +976,29 @@ export function FounderImportReviewWorkspace({
       onConfirm={() => void resetDecisions()}
       open={resetScope !== null}
       title="Reset review decisions?"
+    />
+
+    <ConfirmationDialog
+      busy={saving}
+      busyLabel="Importing"
+      confirmLabel="Import workbook"
+      confirmTone="primary"
+      description={`Import ${workspace.metadata.source_filename} into ${finalSummary?.profile.profile_name ?? "this Profile"} using the approved checksum ${workspace.metadata.workbook_checksum.slice(0, 12)}…. The plan affects ${finalSummary?.accounts.total_source ?? 0} source Accounts and ${Object.values(finalSummary?.ledgers ?? {}).reduce((total, ledger) => total + (ledger.transactional_rows ?? 0), 0)} transactional ledger rows. A scoped rollback checkpoint will be created first.`}
+      onCancel={() => setImportConfirmationOpen(false)}
+      onConfirm={() => void importWorkbook()}
+      open={importConfirmationOpen}
+      title="Import approved workbook?"
+    />
+
+    <ConfirmationDialog
+      busy={saving}
+      busyLabel="Rolling back"
+      confirmLabel="Roll back import"
+      description={`This reverts only writes traced to ImportRunID ${importRunId}, restores prior Profile settings and Account values, removes rows created by this import, and reconciles the restored Profile against its pre-import checkpoint.`}
+      onCancel={() => setRollbackConfirmationOpen(false)}
+      onConfirm={() => void rollBackImport()}
+      open={rollbackConfirmationOpen}
+      title="Roll back this import?"
     />
 
     {editing && draft && typeof document !== "undefined" ? createPortal(

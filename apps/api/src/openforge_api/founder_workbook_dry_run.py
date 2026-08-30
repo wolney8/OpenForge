@@ -405,6 +405,7 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
                 "canonical_brand": resolution.canonical_brand or "",
                 "account_type": canonical_type,
                 "mapped_profile_state": mapped,
+                "source_fields": dict(row.fields),
             }
         )
     resolution_counts = Counter(item.classification for item in resolutions)
@@ -464,6 +465,7 @@ def _ledger_report(
     open_count = 0
     for row in parsed.rows:
         mapped_result = definition.mapper(row.fields)
+        mapped_payload = dict(mapped_result[0])
         errors = list(mapped_result[1])
         is_non_transactional = (
             definition.key == "sportsbook"
@@ -588,11 +590,7 @@ def _ledger_report(
                 }
             )
         migration_state = (
-            "partial"
-            if errors
-            else "non_transactional"
-            if is_non_transactional
-            else "mapped"
+            "partial" if errors else "non_transactional" if is_non_transactional else "mapped"
         )
         action = (
             "review"
@@ -622,6 +620,8 @@ def _ledger_report(
                 "action": action,
                 "migration_state": migration_state,
                 "errors": errors,
+                "mapped_payload": mapped_payload,
+                "source_fields": dict(row.fields),
                 "outside_table_range": row.outside_table_range,
                 "status": status,
                 "source_pnl": "" if source_pnl is None else f"{source_pnl:.2f}",

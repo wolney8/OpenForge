@@ -970,6 +970,13 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           summary_json TEXT NOT NULL,
           reconciliation_json TEXT NOT NULL,
           raw_workbook_retained INTEGER NOT NULL DEFAULT 0,
+          approved_at TEXT NOT NULL DEFAULT '',
+          import_started_at TEXT NOT NULL DEFAULT '',
+          completed_at TEXT NOT NULL DEFAULT '',
+          checkpoint_id TEXT NOT NULL DEFAULT '',
+          result_json TEXT NOT NULL DEFAULT '{}',
+          rollback_status TEXT NOT NULL DEFAULT '',
+          rolled_back_at TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
@@ -1013,11 +1020,71 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_import_write_plans (
+          import_run_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          plan_json TEXT NOT NULL,
+          plan_checksum TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id)
+            ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_checkpoints (
+          checkpoint_id TEXT PRIMARY KEY,
+          import_run_id TEXT NOT NULL UNIQUE,
+          profile_id TEXT NOT NULL,
+          workbook_checksum TEXT NOT NULL,
+          mapping_version TEXT NOT NULL,
+          snapshot_json TEXT NOT NULL,
+          snapshot_checksum TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          restored_at TEXT NOT NULL DEFAULT '',
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_write_audit (
+          import_run_id TEXT NOT NULL,
+          import_key TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          before_json TEXT NOT NULL,
+          after_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (import_run_id, import_key),
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_rollback_events (
+          rollback_event_id TEXT PRIMARY KEY,
+          import_run_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          actor_email TEXT NOT NULL,
+          checkpoint_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          summary_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL,
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_profile_import_runs_profile_updated
           ON profile_import_runs(profile_id, updated_at);
 
         CREATE INDEX IF NOT EXISTS idx_profile_import_review_items_profile
           ON profile_import_review_items(profile_id, import_run_id);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_write_audit_profile
+          ON profile_import_write_audit(profile_id, import_run_id);
 
         CREATE TABLE IF NOT EXISTS backup_snapshots (
           backup_snapshot_id TEXT PRIMARY KEY,
@@ -1305,6 +1372,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           status TEXT NOT NULL DEFAULT 'Prospecting',
           result TEXT NOT NULL DEFAULT 'Pending',
           finishing_position TEXT NOT NULL DEFAULT '',
+          imported_historical_pnl TEXT NOT NULL DEFAULT '',
+          calculation_provenance TEXT NOT NULL DEFAULT 'native',
+          import_run_id TEXT NOT NULL DEFAULT '',
+          source_import_id TEXT NOT NULL DEFAULT '',
           user_notes TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
@@ -1793,6 +1864,23 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "default_bonus_retention_percent",
         "TEXT NOT NULL DEFAULT '0.7'",
     )
+    for column_name, definition in (
+        ("approved_at", "TEXT NOT NULL DEFAULT ''"),
+        ("import_started_at", "TEXT NOT NULL DEFAULT ''"),
+        ("completed_at", "TEXT NOT NULL DEFAULT ''"),
+        ("checkpoint_id", "TEXT NOT NULL DEFAULT ''"),
+        ("result_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("rollback_status", "TEXT NOT NULL DEFAULT ''"),
+        ("rolled_back_at", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        ensure_column(connection, "profile_import_runs", column_name, definition)
+    for column_name, definition in (
+        ("imported_historical_pnl", "TEXT NOT NULL DEFAULT ''"),
+        ("calculation_provenance", "TEXT NOT NULL DEFAULT 'native'"),
+        ("import_run_id", "TEXT NOT NULL DEFAULT ''"),
+        ("source_import_id", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        ensure_column(connection, "each_way_extra_places", column_name, definition)
     for column_name in (
         "wagering_base",
         "custom_wager_base",
@@ -2906,6 +2994,10 @@ class EachWayExtraPlaceRecord:
     status: str
     result: str
     finishing_position: str
+    imported_historical_pnl: str
+    calculation_provenance: str
+    import_run_id: str
+    source_import_id: str
     user_notes: str
     created_at: str
     updated_at: str

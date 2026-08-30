@@ -29,6 +29,15 @@ from openforge_api.founder_workbook_dry_run import (
     FOUNDER_MAPPING_VERSION,
     build_founder_workbook_dry_run_bytes,
 )
+from openforge_api.profile_workbook_cutover import (
+    ImportCutoverError,
+    build_base_write_plan,
+    execute_import,
+    final_import_summary,
+    load_base_write_plan,
+    rollback_import,
+    save_base_write_plan,
+)
 
 router = APIRouter(prefix="/profiles/{profile_id}/workbook-imports", tags=["profile-imports"])
 logger = logging.getLogger(__name__)
@@ -70,6 +79,19 @@ class ImportApprovalPayload(BaseModel):
 
     workbook_checksum: str = Field(min_length=64, max_length=64)
     acknowledged: bool
+
+
+class ImportExecutionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workbook_checksum: str = Field(min_length=64, max_length=64)
+    confirmation: str = Field(pattern="^IMPORT WORKBOOK$")
+
+
+class ImportRollbackPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    confirmation: str = Field(pattern="^ROLL BACK IMPORT$")
 
 
 class ResetDecisionsPayload(BaseModel):
@@ -134,9 +156,7 @@ def _summary(result: dict[str, Any]) -> dict[str, Any]:
                 if key in result["accounts"]
             },
             "row_count": len(result["accounts"].get("validation_rows", [])),
-            "change_reconciliation": result["accounts"].get(
-                "change_reconciliation", {}
-            ),
+            "change_reconciliation": result["accounts"].get("change_reconciliation", {}),
         },
         "profile_settings": result["profile_settings"],
         "ledgers": {key: value["summary"] for key, value in result["ledgers"].items()},
@@ -162,12 +182,8 @@ def _account_change_reconciliation(
     absent_strategy: str = "leave_unchanged",
 ) -> dict[str, Any]:
     existing = list_accounts(profile_id)
-    by_catalogue = {
-        row.catalogue_id: row for row in existing if row.catalogue_id
-    }
-    by_name_type = {
-        (row.account.casefold(), row.type.casefold()): row for row in existing
-    }
+    by_catalogue = {row.catalogue_id: row for row in existing if row.catalogue_id}
+    by_name_type = {(row.account.casefold(), row.type.casefold()): row for row in existing}
     matched_ids: set[str] = set()
     entries: list[dict[str, Any]] = []
     comparable_fields = (
@@ -221,9 +237,7 @@ def _account_change_reconciliation(
                 "existing_account_id": current.account_id if current else "",
                 "action": action,
                 "changes": changes,
-                "profile_state": {
-                    field: mapped.get(field) for field in comparable_fields
-                },
+                "profile_state": {field: mapped.get(field) for field in comparable_fields},
             }
         )
     absent = [
@@ -270,8 +284,7 @@ def _account_change_reconciliation(
             "balance_writes_for_new_accounts": balance_writes_for_new_accounts,
             "balance_updates_for_existing_accounts": balance_updates_for_existing_accounts,
             "statuses_to_update": sum(
-                any(change["field"] == "status" for change in row["changes"])
-                for row in entries
+                any(change["field"] == "status" for change in row["changes"]) for row in entries
             ),
             "unchanged_accounts": sum(row["action"] == "unchanged" for row in entries),
             "workbook_accounts_not_found_globally": sum(
@@ -370,6 +383,7 @@ def _load_run_by_id(import_run_id: str) -> dict[str, Any]:
     record = dict(row)
     record["summary"] = json.loads(record.pop("summary_json"))
     record["reconciliation"] = json.loads(record.pop("reconciliation_json"))
+    record["result"] = json.loads(record.pop("result_json", "{}") or "{}")
     return record
 
 
@@ -384,6 +398,7 @@ def _load_run(profile_id: str, import_run_id: str) -> dict[str, Any]:
     record = dict(row)
     record["summary"] = json.loads(record.pop("summary_json"))
     record["reconciliation"] = json.loads(record.pop("reconciliation_json"))
+    record["result"] = json.loads(record.pop("result_json", "{}") or "{}")
     record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
     return record
 
@@ -428,6 +443,16 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["run_status"] = run["status"]
     workspace["source_summary"] = run["summary"]
     workspace["financial_reconciliation"] = run["reconciliation"]
+    plan = load_base_write_plan(profile_id, import_run_id)
+    workspace["final_import_summary"] = final_import_summary(
+        run=run, workspace=workspace, plan=plan
+    )
+    workspace["import_result"] = run.get("result", {})
+    workspace["checkpoint_id"] = run.get("checkpoint_id", "")
+    workspace["rollback_status"] = run.get("rollback_status", "")
+    workspace["approved_at"] = run.get("approved_at", "")
+    workspace["completed_at"] = run.get("completed_at", "")
+    workspace["rolled_back_at"] = run.get("rolled_back_at", "")
     return workspace
 
 
@@ -528,6 +553,12 @@ def _analyse_workbook_job(
         )
         now = _now()
         with connect() as connection:
+            save_base_write_plan(
+                connection,
+                import_run_id=import_run_id,
+                profile_id=profile_id,
+                plan=build_base_write_plan(result),
+            )
             for item in items:
                 connection.execute(
                     """
@@ -614,14 +645,39 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
             """
             SELECT import_run_id, profile_id, source_filename, workbook_checksum,
                    workbook_size_bytes, effective_at, mapping_version, status,
-                   raw_workbook_retained, created_at, updated_at
+                   raw_workbook_retained, approved_at, completed_at, checkpoint_id,
+                   rollback_status, rolled_back_at, summary_json, result_json,
+                   created_at, updated_at
             FROM profile_import_runs WHERE profile_id = ? ORDER BY updated_at DESC
             """,
             (profile_id,),
         ).fetchall()
-    return [
-        {**dict(row), "raw_workbook_retained": bool(row["raw_workbook_retained"])} for row in rows
-    ]
+    history: list[dict[str, Any]] = []
+    for row in rows:
+        record = dict(row)
+        summary = json.loads(record.pop("summary_json") or "{}")
+        result = json.loads(record.pop("result_json") or "{}")
+        result_ledgers = result.get("ledgers") or {}
+        summary_ledgers = summary.get("ledgers") or {}
+        record["row_counts"] = {
+            "sportsbook": result_ledgers.get(
+                "sportsbook", summary_ledgers.get("sportsbook", {}).get("source_rows", 0)
+            ),
+            "free_bets": result_ledgers.get(
+                "free_bets", summary_ledgers.get("free_bets", {}).get("source_rows", 0)
+            ),
+            "casino": result_ledgers.get(
+                "casino", summary_ledgers.get("casino", {}).get("source_rows", 0)
+            ),
+            "cash_adjustments": result_ledgers.get(
+                "cash_adjustments",
+                summary_ledgers.get("cash_adjustments", {}).get("source_rows", 0),
+            ),
+            "extra_places": result_ledgers.get("extra_places", 0),
+        }
+        record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
+        history.append(record)
+    return history
 
 
 @router.post("/analyse")
@@ -671,6 +727,13 @@ def analyse_profile_workbook(
               effective_at = excluded.effective_at,
               status = excluded.status,
               summary_json = excluded.summary_json,
+              approved_at = '',
+              import_started_at = '',
+              completed_at = '',
+              checkpoint_id = '',
+              result_json = '{}',
+              rollback_status = '',
+              rolled_back_at = '',
               updated_at = excluded.updated_at
             """,
             (
@@ -743,7 +806,14 @@ def delete_profile_workbook_import(
 ) -> None:
     require_request_session(request)
     run = _load_run(profile_id, import_run_id)
-    if run["status"] in {"ANALYSING", "IMPORTING", "COMPLETE"}:
+    if run["status"] in {
+        "ANALYSING",
+        "IMPORTING",
+        "RECONCILING",
+        "COMPLETE",
+        "POST_IMPORT_RECONCILIATION_FAILED",
+        "ROLLED_BACK",
+    }:
         raise HTTPException(
             status_code=409,
             detail="This import run cannot be deleted in its current state",
@@ -1073,16 +1143,90 @@ def approve_profile_workbook_import(
         connection.execute(
             """
             UPDATE profile_import_runs
-            SET status = 'READY_APPROVED', owner_email = ?, updated_at = ?
+            SET status = 'READY_APPROVED', owner_email = ?, approved_at = ?, updated_at = ?
             WHERE profile_id = ? AND import_run_id = ?
             """,
-            (session.email, now, profile_id, import_run_id),
+            (session.email, now, now, profile_id, import_run_id),
         )
     return {
         "import_run_id": import_run_id,
         "status": "READY_APPROVED",
         "real_import_performed": False,
-        "next_requirement": (
-            "Re-upload the same checksum for the separately approved import tranche"
-        ),
+        "next_requirement": "Review the final server write plan before importing",
     }
+
+
+@router.post("/{import_run_id}/import")
+def import_profile_workbook(
+    profile_id: str,
+    import_run_id: str,
+    payload: ImportExecutionPayload,
+    request: Request,
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    if payload.workbook_checksum != run["workbook_checksum"]:
+        raise HTTPException(status_code=409, detail="Workbook checksum does not match")
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Re-analyse this workbook before import so its server write plan is available",
+        )
+    workspace = _workspace(profile_id, import_run_id)
+    try:
+        return execute_import(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            actor_email=session.email,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
+    except ImportCutoverError as error:
+        logger.warning("Profile workbook import blocked: %s", error)
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Profile workbook import failed")
+        now = _now()
+        with connect() as connection:
+            connection.execute(
+                "UPDATE profile_import_runs SET status = 'FAILED', result_json = ?, "
+                "updated_at = ? WHERE profile_id = ? AND import_run_id = ?",
+                (
+                    _json(
+                        {
+                            "status": "FAILED",
+                            "message": "Import failed before changes could be committed",
+                            "rollback_performed": "database_transaction",
+                        }
+                    ),
+                    now,
+                    profile_id,
+                    import_run_id,
+                ),
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Import failed safely. No partial Profile changes were committed.",
+        ) from error
+
+
+@router.post("/{import_run_id}/rollback")
+def rollback_profile_workbook_import(
+    profile_id: str,
+    import_run_id: str,
+    payload: ImportRollbackPayload,
+    request: Request,
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    try:
+        return rollback_import(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            actor_email=session.email,
+            run=run,
+        )
+    except ImportCutoverError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
