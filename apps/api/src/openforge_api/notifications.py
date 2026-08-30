@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request
@@ -7,6 +8,7 @@ from pydantic import BaseModel
 
 from openforge_api.auth import require_request_session
 from openforge_api.db import (
+    connect,
     count_tracker_rows_created_after,
     get_notification_preferences,
     get_notification_user_state,
@@ -63,6 +65,61 @@ def parse_timestamp(value: str) -> datetime | None:
 
 def format_timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def workbook_import_notifications(email: str) -> list[FundManagerNotificationResponse]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT run.import_run_id, run.profile_id, run.source_filename, run.summary_json,
+                   profile.display_name AS profile_name
+            FROM profile_import_runs AS run
+            JOIN profiles AS profile ON profile.profile_id = run.profile_id
+            WHERE lower(run.owner_email) = lower(?)
+            ORDER BY run.updated_at DESC
+            """,
+            (email,),
+        ).fetchall()
+    notifications: list[FundManagerNotificationResponse] = []
+    for row in rows:
+        summary = json.loads(str(row["summary_json"]))
+        events = summary.get("job", {}).get("events", [])
+        for index, event in enumerate(events):
+            created_at = str(event.get("created_at", ""))
+            if not created_at:
+                continue
+            event_kind = str(event.get("kind", "analysis_complete"))
+            is_review = event_kind == "review_required"
+            is_failure = event_kind == "analysis_failed"
+            href = (
+                f"/profiles/{row['profile_id']}/imports/{row['import_run_id']}/review"
+            )
+            notifications.append(
+                FundManagerNotificationResponse(
+                    audience="fund_manager",
+                    security_tag="fund_manager_only",
+                    kind="task" if is_review else "information",
+                    task_state="new",
+                    notification_id=(
+                        f"workbook-import:{row['import_run_id']}:{event_kind}:{index}:{created_at}"
+                    ),
+                    notification_type="workbook_import_analysis",
+                    title=str(event.get("title", "Workbook analysis updated")),
+                    ledger_label="Profile Import",
+                    bookmaker_label=str(row["source_filename"]),
+                    message=str(event.get("message", "Workbook analysis status changed.")),
+                    profile_id=str(row["profile_id"]),
+                    profile_name=str(row["profile_name"]),
+                    record_id=str(row["import_run_id"]),
+                    due_at=created_at,
+                    settles_at=created_at,
+                    created_at=created_at,
+                    href=href,
+                    completion_href="",
+                    tone="danger" if is_failure else "warning" if is_review else "info",
+                )
+            )
+    return notifications
 
 
 def backup_reminder_notification(now: datetime) -> FundManagerNotificationResponse | None:
@@ -139,8 +196,9 @@ def backup_reminder_notification(now: datetime) -> FundManagerNotificationRespon
 def list_fund_manager_notifications(
     request: Request,
 ) -> list[FundManagerNotificationResponse]:
+    session = require_request_session(request)
     now = datetime.now(UTC)
-    notifications: list[FundManagerNotificationResponse] = []
+    notifications = workbook_import_notifications(session.email)
     backup_notification = backup_reminder_notification(now)
     if backup_notification is not None:
         notifications.append(backup_notification)
@@ -254,10 +312,7 @@ def list_fund_manager_notifications(
             )
         )
 
-    session = getattr(request.state, "auth_session", None)
-    preferences = (
-        get_notification_preferences(str(session.email)) if session is not None else {}
-    )
+    preferences = get_notification_preferences(session.email)
     permitted = [
         notification
         for notification in notifications

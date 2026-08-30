@@ -10,7 +10,7 @@ target Profile. It does not import into Profile, Account, catalogue or ledger ta
 top-level route redirects to Profiles and is not a production data source.
 
 Production uploads are accepted as authenticated `.xlsx` request bytes, checked for size/type,
-checksummed, analysed in memory and discarded before the request completes. Raw workbook bytes are
+checksummed, analysed by the persisted import-run job in memory and discarded when analysis completes. Raw workbook bytes are
 not stored in PostgreSQL, the Vercel filesystem, Git or a public object URL. The Fund Manager must
 re-upload the same checksum during a separately approved real-import tranche. Existing private
 artifacts under `data/private/imports/founder/dry-run-2026-08-29-1605` remain developer regression
@@ -74,22 +74,48 @@ historical EP, manual override and arbitrary financial decisions cannot be batch
 
 ## Rerun and readiness
 
-Rerun recomputes review readiness from the persisted immutable exception snapshot and compatible
+Initial analysis and review rerun persist their current stage, genuine percentage boundaries and
+rows analysed/total where known. They do not invent elapsed-time estimates. The authenticated UI
+polls the persisted run, may be left safely, and emits Fund Manager notifications for start,
+completion, review-required and failure states. Every notification deep-links to the same Profile
+and import run.
+
+Rerun recomputes review readiness in the background from the persisted immutable exception snapshot and compatible
 decisions. It reports original/resolved/remaining partials, excluded and deferred rows, row-count
 impact, P&L impact and stale decisions. It never writes production data. A later approved import
 must re-upload and verify the original checksum before applying records.
 
+Review decisions are auto-saved individually. A selected or complete reset uses the shared warning
+dialog, deletes only persisted review decisions and records actor, scope, count and timestamp in the
+run audit summary. It cannot change the source workbook or Profile data. A zero P&L impact means
+exactly `£0.00 change to imported P&L`; a non-zero impact lists each contributing defer/exclude
+decision and requires explicit acknowledgement at the later approval gate.
+
 Import review is ready only when no item remains `UNREVIEWED` or `BLOCKED`. Deferred and excluded
 items are accepted only through an explicit reasoned decision and remain visible in reconciliation.
 
-## Annual reconciliation boundary
+## Workbook-first financial reconciliation
 
-The £2.18 difference between the workbook's £1,080.18 annual report and Plum Duff's £1,078.00
-snapshot calculation is a date-axis difference, not a calculation adjustment. The workbook annual
-formula includes six settlement-dated 2026 Sportsbook rows after the confirmed 29 August 2026
-16:05 Europe/London snapshot; those rows net £2.18. Plum Duff correctly excludes post-snapshot
-records from an as-of import reconciliation. The row-level trace remains in the private dry-run
-artifact directory and is not committed.
+The workbook effective timestamp is source metadata and selects the report period; it is not an
+import or reporting cutoff. Every parsed ledger row remains accounted for, including an open row
+whose event or settlement date is later than the snapshot timestamp.
+
+Reconciliation follows the workbook formulas and the established cash-first contracts:
+
+- Sportsbook and Casino report rows by their workbook week label/date axis and include the row's
+  resolved current value, whether that value is final or still current/worst-case.
+- Free Bets include the workbook's reportable `Placed` and `Settled` states and resolve final value
+  before current value.
+- Month reports sum workbook week buckets whose week-start belongs to that month; year reports sum
+  the corresponding month/week buckets.
+- Reconciliation presents settled/realised P&L, open current/worst-case P&L and the workbook-equivalent
+  total separately. The two financial states must not be conflated.
+
+The earlier £2.18 trace was caused by applying an unsupported `row date <= snapshot timestamp`
+filter. Removing that cutoff makes the existing private snapshot reconcile exactly to the workbook's
+£1,080.18 annual result. The previously observed December dates were corrected source-data errors;
+they do not define a migration rule. Generic validation still marks a future-dated settled row for
+review, while a future-dated open row is valid and does not enter the exception queue.
 
 ## Production authority and session boundary
 

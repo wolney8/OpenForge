@@ -66,8 +66,37 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     )
 
     assert response.status_code == 200, response.text
-    workspace = response.json()
-    assert workspace["metadata"]["workbook_checksum"] == before
+    queued = response.json()
+    assert queued["metadata"]["workbook_checksum"] == before
+    assert queued["run_status"] == "ANALYSING"
+    assert queued["source_summary"]["job"]["stage"] == "Queued for analysis"
+    import_run_id = queued["metadata"]["import_run_id"]
+    workspace_response = client.get(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+    )
+    assert workspace_response.status_code == 200
+    workspace = workspace_response.json()
+    monkeypatch.setattr(
+        "openforge_api.notifications.require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid"),
+    )
+    notifications = client.get("/fund-manager/notifications")
+    assert notifications.status_code == 200
+    import_notifications = [
+        item
+        for item in notifications.json()
+        if item["notification_type"] == "workbook_import_analysis"
+    ]
+    assert {item["title"] for item in import_notifications} >= {
+        "Workbook analysis started",
+        "Workbook analysis complete",
+        "Workbook review required",
+    }
+    assert all(
+        item["href"]
+        == f"/profiles/profile-import-test/imports/{import_run_id}/review"
+        for item in import_notifications
+    )
     assert workspace["metadata"]["original_partial_count"] == 114
     assert workspace["metadata"]["provider_conflict_count"] == 1
     assert workspace["metadata"]["historical_ep_count"] == 2
@@ -85,10 +114,24 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 13
     assert workspace["source_summary"]["ledgers"]["casino"]["partial"] == 12
     assert workspace["source_summary"]["ledgers"]["cash_adjustments"]["mapped"] == 23
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["accounted_rows"] == 502
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["future_settling_open"] == 3
+    assert (
+        workspace["source_summary"]["ledgers"]["sportsbook"]["future_settling_open_current_pnl"]
+        == "4.97"
+    )
+    assert workspace["financial_reconciliation"]["week"]["difference"] == "0.00"
+    assert workspace["financial_reconciliation"]["month"]["difference"] == "0.00"
+    assert workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
+    assert (
+        workspace["financial_reconciliation"]["year"]["financial_views"][
+            "open_current_worst_case_pnl"
+        ]["total"]
+        == "39.07"
+    )
     assert workspace["metadata"]["raw_workbook_retained"] is False
     assert hashlib.sha256(workbook.read_bytes()).hexdigest() == before
 
-    import_run_id = workspace["metadata"]["import_run_id"]
     reloaded = client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert reloaded.status_code == 200
     assert len(reloaded.json()["items"]) == 117
@@ -119,12 +162,49 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["metadata"]["import_run_id"] == import_run_id
-    assert repeated.json()["reconciliation"]["resolved_partial_count"] == 1
+    repeated_workspace = client.get(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+    ).json()
+    assert repeated_workspace["reconciliation"]["resolved_partial_count"] == 1
 
     rerun = client.post(f"/profiles/profile-import-test/workbook-imports/{import_run_id}/rerun")
     assert rerun.status_code == 200
-    assert rerun.json()["run_status"] == "REVIEW_REQUIRED"
-    assert rerun.json()["reconciliation"]["remaining_partial_count"] == 113
+    rerun_workspace = client.get(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+    ).json()
+    assert rerun_workspace["run_status"] == "REVIEW_REQUIRED"
+    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 113
+    assert rerun_workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
+    assert {
+        event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]
+    } >= {"analysis_started", "analysis_complete", "review_required"}
+
+    reset = client.post(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}/decisions/reset",
+        json={"item_ids": [advanced_lay["item_id"]], "confirmed": True},
+    )
+    assert reset.status_code == 200, reset.text
+    assert reset.json()["reconciliation"]["resolved_partial_count"] == 0
+    assert reset.json()["reconciliation"]["pnl_impact"] == "0.00"
+    assert reset.json()["source_summary"]["review_reset_events"][-1]["decision_count"] == 1
+
+    restore = client.put(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+        f"/decisions/{advanced_lay['item_id']}",
+        json={
+            "item_id": advanced_lay["item_id"],
+            "source_fingerprint": advanced_lay["source_fingerprint"],
+            "action": "historical_imported_calculation",
+            "target_type": advanced_lay["proposed_target"],
+        },
+    )
+    assert restore.status_code == 200
+    reset_all = client.post(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}/decisions/reset",
+        json={"confirmed": True},
+    )
+    assert reset_all.status_code == 200
+    assert reset_all.json()["reconciliation"]["valid_decision_count"] == 0
 
 
 def test_profile_workbook_upload_rejects_non_xlsx_and_oversize(

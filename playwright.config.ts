@@ -1,11 +1,13 @@
 import { defineConfig } from "@playwright/test";
 
+const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: "http://127.0.0.1:3010",
+    baseURL,
     trace: "off",
     video: "off",
     screenshot: "off",
@@ -13,7 +15,7 @@ export default defineConfig({
       cookies: [],
       origins: [
         {
-          origin: "http://127.0.0.1:3010",
+          origin: baseURL,
           localStorage: [
             { name: "pd-required-storage-notice", value: "acknowledged" },
           ],
@@ -30,6 +32,7 @@ export default defineConfig({
     },
     {
       command: "pnpm dev:web",
+      env: { ...process.env, OPENFORGE_AUTH_REQUIRED: "false" },
       url: "http://127.0.0.1:3010/login",
       reuseExistingServer: true,
       timeout: 120000,

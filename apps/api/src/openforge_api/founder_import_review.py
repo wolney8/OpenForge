@@ -236,9 +236,13 @@ def _context(fields: dict[str, Any]) -> dict[str, Any]:
         "odds": _first(fields, "BackOdds", "Odds"),
         "exchange": _first(fields, "Exchange", "LayExchange"),
         "lay_type": _first(fields, "LayMode", "Strategy", "MatchStrategy"),
-        "lay_odds": _first(fields, "LayOdds"),
-        "lay_stake": _first(fields, "LayStake"),
+        "lay_odds": _first(fields, "LayOdds", "LayOdds1", "LayOdds2"),
+        "lay_stake": _first(fields, "LayStake", "LayStake1", "LayMatchedStake1"),
         "pnl": _first(fields, "FinalNetPnL", "NetPnL", "CalcNetPnL", "ReportingValue"),
+        "status": _first(fields, "Status", "BetStatus", "Stage"),
+        "result": _first(fields, "Result", "Outcome"),
+        "bet_type": _first(fields, "BetType", "FixtureType", "Market"),
+        "notes": _first(fields, "Notes", "Note", "Comments", "Strategy", "MatchStrategy"),
     }
 
 
@@ -600,12 +604,19 @@ def _reconciliation(
     )
     excluded_ids = {item["import_id"] for item in items if item["review_status"] == "EXCLUDED"}
     deferred_ids = {item["import_id"] for item in items if item["review_status"] == "DEFERRED"}
-    impacted_pnl = {
-        item["import_id"]: float(item["context"]["pnl"])
+    impact_items = [
+        {
+            "item_id": item["item_id"],
+            "import_id": item["import_id"],
+            "source_sheet": item["source_sheet"],
+            "source_row": item["source_row"],
+            "action": item["decision"]["action"],
+            "value": item["context"]["pnl"],
+        }
         for item in items
         if item["import_id"] in excluded_ids | deferred_ids and item["context"]["pnl"]
-    }
-    pnl_impact = sum(impacted_pnl.values())
+    ]
+    pnl_impact = sum(float(item["value"]) for item in impact_items)
     blocking = counts["UNREVIEWED"] + counts["BLOCKED"]
     return {
         "original_partial_count": metadata["original_partial_count"],
@@ -617,6 +628,7 @@ def _reconciliation(
         "valid_decision_count": valid_decisions,
         "stale_decision_count": stale_decisions,
         "pnl_impact": f"{pnl_impact:.2f}",
+        "pnl_impact_items": impact_items,
         "row_count_impact": -(len(excluded_ids) + len(deferred_ids)),
         "import_ready": blocking == 0,
         "real_import_performed": False,

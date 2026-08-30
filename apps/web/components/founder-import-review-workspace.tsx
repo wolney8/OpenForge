@@ -5,12 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import type { MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
 
 type ReviewStatus =
@@ -59,6 +61,10 @@ type ReviewItem = {
     lay_odds: string;
     lay_stake: string;
     pnl: string;
+    status: string;
+    result: string;
+    bet_type: string;
+    notes: string;
   };
   source_fields: Record<string, string | number | boolean | null>;
   calculation_provenance: string;
@@ -79,6 +85,35 @@ type Workspace = {
     real_import_performed: false;
   };
   items: ReviewItem[];
+  source_summary?: {
+    job?: {
+      stage: string;
+      percentage: number;
+      rows_analysed: number;
+      total_rows: number;
+      estimated_seconds_remaining: number | null;
+      error: string;
+    };
+    ledgers: Record<string, {
+      source_rows: number;
+      accounted_rows: number;
+      open: number;
+      settled: number;
+      future_settling_open: number;
+      open_exposure: string;
+    }>;
+  };
+  financial_reconciliation?: Record<"week" | "month" | "year", {
+    period_key: string;
+    plum_duff_from_mapped_rows: Record<"sportsbook" | "free_bets" | "casino" | "total", string>;
+    workbook_report: Record<"sportsbook" | "free_bets" | "casino" | "total", string | null>;
+    financial_views: {
+      realised_settled_pnl: Record<"sportsbook" | "free_bets" | "casino" | "total", string>;
+      open_current_worst_case_pnl: Record<"sportsbook" | "free_bets" | "casino" | "total", string>;
+      workbook_equivalent_total: string;
+    };
+    difference: string | null;
+  }>;
   reconciliation: {
     original_partial_count: number;
     resolved_partial_count: number;
@@ -89,6 +124,14 @@ type Workspace = {
     valid_decision_count: number;
     stale_decision_count: number;
     pnl_impact: string;
+    pnl_impact_items: Array<{
+      item_id: string;
+      import_id: string;
+      source_sheet: string;
+      source_row: number;
+      action: string;
+      value: string;
+    }>;
     row_count_impact: number;
     import_ready: boolean;
     real_import_performed: false;
@@ -205,6 +248,53 @@ function statusClass(status: ReviewStatus) {
   return "table-chip-neutral";
 }
 
+function issueExplanation(item: ReviewItem): string {
+  if (item.issue_types.includes("advanced_lay")) return "This row uses a legacy lay arrangement that cannot be reconstructed safely from the available fields.";
+  if (item.issue_types.includes("missing_strategy")) return "The workbook does not identify which matching strategy produced this row.";
+  if (item.issue_types.includes("text_length")) return "A source value is longer than the current ledger field allows.";
+  if (item.issue_types.includes("missing_offer_name")) return "The workbook does not contain an offer name for this casino row.";
+  if (item.issue_types.includes("override_missing_reason")) return "The workbook contains a manual override but no reason for it.";
+  if (item.category === "missing_provider") return "This account name does not currently match a provider in the global Account Catalogue.";
+  if (item.category === "historical_extra_place") return "This historical Extra Place row does not contain all fields required by the current Extra Places ledger.";
+  return "One or more source values cannot be mapped safely without a review decision.";
+}
+
+function reviewReason(item: ReviewItem): string {
+  if (item.category === "missing_provider") return "A global provider relationship must be confirmed before this Profile account can be created.";
+  if (item.category === "historical_extra_place") return "You must choose whether to retain it in Sportsbook or preserve it as an incomplete historical Extra Place.";
+  if (item.issue_types.includes("advanced_lay") || item.issue_types.includes("missing_strategy")) return "Plum Duff can preserve the source financial outcome, but cannot claim that its current calculator reproduced the bet.";
+  if (item.issue_types.includes("text_length")) return "The full source text must be retained while a shorter canonical value is selected.";
+  if (item.issue_types.includes("missing_offer_name")) return "The target ledger requires a label, but no marketing name can be inferred safely.";
+  return "The importer needs an explicit business decision before this row can be marked ready.";
+}
+
+function interpretation(item: ReviewItem): string {
+  const pnl = item.context.pnl ? ` The source current/realised P&L of £${item.context.pnl} remains traceable.` : "";
+  return `Proposed target: ${item.proposed_target}.${pnl}`;
+}
+
+function decisionEffect(action: string, item: ReviewItem): string {
+  const effects: Record<string, string> = {
+    historical_imported_calculation: "Keeps the row in its proposed ledger, preserves its source financial value, and marks the calculation as imported historical data.",
+    preserve_and_shorten: "Keeps the full source text for audit and writes only an approved shortened value to the target field.",
+    historical_casino_label: "Keeps the row in Casino and adds the neutral migration-generated label Historical Casino Offer.",
+    historical_extra_place: "Creates one incomplete historical Extra Place row, preserves known source values, and leaves unsupported modern fields blank.",
+    keep_sportsbook_historical: "Keeps one Sportsbook row with Extra Place classification and does not create a duplicate Extra Place row.",
+    map_existing_provider: "Links this Profile account to the selected global provider without changing the workbook.",
+    mark_historical_provider: "Preserves the account as historical and records your reason without creating an active catalogue provider.",
+    defer: "Leaves the row out of the ready set for now and includes its source P&L in the review impact.",
+    exclude: "Excludes the row from the later import and includes its source P&L in the review impact.",
+    reclassify: "Moves the proposed destination to the ledger you select and records your reason and source provenance.",
+    accept_proposed: "Accepts the proposed target without changing the source financial value or provenance.",
+    edit_mapping: "Uses the values you enter for supported target fields while preserving the original source row for audit.",
+    provide_override_reason: "Keeps the workbook override and records the reason you provide.",
+    remove_override: "Removes the imported override instruction; the source value remains retained for audit.",
+    historical_imported_behavior: "Keeps the historical override behaviour without inventing a missing reason.",
+    create_provider_candidate: "Records a blocked catalogue candidate only; normal global catalogue validation is still required.",
+  };
+  return effects[action] ?? `Records this decision against ${item.source_sheet} row ${item.source_row} without modifying the workbook.`;
+}
+
 function initialDraft(item: ReviewItem): Draft {
   return {
     action: item.decision?.action ?? optionsFor(item)[0][0],
@@ -277,9 +367,11 @@ export function FounderImportReviewWorkspace({
     action: string;
     description: string;
   } | null>(null);
+  const [resetScope, setResetScope] = useState<"all" | "selected" | null>(null);
   const [approvalAcknowledged, setApprovalAcknowledged] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
+  const loadoutRef = useRef<HTMLDivElement | null>(null);
 
   async function loadWorkspace() {
     setLoading(true);
@@ -313,6 +405,34 @@ export function FounderImportReviewWorkspace({
       });
     return () => { active = false; };
   }, [importRunId, profileId]);
+
+  useEffect(() => {
+    if (workspace?.run_status !== "ANALYSING") {
+      endShellLoading();
+      return;
+    }
+    beginShellLoading();
+    const interval = window.setInterval(() => {
+      void fetch(`${reviewApi}`, { credentials: "include", cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(await responseMessage(response));
+          return response.json() as Promise<Workspace>;
+        })
+        .then((next) => {
+          setWorkspace(next);
+          if (next.run_status !== "ANALYSING") {
+            endShellLoading();
+            window.clearInterval(interval);
+            setMessage(next.run_status === "FAILED" ? "Workbook analysis failed." : "Workbook analysis updated. Review decisions remain saved.");
+          }
+        })
+        .catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : "Unable to refresh workbook analysis."));
+    }, 1500);
+    return () => {
+      window.clearInterval(interval);
+      endShellLoading();
+    };
+  }, [reviewApi, workspace?.run_status]);
 
   useEffect(() => {
     const dialog = editing ? editorRef.current : filterOpen ? filterRef.current : null;
@@ -364,7 +484,7 @@ export function FounderImportReviewWorkspace({
     setDraft(initialDraft(item));
   }
 
-  async function saveDecision() {
+  async function saveDecision(advance = false) {
     if (!editing || !draft) return;
     setSaving(true);
     try {
@@ -387,9 +507,13 @@ export function FounderImportReviewWorkspace({
         }),
       });
       if (!response.ok) throw new Error(await responseMessage(response));
-      setWorkspace(await response.json() as Workspace);
-      setEditing(null);
-      setDraft(null);
+      const nextWorkspace = await response.json() as Workspace;
+      setWorkspace(nextWorkspace);
+      const nextItem = advance
+        ? nextWorkspace.items.find((item) => item.review_status === "UNREVIEWED" && item.item_id !== editing.item_id)
+        : null;
+      setEditing(nextItem ?? null);
+      setDraft(nextItem ? initialDraft(nextItem) : null);
       setMessage("Import review decision saved.");
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to save the review decision.");
@@ -445,11 +569,36 @@ export function FounderImportReviewWorkspace({
         credentials: "include",
       });
       if (!response.ok) throw new Error(await responseMessage(response));
-      const result = await response.json() as { reconciliation: Workspace["reconciliation"] };
-      setWorkspace((current) => current ? { ...current, reconciliation: result.reconciliation } : current);
-      setMessage("Dry run rerun completed without importing data.");
+      const result = await response.json() as Workspace;
+      setWorkspace(result);
+      setMessage(result.run_status === "ANALYSING" ? "Review reconciliation started. You can leave this page." : "Dry run rerun completed without importing data.");
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to rerun the dry run.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetDecisions() {
+    if (!resetScope || !workspace) return;
+    setSaving(true);
+    try {
+      const itemIds = resetScope === "selected"
+        ? workspace.items.filter((item) => selected.has(item.item_id) && item.decision).map((item) => item.item_id)
+        : [];
+      const response = await fetch(`${reviewApi}/decisions/reset`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_ids: itemIds, confirmed: true }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      setWorkspace(await response.json() as Workspace);
+      setSelected(new Set());
+      setResetScope(null);
+      setMessage(`${itemIds.length ? "Selected" : "All"} review decisions reset. The workbook and Profile data were not changed.`);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to reset review decisions.");
     } finally {
       setSaving(false);
     }
@@ -482,34 +631,66 @@ export function FounderImportReviewWorkspace({
   if (loading) return <section className="content-panel stack"><LedgerLoadingIndicator label="Loading Profile import review" /></section>;
   if (error || !workspace) return <section className="content-panel stack"><span className="eyebrow">Import review</span><h1>Unable to load review</h1><p className="error-text" role="alert">{error}</p><button className="button-link" onClick={() => void loadWorkspace()} type="button">Try again</button></section>;
 
+  const ledgerSummaries = Object.values(workspace.source_summary?.ledgers ?? {});
+  const accountedRows = ledgerSummaries.reduce((total, ledger) => total + ledger.accounted_rows, 0);
+  const sourceRows = ledgerSummaries.reduce((total, ledger) => total + ledger.source_rows, 0);
+  const futureOpenRows = ledgerSummaries.reduce((total, ledger) => total + ledger.future_settling_open, 0);
+  const annualReconciliation = workspace.financial_reconciliation?.year;
+  const job = workspace.source_summary?.job;
+  const pnlImpactIsZero = Number(workspace.reconciliation.pnl_impact) === 0;
+  const selectedDecisionCount = workspace.items.filter((item) => selected.has(item.item_id) && item.decision).length;
+
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
     <section className="content-panel stack founder-import-review" data-pd-id="founder-import-review.workspace">
       <header className="sportsbook-page-header">
-        <div><span className="eyebrow">Founder workbook</span><h1 className="sportsbook-page-title">Import Review</h1></div>
-        <button className="button-link icon-text-action" disabled={saving} onClick={() => void rerun()} type="button">
-          {saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
-          <span>Rerun dry run</span>
-        </button>
+        <div><span className="eyebrow">Profile workbook</span><h1 className="sportsbook-page-title">Import Review</h1></div>
+        <div className="tracker-nav tracker-nav-right">
+          <Link className="button-link" href={`/profiles/${profileId}/tracker/settings#import-export`}>Save &amp; leave</Link>
+          <button className="button-link icon-text-action" disabled={saving || workspace.run_status === "ANALYSING"} onClick={() => void rerun()} type="button">
+            {saving || workspace.run_status === "ANALYSING" ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
+            <span>Rerun dry run</span>
+          </button>
+        </div>
       </header>
-      <section className="stat-card-grid import-review-stat-grid" aria-label="Import review status">
-        <article className="stat-card"><span className="eyebrow">Partial rows</span><strong>{workspace.metadata.original_partial_count}</strong><span>{workspace.reconciliation.resolved_partial_count} resolved</span></article>
+      {workspace.run_status === "ANALYSING" && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
+        <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{job.percentage}%</span></div>
+        <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
+      </section> : null}
+      {workspace.run_status === "FAILED" ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
+      <section className="stat-card-grid import-review-stat-grid import-review-compact-stats" aria-label="Import review status">
         <article className="stat-card"><span className="eyebrow">Remaining</span><strong>{workspace.reconciliation.remaining_partial_count}</strong><span>Require review decisions</span></article>
+        <article className="stat-card"><span className="eyebrow">Resolved</span><strong>{workspace.reconciliation.resolved_partial_count}</strong><span>Saved decisions</span></article>
         <article className="stat-card"><span className="eyebrow">Provider conflicts</span><strong>{workspace.metadata.provider_conflict_count}</strong><span>Global catalogue resolution</span></article>
         <article className="stat-card"><span className="eyebrow">Historical EP</span><strong>{workspace.metadata.historical_ep_count}</strong><span>Explicit destination required</span></article>
-        <article className="stat-card"><span className="eyebrow">P&amp;L impact</span><strong><FinancialValue animate={false} value={workspace.reconciliation.pnl_impact} /></strong><span>Excluded or deferred source value</span></article>
+        <article className="stat-card"><span className="eyebrow">P&amp;L impact</span><strong><FinancialValue animate={false} value={workspace.reconciliation.pnl_impact} /></strong><span>{pnlImpactIsZero ? "£0.00 change to imported P&L" : `${workspace.reconciliation.pnl_impact_items.length} review decisions change imported P&L`}</span></article>
       </section>
+      {!pnlImpactIsZero ? <details className="content-subpanel stack-tight import-impact-details" open><summary>Review decisions affecting imported P&amp;L</summary>{workspace.reconciliation.pnl_impact_items.map((item) => <div className="workflow-panel-header" key={item.item_id}><span>{item.source_sheet} row {item.source_row} · {item.action.replaceAll("_", " ")}</span><FinancialValue animate={false} value={item.value} /></div>)}</details> : null}
+      {annualReconciliation ? <details className="content-subpanel stack-tight import-financial-reconciliation">
+        <summary id="import-financial-reconciliation-title">Financial reconciliation · {accountedRows} / {sourceRows} rows accounted · {futureOpenRows} future-settling open</summary>
+        <div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Workbook report</th><th scope="col">Plum Duff equivalent</th><th scope="col">Settled / realised</th><th scope="col">Open current</th><th scope="col">Difference</th></tr></thead><tbody>{(["week", "month", "year"] as const).map((period) => {
+          const reconciliation = workspace.financial_reconciliation?.[period];
+          if (!reconciliation) return null;
+          return <tr key={period}><td><strong>{period[0].toLocaleUpperCase() + period.slice(1)}</strong><span className="table-status">{reconciliation.period_key}</span></td><td><FinancialValue animate={false} value={reconciliation.workbook_report.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={reconciliation.plum_duff_from_mapped_rows.total} /></td><td><FinancialValue animate={false} value={reconciliation.financial_views.realised_settled_pnl.total} /></td><td><FinancialValue animate={false} value={reconciliation.financial_views.open_current_worst_case_pnl.total} /></td><td><FinancialValue animate={false} value={reconciliation.difference ?? "0.00"} /></td></tr>;
+        })}</tbody></table></div>
+      </details> : null}
       <div aria-label="Import review controls" className="sportsbook-review-bar" role="toolbar">
         <label className="field-control table-search-field"><span className="visually-hidden">Search import exceptions</span><input aria-label="Search import exceptions" onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search import exceptions" type="search" value={search} /></label>
         <div className="extra-place-toolbar-actions">
           <button className="button-link icon-text-action" disabled={!commonBatchIssue} onClick={previewBatch} title={commonBatchIssue ? "Review selected matching rows" : "Select rows sharing a safe batch rule"} type="button"><span aria-hidden="true" className="material-symbols-outlined">library_add_check</span><span>Review selected</span></button>
+          <button className="button-link icon-text-action" disabled={!selectedDecisionCount} onClick={() => setResetScope("selected")} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset selected</span></button>
+          <button className="button-link icon-text-action" disabled={!workspace.reconciliation.valid_decision_count} onClick={() => setResetScope("all")} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset review</span></button>
           <div className="table-filter-button-wrap">
             <button aria-haspopup="dialog" aria-label="Filter import review" className={`icon-button table-filter-button${activeFilterCount ? " has-active-table-controls" : ""}`} onClick={() => setFilterOpen(true)} title="Filter import review" type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>{activeFilterCount ? <span className="table-filter-badge">{activeFilterCount}</span> : null}</button>
             {activeFilterCount ? <button aria-label="Clear import review filters" className="table-filter-clear" onClick={() => { setStatusFilter(""); setSheetFilter(""); setIssueFilter(""); setPage(1); }} type="button">×</button> : null}
           </div>
         </div>
       </div>
-      <div className="extra-place-table-heading-controls"><div className="tracker-nav extra-place-loadouts import-review-loadouts" role="group" aria-label="Import review loadouts">{loadouts.map(([value, label]) => <button aria-pressed={loadout === value} className={`review-chip${loadout === value ? " is-active" : ""}`} key={value} onClick={() => chooseLoadout(value)} type="button">{label}</button>)}</div></div>
+      <div className="extra-place-table-heading-controls import-review-loadout-shell">
+        <button aria-label="Scroll review loadouts left" className="icon-button compact-action" onClick={() => loadoutRef.current?.scrollBy({ left: -360, behavior: "smooth" })} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button>
+        <div className="tracker-nav extra-place-loadouts import-review-loadouts" ref={loadoutRef} role="group" aria-label="Import review loadouts">{loadouts.map(([value, label]) => <button aria-pressed={loadout === value} className={`review-chip${loadout === value ? " is-active" : ""}`} key={value} onClick={() => chooseLoadout(value)} type="button">{label}</button>)}</div>
+        <button aria-label="Scroll review loadouts right" className="icon-button compact-action" onClick={() => loadoutRef.current?.scrollBy({ left: 360, behavior: "smooth" })} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>
+      </div>
       <LedgerPagination ariaLabel="Import review" currentPage={effectivePage} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} />
       <LedgerTableScroll dataPdId="founder-import-review.table-scroll">
         <table className="data-table import-review-table">
@@ -520,15 +701,14 @@ export function FounderImportReviewWorkspace({
                 (name) => name.toLocaleLowerCase() === item.context.provider.toLocaleLowerCase()
               )
             ) ?? null;
-            const batchEligible = item.issue_types.some((issue) => safeBatchActions[issue]);
             return <tr key={item.item_id}>
-              <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for batch review`} checked={selected.has(item.item_id)} disabled={!batchEligible} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(item.item_id)) next.delete(item.item_id); else next.add(item.item_id); return next; })} type="checkbox" /></td>
+              <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for review action`} checked={selected.has(item.item_id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(item.item_id)) next.delete(item.item_id); else next.add(item.item_id); return next; })} type="checkbox" /></td>
               <td><strong>{item.source_sheet} · {item.source_row}</strong><span className="table-status">{item.source_record_id || "No source ID"}</span><span className="spreadsheet-row-id" title={item.import_id}>{item.import_id.slice(0, 18)}…</span></td>
-              <td>{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status">{item.context.event || item.context.offer_name || "No event label"}</span></td>
+              <td>{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={item.context.event || item.context.offer_name}>{item.context.event || item.context.offer_name || "No event label"}</span></td>
               <td><strong>{item.context.offer_type || "—"}</strong><span className="table-status">{[item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></td>
               <td>{item.context.pnl ? <FinancialValue animate={false} value={item.context.pnl} /> : "—"}<span className="table-status">{item.calculation_provenance.replaceAll("_", " ")}</span></td>
-              <td>{item.proposed_target}</td>
-              <td><span className="table-chip table-chip-warning">{labels[item.issue_type] ?? item.issue_type.replaceAll("_", " ")}</span><details><summary>Details</summary><p>{item.reason}</p>{item.missing_fields.length ? <p>Missing: {item.missing_fields.join(", ")}</p> : null}</details></td>
+              <td><span className="import-review-truncate" title={item.proposed_target}>{item.proposed_target}</span></td>
+              <td><span className="table-chip table-chip-warning">{labels[item.issue_type] ?? item.issue_type.replaceAll("_", " ")}</span><span className="table-status import-review-truncate" title={issueExplanation(item)}>{issueExplanation(item)}</span></td>
               <td><span className={`table-chip ${statusClass(item.review_status)}`}>{statusLabels[item.review_status]}</span>{item.decision?.note ? <span className="table-status">{item.decision.note}</span> : null}</td>
               <td><button aria-label={`Review ${item.source_sheet} row ${item.source_row}`} className="icon-button" onClick={() => openEditor(item)} title="Review mapping" type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span></button></td>
             </tr>;
@@ -540,7 +720,7 @@ export function FounderImportReviewWorkspace({
         <strong>{workspace.run_status === "READY_APPROVED" ? "Dry run approved" : workspace.reconciliation.import_ready ? "Ready for approval" : "Review required"}</strong>
         <span>{workspace.reconciliation.import_ready ? "Approval records readiness only. It does not import Accounts or ledger rows." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
         {workspace.reconciliation.import_ready && workspace.run_status !== "READY_APPROVED" ? <div className="tracker-nav">
-          <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>I confirm this checksum and reconciliation are ready for the later import gate.</span></label>
+          <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for the later import gate." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
           <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>
         </div> : null}
       </section>
@@ -549,8 +729,60 @@ export function FounderImportReviewWorkspace({
 
     {filterOpen && typeof document !== "undefined" ? createPortal(<div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setFilterOpen(false); }}><section aria-labelledby="import-review-filter-title" aria-modal="true" className="modal-panel accounts-filter-modal" ref={filterRef} role="dialog" tabIndex={-1}><header className="modal-sticky-header sportsbook-page-header"><div><span className="eyebrow">Table controls</span><h2 id="import-review-filter-title">Filter import review</h2></div><button aria-label="Close import review filters" className="modal-close-button" onClick={() => setFilterOpen(false)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="form-grid accounts-filter-form-grid"><label className="field-control"><span>Source sheet</span><select onChange={(event) => { setSheetFilter(event.target.value); setPage(1); }} value={sheetFilter}><option value="">All</option>{[...new Set(workspace.items.map((item) => item.source_sheet))].map((sheet) => <option key={sheet}>{sheet}</option>)}</select></label><label className="field-control"><span>Review state</span><select onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} value={statusFilter}><option value="">All</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="field-control"><span>Issue type</span><select onChange={(event) => { setIssueFilter(event.target.value); setPage(1); }} value={issueFilter}><option value="">All</option>{[...new Set(workspace.items.flatMap((item) => item.issue_types))].sort().map((issue) => <option key={issue} value={issue}>{labels[issue] ?? issue.replaceAll("_", " ")}</option>)}</select></label></div><div className="tracker-nav"><button className="review-chip" onClick={() => { setStatusFilter(""); setSheetFilter(""); setIssueFilter(""); setPage(1); }} type="button">Clear filters</button><button className="review-chip review-chip-copy" onClick={() => setFilterOpen(false)} type="button">Done</button></div></section></div>, document.body) : null}
 
-    {editing && draft && typeof document !== "undefined" ? createPortal(<div className="modal-backdrop modal-backdrop-elevated" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { setEditing(null); setDraft(null); } }}><section aria-labelledby="import-review-editor-title" aria-modal="true" className="modal-panel workflow-editor-modal import-review-editor-modal" ref={editorRef} role="dialog" tabIndex={-1}><header className="workflow-panel-header workflow-editor-header"><div><span className="eyebrow">{editing.source_sheet} · row {editing.source_row}</span><h2 id="import-review-editor-title">Review import mapping</h2></div><button aria-label="Close import mapping review" className="modal-close-button" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="workflow-editor-body"><section className="stat-card-grid import-review-dialog-stats"><article className="stat-card"><span className="eyebrow">Issue</span><strong>{labels[editing.issue_type] ?? editing.issue_type.replaceAll("_", " ")}</strong></article><article className="stat-card"><span className="eyebrow">Source realised P&amp;L</span><strong>{editing.context.pnl ? <FinancialValue animate={false} value={editing.context.pnl} /> : "Unavailable"}</strong></article><article className="stat-card"><span className="eyebrow">Confidence</span><strong>{editing.confidence.replaceAll("_", " ")}</strong></article></section><p>{editing.reason}</p>{editing.missing_fields.length ? <p className="warning-text">Unsupported fields remain null: {editing.missing_fields.join(", ")}.</p> : null}<div className="form-grid"><label className="field-control"><span>Decision</span><select onChange={(event) => setDraft((current) => current ? { ...current, action: event.target.value, targetType: event.target.value === "reclassify" ? "Sportsbook Bet" : current.targetType } : current)} value={draft.action}>{optionsFor(editing).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{draft.action === "map_existing_provider" ? <label className="field-control"><span>Catalogue provider</span><select onChange={(event) => setDraft((current) => current ? { ...current, catalogueId: event.target.value } : current)} value={draft.catalogueId}><option value="">Select provider</option>{catalogue.map((provider) => <option key={provider.catalogue_id} value={provider.catalogue_id}>{provider.brand_name} · {provider.account_type}</option>)}</select></label> : null}{draft.action === "reclassify" ? <label className="field-control"><span>Target ledger</span><select onChange={(event) => setDraft((current) => current ? { ...current, targetType: event.target.value } : current)} value={draft.targetType}><option>Sportsbook Bet</option><option>Free Bet</option><option>Casino Offer</option><option>Extra Place</option><option>Mug Bet</option></select></label> : null}{draft.action === "edit_mapping" && editing.issue_types.includes("missing_offer_name") ? <label className="field-control"><span>Offer name</span><input onChange={(event) => setDraft((current) => current ? { ...current, offerName: event.target.value } : current)} value={draft.offerName} /></label> : null}{draft.action === "edit_mapping" && (editing.issue_types.includes("missing_strategy") || editing.issue_types.includes("advanced_lay")) ? <label className="field-control"><span>Strategy</span><input onChange={(event) => setDraft((current) => current ? { ...current, strategy: event.target.value } : current)} value={draft.strategy} /></label> : null}{draft.action === "edit_mapping" && editing.issue_types.includes("text_length") ? <label className="field-control field-span-2"><span>Canonical shortened text</span><textarea maxLength={200} onChange={(event) => setDraft((current) => current ? { ...current, canonicalText: event.target.value } : current)} rows={3} value={draft.canonicalText} /></label> : null}<label className="field-control field-span-2"><span>Review note / reason</span><textarea onChange={(event) => setDraft((current) => current ? { ...current, note: event.target.value } : current)} rows={4} value={draft.note} /></label></div>{draft.action === "create_provider_candidate" ? <p className="warning-text">This records a blocked candidate decision only. Complete normal catalogue validation before resolving it. <Link href="/settings#catalogue">Open Account Catalogue</Link>.</p> : null}<details><summary>Source fields retained for audit</summary><dl className="spreadsheet-row-details">{Object.entries(editing.source_fields).filter(([, value]) => value !== "" && value !== null).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{String(value)}</dd></div>)}</dl></details></div><footer className="workflow-editor-footer tracker-nav"><button className="button-link" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button">Cancel</button><button className="modal-primary-button icon-text-action" disabled={saving} onClick={() => void saveDecision()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">save</span>}<span>{saving ? "Saving" : "Save decision"}</span></button></footer></section></div>, document.body) : null}
+    <ConfirmationDialog
+      busy={saving}
+      busyLabel="Resetting"
+      confirmLabel={resetScope === "selected" ? "Reset selected" : "Reset all decisions"}
+      description={`This removes ${resetScope === "selected" ? selectedDecisionCount : workspace.reconciliation.valid_decision_count} saved review decision${(resetScope === "selected" ? selectedDecisionCount : workspace.reconciliation.valid_decision_count) === 1 ? "" : "s"} and restores those items to their original dry-run state. It never changes the source workbook or imported Profile data.`}
+      onCancel={() => setResetScope(null)}
+      onConfirm={() => void resetDecisions()}
+      open={resetScope !== null}
+      title="Reset review decisions?"
+    />
 
-    {batchPreview && typeof document !== "undefined" ? createPortal(<div className="modal-backdrop modal-backdrop-elevated"><section aria-labelledby="import-review-batch-title" aria-modal="true" className="modal-panel import-review-batch-modal stack" role="alertdialog"><header className="workflow-panel-header"><div><span className="eyebrow">Batch review</span><h2 id="import-review-batch-title">Confirm {batchPreview.items.length} decisions</h2></div><button aria-label="Close batch review" className="modal-close-button" disabled={saving} onClick={() => setBatchPreview(null)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><p><strong>{labels[batchPreview.issue] ?? batchPreview.issue.replaceAll("_", " ")}</strong></p><p>{batchPreview.description}</p><section className="content-subpanel stack-tight"><strong>Representative examples</strong>{batchPreview.items.slice(0, 3).map((item) => <span key={item.item_id}>{item.source_sheet} row {item.source_row} · {item.context.provider || item.context.event || item.source_record_id}</span>)}</section><p className="warning-text">This records auditable review decisions only. It does not import or alter workbook rows.</p><div className="tracker-nav"><button className="button-link" disabled={saving} onClick={() => setBatchPreview(null)} type="button">Cancel</button><button className="modal-primary-button icon-text-action" disabled={saving} onClick={() => void applyBatch()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">library_add_check</span>}<span>{saving ? "Applying" : "Apply batch rule"}</span></button></div></section></div>, document.body) : null}
+    {editing && draft && typeof document !== "undefined" ? createPortal(
+      <div className="modal-backdrop modal-backdrop-elevated" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { setEditing(null); setDraft(null); } }}>
+        <section aria-labelledby="import-review-editor-title" aria-modal="true" className="modal-panel workflow-editor-modal import-review-editor-modal" ref={editorRef} role="dialog" tabIndex={-1}>
+          <header className="workflow-panel-header workflow-editor-header">
+            <div><span className="eyebrow">{editing.source_sheet} · row {editing.source_row}</span><h2 id="import-review-editor-title">Review import mapping</h2></div>
+            <button aria-label="Close import mapping review" className="modal-close-button" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+          </header>
+          <div className="workflow-editor-body import-review-evidence-body">
+            <section className="content-subpanel stack-tight"><span className="eyebrow">What is wrong</span><strong>{labels[editing.issue_type] ?? editing.issue_type.replaceAll("_", " ")}</strong><span>{issueExplanation(editing)}</span></section>
+            <section className="content-subpanel stack-tight"><span className="eyebrow">Workbook evidence</span><dl className="spreadsheet-row-details import-review-evidence-grid">
+              {[
+                ["Source", `${editing.source_sheet} row ${editing.source_row}`],
+                ["Provider", editing.context.provider], ["Event", editing.context.event],
+                ["Status / result", [editing.context.status, editing.context.result].filter(Boolean).join(" / ")],
+                ["Offer / bet type", [editing.context.offer_type, editing.context.bet_type].filter(Boolean).join(" / ")],
+                ["Stake", editing.context.stake], ["Back odds", editing.context.odds],
+                ["Exchange", editing.context.exchange], ["Lay odds / stake", [editing.context.lay_odds, editing.context.lay_stake].filter(Boolean).join(" / ")],
+                ["Current / source P&L", editing.context.pnl ? `£${editing.context.pnl}` : "Not available"],
+                ["Notes / strategy", editing.context.notes],
+              ].filter(([, value]) => value).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
+            </dl></section>
+            <section className="content-subpanel stack-tight"><span className="eyebrow">Plum Duff interpretation</span><span>{interpretation(editing)}</span><span className="eyebrow">Why review is required</span><span>{reviewReason(editing)}</span></section>
+            <div className="form-grid">
+              <label className="field-control"><span>Decision</span><select onChange={(event) => setDraft((current) => current ? { ...current, action: event.target.value, targetType: event.target.value === "reclassify" ? "Sportsbook Bet" : current.targetType } : current)} value={draft.action}>{optionsFor(editing).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              {draft.action === "map_existing_provider" ? <label className="field-control"><span>Catalogue provider</span><select onChange={(event) => setDraft((current) => current ? { ...current, catalogueId: event.target.value } : current)} value={draft.catalogueId}><option value="">Select provider</option>{catalogue.map((provider) => <option key={provider.catalogue_id} value={provider.catalogue_id}>{provider.brand_name} · {provider.account_type}</option>)}</select></label> : null}
+              {draft.action === "reclassify" ? <label className="field-control"><span>Target ledger</span><select onChange={(event) => setDraft((current) => current ? { ...current, targetType: event.target.value } : current)} value={draft.targetType}><option>Sportsbook Bet</option><option>Free Bet</option><option>Casino Offer</option><option>Extra Place</option><option>Mug Bet</option></select></label> : null}
+              {draft.action === "edit_mapping" && editing.issue_types.includes("missing_offer_name") ? <label className="field-control"><span>Offer name</span><input onChange={(event) => setDraft((current) => current ? { ...current, offerName: event.target.value } : current)} value={draft.offerName} /></label> : null}
+              {draft.action === "edit_mapping" && (editing.issue_types.includes("missing_strategy") || editing.issue_types.includes("advanced_lay")) ? <label className="field-control"><span>Strategy</span><input onChange={(event) => setDraft((current) => current ? { ...current, strategy: event.target.value } : current)} value={draft.strategy} /></label> : null}
+              {draft.action === "edit_mapping" && editing.issue_types.includes("text_length") ? <label className="field-control field-span-2"><span>Canonical shortened text</span><textarea maxLength={200} onChange={(event) => setDraft((current) => current ? { ...current, canonicalText: event.target.value } : current)} rows={3} value={draft.canonicalText} /></label> : null}
+              <label className="field-control field-span-2"><span>Review note / reason</span><textarea onChange={(event) => setDraft((current) => current ? { ...current, note: event.target.value } : current)} rows={3} value={draft.note} /></label>
+            </div>
+            <section className="content-subpanel stack-tight"><span className="eyebrow">Decision effect</span><span>{decisionEffect(draft.action, editing)}</span></section>
+            {draft.action === "create_provider_candidate" ? <p className="warning-text">This records a blocked candidate decision only. Complete normal catalogue validation before resolving it. <Link href="/settings#catalogue">Open Account Catalogue</Link>.</p> : null}
+            <details><summary>Technical details</summary><p>{editing.reason}</p>{editing.missing_fields.length ? <p>Unsupported fields: {editing.missing_fields.join(", ")}.</p> : null}<p className="spreadsheet-row-id">{editing.import_id}</p><dl className="spreadsheet-row-details">{Object.entries(editing.source_fields).filter(([, value]) => value !== "" && value !== null).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{String(value)}</dd></div>)}</dl></details>
+          </div>
+          <footer className="workflow-editor-footer tracker-nav">
+            <button className="button-link" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button">Cancel</button>
+            <button className="button-link icon-text-action" disabled={saving} onClick={() => void saveDecision(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">skip_next</span><span>Save &amp; next</span></button>
+            <button className="modal-primary-button icon-text-action" disabled={saving} onClick={() => void saveDecision()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">save</span>}<span>{saving ? "Saving" : "Save decision"}</span></button>
+          </footer>
+        </section>
+      </div>, document.body) : null}
+
+    {batchPreview && typeof document !== "undefined" ? createPortal(<div className="modal-backdrop modal-backdrop-elevated"><section aria-labelledby="import-review-batch-title" aria-modal="true" className="modal-panel import-review-batch-modal stack" role="alertdialog"><header className="workflow-panel-header"><div><span className="eyebrow">Batch review</span><h2 id="import-review-batch-title">Confirm {batchPreview.items.length} decisions</h2></div><button aria-label="Close batch review" className="modal-close-button" disabled={saving} onClick={() => setBatchPreview(null)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><p><strong>{labels[batchPreview.issue] ?? batchPreview.issue.replaceAll("_", " ")}</strong></p><p>{batchPreview.description}</p><section className="content-subpanel stack-tight"><strong>Representative examples</strong>{batchPreview.items.slice(0, 3).map((item) => <span key={item.item_id}>{item.source_sheet} row {item.source_row} · {item.context.provider || item.context.event || item.source_record_id} · {item.context.stake ? `stake £${item.context.stake}` : "no stake"} · {item.context.pnl ? `P&L £${item.context.pnl}` : "no source P&L"}</span>)}</section><p className="warning-text">This records auditable review decisions only. It does not import or alter workbook rows.</p><div className="tracker-nav"><button className="button-link" disabled={saving} onClick={() => setBatchPreview(null)} type="button">Cancel</button><button className="modal-primary-button icon-text-action" disabled={saving} onClick={() => void applyBatch()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">library_add_check</span>}<span>{saving ? "Applying" : "Apply batch rule"}</span></button></div></section></div>, document.body) : null}
   </>;
 }

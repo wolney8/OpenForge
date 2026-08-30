@@ -108,6 +108,9 @@ use the canonical primitive and computed styling.
   filters, loadouts, pagination, financial/provider chips and confirmation patterns. A missing run
   is an actionable empty state, never a local-filesystem error. Do not add a permanent global
   Import Review navigation item or expose raw uploaded files through UI URLs.
+- Long loadout or review-chip sets must remain inside a bounded horizontal rail with the established
+  scroll/arrow treatment. Every action must remain keyboard reachable; never clip chips at the
+  viewport edge or allow the rail to create page-level horizontal overflow.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
   search, and account/theme/notification actions. At reduced widths these regions reflow without
   changing control semantics, hiding the search, or creating page-level horizontal overflow.

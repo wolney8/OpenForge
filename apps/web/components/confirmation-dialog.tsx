@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 export function ConfirmationDialog({
   busy = false,
@@ -26,6 +26,7 @@ export function ConfirmationDialog({
   title: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -36,7 +37,7 @@ export function ConfirmationDialog({
 
   return (
     <dialog
-      aria-labelledby="shared-confirmation-title"
+      aria-labelledby={titleId}
       className="confirmation-dialog"
       onCancel={(event) => {
         event.preventDefault();
@@ -45,7 +46,7 @@ export function ConfirmationDialog({
       ref={dialogRef}
     >
       <div className="stack">
-        <h2 id="shared-confirmation-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
         <div className="tracker-nav tracker-nav-right">
           <button className="button-link" disabled={busy} onClick={onCancel} type="button">{cancelLabel}</button>

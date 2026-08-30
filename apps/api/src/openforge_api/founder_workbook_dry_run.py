@@ -42,6 +42,8 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v2"
+
 SnapshotClassification = Literal["EXACT", "ALIAS", "NORMALIZED", "AMBIGUOUS", "MISSING"]
 JsonObject = dict[str, Any]
 
@@ -66,8 +68,12 @@ class LedgerDefinition:
     parser: Callable[[bytes], Any]
     mapper: Callable[[dict[str, Any]], Any]
     settled_statuses: frozenset[str]
+    open_statuses: frozenset[str]
+    formal_report_statuses: frozenset[str] | None
     pnl_fields: tuple[str, ...]
-    date_fields: tuple[str, ...]
+    report_date_fields: tuple[str, ...]
+    settlement_date_fields: tuple[str, ...]
+    liability_fields: tuple[str, ...]
 
 
 LEDGERS = (
@@ -78,8 +84,12 @@ LEDGERS = (
         parse_sportsbook_xlsx,
         map_sportsbook_import_fields,
         frozenset({"settled", "void", "cancelled", "free bet awarded"}),
+        frozenset({"prospecting", "not placed", "placed"}),
+        None,
         ("FinalNetPnL", "NetPnL", "ReportingValue"),
         ("DateSettling",),
+        ("DateSettling",),
+        ("Liability1", "Liability2", "Liability3"),
     ),
     LedgerDefinition(
         "free_bets",
@@ -88,8 +98,12 @@ LEDGERS = (
         parse_free_bet_xlsx,
         map_free_bet_import_fields,
         frozenset({"settled", "expired", "void", "converted"}),
+        frozenset({"prospecting", "available", "placed"}),
+        frozenset({"placed", "settled"}),
         ("FinalNetPnL", "NetPnL", "ReportingValue"),
         ("DateSettling",),
+        ("DateSettling",),
+        ("Liability1",),
     ),
     LedgerDefinition(
         "casino",
@@ -98,8 +112,12 @@ LEDGERS = (
         parse_casino_offer_xlsx,
         map_casino_offer_import_fields,
         frozenset({"settled"}),
+        frozenset({"prospecting", "started", "in progress"}),
+        None,
         ("FinalNetPnL", "CalcNetPnL", "NetPnL"),
+        ("DateStarted",),
         ("DateSettling", "DateStarted"),
+        (),
     ),
     LedgerDefinition(
         "cash_adjustments",
@@ -108,8 +126,12 @@ LEDGERS = (
         parse_cash_adjustment_xlsx,
         map_cash_adjustment_import_fields,
         frozenset(),
+        frozenset(),
+        None,
         ("SignedAmount",),
         ("AdjustmentDate",),
+        ("AdjustmentDate",),
+        (),
     ),
 )
 
@@ -397,18 +419,33 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
     }
 
 
-def _ledger_report(content: bytes, definition: LedgerDefinition) -> JsonObject:
+def _ledger_report(
+    content: bytes,
+    definition: LedgerDefinition,
+    *,
+    effective_date: date,
+) -> JsonObject:
     parsed = definition.parser(content)
     rows: list[JsonObject] = []
     keys: set[str] = set()
     duplicate_count = 0
     pnl_total = Decimal("0")
     reportable_pnl_total = Decimal("0")
-    dated_pnl: list[tuple[str, Decimal]] = []
+    realised_pnl_total = Decimal("0")
+    open_current_pnl_total = Decimal("0")
+    open_exposure_total = Decimal("0")
+    future_open_current_pnl = Decimal("0")
+    dated_pnl: list[JsonObject] = []
     status_counts: Counter[str] = Counter()
+    strategy_counts: Counter[str] = Counter()
+    date_quality_counts: Counter[str] = Counter()
+    future_open_examples: list[JsonObject] = []
+    future_settled_examples: list[JsonObject] = []
+    settled_count = 0
+    open_count = 0
     for row in parsed.rows:
         mapped_result = definition.mapper(row.fields)
-        errors = mapped_result[1]
+        errors = list(mapped_result[1])
         key = stable_import_key(
             definition.sheet_name,
             row.source_row,
@@ -419,16 +456,99 @@ def _ledger_report(content: bytes, definition: LedgerDefinition) -> JsonObject:
             duplicate_count += 1
         keys.add(key)
         status = str(row.fields.get("Status", "")).strip()
+        normalized_status = status.casefold()
         status_counts[status or "Unknown"] += 1
+        strategy = str(row.fields.get("MatchStrategy", "")).strip()
+        if strategy:
+            strategy_counts[strategy] += 1
+        is_cash_adjustment = definition.key == "cash_adjustments"
+        is_settled = is_cash_adjustment or normalized_status in definition.settled_statuses
+        is_open = normalized_status in definition.open_statuses
+        if is_settled:
+            settled_count += 1
+        elif is_open:
+            open_count += 1
         pnl = _decimal(_first_value(row.fields, definition.pnl_fields))
         if pnl is not None:
             pnl_total += pnl
-            source_date = str(_first_value(row.fields, definition.date_fields)).strip()
-            if source_date:
-                reportable_pnl_total += pnl
-                dated_pnl.append((source_date, pnl))
-        else:
-            source_date = str(_first_value(row.fields, definition.date_fields)).strip()
+            if is_settled:
+                realised_pnl_total += pnl
+            elif is_open:
+                open_current_pnl_total += pnl
+        report_date = str(_first_value(row.fields, definition.report_date_fields)).strip()
+        settlement_date = str(_first_value(row.fields, definition.settlement_date_fields)).strip()
+        parsed_settlement_date = _parse_iso_date(settlement_date) if settlement_date else None
+        date_quality = "missing"
+        if settlement_date and parsed_settlement_date is None:
+            date_quality = "invalid"
+            errors.append(
+                {
+                    "code": "invalid_source_date",
+                    "message": "The source settlement/event date is not parseable.",
+                }
+            )
+        elif parsed_settlement_date is not None and parsed_settlement_date > effective_date:
+            if is_open:
+                date_quality = "valid_future_open"
+            elif is_settled and not is_cash_adjustment:
+                date_quality = "future_settled_review"
+            else:
+                date_quality = "valid_future_other"
+        elif parsed_settlement_date is not None:
+            date_quality = "valid"
+        date_quality_counts[date_quality] += 1
+
+        liability = sum(
+            (
+                _decimal(row.fields.get(field_name)) or Decimal("0")
+                for field_name in definition.liability_fields
+            ),
+            Decimal("0"),
+        )
+        if is_open:
+            open_exposure_total += liability
+        if date_quality == "valid_future_open":
+            if pnl is not None:
+                future_open_current_pnl += pnl
+            if len(future_open_examples) < 5:
+                future_open_examples.append(
+                    {
+                        "source_row": row.source_row,
+                        "source_record_id": row.source_record_id,
+                        "date": settlement_date,
+                        "status": status,
+                        "current_worst_case_pnl": "" if pnl is None else f"{pnl:.2f}",
+                    }
+                )
+        elif date_quality == "future_settled_review" and len(future_settled_examples) < 5:
+            future_settled_examples.append(
+                {
+                    "source_row": row.source_row,
+                    "source_record_id": row.source_record_id,
+                    "date": settlement_date,
+                    "status": status,
+                    "realised_pnl": "" if pnl is None else f"{pnl:.2f}",
+                }
+            )
+
+        include_in_formal_report = (
+            definition.formal_report_statuses is None
+            or normalized_status in definition.formal_report_statuses
+        )
+        if pnl is not None and report_date and include_in_formal_report:
+            reportable_pnl_total += pnl
+            dated_pnl.append(
+                {
+                    "date": report_date,
+                    "pnl": pnl,
+                    "status": status,
+                    "financial_state": (
+                        "realised" if is_settled else "open_current" if is_open else "other"
+                    ),
+                    "source_row": row.source_row,
+                    "source_record_id": row.source_record_id,
+                }
+            )
         migration_state = "mapped" if not errors else "partial"
         rows.append(
             {
@@ -441,13 +561,14 @@ def _ledger_report(content: bytes, definition: LedgerDefinition) -> JsonObject:
                 "outside_table_range": row.outside_table_range,
                 "status": status,
                 "source_pnl": "" if pnl is None else f"{pnl:.2f}",
-                "source_date": source_date,
+                "current_worst_case_pnl": ("" if pnl is None or not is_open else f"{pnl:.2f}"),
+                "realised_pnl": "" if pnl is None or not is_settled else f"{pnl:.2f}",
+                "source_date": settlement_date,
+                "formal_report_date": report_date,
+                "date_quality": date_quality,
             }
         )
     partial = sum(item["migration_state"] == "partial" for item in rows)
-    settled = sum(item["status"].casefold() in definition.settled_statuses for item in rows)
-    if definition.key == "cash_adjustments":
-        settled = len(rows) - partial
     return {
         "schema": {
             "sheet": definition.sheet_name,
@@ -463,12 +584,24 @@ def _ledger_report(content: bytes, definition: LedgerDefinition) -> JsonObject:
             "partial": partial,
             "rejected": 0,
             "duplicates": duplicate_count,
-            "open": len(rows) - settled,
-            "settled": settled,
+            "accounted_rows": len(rows),
+            "open": open_count,
+            "settled": settled_count,
+            "other_state": len(rows) - open_count - settled_count,
             "source_pnl_total": f"{pnl_total:.2f}",
             "reportable_pnl_total": f"{reportable_pnl_total:.2f}",
+            "realised_settled_pnl": f"{realised_pnl_total:.2f}",
+            "open_current_worst_case_pnl": f"{open_current_pnl_total:.2f}",
+            "open_exposure": f"{open_exposure_total:.2f}",
+            "future_settling_open": date_quality_counts["valid_future_open"],
+            "future_settling_open_current_pnl": f"{future_open_current_pnl:.2f}",
+            "future_settled_review": date_quality_counts["future_settled_review"],
         },
         "status_counts": dict(sorted(status_counts.items())),
+        "strategy_counts": dict(sorted(strategy_counts.items())),
+        "date_quality_counts": dict(sorted(date_quality_counts.items())),
+        "future_open_examples": future_open_examples,
+        "future_settled_examples": future_settled_examples,
         "validation_rows": rows,
         "idempotency": {
             "unique_import_keys": len(keys),
@@ -596,14 +729,22 @@ def _period_reconciliation(
 ) -> JsonObject:
     effective_date = date.fromisoformat(effective_at[:10])
     week_start = effective_date - timedelta(days=effective_date.weekday())
+    month_start = effective_date.replace(day=1)
+    next_month = (
+        month_start.replace(year=month_start.year + 1, month=1)
+        if month_start.month == 12
+        else month_start.replace(month=month_start.month + 1)
+    )
+    year_start = effective_date.replace(month=1, day=1)
+    next_year = year_start.replace(year=year_start.year + 1)
+
+    def workbook_week(value: date) -> date:
+        return value - timedelta(days=value.weekday())
+
     periods = {
-        "week": lambda value: week_start <= value <= effective_date,
-        "month": lambda value: (
-            value.year == effective_date.year
-            and value.month == effective_date.month
-            and value <= effective_date
-        ),
-        "year": lambda value: value.year == effective_date.year and value <= effective_date,
+        "week": lambda value: workbook_week(value) == week_start,
+        "month": lambda value: month_start <= workbook_week(value) < next_month,
+        "year": lambda value: year_start <= workbook_week(value) < next_year,
     }
     report_keys = {
         "week": week_start.isoformat(),
@@ -614,13 +755,29 @@ def _period_reconciliation(
     ledger_order = ("sportsbook", "free_bets", "casino")
     for period, predicate in periods.items():
         calculated: list[Decimal] = []
+        realised: list[Decimal] = []
+        open_current: list[Decimal] = []
+        other: list[Decimal] = []
         for ledger_name in ledger_order:
             total = Decimal("0")
-            for raw_date, pnl in ledgers[ledger_name]["dated_pnl"]:
-                parsed_date = _parse_iso_date(raw_date)
+            settled_total = Decimal("0")
+            open_total = Decimal("0")
+            other_total = Decimal("0")
+            for entry in ledgers[ledger_name]["dated_pnl"]:
+                parsed_date = _parse_iso_date(str(entry["date"]))
                 if parsed_date is not None and predicate(parsed_date):
+                    pnl = cast(Decimal, entry["pnl"])
                     total += pnl
+                    if entry["financial_state"] == "realised":
+                        settled_total += pnl
+                    elif entry["financial_state"] == "open_current":
+                        open_total += pnl
+                    else:
+                        other_total += pnl
             calculated.append(total)
+            realised.append(settled_total)
+            open_current.append(open_total)
+            other.append(other_total)
         report_row = next(
             (
                 row
@@ -630,14 +787,31 @@ def _period_reconciliation(
             None,
         )
         workbook = [_decimal(report_row[index]) if report_row else None for index in range(1, 5)]
-        calculated_total = sum(calculated)
+        calculated_total = sum(calculated, Decimal("0"))
+        realised_total = sum(realised, Decimal("0"))
+        open_current_total = sum(open_current, Decimal("0"))
+        other_total = sum(other, Decimal("0"))
+
+        def ledger_values(values: list[Decimal]) -> JsonObject:
+            return {
+                "sportsbook": f"{values[0]:.2f}",
+                "free_bets": f"{values[1]:.2f}",
+                "casino": f"{values[2]:.2f}",
+                "total": f"{sum(values, Decimal('0')):.2f}",
+            }
+
         output[period] = {
             "period_key": report_keys[period],
-            "plum_duff_from_mapped_rows": {
-                "sportsbook": f"{calculated[0]:.2f}",
-                "free_bets": f"{calculated[1]:.2f}",
-                "casino": f"{calculated[2]:.2f}",
-                "total": f"{calculated_total:.2f}",
+            "inclusion_rule": (
+                "Workbook WeekLabel rollup; effective timestamp selects the report period "
+                "and never excludes source rows."
+            ),
+            "plum_duff_from_mapped_rows": ledger_values(calculated),
+            "financial_views": {
+                "realised_settled_pnl": ledger_values(realised),
+                "open_current_worst_case_pnl": ledger_values(open_current),
+                "other_workbook_included_pnl": ledger_values(other),
+                "workbook_equivalent_total": f"{calculated_total:.2f}",
             },
             "workbook_report": {
                 "sportsbook": None if workbook[0] is None else f"{workbook[0]:.2f}",
@@ -648,6 +822,7 @@ def _period_reconciliation(
             "difference": (
                 None if workbook[3] is None else f"{calculated_total - workbook[3]:.2f}"
             ),
+            "financial_view_check": (f"{realised_total + open_current_total + other_total:.2f}"),
         }
     return output
 
@@ -677,8 +852,16 @@ def build_founder_workbook_dry_run_bytes(
 ) -> JsonObject:
     """Analyse workbook bytes without retaining or mutating the uploaded source."""
     catalogue = load_master_account_catalogue(catalogue_path)
+    effective_date = date.fromisoformat(effective_at[:10])
     account_report = _account_report(content, catalogue)
-    ledgers = {definition.key: _ledger_report(content, definition) for definition in LEDGERS}
+    ledgers = {
+        definition.key: _ledger_report(
+            content,
+            definition,
+            effective_date=effective_date,
+        )
+        for definition in LEDGERS
+    }
     ep_report = _extra_place_report(content)
     reports = _report_blocks(content)
     checksum = hashlib.sha256(content).hexdigest()
@@ -696,7 +879,7 @@ def build_founder_workbook_dry_run_bytes(
             "sha256": checksum,
             "size_bytes": len(content),
             "executed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "mapping_version": "founder-snapshot-v1",
+            "mapping_version": FOUNDER_MAPPING_VERSION,
             "input_modified": False,
         },
         "schema": {

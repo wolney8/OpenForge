@@ -4,13 +4,12 @@ import base64
 import binascii
 import hashlib
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import PurePath
 from typing import Any
-from xml.etree.ElementTree import ParseError
-from zipfile import BadZipFile
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
@@ -26,9 +25,13 @@ from openforge_api.founder_import_review import (
     apply_review_decisions,
     build_review_items_from_dry_run,
 )
-from openforge_api.founder_workbook_dry_run import build_founder_workbook_dry_run_bytes
+from openforge_api.founder_workbook_dry_run import (
+    FOUNDER_MAPPING_VERSION,
+    build_founder_workbook_dry_run_bytes,
+)
 
 router = APIRouter(prefix="/profiles/{profile_id}/workbook-imports", tags=["profile-imports"])
+logger = logging.getLogger(__name__)
 
 MAX_WORKBOOK_BYTES = 3 * 1024 * 1024
 MAX_WORKBOOK_BASE64_CHARACTERS = 4_400_000
@@ -67,6 +70,13 @@ class ImportApprovalPayload(BaseModel):
 
     workbook_checksum: str = Field(min_length=64, max_length=64)
     acknowledged: bool
+
+
+class ResetDecisionsPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_ids: list[str] = Field(default_factory=list, max_length=500)
+    confirmed: bool
 
 
 def _now() -> str:
@@ -130,6 +140,87 @@ def _summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _empty_summary() -> dict[str, Any]:
+    return {
+        "schema": {},
+        "accounts": {},
+        "profile_settings": {},
+        "ledgers": {},
+        "extra_places": {},
+        "reports": {},
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 0,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+    }
+
+
+def _job_state(
+    *,
+    stage: str,
+    percentage: int,
+    rows_analysed: int = 0,
+    total_rows: int = 0,
+    events: list[dict[str, Any]] | None = None,
+    error: str = "",
+) -> dict[str, Any]:
+    return {
+        "stage": stage,
+        "percentage": percentage,
+        "rows_analysed": rows_analysed,
+        "total_rows": total_rows,
+        "estimated_seconds_remaining": None,
+        "events": events or [],
+        "error": error,
+    }
+
+
+def _event(kind: str, title: str, message: str) -> dict[str, Any]:
+    return {"kind": kind, "title": title, "message": message, "created_at": _now()}
+
+
+def _update_run_job(
+    import_run_id: str,
+    *,
+    status: str,
+    job: dict[str, Any],
+    summary: dict[str, Any] | None = None,
+    reconciliation: dict[str, Any] | None = None,
+) -> None:
+    run = _load_run_by_id(import_run_id)
+    next_summary = summary or run["summary"]
+    next_summary["job"] = job
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE profile_import_runs
+            SET status = ?, summary_json = ?, reconciliation_json = ?, updated_at = ?
+            WHERE import_run_id = ?
+            """,
+            (
+                status,
+                _json(next_summary),
+                _json(reconciliation if reconciliation is not None else run["reconciliation"]),
+                _now(),
+                import_run_id,
+            ),
+        )
+
+
+def _load_run_by_id(import_run_id: str) -> dict[str, Any]:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM profile_import_runs WHERE import_run_id = ?", (import_run_id,)
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("Workbook analysis run was not found")
+    record = dict(row)
+    record["summary"] = json.loads(record.pop("summary_json"))
+    record["reconciliation"] = json.loads(record.pop("reconciliation_json"))
+    return record
+
+
 def _load_run(profile_id: str, import_run_id: str) -> dict[str, Any]:
     with connect() as connection:
         row = connection.execute(
@@ -184,6 +275,7 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace = apply_review_decisions(metadata, items, decisions)
     workspace["run_status"] = run["status"]
     workspace["source_summary"] = run["summary"]
+    workspace["financial_reconciliation"] = run["reconciliation"]
     return workspace
 
 
@@ -233,6 +325,131 @@ def _save_decision(
         )
 
 
+def _analyse_workbook_job(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    content: bytes,
+    source_filename: str,
+    effective_at: str,
+) -> None:
+    started = _event(
+        "analysis_started",
+        "Workbook analysis started",
+        "The workbook is being checked and mapped in the background.",
+    )
+    _update_run_job(
+        import_run_id,
+        status="ANALYSING",
+        job=_job_state(
+            stage="Inspecting workbook and mapping rows",
+            percentage=15,
+            events=[started],
+        ),
+    )
+    try:
+        result = build_founder_workbook_dry_run_bytes(
+            content,
+            source_filename=source_filename,
+            source_path="authenticated-upload",
+            effective_at=effective_at,
+        )
+        metadata, items = build_review_items_from_dry_run(result, content)
+        total_rows = sum(
+            int(ledger.get("summary", {}).get("source_rows", 0))
+            for ledger in result.get("ledgers", {}).values()
+        ) + len(result.get("accounts", {}).get("validation_rows", []))
+        _update_run_job(
+            import_run_id,
+            status="ANALYSING",
+            job=_job_state(
+                stage="Saving review items",
+                percentage=85,
+                rows_analysed=total_rows,
+                total_rows=total_rows,
+                events=[started],
+            ),
+        )
+        now = _now()
+        with connect() as connection:
+            for item in items:
+                connection.execute(
+                    """
+                    INSERT INTO profile_import_review_items (
+                      import_run_id, item_id, profile_id, import_id, source_fingerprint,
+                      source_sheet, source_row, source_record_id, category, item_json,
+                      created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(import_run_id, item_id) DO UPDATE SET
+                      source_fingerprint = excluded.source_fingerprint,
+                      item_json = excluded.item_json,
+                      updated_at = excluded.updated_at
+                    """,
+                    (
+                        import_run_id,
+                        item["item_id"],
+                        profile_id,
+                        item["import_id"],
+                        item["source_fingerprint"],
+                        item["source_sheet"],
+                        item["source_row"],
+                        item["source_record_id"],
+                        item["category"],
+                        _json(item),
+                        now,
+                        now,
+                    ),
+                )
+        status = "REVIEW_REQUIRED" if items else "READY"
+        events = [
+            started,
+            _event(
+                "analysis_complete",
+                "Workbook analysis complete",
+                f"{total_rows} source rows were analysed.",
+            ),
+        ]
+        if items:
+            events.append(
+                _event(
+                    "review_required",
+                    "Workbook review required",
+                    f"{len(items)} review items are ready for a decision.",
+                )
+            )
+        summary = _summary(result)
+        _update_run_job(
+            import_run_id,
+            status=status,
+            summary=summary,
+            reconciliation=result["reconciliation"],
+            job=_job_state(
+                stage="Review ready" if items else "Analysis complete",
+                percentage=100,
+                rows_analysed=total_rows,
+                total_rows=total_rows,
+                events=events,
+            ),
+        )
+    except Exception:
+        logger.exception("Workbook analysis failed for import run %s", import_run_id)
+        failed = _event(
+            "analysis_failed",
+            "Workbook analysis failed",
+            "The workbook could not be mapped. Open the import run to review the error.",
+        )
+        _update_run_job(
+            import_run_id,
+            status="FAILED",
+            job=_job_state(
+                stage="Analysis failed",
+                percentage=100,
+                events=[started, failed],
+                error="Workbook schema is not supported",
+            ),
+        )
+
+
 @router.get("")
 def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dict[str, Any]]:
     require_request_session(request)
@@ -253,27 +470,17 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
 
 @router.post("/analyse")
 def analyse_profile_workbook(
-    profile_id: str, payload: WorkbookAnalysisPayload, request: Request
+    profile_id: str,
+    payload: WorkbookAnalysisPayload,
+    request: Request,
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     session = require_request_session(request)
     if not _profile_exists(profile_id):
         raise HTTPException(status_code=404, detail="Profile was not found")
     content = _decode_workbook(payload)
     checksum = hashlib.sha256(content).hexdigest()
-    try:
-        result = build_founder_workbook_dry_run_bytes(
-            content,
-            source_filename=payload.source_filename,
-            source_path="authenticated-upload",
-            effective_at=payload.effective_at,
-        )
-        metadata, items = build_review_items_from_dry_run(result, content)
-    except (BadZipFile, KeyError, ParseError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail="Workbook schema is not supported") from exc
-    finally:
-        content = b""
-
-    mapping_version = str(result["metadata"]["mapping_version"])
+    mapping_version = FOUNDER_MAPPING_VERSION
     import_run_id = (
         "profile-import-"
         + hashlib.sha256(f"{profile_id}:{checksum}:{mapping_version}".encode("utf-8")).hexdigest()[
@@ -281,8 +488,18 @@ def analyse_profile_workbook(
         ]
     )
     now = _now()
-    status = "REVIEW_REQUIRED" if items else "READY"
-    summary = _summary(result)
+    status = "ANALYSING"
+    started = _event(
+        "analysis_started",
+        "Workbook analysis started",
+        "The workbook is queued for background analysis.",
+    )
+    summary = _empty_summary()
+    summary["job"] = _job_state(
+        stage="Queued for analysis",
+        percentage=5,
+        events=[started],
+    )
     with connect() as connection:
         connection.execute(
             """
@@ -306,44 +523,24 @@ def analyse_profile_workbook(
                 session.email,
                 payload.source_filename,
                 checksum,
-                int(result["metadata"]["size_bytes"]),
+                len(content),
                 payload.effective_at,
                 mapping_version,
                 status,
                 _json(summary),
-                _json(result["reconciliation"]),
+                _json({}),
                 now,
                 now,
             ),
         )
-        for item in items:
-            connection.execute(
-                """
-                INSERT INTO profile_import_review_items (
-                  import_run_id, item_id, profile_id, import_id, source_fingerprint,
-                  source_sheet, source_row, source_record_id, category, item_json,
-                  created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(import_run_id, item_id) DO UPDATE SET
-                  source_fingerprint = excluded.source_fingerprint,
-                  item_json = excluded.item_json,
-                  updated_at = excluded.updated_at
-                """,
-                (
-                    import_run_id,
-                    item["item_id"],
-                    profile_id,
-                    item["import_id"],
-                    item["source_fingerprint"],
-                    item["source_sheet"],
-                    item["source_row"],
-                    item["source_record_id"],
-                    item["category"],
-                    _json(item),
-                    now,
-                    now,
-                ),
-            )
+    background_tasks.add_task(
+        _analyse_workbook_job,
+        profile_id=profile_id,
+        import_run_id=import_run_id,
+        content=content,
+        source_filename=payload.source_filename,
+        effective_at=payload.effective_at,
+    )
     return _workspace(profile_id, import_run_id)
 
 
@@ -464,24 +661,178 @@ def put_profile_workbook_import_batch(
     return _workspace(profile_id, import_run_id)
 
 
-@router.post("/{import_run_id}/rerun")
-def rerun_profile_workbook_import(
-    profile_id: str, import_run_id: str, request: Request
+@router.post("/{import_run_id}/decisions/reset")
+def reset_profile_workbook_import_decisions(
+    profile_id: str,
+    import_run_id: str,
+    payload: ResetDecisionsPayload,
+    request: Request,
 ) -> dict[str, Any]:
-    require_request_session(request)
+    session = require_request_session(request)
+    if not payload.confirmed:
+        raise HTTPException(status_code=422, detail="Confirm the review reset")
     workspace = _workspace(profile_id, import_run_id)
-    status = "READY" if workspace["reconciliation"]["import_ready"] else "REVIEW_REQUIRED"
-    now = _now()
+    valid_ids = {item["item_id"] for item in workspace["items"]}
+    requested_ids = set(payload.item_ids)
+    if requested_ids - valid_ids:
+        raise HTTPException(status_code=404, detail="One or more review items were not found")
+    run = _load_run(profile_id, import_run_id)
     with connect() as connection:
+        if requested_ids:
+            placeholders = ",".join("?" for _ in requested_ids)
+            parameters = [profile_id, import_run_id, *sorted(requested_ids)]
+            count = int(
+                connection.execute(
+                    f"""
+                    SELECT COUNT(*) AS count FROM profile_import_review_decisions
+                    WHERE profile_id = ? AND import_run_id = ?
+                      AND item_id IN ({placeholders})
+                    """,
+                    parameters,
+                ).fetchone()["count"]
+            )
+            connection.execute(
+                f"""
+                DELETE FROM profile_import_review_decisions
+                WHERE profile_id = ? AND import_run_id = ?
+                  AND item_id IN ({placeholders})
+                """,
+                parameters,
+            )
+        else:
+            count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) AS count FROM profile_import_review_decisions
+                    WHERE profile_id = ? AND import_run_id = ?
+                    """,
+                    (profile_id, import_run_id),
+                ).fetchone()["count"]
+            )
+            connection.execute(
+                """
+                DELETE FROM profile_import_review_decisions
+                WHERE profile_id = ? AND import_run_id = ?
+                """,
+                (profile_id, import_run_id),
+            )
+        summary = run["summary"]
+        audit = list(summary.get("review_reset_events", []))
+        audit.append(
+            {
+                "actor": session.email,
+                "decision_count": count,
+                "scope": "selected" if requested_ids else "all",
+                "created_at": _now(),
+            }
+        )
+        summary["review_reset_events"] = audit[-25:]
         connection.execute(
             """
-            UPDATE profile_import_runs SET status = ?, reconciliation_json = ?, updated_at = ?
+            UPDATE profile_import_runs
+            SET status = 'REVIEW_REQUIRED', summary_json = ?, updated_at = ?
             WHERE profile_id = ? AND import_run_id = ?
             """,
-            (status, _json(workspace["reconciliation"]), now, profile_id, import_run_id),
+            (_json(summary), _now(), profile_id, import_run_id),
         )
-    workspace["run_status"] = status
-    return workspace
+    return _workspace(profile_id, import_run_id)
+
+
+def _rerun_review_job(profile_id: str, import_run_id: str) -> None:
+    run = _load_run(profile_id, import_run_id)
+    previous_job = run["summary"].get("job", {})
+    events = list(previous_job.get("events", []))
+    started = _event(
+        "analysis_started",
+        "Review reconciliation started",
+        "Saved review decisions are being reapplied in the background.",
+    )
+    events.append(started)
+    item_count = 0
+    with connect() as connection:
+        item_count = int(
+            connection.execute(
+                """
+                SELECT COUNT(*) AS count FROM profile_import_review_items
+                WHERE profile_id = ? AND import_run_id = ?
+                """,
+                (profile_id, import_run_id),
+            ).fetchone()["count"]
+        )
+    _update_run_job(
+        import_run_id,
+        status="ANALYSING",
+        job=_job_state(
+            stage="Applying saved review decisions",
+            percentage=25,
+            total_rows=item_count,
+            events=events,
+        ),
+    )
+    try:
+        workspace = _workspace(profile_id, import_run_id)
+        status = "READY" if workspace["reconciliation"]["import_ready"] else "REVIEW_REQUIRED"
+        events.append(
+            _event(
+                "analysis_complete",
+                "Review reconciliation complete",
+                f"{item_count} review items were reconciled.",
+            )
+        )
+        if status == "REVIEW_REQUIRED":
+            events.append(
+                _event(
+                    "review_required",
+                    "Workbook review required",
+                    (
+                        f"{workspace['reconciliation']['remaining_partial_count']} "
+                        "partial rows remain."
+                    ),
+                )
+            )
+        _update_run_job(
+            import_run_id,
+            status=status,
+            job=_job_state(
+                stage="Review ready" if status == "REVIEW_REQUIRED" else "Analysis complete",
+                percentage=100,
+                rows_analysed=item_count,
+                total_rows=item_count,
+                events=events,
+            ),
+        )
+    except Exception:
+        events.append(
+            _event(
+                "analysis_failed",
+                "Review reconciliation failed",
+                "Saved review decisions could not be reapplied.",
+            )
+        )
+        _update_run_job(
+            import_run_id,
+            status="FAILED",
+            job=_job_state(
+                stage="Analysis failed",
+                percentage=100,
+                total_rows=item_count,
+                events=events,
+                error="Review reconciliation failed",
+            ),
+        )
+
+
+@router.post("/{import_run_id}/rerun")
+def rerun_profile_workbook_import(
+    profile_id: str,
+    import_run_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    require_request_session(request)
+    _load_run(profile_id, import_run_id)
+    background_tasks.add_task(_rerun_review_job, profile_id, import_run_id)
+    return _workspace(profile_id, import_run_id)
 
 
 @router.post("/{import_run_id}/approve")

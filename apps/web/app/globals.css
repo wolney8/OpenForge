@@ -2984,6 +2984,42 @@ html[data-theme="dark"] .notification-count-badge {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.import-review-compact-stats .stat-card {
+  min-height: 0;
+  gap: 0.2rem;
+  padding: 0.8rem 0.95rem;
+}
+
+.import-review-compact-stats .stat-card strong {
+  font-size: 1.35rem;
+}
+
+.import-analysis-status {
+  gap: 0.65rem;
+}
+
+.import-analysis-progress {
+  height: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+}
+
+.import-analysis-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 180ms ease;
+}
+
+.import-review-loadout-shell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .import-review-loadouts {
   flex-wrap: nowrap;
   max-width: 100%;
@@ -3000,6 +3036,7 @@ html[data-theme="dark"] .notification-count-badge {
 
 .import-review-table th,
 .import-review-table td {
+  padding: 0.55rem 0.7rem;
   text-align: center;
   vertical-align: middle;
 }
@@ -3015,7 +3052,7 @@ html[data-theme="dark"] .notification-count-badge {
 .import-review-table th:nth-child(9) { width: 6rem; }
 
 .import-review-table td {
-  height: 6rem;
+  height: 4.75rem;
 }
 
 .import-review-table td > strong,
@@ -3025,18 +3062,16 @@ html[data-theme="dark"] .notification-count-badge {
   margin-block: 0.15rem;
 }
 
-.import-review-table details {
-  margin-top: 0.45rem;
-  text-align: left;
-}
-
-.import-review-table details p {
-  color: var(--on-surface-variant);
-  font-size: 0.82rem;
-  line-height: 1.4;
+.import-review-truncate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .import-review-editor-modal {
+  max-height: min(90dvh, 58rem);
   resize: none;
 }
 
@@ -3047,6 +3082,21 @@ html[data-theme="dark"] .notification-count-badge {
 .import-review-editor-modal .spreadsheet-row-details {
   max-height: 18rem;
   overflow: auto;
+}
+
+.import-review-evidence-body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.import-review-evidence-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: none !important;
+}
+
+.import-impact-details,
+.import-financial-reconciliation {
+  padding: 0.85rem 1rem;
 }
 
 .import-review-batch-modal {
@@ -3066,6 +3116,16 @@ html[data-theme="dark"] .notification-count-badge {
 @media (max-width: 680px) {
   .import-review-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .import-review-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .import-analysis-progress > span {
+    transition: none;
   }
 }
 

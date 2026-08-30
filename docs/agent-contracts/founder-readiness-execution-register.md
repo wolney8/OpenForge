@@ -1,6 +1,6 @@
 # Founder Readiness Execution Register
 
-_Last updated: 2026-08-28_
+_Last updated: 2026-08-30_
 
 This register tracks the bounded path from hosted preview to owner-only founder use. Real financial
 data must not be uploaded until every safety gate in `PD-FR-010` is complete.
@@ -162,7 +162,22 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-007H18 | Real-import gate | Allow readiness approval only; do not expose a production write operation | Founder import safety gate | COMPLETE |
 | PD-FR-007H19 | Hosted workflow verification | Verify upload, review persistence, rerun and session expiry on Vercel | Founder hosted import checklist | NEEDS VERIFICATION |
 | PD-FR-007H20 | Safe hosted-workflow release | Isolate, commit, push and deploy only the hosted import/session/persistence tranche | Repository branch and data-safety rules | COMPLETE |
-| PD-FR-007H21 | Annual £2.18 reconciliation trace | Identify the exact row/date-axis cause without changing financial calculations | Private dry-run evidence and reconciliation contract | COMPLETE |
+| PD-FR-007H21 | Annual £2.18 reconciliation trace | Previous snapshot-cutoff explanation; superseded by workbook-formula parity analysis | Private dry-run evidence and reconciliation contract | SUPERSEDED |
+| PD-FR-007H22 | Workbook report parity | Reuse workbook week/month/year rollups instead of treating the effective timestamp as a row cutoff | Workbook cash-first map and reporting contracts | COMPLETE |
+| PD-FR-007H23 | Open and future row preservation | Import all rows and retain future-dated pending bets as active records with current value and exposure | Sportsbook current-value and spreadsheet round-trip contracts | COMPLETE |
+| PD-FR-007H24 | Current versus realised financial views | Report open current/worst-case P&L separately from settled/realised P&L while retaining workbook-equivalent totals | Cash-first calculation map | COMPLETE |
+| PD-FR-007H25 | Semantic date quality | Accept future/open dates, review future/settled dates and reject only malformed dates without automatic mutation | Workbook workflow map | COMPLETE |
+| PD-FR-007H26 | Import row accounting | Prove every parsed ledger row is mapped, partial or explicitly reviewed without snapshot-date exclusion | Import round-trip contract | COMPLETE |
+| PD-FR-007H27 | Corrected workbook rerun | Recalculate completeness and financial parity from the next uploaded corrected workbook | Hosted Profile import workflow | NEEDS VERIFICATION |
+| PD-FR-007H28 | Review P&L impact meaning | State that zero is no decision-caused imported P&L change and identify every non-zero contributing decision | Existing review reconciliation and FinancialValue | COMPLETE |
+| PD-FR-007H29 | Compact review summary | Limit the primary review summary to Remaining, Resolved, provider conflicts, historical EP and P&L impact | Compact signed-off stat cards | COMPLETE |
+| PD-FR-007H30 | Background analysis lifecycle | Persist real analysis/rerun stages and progress, allow navigation away and emit deep-linked lifecycle notifications | Shell progress, import runs and Notifications | COMPLETE |
+| PD-FR-007H31 | Review reset and return | Expose auto-saved decisions, Save & leave and audited selected/all reset without source/Profile mutation | Shared confirmation dialog and persisted decisions | COMPLETE |
+| PD-FR-007H32 | Fund Manager review evidence | Present plain-language problem, source evidence, proposed interpretation, review reason and decision effect with optional technical detail | Canonical workflow editor modal | COMPLETE |
+| PD-FR-007H33 | Compact exception table | Use compact fixed-height ledger rows and move detailed decisions out of table expansion into the editor modal | Signed-off ledger table and modal | COMPLETE |
+| PD-FR-007H34 | Reachable review loadouts | Keep every loadout reachable through a bounded horizontal rail and canonical arrow controls | Extra Places loadout rail | COMPLETE |
+| PD-FR-007H35 | Review-to-next workflow | Add Save & next and evidence-rich safe batch confirmation | Existing modal footer and batch confirmation | COMPLETE |
+| PD-FR-007H36 | Import semantic protection | Retain workbook-first calculations, deterministic IDs, provider resolution, EP options and decision semantics unchanged | Import review and financial regression tests | COMPLETE |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |
