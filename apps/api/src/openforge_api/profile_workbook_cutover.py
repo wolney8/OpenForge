@@ -225,6 +225,12 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
         ledger_rows[ledger] = []
         for row in report.get("validation_rows", []):
             source = row.get("source_fields") or {}
+            normalizations = list(row.get("normalizations") or [])
+            provenance_fields = {
+                str(item.get("source_field"))
+                for item in normalizations
+                if item.get("source_preserved") and item.get("source_field")
+            }
             ledger_rows[ledger].append(
                 {
                     key: row.get(key)
@@ -235,6 +241,7 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                         "action",
                         "migration_state",
                         "errors",
+                        "normalizations",
                         "mapped_payload",
                         "status",
                         "source_pnl",
@@ -246,7 +253,9 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                 }
                 | {
                     "source_fields": {
-                        key: source[key] for key in HISTORICAL_EP_SOURCE_FIELDS if key in source
+                        key: source[key]
+                        for key in HISTORICAL_EP_SOURCE_FIELDS | provenance_fields
+                        if key in source
                     }
                 }
             )
@@ -1385,6 +1394,38 @@ def generate_post_import_reconciliation(
         if str(comparison["difference"]) not in {"0", "0.00"}:
             mismatches.append({"area": "Open positions", "field": field, **comparison})
     passed = not mismatches
+    open_position_checks = {
+        "future_settling_open": _comparison(expected_future_open, future_open),
+        "open_rows": _comparison(expected_open_rows, actual_open_rows),
+        "liability_exposure": _comparison(_money(expected_exposure), _money(exposure_total)),
+        "current_worst_case_pnl": _comparison(_money(expected_open), _money(open_total)),
+        "no_open_row_silently_removed": source_accounted,
+        "no_open_row_accidentally_settled": expected_open_rows == actual_open_rows,
+    }
+    review_decision_summary = {
+        "applied": len(decision_items),
+        "overrides": sum(
+            item["review_status"] == "REVIEWED_OVERRIDDEN" for item in decision_items
+        ),
+        "exclusions": actions["exclude"],
+        "historical_mappings": sum("historical" in action for action in actions.elements()),
+        "provider_resolutions": sum(
+            item["category"] == "missing_provider" for item in decision_items
+        ),
+        "extra_place_decisions": sum(
+            item["category"] == "historical_extra_place" for item in decision_items
+        ),
+        "decisions_affecting_pnl": len(workspace["reconciliation"]["pnl_impact_items"]),
+    }
+    integrity_checks = {
+        "deterministic_import_ids": len(ledger_audit_keys) == len(set(ledger_audit_keys)),
+        "duplicate_protection": all(not value["duplicates"] for value in ledger_actual.values()),
+        "all_expected_source_rows_accounted_for": source_accounted,
+        "silent_partial_writes": False,
+        "import_run_traceability": all(
+            row["import_run_id"] == import_run_id for row in audit_rows
+        ),
+    }
     report = {
         "profile": {
             "profile_id": profile_id,
@@ -1402,43 +1443,37 @@ def generate_post_import_reconciliation(
             "periods": financial_periods,
             "views": financial_views,
         },
-        "open_positions": {
-            "future_settling_open": _comparison(expected_future_open, future_open),
-            "open_rows": _comparison(expected_open_rows, actual_open_rows),
-            "liability_exposure": _comparison(_money(expected_exposure), _money(exposure_total)),
-            "current_worst_case_pnl": _comparison(_money(expected_open), _money(open_total)),
-            "no_open_row_silently_removed": source_accounted,
-            "no_open_row_accidentally_settled": expected_open_rows == actual_open_rows,
-        },
-        "review_decisions": {
-            "applied": len(decision_items),
-            "overrides": sum(
-                item["review_status"] == "REVIEWED_OVERRIDDEN" for item in decision_items
-            ),
-            "exclusions": actions["exclude"],
-            "historical_mappings": sum("historical" in action for action in actions.elements()),
-            "provider_resolutions": sum(
-                item["category"] == "missing_provider" for item in decision_items
-            ),
-            "extra_place_decisions": sum(
-                item["category"] == "historical_extra_place" for item in decision_items
-            ),
-            "decisions_affecting_pnl": len(workspace["reconciliation"]["pnl_impact_items"]),
-        },
-        "integrity": {
-            "deterministic_import_ids": len(ledger_audit_keys) == len(set(ledger_audit_keys)),
-            "duplicate_protection": all(
-                not value["duplicates"] for value in ledger_actual.values()
-            ),
-            "all_expected_source_rows_accounted_for": source_accounted,
-            "silent_partial_writes": False,
-            "import_run_traceability": all(
-                row["import_run_id"] == import_run_id for row in audit_rows
-            ),
-        },
+        "open_positions": open_position_checks,
+        "review_decisions": review_decision_summary,
+        "integrity": integrity_checks,
         "mismatches": mismatches,
         "rollback_available": True,
         "result": "POST-IMPORT RECONCILIATION: PASSED"
+        if passed
+        else "POST-IMPORT RECONCILIATION: FAILED",
+    }
+    report["handoff"] = {
+        "workbook": {
+            "filename": run["source_filename"],
+            "checksum": run["workbook_checksum"],
+            "effective_timestamp": run["effective_at"],
+            "mapping_version": run["mapping_version"],
+        },
+        "profile": {
+            "profile_id": profile_id,
+            "profile_name": profile["display_name"],
+            "import_run_id": import_run_id,
+        },
+        "accounts": account_comparison,
+        "ledgers": ledger_comparison,
+        "financial_reconciliation": {
+            "periods": financial_periods,
+            "views": financial_views,
+        },
+        "open_positions": open_position_checks,
+        "review_decisions": review_decision_summary,
+        "integrity": integrity_checks,
+        "status": "POST-IMPORT RECONCILIATION: PASSED"
         if passed
         else "POST-IMPORT RECONCILIATION: FAILED",
     }

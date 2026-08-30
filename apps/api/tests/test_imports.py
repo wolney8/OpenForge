@@ -42,44 +42,21 @@ ACCOUNT_FIXTURES = json.loads(
     (ROOT / "tests" / "fixtures" / "accounts-import-field-map-fixtures.json").read_text()
 )["cases"]
 ROW_ACCOUNTING_FIXTURES = json.loads(
-    (
-        ROOT
-        / "tests"
-        / "fixtures"
-        / "import-row-accounting-reconciliation-fixtures.json"
-    ).read_text()
+    (ROOT / "tests" / "fixtures" / "import-row-accounting-reconciliation-fixtures.json").read_text()
 )["cases"]
 CASH_RECONCILIATION_FIXTURES = json.loads(
     (
-        ROOT
-        / "tests"
-        / "fixtures"
-        / "cash-adjustment-import-reconciliation-fixtures.json"
+        ROOT / "tests" / "fixtures" / "cash-adjustment-import-reconciliation-fixtures.json"
     ).read_text()
 )["cases"]
 CASINO_RECONCILIATION_FIXTURES = json.loads(
-    (
-        ROOT
-        / "tests"
-        / "fixtures"
-        / "casino-offer-import-reconciliation-fixtures.json"
-    ).read_text()
+    (ROOT / "tests" / "fixtures" / "casino-offer-import-reconciliation-fixtures.json").read_text()
 )["cases"]
 FREE_BET_RECONCILIATION_FIXTURES = json.loads(
-    (
-        ROOT
-        / "tests"
-        / "fixtures"
-        / "free-bet-import-reconciliation-fixtures.json"
-    ).read_text()
+    (ROOT / "tests" / "fixtures" / "free-bet-import-reconciliation-fixtures.json").read_text()
 )["cases"]
 SPORTSBOOK_RECONCILIATION_FIXTURES = json.loads(
-    (
-        ROOT
-        / "tests"
-        / "fixtures"
-        / "sportsbook-import-reconciliation-fixtures.json"
-    ).read_text()
+    (ROOT / "tests" / "fixtures" / "sportsbook-import-reconciliation-fixtures.json").read_text()
 )["cases"]
 
 
@@ -113,33 +90,23 @@ def account_fixture(case_id: str) -> dict[str, object]:
 
 
 def row_accounting_fixture(case_id: str) -> dict[str, object]:
-    return next(
-        case for case in ROW_ACCOUNTING_FIXTURES if case["case_id"] == case_id
-    )
+    return next(case for case in ROW_ACCOUNTING_FIXTURES if case["case_id"] == case_id)
 
 
 def cash_reconciliation_fixture(case_id: str) -> dict[str, object]:
-    return next(
-        case for case in CASH_RECONCILIATION_FIXTURES if case["case_id"] == case_id
-    )
+    return next(case for case in CASH_RECONCILIATION_FIXTURES if case["case_id"] == case_id)
 
 
 def casino_reconciliation_fixture(case_id: str) -> dict[str, object]:
-    return next(
-        case for case in CASINO_RECONCILIATION_FIXTURES if case["case_id"] == case_id
-    )
+    return next(case for case in CASINO_RECONCILIATION_FIXTURES if case["case_id"] == case_id)
 
 
 def free_bet_reconciliation_fixture(case_id: str) -> dict[str, object]:
-    return next(
-        case for case in FREE_BET_RECONCILIATION_FIXTURES if case["case_id"] == case_id
-    )
+    return next(case for case in FREE_BET_RECONCILIATION_FIXTURES if case["case_id"] == case_id)
 
 
 def sportsbook_reconciliation_fixture(case_id: str) -> dict[str, object]:
-    return next(
-        case for case in SPORTSBOOK_RECONCILIATION_FIXTURES if case["case_id"] == case_id
-    )
+    return next(case for case in SPORTSBOOK_RECONCILIATION_FIXTURES if case["case_id"] == case_id)
 
 
 def no_existing_source(_sheet: str, _source_record_id: str) -> None:
@@ -156,9 +123,7 @@ def test_import_row_accounting_matches_fixture_decisions() -> None:
         summary = inputs["summary"]
         assert isinstance(summary, dict)
 
-        result = reconcile_import_row_count(
-            int(inputs["source_row_count"]), summary
-        )
+        result = reconcile_import_row_count(int(inputs["source_row_count"]), summary)
 
         assert result.accounted_row_count == expected["accounted_row_count"]
         assert result.state == expected["state"]
@@ -498,9 +463,7 @@ def test_dry_run_is_audited_profile_scoped_and_does_not_write_ledgers(
 
     batch_id = batch["import_batch_id"]
     assert client.get(f"/profiles/{profile_id}/imports/{batch_id}").status_code == 200
-    assert (
-        client.get(f"/profiles/profile-demo-002/imports/{batch_id}").status_code == 404
-    )
+    assert client.get(f"/profiles/profile-demo-002/imports/{batch_id}").status_code == 404
 
 
 def test_sportsbook_v1_maps_entered_fields_and_excludes_helpers() -> None:
@@ -566,9 +529,7 @@ def test_sportsbook_v1_blocks_advanced_branch_flattening() -> None:
     )
 
     assert staged[0]["staged_action"] == "blocked"
-    assert any(
-        row["code"] == "advanced_branch_mapping_required" for row in staged[0]["errors"]
-    )
+    assert any(row["code"] == "advanced_branch_mapping_required" for row in staged[0]["errors"])
 
 
 def test_sportsbook_v1_maps_no_lay_without_inventing_exchange_values() -> None:
@@ -637,9 +598,107 @@ def test_sportsbook_v1_preserves_plum_duff_multi_lay_branch_payload() -> None:
     )
 
     assert staged[0]["staged_action"] == "insert"
-    assert staged[0]["mapped_fields"]["multi_lay_outcomes_json"] == fields[
-        "MultiLayOutcomesJson"
+    assert staged[0]["mapped_fields"]["multi_lay_outcomes_json"] == fields["MultiLayOutcomesJson"]
+
+
+def test_sportsbook_v1_builds_complete_workbook_multi_lay_branches() -> None:
+    fields = {
+        "DateSettling": "2026-08-29T18:00:00",
+        "EventName": "Synthetic multi-lay workbook row",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Price Boost",
+        "BetType": "Single",
+        "Status": "Settled",
+        "Result": "Lay Won",
+        "BackStake": "10.00",
+        "BackOdds": "6.00",
+        "MatchStrategy": "Multilay-Underlay",
+        "OutcomeCount": "2",
+        "LayOdds1": "5.00",
+        "LayOdds2": "7.00",
+        "LayStake1": "5.50",
+        "LayStake2": "4.50",
+        "Exchange": "Exchange A",
+    }
+
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Sportsbook Bets",
+                source_record_id="DEMO-MULTI-LEGACY-001",
+                fields=fields,
+            )
+        ],
+        mapping_version="sportsbook-v1",
+        source_lookup=no_existing_source,
+    )
+
+    assert staged[0]["staged_action"] == "insert"
+    assert staged[0]["mapped_fields"]["lay_actual"] == "5.50"
+    branches = json.loads(staged[0]["mapped_fields"]["multi_lay_outcomes_json"])
+    assert [
+        (branch["id"], branch["layOdds"], branch["placedMatchedStake"]) for branch in branches
+    ] == [
+        ("outcome1", "5.00", "5.50"),
+        ("outcome2", "7.00", "4.50"),
     ]
+
+
+def test_sportsbook_v1_shortens_only_constrained_legacy_text() -> None:
+    source_offer = "Legacy offer terms " + "x" * 220
+    fields = {
+        "EventName": "Synthetic historical event",
+        "Offer": source_offer,
+        "Bookmaker": "Bookmaker A",
+        "Status": "Settled",
+        "Result": "Void",
+        "MatchStrategy": "No Lay",
+    }
+
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Sportsbook Bets",
+                source_record_id="DEMO-LONG-TEXT-001",
+                fields=fields,
+            )
+        ],
+        mapping_version="sportsbook-v1",
+        source_lookup=no_existing_source,
+    )
+
+    assert staged[0]["staged_action"] == "insert"
+    assert len(staged[0]["mapped_fields"]["offer_text"]) == 200
+    assert staged[0]["fields"]["Offer"] == source_offer
+
+
+def test_sportsbook_v1_maps_non_calculating_historical_row_without_strategy() -> None:
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Sportsbook Bets",
+                source_record_id="DEMO-HISTORICAL-VOID-001",
+                fields={
+                    "DateSettling": "2026-08-20",
+                    "EventName": "",
+                    "Bookmaker": "Bookmaker A",
+                    "OfferType": "Bet & Get",
+                    "Status": "Free Bet Awarded",
+                    "Result": "Void",
+                    "MatchStrategy": "",
+                },
+            )
+        ],
+        mapping_version="sportsbook-v1",
+        source_lookup=no_existing_source,
+    )
+
+    assert staged[0]["staged_action"] == "insert"
+    assert staged[0]["mapped_fields"]["match_strategy"] == "No Lay"
+    assert staged[0]["mapped_fields"]["event_name"].startswith("Historical Sportsbook record")
 
 
 def test_free_bets_v1_maps_entered_fields_and_excludes_helpers() -> None:
@@ -690,13 +749,9 @@ def test_free_bets_v1_blocks_unsafe_override_and_incomplete_partial_lay() -> Non
         )
 
     assert staged_rows[0]["staged_action"] == "blocked"
-    assert any(
-        item["code"] == "override_reason_required" for item in staged_rows[0]["errors"]
-    )
+    assert any(item["code"] == "override_reason_required" for item in staged_rows[0]["errors"])
     assert staged_rows[1]["staged_action"] == "blocked"
-    assert any(
-        item["code"] == "incomplete_partial_lay" for item in staged_rows[1]["errors"]
-    )
+    assert any(item["code"] == "incomplete_partial_lay" for item in staged_rows[1]["errors"])
 
 
 def test_casino_offers_v1_maps_reference_values_and_excludes_helpers() -> None:
@@ -744,6 +799,28 @@ def test_casino_offers_v1_defaults_blank_settling_date_to_start_date() -> None:
 
     assert staged[0]["staged_action"] == "insert"
     assert staged[0]["mapped_fields"]["date_settling"] == fields["DateStarted"]
+
+
+def test_casino_offers_v1_generates_neutral_historical_name_when_blank() -> None:
+    case = casino_offer_fixture("CI-001")
+    fields = {**case["fields"], "OfferName": ""}
+
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Casino Offers",
+                source_record_id="DEMO-CO-HISTORICAL-001",
+                fields=fields,
+            )
+        ],
+        mapping_version="casino-offers-v1",
+        source_lookup=no_existing_source,
+    )
+
+    assert staged[0]["staged_action"] == "insert"
+    assert staged[0]["mapped_fields"]["offer_name"].startswith("Historical Casino Offer")
+    assert staged[0]["fields"]["OfferName"] == ""
 
 
 def test_casino_final_value_requires_auditable_user_notes() -> None:
@@ -813,10 +890,7 @@ def test_cash_adjustments_v1_blocks_impossible_direction_type_pair() -> None:
     )
 
     assert staged[0]["staged_action"] == "blocked"
-    assert any(
-        item["code"] == "invalid_cash_adjustment_payload"
-        for item in staged[0]["errors"]
-    )
+    assert any(item["code"] == "invalid_cash_adjustment_payload" for item in staged[0]["errors"])
 
 
 def test_accounts_v1_maps_catalogue_authority_and_preserves_money() -> None:
@@ -904,10 +978,7 @@ def test_accounts_v1_allows_archived_historical_authority_with_warning() -> None
         source_lookup=no_existing_source,
     )
     assert staged[0]["staged_action"] == "insert"
-    assert any(
-        item["code"] == "account_catalogue_entry_archived"
-        for item in staged[0]["warnings"]
-    )
+    assert any(item["code"] == "account_catalogue_entry_archived" for item in staged[0]["warnings"])
 
 
 def test_confirmed_sportsbook_import_requires_backup_and_preserves_lineage(
@@ -944,9 +1015,7 @@ def test_confirmed_sportsbook_import_requires_backup_and_preserves_lineage(
         f"/profiles/{profile_id}/imports/{staged_batch['import_batch_id']}/confirm-sportsbook",
         json={
             "confirmed": True,
-            "selected_staged_row_ids": [
-                staged_batch["rows"][0]["import_staged_row_id"]
-            ],
+            "selected_staged_row_ids": [staged_batch["rows"][0]["import_staged_row_id"]],
         },
     )
     assert confirmation.status_code == 200
@@ -990,9 +1059,7 @@ def test_confirmed_sportsbook_import_requires_backup_and_preserves_lineage(
         f"/profiles/{profile_id}/imports/{staged_batch['import_batch_id']}/confirm-sportsbook",
         json={
             "confirmed": True,
-            "selected_staged_row_ids": [
-                staged_batch["rows"][0]["import_staged_row_id"]
-            ],
+            "selected_staged_row_ids": [staged_batch["rows"][0]["import_staged_row_id"]],
         },
     )
     assert second_confirmation.status_code == 409
@@ -1040,16 +1107,12 @@ def test_unconfirmed_batch_can_be_deleted_but_confirmed_audit_cannot(
             ],
         },
     ).json()
-    confirmed_path = (
-        f"/profiles/{profile_id}/imports/{confirmed_batch['import_batch_id']}"
-    )
+    confirmed_path = f"/profiles/{profile_id}/imports/{confirmed_batch['import_batch_id']}"
     confirmation = client.post(
         f"{confirmed_path}/confirm-sportsbook",
         json={
             "confirmed": True,
-            "selected_staged_row_ids": [
-                confirmed_batch["rows"][0]["import_staged_row_id"]
-            ],
+            "selected_staged_row_ids": [confirmed_batch["rows"][0]["import_staged_row_id"]],
         },
     )
     assert confirmation.status_code == 200
@@ -1090,9 +1153,7 @@ def test_confirmation_records_imported_and_operator_skipped_rows(
 
     assert response.status_code == 200
     assert len(response.json()["imported_sportsbook_bet_ids"]) == 1
-    stored = client.get(
-        f"/profiles/{profile_id}/imports/{batch['import_batch_id']}"
-    ).json()
+    stored = client.get(f"/profiles/{profile_id}/imports/{batch['import_batch_id']}").json()
     assert stored["summary"] == {"imported": 1, "skipped_by_operator": 1}
     assert {row["staged_action"] for row in stored["rows"]} == {
         "imported",

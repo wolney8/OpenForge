@@ -36,6 +36,11 @@ The persisted report ends with exactly one of:
 
 A failed reconciliation does not mark cutover complete and leaves scoped rollback available.
 
+Import History also exposes a downloadable reconciliation handoff containing the workbook
+checksum/effective timestamp, target Profile and ImportRunID, Account and ledger comparisons,
+financial periods and views, open-position checks, review-decision totals, integrity checks and the
+final reconciliation status. This is derived from the persisted report rather than browser totals.
+
 ## Rollback
 
 Normal rollback uses the application checkpoint and write audit, not a whole-database restore. It:

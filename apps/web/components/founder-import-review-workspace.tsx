@@ -229,6 +229,7 @@ type PostImportReport = {
   mismatches: Array<Record<string, unknown>>;
   rollback_available: boolean;
   result: "POST-IMPORT RECONCILIATION: PASSED" | "POST-IMPORT RECONCILIATION: FAILED";
+  handoff: Record<string, unknown>;
 };
 
 type ImportResult = {
@@ -838,6 +839,19 @@ export function FounderImportReviewWorkspace({
     && ["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(workspace.run_status ?? ""),
   );
 
+  function downloadReconciliationHandoff() {
+    if (!postImportReport) return;
+    const blob = new Blob([JSON.stringify(postImportReport.handoff, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `plum-duff-import-${importRunId}-reconciliation.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
     <section className="content-panel stack founder-import-review" data-pd-id="founder-import-review.workspace">
@@ -947,7 +961,7 @@ export function FounderImportReviewWorkspace({
         <details className="stack-tight"><summary>Ledger write plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Source</th><th scope="col">Import</th><th scope="col">Non-transactional</th><th scope="col">Historical / partial</th><th scope="col">Open</th><th scope="col">Settled</th></tr></thead><tbody>{Object.entries(finalSummary.ledgers).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.source_rows ?? 0}</td><td>{values.transactional_rows ?? 0}</td><td>{values.non_transactional ?? 0}</td><td>{values.historical_or_partial ?? 0}</td><td>{values.open ?? 0}</td><td>{values.settled ?? 0}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Saved blocking-item resolutions</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Source</th><th scope="col">Category</th><th scope="col">Resolution</th><th scope="col">Target</th></tr></thead><tbody>{[...finalSummary.provider_resolutions, ...finalSummary.historical_ep_resolutions].map((resolution) => <tr key={`${resolution.category}-${resolution.source_sheet}-${resolution.source_row}`}><td>{resolution.source_sheet} row {resolution.source_row}</td><td>{resolution.category.replaceAll("_", " ")}</td><td><span className="table-chip table-chip-success">{resolution.action.replaceAll("_", " ")}</span></td><td>{resolution.target || resolution.catalogue_id || "Recorded historical decision"}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Financial plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Approved total</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(finalSummary.financial.periods).map(([period, values]) => <tr key={period}><td>{period}</td><td><FinancialValue animate={false} value={values.workbook_report?.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={values.difference ?? "0.00"} /></td></tr>)}</tbody></table></div></details>
-        <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>Import workbook</span></button></div>
+        {finalSummary.ready ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>Import to Profile</span></button></div> : null}
       </section> : null}
       {postImportReport ? <section className="content-subpanel stack" data-pd-id="profile-import.reconciliation">
         <header className="workflow-panel-header"><div><span className="eyebrow">Import history</span><h2>Post-Import Reconciliation</h2></div><span className={`table-chip ${postImportReport.result.endsWith("PASSED") ? "table-chip-success" : "table-chip-danger"}`}>{postImportReport.result.replace("POST-IMPORT RECONCILIATION: ", "")}</span></header>
@@ -960,7 +974,7 @@ export function FounderImportReviewWorkspace({
         <details><summary>Review decisions and integrity</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Check</th><th scope="col">Value</th></tr></thead><tbody>{Object.entries(postImportReport.review_decisions).map(([name, value]) => <tr key={`decision-${name}`}><td>{name.replaceAll("_", " ")}</td><td>{value}</td></tr>)}{Object.entries(postImportReport.integrity).map(([name, value]) => <tr key={`integrity-${name}`}><td>{name.replaceAll("_", " ")}</td><td><span className={`table-chip ${value ? "table-chip-success" : "table-chip-danger"}`}>{value ? "Passed" : "Failed"}</span></td></tr>)}</tbody></table></div></details>
         {postImportReport.mismatches.length ? <details className="error-text" open><summary>Reconciliation mismatches</summary><pre>{JSON.stringify(postImportReport.mismatches, null, 2)}</pre></details> : null}
         <strong>{postImportReport.result}</strong>
-        <div className="tracker-nav"><Link className="button-link" href={`/profiles/${profileId}`}>Open Profile Dashboard</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/accounts`}>View Accounts</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/sportsbook-bets`}>View imported ledgers</Link>{canRollback ? <button className="button-link destructive-action" onClick={() => setRollbackConfirmationOpen(true)} type="button">Roll back import</button> : null}</div>
+        <div className="tracker-nav"><Link className="button-link" href={`/profiles/${profileId}`}>Open Profile Dashboard</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/accounts`}>View Accounts</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/sportsbook-bets`}>View imported ledgers</Link><button className="button-link icon-text-action" onClick={downloadReconciliationHandoff} type="button"><span aria-hidden="true" className="material-symbols-outlined">download</span><span>Download reconciliation</span></button>{canRollback ? <button className="button-link destructive-action" onClick={() => setRollbackConfirmationOpen(true)} type="button">Roll back import</button> : null}</div>
       </section> : null}
       <p className="field-support-text">{workspace.metadata.source_filename} · {workspace.metadata.mapping_version} · checksum {workspace.metadata.workbook_checksum.slice(0, 12)}… · {postImportReport ? "persisted import audit available" : "no production import performed"}</p>
     </section>
@@ -981,7 +995,7 @@ export function FounderImportReviewWorkspace({
     <ConfirmationDialog
       busy={saving}
       busyLabel="Importing"
-      confirmLabel="Import workbook"
+      confirmLabel="Import to Profile"
       confirmTone="primary"
       description={`Import ${workspace.metadata.source_filename} into ${finalSummary?.profile.profile_name ?? "this Profile"} using the approved checksum ${workspace.metadata.workbook_checksum.slice(0, 12)}…. The plan affects ${finalSummary?.accounts.total_source ?? 0} source Accounts and ${Object.values(finalSummary?.ledgers ?? {}).reduce((total, ledger) => total + (ledger.transactional_rows ?? 0), 0)} transactional ledger rows. A scoped rollback checkpoint will be created first.`}
       onCancel={() => setImportConfirmationOpen(false)}

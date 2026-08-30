@@ -42,7 +42,7 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v4"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v5"
 
 NON_TRANSACTIONAL_SPORTSBOOK_STATUSES = frozenset({"prospecting", "not placed"})
 NON_TRANSACTIONAL_SPORTSBOOK_RESULTS = frozenset({"", "pending"})
@@ -467,6 +467,85 @@ def _ledger_report(
         mapped_result = definition.mapper(row.fields)
         mapped_payload = dict(mapped_result[0])
         errors = list(mapped_result[1])
+        source_map = {
+            "sportsbook": SPORTSBOOK_SOURCE_MAP,
+            "free_bets": FREE_BET_SOURCE_MAP,
+            "casino": CASINO_OFFER_SOURCE_MAP,
+            "cash_adjustments": CASH_ADJUSTMENT_SOURCE_MAP,
+        }[definition.key]
+        normalizations: list[JsonObject] = []
+        for source_field, target_field in source_map.items():
+            source_value = str(row.fields.get(source_field) or "")
+            target_value = str(mapped_payload.get(target_field) or "")
+            if (
+                source_value
+                and source_value != target_value
+                and source_value.startswith(target_value.removesuffix("..."))
+            ):
+                normalizations.append(
+                    {
+                        "rule": "constrained_text_preserved_and_shortened",
+                        "source_field": source_field,
+                        "target_field": target_field,
+                        "source_length": len(source_value),
+                        "canonical_length": len(target_value),
+                        "source_preserved": True,
+                    }
+                )
+        if (
+            definition.key == "casino"
+            and not str(row.fields.get("OfferName") or "").strip()
+            and str(mapped_payload.get("offer_name") or "").strip()
+        ):
+            normalizations.append(
+                {
+                    "rule": "generated_historical_offer_name",
+                    "source_field": "OfferName",
+                    "target_field": "offer_name",
+                    "source_preserved": True,
+                }
+            )
+        if (
+            definition.key == "sportsbook"
+            and not str(row.fields.get("EventName") or "").strip()
+            and str(mapped_payload.get("event_name") or "").strip()
+        ):
+            normalizations.append(
+                {
+                    "rule": "generated_historical_event_label",
+                    "source_field": "EventName",
+                    "target_field": "event_name",
+                    "source_preserved": True,
+                }
+            )
+        if (
+            definition.key == "sportsbook"
+            and not str(row.fields.get("MatchStrategy") or "").strip()
+            and str(mapped_payload.get("match_strategy") or "").strip()
+        ):
+            normalizations.append(
+                {
+                    "rule": "non_calculating_lifecycle_strategy",
+                    "source_field": "MatchStrategy",
+                    "target_field": "match_strategy",
+                    "source_preserved": True,
+                }
+            )
+        if (
+            definition.key == "sportsbook"
+            and str(row.fields.get("MatchStrategy") or "").strip()
+            in {"Multilay", "Multilay-Underlay"}
+            and not str(row.fields.get("MultiLayOutcomesJson") or "").strip()
+            and str(mapped_payload.get("multi_lay_outcomes_json") or "[]") != "[]"
+        ):
+            normalizations.append(
+                {
+                    "rule": "canonical_multi_lay_branches_generated",
+                    "source_field": "OutcomeCount",
+                    "target_field": "multi_lay_outcomes_json",
+                    "source_preserved": True,
+                }
+            )
         is_non_transactional = (
             definition.key == "sportsbook"
             and is_non_transactional_sportsbook_opportunity(row.fields)
@@ -620,6 +699,7 @@ def _ledger_report(
                 "action": action,
                 "migration_state": migration_state,
                 "errors": errors,
+                "normalizations": normalizations,
                 "mapped_payload": mapped_payload,
                 "source_fields": dict(row.fields),
                 "outside_table_range": row.outside_table_range,

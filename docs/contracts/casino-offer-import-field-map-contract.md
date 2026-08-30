@@ -27,7 +27,7 @@ _Last updated: 2026-07-16_
 | `ExpiryDateTime` | `expiry_datetime` | Preserve |
 | `Bookmaker` | `bookmaker` | Required |
 | `OfferType` | `offer_type` | Required controlled value |
-| `OfferName` | `offer_name` | Required |
+| `OfferName` | `offer_name` | Preserve; when blank, use a neutral deterministic historical label and mark it migration-generated |
 | `Game` | `game` | Preserve |
 | `CashStake` | `cash_stake` | Preserve |
 | `CreditAmount` | `credit_amount` | Preserve |

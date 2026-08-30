@@ -481,6 +481,11 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
         mismatches: [],
         rollback_available: true,
         result: "POST-IMPORT RECONCILIATION: PASSED",
+        handoff: {
+          workbook: { checksum: "a".repeat(64) },
+          profile: { import_run_id: "import-run-demo" },
+          status: "POST-IMPORT RECONCILIATION: PASSED",
+        },
       },
     },
   };
@@ -491,6 +496,7 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   await expect(page.getByRole("heading", { name: "Post-Import Reconciliation" })).toBeVisible();
   await expect(page.getByText("POST-IMPORT RECONCILIATION: PASSED")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download reconciliation" })).toBeVisible();
   await page.getByText("Open positions").click();
   await expect(page.getByText("future settling open")).toBeVisible();
   await page.getByRole("button", { name: "Roll back import" }).click();

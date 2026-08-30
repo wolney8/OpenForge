@@ -345,42 +345,34 @@ class ImportConfirmationResponse(BaseModel):
 class XlsxDryRunPayload(BaseModel):
     source_filename: str = Field(min_length=1, max_length=255)
     content_base64: str = Field(min_length=1, max_length=21_000_000)
-    ledger: Literal[
-        "sportsbook", "free-bets", "casino-offers", "cash-adjustments", "accounts"
-    ] = "sportsbook"
+    ledger: Literal["sportsbook", "free-bets", "casino-offers", "cash-adjustments", "accounts"] = (
+        "sportsbook"
+    )
 
 
 def sportsbook_mapped_fields(row: object) -> dict[str, JsonScalar]:
     record = row.__dict__
-    mapped = {
-        target: record.get(target, "") for target in set(SPORTSBOOK_SOURCE_MAP.values())
-    }
+    mapped = {target: record.get(target, "") for target in set(SPORTSBOOK_SOURCE_MAP.values())}
     mapped["lay_commission_1"] = ""
     return mapped
 
 
 def free_bet_mapped_fields(row: object) -> dict[str, JsonScalar]:
     record = row.__dict__
-    mapped = {
-        target: record.get(target, "") for target in set(FREE_BET_SOURCE_MAP.values())
-    }
+    mapped = {target: record.get(target, "") for target in set(FREE_BET_SOURCE_MAP.values())}
     mapped["lay_commission_1"] = ""
     return mapped
 
 
 def casino_offer_mapped_fields(row: object) -> dict[str, JsonScalar]:
     record = row.__dict__
-    return {
-        target: record.get(target, "")
-        for target in set(CASINO_OFFER_SOURCE_MAP.values())
-    }
+    return {target: record.get(target, "") for target in set(CASINO_OFFER_SOURCE_MAP.values())}
 
 
 def cash_adjustment_mapped_fields(row: object) -> dict[str, JsonScalar]:
     record = row.__dict__
     mapped: dict[str, JsonScalar] = {
-        target: record.get(target, "")
-        for target in set(CASH_ADJUSTMENT_SOURCE_MAP.values())
+        target: record.get(target, "") for target in set(CASH_ADJUSTMENT_SOURCE_MAP.values())
     }
     mapped["affects_investment"] = bool(mapped["affects_investment"])
     mapped["affects_cash_snapshot"] = bool(mapped["affects_cash_snapshot"])
@@ -498,9 +490,7 @@ def free_bet_export_row(profile_id: str, row: FreeBetRecord) -> dict[str, object
     }
 
 
-def casino_offer_export_row(
-    profile_id: str, row: CasinoOfferRecord
-) -> dict[str, object]:
+def casino_offer_export_row(profile_id: str, row: CasinoOfferRecord) -> dict[str, object]:
     record = row.__dict__
     source = get_import_source_record_for_entity(
         profile_id,
@@ -536,9 +526,7 @@ def casino_offer_export_row(
     }
 
 
-def cash_adjustment_export_row(
-    profile_id: str, row: CashAdjustmentRecord
-) -> dict[str, object]:
+def cash_adjustment_export_row(profile_id: str, row: CashAdjustmentRecord) -> dict[str, object]:
     record = row.__dict__
     source = get_import_source_record_for_entity(
         profile_id,
@@ -547,9 +535,7 @@ def cash_adjustment_export_row(
     )
     calculated = build_cash_adjustment_response(row)
     return {
-        "AdjustmentID": (
-            source.source_record_id if source else record["cash_adjustment_id"]
-        ),
+        "AdjustmentID": (source.source_record_id if source else record["cash_adjustment_id"]),
         "AdjustmentDate": record["adjustment_date"],
         "Direction": record["direction"],
         "Amount": record["amount"],
@@ -880,12 +866,8 @@ def reconcile_free_bet_values(
                 lay_commission_1=str(row.get("lay_commission_1") or ""),
                 lay_actual=str(row.get("lay_actual") or ""),
                 lay_matched_stake_1=str(row.get("lay_matched_stake_1") or ""),
-                default_underlay_factor=str(
-                    row.get("default_underlay_factor") or ""
-                ),
-                default_overlay_factor=str(
-                    row.get("default_overlay_factor") or ""
-                ),
+                default_underlay_factor=str(row.get("default_underlay_factor") or ""),
+                default_overlay_factor=str(row.get("default_overlay_factor") or ""),
                 expiry_datetime=str(row.get("expiry_datetime") or ""),
                 date_settled=str(row.get("date_settled") or ""),
                 manual_override_value=str(row.get("manual_override_value") or ""),
@@ -907,9 +889,7 @@ def reconcile_free_bet_values(
             if calculation.reporting_value is not None:
                 recomputed_values.append(calculation.reporting_value)
             continue
-        source_values.append(
-            source_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        )
+        source_values.append(source_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
         recomputed_values.append(calculation.reporting_value)
         compared_row_count += 1
 
@@ -991,12 +971,8 @@ def reconcile_sportsbook_values(
                 maximum_bonus=str(row.get("maximum_bonus") or ""),
                 bonus_retention_rate=str(row.get("bonus_retention_rate") or "70"),
                 lay_odds_1=str(row.get("lay_odds_1") or ""),
-                multi_lay_outcome_1_name=str(
-                    row.get("multi_lay_outcome_1_name") or ""
-                ),
-                multi_lay_outcomes_json=str(
-                    row.get("multi_lay_outcomes_json") or "[]"
-                ),
+                multi_lay_outcome_1_name=str(row.get("multi_lay_outcome_1_name") or ""),
+                multi_lay_outcomes_json=str(row.get("multi_lay_outcomes_json") or "[]"),
                 lay_commission_1=str(row.get("lay_commission_1") or ""),
                 lay_actual=str(row.get("lay_actual") or ""),
                 lay_matched_stake_1=str(row.get("lay_matched_stake_1") or ""),
@@ -1020,9 +996,7 @@ def reconcile_sportsbook_values(
             if calculation.reporting_value is not None:
                 recomputed_values.append(calculation.reporting_value)
             continue
-        source_values.append(
-            source_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        )
+        source_values.append(source_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
         recomputed_values.append(calculation.reporting_value)
         compared_row_count += 1
 
@@ -1111,9 +1085,7 @@ def reconcile_import_financial_values(
                     "maximum_bonus": mapped.get("maximum_bonus"),
                     "bonus_retention_rate": mapped.get("bonus_retention_rate"),
                     "lay_odds_1": mapped.get("lay_odds_1"),
-                    "multi_lay_outcome_1_name": mapped.get(
-                        "multi_lay_outcome_1_name"
-                    ),
+                    "multi_lay_outcome_1_name": mapped.get("multi_lay_outcome_1_name"),
                     "multi_lay_outcomes_json": mapped.get("multi_lay_outcomes_json"),
                     "lay_commission_1": get_profile_exchange_commission(
                         batch.profile_id, exchange_name
@@ -1147,12 +1119,8 @@ def reconcile_import_financial_values(
                     ),
                     "lay_actual": mapped.get("lay_actual"),
                     "lay_matched_stake_1": mapped.get("lay_matched_stake_1"),
-                    "default_underlay_factor": (
-                        tracker_settings.default_free_bet_underlay_factor
-                    ),
-                    "default_overlay_factor": (
-                        tracker_settings.default_free_bet_overlay_factor
-                    ),
+                    "default_underlay_factor": (tracker_settings.default_free_bet_underlay_factor),
+                    "default_overlay_factor": (tracker_settings.default_free_bet_overlay_factor),
                     "expiry_datetime": mapped.get("expiry_datetime"),
                     "date_settled": mapped.get("date_settled"),
                     "manual_override_value": mapped.get("manual_override_value"),
@@ -1243,6 +1211,50 @@ def normalize_workbook_match_strategy(value: JsonScalar) -> str:
     return text
 
 
+def _shorten_import_text(value: JsonScalar, limit: int) -> str:
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
+def _historical_label(fields: dict[str, JsonScalar], *, ledger: str) -> str:
+    provider = field_text(fields, "Bookmaker")
+    offer_type = field_text(fields, "OfferType")
+    source_date = field_text(fields, "DateStarted", "DateSettling")[:10]
+    detail = " - ".join(value for value in (provider, offer_type, source_date) if value)
+    return f"Historical {ledger}{f' - {detail}' if detail else ''}"
+
+
+def _workbook_multi_lay_payload(fields: dict[str, JsonScalar]) -> str:
+    try:
+        outcome_count = int(Decimal(field_text(fields, "OutcomeCount") or "0"))
+    except (InvalidOperation, ValueError):
+        return ""
+    if outcome_count < 2 or outcome_count > 3:
+        return ""
+
+    exchange = field_text(fields, "Exchange")
+    entries: list[dict[str, str]] = []
+    for index in range(1, outcome_count + 1):
+        lay_odds = field_text(fields, f"LayOdds{index}")
+        if not lay_odds:
+            return ""
+        matched_stake = field_text(fields, f"LayStake{index}")
+        entries.append(
+            {
+                "id": f"outcome{index}",
+                "label": f"Outcome {index}",
+                "layOdds": lay_odds,
+                "placedExchange": exchange,
+                "placedLayOdds": lay_odds,
+                "placedMatchedStake": matched_stake,
+                "placementState": "placed" if matched_stake else "pending",
+            }
+        )
+    return json.dumps(entries, separators=(",", ":"))
+
+
 def map_sportsbook_import_fields(
     fields: dict[str, JsonScalar],
 ) -> tuple[dict[str, JsonScalar], list[dict[str, str]]]:
@@ -1264,13 +1276,42 @@ def map_sportsbook_import_fields(
             "lay_commission_1": "",
         }
     )
+    for field_name, limit in {
+        "event_name": 200,
+        "offer_text": 200,
+        "bookmaker": 120,
+        "offer_type": 120,
+        "bet_type": 120,
+        "offer_name": 200,
+        "fixture_type": 120,
+        "market": 200,
+    }.items():
+        mapped[field_name] = _shorten_import_text(mapped.get(field_name, ""), limit)
+
+    status = field_text(normalized_fields, "Status")
+    result = field_text(normalized_fields, "Result")
+    if not field_text(mapped, "event_name"):
+        mapped["event_name"] = _historical_label(fields, ledger="Sportsbook record")
+    if not field_text(mapped, "match_strategy") and (
+        status in {"Void", "Cancelled", "Free Bet Awarded"} or result == "Void"
+    ):
+        mapped["match_strategy"] = "No Lay"
+
     errors: list[dict[str, str]] = []
-    match_strategy = field_text(normalized_fields, "MatchStrategy")
+    match_strategy = field_text(mapped, "match_strategy")
     outcome_count = field_text(fields, "OutcomeCount")
     has_advanced_branch = match_strategy != "No Lay" and any(
         field_text(fields, name) for name in SPORTSBOOK_ADVANCED_BRANCH_FIELDS
     )
     branch_json = field_text(fields, "MultiLayOutcomesJson")
+    if match_strategy in {"Multilay", "Multilay-Underlay"} and not branch_json:
+        branch_json = _workbook_multi_lay_payload(fields)
+        if branch_json:
+            mapped["multi_lay_outcomes_json"] = branch_json
+            primary_stake = field_text(fields, "LayStake1")
+            if primary_stake:
+                mapped["lay_actual"] = mapped.get("lay_actual") or primary_stake
+                mapped["lay_matched_stake_1"] = mapped.get("lay_matched_stake_1") or primary_stake
     has_branch_preserving_payload = False
     if branch_json and branch_json != "[]":
         try:
@@ -1285,15 +1326,15 @@ def map_sportsbook_import_fields(
                     "MultiLayOutcomesJson must contain a valid JSON list.",
                 )
             )
-    if (
-        match_strategy != "No Lay"
-        and (
-            match_strategy in {"Partial Lay", "Multilay", "Multilay-Underlay"}
-            or (outcome_count and outcome_count != "1")
-            or has_advanced_branch
-        )
-        and not has_branch_preserving_payload
-    ):
+    partial_lay_is_incomplete = match_strategy == "Partial Lay" and not (
+        field_text(mapped, "lay_actual") or field_text(mapped, "lay_matched_stake_1")
+    )
+    advanced_branch_is_unmapped = (
+        match_strategy in {"Multilay", "Multilay-Underlay"}
+        or (outcome_count and outcome_count not in {"0", "1"})
+        or has_advanced_branch
+    ) and not has_branch_preserving_payload
+    if match_strategy != "No Lay" and (partial_lay_is_incomplete or advanced_branch_is_unmapped):
         errors.append(
             issue(
                 "advanced_branch_mapping_required",
@@ -1322,10 +1363,19 @@ def map_free_bet_import_fields(
         fields.get("MatchStrategy", "")
     )
     mapped: dict[str, JsonScalar] = {
-        target: normalized_fields.get(source, "")
-        for source, target in FREE_BET_SOURCE_MAP.items()
+        target: normalized_fields.get(source, "") for source, target in FREE_BET_SOURCE_MAP.items()
     }
     mapped["lay_commission_1"] = ""
+    for field_name, limit in {
+        "event_name": 200,
+        "offer_text": 200,
+        "bookmaker": 120,
+        "offer_type": 120,
+        "bet_type": 120,
+        "offer_name": 200,
+        "fixture_type": 120,
+    }.items():
+        mapped[field_name] = _shorten_import_text(mapped.get(field_name, ""), limit)
     errors: list[dict[str, str]] = []
     if field_text(fields, "MatchStrategy") == "Partial Lay" and not (
         field_text(fields, "Lay (Actual)") or field_text(fields, "LayMatchedStake1")
@@ -1352,11 +1402,19 @@ def map_casino_offer_import_fields(
     fields: dict[str, JsonScalar],
 ) -> tuple[dict[str, JsonScalar], list[dict[str, str]]]:
     mapped: dict[str, JsonScalar] = {
-        target: fields.get(source, "")
-        for source, target in CASINO_OFFER_SOURCE_MAP.items()
+        target: fields.get(source, "") for source, target in CASINO_OFFER_SOURCE_MAP.items()
     }
     if not field_text(mapped, "date_settling"):
         mapped["date_settling"] = field_text(mapped, "date_started")
+    if not field_text(mapped, "offer_name"):
+        mapped["offer_name"] = _historical_label(fields, ledger="Casino Offer")
+    for field_name, limit in {
+        "bookmaker": 120,
+        "offer_type": 120,
+        "offer_name": 400,
+        "game": 200,
+    }.items():
+        mapped[field_name] = _shorten_import_text(mapped.get(field_name, ""), limit)
     errors: list[dict[str, str]] = []
     try:
         CasinoOfferPayload.model_validate(mapped)
@@ -1374,8 +1432,7 @@ def map_cash_adjustment_import_fields(
     fields: dict[str, JsonScalar],
 ) -> tuple[dict[str, JsonScalar], list[dict[str, str]]]:
     mapped: dict[str, JsonScalar] = {
-        target: fields.get(source, "")
-        for source, target in CASH_ADJUSTMENT_SOURCE_MAP.items()
+        target: fields.get(source, "") for source, target in CASH_ADJUSTMENT_SOURCE_MAP.items()
     }
     errors: list[dict[str, str]] = []
     try:
@@ -1472,9 +1529,7 @@ def map_account_import_fields(
         try:
             date.fromisoformat(sign_up_date)
         except ValueError:
-            errors.append(
-                issue("invalid_account_sign_up_date", "SignUpDate must be a valid date.")
-            )
+            errors.append(issue("invalid_account_sign_up_date", "SignUpDate must be a valid date."))
 
     try:
         validated = AccountPayload.model_validate(mapped).model_dump()
@@ -1563,9 +1618,7 @@ def stage_import_rows(
                         )
                     )
                 else:
-                    mapped_fields, mapping_errors = map_casino_offer_import_fields(
-                        row.fields
-                    )
+                    mapped_fields, mapping_errors = map_casino_offer_import_fields(row.fields)
                     errors.extend(mapping_errors)
                     source_hash = canonical_source_hash(mapped_fields)
             elif mapping_version == "cash-adjustments-v1":
@@ -1577,9 +1630,7 @@ def stage_import_rows(
                         )
                     )
                 else:
-                    mapped_fields, mapping_errors = map_cash_adjustment_import_fields(
-                        row.fields
-                    )
+                    mapped_fields, mapping_errors = map_cash_adjustment_import_fields(row.fields)
                     errors.extend(mapping_errors)
                     source_hash = canonical_source_hash(mapped_fields)
             elif mapping_version == "accounts-v1":
@@ -1764,9 +1815,7 @@ def stage_import_rows(
                                     )
                                 )
                     elif mapping_version == "cash-adjustments-v1":
-                        cash_adjustment_native_row = get_cash_adjustment_by_id(
-                            source_record_id
-                        )
+                        cash_adjustment_native_row = get_cash_adjustment_by_id(source_record_id)
                         if (
                             cash_adjustment_native_row is not None
                             and cash_adjustment_native_row.profile_id != profile_id
@@ -1848,9 +1897,7 @@ def serialize_batch(
         staged = staged_row.__dict__
         existing_mapped_fields: dict[str, JsonScalar] = {}
         if staged["staged_action"] == "update" and staged["source_sheet"] == "Accounts":
-            source = get_import_source_record(
-                staged["source_sheet"], staged["source_record_id"]
-            )
+            source = get_import_source_record(staged["source_sheet"], staged["source_record_id"])
             existing = (
                 get_account(batch.profile_id, source.entity_id)
                 if source is not None and source.entity_type == "account"
@@ -1902,9 +1949,7 @@ def create_profile_import_dry_run(
     return persist_import_dry_run(profile_id=profile_id, payload=payload)
 
 
-def persist_import_dry_run(
-    *, profile_id: str, payload: ImportDryRunPayload
-) -> ImportBatchResponse:
+def persist_import_dry_run(*, profile_id: str, payload: ImportDryRunPayload) -> ImportBatchResponse:
     staged_rows = stage_import_rows(
         profile_id=profile_id, rows=payload.rows, mapping_version=payload.mapping_version
     )
@@ -2049,13 +2094,9 @@ def export_profile_accounts_xlsx(profile_id: str) -> Response:
     content = build_account_export(rows)
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="plum-duff-{profile_id}-accounts.xlsx"'
-            )
+            "Content-Disposition": (f'attachment; filename="plum-duff-{profile_id}-accounts.xlsx"')
         },
     )
 
@@ -2071,16 +2112,11 @@ def list_profile_import_batches(profile_id: str) -> list[ImportBatchResponse]:
 def export_profile_sportsbook_xlsx(profile_id: str) -> Response:
     if get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    rows = [
-        sportsbook_export_row(profile_id, row)
-        for row in list_sportsbook_bets(profile_id)
-    ]
+    rows = [sportsbook_export_row(profile_id, row) for row in list_sportsbook_bets(profile_id)]
     content = build_sportsbook_export(rows)
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             "Content-Disposition": (
                 f'attachment; filename="plum-duff-{profile_id}-sportsbook.xlsx"'
@@ -2097,13 +2133,9 @@ def export_profile_free_bets_xlsx(profile_id: str) -> Response:
     content = build_free_bet_export(rows)
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="plum-duff-{profile_id}-free-bets.xlsx"'
-            )
+            "Content-Disposition": (f'attachment; filename="plum-duff-{profile_id}-free-bets.xlsx"')
         },
     )
 
@@ -2112,16 +2144,11 @@ def export_profile_free_bets_xlsx(profile_id: str) -> Response:
 def export_profile_casino_offers_xlsx(profile_id: str) -> Response:
     if get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    rows = [
-        casino_offer_export_row(profile_id, row)
-        for row in list_casino_offers(profile_id)
-    ]
+    rows = [casino_offer_export_row(profile_id, row) for row in list_casino_offers(profile_id)]
     content = build_casino_offer_export(rows)
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             "Content-Disposition": (
                 f'attachment; filename="plum-duff-{profile_id}-casino-offers.xlsx"'
@@ -2135,15 +2162,12 @@ def export_profile_cash_adjustments_xlsx(profile_id: str) -> Response:
     if get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     rows = [
-        cash_adjustment_export_row(profile_id, row)
-        for row in list_cash_adjustments(profile_id)
+        cash_adjustment_export_row(profile_id, row) for row in list_cash_adjustments(profile_id)
     ]
     content = build_cash_adjustment_export(rows)
     return Response(
         content=content,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             "Content-Disposition": (
                 f'attachment; filename="plum-duff-{profile_id}-cash-adjustments.xlsx"'
@@ -2153,9 +2177,7 @@ def export_profile_cash_adjustments_xlsx(profile_id: str) -> Response:
 
 
 @router.get("/{import_batch_id}", response_model=ImportBatchResponse)
-def get_profile_import_batch(
-    profile_id: str, import_batch_id: str
-) -> ImportBatchResponse:
+def get_profile_import_batch(profile_id: str, import_batch_id: str) -> ImportBatchResponse:
     stored = get_import_batch(profile_id, import_batch_id)
     if stored is None:
         raise HTTPException(status_code=404, detail="Import batch not found for this profile")
@@ -2196,9 +2218,7 @@ def confirm_profile_sportsbook_import(
         raise HTTPException(status_code=409, detail="Blocked staged rows prevent confirmation")
     selected_ids = set(payload.selected_staged_row_ids)
     selectable_ids = {
-        row.import_staged_row_id
-        for row in staged_rows
-        if row.staged_action == "insert"
+        row.import_staged_row_id for row in staged_rows if row.staged_action == "insert"
     }
     if not selected_ids.issubset(selectable_ids):
         raise HTTPException(
@@ -2206,9 +2226,7 @@ def confirm_profile_sportsbook_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(
-        reason=f"Pre-import backup for batch {import_batch_id}"
-    )
+    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
     try:
         imported_ids = confirm_sportsbook_import_batch(
             profile_id=profile_id,
@@ -2253,9 +2271,7 @@ def confirm_profile_free_bet_import(
         raise HTTPException(status_code=409, detail="Blocked staged rows prevent confirmation")
     selected_ids = set(payload.selected_staged_row_ids)
     selectable_ids = {
-        row.import_staged_row_id
-        for row in staged_rows
-        if row.staged_action == "insert"
+        row.import_staged_row_id for row in staged_rows if row.staged_action == "insert"
     }
     if not selected_ids.issubset(selectable_ids):
         raise HTTPException(
@@ -2263,9 +2279,7 @@ def confirm_profile_free_bet_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(
-        reason=f"Pre-import backup for batch {import_batch_id}"
-    )
+    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
     try:
         imported_ids = confirm_free_bet_import_batch(
             profile_id=profile_id,
@@ -2310,9 +2324,7 @@ def confirm_profile_casino_offer_import(
         raise HTTPException(status_code=409, detail="Blocked staged rows prevent confirmation")
     selected_ids = set(payload.selected_staged_row_ids)
     selectable_ids = {
-        row.import_staged_row_id
-        for row in staged_rows
-        if row.staged_action == "insert"
+        row.import_staged_row_id for row in staged_rows if row.staged_action == "insert"
     }
     if not selected_ids.issubset(selectable_ids):
         raise HTTPException(
@@ -2320,9 +2332,7 @@ def confirm_profile_casino_offer_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(
-        reason=f"Pre-import backup for batch {import_batch_id}"
-    )
+    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
     try:
         imported_ids = confirm_casino_offer_import_batch(
             profile_id=profile_id,
@@ -2367,9 +2377,7 @@ def confirm_profile_cash_adjustment_import(
         raise HTTPException(status_code=409, detail="Blocked staged rows prevent confirmation")
     selected_ids = set(payload.selected_staged_row_ids)
     selectable_ids = {
-        row.import_staged_row_id
-        for row in staged_rows
-        if row.staged_action == "insert"
+        row.import_staged_row_id for row in staged_rows if row.staged_action == "insert"
     }
     if not selected_ids.issubset(selectable_ids):
         raise HTTPException(
@@ -2377,9 +2385,7 @@ def confirm_profile_cash_adjustment_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(
-        reason=f"Pre-import backup for batch {import_batch_id}"
-    )
+    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
     try:
         imported_ids = confirm_cash_adjustment_import_batch(
             profile_id=profile_id,
@@ -2424,9 +2430,7 @@ def confirm_profile_account_import(
         raise HTTPException(status_code=409, detail="Blocked staged rows prevent confirmation")
     selected_ids = set(payload.selected_staged_row_ids)
     selectable_ids = {
-        row.import_staged_row_id
-        for row in staged_rows
-        if row.staged_action in {"insert", "update"}
+        row.import_staged_row_id for row in staged_rows if row.staged_action in {"insert", "update"}
     }
     if not selected_ids.issubset(selectable_ids):
         raise HTTPException(
@@ -2434,9 +2438,7 @@ def confirm_profile_account_import(
             detail="Only new or changed compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(
-        reason=f"Pre-import backup for batch {import_batch_id}"
-    )
+    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
     try:
         imported_ids = confirm_account_import_batch(
             profile_id=profile_id,

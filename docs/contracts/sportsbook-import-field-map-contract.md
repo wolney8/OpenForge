@@ -86,16 +86,21 @@ These source values may remain in staged audit payloads but must not become appl
 
 ## Advanced-row gate
 
-Rows are review-blocked when any of these are present:
+Known workbook strategies use the current canonical strategy values. `Multilay` and
+`Multilay-Underlay` rows map automatically when `OutcomeCount` and each corresponding
+`LayOdds1..3` branch are present. The importer constructs the branch-preserving
+`MultiLayOutcomesJson` payload, retains supplied branch stakes/placement state and preserves the
+original columns in import provenance.
 
-- `MatchStrategy` is `Partial Lay`, `Multilay` or `Multilay-Underlay`
-- `OutcomeCount` is greater than `1`
-- any populated `LayOdds2`, `LayOdds3`, `LayStake2`, `LayStake3`, `PnL_IfLay2Wins` or
-  `PnL_IfLay3Wins` field
+`Partial Lay` maps automatically only when an actual or matched lay stake is present. Review is
+still required when branch counts and populated branch columns conflict, a required branch odd is
+missing, a strategy is unsupported, or the available source fields cannot preserve the branch
+faithfully. A pre-existing non-empty `MultiLayOutcomesJson` remains authoritative and subject to
+the current sportsbook payload validation.
 
-Those rows require the branch-preserving `MultiLayOutcomesJson` extension or a later dedicated
-workbook-column mapper. The extension must be a non-empty JSON list and remains subject to the
-current sportsbook payload validation.
+Legacy text that exceeds a constrained canonical field is retained in import provenance and only
+the constrained copy is shortened. A missing event label may use a neutral migration-generated
+historical label when the remaining source identity and financial state are preservable.
 
 ## Export boundary
 

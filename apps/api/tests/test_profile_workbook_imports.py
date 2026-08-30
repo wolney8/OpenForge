@@ -93,14 +93,14 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         "Workbook review required",
     }
     assert all(
-        item["href"]
-        == f"/profiles/profile-import-test/imports/{import_run_id}/review"
+        item["href"] == f"/profiles/profile-import-test/imports/{import_run_id}/review"
         for item in import_notifications
     )
-    assert workspace["metadata"]["original_partial_count"] == 39
+    assert workspace["metadata"]["mapping_version"] == "founder-snapshot-v5"
+    assert workspace["metadata"]["original_partial_count"] == 1
     assert workspace["metadata"]["provider_conflict_count"] == 1
     assert workspace["metadata"]["historical_ep_count"] == 2
-    assert len(workspace["items"]) == 42
+    assert len(workspace["items"]) == 4
     assert workspace["reconciliation"]["pnl_impact"] == "0.00"
     assert workspace["source_summary"]["accounts"]["row_count"] == 120
     assert workspace["source_summary"]["accounts"]["balances"] == {
@@ -119,16 +119,12 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     assert account_changes["counts"]["workbook_accounts_not_found_globally"] == 1
     assert account_changes["default_absent_strategy"] == "leave_unchanged"
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["source_rows"] == 502
-    assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 479
-    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 18
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 497
+    assert workspace["source_summary"]["ledgers"]["sportsbook"]["partial"] == 0
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["non_transactional"] == 5
-    assert len(
-        workspace["source_summary"]["ledgers"]["sportsbook"][
-            "non_transactional_rows"
-        ]
-    ) == 5
-    assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 9
-    assert workspace["source_summary"]["ledgers"]["casino"]["partial"] == 12
+    assert len(workspace["source_summary"]["ledgers"]["sportsbook"]["non_transactional_rows"]) == 5
+    assert workspace["source_summary"]["ledgers"]["free_bets"]["partial"] == 1
+    assert workspace["source_summary"]["ledgers"]["casino"]["partial"] == 0
     assert workspace["source_summary"]["ledgers"]["cash_adjustments"]["mapped"] == 23
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["accounted_rows"] == 502
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["future_settling_open"] == 3
@@ -150,19 +146,19 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
 
     reloaded = client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert reloaded.status_code == 200
-    assert len(reloaded.json()["items"]) == 42
+    assert len(reloaded.json()["items"]) == 4
 
-    advanced_lay = next(
-        item for item in workspace["items"] if "advanced_lay" in item["issue_types"]
+    override_missing_reason = next(
+        item for item in workspace["items"] if "override_missing_reason" in item["issue_types"]
     )
     decision = client.put(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
-        f"/decisions/{advanced_lay['item_id']}",
+        f"/decisions/{override_missing_reason['item_id']}",
         json={
-            "item_id": advanced_lay["item_id"],
-            "source_fingerprint": advanced_lay["source_fingerprint"],
-            "action": "historical_imported_calculation",
-            "target_type": advanced_lay["proposed_target"],
+            "item_id": override_missing_reason["item_id"],
+            "source_fingerprint": override_missing_reason["source_fingerprint"],
+            "action": "remove_override",
+            "target_type": override_missing_reason["proposed_target"],
         },
     )
     assert decision.status_code == 200, decision.text
@@ -189,15 +185,17 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
     ).json()
     assert rerun_workspace["run_status"] == "REVIEW_REQUIRED"
-    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 38
+    assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 0
     assert rerun_workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
-    assert {
-        event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]
-    } >= {"analysis_started", "analysis_complete", "review_required"}
+    assert {event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]} >= {
+        "analysis_started",
+        "analysis_complete",
+        "review_required",
+    }
 
     reset = client.post(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}/decisions/reset",
-        json={"item_ids": [advanced_lay["item_id"]], "confirmed": True},
+        json={"item_ids": [override_missing_reason["item_id"]], "confirmed": True},
     )
     assert reset.status_code == 200, reset.text
     assert reset.json()["reconciliation"]["resolved_partial_count"] == 0
@@ -206,12 +204,12 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
 
     restore = client.put(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
-        f"/decisions/{advanced_lay['item_id']}",
+        f"/decisions/{override_missing_reason['item_id']}",
         json={
-            "item_id": advanced_lay["item_id"],
-            "source_fingerprint": advanced_lay["source_fingerprint"],
-            "action": "historical_imported_calculation",
-            "target_type": advanced_lay["proposed_target"],
+            "item_id": override_missing_reason["item_id"],
+            "source_fingerprint": override_missing_reason["source_fingerprint"],
+            "action": "remove_override",
+            "target_type": override_missing_reason["proposed_target"],
         },
     )
     assert restore.status_code == 200
@@ -223,8 +221,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     assert reset_all.json()["reconciliation"]["valid_decision_count"] == 0
 
     absence_strategy = client.put(
-        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
-        "/account-absence-strategy",
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}/account-absence-strategy",
         json={"strategy": "archive"},
     )
     assert absence_strategy.status_code == 200
@@ -235,9 +232,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         == "archive"
     )
 
-    deleted = client.delete(
-        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
-    )
+    deleted = client.delete(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert deleted.status_code == 204
     assert (
         client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}").status_code

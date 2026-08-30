@@ -112,7 +112,7 @@ def configure_cutover_database(tmp_path: Path) -> None:
         )
 
 
-def test_write_plan_keeps_only_canonical_fields_and_minimal_ep_provenance() -> None:
+def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> None:
     result = {
         "profile_settings": [
             {
@@ -146,6 +146,14 @@ def test_write_plan_keeps_only_canonical_fields_and_minimal_ep_provenance() -> N
                         "action": "insert",
                         "migration_state": "mapped",
                         "errors": [],
+                        "normalizations": [
+                            {
+                                "rule": "constrained_text_preserved_and_shortened",
+                                "source_field": "Offer",
+                                "target_field": "offer_text",
+                                "source_preserved": True,
+                            }
+                        ],
                         "mapped_payload": {"event_name": "Synthetic event"},
                         "status": "Settled",
                         "source_pnl": "1.00",
@@ -156,6 +164,7 @@ def test_write_plan_keeps_only_canonical_fields_and_minimal_ep_provenance() -> N
                         "source_fields": {
                             "Bookmaker": "Bookmaker A",
                             "Selection": "Synthetic runner",
+                            "Offer": "Synthetic full legacy offer terms retained for audit",
                             "LegacyPrivateColumn": "not retained",
                         },
                     }
@@ -172,7 +181,9 @@ def test_write_plan_keeps_only_canonical_fields_and_minimal_ep_provenance() -> N
     assert plan["ledgers"]["sportsbook"][0]["source_fields"] == {
         "Bookmaker": "Bookmaker A",
         "Selection": "Synthetic runner",
+        "Offer": "Synthetic full legacy offer terms retained for audit",
     }
+    assert plan["ledgers"]["sportsbook"][0]["normalizations"][0]["source_preserved"]
 
 
 def ledger_row(
@@ -569,6 +580,9 @@ def test_transactional_import_reconciles_and_rolls_back(tmp_path: Path) -> None:
     assert report["profile"]["profile_name"] == "Imported Synthetic Profile"
     assert report["open_positions"]["future_settling_open"]["difference"] == 0
     assert report["open_positions"]["no_open_row_accidentally_settled"] is True
+    assert report["handoff"]["workbook"]["checksum"] == CHECKSUM
+    assert report["handoff"]["profile"]["import_run_id"] == RUN_ID
+    assert report["handoff"]["status"] == "POST-IMPORT RECONCILIATION: PASSED"
     assert {
         name: values["actual_persisted_rows"] for name, values in report["ledgers"].items()
     } == {
