@@ -45,6 +45,16 @@ def parse_iso_datetime(value: str | None) -> datetime | None:
     return datetime.fromisoformat(normalized)
 
 
+def _comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
+    """Apply the known comparison timezone when one workbook value is date-only."""
+
+    if left.tzinfo is None and right.tzinfo is not None:
+        left = left.replace(tzinfo=right.tzinfo)
+    elif right.tzinfo is None and left.tzinfo is not None:
+        right = right.replace(tzinfo=left.tzinfo)
+    return left, right
+
+
 @dataclass(frozen=True)
 class FreeBetCalculationInput:
     profile_id: str
@@ -132,6 +142,49 @@ def _build_zero_value_placeholder_result(
     )
 
 
+def _manual_override_fallback(
+    calculation_input: FreeBetCalculationInput,
+    *,
+    counts_as_open: bool,
+    is_overdue: bool,
+    note: str,
+    base_reference_lay_stake: MoneyOrNone = None,
+    underlay_reference_lay_stake: MoneyOrNone = None,
+    overlay_reference_lay_stake: MoneyOrNone = None,
+) -> FreeBetCalculationResult | None:
+    """Preserve an audited imported result when modern inputs are incomplete."""
+
+    override = parse_decimal(calculation_input.manual_override_value)
+    if override is None:
+        return None
+    resolved = quantize_money(override)
+    has_reason = bool(calculation_input.manual_override_reason.strip())
+    return FreeBetCalculationResult(
+        profile_id=calculation_input.profile_id,
+        record_id=calculation_input.record_id,
+        calculation_state="resolved" if has_reason else "review_required",
+        calculation_notes=(
+            note,
+            "The audited manual override remains the authoritative reporting value.",
+            *(("Manual override requires a reason for auditability.",) if not has_reason else ()),
+        ),
+        base_reference_lay_stake=base_reference_lay_stake,
+        underlay_reference_lay_stake=underlay_reference_lay_stake,
+        overlay_reference_lay_stake=overlay_reference_lay_stake,
+        actual_lay_stake_1=None,
+        calculated_liability_1=None,
+        scenario_pnl_if_back_wins=None,
+        scenario_pnl_if_lay_wins=None,
+        projected_current_pnl=resolved if counts_as_open else None,
+        actual_net_pnl=None,
+        final_net_pnl=None if counts_as_open else resolved,
+        reporting_value=resolved,
+        lay_status="Not Laid",
+        counts_as_open=counts_as_open,
+        is_overdue=is_overdue,
+    )
+
+
 def calculate_free_bet_current_value(
     calculation_input: FreeBetCalculationInput,
     *,
@@ -144,11 +197,23 @@ def calculate_free_bet_current_value(
         or calculation_input.result == "Pending"
     )
     expiry_datetime = parse_iso_datetime(calculation_input.expiry_datetime)
+    if expiry_datetime is not None:
+        expiry_datetime, as_of_datetime = _comparable_datetimes(
+            expiry_datetime, as_of_datetime
+        )
     is_overdue = bool(
         counts_as_open and expiry_datetime is not None and expiry_datetime < as_of_datetime
     )
 
     if calculation_input.retention_mode not in SUPPORTED_RETENTION_MODES:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note="Retention mode is missing or not recognized.",
+        )
+        if override_result is not None:
+            return override_result
         return FreeBetCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -186,6 +251,14 @@ def calculate_free_bet_current_value(
         )
 
     if calculation_input.match_strategy not in SUPPORTED_STRATEGIES:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note=f"Strategy '{calculation_input.match_strategy}' is missing or not recognized.",
+        )
+        if override_result is not None:
+            return override_result
         return FreeBetCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -249,6 +322,14 @@ def calculate_free_bet_current_value(
             )
 
     if free_bet_value is None or back_odds is None:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note="Required numeric inputs are missing.",
+        )
+        if override_result is not None:
+            return override_result
         return FreeBetCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -272,6 +353,17 @@ def calculate_free_bet_current_value(
 
     manual_lay_mode = calculation_input.match_strategy in {"Custom", "Partial Lay"}
     if not no_lay_mode and (lay_odds_1 is None or commission_1 is None):
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note=(
+                "Exchange inputs are incomplete, so the modern calculation cannot be "
+                "reconstructed."
+            ),
+        )
+        if override_result is not None:
+            return override_result
         return FreeBetCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -328,6 +420,20 @@ def calculate_free_bet_current_value(
         )
         actual_lay_stake = parse_decimal(calculation_input.lay_actual)
         if manual_lay_mode and actual_lay_stake is None:
+            override_result = _manual_override_fallback(
+                calculation_input,
+                counts_as_open=counts_as_open,
+                is_overdue=is_overdue,
+                note=(
+                    f"Strategy '{calculation_input.match_strategy}' has no explicit "
+                    "lay_actual value."
+                ),
+                base_reference_lay_stake=base_reference_lay_stake,
+                underlay_reference_lay_stake=underlay_reference_lay_stake,
+                overlay_reference_lay_stake=overlay_reference_lay_stake,
+            )
+            if override_result is not None:
+                return override_result
             return FreeBetCalculationResult(
                 profile_id=calculation_input.profile_id,
                 record_id=calculation_input.record_id,

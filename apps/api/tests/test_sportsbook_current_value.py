@@ -512,3 +512,55 @@ def test_manual_override_with_reason_resolves_for_sportsbook() -> None:
 
     assert result.calculation_state == "resolved"
     assert result.final_net_pnl == Decimal("-0.40")
+
+
+def test_imported_open_value_preserves_liability_without_defaulting_commission() -> None:
+    result = calculate_sportsbook_current_value(
+        SportsbookCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="SB-IMPORTED-MISSING-COMMISSION",
+            status="Placed",
+            result="Pending",
+            offer_type="Price Boost",
+            back_stake="6.00",
+            back_odds="5.00",
+            match_strategy="Underlay",
+            lay_odds_1="4.70",
+            lay_actual="6.00",
+            lay_commission_1="",
+            manual_override_value="0.00",
+            manual_override_reason="Imported workbook current value retained",
+        ),
+        as_of_date=date(2026, 8, 30),
+    )
+
+    assert result.counts_as_open is True
+    assert result.calculated_liability_1 == Decimal("22.20")
+    assert result.reporting_value == Decimal("0.00")
+    assert result.final_net_pnl is None
+    assert result.calculation_state == "review_required"
+    assert "Exchange commission is required" in result.calculation_notes[0]
+
+
+def test_imported_settled_override_survives_incomplete_exchange_inputs() -> None:
+    result = calculate_sportsbook_current_value(
+        SportsbookCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="SB-IMPORTED-INCOMPLETE",
+            status="Settled",
+            result="Lay Won",
+            offer_type="Bet & Get",
+            back_stake="10.00",
+            back_odds="5.00",
+            match_strategy="Standard",
+            lay_odds_1="",
+            lay_commission_1="",
+            manual_override_value="-1.19",
+            manual_override_reason="Imported settled workbook value retained",
+        ),
+        as_of_date=date(2026, 8, 29),
+    )
+
+    assert result.calculation_state == "resolved"
+    assert result.reporting_value == Decimal("-1.19")
+    assert result.final_net_pnl == Decimal("-1.19")

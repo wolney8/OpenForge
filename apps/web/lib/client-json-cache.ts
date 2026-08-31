@@ -1,5 +1,7 @@
 "use client";
 
+import { redirectExpiredSession } from "./session-inactivity";
+
 type CacheEntry<T> = {
   cachedAt: number;
   data: T;
@@ -38,6 +40,7 @@ export async function fetchJsonAndCache<T>(
 ): Promise<T> {
   const response = await fetch(url, { cache: "no-store", signal: options.signal });
   if (!response.ok) {
+    redirectExpiredSession(response);
     throw new Error(`Request failed with status ${response.status}`);
   }
   return writeCachedJson(url, (await response.json()) as T);

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -304,3 +304,48 @@ def test_unplaced_ten_pound_free_bet_has_zero_current_value_without_strategy() -
     assert result.reporting_value == Decimal("0.00")
     assert result.actual_net_pnl is None
     assert result.final_net_pnl is None
+
+
+def test_date_only_expiry_compares_with_aware_import_timestamp() -> None:
+    result = calculate_free_bet_current_value(
+        FreeBetCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="FB-DATE-ONLY-EXPIRY",
+            status="Prospecting",
+            result="Pending",
+            retention_mode="SNR",
+            free_bet_value="10.00",
+            back_odds="",
+            match_strategy="",
+            expiry_datetime="2026-07-01",
+        ),
+        as_of_datetime=datetime(2026, 7, 2, 12, 0, 0, tzinfo=UTC),
+    )
+
+    assert result.counts_as_open is True
+    assert result.is_overdue is True
+    assert result.reporting_value == Decimal("0.00")
+
+
+def test_imported_settled_override_survives_incomplete_exchange_inputs() -> None:
+    result = calculate_free_bet_current_value(
+        FreeBetCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="FB-IMPORTED-INCOMPLETE",
+            status="Settled",
+            result="Back Won",
+            retention_mode="SNR",
+            free_bet_value="10.00",
+            back_odds="5.00",
+            match_strategy="Standard",
+            lay_odds_1="",
+            lay_commission_1="",
+            manual_override_value="9.33",
+            manual_override_reason="Imported settled workbook value retained",
+        ),
+        as_of_datetime=datetime(2026, 8, 29, 16, 5, tzinfo=UTC),
+    )
+
+    assert result.calculation_state == "resolved"
+    assert result.reporting_value == Decimal("9.33")
+    assert result.final_net_pnl == Decimal("9.33")

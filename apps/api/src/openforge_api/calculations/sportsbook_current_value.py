@@ -96,6 +96,54 @@ class SportsbookCalculationResult:
     scenario_pnl_if_outcome_3_wins: MoneyOrNone = None
 
 
+def _manual_override_fallback(
+    calculation_input: SportsbookCalculationInput,
+    *,
+    counts_as_open: bool,
+    is_overdue: bool,
+    note: str,
+    actual_lay_stake: MoneyOrNone = None,
+    liability: MoneyOrNone = None,
+    match_rating: Decimal | None = None,
+) -> SportsbookCalculationResult | None:
+    """Preserve an audited imported result when modern inputs are incomplete."""
+
+    override = parse_decimal(calculation_input.manual_override_value)
+    if override is None:
+        return None
+    resolved = quantize_money(override)
+    has_reason = bool(calculation_input.manual_override_reason.strip())
+    return SportsbookCalculationResult(
+        profile_id=calculation_input.profile_id,
+        record_id=calculation_input.record_id,
+        calculation_state="resolved" if has_reason else "review_required",
+        calculation_notes=(
+            note,
+            "The audited manual override remains the authoritative reporting value.",
+            *(("Manual override requires a reason for auditability.",) if not has_reason else ()),
+        ),
+        match_rating=match_rating,
+        reference_lay_stake_standard=None,
+        reference_lay_stake_underlay=None,
+        reference_lay_stake_overlay=None,
+        actual_lay_stake_1=actual_lay_stake,
+        calculated_liability_1=liability,
+        scenario_pnl_if_back_wins=None,
+        scenario_pnl_if_lay_wins=None,
+        projected_current_pnl=resolved if counts_as_open else None,
+        actual_net_pnl=None,
+        final_net_pnl=None if counts_as_open else resolved,
+        reporting_value=resolved,
+        lay_status=_lay_status(
+            calculation_input.match_strategy,
+            actual_lay_stake,
+            parse_decimal(calculation_input.lay_matched_stake_1),
+        ),
+        counts_as_open=counts_as_open,
+        is_overdue=is_overdue,
+    )
+
+
 def _resolve_reference_lay_stakes(
     back_stake: Decimal, back_odds: Decimal, lay_odds_1: Decimal, commission_1: Decimal
 ) -> tuple[Decimal, Decimal, Decimal]:
@@ -236,6 +284,14 @@ def calculate_sportsbook_current_value(
         "Partial Lay",
         *REVIEW_REQUIRED_STRATEGIES,
     }:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note=f"Strategy '{calculation_input.match_strategy}' is not recognized.",
+        )
+        if override_result is not None:
+            return override_result
         return SportsbookCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -272,6 +328,14 @@ def calculate_sportsbook_current_value(
     review_required_strategy = calculation_input.match_strategy in REVIEW_REQUIRED_STRATEGIES
 
     if back_stake is None or back_odds is None:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note="Required numeric inputs are missing.",
+        )
+        if override_result is not None:
+            return override_result
         return SportsbookCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,
@@ -304,6 +368,64 @@ def calculate_sportsbook_current_value(
         ref_overlay = Decimal("0.00")
     else:
         if lay_odds_1 is None or commission_1 is None:
+            manual_lay_value = parse_decimal(calculation_input.lay_actual)
+            manual_override_value = parse_decimal(calculation_input.manual_override_value)
+            if lay_odds_1 is not None and manual_lay_value is not None:
+                actual_lay_stake = quantize_money(manual_lay_value)
+                liability_1 = quantize_money(
+                    actual_lay_stake * (lay_odds_1 - Decimal("1"))
+                )
+                resolved_override = (
+                    quantize_money(manual_override_value)
+                    if manual_override_value is not None
+                    else None
+                )
+                return SportsbookCalculationResult(
+                    profile_id=calculation_input.profile_id,
+                    record_id=calculation_input.record_id,
+                    calculation_state=(
+                        "review_required" if resolved_override is not None else "incomplete"
+                    ),
+                    calculation_notes=(
+                        "Exchange commission is required before scenario values can be "
+                        "recalculated.",
+                        *(
+                            ("The imported workbook value remains authoritative meanwhile.",)
+                            if resolved_override is not None
+                            else ()
+                        ),
+                    ),
+                    match_rating=quantize_ratio(back_odds / lay_odds_1),
+                    reference_lay_stake_standard=None,
+                    reference_lay_stake_underlay=None,
+                    reference_lay_stake_overlay=None,
+                    actual_lay_stake_1=actual_lay_stake,
+                    calculated_liability_1=liability_1,
+                    scenario_pnl_if_back_wins=None,
+                    scenario_pnl_if_lay_wins=None,
+                    projected_current_pnl=resolved_override if uses_current_value else None,
+                    actual_net_pnl=None,
+                    final_net_pnl=None if counts_as_open else resolved_override,
+                    reporting_value=resolved_override,
+                    lay_status=_lay_status(
+                        calculation_input.match_strategy,
+                        actual_lay_stake,
+                        parse_decimal(calculation_input.lay_matched_stake_1),
+                    ),
+                    counts_as_open=counts_as_open,
+                    is_overdue=is_overdue,
+                )
+            override_result = _manual_override_fallback(
+                calculation_input,
+                counts_as_open=counts_as_open,
+                is_overdue=is_overdue,
+                note=(
+                    "Exchange inputs are incomplete, so the modern calculation cannot be "
+                    "reconstructed."
+                ),
+            )
+            if override_result is not None:
+                return override_result
             return SportsbookCalculationResult(
                 profile_id=calculation_input.profile_id,
                 record_id=calculation_input.record_id,
@@ -582,6 +704,17 @@ def calculate_sportsbook_current_value(
 
     manual_lay_value = parse_decimal(calculation_input.lay_actual)
     if manual_lay_mode and manual_lay_value is None:
+        override_result = _manual_override_fallback(
+            calculation_input,
+            counts_as_open=counts_as_open,
+            is_overdue=is_overdue,
+            note=(
+                f"Strategy '{calculation_input.match_strategy}' has no explicit "
+                "lay_actual value."
+            ),
+        )
+        if override_result is not None:
+            return override_result
         return SportsbookCalculationResult(
             profile_id=calculation_input.profile_id,
             record_id=calculation_input.record_id,

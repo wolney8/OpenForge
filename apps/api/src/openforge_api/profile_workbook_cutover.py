@@ -1173,34 +1173,88 @@ def _apply_accounts(
 def _apply_decision(
     payload: dict[str, Any], row: dict[str, Any], item: dict[str, Any] | None
 ) -> dict[str, Any]:
-    if not item or not item.get("decision"):
+    decision = item.get("decision") if item else None
+    if decision:
+        overrides = decision.get("override_fields") or {}
+        if overrides.get("offer_name"):
+            payload["offer_name"] = overrides["offer_name"]
+        if overrides.get("strategy"):
+            payload["match_strategy"] = overrides["strategy"]
+        if overrides.get("manual_override_reason"):
+            payload["manual_override_reason"] = overrides["manual_override_reason"]
+        if decision.get("action") in {
+            "historical_imported_calculation",
+            "historical_imported_behavior",
+        }:
+            source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
+            if "manual_override_value" in payload and source_pnl:
+                payload["manual_override_value"] = source_pnl
+                payload["manual_override_reason"] = str(
+                    decision.get("note") or "Historical workbook value retained during import"
+                )[:1000]
+        if decision.get("action") == "preserve_and_shorten":
+            for field, value in tuple(payload.items()):
+                if (
+                    isinstance(value, str)
+                    and len(value) > 200
+                    and field not in {"user_notes", "description"}
+                ):
+                    payload[field] = value[:197] + "..."
+
+    realised_value = str(row.get("realised_pnl") or "")
+    if (
+        realised_value
+        and "manual_override_value" in payload
+        and not str(payload.get("manual_override_value") or "")
+    ):
+        payload["manual_override_value"] = realised_value
+        payload["manual_override_reason"] = (
+            "Imported settled workbook value retained for cutover parity"
+        )
+    return payload
+
+
+def _preserve_unresolved_open_value(
+    connection: Any, payload: dict[str, Any], row: dict[str, Any]
+) -> dict[str, Any]:
+    """Keep an approved open value when its exchange commission is not configured."""
+
+    current_value = str(row.get("current_worst_case_pnl") or "")
+    exchange_name = str(payload.get("exchange_name") or "")
+    if (
+        not current_value
+        or not exchange_name
+        or "manual_override_value" not in payload
+        or str(payload.get("manual_override_value") or "")
+        or str(payload.get("lay_commission_1") or "")
+    ):
         return payload
-    decision = item["decision"]
-    overrides = decision.get("override_fields") or {}
-    if overrides.get("offer_name"):
-        payload["offer_name"] = overrides["offer_name"]
-    if overrides.get("strategy"):
-        payload["match_strategy"] = overrides["strategy"]
-    if overrides.get("manual_override_reason"):
-        payload["manual_override_reason"] = overrides["manual_override_reason"]
-    if decision.get("action") in {
-        "historical_imported_calculation",
-        "historical_imported_behavior",
-    }:
-        source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
-        if "manual_override_value" in payload and source_pnl:
-            payload["manual_override_value"] = source_pnl
-            payload["manual_override_reason"] = str(
-                decision.get("note") or "Historical workbook value retained during import"
-            )[:1000]
-    if decision.get("action") == "preserve_and_shorten":
-        for field, value in tuple(payload.items()):
-            if (
-                isinstance(value, str)
-                and len(value) > 200
-                and field not in {"user_notes", "description"}
-            ):
-                payload[field] = value[:197] + "..."
+    commission = connection.execute(
+        "SELECT commission_rate FROM profile_exchange_commissions "
+        "WHERE profile_id = ? AND exchange_name = ?",
+        (payload.get("profile_id"), exchange_name),
+    ).fetchone()
+    if commission is not None and str(commission["commission_rate"] or ""):
+        return payload
+    payload["manual_override_value"] = current_value
+    payload["manual_override_reason"] = (
+        "Imported workbook current value retained; exchange commission was not configured"
+    )
+    return payload
+
+
+def _apply_formal_report_date(
+    payload: dict[str, Any], row: dict[str, Any], ledger: str
+) -> dict[str, Any]:
+    if (
+        ledger in {"sportsbook", "free_bets"}
+        and str(row.get("realised_pnl") or "")
+        and not str(payload.get("date_settled") or "")
+        and str(row.get("formal_report_date") or "")
+    ):
+        # Settled workbook rows use this established report axis even when the
+        # legacy transactional date cell was blank.
+        payload["date_settled"] = str(row["formal_report_date"])
     return payload
 
 
@@ -1244,6 +1298,15 @@ def _ledger_write_entries(
     return entries
 
 
+def _historical_extra_place_date(source: dict[str, Any], row: dict[str, Any]) -> str:
+    return str(
+        source.get("DatePlaced")
+        or source.get("Date")
+        or row.get("formal_report_date")
+        or ""
+    )
+
+
 def _insert_ledger_entry(
     connection: Any,
     *,
@@ -1273,7 +1336,7 @@ def _insert_ledger_entry(
         record = {
             "each_way_extra_place_id": entity_id,
             "profile_id": profile_id,
-            "placed_at": str(source.get("DatePlaced") or source.get("Date") or ""),
+            "placed_at": _historical_extra_place_date(source, row),
             "runner": str(source.get("Selection") or source.get("Runner") or ""),
             "race": str(source.get("Event") or source.get("Fixture") or ""),
             "bookmaker": str(source.get("Bookmaker") or ""),
@@ -1359,6 +1422,7 @@ def _insert_ledger_entry(
         if key in LEDGER_COLUMNS[ledger]
     }
     payload = _apply_decision(payload, row, item)
+    payload = _apply_formal_report_date(payload, row, ledger)
     now = _now()
     record = {
         id_column: entity_id,
@@ -1367,6 +1431,7 @@ def _insert_ledger_entry(
         "created_at": now,
         "updated_at": now,
     }
+    record = _preserve_unresolved_open_value(connection, record, row)
     try:
         _insert_row(connection, table, record)
         _audit_write(
@@ -1715,6 +1780,11 @@ def generate_post_import_reconciliation(
         for name in ledger_entity_types.values()
     }
     seen_entities: set[tuple[str, str]] = set()
+    plan_rows = {
+        str(row["import_key"]): row
+        for rows in plan["ledgers"].values()
+        for row in rows
+    }
     for audit in audit_rows:
         entity_type = str(audit["entity_type"])
         if entity_type not in ledger_entity_types:
@@ -1761,7 +1831,11 @@ def generate_post_import_reconciliation(
         else:
             ledger_actual[ledger_name]["settled"] += 1
             if entity_type != "cash_adjustment":
-                settled_total += value
+                planned_row = plan_rows.get(str(audit["import_key"]), {})
+                if str(planned_row.get("realised_pnl") or ""):
+                    settled_total += value
+                else:
+                    other_total += value
         if entity_type != "cash_adjustment":
             for period in _period_names(report_date, run["effective_at"]):
                 actual_values[period] += value
@@ -1800,14 +1874,41 @@ def generate_post_import_reconciliation(
             "post_import": actual_period_value,
             "difference": _difference(approved, actual_period_value),
         }
-    expected_open = _decimal(summary["financial"]["open_current_pnl"])
-    expected_settled = _decimal(summary["financial"]["settled_pnl"])
+    approved_year_views = run["reconciliation"].get("year", {}).get("financial_views", {})
+    if approved_year_views:
+        expected_open = _decimal(
+            approved_year_views.get("open_current_worst_case_pnl", {}).get("total")
+        )
+        expected_settled = _decimal(
+            approved_year_views.get("realised_settled_pnl", {}).get("total")
+        )
+        expected_other = _decimal(
+            approved_year_views.get("other_workbook_included_pnl", {}).get("total")
+        )
+    else:
+        included_ledgers = {
+            key: value
+            for key, value in run["summary"].get("ledgers", {}).items()
+            if key != "cash_adjustments"
+        }
+        expected_open = sum(
+            (
+                _decimal(value.get("open_current_worst_case_pnl"))
+                for value in included_ledgers.values()
+            ),
+            Decimal("0"),
+        )
+        expected_settled = sum(
+            (_decimal(value.get("realised_settled_pnl")) for value in included_ledgers.values()),
+            Decimal("0"),
+        )
+        expected_other = Decimal("0")
     financial_views = {
         "settled_realised_pnl": _comparison(_money(expected_settled), _money(settled_total)),
         "open_current_worst_case_pnl": _comparison(_money(expected_open), _money(open_total)),
-        "other_included_states": _comparison("0.00", _money(other_total)),
+        "other_included_states": _comparison(_money(expected_other), _money(other_total)),
         "total_equivalent_pnl": _comparison(
-            _money(expected_settled + expected_open),
+            _money(expected_settled + expected_open + expected_other),
             _money(settled_total + open_total + other_total),
         ),
         "review_decision_pnl_impact": workspace["reconciliation"]["pnl_impact"],
@@ -2293,6 +2394,41 @@ def _restore_import_writes(
     return deleted, restored
 
 
+def _restore_checkpoint_rows(connection: Any, checkpoint: Any, profile_id: str) -> None:
+    """Restore complete pre-existing rows after reversing audited import writes."""
+
+    snapshot = json.loads(str(checkpoint["snapshot_json"]))
+    for table in PROFILE_TABLES:
+        identifier = PROFILE_TABLE_ORDER[table]
+        for row in snapshot.get(table, []):
+            values = dict(row)
+            assignments = [column for column in values if column != "profile_id"]
+            if identifier != "profile_id":
+                assignments = [column for column in assignments if column != identifier]
+            where = "profile_id = ?"
+            parameters: list[Any] = [profile_id]
+            if identifier != "profile_id":
+                where += f" AND {identifier} = ?"
+                parameters.append(values[identifier])
+            current = connection.execute(
+                f"SELECT 1 FROM {table} WHERE {where}", tuple(parameters)
+            ).fetchone()
+            if current is None:
+                raise ImportCutoverError(
+                    f"Checkpoint row is missing during rollback: {table}.{identifier}"
+                )
+            if assignments:
+                connection.execute(
+                    f"UPDATE {table} SET "
+                    + ",".join(f"{column} = ?" for column in assignments)
+                    + f" WHERE {where}",
+                    (
+                        *(values[column] for column in assignments),
+                        *parameters,
+                    ),
+                )
+
+
 def rollback_incomplete_import(
     *,
     profile_id: str,
@@ -2319,6 +2455,8 @@ def rollback_incomplete_import(
             "WHERE import_run_id = ?",
             (import_run_id,),
         ).fetchone()
+        if checkpoint is not None:
+            _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
             connection, profile_id
         ) != _checkpoint_state_checksum(checkpoint):
@@ -2413,6 +2551,8 @@ def rollback_import(
             "WHERE import_run_id = ?",
             (import_run_id,),
         ).fetchone()
+        if checkpoint is not None:
+            _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
             connection, profile_id
         ) != _checkpoint_state_checksum(checkpoint):

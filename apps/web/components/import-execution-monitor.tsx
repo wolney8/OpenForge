@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
+import { redirectExpiredSession } from "@/lib/session-inactivity";
 
 export const IMPORT_EXECUTION_REFRESH_EVENT = "plum-duff:import-execution-refresh";
 
@@ -31,6 +32,11 @@ export function ImportExecutionMonitor() {
           cache: "no-store",
           credentials: "include",
         });
+        if (redirectExpiredSession(response)) {
+          stopped = true;
+          endShellLoading();
+          return;
+        }
         if (!response.ok) throw new Error("Unable to load active imports");
         const executions = (await response.json()) as ImportExecution[];
         if (!executions.length) {

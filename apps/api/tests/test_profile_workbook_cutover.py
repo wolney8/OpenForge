@@ -16,8 +16,11 @@ from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     _account_write_state,
+    _apply_decision,
+    _apply_formal_report_date,
     _checkpoint_state_checksum,
     _checksum,
+    _historical_extra_place_date,
     _profile_state_checksum,
     _storage_value,
     approved_run_is_retryable,
@@ -418,6 +421,11 @@ def run_and_workspace() -> tuple[dict[str, object], dict[str, object]]:
     period = {
         "workbook_report": {"total": "11.00"},
         "plum_duff_from_mapped_rows": {"total": "11.00"},
+        "financial_views": {
+            "realised_settled_pnl": {"total": "11.00"},
+            "open_current_worst_case_pnl": {"total": "0.00"},
+            "other_workbook_included_pnl": {"total": "0.00"},
+        },
         "difference": "0.00",
     }
     run = {
@@ -594,6 +602,44 @@ def test_integer_backed_boolean_storage_is_explicit() -> None:
     assert _storage_value("accounts", "counts_in_cash_total", True) == 1
     assert _storage_value("cash_adjustments", "affects_investment", False) == 0
     assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
+
+
+def test_settled_import_preserves_approved_workbook_value() -> None:
+    payload = {
+        "status": "Settled",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+    }
+
+    result = _apply_decision(
+        payload,
+        {
+            "imported_current_pnl": "-3.01",
+            "realised_pnl": "-3.01",
+        },
+        None,
+    )
+
+    assert result["manual_override_value"] == "-3.01"
+    assert result["manual_override_reason"] == (
+        "Imported settled workbook value retained for cutover parity"
+    )
+
+
+def test_settled_import_uses_formal_report_date_when_transaction_date_is_blank() -> None:
+    payload = _apply_formal_report_date(
+        {"date_settled": ""},
+        {"realised_pnl": "-2.00", "formal_report_date": "2026-08-19"},
+        "sportsbook",
+    )
+
+    assert payload["date_settled"] == "2026-08-19"
+
+
+def test_historical_extra_place_uses_approved_report_date_when_source_date_is_blank() -> None:
+    assert _historical_extra_place_date(
+        {}, {"formal_report_date": "2026-08-19T17:20:00"}
+    ) == "2026-08-19T17:20:00"
 
 
 def test_legacy_checkpoint_ignores_derived_bookmaker_link() -> None:
@@ -907,22 +953,73 @@ def test_staged_import_is_resumable_and_reconciles(tmp_path: Path) -> None:
 def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
     configure_cutover_database(tmp_path)
     plan = synthetic_plan()
-    base = plan["ledgers"]["sportsbook"][0]
-    additional_rows = []
-    for index in range(500):
-        row = json.loads(json.dumps(base))
-        row["import_key"] = f"sportsbook:scale:{index}"
-        row["source_row"] = index + 10
-        row["source_record_id"] = f"scale-{index}"
-        row["imported_current_pnl"] = "0.00"
-        row["source_pnl"] = "0.00"
-        row["realised_pnl"] = "0.00"
-        row["mapped_payload"]["manual_override_value"] = "0.00"
-        additional_rows.append(row)
-    plan["ledgers"]["sportsbook"].extend(additional_rows)
+
+    def clones(
+        base: dict[str, object], *, prefix: str, count: int
+    ) -> list[dict[str, object]]:
+        rows: list[dict[str, object]] = []
+        for index in range(count):
+            row = json.loads(json.dumps(base))
+            row["import_key"] = f"{prefix}:scale:{index}"
+            row["source_row"] = index + 10
+            row["source_record_id"] = f"{prefix}-scale-{index}"
+            row["imported_current_pnl"] = "0.00"
+            row["source_pnl"] = "0.00"
+            row["realised_pnl"] = "0.00"
+            payload = row["mapped_payload"]
+            if "manual_override_value" in payload:
+                payload["manual_override_value"] = "0.00"
+            if "calc_net_pnl" in payload:
+                payload["calc_net_pnl"] = "0.00"
+                payload["final_net_pnl"] = "0.00"
+            if "amount" in payload:
+                payload["amount"] = "0.00"
+            rows.append(row)
+        return rows
+
+    sportsbook_rows = plan["ledgers"]["sportsbook"]
+    sportsbook_rows.extend(
+        clones(sportsbook_rows[0], prefix="sportsbook", count=501)
+    )
+    second_ep = clones(sportsbook_rows[1], prefix="extra-place", count=1)[0]
+    sportsbook_rows.append(second_ep)
+    excluded = clones(sportsbook_rows[0], prefix="prospecting", count=5)
+    for row in excluded:
+        row["action"] = "exclude_non_transactional"
+        row["realised_pnl"] = ""
+    sportsbook_rows.extend(excluded)
+    plan["ledgers"]["free_bets"].extend(
+        clones(plan["ledgers"]["free_bets"][0], prefix="free-bet", count=165)
+    )
+    plan["ledgers"]["casino"].extend(
+        clones(plan["ledgers"]["casino"][0], prefix="casino", count=19)
+    )
+    plan["ledgers"]["cash_adjustments"].extend(
+        clones(plan["ledgers"]["cash_adjustments"][0], prefix="cash", count=22)
+    )
+    plan["extra_places"]["row_count"] = 2
     run, workspace = run_and_workspace()
-    run["summary"]["ledgers"]["sportsbook"]["source_rows"] += len(additional_rows)
-    run["summary"]["ledgers"]["sportsbook"]["settled"] += len(additional_rows)
+    run["summary"]["ledgers"]["sportsbook"].update(
+        {"source_rows": 510, "settled": 504, "non_transactional": 5}
+    )
+    run["summary"]["ledgers"]["free_bets"].update(
+        {"source_rows": 166, "settled": 166}
+    )
+    run["summary"]["ledgers"]["casino"].update(
+        {"source_rows": 20, "settled": 20}
+    )
+    run["summary"]["ledgers"]["cash_adjustments"].update(
+        {"source_rows": 23, "settled": 23}
+    )
+    run["summary"]["extra_places"]["row_count"] = 2
+    workspace["items"].append(
+        {
+            **workspace["items"][0],
+            "item_id": "ep-review-2",
+            "import_id": second_ep["import_key"],
+            "source_row": second_ep["source_row"],
+        }
+    )
     persist_run_and_plan(run, plan)
     approve_synthetic_preflight(run, workspace, plan)
 
@@ -951,7 +1048,19 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
         assert connection.execute(
             "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
             (PROFILE_ID,),
-        ).fetchone()[0] == 502
+        ).fetchone()[0] == 503
+        assert connection.execute(
+            "SELECT COUNT(*) FROM free_bets WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 166
+        assert connection.execute(
+            "SELECT COUNT(*) FROM casino_offers WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 20
+        assert connection.execute(
+            "SELECT COUNT(*) FROM cash_adjustments WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 23
+        assert connection.execute(
+            "SELECT COUNT(*) FROM each_way_extra_places WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 2
 
 
 def test_staged_failure_restores_checkpoint_and_remains_retryable(

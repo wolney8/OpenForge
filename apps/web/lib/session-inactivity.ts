@@ -2,6 +2,18 @@ export const SESSION_SECURITY_PREFERENCE_EVENT = "pd-session-security-preference
 export const SESSION_ACTIVITY_STORAGE_KEY = "pd-session-activity";
 export const SESSION_LOGOUT_STORAGE_KEY = "pd-session-logout";
 
+let sessionExpiryRedirectStarted = false;
+
+export function redirectExpiredSession(response: Response): boolean {
+  if (response.status !== 401 || typeof window === "undefined") return false;
+  if (!sessionExpiryRedirectStarted) {
+    sessionExpiryRedirectStarted = true;
+    window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+    window.location.replace("/login?error=session_expired");
+  }
+  return true;
+}
+
 export const SESSION_TIMEOUT_OPTIONS = [15, 30, 60, 120, 240] as const;
 export type SessionTimeoutMinutes = (typeof SESSION_TIMEOUT_OPTIONS)[number];
 
