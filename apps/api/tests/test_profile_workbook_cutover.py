@@ -10,6 +10,7 @@ from openforge_api.db import connect
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
+    _account_write_state,
     _storage_value,
     approved_run_is_retryable,
     build_base_write_plan,
@@ -568,6 +569,40 @@ def test_integer_backed_boolean_storage_is_explicit() -> None:
     assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
 
 
+def test_account_write_state_translates_mapper_fields_to_canonical_columns() -> None:
+    class Provider:
+        brand_name = "Bookmaker A"
+        account_type = "Bookmaker"
+        operator_group = "Operator A"
+        platform = "Platform A"
+
+    state = _account_write_state(
+        {
+            "account_id": None,
+            "account": "Legacy name",
+            "type": "Bookie",
+            "counts_in_cash_total": True,
+            "channel": "Online",
+            "status": "Active",
+            "lifecycle_status": "Active",
+            "restrictions": ["bonus_restricted"],
+            "current_balance": "12.00",
+            "pending_withdrawal_amount": "0.00",
+            "last_balance_update": "2026-08-29",
+            "sign_up_date": "2026-01-01",
+            "notes": "",
+        },
+        catalogue_id="BOOKMAKER-DEMO-001",
+        provider=Provider(),
+    )
+
+    assert "account_id" not in state
+    assert "restrictions" not in state
+    assert state["restrictions_json"] == '["bonus_restricted"]'
+    assert state["catalogue_id"] == "BOOKMAKER-DEMO-001"
+    assert state["account"] == "Bookmaker A"
+
+
 def test_approved_failed_run_remains_retryable_without_resetting_review() -> None:
     assert approved_run_is_retryable({"status": "READY_APPROVED", "approved_at": ""})
     assert approved_run_is_retryable(
@@ -579,6 +614,10 @@ def test_approved_failed_run_remains_retryable_without_resetting_review() -> Non
 def test_persistence_preflight_constructs_and_rolls_back_exact_write_set(tmp_path: Path) -> None:
     configure_cutover_database(tmp_path)
     plan = synthetic_plan()
+    account_state = plan["accounts"][0]["mapped_profile_state"]
+    account_state["account_id"] = None
+    account_state["restrictions"] = ["bonus_restricted"]
+    account_state.pop("restrictions_json")
     run, workspace = run_and_workspace()
     persist_run_and_plan(run, plan)
 
@@ -593,6 +632,8 @@ def test_persistence_preflight_constructs_and_rolls_back_exact_write_set(tmp_pat
     assert result["status"] == "PASSED"
     assert result["transaction_constructed"] is True
     assert result["writes_committed"] is False
+    assert result["schema_compatibility"]["status"] == "PASSED"
+    assert result["schema_compatibility"]["tables"]["accounts"]["missing_columns"] == []
     with connect() as connection:
         assert (
             connection.execute(

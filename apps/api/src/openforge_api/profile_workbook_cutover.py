@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -23,8 +24,10 @@ from openforge_api.db import (
     ProfileTrackerSettingsRecord,
     SportsbookBetRecord,
     connect,
+    initialize_database,
 )
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
+from openforge_api.postgres_schema import sqlite_type_to_postgres
 from openforge_api.sportsbook import build_response as build_sportsbook_response
 
 PROFILE_TABLES = (
@@ -213,6 +216,134 @@ INTEGER_BOOLEAN_COLUMNS = {
     "accounts": {"counts_in_cash_total"},
     "cash_adjustments": {"affects_investment", "affects_cash_snapshot"},
     "profile_tracker_settings": {"use_global_date_range_toggle"},
+}
+
+ACCOUNT_WRITE_COLUMNS = (
+    "catalogue_id",
+    "bookmaker_id",
+    "account",
+    "type",
+    "counts_in_cash_total",
+    "channel",
+    "status",
+    "lifecycle_status",
+    "restrictions_json",
+    "current_balance",
+    "pending_withdrawal_amount",
+    "last_balance_update",
+    "group_name",
+    "platform",
+    "sign_up_date",
+    "notes",
+)
+
+IMPORT_SCHEMA_REQUIREMENTS = {
+    "profiles": {"profile_id", "display_name", "tracking_start_date"},
+    "profile_onboarding_settings": {
+        "profile_id",
+        "iteration_number",
+        "starting_bankroll",
+        "main_bank_catalogue_id",
+    },
+    "profile_tracker_settings": {"profile_id", "active_date_preset"},
+    "accounts": {"account_id", "profile_id", *ACCOUNT_WRITE_COLUMNS, "created_at", "updated_at"},
+    "sportsbook_bets": {
+        "sportsbook_bet_id",
+        "profile_id",
+        *LEDGER_COLUMNS["sportsbook"],
+        "created_at",
+        "updated_at",
+    },
+    "free_bets": {
+        "free_bet_id",
+        "profile_id",
+        *LEDGER_COLUMNS["free_bets"],
+        "created_at",
+        "updated_at",
+    },
+    "casino_offers": {
+        "casino_offer_id",
+        "profile_id",
+        *LEDGER_COLUMNS["casino"],
+        "created_at",
+        "updated_at",
+    },
+    "cash_adjustments": {
+        "cash_adjustment_id",
+        "profile_id",
+        *LEDGER_COLUMNS["cash_adjustments"],
+        "created_at",
+        "updated_at",
+    },
+    "each_way_extra_places": {
+        "each_way_extra_place_id",
+        "profile_id",
+        "placed_at",
+        "runner",
+        "race",
+        "bookmaker",
+        "bookmaker_account",
+        "mode",
+        "each_way_stake",
+        "back_odds",
+        "place_term_numerator",
+        "place_term_denominator",
+        "bookmaker_places",
+        "exchange_places",
+        "win_exchange",
+        "win_lay_odds",
+        "win_commission",
+        "actual_win_lay_stake",
+        "place_exchange",
+        "place_lay_odds",
+        "place_commission",
+        "actual_place_lay_stake",
+        "status",
+        "result",
+        "finishing_position",
+        "imported_historical_pnl",
+        "calculation_provenance",
+        "import_run_id",
+        "source_import_id",
+        "user_notes",
+        "created_at",
+        "updated_at",
+    },
+    "profile_import_runs": {
+        "import_run_id",
+        "profile_id",
+        "status",
+        "summary_json",
+        "result_json",
+        "checkpoint_id",
+        "import_started_at",
+        "completed_at",
+        "updated_at",
+    },
+    "profile_import_checkpoints": {
+        "checkpoint_id",
+        "import_run_id",
+        "profile_id",
+        "workbook_checksum",
+        "mapping_version",
+        "snapshot_json",
+        "snapshot_checksum",
+        "status",
+        "created_at",
+        "restored_at",
+    },
+    "profile_import_write_audit": {
+        "import_run_id",
+        "import_key",
+        "profile_id",
+        "entity_type",
+        "entity_id",
+        "operation",
+        "before_json",
+        "after_json",
+        "created_at",
+        "rolled_back_at",
+    },
 }
 
 
@@ -553,6 +684,115 @@ def _insert_row(connection: Any, table: str, row: dict[str, Any]) -> None:
     )
 
 
+def _database_table_columns(connection: Any, table: str) -> dict[str, str]:
+    if type(connection).__name__ == "PostgresConnectionAdapter":
+        rows = connection.execute(
+            """
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = ?
+            ORDER BY ordinal_position
+            """,
+            (table,),
+        ).fetchall()
+        return {str(row["column_name"]): str(row["data_type"]) for row in rows}
+    rows = connection.execute(f"PRAGMA table_info({table})").fetchall()
+    return {str(row["name"]): str(row["type"]) for row in rows}
+
+
+def _application_table_columns(table: str, *, postgres: bool) -> dict[str, str]:
+    blueprint = sqlite3.connect(":memory:")
+    blueprint.row_factory = sqlite3.Row
+    try:
+        initialize_database(blueprint)
+        rows = blueprint.execute(f"PRAGMA table_info({table})").fetchall()
+        return {
+            str(row["name"]): (
+                sqlite_type_to_postgres(str(row["type"] or ""))
+                if postgres
+                else str(row["type"] or "").upper()
+            )
+            for row in rows
+        }
+    finally:
+        blueprint.close()
+
+
+def _schema_migration_state(connection: Any) -> list[dict[str, str]]:
+    if type(connection).__name__ != "PostgresConnectionAdapter":
+        return []
+    rows = connection.execute(
+        """
+        SELECT migration_id, schema_signature, checksum, applied_at
+        FROM schema_migrations
+        ORDER BY applied_at, migration_id
+        """
+    ).fetchall()
+    return [
+        {
+            "migration_id": str(row["migration_id"]),
+            "schema_signature": str(row["schema_signature"]),
+            "checksum": str(row["checksum"]),
+            "applied_at": str(row["applied_at"]),
+        }
+        for row in rows
+    ]
+
+
+def _validate_schema_compatibility(connection: Any, plan: dict[str, Any]) -> dict[str, Any]:
+    requirements = {table: set(columns) for table, columns in IMPORT_SCHEMA_REQUIREMENTS.items()}
+    for item in plan["profile_settings"]:
+        if item.get("classification") != "IMPORT":
+            continue
+        table, field = str(item["target"]).split(".", 1)
+        table_name = {
+            "profile": "profiles",
+            "tracker_settings": "profile_tracker_settings",
+            "onboarding": "profile_onboarding_settings",
+        }.get(table)
+        if table_name is not None:
+            requirements.setdefault(table_name, {"profile_id"}).add(field)
+
+    tables: dict[str, Any] = {}
+    mismatches: list[str] = []
+    postgres = type(connection).__name__ == "PostgresConnectionAdapter"
+    for table, expected in requirements.items():
+        actual = _database_table_columns(connection, table)
+        application = _application_table_columns(table, postgres=postgres)
+        missing = sorted(expected - set(actual))
+        type_mismatches = {
+            column: {"expected": application[column], "actual": actual[column]}
+            for column in sorted(expected & set(actual))
+            if application.get(column, "").casefold() != actual[column].casefold()
+        }
+        tables[table] = {
+            "columns": actual,
+            "required_columns": sorted(expected),
+            "missing_columns": missing,
+            "type_mismatches": type_mismatches,
+        }
+        if missing:
+            mismatches.append(f"{table}: {', '.join(missing)}")
+        if type_mismatches:
+            mismatch_text = ", ".join(
+                f"{column} ({types['actual']} != {types['expected']})"
+                for column, types in type_mismatches.items()
+            )
+            mismatches.append(f"{table}: {mismatch_text}")
+    if mismatches:
+        raise ImportPersistenceError(
+            stage="Production schema compatibility",
+            category="schema_mismatch",
+            import_id="database-schema",
+            cause=RuntimeError("; ".join(mismatches)),
+        )
+    return {
+        "status": "PASSED",
+        "tables": tables,
+        "migration_state": _schema_migration_state(connection),
+    }
+
+
 def create_checkpoint(
     *, profile_id: str, import_run_id: str, run: dict[str, Any]
 ) -> dict[str, Any]:
@@ -688,6 +928,32 @@ def _catalogue_records() -> dict[str, Any]:
     return {record.catalogue_id: record for record in load_master_account_catalogue().records}
 
 
+def _account_write_state(
+    source_state: dict[str, Any], *, catalogue_id: str, provider: Any
+) -> dict[str, Any]:
+    restrictions_json = source_state.get("restrictions_json")
+    if not restrictions_json:
+        restrictions = source_state.get("restrictions")
+        restrictions_json = _json(restrictions if isinstance(restrictions, list) else [])
+    elif not isinstance(restrictions_json, str):
+        restrictions_json = _json(restrictions_json)
+
+    state = {column: source_state.get(column) for column in ACCOUNT_WRITE_COLUMNS}
+    state.update(
+        {
+            "catalogue_id": catalogue_id,
+            "bookmaker_id": None,
+            "account": provider.brand_name,
+            "type": "Bookie" if provider.account_type == "Bookmaker" else provider.account_type,
+            "group_name": provider.operator_group,
+            "platform": provider.platform,
+            "lifecycle_status": source_state.get("lifecycle_status") or "Active",
+            "restrictions_json": restrictions_json,
+        }
+    )
+    return state
+
+
 def _apply_accounts(
     connection: Any,
     *,
@@ -716,18 +982,10 @@ def _apply_accounts(
         provider = catalogue.get(catalogue_id)
         if provider is None:
             raise ImportCutoverError(f"Account row {source['source_row']} has no global provider")
-        state = dict(source["mapped_profile_state"])
-        state.update(
-            {
-                "catalogue_id": catalogue_id,
-                "bookmaker_id": None,
-                "account": provider.brand_name,
-                "type": "Bookie" if provider.account_type == "Bookmaker" else provider.account_type,
-                "group_name": provider.operator_group,
-                "platform": provider.platform,
-                "lifecycle_status": state.get("lifecycle_status") or "Active",
-                "restrictions_json": state.get("restrictions_json") or "[]",
-            }
+        state = _account_write_state(
+            dict(source["mapped_profile_state"]),
+            catalogue_id=catalogue_id,
+            provider=provider,
         )
         current = by_catalogue.get(catalogue_id) or by_name_type.get(
             (
@@ -1637,6 +1895,7 @@ def validate_import_preflight(
     result: dict[str, Any] = {}
     try:
         with connect() as connection:
+            schema_compatibility = _validate_schema_compatibility(connection, plan)
             existing_writes = connection.execute(
                 "SELECT COUNT(*) AS count FROM profile_import_write_audit WHERE import_run_id = ?",
                 (import_run_id,),
@@ -1656,6 +1915,7 @@ def validate_import_preflight(
                 "profile_settings": setting_count,
                 "accounts": account_counts,
                 "ledgers": ledger_counts,
+                "schema_compatibility": schema_compatibility,
                 "transaction_constructed": True,
                 "writes_committed": False,
             }
