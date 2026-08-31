@@ -456,11 +456,21 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     plan = load_base_write_plan(profile_id, import_run_id)
     final_summary = final_import_summary(run=run, workspace=workspace, plan=plan)
     preflight = run["summary"].get("persistence_preflight", {})
-    preflight_valid = (
-        preflight.get("status") == "PASSED"
-        and preflight.get("workbook_checksum") == run["workbook_checksum"]
-        and preflight.get("mapping_version") == run["mapping_version"]
-    )
+    preflight_valid = _preflight_is_valid(run, preflight)
+    if (
+        preflight_valid
+        and run.get("approved_at")
+        and run["status"] in {"FAILED", "IMPORT_FAILED"}
+    ):
+        now = _now()
+        with connect() as connection:
+            connection.execute(
+                "UPDATE profile_import_runs SET status = 'READY_APPROVED', updated_at = ? "
+                "WHERE profile_id = ? AND import_run_id = ?",
+                (now, profile_id, import_run_id),
+            )
+        run["status"] = "READY_APPROVED"
+        workspace["run_status"] = "READY_APPROVED"
     if run["status"] in {"READY_APPROVED", "FAILED", "IMPORT_FAILED"} and not preflight_valid:
         final_summary["ready"] = False
         final_summary["blockers"].append(
@@ -497,6 +507,16 @@ def _failure_detail(
         "retry_available": retry_available,
         "audit_available": True,
     }
+
+
+def _preflight_is_valid(run: dict[str, Any], preflight: dict[str, Any]) -> bool:
+    return (
+        preflight.get("status") == "PASSED"
+        and preflight.get("transaction_constructed") is True
+        and preflight.get("writes_committed") is False
+        and preflight.get("workbook_checksum") == run["workbook_checksum"]
+        and preflight.get("mapping_version") == run["mapping_version"]
+    )
 
 
 def _record_failed_import_attempt(
@@ -545,20 +565,29 @@ def _save_preflight_result(
     *, import_run_id: str, profile_id: str, run: dict[str, Any], result: dict[str, Any]
 ) -> dict[str, Any]:
     summary = dict(run["summary"])
+    now = _now()
     preflight = {
         **result,
         "workbook_checksum": run["workbook_checksum"],
         "mapping_version": run["mapping_version"],
-        "completed_at": _now(),
+        "completed_at": now,
     }
     summary["persistence_preflight"] = preflight
+    next_status = run["status"]
+    if (
+        preflight.get("status") == "PASSED"
+        and run.get("approved_at")
+        and run["status"] in {"FAILED", "IMPORT_FAILED"}
+    ):
+        next_status = "READY_APPROVED"
     with connect() as connection:
         connection.execute(
-            "UPDATE profile_import_runs SET summary_json = ?, updated_at = ? "
+            "UPDATE profile_import_runs SET summary_json = ?, status = ?, updated_at = ? "
             "WHERE profile_id = ? AND import_run_id = ?",
-            (_json(summary), _now(), profile_id, import_run_id),
+            (_json(summary), next_status, now, profile_id, import_run_id),
         )
     run["summary"] = summary
+    run["status"] = next_status
     return preflight
 
 

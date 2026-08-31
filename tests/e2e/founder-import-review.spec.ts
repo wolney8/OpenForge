@@ -544,3 +544,93 @@ test("failed import preserves the approved run and exposes a validated retry pat
   await expect(failure).toContainText("Import ID: accounts:2");
   await expect(failure).toContainText("Committed write audit rows: 0");
 });
+
+test("passed retry preflight clears stale failure state and guards real import confirmation", async ({ page }) => {
+  await mockShell(page);
+  const failed = {
+    ...workspace(),
+    run_status: "IMPORT_FAILED",
+    approved_at: "2026-08-31T12:00:00Z",
+    import_safety: {
+      checkpoint_available: true,
+      profile_matches_checkpoint: true,
+      committed_write_audit_rows: 0,
+      no_partial_profile_changes: true,
+      retry_available: true,
+    },
+    import_result: {
+      status: "IMPORT_FAILED",
+      message: "Import could not be completed",
+      safe_state: "No Profile changes were committed",
+      retry_available: true,
+      latest_attempt: { stage: "Profile Accounts", category: "account_create" },
+    },
+    final_import_summary: {
+      ready: false,
+      blockers: ["Validate the approved write plan against the current persistence schema"],
+      profile: { profile_id: "profile-demo", profile_name: "Demo Profile" },
+      profile_settings: [{ field: "display_name", value: "Demo", target: "profile.display_name" }],
+      provider_resolutions: [],
+      historical_ep_resolutions: [],
+      accounts: { total_source: 120, create: 116, update: 4 },
+      ledgers: {},
+      extra_places: {},
+      financial: {
+        open_current_pnl: "0.00",
+        settled_pnl: "0.00",
+        open_exposure: "0.00",
+        review_pnl_impact: "0.00",
+        periods: {},
+      },
+      rollback: { application_checkpoint: true, neon_platform_restore: "manual_plan_dependent_backstop" },
+    },
+  };
+  const passed = {
+    ...failed,
+    run_status: "READY_APPROVED",
+    persistence_preflight: {
+      status: "PASSED",
+      workbook_checksum: "a".repeat(64),
+      mapping_version: "founder-snapshot-v2",
+      transaction_constructed: true,
+      writes_committed: false,
+    },
+    final_import_summary: {
+      ...failed.final_import_summary,
+      ready: true,
+      blockers: [],
+      profile_settings: Array.from({ length: 4 }, (_, index) => ({
+        field: `setting_${index + 1}`,
+        value: "Demo",
+        target: `profile.setting_${index + 1}`,
+      })),
+      accounts: { total_source: 120, create: 116, update: 4 },
+      ledgers: {
+        cash_adjustments: { source_rows: 23, transactional_rows: 23 },
+        casino: { source_rows: 20, transactional_rows: 20 },
+        free_bets: { source_rows: 166, transactional_rows: 166 },
+        extra_places: { source_rows: 2, transactional_rows: 2 },
+        sportsbook: { source_rows: 503, transactional_rows: 503 },
+      },
+    },
+  };
+  let current: Record<string, unknown> = failed;
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(current) });
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/preflight", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    current = passed;
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(passed.persistence_preflight) });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await page.getByRole("button", { name: "Validate retry" }).click();
+  await expect(page.getByText("Validating import plan…")).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-import.preflight-passed"]')).toContainText("Validation passed");
+  await expect(page.getByRole("alert", { name: "Import could not be completed" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Import to Profile" })).toBeEnabled();
+  await page.getByRole("button", { name: "Import to Profile" }).click();
+  await expect(page.getByRole("dialog", { name: "Import approved workbook?" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Import approved workbook?" })).toContainText("120 source Accounts");
+});

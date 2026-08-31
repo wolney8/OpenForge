@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,6 +12,7 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.main import app
+from openforge_api.profile_workbook_imports import _save_preflight_result, _workspace
 
 
 def configure_database(tmp_path: Path) -> None:
@@ -36,6 +38,93 @@ def configure_database(tmp_path: Path) -> None:
                 "0.00",
             ),
         )
+
+
+def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path) -> None:
+    configure_database(tmp_path)
+    import_run_id = "profile-import-preflight-retry"
+    checksum = "a" * 64
+    mapping_version = "founder-snapshot-v5"
+    approved_at = "2026-08-31T12:00:00+00:00"
+    previous_result = {
+        "status": "IMPORT_FAILED",
+        "latest_attempt": {"stage": "Profile Accounts", "category": "account_create"},
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, approved_at, result_json, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 100, ?, ?, 'IMPORT_FAILED', '{}', '{}', ?, ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                "synthetic.xlsx",
+                checksum,
+                approved_at,
+                mapping_version,
+                approved_at,
+                json.dumps(previous_result),
+                approved_at,
+                approved_at,
+            ),
+        )
+    summary = {
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 0,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+        "profile_settings": [],
+        "accounts": {},
+        "ledgers": {},
+        "extra_places": {},
+    }
+    run = {
+        "status": "IMPORT_FAILED",
+        "approved_at": approved_at,
+        "summary": summary,
+        "workbook_checksum": checksum,
+        "mapping_version": mapping_version,
+    }
+
+    preflight = _save_preflight_result(
+        import_run_id=import_run_id,
+        profile_id="profile-import-test",
+        run=run,
+        result={"status": "PASSED", "transaction_constructed": True, "writes_committed": False},
+    )
+
+    with connect() as connection:
+        persisted = connection.execute(
+            "SELECT status, summary_json, result_json FROM profile_import_runs "
+            "WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+    assert persisted is not None
+    assert persisted["status"] == "READY_APPROVED"
+    assert json.loads(persisted["summary_json"])["persistence_preflight"] == preflight
+    assert json.loads(persisted["result_json"]) == previous_result
+    assert preflight["writes_committed"] is False
+
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profile_import_runs SET status = 'IMPORT_FAILED' WHERE import_run_id = ?",
+            (import_run_id,),
+        )
+    repaired_workspace = _workspace("profile-import-test", import_run_id)
+    assert repaired_workspace["run_status"] == "READY_APPROVED"
+    assert repaired_workspace["persistence_preflight"]["status"] == "PASSED"
+    with connect() as connection:
+        repaired_status = connection.execute(
+            "SELECT status FROM profile_import_runs WHERE import_run_id = ?", (import_run_id,)
+        ).fetchone()
+    assert repaired_status is not None
+    assert repaired_status["status"] == "READY_APPROVED"
 
 
 def test_uploaded_founder_snapshot_matches_private_regression_oracle(

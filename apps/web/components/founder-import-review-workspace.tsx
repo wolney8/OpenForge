@@ -23,6 +23,8 @@ type ReviewStatus =
   | "EXCLUDED"
   | "BLOCKED";
 
+type PreflightRequestState = "IDLE" | "VALIDATING" | "PASSED" | "FAILED";
+
 type ReviewDecision = {
   action: string;
   status: ReviewStatus;
@@ -515,6 +517,7 @@ export function FounderImportReviewWorkspace({
   const [approvalAcknowledged, setApprovalAcknowledged] = useState(false);
   const [importConfirmationOpen, setImportConfirmationOpen] = useState(false);
   const [rollbackConfirmationOpen, setRollbackConfirmationOpen] = useState(false);
+  const [preflightRequestState, setPreflightRequestState] = useState<PreflightRequestState>("IDLE");
   const editorRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
   const loadoutRef = useRef<HTMLDivElement | null>(null);
@@ -836,6 +839,9 @@ export function FounderImportReviewWorkspace({
   async function validateImport() {
     if (!workspace) return;
     setSaving(true);
+    setMessage("");
+    setPreflightRequestState("VALIDATING");
+    beginShellLoading();
     try {
       const response = await fetch(`${reviewApi}/preflight`, {
         method: "POST",
@@ -844,11 +850,34 @@ export function FounderImportReviewWorkspace({
         body: JSON.stringify({ workbook_checksum: workspace.metadata.workbook_checksum }),
       });
       if (!response.ok) throw new Error(await responseMessage(response));
-      await loadWorkspace();
-      setMessage("Import validation passed. No Profile changes were committed.");
+      const preflight = await response.json() as NonNullable<Workspace["persistence_preflight"]>;
+      if (
+        preflight.status !== "PASSED"
+        || preflight.writes_committed !== false
+        || preflight.workbook_checksum !== workspace.metadata.workbook_checksum
+        || preflight.mapping_version !== workspace.metadata.mapping_version
+      ) {
+        throw new Error("Import validation returned an inconsistent result. No Profile changes were made.");
+      }
+      const refreshed = await fetchWorkspaceData(profileId, importRunId);
+      const persistedPreflight = refreshed.review.persistence_preflight;
+      if (
+        refreshed.review.run_status !== "READY_APPROVED"
+        || persistedPreflight?.status !== "PASSED"
+        || persistedPreflight.workbook_checksum !== workspace.metadata.workbook_checksum
+        || persistedPreflight.mapping_version !== workspace.metadata.mapping_version
+      ) {
+        throw new Error("Import validation passed but its saved state could not be confirmed. No Profile changes were made.");
+      }
+      setWorkspace(refreshed.review);
+      setCatalogue(refreshed.catalogue);
+      setPreflightRequestState("PASSED");
+      setMessage("Validation passed. No Profile changes were made.");
     } catch (caught) {
+      setPreflightRequestState("FAILED");
       setMessage(caught instanceof Error ? caught.message : "Unable to validate the import safely.");
     } finally {
+      endShellLoading();
       setSaving(false);
     }
   }
@@ -892,7 +921,7 @@ export function FounderImportReviewWorkspace({
   const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
     && workspace.persistence_preflight.workbook_checksum === workspace.metadata.workbook_checksum
     && workspace.persistence_preflight.mapping_version === workspace.metadata.mapping_version;
-  const canImport = retryableImportStatus && Boolean(finalSummary?.ready) && workspace.import_safety?.retry_available !== false;
+  const canImport = retryableImportStatus && preflightPassed && Boolean(finalSummary?.ready) && workspace.import_safety?.retry_available !== false;
   const importFailed = ["FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
   const canRollback = Boolean(
     importResult?.rollback_available
@@ -931,7 +960,14 @@ export function FounderImportReviewWorkspace({
         <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
       </section> : null}
       {workspace.run_status === "FAILED" && !workspace.approved_at ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
-      {importFailed ? <section aria-labelledby="import-execution-failure-title" className="content-subpanel stack-tight" data-pd-id="profile-import.execution-failure" role="alert">
+      {preflightRequestState === "VALIDATING" ? <section aria-live="polite" aria-busy="true" className="content-subpanel stack-tight" data-pd-id="profile-import.preflight-validating">
+        <LedgerLoadingIndicator label="Validating import plan…" />
+        <span className="field-support-text">The approved write plan is being validated with a forced rollback. No Profile changes will be committed.</span>
+      </section> : null}
+      {preflightPassed && !importFailed ? <section aria-live="polite" className="content-subpanel stack-tight" data-pd-id="profile-import.preflight-passed" role="status">
+        <div className="workflow-panel-header"><div><strong>Validation passed</strong><span>No Profile changes were made.</span></div><span className="table-chip table-chip-success">Passed</span></div>
+      </section> : null}
+      {importFailed && preflightRequestState !== "VALIDATING" ? <section aria-labelledby="import-execution-failure-title" className="content-subpanel stack-tight" data-pd-id="profile-import.execution-failure" role="alert">
         <span className="eyebrow">Import attempt</span>
         <h2 id="import-execution-failure-title">Import could not be completed</h2>
         <p className="error-text">{importResult?.safe_state || "No Profile changes were committed."}</p>
