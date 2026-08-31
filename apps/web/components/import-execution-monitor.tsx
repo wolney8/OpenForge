@@ -41,7 +41,7 @@ export function ImportExecutionMonitor() {
         const executions = (await response.json()) as ImportExecution[];
         if (!executions.length) {
           endShellLoading();
-          schedule(10_000);
+          schedule(30_000);
           return;
         }
         beginShellLoading();
@@ -50,6 +50,11 @@ export function ImportExecutionMonitor() {
             `${apiBaseUrl}/fund-manager/import-executions/${execution.import_run_id}/advance`,
             { method: "POST", credentials: "include" }
           );
+          if (redirectExpiredSession(advanceResponse)) {
+            stopped = true;
+            endShellLoading();
+            return;
+          }
           if (!advanceResponse.ok) throw new Error("Unable to advance an active import");
           const next = (await advanceResponse.json()) as ImportExecution;
           window.dispatchEvent(
@@ -64,7 +69,7 @@ export function ImportExecutionMonitor() {
         schedule(350);
       } catch {
         endShellLoading();
-        schedule(5_000);
+        schedule(30_000);
       } finally {
         running = false;
       }
