@@ -187,6 +187,35 @@ class ImportCutoverError(ValueError):
     pass
 
 
+class ImportPersistenceError(RuntimeError):
+    def __init__(
+        self,
+        *,
+        stage: str,
+        category: str,
+        cause: Exception,
+        import_id: str = "",
+        record_id: str = "",
+    ) -> None:
+        super().__init__(f"Import persistence failed during {stage}")
+        self.stage = stage
+        self.category = category
+        self.import_id = import_id
+        self.record_id = record_id
+        self.exception_type = type(cause).__name__
+
+
+class _PreflightRollback(RuntimeError):
+    pass
+
+
+INTEGER_BOOLEAN_COLUMNS = {
+    "accounts": {"counts_in_cash_total"},
+    "cash_adjustments": {"affects_investment", "affects_cash_snapshot"},
+    "profile_tracker_settings": {"use_global_date_range_toggle"},
+}
+
+
 def _json(value: Any) -> str:
     return json.dumps(value, default=str, separators=(",", ":"), sort_keys=True)
 
@@ -509,12 +538,18 @@ def _profile_snapshot(connection: Any, profile_id: str) -> dict[str, list[dict[s
     return snapshot
 
 
+def _storage_value(table: str, column: str, value: Any) -> Any:
+    if column in INTEGER_BOOLEAN_COLUMNS.get(table, set()) and isinstance(value, bool):
+        return int(value)
+    return value
+
+
 def _insert_row(connection: Any, table: str, row: dict[str, Any]) -> None:
     columns = tuple(row)
     placeholders = ",".join("?" for _ in columns)
     connection.execute(
         f"INSERT INTO {table} ({','.join(columns)}) VALUES ({placeholders})",
-        tuple(row[column] for column in columns),
+        tuple(_storage_value(table, column, row[column]) for column in columns),
     )
 
 
@@ -621,21 +656,30 @@ def _apply_profile_settings(
             continue
         before = {field: current[field]}
         after = {field: item["parsed_value"]}
-        connection.execute(
-            f"UPDATE {table_name} SET {field} = ? WHERE profile_id = ?",
-            (item["parsed_value"], profile_id),
-        )
-        _audit_write(
-            connection,
-            import_run_id=import_run_id,
-            import_key=f"setting:{target}",
-            profile_id=profile_id,
-            entity_type=table_name,
-            entity_id=profile_id,
-            operation="update",
-            before=before,
-            after=after,
-        )
+        try:
+            connection.execute(
+                f"UPDATE {table_name} SET {field} = ? WHERE profile_id = ?",
+                (_storage_value(table_name, field, item["parsed_value"]), profile_id),
+            )
+            _audit_write(
+                connection,
+                import_run_id=import_run_id,
+                import_key=f"setting:{target}",
+                profile_id=profile_id,
+                entity_type=table_name,
+                entity_id=profile_id,
+                operation="update",
+                before=before,
+                after=after,
+            )
+        except Exception as error:
+            raise ImportPersistenceError(
+                stage="Profile settings",
+                category="profile_setting_write",
+                import_id=f"setting:{target}",
+                record_id=profile_id,
+                cause=error,
+            ) from error
         count += 1
     return count
 
@@ -703,18 +747,27 @@ def _apply_accounts(
                 "created_at": now,
                 "updated_at": now,
             }
-            _insert_row(connection, "accounts", record)
-            _audit_write(
-                connection,
-                import_run_id=import_run_id,
-                import_key=str(source["import_key"]),
-                profile_id=profile_id,
-                entity_type="accounts",
-                entity_id=account_id,
-                operation="create",
-                before=None,
-                after=record,
-            )
+            try:
+                _insert_row(connection, "accounts", record)
+                _audit_write(
+                    connection,
+                    import_run_id=import_run_id,
+                    import_key=str(source["import_key"]),
+                    profile_id=profile_id,
+                    entity_type="accounts",
+                    entity_id=account_id,
+                    operation="create",
+                    before=None,
+                    after=record,
+                )
+            except Exception as error:
+                raise ImportPersistenceError(
+                    stage="Profile Accounts",
+                    category="account_create",
+                    import_id=str(source["import_key"]),
+                    record_id=account_id,
+                    cause=error,
+                ) from error
             counts["created"] += 1
             matched.add(account_id)
             continue
@@ -731,22 +784,36 @@ def _apply_accounts(
             continue
         before = {key: current[key] for key in changed}
         assignments = ",".join(f"{key} = ?" for key in changed)
-        connection.execute(
-            f"UPDATE accounts SET {assignments}, updated_at = ? "
-            "WHERE profile_id = ? AND account_id = ?",
-            (*changed.values(), now, profile_id, account_id),
-        )
-        _audit_write(
-            connection,
-            import_run_id=import_run_id,
-            import_key=str(source["import_key"]),
-            profile_id=profile_id,
-            entity_type="accounts",
-            entity_id=account_id,
-            operation="update",
-            before=before,
-            after=changed,
-        )
+        try:
+            connection.execute(
+                f"UPDATE accounts SET {assignments}, updated_at = ? "
+                "WHERE profile_id = ? AND account_id = ?",
+                (
+                    *(_storage_value("accounts", key, value) for key, value in changed.items()),
+                    now,
+                    profile_id,
+                    account_id,
+                ),
+            )
+            _audit_write(
+                connection,
+                import_run_id=import_run_id,
+                import_key=str(source["import_key"]),
+                profile_id=profile_id,
+                entity_type="accounts",
+                entity_id=account_id,
+                operation="update",
+                before=before,
+                after=changed,
+            )
+        except Exception as error:
+            raise ImportPersistenceError(
+                stage="Profile Accounts",
+                category="account_update",
+                import_id=str(source["import_key"]),
+                record_id=account_id,
+                cause=error,
+            ) from error
         counts["updated"] += 1
     if absent_strategy in {"archive", "deactivate"}:
         for current in existing:
@@ -899,22 +966,31 @@ def _insert_ledger_rows(
                     "created_at": now,
                     "updated_at": now,
                 }
-                _insert_row(connection, "each_way_extra_places", record)
-                _audit_write(
-                    connection,
-                    import_run_id=import_run_id,
-                    import_key=import_key,
-                    profile_id=profile_id,
-                    entity_type="extra_place",
-                    entity_id=entity_id,
-                    operation="create",
-                    before=None,
-                    after={
-                        **record,
-                        "expected_reporting_value": source_pnl,
-                        "formal_report_date": row.get("formal_report_date", ""),
-                    },
-                )
+                try:
+                    _insert_row(connection, "each_way_extra_places", record)
+                    _audit_write(
+                        connection,
+                        import_run_id=import_run_id,
+                        import_key=import_key,
+                        profile_id=profile_id,
+                        entity_type="extra_place",
+                        entity_id=entity_id,
+                        operation="create",
+                        before=None,
+                        after={
+                            **record,
+                            "expected_reporting_value": source_pnl,
+                            "formal_report_date": row.get("formal_report_date", ""),
+                        },
+                    )
+                except Exception as error:
+                    raise ImportPersistenceError(
+                        stage="Extra Places",
+                        category="ledger_row_write",
+                        import_id=import_key,
+                        record_id=entity_id,
+                        cause=error,
+                    ) from error
                 counts["extra_places"] = counts.get("extra_places", 0) + 1
                 continue
             entity_id = _entity_id(prefix, profile_id, import_key)
@@ -937,22 +1013,31 @@ def _insert_ledger_rows(
                 "created_at": now,
                 "updated_at": now,
             }
-            _insert_row(connection, table, record)
-            _audit_write(
-                connection,
-                import_run_id=import_run_id,
-                import_key=import_key,
-                profile_id=profile_id,
-                entity_type=entity_type,
-                entity_id=entity_id,
-                operation="create",
-                before=None,
-                after={
-                    **record,
-                    "expected_reporting_value": row.get("imported_current_pnl", ""),
-                    "formal_report_date": row.get("formal_report_date", ""),
-                },
-            )
+            try:
+                _insert_row(connection, table, record)
+                _audit_write(
+                    connection,
+                    import_run_id=import_run_id,
+                    import_key=import_key,
+                    profile_id=profile_id,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    operation="create",
+                    before=None,
+                    after={
+                        **record,
+                        "expected_reporting_value": row.get("imported_current_pnl", ""),
+                        "formal_report_date": row.get("formal_report_date", ""),
+                    },
+                )
+            except Exception as error:
+                raise ImportPersistenceError(
+                    stage=table.replace("_", " ").title(),
+                    category="ledger_row_write",
+                    import_id=import_key,
+                    record_id=entity_id,
+                    cause=error,
+                ) from error
             count += 1
         counts[ledger] = count
     return counts
@@ -1404,9 +1489,7 @@ def generate_post_import_reconciliation(
     }
     review_decision_summary = {
         "applied": len(decision_items),
-        "overrides": sum(
-            item["review_status"] == "REVIEWED_OVERRIDDEN" for item in decision_items
-        ),
+        "overrides": sum(item["review_status"] == "REVIEWED_OVERRIDDEN" for item in decision_items),
         "exclusions": actions["exclude"],
         "historical_mappings": sum("historical" in action for action in actions.elements()),
         "provider_resolutions": sum(
@@ -1422,9 +1505,7 @@ def generate_post_import_reconciliation(
         "duplicate_protection": all(not value["duplicates"] for value in ledger_actual.values()),
         "all_expected_source_rows_accounted_for": source_accounted,
         "silent_partial_writes": False,
-        "import_run_traceability": all(
-            row["import_run_id"] == import_run_id for row in audit_rows
-        ),
+        "import_run_traceability": all(row["import_run_id"] == import_run_id for row in audit_rows),
     }
     report = {
         "profile": {
@@ -1480,6 +1561,143 @@ def generate_post_import_reconciliation(
     return report
 
 
+def _apply_write_plan(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    plan: dict[str, Any],
+    decisions: dict[str, dict[str, Any]],
+    absent_strategy: str,
+) -> tuple[int, dict[str, int], dict[str, int]]:
+    try:
+        setting_count = _apply_profile_settings(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            settings=plan["profile_settings"],
+        )
+    except ImportPersistenceError:
+        raise
+    except Exception as error:
+        raise ImportPersistenceError(
+            stage="Profile settings",
+            category="profile_setting_write",
+            cause=error,
+        ) from error
+    try:
+        account_counts = _apply_accounts(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            rows=plan["accounts"],
+            decisions=decisions,
+            absent_strategy=absent_strategy,
+        )
+    except (ImportCutoverError, ImportPersistenceError):
+        raise
+    except Exception as error:
+        raise ImportPersistenceError(
+            stage="Profile Accounts",
+            category="account_write",
+            cause=error,
+        ) from error
+    try:
+        ledger_counts = _insert_ledger_rows(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            plan=plan,
+            decisions=decisions,
+        )
+    except (ImportCutoverError, ImportPersistenceError):
+        raise
+    except Exception as error:
+        raise ImportPersistenceError(
+            stage="Profile ledgers",
+            category="ledger_write",
+            cause=error,
+        ) from error
+    return setting_count, account_counts, ledger_counts
+
+
+def validate_import_preflight(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    """Exercise the exact planned writes and force a rollback before approval/import."""
+    summary = final_import_summary(run=run, workspace=workspace, plan=plan)
+    if not summary["ready"]:
+        raise ImportCutoverError("The import write plan is not ready for persistence preflight")
+    decisions = _decision_map(workspace)
+    result: dict[str, Any] = {}
+    try:
+        with connect() as connection:
+            existing_writes = connection.execute(
+                "SELECT COUNT(*) AS count FROM profile_import_write_audit WHERE import_run_id = ?",
+                (import_run_id,),
+            ).fetchone()
+            if existing_writes and int(existing_writes["count"]):
+                raise ImportCutoverError("This approved workbook has already written Profile data")
+            setting_count, account_counts, ledger_counts = _apply_write_plan(
+                connection,
+                profile_id=profile_id,
+                import_run_id=import_run_id,
+                plan=plan,
+                decisions=decisions,
+                absent_strategy=summary["accounts"]["absent_strategy"],
+            )
+            result = {
+                "status": "PASSED",
+                "profile_settings": setting_count,
+                "accounts": account_counts,
+                "ledgers": ledger_counts,
+                "transaction_constructed": True,
+                "writes_committed": False,
+            }
+            raise _PreflightRollback()
+    except _PreflightRollback:
+        return result
+
+
+def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
+    with connect() as connection:
+        checkpoint = connection.execute(
+            "SELECT snapshot_checksum FROM profile_import_checkpoints "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (profile_id, import_run_id),
+        ).fetchone()
+        audit_count = int(
+            connection.execute(
+                "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+                "WHERE profile_id = ? AND import_run_id = ?",
+                (profile_id, import_run_id),
+            ).fetchone()["count"]
+        )
+        checkpoint_matches = bool(
+            checkpoint
+            and _profile_state_checksum(connection, profile_id)
+            == str(checkpoint["snapshot_checksum"])
+        )
+    return {
+        "checkpoint_available": checkpoint is not None,
+        "profile_matches_checkpoint": checkpoint_matches,
+        "committed_write_audit_rows": audit_count,
+        "no_partial_profile_changes": checkpoint_matches and audit_count == 0,
+        "retry_available": checkpoint_matches and audit_count == 0,
+    }
+
+
+def approved_run_is_retryable(run: dict[str, Any]) -> bool:
+    return run["status"] == "READY_APPROVED" or (
+        run["status"] in {"FAILED", "IMPORT_FAILED"} and bool(run.get("approved_at"))
+    )
+
+
 def execute_import(
     *,
     profile_id: str,
@@ -1490,7 +1708,7 @@ def execute_import(
     plan: dict[str, Any],
 ) -> dict[str, Any]:
     summary = final_import_summary(run=run, workspace=workspace, plan=plan)
-    if not summary["ready"] or run["status"] != "READY_APPROVED":
+    if not summary["ready"] or not approved_run_is_retryable(run):
         raise ImportCutoverError("The approved import plan is not ready")
     checkpoint = create_checkpoint(profile_id=profile_id, import_run_id=import_run_id, run=run)
     decisions = _decision_map(workspace)
@@ -1523,26 +1741,13 @@ def execute_import(
             "updated_at = ? WHERE profile_id = ? AND import_run_id = ?",
             (started_at, started_at, profile_id, import_run_id),
         )
-        setting_count = _apply_profile_settings(
-            connection,
-            profile_id=profile_id,
-            import_run_id=import_run_id,
-            settings=plan["profile_settings"],
-        )
-        account_counts = _apply_accounts(
-            connection,
-            profile_id=profile_id,
-            import_run_id=import_run_id,
-            rows=plan["accounts"],
-            decisions=decisions,
-            absent_strategy=summary["accounts"]["absent_strategy"],
-        )
-        ledger_counts = _insert_ledger_rows(
+        setting_count, account_counts, ledger_counts = _apply_write_plan(
             connection,
             profile_id=profile_id,
             import_run_id=import_run_id,
             plan=plan,
             decisions=decisions,
+            absent_strategy=summary["accounts"]["absent_strategy"],
         )
         actual_rows = int(
             connection.execute(

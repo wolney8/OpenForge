@@ -8,6 +8,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import PurePath
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -31,12 +32,15 @@ from openforge_api.founder_workbook_dry_run import (
 )
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
+    ImportPersistenceError,
     build_base_write_plan,
     execute_import,
+    failed_import_safety,
     final_import_summary,
     load_base_write_plan,
     rollback_import,
     save_base_write_plan,
+    validate_import_preflight,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/workbook-imports", tags=["profile-imports"])
@@ -86,6 +90,12 @@ class ImportExecutionPayload(BaseModel):
 
     workbook_checksum: str = Field(min_length=64, max_length=64)
     confirmation: str = Field(pattern="^IMPORT WORKBOOK$")
+
+
+class ImportPreflightPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workbook_checksum: str = Field(min_length=64, max_length=64)
 
 
 class ImportRollbackPayload(BaseModel):
@@ -444,16 +454,112 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["source_summary"] = run["summary"]
     workspace["financial_reconciliation"] = run["reconciliation"]
     plan = load_base_write_plan(profile_id, import_run_id)
-    workspace["final_import_summary"] = final_import_summary(
-        run=run, workspace=workspace, plan=plan
+    final_summary = final_import_summary(run=run, workspace=workspace, plan=plan)
+    preflight = run["summary"].get("persistence_preflight", {})
+    preflight_valid = (
+        preflight.get("status") == "PASSED"
+        and preflight.get("workbook_checksum") == run["workbook_checksum"]
+        and preflight.get("mapping_version") == run["mapping_version"]
     )
+    if run["status"] in {"READY_APPROVED", "FAILED", "IMPORT_FAILED"} and not preflight_valid:
+        final_summary["ready"] = False
+        final_summary["blockers"].append(
+            "Validate the approved write plan against the current persistence schema"
+        )
+    workspace["final_import_summary"] = final_summary
+    workspace["persistence_preflight"] = preflight
     workspace["import_result"] = run.get("result", {})
     workspace["checkpoint_id"] = run.get("checkpoint_id", "")
     workspace["rollback_status"] = run.get("rollback_status", "")
     workspace["approved_at"] = run.get("approved_at", "")
     workspace["completed_at"] = run.get("completed_at", "")
     workspace["rolled_back_at"] = run.get("rolled_back_at", "")
+    workspace["import_safety"] = (
+        failed_import_safety(profile_id, import_run_id)
+        if run["status"] in {"FAILED", "IMPORT_FAILED"} and run.get("checkpoint_id")
+        else {}
+    )
     return workspace
+
+
+def _failure_detail(
+    *, import_run_id: str, error: ImportPersistenceError, retry_available: bool
+) -> dict[str, Any]:
+    return {
+        "message": "Import could not be completed",
+        "safe_state": "No Profile changes were committed",
+        "stage": error.stage,
+        "category": error.category,
+        "import_run_id": import_run_id,
+        "import_id": error.import_id,
+        "record_id": error.record_id,
+        "exception_type": error.exception_type,
+        "retry_available": retry_available,
+        "audit_available": True,
+    }
+
+
+def _record_failed_import_attempt(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    run: dict[str, Any],
+    error: ImportPersistenceError,
+) -> dict[str, Any]:
+    safety = failed_import_safety(profile_id, import_run_id)
+    now = _now()
+    result_value = run.get("result")
+    existing_result: dict[str, Any] = result_value if isinstance(result_value, dict) else {}
+    attempts = list(existing_result.get("attempts", []))
+    attempt = {
+        "attempt_id": f"import-attempt-{uuid4().hex}",
+        "status": "FAILED_SAFE",
+        "failed_at": now,
+        "stage": error.stage,
+        "category": error.category,
+        "import_id": error.import_id,
+        "record_id": error.record_id,
+        "exception_type": error.exception_type,
+        "rollback_performed": "database_transaction",
+        "safety": safety,
+    }
+    attempts.append(attempt)
+    result = {
+        "status": "IMPORT_FAILED",
+        "message": "Import could not be completed",
+        "safe_state": "No Profile changes were committed",
+        "retry_available": safety["retry_available"],
+        "latest_attempt": attempt,
+        "attempts": attempts[-25:],
+    }
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profile_import_runs SET status = 'IMPORT_FAILED', result_json = ?, "
+            "updated_at = ? WHERE profile_id = ? AND import_run_id = ?",
+            (_json(result), now, profile_id, import_run_id),
+        )
+    return result
+
+
+def _save_preflight_result(
+    *, import_run_id: str, profile_id: str, run: dict[str, Any], result: dict[str, Any]
+) -> dict[str, Any]:
+    summary = dict(run["summary"])
+    preflight = {
+        **result,
+        "workbook_checksum": run["workbook_checksum"],
+        "mapping_version": run["mapping_version"],
+        "completed_at": _now(),
+    }
+    summary["persistence_preflight"] = preflight
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profile_import_runs SET summary_json = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (_json(summary), _now(), profile_id, import_run_id),
+        )
+    run["summary"] = summary
+    return preflight
 
 
 def _save_decision(
@@ -1133,11 +1239,43 @@ def approve_profile_workbook_import(
     request: Request,
 ) -> dict[str, Any]:
     session = require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
     workspace = _workspace(profile_id, import_run_id)
     if payload.workbook_checksum != workspace["metadata"]["workbook_checksum"]:
         raise HTTPException(status_code=409, detail="Workbook checksum does not match this review")
     if not payload.acknowledged or not workspace["reconciliation"]["import_ready"]:
         raise HTTPException(status_code=422, detail="Resolve review blockers before approval")
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(status_code=409, detail="Re-analyse this workbook before approval")
+    try:
+        preflight_result = validate_import_preflight(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
+    except ImportPersistenceError as error:
+        logger.exception(
+            "Workbook persistence preflight failed at %s (%s)", error.stage, error.category
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=_failure_detail(
+                import_run_id=import_run_id,
+                error=error,
+                retry_available=False,
+            ),
+        ) from error
+    except ImportCutoverError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    _save_preflight_result(
+        import_run_id=import_run_id,
+        profile_id=profile_id,
+        run=run,
+        result=preflight_result,
+    )
     now = _now()
     with connect() as connection:
         connection.execute(
@@ -1154,6 +1292,53 @@ def approve_profile_workbook_import(
         "real_import_performed": False,
         "next_requirement": "Review the final server write plan before importing",
     }
+
+
+@router.post("/{import_run_id}/preflight")
+def preflight_profile_workbook_import(
+    profile_id: str,
+    import_run_id: str,
+    payload: ImportPreflightPayload,
+    request: Request,
+) -> dict[str, Any]:
+    require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    if payload.workbook_checksum != run["workbook_checksum"]:
+        raise HTTPException(status_code=409, detail="Workbook checksum does not match")
+    if not run.get("approved_at"):
+        raise HTTPException(status_code=409, detail="Approve the dry run before validation")
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(status_code=409, detail="Re-analyse this workbook before validation")
+    workspace = _workspace(profile_id, import_run_id)
+    try:
+        result = validate_import_preflight(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
+    except ImportPersistenceError as error:
+        logger.exception(
+            "Workbook persistence preflight failed at %s (%s)", error.stage, error.category
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=_failure_detail(
+                import_run_id=import_run_id,
+                error=error,
+                retry_available=False,
+            ),
+        ) from error
+    except ImportCutoverError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return _save_preflight_result(
+        import_run_id=import_run_id,
+        profile_id=profile_id,
+        run=run,
+        result=result,
+    )
 
 
 @router.post("/{import_run_id}/import")
@@ -1175,6 +1360,34 @@ def import_profile_workbook(
         )
     workspace = _workspace(profile_id, import_run_id)
     try:
+        preflight_result = validate_import_preflight(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
+        _save_preflight_result(
+            import_run_id=import_run_id,
+            profile_id=profile_id,
+            run=run,
+            result=preflight_result,
+        )
+    except ImportPersistenceError as error:
+        logger.exception(
+            "Workbook persistence preflight failed at %s (%s)", error.stage, error.category
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=_failure_detail(
+                import_run_id=import_run_id,
+                error=error,
+                retry_available=False,
+            ),
+        ) from error
+    except ImportCutoverError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    try:
         return execute_import(
             profile_id=profile_id,
             import_run_id=import_run_id,
@@ -1183,32 +1396,51 @@ def import_profile_workbook(
             workspace=workspace,
             plan=plan,
         )
+    except ImportPersistenceError as error:
+        logger.exception(
+            "Profile workbook import failed at %s (%s), import_id=%s, record_id=%s",
+            error.stage,
+            error.category,
+            error.import_id,
+            error.record_id,
+        )
+        result = _record_failed_import_attempt(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            error=error,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=_failure_detail(
+                import_run_id=import_run_id,
+                error=error,
+                retry_available=bool(result["retry_available"]),
+            ),
+        ) from error
     except ImportCutoverError as error:
         logger.warning("Profile workbook import blocked: %s", error)
         raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as error:
         logger.exception("Profile workbook import failed")
-        now = _now()
-        with connect() as connection:
-            connection.execute(
-                "UPDATE profile_import_runs SET status = 'FAILED', result_json = ?, "
-                "updated_at = ? WHERE profile_id = ? AND import_run_id = ?",
-                (
-                    _json(
-                        {
-                            "status": "FAILED",
-                            "message": "Import failed before changes could be committed",
-                            "rollback_performed": "database_transaction",
-                        }
-                    ),
-                    now,
-                    profile_id,
-                    import_run_id,
-                ),
-            )
+        wrapped = ImportPersistenceError(
+            stage="Import transaction",
+            category="unexpected_import_failure",
+            cause=error,
+        )
+        result = _record_failed_import_attempt(
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            error=wrapped,
+        )
         raise HTTPException(
             status_code=500,
-            detail="Import failed safely. No partial Profile changes were committed.",
+            detail=_failure_detail(
+                import_run_id=import_run_id,
+                error=wrapped,
+                retry_available=bool(result["retry_available"]),
+            ),
         ) from error
 
 

@@ -504,3 +504,43 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
     "import-run-demo",
   );
 });
+
+test("failed import preserves the approved run and exposes a validated retry path", async ({ page }) => {
+  await mockShell(page);
+  const failed = {
+    ...workspace(),
+    run_status: "IMPORT_FAILED",
+    approved_at: "2026-08-31T12:00:00Z",
+    import_safety: {
+      checkpoint_available: true,
+      profile_matches_checkpoint: true,
+      committed_write_audit_rows: 0,
+      no_partial_profile_changes: true,
+      retry_available: true,
+    },
+    import_result: {
+      status: "IMPORT_FAILED",
+      message: "Import could not be completed",
+      safe_state: "No Profile changes were committed",
+      retry_available: true,
+      latest_attempt: {
+        stage: "Profile Accounts",
+        category: "account_create",
+        import_id: "accounts:2",
+      },
+    },
+  };
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(failed) });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  const failure = page.getByRole("alert", { name: "Import could not be completed" });
+  await expect(failure).toContainText("No Profile changes were committed");
+  await expect(failure).toContainText("pre-import Profile checkpoint still matches");
+  await expect(failure.getByRole("button", { name: "Validate retry" })).toBeEnabled();
+  await failure.getByText("Technical/audit details").click();
+  await expect(failure).toContainText("Stage: Profile Accounts");
+  await expect(failure).toContainText("Import ID: accounts:2");
+  await expect(failure).toContainText("Committed write audit rows: 0");
+});

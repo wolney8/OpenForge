@@ -104,6 +104,20 @@ type Workspace = {
     };
   };
   import_result?: ImportResult;
+  import_safety?: {
+    checkpoint_available: boolean;
+    profile_matches_checkpoint: boolean;
+    committed_write_audit_rows: number;
+    no_partial_profile_changes: boolean;
+    retry_available: boolean;
+  };
+  persistence_preflight?: {
+    status?: string;
+    workbook_checksum?: string;
+    mapping_version?: string;
+    completed_at?: string;
+    writes_committed?: boolean;
+  };
   metadata: {
     source_filename: string;
     effective_at: string;
@@ -244,6 +258,18 @@ type ImportResult = {
   duration_seconds?: number;
   rollback_available?: boolean;
   post_import_reconciliation?: PostImportReport;
+  message?: string;
+  safe_state?: string;
+  retry_available?: boolean;
+  latest_attempt?: {
+    attempt_id: string;
+    stage: string;
+    category: string;
+    import_id: string;
+    record_id: string;
+    exception_type: string;
+    failed_at: string;
+  };
 };
 
 type Draft = {
@@ -416,9 +442,19 @@ function initialDraft(item: ReviewItem): Draft {
 }
 
 async function responseMessage(response: Response) {
-  const body = await response.json().catch(() => null) as { detail?: string | { msg?: string }[] } | null;
+  const body = await response.json().catch(() => null) as {
+    detail?: string | { msg?: string }[] | {
+      message?: string;
+      safe_state?: string;
+      stage?: string;
+      import_run_id?: string;
+    };
+  } | null;
   if (typeof body?.detail === "string") return body.detail;
   if (Array.isArray(body?.detail)) return body.detail.map((item) => item.msg ?? "Invalid value").join(". ");
+  if (body?.detail && typeof body.detail === "object") {
+    return [body.detail.message, body.detail.safe_state, body.detail.stage && `Stage: ${body.detail.stage}`, body.detail.import_run_id && `ImportRun: ${body.detail.import_run_id}`].filter(Boolean).join(". ");
+  }
   return "Unable to update the import review.";
 }
 
@@ -797,6 +833,26 @@ export function FounderImportReviewWorkspace({
     }
   }
 
+  async function validateImport() {
+    if (!workspace) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/preflight`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workbook_checksum: workspace.metadata.workbook_checksum }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      await loadWorkspace();
+      setMessage("Import validation passed. No Profile changes were committed.");
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to validate the import safely.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function rollBackImport() {
     setSaving(true);
     try {
@@ -832,7 +888,12 @@ export function FounderImportReviewWorkspace({
   const finalSummary = workspace.final_import_summary;
   const importResult = workspace.import_result;
   const postImportReport = importResult?.post_import_reconciliation;
-  const canImport = workspace.run_status === "READY_APPROVED" && Boolean(finalSummary?.ready);
+  const retryableImportStatus = ["READY_APPROVED", "FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
+  const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
+    && workspace.persistence_preflight.workbook_checksum === workspace.metadata.workbook_checksum
+    && workspace.persistence_preflight.mapping_version === workspace.metadata.mapping_version;
+  const canImport = retryableImportStatus && Boolean(finalSummary?.ready) && workspace.import_safety?.retry_available !== false;
+  const importFailed = ["FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
   const canRollback = Boolean(
     importResult?.rollback_available
     && workspace.rollback_status === "AVAILABLE"
@@ -869,7 +930,17 @@ export function FounderImportReviewWorkspace({
         <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{job.percentage}%</span></div>
         <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
       </section> : null}
-      {workspace.run_status === "FAILED" ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
+      {workspace.run_status === "FAILED" && !workspace.approved_at ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
+      {importFailed ? <section aria-labelledby="import-execution-failure-title" className="content-subpanel stack-tight" data-pd-id="profile-import.execution-failure" role="alert">
+        <span className="eyebrow">Import attempt</span>
+        <h2 id="import-execution-failure-title">Import could not be completed</h2>
+        <p className="error-text">{importResult?.safe_state || "No Profile changes were committed."}</p>
+        <p>{workspace.import_safety?.no_partial_profile_changes ? "The pre-import Profile checkpoint still matches and this approved run can be retried." : "Retry remains blocked until the saved Profile checkpoint is verified."}</p>
+        <div className="tracker-nav">
+          {preflightPassed ? <button className="button-link icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">refresh</span><span>Retry import</span></button> : <button className="button-link icon-text-action" disabled={saving || !workspace.import_safety?.retry_available} onClick={() => void validateImport()} type="button"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>Validate retry</span></button>}
+          <details className="stack-tight"><summary>Technical/audit details</summary><span>ImportRun: {importRunId}</span><span>Stage: {importResult?.latest_attempt?.stage || "Previous import transaction"}</span><span>Category: {importResult?.latest_attempt?.category || "Safe transaction rollback"}</span>{importResult?.latest_attempt?.import_id ? <span>Import ID: {importResult.latest_attempt.import_id}</span> : null}<span>Committed write audit rows: {workspace.import_safety?.committed_write_audit_rows ?? 0}</span></details>
+        </div>
+      </section> : null}
       <section className="stat-card-grid import-review-stat-grid import-review-compact-stats" aria-label="Import review status">
         <article className="stat-card"><span className="eyebrow">Remaining</span><strong>{workspace.reconciliation.remaining_partial_count}</strong><span>Require review decisions</span></article>
         <article className="stat-card"><span className="eyebrow">Resolved</span><strong>{workspace.reconciliation.resolved_partial_count}</strong><span>Saved decisions</span></article>
@@ -947,7 +1018,7 @@ export function FounderImportReviewWorkspace({
           <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>
         </div> : null}
       </section>
-      {workspace.run_status === "READY_APPROVED" && finalSummary ? <section className="content-subpanel stack" data-pd-id="profile-import.final-summary">
+      {retryableImportStatus && finalSummary ? <section className="content-subpanel stack" data-pd-id="profile-import.final-summary">
         <header className="workflow-panel-header"><div><span className="eyebrow">Approved write plan</span><h2>Final import summary</h2></div><span className={`table-chip ${finalSummary.ready ? "table-chip-success" : "table-chip-danger"}`}>{finalSummary.ready ? "Ready" : "Blocked"}</span></header>
         {finalSummary.blockers.length ? <div className="error-text" role="alert">{finalSummary.blockers.map((blocker) => <span key={blocker}>{blocker}</span>)}</div> : null}
         <div className="stat-card-grid import-review-stat-grid import-review-compact-stats" aria-label="Final import counts">
@@ -961,7 +1032,7 @@ export function FounderImportReviewWorkspace({
         <details className="stack-tight"><summary>Ledger write plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Source</th><th scope="col">Import</th><th scope="col">Non-transactional</th><th scope="col">Historical / partial</th><th scope="col">Open</th><th scope="col">Settled</th></tr></thead><tbody>{Object.entries(finalSummary.ledgers).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.source_rows ?? 0}</td><td>{values.transactional_rows ?? 0}</td><td>{values.non_transactional ?? 0}</td><td>{values.historical_or_partial ?? 0}</td><td>{values.open ?? 0}</td><td>{values.settled ?? 0}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Saved blocking-item resolutions</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Source</th><th scope="col">Category</th><th scope="col">Resolution</th><th scope="col">Target</th></tr></thead><tbody>{[...finalSummary.provider_resolutions, ...finalSummary.historical_ep_resolutions].map((resolution) => <tr key={`${resolution.category}-${resolution.source_sheet}-${resolution.source_row}`}><td>{resolution.source_sheet} row {resolution.source_row}</td><td>{resolution.category.replaceAll("_", " ")}</td><td><span className="table-chip table-chip-success">{resolution.action.replaceAll("_", " ")}</span></td><td>{resolution.target || resolution.catalogue_id || "Recorded historical decision"}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Financial plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Approved total</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(finalSummary.financial.periods).map(([period, values]) => <tr key={period}><td>{period}</td><td><FinancialValue animate={false} value={values.workbook_report?.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={values.difference ?? "0.00"} /></td></tr>)}</tbody></table></div></details>
-        {finalSummary.ready ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>Import to Profile</span></button></div> : null}
+        {finalSummary.ready ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>{importFailed ? "Retry import" : "Import to Profile"}</span></button></div> : retryableImportStatus && !importFailed ? <div className="tracker-nav tracker-nav-right"><button className="button-link icon-text-action" disabled={saving} onClick={() => void validateImport()} type="button"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>Validate import</span></button></div> : null}
       </section> : null}
       {postImportReport ? <section className="content-subpanel stack" data-pd-id="profile-import.reconciliation">
         <header className="workflow-panel-header"><div><span className="eyebrow">Import history</span><h2>Post-Import Reconciliation</h2></div><span className={`table-chip ${postImportReport.result.endsWith("PASSED") ? "table-chip-success" : "table-chip-danger"}`}>{postImportReport.result.replace("POST-IMPORT RECONCILIATION: ", "")}</span></header>
@@ -995,7 +1066,7 @@ export function FounderImportReviewWorkspace({
     <ConfirmationDialog
       busy={saving}
       busyLabel="Importing"
-      confirmLabel="Import to Profile"
+      confirmLabel={importFailed ? "Retry import" : "Import to Profile"}
       confirmTone="primary"
       description={`Import ${workspace.metadata.source_filename} into ${finalSummary?.profile.profile_name ?? "this Profile"} using the approved checksum ${workspace.metadata.workbook_checksum.slice(0, 12)}…. The plan affects ${finalSummary?.accounts.total_source ?? 0} source Accounts and ${Object.values(finalSummary?.ledgers ?? {}).reduce((total, ledger) => total + (ledger.transactional_rows ?? 0), 0)} transactional ledger rows. A scoped rollback checkpoint will be created first.`}
       onCancel={() => setImportConfirmationOpen(false)}

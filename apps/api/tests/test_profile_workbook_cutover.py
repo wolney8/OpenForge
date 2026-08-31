@@ -9,10 +9,15 @@ from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
+    ImportPersistenceError,
+    _storage_value,
+    approved_run_is_retryable,
     build_base_write_plan,
     execute_import,
+    failed_import_safety,
     rollback_import,
     save_base_write_plan,
+    validate_import_preflight,
 )
 
 PROFILE_ID = "profile-cutover-test"
@@ -557,6 +562,64 @@ def load_persisted_run(run: dict[str, object]) -> dict[str, object]:
     }
 
 
+def test_integer_backed_boolean_storage_is_explicit() -> None:
+    assert _storage_value("accounts", "counts_in_cash_total", True) == 1
+    assert _storage_value("cash_adjustments", "affects_investment", False) == 0
+    assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
+
+
+def test_approved_failed_run_remains_retryable_without_resetting_review() -> None:
+    assert approved_run_is_retryable({"status": "READY_APPROVED", "approved_at": ""})
+    assert approved_run_is_retryable(
+        {"status": "IMPORT_FAILED", "approved_at": "2026-08-31T12:00:00+00:00"}
+    )
+    assert not approved_run_is_retryable({"status": "IMPORT_FAILED", "approved_at": ""})
+
+
+def test_persistence_preflight_constructs_and_rolls_back_exact_write_set(tmp_path: Path) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+
+    result = validate_import_preflight(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+
+    assert result["status"] == "PASSED"
+    assert result["transaction_constructed"] is True
+    assert result["writes_committed"] is False
+    with connect() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM profile_import_write_audit WHERE import_run_id = ?", (RUN_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT display_name FROM profiles WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == "Synthetic Cutover"
+        )
+
+
 def test_transactional_import_reconciles_and_rolls_back(tmp_path: Path) -> None:
     configure_cutover_database(tmp_path)
     plan = synthetic_plan()
@@ -643,7 +706,7 @@ def test_mid_import_failure_rolls_back_database_transaction(
         raise RuntimeError("synthetic midpoint failure")
 
     monkeypatch.setattr("openforge_api.profile_workbook_cutover._insert_ledger_rows", fail_ledgers)
-    with pytest.raises(RuntimeError, match="synthetic midpoint failure"):
+    with pytest.raises(ImportPersistenceError) as caught:
         execute_import(
             profile_id=PROFILE_ID,
             import_run_id=RUN_ID,
@@ -652,6 +715,8 @@ def test_mid_import_failure_rolls_back_database_transaction(
             workspace=workspace,
             plan=plan,
         )
+    assert caught.value.stage == "Profile ledgers"
+    assert caught.value.category == "ledger_write"
     with connect() as connection:
         assert (
             connection.execute(
@@ -665,3 +730,6 @@ def test_mid_import_failure_rolls_back_database_transaction(
             ).fetchone()[0]
             == 0
         )
+    safety = failed_import_safety(PROFILE_ID, RUN_ID)
+    assert safety["no_partial_profile_changes"] is True
+    assert safety["retry_available"] is True
