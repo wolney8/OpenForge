@@ -7,10 +7,16 @@ import pytest
 
 from openforge_api.config import settings
 from openforge_api.db import connect
+from openforge_api.profile_import_execution import (
+    advance_import_execution,
+    load_import_execution,
+    start_import_execution,
+)
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     _account_write_state,
+    _profile_state_checksum,
     _storage_value,
     approved_run_is_retryable,
     build_base_write_plan,
@@ -420,6 +426,7 @@ def run_and_workspace() -> tuple[dict[str, object], dict[str, object]]:
         "effective_at": "2026-08-30T10:00:00+00:00",
         "mapping_version": "synthetic-v1",
         "status": "READY_APPROVED",
+        "approved_at": "2026-08-30T10:00:00+00:00",
         "summary": {
             "profile_settings": plan_profile_settings(),
             "accounts": {
@@ -560,6 +567,24 @@ def load_persisted_run(run: dict[str, object]) -> dict[str, object]:
         "summary": run["summary"],
         "reconciliation": run["reconciliation"],
         "result": json.loads(row["result_json"]),
+    }
+
+
+def approve_synthetic_preflight(
+    run: dict[str, object], workspace: dict[str, object], plan: dict[str, object]
+) -> None:
+    result = validate_import_preflight(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    run["summary"]["persistence_preflight"] = {
+        **result,
+        "workbook_checksum": CHECKSUM,
+        "mapping_version": run["mapping_version"],
+        "completed_at": "2026-08-30T10:01:00+00:00",
     }
 
 
@@ -774,3 +799,216 @@ def test_mid_import_failure_rolls_back_database_transaction(
     safety = failed_import_safety(PROFILE_ID, RUN_ID)
     assert safety["no_partial_profile_changes"] is True
     assert safety["retry_available"] is True
+
+
+def test_staged_import_is_resumable_and_reconciles(tmp_path: Path) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+    approve_synthetic_preflight(run, workspace, plan)
+
+    execution = start_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    assert execution["status"] == "RUNNING"
+    execution = advance_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=load_persisted_run(run),
+        workspace=workspace,
+        plan=plan,
+    )
+
+    resumed = load_import_execution(RUN_ID)
+    assert resumed is not None
+    assert resumed["stage"] == execution["stage"]
+    request_count = 1
+    while execution["status"] == "RUNNING":
+        execution = advance_import_execution(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=load_persisted_run(run),
+            workspace=workspace,
+            plan=plan,
+        )
+        request_count += 1
+
+    assert request_count > len(plan["ledgers"])
+    assert execution["status"] == "COMPLETE"
+    assert execution["percentage"] == 100
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM profile_import_write_audit "
+            "WHERE import_run_id = ? AND rolled_back_at = ''",
+            (RUN_ID,),
+        ).fetchone()[0] == 8
+        assert connection.execute(
+            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
+            (PROFILE_ID,),
+        ).fetchone()[0] == 2
+        summary = json.loads(
+            connection.execute(
+                "SELECT summary_json FROM profile_import_runs WHERE import_run_id = ?",
+                (RUN_ID,),
+            ).fetchone()["summary_json"]
+        )
+        assert [event["kind"] for event in summary["job"]["events"]][-2:] == [
+            "import_started",
+            "import_complete",
+        ]
+    rollback = rollback_import(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=load_persisted_run(run),
+    )
+    assert rollback["checkpoint_reconciled"] is True
+    assert failed_import_safety(PROFILE_ID, RUN_ID)["no_partial_profile_changes"] is True
+
+
+def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    base = plan["ledgers"]["sportsbook"][0]
+    additional_rows = []
+    for index in range(500):
+        row = json.loads(json.dumps(base))
+        row["import_key"] = f"sportsbook:scale:{index}"
+        row["source_row"] = index + 10
+        row["source_record_id"] = f"scale-{index}"
+        row["imported_current_pnl"] = "0.00"
+        row["source_pnl"] = "0.00"
+        row["realised_pnl"] = "0.00"
+        row["mapped_payload"]["manual_override_value"] = "0.00"
+        additional_rows.append(row)
+    plan["ledgers"]["sportsbook"].extend(additional_rows)
+    run, workspace = run_and_workspace()
+    run["summary"]["ledgers"]["sportsbook"]["source_rows"] += len(additional_rows)
+    run["summary"]["ledgers"]["sportsbook"]["settled"] += len(additional_rows)
+    persist_run_and_plan(run, plan)
+    approve_synthetic_preflight(run, workspace, plan)
+
+    execution = start_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    requests = 0
+    while execution["status"] == "RUNNING":
+        execution = advance_import_execution(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=load_persisted_run(run),
+            workspace=workspace,
+            plan=plan,
+        )
+        requests += 1
+    assert execution["status"] == "COMPLETE"
+    assert requests >= 25
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
+            (PROFILE_ID,),
+        ).fetchone()[0] == 502
+
+
+def test_staged_failure_restores_checkpoint_and_remains_retryable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+    approve_synthetic_preflight(run, workspace, plan)
+    execution = start_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    while execution["stage"] != "SPORTSBOOK":
+        execution = advance_import_execution(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=load_persisted_run(run),
+            workspace=workspace,
+            plan=plan,
+        )
+
+    with connect() as connection:
+        assert _profile_state_checksum(connection, PROFILE_ID) == execution["progress"][
+            "last_state_checksum"
+        ]
+
+    def fail_batch(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("synthetic staged failure")
+
+    monkeypatch.setattr(
+        "openforge_api.profile_import_execution.insert_ledger_batch",
+        fail_batch,
+    )
+    execution = advance_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=load_persisted_run(run),
+        workspace=workspace,
+        plan=plan,
+    )
+
+    assert execution["status"] == "ROLLED_BACK", json.dumps(execution["error"], sort_keys=True)
+    safety = failed_import_safety(PROFILE_ID, RUN_ID)
+    assert safety["no_partial_profile_changes"] is True
+    assert safety["retry_available"] is True
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT display_name FROM profiles WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == "Synthetic Cutover"
+        summary = json.loads(
+            connection.execute(
+                "SELECT summary_json FROM profile_import_runs WHERE import_run_id = ?",
+                (RUN_ID,),
+            ).fetchone()["summary_json"]
+        )
+        assert summary["job"]["events"][-1]["kind"] == "import_failed"
+
+    monkeypatch.undo()
+    execution = start_import_execution(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=load_persisted_run(run),
+        workspace=workspace,
+        plan=plan,
+    )
+    while execution["status"] == "RUNNING":
+        execution = advance_import_execution(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=load_persisted_run(run),
+            workspace=workspace,
+            plan=plan,
+        )
+    assert execution["status"] == "COMPLETE"

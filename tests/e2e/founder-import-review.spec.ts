@@ -374,6 +374,42 @@ test("persisted analysis progress completes without holding the review page", as
   await expect(page.getByText(/Review decisions remain saved/)).toBeVisible();
 });
 
+test("persisted import execution resumes through the authenticated shell monitor", async ({
+  page,
+}) => {
+  await mockShell(page);
+  const execution = {
+    import_run_id: "import-run-demo",
+    status: "RUNNING",
+    stage: "SPORTSBOOK",
+    completed_units: 125,
+    total_units: 835,
+    percentage: 15,
+  };
+  const importing = {
+    ...workspace(),
+    run_status: "IMPORTING",
+    execution,
+  };
+  let advanced = false;
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(importing) });
+  });
+  await page.route("**/fund-manager/import-executions", async (route) => {
+    await route.fulfill({ json: advanced ? [] : [execution] });
+  });
+  await page.route("**/fund-manager/import-executions/import-run-demo/advance", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    advanced = true;
+    await route.fulfill({ json: { ...execution, stage: "FREE_BETS", percentage: 76 } });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  const progress = page.locator('[data-pd-id="profile-import.execution-progress"]');
+  await expect(progress).toContainText("Sportsbook");
+  await expect.poll(() => advanced).toBe(true);
+});
+
 test("decision impact is explicit and selected reset restores the original review state", async ({ page }) => {
   await mockShell(page);
   const reviewed = workspace();

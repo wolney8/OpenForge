@@ -90,7 +90,12 @@ def workbook_import_notifications(email: str) -> list[FundManagerNotificationRes
                 continue
             event_kind = str(event.get("kind", "analysis_complete"))
             is_review = event_kind == "review_required"
-            is_failure = event_kind == "analysis_failed"
+            is_failure = event_kind in {
+                "analysis_failed",
+                "import_failed",
+                "import_reconciliation_failed",
+            }
+            is_success = event_kind in {"analysis_complete", "import_complete"}
             href = (
                 f"/profiles/{row['profile_id']}/imports/{row['import_run_id']}/review"
             )
@@ -116,7 +121,15 @@ def workbook_import_notifications(email: str) -> list[FundManagerNotificationRes
                     created_at=created_at,
                     href=href,
                     completion_href="",
-                    tone="danger" if is_failure else "warning" if is_review else "info",
+                    tone=(
+                        "danger"
+                        if is_failure
+                        else "warning"
+                        if is_review
+                        else "success"
+                        if is_success
+                        else "info"
+                    ),
                 )
             )
     return notifications

@@ -9,6 +9,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue } from "@/components/financial-value";
 import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
 import { GlobalSearch } from "@/components/global-search";
+import { ImportExecutionMonitor } from "@/components/import-execution-monitor";
 import { NotificationCentre } from "@/components/notification-centre";
 import { SessionInactivityGuard } from "@/components/session-inactivity-guard";
 import { ShellLoadingProgress } from "@/components/shell-loading-progress";
@@ -814,6 +815,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           />
         </Suspense> : null}
         {!isPublicAuthRoute ? <SessionInactivityGuard /> : null}
+        {!isPublicAuthRoute ? <ImportExecutionMonitor /> : null}
         <div className="main-shell" id="main-content">
           {children}
         </div>

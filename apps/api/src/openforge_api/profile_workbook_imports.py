@@ -30,11 +30,16 @@ from openforge_api.founder_workbook_dry_run import (
     FOUNDER_MAPPING_VERSION,
     build_founder_workbook_dry_run_bytes,
 )
+from openforge_api.profile_import_execution import (
+    advance_import_execution,
+    list_active_import_executions,
+    load_import_execution,
+    start_import_execution,
+)
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     build_base_write_plan,
-    execute_import,
     failed_import_safety,
     final_import_summary,
     load_base_write_plan,
@@ -44,6 +49,9 @@ from openforge_api.profile_workbook_cutover import (
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/workbook-imports", tags=["profile-imports"])
+execution_router = APIRouter(
+    prefix="/fund-manager/import-executions", tags=["profile-import-executions"]
+)
 logger = logging.getLogger(__name__)
 
 MAX_WORKBOOK_BYTES = 3 * 1024 * 1024
@@ -479,6 +487,7 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["final_import_summary"] = final_summary
     workspace["persistence_preflight"] = preflight
     workspace["import_result"] = run.get("result", {})
+    workspace["execution"] = load_import_execution(import_run_id)
     workspace["checkpoint_id"] = run.get("checkpoint_id", "")
     workspace["rollback_status"] = run.get("rollback_status", "")
     workspace["approved_at"] = run.get("approved_at", "")
@@ -1389,35 +1398,7 @@ def import_profile_workbook(
         )
     workspace = _workspace(profile_id, import_run_id)
     try:
-        preflight_result = validate_import_preflight(
-            profile_id=profile_id,
-            import_run_id=import_run_id,
-            run=run,
-            workspace=workspace,
-            plan=plan,
-        )
-        _save_preflight_result(
-            import_run_id=import_run_id,
-            profile_id=profile_id,
-            run=run,
-            result=preflight_result,
-        )
-    except ImportPersistenceError as error:
-        logger.exception(
-            "Workbook persistence preflight failed at %s (%s)", error.stage, error.category
-        )
-        raise HTTPException(
-            status_code=409,
-            detail=_failure_detail(
-                import_run_id=import_run_id,
-                error=error,
-                retry_available=False,
-            ),
-        ) from error
-    except ImportCutoverError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    try:
-        return execute_import(
+        execution = start_import_execution(
             profile_id=profile_id,
             import_run_id=import_run_id,
             actor_email=session.email,
@@ -1425,52 +1406,54 @@ def import_profile_workbook(
             workspace=workspace,
             plan=plan,
         )
-    except ImportPersistenceError as error:
-        logger.exception(
-            "Profile workbook import failed at %s (%s), import_id=%s, record_id=%s",
-            error.stage,
-            error.category,
-            error.import_id,
-            error.record_id,
-        )
-        result = _record_failed_import_attempt(
-            profile_id=profile_id,
-            import_run_id=import_run_id,
-            run=run,
-            error=error,
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=_failure_detail(
-                import_run_id=import_run_id,
-                error=error,
-                retry_available=bool(result["retry_available"]),
-            ),
-        ) from error
     except ImportCutoverError as error:
         logger.warning("Profile workbook import blocked: %s", error)
         raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as error:
         logger.exception("Profile workbook import failed")
-        wrapped = ImportPersistenceError(
-            stage="Import transaction",
-            category="unexpected_import_failure",
-            cause=error,
-        )
-        result = _record_failed_import_attempt(
-            profile_id=profile_id,
-            import_run_id=import_run_id,
-            run=run,
-            error=wrapped,
-        )
         raise HTTPException(
             status_code=500,
-            detail=_failure_detail(
-                import_run_id=import_run_id,
-                error=wrapped,
-                retry_available=bool(result["retry_available"]),
-            ),
+            detail="Import execution could not be started. No Profile changes were made.",
         ) from error
+    return {"status": "STARTED", "execution": execution}
+
+
+@execution_router.get("")
+def get_active_import_executions(request: Request) -> list[dict[str, Any]]:
+    session = require_request_session(request)
+    return list_active_import_executions(session.email)
+
+
+@execution_router.post("/{import_run_id}/advance")
+def advance_active_import_execution(
+    import_run_id: str,
+    request: Request,
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    run = _load_run_by_id(import_run_id)
+    if str(run["owner_email"]).casefold() != session.email.casefold():
+        raise HTTPException(status_code=404, detail="Import execution was not found")
+    profile_id = str(run["profile_id"])
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(status_code=409, detail="Import write plan is unavailable")
+    workspace = _workspace(profile_id, import_run_id)
+    result = advance_import_execution(
+        profile_id=profile_id,
+        import_run_id=import_run_id,
+        actor_email=session.email,
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    if result["status"] in {"ROLLED_BACK", "ROLLBACK_FAILED"}:
+        logger.error(
+            "Staged Profile import failed at %s for run %s; rollback status=%s",
+            result.get("stage"),
+            import_run_id,
+            result["status"],
+        )
+    return result
 
 
 @router.post("/{import_run_id}/rollback")

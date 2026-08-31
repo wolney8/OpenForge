@@ -18,7 +18,6 @@ from openforge_api.db import connect
 from openforge_api.each_way_extra_places import router as each_way_extra_places_router
 from openforge_api.exchange_settings import router as exchange_settings_router
 from openforge_api.founder_import_review import router as founder_import_review_router
-from openforge_api.profile_workbook_imports import router as profile_workbook_imports_router
 from openforge_api.free_bets import router as free_bets_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.fund_manager_lookup_values import router as fund_manager_lookup_values_router
@@ -27,6 +26,10 @@ from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
 from openforge_api.notifications import router as notifications_router
+from openforge_api.profile_workbook_imports import (
+    execution_router as profile_import_executions_router,
+)
+from openforge_api.profile_workbook_imports import router as profile_workbook_imports_router
 from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
@@ -55,6 +58,7 @@ app.include_router(notifications_router)
 app.include_router(free_bets_router)
 app.include_router(founder_import_review_router)
 app.include_router(profile_workbook_imports_router)
+app.include_router(profile_import_executions_router)
 app.include_router(fund_manager_lookup_values_router)
 app.include_router(fund_manager_fee_periods_router)
 app.include_router(imports_router)

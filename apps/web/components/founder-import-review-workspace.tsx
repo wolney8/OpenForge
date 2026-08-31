@@ -11,6 +11,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
+import { IMPORT_EXECUTION_REFRESH_EVENT } from "@/components/import-execution-monitor";
 import { apiBaseUrl } from "@/lib/api";
 import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import type { MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
@@ -106,6 +107,19 @@ type Workspace = {
     };
   };
   import_result?: ImportResult;
+  execution?: {
+    import_run_id: string;
+    status: string;
+    stage: string;
+    completed_units: number;
+    total_units: number;
+    percentage: number;
+    error?: {
+      stage?: string;
+      category?: string;
+      message?: string;
+    };
+  } | null;
   import_safety?: {
     checkpoint_available: boolean;
     profile_matches_checkpoint: boolean;
@@ -556,6 +570,23 @@ export function FounderImportReviewWorkspace({
   }, [importRunId, profileId]);
 
   useEffect(() => {
+    const refreshExecution = (event: Event) => {
+      const detail = event instanceof CustomEvent
+        ? event.detail as { importRunId?: string }
+        : undefined;
+      if (detail?.importRunId && detail.importRunId !== importRunId) return;
+      void fetchWorkspaceData(profileId, importRunId)
+        .then((result) => {
+          setWorkspace(result.review);
+          setCatalogue(result.catalogue);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener(IMPORT_EXECUTION_REFRESH_EVENT, refreshExecution);
+    return () => window.removeEventListener(IMPORT_EXECUTION_REFRESH_EVENT, refreshExecution);
+  }, [importRunId, profileId]);
+
+  useEffect(() => {
     if (workspace?.run_status !== "ANALYSING") {
       endShellLoading();
       return;
@@ -824,8 +855,13 @@ export function FounderImportReviewWorkspace({
         }),
       });
       if (!response.ok) throw new Error(await responseMessage(response));
+      const result = await response.json() as { status: string };
+      if (result.status !== "STARTED") {
+        throw new Error("Import execution did not start. No Profile changes were made.");
+      }
       await loadWorkspace();
-      setMessage("Import complete. Post-import reconciliation is available below.");
+      window.dispatchEvent(new Event(IMPORT_EXECUTION_REFRESH_EVENT));
+      setMessage("Import started. It will continue in resumable stages if you leave this page.");
       setImportConfirmationOpen(false);
     } catch (caught) {
       await loadWorkspace();
@@ -916,6 +952,7 @@ export function FounderImportReviewWorkspace({
   const accountChanges = workspace.source_summary?.accounts?.change_reconciliation;
   const finalSummary = workspace.final_import_summary;
   const importResult = workspace.import_result;
+  const execution = workspace.execution;
   const postImportReport = importResult?.post_import_reconciliation;
   const retryableImportStatus = ["READY_APPROVED", "FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
   const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
@@ -958,6 +995,11 @@ export function FounderImportReviewWorkspace({
       {workspace.run_status === "ANALYSING" && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
         <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{job.percentage}%</span></div>
         <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
+      </section> : null}
+      {execution?.status === "RUNNING" ? <section aria-busy="true" aria-live="polite" className="content-subpanel stack-tight import-analysis-status" data-pd-id="profile-import.execution-progress">
+        <div className="workflow-panel-header"><div><strong>{execution.stage.replaceAll("_", " ").toLocaleLowerCase().replace(/^./, (value) => value.toLocaleUpperCase())}</strong><span>{execution.completed_units} / {execution.total_units} planned writes validated or persisted</span></div><span className="table-chip table-chip-info">{execution.percentage}%</span></div>
+        <div aria-label={`Import ${execution.stage}: ${execution.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={execution.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${execution.percentage}%` }} /></div>
+        <span className="field-support-text">This import is persisted and resumable. You may navigate elsewhere while it continues.</span>
       </section> : null}
       {workspace.run_status === "FAILED" && !workspace.approved_at ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
       {preflightRequestState === "VALIDATING" ? <section aria-live="polite" aria-busy="true" className="content-subpanel stack-tight" data-pd-id="profile-import.preflight-validating">

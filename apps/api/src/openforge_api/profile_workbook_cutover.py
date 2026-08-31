@@ -666,6 +666,11 @@ def _profile_snapshot(connection: Any, profile_id: str) -> dict[str, list[dict[s
             (profile_id,),
         ).fetchall()
         snapshot[table] = [dict(row) for row in rows]
+        if table == "accounts":
+            # This legacy catalogue link is derived from the canonical provider name on startup.
+            # It is not Profile-owned state and must not invalidate an import checkpoint.
+            for row in snapshot[table]:
+                row.pop("bookmaker_id", None)
     return snapshot
 
 
@@ -857,6 +862,16 @@ def _audit_write(
           import_run_id, import_key, profile_id, entity_type, entity_id, operation,
           before_json, after_json, created_at, rolled_back_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '')
+        ON CONFLICT(import_run_id, import_key) DO UPDATE SET
+          profile_id = excluded.profile_id,
+          entity_type = excluded.entity_type,
+          entity_id = excluded.entity_id,
+          operation = excluded.operation,
+          before_json = excluded.before_json,
+          after_json = excluded.after_json,
+          created_at = excluded.created_at,
+          rolled_back_at = ''
+        WHERE profile_import_write_audit.rolled_back_at <> ''
         """,
         (
             import_run_id,
@@ -962,6 +977,8 @@ def _apply_accounts(
     rows: list[dict[str, Any]],
     decisions: dict[str, dict[str, Any]],
     absent_strategy: str,
+    all_rows: list[dict[str, Any]] | None = None,
+    apply_absent_strategy: bool = True,
 ) -> dict[str, int]:
     catalogue = _catalogue_records()
     existing_rows = connection.execute(
@@ -987,6 +1004,14 @@ def _apply_accounts(
             catalogue_id=catalogue_id,
             provider=provider,
         )
+        if provider.account_type == "Bookmaker":
+            bookmaker = connection.execute(
+                "SELECT bookmaker_id FROM bookmaker_catalogue "
+                "WHERE brand_name = ? COLLATE NOCASE",
+                (provider.brand_name,),
+            ).fetchone()
+            if bookmaker is not None:
+                state["bookmaker_id"] = str(bookmaker["bookmaker_id"])
         current = by_catalogue.get(catalogue_id) or by_name_type.get(
             (
                 provider.brand_name.casefold(),
@@ -995,6 +1020,8 @@ def _apply_accounts(
                 ).casefold(),
             )
         )
+        if current is not None and state.get("bookmaker_id") is None:
+            state["bookmaker_id"] = current.get("bookmaker_id")
         now = _now()
         if current is None:
             account_id = _entity_id("PA", profile_id, str(source["import_key"]))
@@ -1073,9 +1100,21 @@ def _apply_accounts(
                 cause=error,
             ) from error
         counts["updated"] += 1
-    if absent_strategy in {"archive", "deactivate"}:
-        for current in existing:
-            if current["account_id"] in matched:
+    if apply_absent_strategy and absent_strategy in {"archive", "deactivate"}:
+        represented_catalogue_ids: set[str] = set()
+        for source in all_rows or rows:
+            item = _decision_for(decisions, str(source["import_key"]), category="missing_provider")
+            if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
+                continue
+            catalogue_id = str(source.get("catalogue_id") or _resolved_provider(item))
+            if catalogue_id:
+                represented_catalogue_ids.add(catalogue_id)
+        current_rows = connection.execute(
+            "SELECT * FROM accounts WHERE profile_id = ?", (profile_id,)
+        ).fetchall()
+        for current_row in current_rows:
+            current = dict(current_row)
+            if str(current.get("catalogue_id") or "") in represented_catalogue_ids:
                 continue
             value = "Archived" if absent_strategy == "archive" else "Inactive"
             field = "lifecycle_status" if absent_strategy == "archive" else "status"
@@ -1135,29 +1174,18 @@ def _apply_decision(
     return payload
 
 
-def _insert_ledger_rows(
-    connection: Any,
-    *,
-    profile_id: str,
-    import_run_id: str,
-    plan: dict[str, Any],
-    decisions: dict[str, dict[str, Any]],
-) -> dict[str, int]:
-    counts: dict[str, int] = {}
+def _ledger_write_entries(
+    plan: dict[str, Any], decisions: dict[str, dict[str, Any]]
+) -> list[tuple[str, str, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]]:
+    entries: list[
+        tuple[str, str, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]
+    ] = []
     ep_decisions = {
         str(item["import_id"]): item
         for item in decisions.values()
         if item["category"] == "historical_extra_place" and item.get("decision")
     }
     for ledger, rows in plan["ledgers"].items():
-        table, id_column, entity_type = LEDGER_CONFIG[ledger]
-        prefix = {
-            "sportsbook": "SB",
-            "free_bets": "FB",
-            "casino": "CO",
-            "cash_adjustments": "CA",
-        }[ledger]
-        count = 0
         for row in rows:
             import_key = str(row["import_key"])
             item = next(
@@ -1177,127 +1205,221 @@ def _insert_ledger_rows(
             if ep_item and ep_item["review_status"] in {"EXCLUDED", "DEFERRED"}:
                 continue
             ep_action = str((ep_item or {}).get("decision", {}).get("action", ""))
-            if ledger == "sportsbook" and ep_action == "historical_extra_place":
-                source = row.get("source_fields") or {}
-                source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
-                entity_id = _entity_id("EP", profile_id, import_key)
-                status = (
-                    "Placed"
-                    if str(row.get("status", "")).casefold() in {"placed", "pending", "active"}
-                    else "Settled"
-                )
-                now = _now()
-                record = {
-                    "each_way_extra_place_id": entity_id,
-                    "profile_id": profile_id,
-                    "placed_at": str(source.get("DatePlaced") or source.get("Date") or ""),
-                    "runner": str(source.get("Selection") or source.get("Runner") or ""),
-                    "race": str(source.get("Event") or source.get("Fixture") or ""),
-                    "bookmaker": str(source.get("Bookmaker") or ""),
-                    "bookmaker_account": str(source.get("Bookmaker") or ""),
-                    "mode": "Extra Place",
-                    "each_way_stake": str(source.get("BackStake") or source.get("Stake") or ""),
-                    "back_odds": str(source.get("BackOdds") or ""),
-                    "place_term_numerator": "",
-                    "place_term_denominator": "",
-                    "bookmaker_places": "",
-                    "exchange_places": "",
-                    "win_exchange": str(source.get("Exchange") or ""),
-                    "win_lay_odds": str(source.get("LayOdds1") or ""),
-                    "win_commission": "",
-                    "actual_win_lay_stake": str(source.get("LayActual") or ""),
-                    "place_exchange": "",
-                    "place_lay_odds": "",
-                    "place_commission": "",
-                    "actual_place_lay_stake": "",
-                    "status": status,
-                    "result": "Pending" if status == "Placed" else "Unplaced",
-                    "finishing_position": "",
-                    "imported_historical_pnl": source_pnl,
-                    "calculation_provenance": "imported_historical",
-                    "import_run_id": import_run_id,
-                    "source_import_id": import_key,
-                    "user_notes": (
-                        "Historical Extra Place imported from Sportsbook Bets; "
-                        f"source row {row['source_row']}. Missing modern fields were not inferred."
-                    ),
-                    "created_at": now,
-                    "updated_at": now,
-                }
-                try:
-                    _insert_row(connection, "each_way_extra_places", record)
-                    _audit_write(
-                        connection,
-                        import_run_id=import_run_id,
-                        import_key=import_key,
-                        profile_id=profile_id,
-                        entity_type="extra_place",
-                        entity_id=entity_id,
-                        operation="create",
-                        before=None,
-                        after={
-                            **record,
-                            "expected_reporting_value": source_pnl,
-                            "formal_report_date": row.get("formal_report_date", ""),
-                        },
-                    )
-                except Exception as error:
-                    raise ImportPersistenceError(
-                        stage="Extra Places",
-                        category="ledger_row_write",
-                        import_id=import_key,
-                        record_id=entity_id,
-                        cause=error,
-                    ) from error
-                counts["extra_places"] = counts.get("extra_places", 0) + 1
-                continue
-            entity_id = _entity_id(prefix, profile_id, import_key)
+            target = (
+                "extra_places"
+                if ledger == "sportsbook" and ep_action == "historical_extra_place"
+                else ledger
+            )
+            entries.append((target, ledger, row, item, ep_item))
+    return entries
+
+
+def _insert_ledger_entry(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    entry: tuple[str, str, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None],
+) -> str:
+    target, ledger, row, item, _ep_item = entry
+    import_key = str(row["import_key"])
+    existing_audit = connection.execute(
+        "SELECT entity_type, entity_id, rolled_back_at FROM profile_import_write_audit "
+        "WHERE import_run_id = ? AND import_key = ?",
+        (import_run_id, import_key),
+    ).fetchone()
+    if existing_audit is not None and not str(existing_audit["rolled_back_at"] or ""):
+        return target
+    if target == "extra_places":
+        source = row.get("source_fields") or {}
+        source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
+        entity_id = _entity_id("EP", profile_id, import_key)
+        status = (
+            "Placed"
+            if str(row.get("status", "")).casefold() in {"placed", "pending", "active"}
+            else "Settled"
+        )
+        now = _now()
+        record = {
+            "each_way_extra_place_id": entity_id,
+            "profile_id": profile_id,
+            "placed_at": str(source.get("DatePlaced") or source.get("Date") or ""),
+            "runner": str(source.get("Selection") or source.get("Runner") or ""),
+            "race": str(source.get("Event") or source.get("Fixture") or ""),
+            "bookmaker": str(source.get("Bookmaker") or ""),
+            "bookmaker_account": str(source.get("Bookmaker") or ""),
+            "mode": "Extra Place",
+            "each_way_stake": str(source.get("BackStake") or source.get("Stake") or ""),
+            "back_odds": str(source.get("BackOdds") or ""),
+            "place_term_numerator": "",
+            "place_term_denominator": "",
+            "bookmaker_places": "",
+            "exchange_places": "",
+            "win_exchange": str(source.get("Exchange") or ""),
+            "win_lay_odds": str(source.get("LayOdds1") or ""),
+            "win_commission": "",
+            "actual_win_lay_stake": str(source.get("LayActual") or ""),
+            "place_exchange": "",
+            "place_lay_odds": "",
+            "place_commission": "",
+            "actual_place_lay_stake": "",
+            "status": status,
+            "result": "Pending" if status == "Placed" else "Unplaced",
+            "finishing_position": "",
+            "imported_historical_pnl": source_pnl,
+            "calculation_provenance": "imported_historical",
+            "import_run_id": import_run_id,
+            "source_import_id": import_key,
+            "user_notes": (
+                "Historical Extra Place imported from Sportsbook Bets; "
+                f"source row {row['source_row']}. Missing modern fields were not inferred."
+            ),
+            "created_at": now,
+            "updated_at": now,
+        }
+        try:
             duplicate = connection.execute(
-                f"SELECT 1 FROM {table} WHERE {id_column} = ?", (entity_id,)
+                "SELECT 1 FROM each_way_extra_places WHERE each_way_extra_place_id = ?",
+                (entity_id,),
             ).fetchone()
             if duplicate is not None:
                 raise ImportCutoverError("This workbook row already exists in the target Profile")
-            payload = {
-                key: value
-                for key, value in dict(row.get("mapped_payload") or {}).items()
-                if key in LEDGER_COLUMNS[ledger]
-            }
-            payload = _apply_decision(payload, row, item)
-            now = _now()
-            record = {
-                id_column: entity_id,
-                "profile_id": profile_id,
-                **payload,
-                "created_at": now,
-                "updated_at": now,
-            }
-            try:
-                _insert_row(connection, table, record)
-                _audit_write(
-                    connection,
-                    import_run_id=import_run_id,
-                    import_key=import_key,
-                    profile_id=profile_id,
-                    entity_type=entity_type,
-                    entity_id=entity_id,
-                    operation="create",
-                    before=None,
-                    after={
-                        **record,
-                        "expected_reporting_value": row.get("imported_current_pnl", ""),
-                        "formal_report_date": row.get("formal_report_date", ""),
-                    },
-                )
-            except Exception as error:
-                raise ImportPersistenceError(
-                    stage=table.replace("_", " ").title(),
-                    category="ledger_row_write",
-                    import_id=import_key,
-                    record_id=entity_id,
-                    cause=error,
-                ) from error
-            count += 1
-        counts[ledger] = count
+            _insert_row(connection, "each_way_extra_places", record)
+            _audit_write(
+                connection,
+                import_run_id=import_run_id,
+                import_key=import_key,
+                profile_id=profile_id,
+                entity_type="extra_place",
+                entity_id=entity_id,
+                operation="create",
+                before=None,
+                after={
+                    **record,
+                    "expected_reporting_value": source_pnl,
+                    "formal_report_date": row.get("formal_report_date", ""),
+                },
+            )
+        except Exception as error:
+            raise ImportPersistenceError(
+                stage="Extra Places",
+                category="ledger_row_write",
+                import_id=import_key,
+                record_id=entity_id,
+                cause=error,
+            ) from error
+        return target
+
+    table, id_column, entity_type = LEDGER_CONFIG[ledger]
+    prefix = {
+        "sportsbook": "SB",
+        "free_bets": "FB",
+        "casino": "CO",
+        "cash_adjustments": "CA",
+    }[ledger]
+    entity_id = _entity_id(prefix, profile_id, import_key)
+    duplicate = connection.execute(
+        f"SELECT 1 FROM {table} WHERE {id_column} = ?", (entity_id,)
+    ).fetchone()
+    if duplicate is not None:
+        raise ImportCutoverError("This workbook row already exists in the target Profile")
+    payload = {
+        key: value
+        for key, value in dict(row.get("mapped_payload") or {}).items()
+        if key in LEDGER_COLUMNS[ledger]
+    }
+    payload = _apply_decision(payload, row, item)
+    now = _now()
+    record = {
+        id_column: entity_id,
+        "profile_id": profile_id,
+        **payload,
+        "created_at": now,
+        "updated_at": now,
+    }
+    try:
+        _insert_row(connection, table, record)
+        _audit_write(
+            connection,
+            import_run_id=import_run_id,
+            import_key=import_key,
+            profile_id=profile_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            operation="create",
+            before=None,
+            after={
+                **record,
+                "expected_reporting_value": row.get("imported_current_pnl", ""),
+                "formal_report_date": row.get("formal_report_date", ""),
+            },
+        )
+    except Exception as error:
+        raise ImportPersistenceError(
+            stage=table.replace("_", " ").title(),
+            category="ledger_row_write",
+            import_id=import_key,
+            record_id=entity_id,
+            cause=error,
+        ) from error
+    return target
+
+
+def insert_ledger_batch(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    plan: dict[str, Any],
+    decisions: dict[str, dict[str, Any]],
+    target_ledger: str,
+    offset: int,
+    limit: int,
+) -> dict[str, Any]:
+    entries = [
+        entry
+        for entry in _ledger_write_entries(plan, decisions)
+        if entry[0] == target_ledger
+    ]
+    batch = entries[offset : offset + limit]
+    inserted = 0
+    for entry in batch:
+        _insert_ledger_entry(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            entry=entry,
+        )
+        inserted += 1
+    return {
+        "ledger": target_ledger,
+        "processed": len(batch),
+        "inserted": inserted,
+        "total": len(entries),
+        "next_cursor": offset + len(batch),
+    }
+
+
+def _insert_ledger_rows(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    plan: dict[str, Any],
+    decisions: dict[str, dict[str, Any]],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in _ledger_write_entries(plan, decisions):
+        target = _insert_ledger_entry(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            entry=entry,
+        )
+        counts[target] = counts.get(target, 0) + 1
+    for ledger in plan["ledgers"]:
+        counts.setdefault(ledger, 0)
+    counts.setdefault("extra_places", 0)
     return counts
 
 
@@ -1934,7 +2056,7 @@ def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
         audit_count = int(
             connection.execute(
                 "SELECT COUNT(*) AS count FROM profile_import_write_audit "
-                "WHERE profile_id = ? AND import_run_id = ?",
+                "WHERE profile_id = ? AND import_run_id = ? AND rolled_back_at = ''",
                 (profile_id, import_run_id),
             ).fetchone()["count"]
         )
@@ -2106,6 +2228,136 @@ def execute_import(
         ) from error
 
 
+def _restore_import_writes(
+    connection: Any, *, profile_id: str, import_run_id: str
+) -> tuple[int, int]:
+    audit_rows = connection.execute(
+        "SELECT * FROM profile_import_write_audit WHERE import_run_id = ? "
+        "AND rolled_back_at = '' ORDER BY created_at DESC, import_key DESC",
+        (import_run_id,),
+    ).fetchall()
+    deleted = 0
+    restored = 0
+    for raw in audit_rows:
+        row = dict(raw)
+        before = json.loads(row["before_json"])
+        if row["operation"] == "create":
+            table, id_column = ENTITY_TABLES[row["entity_type"]]
+            connection.execute(
+                f"DELETE FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+                (profile_id, row["entity_id"]),
+            )
+            deleted += 1
+        elif row["operation"] == "update":
+            if row["entity_type"] in {
+                "profiles",
+                "profile_onboarding_settings",
+                "profile_tracker_settings",
+            }:
+                table, id_column = row["entity_type"], "profile_id"
+            else:
+                table, id_column = ENTITY_TABLES[row["entity_type"]]
+            assignments = ",".join(f"{key} = ?" for key in before)
+            connection.execute(
+                f"UPDATE {table} SET {assignments} WHERE {id_column} = ?",
+                (*before.values(), row["entity_id"]),
+            )
+            restored += 1
+    return deleted, restored
+
+
+def rollback_incomplete_import(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    actor_email: str,
+    expected_state_checksum: str,
+    error: dict[str, Any],
+) -> dict[str, Any]:
+    now = _now()
+    event_id = f"import-rollback-{uuid4().hex}"
+    with connect() as connection:
+        current_state_checksum = _profile_state_checksum(connection, profile_id)
+        if not expected_state_checksum or current_state_checksum != expected_state_checksum:
+            raise ImportCutoverError(
+                "Profile data changed during import; automatic rollback requires review"
+            )
+        deleted, restored = _restore_import_writes(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+        )
+        checkpoint = connection.execute(
+            "SELECT snapshot_checksum FROM profile_import_checkpoints WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        if checkpoint is None or _profile_state_checksum(connection, profile_id) != str(
+            checkpoint["snapshot_checksum"]
+        ):
+            raise ImportCutoverError("Post-rollback reconciliation did not match the checkpoint")
+        summary = {
+            "deleted_import_records": deleted,
+            "restored_prior_values": restored,
+            "checkpoint_reconciled": True,
+        }
+        connection.execute(
+            "UPDATE profile_import_write_audit SET rolled_back_at = ? WHERE import_run_id = ?",
+            (now, import_run_id),
+        )
+        connection.execute(
+            "UPDATE profile_import_checkpoints SET status = 'AVAILABLE', restored_at = ? "
+            "WHERE import_run_id = ?",
+            (now, import_run_id),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_rollback_events (
+              rollback_event_id, import_run_id, profile_id, actor_email, checkpoint_id,
+              status, summary_json, created_at, completed_at
+            ) VALUES (?, ?, ?, ?, ?, 'COMPLETE', ?, ?, ?)
+            """,
+            (
+                event_id,
+                import_run_id,
+                profile_id,
+                actor_email,
+                connection.execute(
+                    "SELECT checkpoint_id FROM profile_import_checkpoints "
+                    "WHERE import_run_id = ?",
+                    (import_run_id,),
+                ).fetchone()["checkpoint_id"],
+                _json(summary),
+                now,
+                now,
+            ),
+        )
+        connection.execute(
+            "UPDATE profile_import_executions SET status = 'ROLLED_BACK', "
+            "error_json = ?, completed_at = ?, updated_at = ? WHERE import_run_id = ?",
+            (_json(error), now, now, import_run_id),
+        )
+        connection.execute(
+            "UPDATE profile_import_runs SET status = 'IMPORT_FAILED', "
+            "result_json = ?, rollback_status = 'COMPLETE', rolled_back_at = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (
+                _json(
+                    {
+                        "status": "IMPORT_FAILED",
+                        "safe_state": "The pre-import Profile state was restored.",
+                        "retry_available": True,
+                        "latest_attempt": error,
+                    }
+                ),
+                now,
+                now,
+                profile_id,
+                import_run_id,
+            ),
+        )
+    return {"status": "ROLLED_BACK", "rollback_event_id": event_id, **summary}
+
+
 def rollback_import(
     *, profile_id: str, import_run_id: str, actor_email: str, run: dict[str, Any]
 ) -> dict[str, Any]:
@@ -2123,46 +2375,11 @@ def rollback_import(
             raise ImportCutoverError(
                 "Profile data changed after import; review before rolling back this run"
             )
-        audit_rows = connection.execute(
-            "SELECT * FROM profile_import_write_audit WHERE import_run_id = ? "
-            "ORDER BY created_at DESC, import_key DESC",
-            (import_run_id,),
-        ).fetchall()
-        deleted = 0
-        restored = 0
-        table_for_entity = {
-            "sportsbook_bet": ("sportsbook_bets", "sportsbook_bet_id"),
-            "free_bet": ("free_bets", "free_bet_id"),
-            "casino_offer": ("casino_offers", "casino_offer_id"),
-            "cash_adjustment": ("cash_adjustments", "cash_adjustment_id"),
-            "extra_place": ("each_way_extra_places", "each_way_extra_place_id"),
-            "accounts": ("accounts", "account_id"),
-        }
-        for raw in audit_rows:
-            row = dict(raw)
-            before = json.loads(row["before_json"])
-            if row["operation"] == "create":
-                table, id_column = table_for_entity[row["entity_type"]]
-                connection.execute(
-                    f"DELETE FROM {table} WHERE profile_id = ? AND {id_column} = ?",
-                    (profile_id, row["entity_id"]),
-                )
-                deleted += 1
-            elif row["operation"] == "update":
-                if row["entity_type"] in {
-                    "profiles",
-                    "profile_onboarding_settings",
-                    "profile_tracker_settings",
-                }:
-                    table, id_column = row["entity_type"], "profile_id"
-                else:
-                    table, id_column = table_for_entity[row["entity_type"]]
-                assignments = ",".join(f"{key} = ?" for key in before)
-                connection.execute(
-                    f"UPDATE {table} SET {assignments} WHERE {id_column} = ?",
-                    (*before.values(), row["entity_id"]),
-                )
-                restored += 1
+        deleted, restored = _restore_import_writes(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+        )
         checkpoint = connection.execute(
             "SELECT snapshot_checksum FROM profile_import_checkpoints WHERE import_run_id = ?",
             (import_run_id,),

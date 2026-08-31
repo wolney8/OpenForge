@@ -1077,6 +1077,26 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_import_executions (
+          execution_id TEXT PRIMARY KEY,
+          import_run_id TEXT NOT NULL UNIQUE,
+          profile_id TEXT NOT NULL,
+          actor_email TEXT NOT NULL,
+          status TEXT NOT NULL,
+          stage TEXT NOT NULL,
+          stage_cursor INTEGER NOT NULL DEFAULT 0,
+          completed_units INTEGER NOT NULL DEFAULT 0,
+          total_units INTEGER NOT NULL DEFAULT 0,
+          progress_json TEXT NOT NULL DEFAULT '{}',
+          error_json TEXT NOT NULL DEFAULT '{}',
+          attempt_count INTEGER NOT NULL DEFAULT 1,
+          started_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL DEFAULT '',
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_profile_import_runs_profile_updated
           ON profile_import_runs(profile_id, updated_at);
 
@@ -1085,6 +1105,9 @@ def initialize_database(connection: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_profile_import_write_audit_profile
           ON profile_import_write_audit(profile_id, import_run_id);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_executions_status
+          ON profile_import_executions(status, updated_at);
 
         CREATE TABLE IF NOT EXISTS backup_snapshots (
           backup_snapshot_id TEXT PRIMARY KEY,
