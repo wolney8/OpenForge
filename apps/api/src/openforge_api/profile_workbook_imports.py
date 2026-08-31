@@ -468,7 +468,7 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     if (
         preflight_valid
         and run.get("approved_at")
-        and run["status"] in {"FAILED", "IMPORT_FAILED"}
+        and run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
     ):
         now = _now()
         with connect() as connection:
@@ -479,7 +479,10 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
             )
         run["status"] = "READY_APPROVED"
         workspace["run_status"] = "READY_APPROVED"
-    if run["status"] in {"READY_APPROVED", "FAILED", "IMPORT_FAILED"} and not preflight_valid:
+    if (
+        run["status"] in {"READY_APPROVED", "FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
+        and not preflight_valid
+    ):
         final_summary["ready"] = False
         final_summary["blockers"].append(
             "Validate the approved write plan against the current persistence schema"
@@ -586,7 +589,7 @@ def _save_preflight_result(
     if (
         preflight.get("status") == "PASSED"
         and run.get("approved_at")
-        and run["status"] in {"FAILED", "IMPORT_FAILED"}
+        and run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
     ):
         next_status = "READY_APPROVED"
     with connect() as connection:

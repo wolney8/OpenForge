@@ -2208,7 +2208,8 @@ def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
 
 def approved_run_is_retryable(run: dict[str, Any]) -> bool:
     return run["status"] == "READY_APPROVED" or (
-        run["status"] in {"FAILED", "IMPORT_FAILED"} and bool(run.get("approved_at"))
+        run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
+        and bool(run.get("approved_at"))
     )
 
 

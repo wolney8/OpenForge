@@ -604,6 +604,12 @@ def test_integer_backed_boolean_storage_is_explicit() -> None:
     assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
 
 
+def test_rolled_back_approved_run_remains_retryable() -> None:
+    assert approved_run_is_retryable(
+        {"status": "ROLLED_BACK", "approved_at": "2026-08-30T10:00:00+00:00"}
+    )
+
+
 def test_settled_import_preserves_approved_workbook_value() -> None:
     payload = {
         "status": "Settled",

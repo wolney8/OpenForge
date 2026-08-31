@@ -954,12 +954,12 @@ export function FounderImportReviewWorkspace({
   const importResult = workspace.import_result;
   const execution = workspace.execution;
   const postImportReport = importResult?.post_import_reconciliation;
-  const retryableImportStatus = ["READY_APPROVED", "FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
+  const retryableImportStatus = ["READY_APPROVED", "FAILED", "IMPORT_FAILED", "ROLLED_BACK"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
   const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
     && workspace.persistence_preflight.workbook_checksum === workspace.metadata.workbook_checksum
     && workspace.persistence_preflight.mapping_version === workspace.metadata.mapping_version;
   const canImport = retryableImportStatus && preflightPassed && Boolean(finalSummary?.ready) && workspace.import_safety?.retry_available !== false;
-  const importFailed = ["FAILED", "IMPORT_FAILED"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
+  const importFailed = ["FAILED", "IMPORT_FAILED", "ROLLED_BACK"].includes(workspace.run_status ?? "") && Boolean(workspace.approved_at);
   const canRollback = Boolean(
     importResult?.rollback_available
     && workspace.rollback_status === "AVAILABLE"
