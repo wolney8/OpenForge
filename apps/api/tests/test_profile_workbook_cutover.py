@@ -16,6 +16,8 @@ from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     _account_write_state,
+    _checkpoint_state_checksum,
+    _checksum,
     _profile_state_checksum,
     _storage_value,
     approved_run_is_retryable,
@@ -592,6 +594,34 @@ def test_integer_backed_boolean_storage_is_explicit() -> None:
     assert _storage_value("accounts", "counts_in_cash_total", True) == 1
     assert _storage_value("cash_adjustments", "affects_investment", False) == 0
     assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
+
+
+def test_legacy_checkpoint_ignores_derived_bookmaker_link() -> None:
+    legacy_snapshot = {
+        "accounts": [
+            {
+                "account_id": "account-demo",
+                "bookmaker_id": "BM-LEGACY",
+                "current_balance": "12.00",
+            }
+        ]
+    }
+    encoded = json.dumps(legacy_snapshot, default=str, separators=(",", ":"), sort_keys=True)
+    checkpoint = {
+        "snapshot_json": encoded,
+        "snapshot_checksum": _checksum(legacy_snapshot),
+    }
+
+    assert _checkpoint_state_checksum(checkpoint) == _checksum(
+        {
+            "accounts": [
+                {
+                    "account_id": "account-demo",
+                    "current_balance": "12.00",
+                }
+            ]
+        }
+    )
 
 
 def test_account_write_state_translates_mapper_fields_to_canonical_columns() -> None:

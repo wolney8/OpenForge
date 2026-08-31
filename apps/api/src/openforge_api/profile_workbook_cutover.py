@@ -658,6 +658,20 @@ def final_import_summary(
     }
 
 
+def _canonical_profile_snapshot(
+    snapshot: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    canonical = {
+        table: [dict(row) for row in rows]
+        for table, rows in snapshot.items()
+    }
+    # This legacy catalogue link is derived from the canonical provider name on startup.
+    # It is not Profile-owned state and must not invalidate an import checkpoint.
+    for row in canonical.get("accounts", []):
+        row.pop("bookmaker_id", None)
+    return canonical
+
+
 def _profile_snapshot(connection: Any, profile_id: str) -> dict[str, list[dict[str, Any]]]:
     snapshot: dict[str, list[dict[str, Any]]] = {}
     for table in PROFILE_TABLES:
@@ -666,12 +680,16 @@ def _profile_snapshot(connection: Any, profile_id: str) -> dict[str, list[dict[s
             (profile_id,),
         ).fetchall()
         snapshot[table] = [dict(row) for row in rows]
-        if table == "accounts":
-            # This legacy catalogue link is derived from the canonical provider name on startup.
-            # It is not Profile-owned state and must not invalidate an import checkpoint.
-            for row in snapshot[table]:
-                row.pop("bookmaker_id", None)
-    return snapshot
+    return _canonical_profile_snapshot(snapshot)
+
+
+def _checkpoint_state_checksum(checkpoint: Any) -> str:
+    snapshot_json = str(checkpoint["snapshot_json"])
+    stored_checksum = str(checkpoint["snapshot_checksum"])
+    if hashlib.sha256(snapshot_json.encode()).hexdigest() != stored_checksum:
+        raise ImportCutoverError("Pre-import checkpoint failed integrity verification")
+    snapshot = json.loads(snapshot_json)
+    return _checksum(_canonical_profile_snapshot(snapshot))
 
 
 def _storage_value(table: str, column: str, value: Any) -> Any:
@@ -808,7 +826,10 @@ def create_checkpoint(
             (import_run_id,),
         ).fetchone()
         if existing is not None:
-            return dict(existing)
+            return {
+                **dict(existing),
+                "snapshot_checksum": _checkpoint_state_checksum(existing),
+            }
         snapshot = _profile_snapshot(connection, profile_id)
         encoded = _json(snapshot)
         checksum = hashlib.sha256(encoded.encode()).hexdigest()
@@ -2049,7 +2070,7 @@ def validate_import_preflight(
 def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
     with connect() as connection:
         checkpoint = connection.execute(
-            "SELECT snapshot_checksum FROM profile_import_checkpoints "
+            "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
             "WHERE profile_id = ? AND import_run_id = ?",
             (profile_id, import_run_id),
         ).fetchone()
@@ -2063,7 +2084,7 @@ def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
         checkpoint_matches = bool(
             checkpoint
             and _profile_state_checksum(connection, profile_id)
-            == str(checkpoint["snapshot_checksum"])
+            == _checkpoint_state_checksum(checkpoint)
         )
     return {
         "checkpoint_available": checkpoint is not None,
@@ -2110,12 +2131,8 @@ def execute_import(
         ).fetchone()
         if existing_writes and int(existing_writes["count"]):
             raise ImportCutoverError("This approved workbook has already written Profile data")
-        if hashlib.sha256(str(checkpoint_row["snapshot_json"]).encode()).hexdigest() != str(
-            checkpoint_row["snapshot_checksum"]
-        ):
-            raise ImportCutoverError("Pre-import checkpoint failed integrity verification")
-        if _profile_state_checksum(connection, profile_id) != str(
-            checkpoint_row["snapshot_checksum"]
+        if _profile_state_checksum(connection, profile_id) != _checkpoint_state_checksum(
+            checkpoint_row
         ):
             raise ImportCutoverError("Profile data changed after the import checkpoint")
         connection.execute(
@@ -2288,12 +2305,13 @@ def rollback_incomplete_import(
             import_run_id=import_run_id,
         )
         checkpoint = connection.execute(
-            "SELECT snapshot_checksum FROM profile_import_checkpoints WHERE import_run_id = ?",
+            "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
+            "WHERE import_run_id = ?",
             (import_run_id,),
         ).fetchone()
-        if checkpoint is None or _profile_state_checksum(connection, profile_id) != str(
-            checkpoint["snapshot_checksum"]
-        ):
+        if checkpoint is None or _profile_state_checksum(
+            connection, profile_id
+        ) != _checkpoint_state_checksum(checkpoint):
             raise ImportCutoverError("Post-rollback reconciliation did not match the checkpoint")
         summary = {
             "deleted_import_records": deleted,
@@ -2381,12 +2399,13 @@ def rollback_import(
             import_run_id=import_run_id,
         )
         checkpoint = connection.execute(
-            "SELECT snapshot_checksum FROM profile_import_checkpoints WHERE import_run_id = ?",
+            "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
+            "WHERE import_run_id = ?",
             (import_run_id,),
         ).fetchone()
-        if checkpoint is None or _profile_state_checksum(connection, profile_id) != str(
-            checkpoint["snapshot_checksum"]
-        ):
+        if checkpoint is None or _profile_state_checksum(
+            connection, profile_id
+        ) != _checkpoint_state_checksum(checkpoint):
             raise ImportCutoverError("Post-rollback reconciliation did not match the checkpoint")
         summary = {
             "deleted_import_records": deleted,

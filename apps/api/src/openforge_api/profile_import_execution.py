@@ -11,6 +11,7 @@ from openforge_api.profile_workbook_cutover import (
     ImportPersistenceError,
     _apply_accounts,
     _apply_profile_settings,
+    _checkpoint_state_checksum,
     _decision_map,
     _ledger_write_entries,
     _profile_state_checksum,
@@ -367,13 +368,13 @@ def advance_import_execution(
 
             if stage == "PREPARING":
                 checkpoint = connection.execute(
-                    "SELECT snapshot_checksum FROM profile_import_checkpoints "
+                    "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
                     "WHERE import_run_id = ? AND profile_id = ?",
                     (import_run_id, profile_id),
                 ).fetchone()
-                if checkpoint is None or _profile_state_checksum(connection, profile_id) != str(
-                    checkpoint["snapshot_checksum"]
-                ):
+                if checkpoint is None or _profile_state_checksum(
+                    connection, profile_id
+                ) != _checkpoint_state_checksum(checkpoint):
                     raise ImportCutoverError(
                         "Profile state no longer matches the import checkpoint"
                     )
