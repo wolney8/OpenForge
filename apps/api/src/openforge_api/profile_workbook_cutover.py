@@ -1025,14 +1025,23 @@ def _apply_accounts(
             catalogue_id=catalogue_id,
             provider=provider,
         )
-        if provider.account_type == "Bookmaker":
-            bookmaker = connection.execute(
-                "SELECT bookmaker_id FROM bookmaker_catalogue "
-                "WHERE brand_name = ? COLLATE NOCASE",
-                (provider.brand_name,),
-            ).fetchone()
-            if bookmaker is not None:
-                state["bookmaker_id"] = str(bookmaker["bookmaker_id"])
+        try:
+            if provider.account_type == "Bookmaker":
+                bookmaker = connection.execute(
+                    "SELECT bookmaker_id FROM bookmaker_catalogue "
+                    "WHERE lower(brand_name) = lower(?)",
+                    (provider.brand_name,),
+                ).fetchone()
+                if bookmaker is not None:
+                    state["bookmaker_id"] = str(bookmaker["bookmaker_id"])
+        except Exception as error:
+            raise ImportPersistenceError(
+                stage="Profile Accounts",
+                category="account_reference",
+                import_id=str(source["import_key"]),
+                record_id=_entity_id("PA", profile_id, str(source["import_key"])),
+                cause=error,
+            ) from error
         current = by_catalogue.get(catalogue_id) or by_name_type.get(
             (
                 provider.brand_name.casefold(),
@@ -2040,7 +2049,8 @@ def validate_import_preflight(
         with connect() as connection:
             schema_compatibility = _validate_schema_compatibility(connection, plan)
             existing_writes = connection.execute(
-                "SELECT COUNT(*) AS count FROM profile_import_write_audit WHERE import_run_id = ?",
+                "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+                "WHERE import_run_id = ? AND rolled_back_at = ''",
                 (import_run_id,),
             ).fetchone()
             if existing_writes and int(existing_writes["count"]):

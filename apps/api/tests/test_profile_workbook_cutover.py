@@ -1023,6 +1023,18 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         )
         assert summary["job"]["events"][-1]["kind"] == "import_failed"
 
+    # A safely rolled-back attempt must remain eligible for the same exact
+    # non-mutating persistence preflight before it is retried.
+    preflight = validate_import_preflight(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        run=load_persisted_run(run),
+        workspace=workspace,
+        plan=plan,
+    )
+    assert preflight["status"] == "PASSED"
+    assert preflight["writes_committed"] is False
+
     monkeypatch.undo()
     execution = start_import_execution(
         profile_id=PROFILE_ID,

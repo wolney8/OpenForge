@@ -352,6 +352,12 @@ def replace_notification_user_state(
         return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
     timestamp = utc_now()
     with connect() as connection:
+        # Concurrent shell refreshes can replace the same user's notification state.
+        # Serialize those replacements so delete-and-reinsert remains atomic per user.
+        connection.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(?))",
+            (f"notification-state:{email.casefold()}",),
+        )
         connection.execute(
             "DELETE FROM notification_user_state WHERE email = ?",
             (email.casefold(),),
@@ -362,6 +368,10 @@ def replace_notification_user_state(
                 INSERT INTO notification_user_state (
                   email, notification_id, read_at, cleared_at, updated_at
                 ) VALUES (?, ?, ?, NULL, ?)
+                ON CONFLICT(email, notification_id) DO UPDATE SET
+                  read_at = excluded.read_at,
+                  cleared_at = excluded.cleared_at,
+                  updated_at = excluded.updated_at
                 """,
                 (email.casefold(), f"read:{key}", timestamp, timestamp),
             )
@@ -371,6 +381,10 @@ def replace_notification_user_state(
                 INSERT INTO notification_user_state (
                   email, notification_id, read_at, cleared_at, updated_at
                 ) VALUES (?, ?, NULL, ?, ?)
+                ON CONFLICT(email, notification_id) DO UPDATE SET
+                  read_at = excluded.read_at,
+                  cleared_at = excluded.cleared_at,
+                  updated_at = excluded.updated_at
                 """,
                 (email.casefold(), f"clear:{notification_id}", timestamp, timestamp),
             )

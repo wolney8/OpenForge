@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -43,6 +44,7 @@ TERMINAL_EXECUTION_STATUSES = {
     "ROLLBACK_FAILED",
 }
 IMPORT_BATCH_SIZE = 25
+LOGGER = logging.getLogger(__name__)
 
 
 def _now() -> str:
@@ -525,6 +527,16 @@ def advance_import_execution(
             raise ImportCutoverError("Updated import execution could not be loaded")
         return _execution_record(next_row)
     except Exception as error:
+        LOGGER.exception(
+            "Staged Profile import failed at %s for run %s",
+            failure_stage,
+            import_run_id,
+        )
+        diagnostic_error = (
+            error.__cause__
+            if isinstance(error, ImportPersistenceError) and error.__cause__ is not None
+            else error
+        )
         failure = {
             "stage": failure_stage,
             "category": (
@@ -532,7 +544,8 @@ def advance_import_execution(
             ),
             "import_id": error.import_id if isinstance(error, ImportPersistenceError) else "",
             "record_id": error.record_id if isinstance(error, ImportPersistenceError) else "",
-            "exception_type": type(error).__name__,
+            "exception_type": type(diagnostic_error).__name__,
+            "diagnostic_code": str(getattr(diagnostic_error, "sqlstate", "") or ""),
             "message": "Import execution failed and the pre-import Profile state was restored.",
         }
         try:

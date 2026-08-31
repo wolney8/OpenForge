@@ -93,5 +93,9 @@ export async function getModuleRows(
   profileId: string,
   moduleKey: TrackerModuleKey
 ): Promise<TrackerRow[]> {
+  // Hosted workflow shells load their records from the authenticated API.
+  // The SQLite seed is a local-development fallback and cannot run in Vercel's
+  // read-only server bundle.
+  if (!allowLocalFallback()) return [];
   return listModuleRows(profileId, moduleKey);
 }
