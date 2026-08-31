@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getProfile } from "./tracker-data";
+import { getModuleRows, getProfile } from "./tracker-data";
 
 describe("demo profile registry", () => {
   it("returns an approved demo profile by id", async () => {
@@ -10,5 +10,16 @@ describe("demo profile registry", () => {
 
   it("returns undefined for an unknown profile", async () => {
     await expect(getProfile("missing-profile")).resolves.toBeUndefined();
+  });
+
+  it("does not initialize the local SQLite module fallback when hosted", async () => {
+    const previousVercel = process.env.VERCEL;
+    process.env.VERCEL = "1";
+    try {
+      await expect(getModuleRows("profile-demo-001", "sportsbook-bets")).resolves.toEqual([]);
+    } finally {
+      if (previousVercel === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = previousVercel;
+    }
   });
 });
