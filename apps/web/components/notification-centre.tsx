@@ -61,22 +61,28 @@ export function NotificationCentre() {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const viewStateRef = useRef(viewState);
+  const preferencesRef = useRef(loadFundManagerNotificationPreferences());
   const hoverReadTimersRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     let isActive = true;
 
-    const refreshNotifications = async () => {
+    const refreshNotifications = async (includeSettings: boolean) => {
       setAttentionNow(Date.now());
       setIsLoading(true);
       try {
-        const [response, persistedState, persistedPreferences] = await Promise.all([
+        const settingsRequest = includeSettings
+          ? Promise.all([
+              loadPersistedNotificationState(),
+              loadPersistedNotificationPreferences(),
+            ])
+          : Promise.resolve([null, null] as const);
+        const [response, [persistedState, persistedPreferences]] = await Promise.all([
           fetch(`${apiBaseUrl}/fund-manager/notifications`, {
             cache: "no-store",
             credentials: "include",
           }),
-          loadPersistedNotificationState(),
-          loadPersistedNotificationPreferences(),
+          settingsRequest,
         ]);
         if (redirectExpiredSession(response)) {
           isActive = false;
@@ -89,10 +95,11 @@ export function NotificationCentre() {
           viewStateRef.current = persistedState;
           setViewState(persistedState);
         }
+        if (persistedPreferences) preferencesRef.current = persistedPreferences;
         setNotifications(
           filterFundManagerNotificationsForViewer(
             [...loadLocalFundManagerNotifications(), ...payload],
-            persistedPreferences ?? loadFundManagerNotificationPreferences()
+            preferencesRef.current
           )
         );
         setLoadFailed(false);
@@ -109,11 +116,15 @@ export function NotificationCentre() {
       }
     };
 
-    const handleRefresh = () => void refreshNotifications();
-    const handleFocus = () => void refreshNotifications();
-    const intervalId = window.setInterval(handleRefresh, refreshIntervalMs);
+    const handleRefresh = (event: Event) => {
+      const feedOnly = event instanceof CustomEvent && event.detail?.scope === "feed";
+      void refreshNotifications(!feedOnly);
+    };
+    const handleIntervalRefresh = () => void refreshNotifications(false);
+    const handleFocus = () => void refreshNotifications(true);
+    const intervalId = window.setInterval(handleIntervalRefresh, refreshIntervalMs);
 
-    void refreshNotifications();
+    void refreshNotifications(true);
     window.addEventListener("focus", handleFocus);
     window.addEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, handleRefresh);
 

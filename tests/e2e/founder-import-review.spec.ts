@@ -241,6 +241,9 @@ async function mockShell(page: Page) {
   });
   await page.route("**/profiles", async (route) => route.fulfill({ json: [] }));
   await page.route("**/fund-manager/notifications**", async (route) => route.fulfill({ json: [] }));
+  await page.route("**/fund-manager/import-executions", async (route) => {
+    await route.fulfill({ json: [] });
+  });
 }
 
 test("founder review uses canonical controls and exposes explicit EP choices", async ({ page }) => {
@@ -392,22 +395,30 @@ test("persisted import execution resumes through the authenticated shell monitor
     execution,
   };
   let advanced = false;
+  let executionListRequests = 0;
   await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
     await route.fulfill({ contentType: "application/json", body: JSON.stringify(importing) });
   });
   await page.route("**/fund-manager/import-executions", async (route) => {
+    executionListRequests += 1;
     await route.fulfill({ json: advanced ? [] : [execution] });
   });
   await page.route("**/fund-manager/import-executions/import-run-demo/advance", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 150));
     advanced = true;
-    await route.fulfill({ json: { ...execution, stage: "FREE_BETS", percentage: 76 } });
+    await route.fulfill({
+      json: { ...execution, status: "COMPLETE", stage: "RECONCILING", percentage: 100 },
+    });
   });
 
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   const progress = page.locator('[data-pd-id="profile-import.execution-progress"]');
   await expect(progress).toContainText("Sportsbook");
   await expect.poll(() => advanced).toBe(true);
+  await page.waitForTimeout(500);
+  const terminalRequestCount = executionListRequests;
+  await page.waitForTimeout(1_500);
+  expect(executionListRequests).toBe(terminalRequestCount);
 });
 
 test("decision impact is explicit and selected reset restores the original review state", async ({ page }) => {
@@ -535,6 +546,9 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
   await expect(page.getByRole("button", { name: "Download reconciliation" })).toBeVisible();
   await page.getByText("Open positions").click();
   await expect(page.getByText("future settling open")).toBeVisible();
+  await page.getByText("Review decisions and integrity").click();
+  const silentPartialWrites = page.getByRole("row").filter({ hasText: "silent partial writes" });
+  await expect(silentPartialWrites).toContainText("Passed");
   await page.getByRole("button", { name: "Roll back import" }).click();
   await expect(page.getByRole("dialog", { name: "Roll back this import?" })).toContainText(
     "import-run-demo",

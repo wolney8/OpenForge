@@ -8,6 +8,10 @@ import { redirectExpiredSession } from "@/lib/session-inactivity";
 
 export const IMPORT_EXECUTION_REFRESH_EVENT = "plum-duff:import-execution-refresh";
 
+const activeExecutionDelayMs = 1_000;
+const idleExecutionRefreshMs = 300_000;
+const failedExecutionRefreshMs = 60_000;
+
 type ImportExecution = {
   import_run_id: string;
   status: string;
@@ -41,10 +45,11 @@ export function ImportExecutionMonitor() {
         const executions = (await response.json()) as ImportExecution[];
         if (!executions.length) {
           endShellLoading();
-          schedule(30_000);
+          schedule(idleExecutionRefreshMs);
           return;
         }
         beginShellLoading();
+        let stillRunning = false;
         for (const execution of executions) {
           const advanceResponse = await fetch(
             `${apiBaseUrl}/fund-manager/import-executions/${execution.import_run_id}/advance`,
@@ -62,14 +67,21 @@ export function ImportExecutionMonitor() {
               detail: { importRunId: execution.import_run_id, status: next.status },
             })
           );
-          if (next.status !== "RUNNING") {
-            window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+          if (next.status === "RUNNING") {
+            stillRunning = true;
+          } else {
+            window.dispatchEvent(
+              new CustomEvent(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, {
+                detail: { scope: "feed" },
+              })
+            );
           }
         }
-        schedule(350);
+        if (!stillRunning) endShellLoading();
+        schedule(stillRunning ? activeExecutionDelayMs : idleExecutionRefreshMs);
       } catch {
         endShellLoading();
-        schedule(30_000);
+        schedule(failedExecutionRefreshMs);
       } finally {
         running = false;
       }

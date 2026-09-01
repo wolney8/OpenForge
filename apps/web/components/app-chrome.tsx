@@ -46,6 +46,7 @@ import {
 } from "@/lib/use-unsaved-changes-guard";
 
 const defaultProfileId = "profile-demo-001";
+const profileHeaderFallbackRefreshMs = 300_000;
 
 type ProfileHeaderRecord = {
   profile_id: string;
@@ -264,7 +265,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     }
 
     const refreshHeader = () => setHeaderRefreshKey((current) => current + 1);
-    const interval = window.setInterval(refreshHeader, 30_000);
+    const refreshVisibleHeader = () => {
+      if (document.visibilityState === "visible") refreshHeader();
+    };
+    const interval = window.setInterval(refreshVisibleHeader, profileHeaderFallbackRefreshMs);
     window.addEventListener("focus", refreshHeader);
 
     return () => {
