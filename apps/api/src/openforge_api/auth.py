@@ -385,16 +385,24 @@ def get_security_preference(request: Request) -> dict[str, Any]:
     return get_fund_manager_security_preference(session.email)
 
 
-@router.post("/activity", status_code=204)
-def record_activity(request: Request) -> Response:
+@router.post("/activity")
+def record_activity(request: Request) -> dict[str, Any]:
     session = require_request_session(request)
+    now = int(time.time())
     if not touch_fund_manager_session(
         session_id=session.session_id,
         email=session.email,
-        now=int(time.time()),
+        now=now,
     ):
         raise HTTPException(status_code=401, detail="Access unavailable")
-    return Response(status_code=204)
+    policy = get_fund_manager_session_status(
+        session_id=session.session_id,
+        email=session.email,
+        now=now,
+    )
+    if policy is None or not policy["valid_now"]:
+        raise HTTPException(status_code=401, detail="Access unavailable")
+    return {"session_policy": policy}
 
 
 @router.put("/security-preference")

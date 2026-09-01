@@ -12,6 +12,18 @@ const profile = {
 };
 
 async function mockProfileDirectory(page: Page) {
+  await page.route("**/fund-manager/import-executions", (route) =>
+    route.fulfill({ body: "[]", contentType: "application/json", status: 200 })
+  );
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const body = pathname.endsWith("/state")
+      ? { dismissed_ids: [], read_keys: [] }
+      : pathname.endsWith("/preferences")
+        ? { preferences: {} }
+        : [];
+    return route.fulfill({ body: JSON.stringify(body), contentType: "application/json", status: 200 });
+  });
   await page.route(/\/(?:api\/)?profiles\/?(?:\?.*)?$/, async (route) => {
     if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
       return route.fallback();
@@ -38,9 +50,27 @@ async function mockProfileDirectory(page: Page) {
   await page.route("**/api/profiles/profile-demo-001/**", async (route) => {
     if (route.request().method() !== "GET") return route.fallback();
     const url = new URL(route.request().url());
-    const body = url.pathname.endsWith("/tracker-settings")
-      ? JSON.stringify({})
-      : JSON.stringify([]);
+    const body = url.pathname.endsWith("/tracker-summary-sources")
+      ? JSON.stringify({
+          accounts: [],
+          sportsbook_bets: [],
+          free_bets: [],
+          casino_offers: [],
+          cash_adjustments: [],
+          each_way_extra_places: [],
+          balance_snapshots: [],
+          fee_periods: [],
+          tracker_settings: {
+            active_date_preset: "Week (Mon-Sun)",
+            custom_start_date: "",
+            custom_end_date: "",
+            range_back_days: 0,
+            range_forward_days: 0,
+          },
+        })
+      : url.pathname.endsWith("/tracker-settings")
+        ? JSON.stringify({})
+        : JSON.stringify([]);
     await route.fulfill({ contentType: "application/json", status: 200, body });
   });
 }
@@ -84,7 +114,9 @@ test.describe("Profile lifecycle and shell routing", () => {
     await row.click();
     const drawer = page.getByRole("dialog", { name: /Profile details for/ });
     await expect(drawer).toBeVisible();
-    await drawer.locator('[data-pd-id="profiles.drawer.archive"]').click();
+    const archiveAction = drawer.getByRole("button", { name: "Archive Profile" });
+    await expect(archiveAction).toBeVisible();
+    await archiveAction.click();
     const confirmation = page.getByRole("alertdialog", { name: /Archive / });
     await expect(confirmation).toBeVisible();
     await confirmation.locator('[data-pd-id="profiles.archive.confirm"]').click();

@@ -626,7 +626,12 @@ def get_persistence_status() -> dict[str, Any]:
         ("Authentication sessions", "fund_manager_sessions", "Neon", "transactional"),
         ("Security preferences", "fund_manager_security_preferences", "Neon", "transactional"),
         ("Profiles", "profiles", "Neon", "transactional"),
-        ("Profile settings", "profile_settings", "Neon", "transactional"),
+        (
+            "Profile settings",
+            "profile_tracker_settings,profile_onboarding_settings",
+            "Neon",
+            "transactional",
+        ),
         ("Profile Accounts and balances", "accounts", "Neon", "transactional"),
         (
             "Account Catalogue",
@@ -680,7 +685,9 @@ def get_persistence_status() -> dict[str, Any]:
                 "source": source,
                 "storage_kind": storage_kind,
                 "table": table,
-                "available": True if not table else table in existing_tables,
+                "available": True
+                if not table
+                else all(name in existing_tables for name in table.split(",")),
             }
             for domain, table, source, storage_kind in domains
         ],

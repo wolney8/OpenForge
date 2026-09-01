@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 test("Auto Logout changes only after the server persists the preference", async ({ page }) => {
+  await page.route("**/fund-manager/import-executions", (route) =>
+    route.fulfill({ body: "[]", contentType: "application/json", status: 200 })
+  );
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const body = pathname.endsWith("/state")
+      ? { dismissed_ids: [], read_keys: [] }
+      : pathname.endsWith("/preferences")
+        ? { preferences: {} }
+        : [];
+    return route.fulfill({ body: JSON.stringify(body), contentType: "application/json", status: 200 });
+  });
   await page.route("**/api/auth/session", async (route) => {
     await route.fulfill({
       contentType: "application/json",

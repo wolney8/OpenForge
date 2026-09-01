@@ -8,6 +8,7 @@ import {
   type ProfileDescriptor,
 } from "@/components/cross-profile-analytics";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { fetchJsonAndCache } from "@/lib/client-json-cache";
 import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 
 type ApiProfile = {
@@ -50,30 +51,19 @@ export function FundManagerDashboardLoader({
   const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Dashboard";
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
     beginShellLoading();
-    void fetch("/api/profiles", {
-      cache: "no-store",
-      credentials: "include",
-      signal: controller.signal,
-    }).then(async (profilesResponse) => {
-      if (profilesResponse.status === 401) {
-        window.location.replace("/login?error=session_expired");
-        return;
-      }
-      if (!profilesResponse.ok) {
-        throw new Error("Dashboard data is temporarily unavailable.");
-      }
-      setProfiles(((await profilesResponse.json()) as ApiProfile[]).map(mapProfile));
+    void fetchJsonAndCache<ApiProfile[]>("/api/profiles").then((records) => {
+      if (active) setProfiles(records.map(mapProfile));
     }).catch((reason: unknown) => {
-      if (!controller.signal.aborted) {
+      if (active) {
         setError(reason instanceof Error ? reason.message : "Dashboard data is temporarily unavailable.");
       }
     }).finally(() => {
-      if (!controller.signal.aborted) endShellLoading();
+      if (active) endShellLoading();
     });
     return () => {
-      controller.abort();
+      active = false;
       endShellLoading();
     };
   }, []);

@@ -32,7 +32,11 @@ import {
   type FreeBetSummaryRecord,
   type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
-import { TRACKER_DATA_UPDATED_EVENT } from "@/lib/tracker-data-events";
+import {
+  TRACKER_DATA_UPDATED_EVENT,
+  TRACKER_HEADER_SUMMARY_READY_EVENT,
+  type TrackerHeaderSummaryReadyDetail,
+} from "@/lib/tracker-data-events";
 import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
 import {
   PROFILE_DIRECTORY_UPDATED_EVENT,
@@ -260,6 +264,29 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   }, [activeProfileId]);
 
   useEffect(() => {
+    const applyReadySummary = (event: Event) => {
+      const detail = (event as CustomEvent<TrackerHeaderSummaryReadyDetail>).detail;
+      if (detail.profileId !== activeProfileId) return;
+      setHeaderSummary((current) => ({
+        profileId: detail.profileId,
+        profileName:
+          current?.profileId === detail.profileId
+            ? current.profileName
+            : activeProfiles.find((profile) => profile.profile_id === detail.profileId)?.display_name ??
+              "Selected profile",
+        overallPnl: detail.overallPnl,
+        profileRangeDetail: detail.profileRangeDetail,
+        profileRangeLabel: detail.profileRangeLabel,
+        profileSubtitle: detail.profileRangeLabel,
+      }));
+    };
+    window.addEventListener(TRACKER_HEADER_SUMMARY_READY_EVENT, applyReadySummary);
+    return () => {
+      window.removeEventListener(TRACKER_HEADER_SUMMARY_READY_EVENT, applyReadySummary);
+    };
+  }, [activeProfileId, activeProfiles]);
+
+  useEffect(() => {
     if (!isInsideProfile) {
       return;
     }
@@ -421,37 +448,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const resolvedRange = applyHeaderIdentity(profile, settings, null);
-
-      const [sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces] = await Promise.all([
-        fetchJsonAndCache<SportsbookSummaryRecord[]>(sportsbookUrl),
-        fetchJsonAndCache<FreeBetSummaryRecord[]>(freeBetUrl),
-        fetchJsonAndCache<CasinoSummaryRecord[]>(casinoUrl),
-        fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(cashUrl),
-        fetchJsonAndCache<EachWayExtraPlaceSummaryRecord[]>(eachWayExtraPlacesUrl),
-      ]);
-
-      const summary = summarizeTrackerData(
-        {
-          accounts: [],
-          sportsbookBets,
-          freeBets,
-          casinoOffers,
-          cashAdjustments,
-          eachWayExtraPlaces,
-        },
-        resolvedRange,
-        undefined,
-        {
-          mugBetFrequencyDays: settings.mug_bet_frequency_days,
-        }
-      );
-
-      if (!isActive) {
-        return;
-      }
-
-      applyHeaderIdentity(profile, settings, summary.profitQuickView.overallPnl);
+      // Profile pages own their ledger reads and publish their calculated
+      // header summary without causing another network refresh.
+      applyHeaderIdentity(profile, settings, null);
     };
 
     void loadHeader().catch(() => {

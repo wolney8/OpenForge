@@ -179,6 +179,33 @@ def test_server_session_enforces_inactivity_and_activity_reset() -> None:
         assert validate_request_session(token, now=start + 1_700) is None
 
 
+def test_activity_endpoint_returns_the_refreshed_server_deadline(monkeypatch) -> None:
+    with configured_auth():
+        start = 2_000_000_000
+        token = create_session_token(
+            subject="google-founder-001",
+            email="founder@example.invalid",
+            name="Founder",
+            now=start,
+        )
+        upsert_fund_manager_security_preference(
+            email="founder@example.invalid",
+            auto_logout_enabled=True,
+            timeout_minutes=15,
+        )
+        monkeypatch.setattr(auth_module.time, "time", lambda: start + 800)
+        client = TestClient(app)
+        client.cookies.set(SESSION_COOKIE_NAME, token)
+
+        response = client.post("/auth/activity")
+
+        assert response.status_code == 200
+        policy = response.json()["session_policy"]
+        assert policy["last_activity_at"] == start + 800
+        assert policy["effective_expires_at"] == start + 1_700
+        assert policy["valid_now"] is True
+
+
 def test_auto_logout_off_uses_absolute_session_expiry() -> None:
     with configured_auth():
         start = 2_000_000_000

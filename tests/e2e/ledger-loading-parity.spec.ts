@@ -12,6 +12,21 @@ const scenarios = [
   },
 ];
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/fund-manager/import-executions", (route) =>
+    route.fulfill({ body: "[]", contentType: "application/json", status: 200 })
+  );
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const body = pathname.endsWith("/state")
+      ? { dismissed_ids: [], read_keys: [] }
+      : pathname.endsWith("/preferences")
+        ? { preferences: {} }
+        : [];
+    return route.fulfill({ body: JSON.stringify(body), contentType: "application/json", status: 200 });
+  });
+});
+
 test.describe("Cross-ledger loading parity", () => {
   test("Fund Manager Dashboard distinguishes loading from its empty Profile state", async ({ page }) => {
     let releaseProfiles: (() => void) | undefined;
@@ -52,6 +67,54 @@ test.describe("Cross-ledger loading parity", () => {
     await navigation;
     await expect(loadingState).toBeHidden();
     await expect(page.getByRole("heading", { name: "Create the first Profile" })).toBeVisible();
+  });
+
+  test("Profiles keeps critical controls inert until reporting is ready", async ({ page }) => {
+    let releaseSummary: (() => void) | undefined;
+    const summaryGate = new Promise<void>((resolve) => { releaseSummary = resolve; });
+    await page.route("**/tracker-summary-sources", async (route) => {
+      if (route.request().url().includes("profile-demo-001")) await summaryGate;
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          accounts: [],
+          sportsbook_bets: [],
+          free_bets: [],
+          casino_offers: [],
+          cash_adjustments: [],
+          each_way_extra_places: [],
+          balance_snapshots: [],
+          fee_periods: [],
+          tracker_settings: {
+            active_date_preset: "Week (Mon-Sun)",
+            custom_start_date: "",
+            custom_end_date: "",
+            range_back_days: 0,
+            range_forward_days: 0,
+          },
+        }),
+      });
+    });
+
+    const navigation = page.goto("/profiles");
+    const analytics = page.locator(".cross-profile-analytics");
+    const controls = page.locator(".fund-manager-control-bar.is-directory");
+    const tabs = page.locator('[data-pd-id="profiles.navigation.tabs"]');
+    await expect(analytics).toHaveAttribute("aria-busy", "true");
+    await expect(controls).toHaveAttribute("inert", "");
+    await expect(tabs).toHaveAttribute("inert", "");
+    await expect(page.getByText("Loading combined profile reporting")).toBeVisible();
+    await expect(page.getByText("Unavailable", { exact: true })).toHaveCount(0);
+    expect(await page.locator(".cross-profile-analytics > .ledger-loading-overlay").evaluate(
+      (element) => getComputedStyle(element).pointerEvents
+    )).toBe("auto");
+
+    releaseSummary?.();
+    await navigation;
+    await expect(analytics).toHaveAttribute("aria-busy", "false");
+    await expect(controls).not.toHaveAttribute("inert", "");
+    await expect(tabs).not.toHaveAttribute("inert", "");
   });
 
   test("Profile Accounts keeps its data shell busy until all initial sources resolve", async ({ page }) => {

@@ -15,16 +15,20 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import {
-  fetchJsonAndCache,
   readCachedJson,
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
+import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
   summarizeFeePeriods,
   type FeePeriodApiRecord,
 } from "@/lib/fee-period-summary";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { buildOperationalLedgerHref } from "@/lib/operational-actions";
+import {
+  TRACKER_HEADER_SUMMARY_READY_EVENT,
+  type TrackerHeaderSummaryReadyDetail,
+} from "@/lib/tracker-data-events";
 import {
   formatHumanDisplayDate,
   formatMoney,
@@ -337,38 +341,17 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       setFeePeriods(cachedData.feePeriods);
     }
 
-    const [
-      accounts,
-      sportsbookBets,
-      freeBets,
-      casinoOffers,
-      cashAdjustments,
-      eachWayExtraPlaces,
-      balanceSnapshots,
-      feePeriodsResponse,
-      trackerSettings,
-    ] = await Promise.all([
-      fetchJsonAndCache<AccountSummaryRecord[]>(urls.accounts),
-      fetchJsonAndCache<SportsbookSummaryRecord[]>(urls.sportsbookBets),
-      fetchJsonAndCache<FreeBetSummaryRecord[]>(urls.freeBets),
-      fetchJsonAndCache<CasinoSummaryRecord[]>(urls.casinoOffers),
-      fetchJsonAndCache<CashAdjustmentSummaryRecord[]>(urls.cashAdjustments),
-      fetchJsonAndCache<EachWayExtraPlaceSummaryRecord[]>(urls.eachWayExtraPlaces),
-      fetchJsonAndCache<BalanceSnapshotSummaryRecord[]>(urls.balanceSnapshots),
-      fetchJsonAndCache<FeePeriodApiRecord[]>(urls.feePeriods),
-      fetchJsonAndCache<TrackerSettingsRecord>(urls.trackerSettings),
-    ]);
-
-    setSettings(trackerSettings);
-    setFeePeriods(feePeriodsResponse);
+    const sources = await fetchTrackerSummarySources(profileId);
+    setSettings(sources.trackerSettings as TrackerSettingsRecord);
+    setFeePeriods(sources.feePeriods);
     setData({
-      accounts,
-      sportsbookBets,
-      freeBets,
-      casinoOffers,
-      cashAdjustments,
-      eachWayExtraPlaces,
-      balanceSnapshots,
+      accounts: sources.accounts,
+      sportsbookBets: sources.sportsbookBets,
+      freeBets: sources.freeBets,
+      casinoOffers: sources.casinoOffers,
+      cashAdjustments: sources.cashAdjustments,
+      eachWayExtraPlaces: sources.eachWayExtraPlaces,
+      balanceSnapshots: sources.balanceSnapshots,
     });
   }, [profileId]);
 
@@ -451,6 +434,21 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     settings?.mug_bet_frequency_days,
     settings?.use_global_date_range_toggle,
   ]);
+
+  useEffect(() => {
+    if (!summary) return;
+    const detail: TrackerHeaderSummaryReadyDetail = {
+      profileId,
+      overallPnl: summary.profitQuickView.overallPnl,
+      profileRangeLabel: formatResolvedDateRange(resolvedRange),
+      profileRangeDetail: formatResolvedDateRangeContext(resolvedRange),
+    };
+    window.dispatchEvent(
+      new CustomEvent<TrackerHeaderSummaryReadyDetail>(TRACKER_HEADER_SUMMARY_READY_EVENT, {
+        detail,
+      })
+    );
+  }, [profileId, resolvedRange, summary]);
 
   const feePosition = useMemo(
     () => summarizeFeePeriods(feePeriods, resolvedRange.start, resolvedRange.end),
@@ -576,9 +574,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const isDashboardLike = variant === "dashboard" || variant === "profit-tracker";
   const isReports = variant === "reports";
 
+  const isCriticalLoading = !summary && !errorMessage;
+
   return (
-    <section aria-busy={!summary} className="stack tracker-summary-shell">
-      <section className="content-panel stack">
+    <section aria-busy={isCriticalLoading} className="stack tracker-summary-shell">
+      <section className="content-panel stack" inert={isCriticalLoading ? true : undefined}>
         <div className="panel-header">
           <div className="section-heading-row">
             <h2>{getVariantTitle(variant)}</h2>
@@ -1250,7 +1250,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             </>
           )}
         </>
-      ) : (
+      ) : errorMessage ? null : (
         <LedgerLoadingIndicator label="Loading tracker summaries" />
       )}
     </section>

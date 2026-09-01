@@ -88,6 +88,11 @@ use the canonical primitive and computed styling.
   `LedgerLoadingIndicator` or a layout-preserving skeleton inside its stable shell; a small
   isolated action uses the canonical button spinner; empty and error states remain semantically
   distinct. Never add an artificial delay. Verify light/dark and reduced-motion behaviour.
+- Route/page critical loading must retain `aria-busy` until every query required to make the page
+  usable has settled. Its canonical overlay intercepts pointer input and the underlying controls
+  are `inert`; stale controls must never remain clickable through a translucent loader. Secondary
+  sections use local layout-preserving loading, while background refresh keeps usable content and
+  uses only subtle progress. `Unavailable`, `Empty`, `Loading` and `Error` are distinct states.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
 - Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
   for a genuinely nested card, inset section or secondary surface; do not use it to create a

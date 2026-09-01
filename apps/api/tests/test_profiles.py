@@ -62,6 +62,35 @@ def configure_profile_catalogue(tmp_path: Path) -> None:
     )
 
 
+def test_tracker_summary_sources_reuse_signed_off_read_contracts(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    settings.environment = "local"
+    settings.auth_required = False
+    client = TestClient(app)
+    profile_id = "profile-demo-001"
+
+    response = client.get(f"/profiles/{profile_id}/tracker-summary-sources")
+
+    assert response.status_code == 200
+    sources = response.json()
+    endpoints = {
+        "accounts": "accounts",
+        "sportsbook_bets": "sportsbook-bets",
+        "free_bets": "free-bets",
+        "casino_offers": "casino-offers",
+        "cash_adjustments": "cash-adjustments",
+        "each_way_extra_places": "each-way-extra-places",
+        "balance_snapshots": "balance-snapshots",
+        "fee_periods": "fee-periods",
+        "tracker_settings": "tracker-settings",
+    }
+    for key, endpoint in endpoints.items():
+        individual = client.get(f"/profiles/{profile_id}/{endpoint}")
+        assert individual.status_code == 200
+        assert sources[key] == individual.json()
+
+
 def profile_onboarding_payload() -> dict[str, object]:
     return {
         "display_name": "Synthetic Profile",

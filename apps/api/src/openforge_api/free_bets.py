@@ -204,7 +204,10 @@ def serialize_calculation(calculation: FreeBetCalculationResult) -> dict[str, ob
 
 
 def build_calculation_input(
-    record: FreeBetRecord, *, tracker_settings: ProfileTrackerSettingsRecord
+    record: FreeBetRecord,
+    *,
+    tracker_settings: ProfileTrackerSettingsRecord,
+    resolved_commission: str | None = None,
 ) -> FreeBetCalculationInput:
     return FreeBetCalculationInput(
         profile_id=record.profile_id,
@@ -216,9 +219,10 @@ def build_calculation_input(
         back_odds=record.back_odds,
         match_strategy=record.match_strategy,
         lay_odds_1=record.lay_odds_1,
-        lay_commission_1=get_profile_exchange_commission(
-            record.profile_id,
-            record.exchange_name,
+        lay_commission_1=(
+            resolved_commission
+            if resolved_commission is not None
+            else get_profile_exchange_commission(record.profile_id, record.exchange_name)
         ),
         lay_actual=record.lay_actual,
         lay_matched_stake_1=record.lay_matched_stake_1,
@@ -244,7 +248,11 @@ def build_response(
         else get_profile_exchange_commission(record["profile_id"], record["exchange_name"])
     )
     calculation = calculate_free_bet_current_value(
-        build_calculation_input(row, tracker_settings=tracker_settings),
+        build_calculation_input(
+            row,
+            tracker_settings=tracker_settings,
+            resolved_commission=resolved_commission,
+        ),
         as_of_datetime=datetime.now(),
     )
     return FreeBetResponse.model_validate(

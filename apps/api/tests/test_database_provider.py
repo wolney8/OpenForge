@@ -68,6 +68,11 @@ def test_persistence_status_reports_domains_without_credentials(tmp_path: Path) 
     assert payload["connected"] is True
     domains = {entry["domain"]: entry for entry in payload["domains"]}
     assert domains["Profiles"]["table"] == "profiles"
+    assert (
+        domains["Profile settings"]["table"]
+        == "profile_tracker_settings,profile_onboarding_settings"
+    )
+    assert domains["Profile settings"]["available"] is True
     assert domains["Profile import runs"]["table"] == "profile_import_runs"
     assert domains["Import review decisions"]["available"] is True
     assert "database_url" not in str(payload).lower()

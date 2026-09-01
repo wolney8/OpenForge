@@ -8,6 +8,7 @@ type CacheEntry<T> = {
 };
 
 const jsonCache = new Map<string, CacheEntry<unknown>>();
+const inFlightJsonRequests = new Map<string, Promise<unknown>>();
 
 export const TRACKER_STALE_WHILE_REFRESH_MS = 300_000;
 
@@ -38,10 +39,23 @@ export async function fetchJsonAndCache<T>(
   url: string,
   options: { signal?: AbortSignal } = {}
 ): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", signal: options.signal });
-  if (!response.ok) {
-    redirectExpiredSession(response);
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-  return writeCachedJson(url, (await response.json()) as T);
+  const request = async () => {
+    const response = await fetch(url, { cache: "no-store", signal: options.signal });
+    if (!response.ok) {
+      redirectExpiredSession(response);
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    return writeCachedJson(url, (await response.json()) as T);
+  };
+
+  // Signal-owned requests must remain independently abortable. Stable shell/page
+  // reads without a signal can safely share one in-flight request per URL.
+  if (options.signal) return request();
+  const current = inFlightJsonRequests.get(url) as Promise<T> | undefined;
+  if (current) return current;
+  const pending = request().finally(() => {
+    if (inFlightJsonRequests.get(url) === pending) inFlightJsonRequests.delete(url);
+  });
+  inFlightJsonRequests.set(url, pending);
+  return pending;
 }

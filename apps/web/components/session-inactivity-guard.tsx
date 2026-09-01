@@ -33,11 +33,18 @@ export function SessionInactivityGuard() {
     void fetch("/api/auth/activity", {
       credentials: "include",
       method: "POST",
-    }).then((response) => {
+    }).then(async (response) => {
       if (response.status === 401) {
         window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
         window.location.replace("/login?error=session_expired");
+        return;
       }
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        session_policy?: FundManagerSession["session_policy"];
+      };
+      if (!payload.session_policy) return;
+      setSession((current) => current ? { ...current, session_policy: payload.session_policy } : current);
     }).catch(() => undefined);
   }, []);
 
@@ -99,7 +106,13 @@ export function SessionInactivityGuard() {
         window.location.replace("/login?error=session_expired");
         return;
       }
-      if (event.key === SESSION_ACTIVITY_STORAGE_KEY) setWarningOpen(false);
+      if (event.key === SESSION_ACTIVITY_STORAGE_KEY) {
+        setWarningOpen(false);
+        void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+          .then((response) => response.ok ? response.json() as Promise<FundManagerSession> : null)
+          .then((value) => { if (value) setSession(value); })
+          .catch(() => undefined);
+      }
       if (event.key === `pd-session-security:${session.email.toLocaleLowerCase()}`) {
         refreshPreference();
       }
@@ -129,7 +142,7 @@ export function SessionInactivityGuard() {
           now,
           timeoutMinutes: preference.timeoutMinutes,
         }),
-        session.expires_at * 1000 - now
+        (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000 - now
       );
       if (remaining <= 0) {
         void logout("expired");

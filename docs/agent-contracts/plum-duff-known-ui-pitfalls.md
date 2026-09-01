@@ -683,3 +683,16 @@ cause, prevention rule and regression test.
   patterns, with protected account details and logout inside it.
 - Test added: `tests/e2e/login-profiles-shell.spec.ts`,
   `tests/e2e/fund-manager-identity-shell.spec.ts` and `apps/web/proxy.test.ts`.
+
+## 2026-09-01: Partial cache hydration exposed stale controls and unavailable reporting
+
+- Area: global Dashboard, Profiles directory and Profile reporting.
+- Root cause: one cached Profile could end the critical loading state before all selected Profiles
+  and tracker settings resolved. The shared overlay ignored pointer input, and the normal loading
+  path retried every ten seconds, duplicating already-running Neon requests.
+- Prevention: critical page loading requires complete critical data, keeps controls inert behind a
+  pointer-intercepting canonical overlay and ends shell progress only when the critical request set
+  settles. Retry polling starts only after a real failure; loading is never rendered as
+  `Unavailable`.
+- Test added: `tests/e2e/hosted-reliability.spec.ts` covers blocked controls, delayed Profile
+  reporting and the restored Profile archive lifecycle.

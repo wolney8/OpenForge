@@ -218,6 +218,14 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-008A6 | Comparison Profile lifecycle | Archive the current comparison Profile with import history intact and create a fresh Profile for the next snapshot | Existing Profile archive/create workflow | COMPLETE |
 | PD-FR-008A7 | Financial parity guard | Prove this presentation/lifecycle pass does not mutate imported financial values or ledger records | Persisted Profile reporting and workbook parity contracts | COMPLETE |
 | PD-FR-008A8 | Delivery checkpoint | Commit only intended changes, push main, verify deployment and keep local services healthy | Repository delivery cadence | COMPLETE |
+| PD-FR-008R1 | Production inactivity lifecycle | Refresh the server-issued effective inactivity deadline after throttled genuine activity and reject true inactivity | Existing Fund Manager session policy and activity endpoint | COMPLETE |
+| PD-FR-008R2 | Critical page loading | Keep Profile reporting controls inert and covered until all critical Profile datasets settle | Canonical shell progress and LedgerLoadingIndicator | COMPLETE |
+| PD-FR-008R3 | Hosted request efficiency | Remove loading-time retry storms and deduplicate equivalent in-flight shell/page reads | Existing client JSON cache and failure retry contract | COMPLETE |
+| PD-FR-008R4 | Profile reporting state | Reserve Unavailable for settled failures rather than partial cache/loading state | Profiles directory reporting summary | COMPLETE |
+| PD-FR-008R5 | Site Settings diagnostic | Check the actual tracker/onboarding settings tables instead of the obsolete profile_settings name | Existing authenticated persistence diagnostic | COMPLETE |
+| PD-FR-008R6 | Profile archive discoverability | Expose the existing archive lifecycle as a labelled Profile action with retained history | Existing Profile PATCH and archive confirmation | COMPLETE |
+| PD-FR-008R7 | Durable loading contract | Require inert critical content and distinct loading/empty/error/unavailable states | UI consistency enforcer and known pitfalls | COMPLETE |
+| PD-FR-008R8 | Hosted reliability delivery | Verify tests, performance, exact deployment and healthy local runtime | Repository delivery cadence | IN PROGRESS |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |

@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchJsonAndCache,
   invalidateCachedJson,
   readCachedJson,
   writeCachedJson,
 } from "./client-json-cache";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("client-json-cache", () => {
   it("returns recently cached JSON by URL", () => {
@@ -30,5 +35,28 @@ describe("client-json-cache", () => {
     expect(readCachedJson("/api/cache-test/profile-a/free-bets")).toBeNull();
     expect(readCachedJson("/api/cache-test/profile-a/sportsbook-bets")).toBeNull();
     expect(readCachedJson("/api/cache-test/profile-b/free-bets")).toEqual([{ id: "C" }]);
+  });
+
+  it("shares equivalent in-flight reads without an abort signal", async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const fetchMock = vi.fn(async () => {
+      await gate;
+      return new Response(JSON.stringify([{ id: "ROW-1" }]), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = fetchJsonAndCache<Array<{ id: string }>>("/api/cache-test/shared");
+    const second = fetchJsonAndCache<Array<{ id: string }>>("/api/cache-test/shared");
+    release?.();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      [{ id: "ROW-1" }],
+      [{ id: "ROW-1" }],
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

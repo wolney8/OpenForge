@@ -22,9 +22,14 @@ export type FundManagerSession = {
   name: string;
   role: "fund_manager";
   session_policy?: {
+    absolute_expires_at: number;
     auto_logout_enabled: boolean;
+    effective_expires_at: number;
+    inactivity_expires_at: number | null;
+    last_activity_at: number;
     preference_configured: boolean;
     timeout_minutes: number;
+    valid_now: boolean;
   };
 };
 
@@ -134,7 +139,9 @@ export function FundManagerAccountPage() {
             <div className="profile-future-setting-row">
               <span>Current session</span>
               <span className="table-chip table-chip-status-placed">
-                Active until {new Date(session.expires_at * 1000).toLocaleString("en-GB")}
+                Active until {new Date(
+                  (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000
+                ).toLocaleString("en-GB")}
               </span>
             </div>
             <div className="profile-future-setting-row">

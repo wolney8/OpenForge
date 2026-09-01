@@ -33,6 +33,7 @@ from openforge_api.profile_workbook_imports import router as profile_workbook_im
 from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
+from openforge_api.tracker_summary_sources import router as tracker_summary_sources_router
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(OwnerAuthenticationMiddleware)
@@ -69,6 +70,7 @@ app.include_router(database_provider_router)
 app.include_router(exchange_settings_router)
 app.include_router(each_way_extra_places_router)
 app.include_router(tracker_settings_router)
+app.include_router(tracker_summary_sources_router)
 app.include_router(lookup_values_router)
 
 

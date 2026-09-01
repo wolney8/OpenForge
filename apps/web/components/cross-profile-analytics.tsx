@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { beginShellLoading } from "@/lib/shell-loading";
+import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { PROFILE_DIRECTORY_UPDATED_EVENT } from "@/lib/recent-profiles";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue } from "./financial-value";
-import { fetchJsonAndCache, readCachedJson } from "@/lib/client-json-cache";
+import { readCachedJson } from "@/lib/client-json-cache";
+import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
   aggregateCrossProfileReporting,
   type ProfileComparisonRow,
@@ -129,49 +130,6 @@ type ProfileLoadFailure = {
   displayName: string;
   message: string;
 };
-
-async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
-  return fetchJsonAndCache<T>(url, { signal });
-}
-
-async function loadProfileDataset(
-  profileId: string,
-  signal: AbortSignal
-): Promise<TrackerSummaryDataset> {
-  const base = `${apiBaseUrl}/profiles/${profileId}`;
-  const [accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces, balanceSnapshots] =
-    await Promise.all([
-    fetchJson<AccountSummaryRecord[]>(`${base}/accounts`, signal),
-    fetchJson<SportsbookSummaryRecord[]>(`${base}/sportsbook-bets`, signal),
-    fetchJson<FreeBetSummaryRecord[]>(`${base}/free-bets`, signal),
-    fetchJson<CasinoSummaryRecord[]>(`${base}/casino-offers`, signal),
-    fetchJson<CashAdjustmentSummaryRecord[]>(`${base}/cash-adjustments`, signal),
-    fetchJson<EachWayExtraPlaceSummaryRecord[]>(`${base}/each-way-extra-places`, signal),
-    fetchJson<BalanceSnapshotSummaryRecord[]>(`${base}/balance-snapshots`, signal),
-  ]);
-
-  return { accounts, sportsbookBets, freeBets, casinoOffers, cashAdjustments, eachWayExtraPlaces, balanceSnapshots };
-}
-
-async function loadProfileFeePeriods(
-  profileId: string,
-  signal: AbortSignal
-): Promise<FeePeriodApiRecord[]> {
-  return fetchJson<FeePeriodApiRecord[]>(
-    `${apiBaseUrl}/profiles/${profileId}/fee-periods`,
-    signal
-  );
-}
-
-async function loadProfileTrackerSettings(
-  profileId: string,
-  signal: AbortSignal
-): Promise<TrackerSettingsRecord> {
-  return fetchJson<TrackerSettingsRecord>(
-    `${apiBaseUrl}/profiles/${profileId}/tracker-settings`,
-    signal
-  );
-}
 
 function ReportTable({
   feeHeading,
@@ -477,7 +435,11 @@ export function CrossProfileAnalytics({
       if (settings) cachedTrackerSettings.set(profile.profileId, settings);
     }
 
-    if (cachedDatasets.size > 0) {
+    const hasCompleteCriticalCache =
+      cachedDatasets.size === profiles.length &&
+      cachedTrackerSettings.size === profiles.length;
+
+    if (hasCompleteCriticalCache) {
       cachedFrame = window.requestAnimationFrame(() => {
         if (controller.signal.aborted) return;
         setDatasets(cachedDatasets);
@@ -485,15 +447,33 @@ export function CrossProfileAnalytics({
         if (cachedTrackerSettings.size > 0) setTrackerSettings(cachedTrackerSettings);
         setIsLoading(false);
       });
+    } else {
+      cachedFrame = window.requestAnimationFrame(() => {
+        if (!controller.signal.aborted) setIsLoading(true);
+      });
+      beginShellLoading();
     }
 
     void Promise.allSettled(
-      profiles.map(async (profile) => ({
-        profile,
-        dataset: await loadProfileDataset(profile.profileId, controller.signal),
-        periods: await loadProfileFeePeriods(profile.profileId, controller.signal),
-        settings: await loadProfileTrackerSettings(profile.profileId, controller.signal),
-      }))
+      profiles.map(async (profile) => {
+        const sources = await fetchTrackerSummarySources(profile.profileId, {
+          signal: controller.signal,
+        });
+        return {
+          profile,
+          dataset: {
+            accounts: sources.accounts,
+            sportsbookBets: sources.sportsbookBets,
+            freeBets: sources.freeBets,
+            casinoOffers: sources.casinoOffers,
+            cashAdjustments: sources.cashAdjustments,
+            eachWayExtraPlaces: sources.eachWayExtraPlaces,
+            balanceSnapshots: sources.balanceSnapshots,
+          },
+          periods: sources.feePeriods,
+          settings: sources.trackerSettings,
+        };
+      })
     ).then((results) => {
       if (controller.signal.aborted) {
         return;
@@ -523,6 +503,7 @@ export function CrossProfileAnalytics({
       setTrackerSettings(nextTrackerSettings);
       setFailures(nextFailures);
       setIsLoading(false);
+      if (!hasCompleteCriticalCache) endShellLoading();
     });
 
     return () => {
@@ -530,11 +511,12 @@ export function CrossProfileAnalytics({
       if (cachedFrame !== null) {
         window.cancelAnimationFrame(cachedFrame);
       }
+      if (!hasCompleteCriticalCache) endShellLoading();
     };
   }, [profiles, loadRevision]);
 
   useEffect(() => {
-    if (!isLoading && failures.length === 0) {
+    if (failures.length === 0) {
       return;
     }
 
@@ -545,7 +527,7 @@ export function CrossProfileAnalytics({
       window.clearInterval(intervalId);
       window.removeEventListener("focus", retry);
     };
-  }, [failures.length, isLoading]);
+  }, [failures.length]);
 
   const resolvedRange = useMemo(
     () => resolveDateRange({ preset, customStart, customEnd }),
@@ -1123,10 +1105,14 @@ export function CrossProfileAnalytics({
 
   return (
     <section
+      aria-busy={isLoading}
       className="content-panel stack cross-profile-analytics"
       aria-labelledby="combined-analytics-title"
     >
-      <div className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}>
+      <div
+        className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}
+        inert={isLoading ? true : undefined}
+      >
         {activeTab !== "profiles" && activeTab !== "fees" ? (
         <details className="profile-report-picker fund-manager-control-slot-profile">
         <summary>
@@ -1357,6 +1343,7 @@ export function CrossProfileAnalytics({
         aria-label="Fund Manager profile and analytics sections"
         className="analytics-tab-list"
         data-pd-id="profiles.navigation.tabs"
+        inert={isLoading ? true : undefined}
         role="tablist"
       >
         {analyticsTabs.map((tab) => (
@@ -2002,6 +1989,23 @@ export function CrossProfileAnalytics({
                 <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : "Unavailable"}</dd></div>
               </dl>
             </section>
+            {normalizeProfileStatus(detailProfile.status) !== "Archived" ? (
+              <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.lifecycle">
+                <h3>Profile lifecycle</h3>
+                <p className="field-hint">
+                  Archiving removes this Profile from active views while retaining its tracker and import history.
+                </p>
+                <button
+                  className="icon-button icon-button-destructive icon-text-action"
+                  data-pd-id="profiles.drawer.archive"
+                  onClick={openArchiveConfirmation}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">archive</span>
+                  <span>Archive Profile</span>
+                </button>
+              </section>
+            ) : null}
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
@@ -2043,18 +2047,6 @@ export function CrossProfileAnalytics({
               >
                 <span aria-hidden="true" className="material-symbols-outlined">summarize</span>
               </Link>
-              {normalizeProfileStatus(detailProfile.status) !== "Archived" ? (
-                <button
-                  aria-label={`Archive ${detailProfile.displayName}`}
-                  className="icon-button icon-button-destructive"
-                  data-pd-id="profiles.drawer.archive"
-                  onClick={openArchiveConfirmation}
-                  title={`Archive ${detailProfile.displayName}`}
-                  type="button"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined">archive</span>
-                </button>
-              ) : null}
             </nav>
             {drawerNavigationLabel ? (
               <div className="profile-drawer-loading" role="status">

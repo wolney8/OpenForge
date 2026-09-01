@@ -8636,7 +8636,17 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border-radius: 0 0 1.75rem 1.75rem;
   background: color-mix(in srgb, var(--surface) 96%, transparent);
   backdrop-filter: blur(5px);
-  pointer-events: none;
+  pointer-events: auto;
+}
+
+.cross-profile-analytics {
+  position: relative;
+  min-height: 32rem;
+}
+
+.cross-profile-analytics > .ledger-loading-overlay {
+  inset: 0;
+  border-radius: inherit;
 }
 
 .ledger-loading-indicator {
