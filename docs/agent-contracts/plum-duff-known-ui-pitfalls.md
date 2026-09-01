@@ -11,8 +11,9 @@ cause, prevention rule and regression test.
 - Prevention: normal provider cells load master catalogue metadata and resolve the Profile
   Account's stable `catalogue_id` first; normalized names are legacy fallback only. Always render
   the full canonical brand name through `AccountProviderIdentity`, never the short display name.
-- Regression test: `apps/web/lib/bookmaker-catalogue.test.ts` locks stable-ID precedence and
-  normalized fallback; ledger render paths use the single `BookmakerIdentity` adapter.
+- Regression tests: `apps/web/lib/bookmaker-catalogue.test.ts` locks stable-ID precedence and
+  normalized fallback; `tests/e2e/profile-opportunity-queue.spec.ts` verifies full-name chip
+  rendering and contained table geometry at desktop and reduced widths.
 
 ## 2026-08-28: Settings tabs followed content after gaining sticky positioning
 
