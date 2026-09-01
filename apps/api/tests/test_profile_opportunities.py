@@ -198,3 +198,80 @@ def test_signup_opportunity_warns_about_related_restricted_account(
         "Potential related restriction: this provider shares Risk Team Shared Risk "
         "with Restricted Bookmaker, which is restricted on this Profile."
     ]
+
+
+def test_signup_opportunity_ignores_generic_proprietary_platform(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    client.get("/profiles/profile-demo-001/accounts")
+    monkeypatch.setattr(
+        common_bet_combos,
+        "get_master_account_catalogue",
+        lambda: SimpleNamespace(
+            records=[
+                SimpleNamespace(
+                    catalogue_id="CAT-CANDIDATE",
+                    risk_team="",
+                    operator_group="",
+                    platform="Proprietary",
+                ),
+                SimpleNamespace(
+                    catalogue_id="CAT-RESTRICTED",
+                    risk_team="",
+                    operator_group="",
+                    platform="Proprietary",
+                ),
+            ]
+        ),
+    )
+    base_account = {
+        "bookmaker_id": None,
+        "type": "Bookie",
+        "counts_in_cash_total": True,
+        "channel": "Online",
+        "current_balance": "0.00",
+        "pending_withdrawal_amount": "0.00",
+        "last_balance_update": "",
+        "group_name": "",
+        "platform": "",
+        "sign_up_date": "",
+        "notes": "",
+    }
+    create_account(
+        "profile-demo-001",
+        {
+            **base_account,
+            "account_id": "AC-SIGNUP-CANDIDATE",
+            "catalogue_id": "CAT-CANDIDATE",
+            "account": "Candidate Bookmaker",
+            "status": "Not Signed Up",
+            "lifecycle_status": "Not Signed Up",
+            "restrictions_json": "[]",
+        },
+    )
+    create_account(
+        "profile-demo-001",
+        {
+            **base_account,
+            "account_id": "AC-RESTRICTED-RELATED",
+            "catalogue_id": "CAT-RESTRICTED",
+            "account": "Restricted Bookmaker",
+            "status": "Bonus Restricted",
+            "lifecycle_status": "Active",
+            "restrictions_json": '["Bonus Restricted"]',
+        },
+    )
+
+    response = client.get(
+        "/fund-manager/common-bet-combos/profile-opportunities/profile-demo-001"
+    )
+    assert response.status_code == 200, response.text
+    opportunity = next(
+        row
+        for row in response.json()
+        if row["opportunity_key"] == "signup:AC-SIGNUP-CANDIDATE"
+    )
+    assert opportunity["risk_warnings"] == []

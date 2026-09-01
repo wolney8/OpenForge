@@ -40,6 +40,7 @@ from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     build_base_write_plan,
+    completed_import_rollback_safety,
     failed_import_safety,
     final_import_summary,
     load_base_write_plan,
@@ -496,11 +497,14 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["approved_at"] = run.get("approved_at", "")
     workspace["completed_at"] = run.get("completed_at", "")
     workspace["rolled_back_at"] = run.get("rolled_back_at", "")
-    workspace["import_safety"] = (
-        failed_import_safety(profile_id, import_run_id)
-        if run["status"] in {"FAILED", "IMPORT_FAILED"} and run.get("checkpoint_id")
-        else {}
-    )
+    if run["status"] in {"FAILED", "IMPORT_FAILED"} and run.get("checkpoint_id"):
+        workspace["import_safety"] = failed_import_safety(profile_id, import_run_id)
+    elif run["status"] in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}:
+        workspace["import_safety"] = completed_import_rollback_safety(
+            profile_id, import_run_id, run
+        )
+    else:
+        workspace["import_safety"] = {}
     return workspace
 
 

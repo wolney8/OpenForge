@@ -2206,6 +2206,46 @@ def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
     }
 
 
+def completed_import_rollback_safety(
+    profile_id: str, import_run_id: str, run: dict[str, Any]
+) -> dict[str, Any]:
+    """Expose the same checksum gate enforced by rollback_import to the workspace."""
+
+    result = run.get("result") or {}
+    expected_state_checksum = str(result.get("post_import_state_checksum") or "")
+    with connect() as connection:
+        checkpoint = connection.execute(
+            "SELECT checkpoint_id FROM profile_import_checkpoints "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (profile_id, import_run_id),
+        ).fetchone()
+        profile_matches_post_import = bool(
+            expected_state_checksum
+            and _profile_state_checksum(connection, profile_id) == expected_state_checksum
+        )
+    checkpoint_available = checkpoint is not None
+    rollback_available = bool(
+        run.get("status") in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}
+        and run.get("rollback_status") == "AVAILABLE"
+        and checkpoint_available
+        and profile_matches_post_import
+    )
+    return {
+        "checkpoint_available": checkpoint_available,
+        "profile_matches_post_import": profile_matches_post_import,
+        "manual_changes_detected": bool(
+            expected_state_checksum and not profile_matches_post_import
+        ),
+        "rollback_available": rollback_available,
+        "blocked_reason": (
+            "Profile data changed after import. Standard rollback is locked because it would "
+            "discard later Profile activity."
+            if not rollback_available and expected_state_checksum and checkpoint_available
+            else ""
+        ),
+    }
+
+
 def approved_run_is_retryable(run: dict[str, Any]) -> bool:
     return run["status"] == "READY_APPROVED" or (
         run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}

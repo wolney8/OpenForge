@@ -25,6 +25,7 @@ from openforge_api.profile_workbook_cutover import (
     _storage_value,
     approved_run_is_retryable,
     build_base_write_plan,
+    completed_import_rollback_safety,
     execute_import,
     failed_import_safety,
     rollback_import,
@@ -840,6 +841,45 @@ def test_transactional_import_reconciles_and_rolls_back(tmp_path: Path) -> None:
             ).fetchone()[0]
             == "Synthetic Cutover"
         )
+
+
+def test_completed_import_rollback_safety_locks_after_profile_drift(tmp_path: Path) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+
+    result = execute_import(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+    persisted_run = load_persisted_run(run)
+    persisted_run["result"] = result
+    safety = completed_import_rollback_safety(PROFILE_ID, RUN_ID, persisted_run)
+    assert safety["checkpoint_available"] is True
+    assert safety["profile_matches_post_import"] is True
+    assert safety["rollback_available"] is True
+
+    with connect() as connection:
+        sportsbook_bet_id = connection.execute(
+            "SELECT sportsbook_bet_id FROM sportsbook_bets WHERE profile_id = ? LIMIT 1",
+            (PROFILE_ID,),
+        ).fetchone()[0]
+        connection.execute(
+            "DELETE FROM sportsbook_bets WHERE profile_id = ? AND sportsbook_bet_id = ?",
+            (PROFILE_ID, sportsbook_bet_id),
+        )
+
+    safety = completed_import_rollback_safety(PROFILE_ID, RUN_ID, persisted_run)
+    assert safety["checkpoint_available"] is True
+    assert safety["profile_matches_post_import"] is False
+    assert safety["manual_changes_detected"] is True
+    assert safety["rollback_available"] is False
+    assert "discard later Profile activity" in safety["blocked_reason"]
 
 
 def test_mid_import_failure_rolls_back_database_transaction(

@@ -870,10 +870,21 @@ def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> 
             ("Platform", candidate.platform, existing.platform),
         ]
         for relationship, candidate_value, existing_value in relationships:
-            if candidate_value and candidate_value.casefold() == existing_value.casefold():
+            normalized_value = candidate_value.strip().casefold()
+            generic_platform = relationship == "Platform" and normalized_value in {
+                "proprietary",
+                "unknown",
+                "n/a",
+            }
+            if (
+                normalized_value
+                and not generic_platform
+                and normalized_value == existing_value.strip().casefold()
+            ):
                 warnings.append(
                     f"Potential related restriction: this provider shares {relationship} "
-                    f"{candidate_value} with {account.account}, which is restricted on this Profile."
+                    f"{candidate_value} with {account.account}, which is restricted on this "
+                    "Profile."
                 )
     return list(dict.fromkeys(warnings))
 

@@ -123,11 +123,15 @@ type Workspace = {
     };
   } | null;
   import_safety?: {
-    checkpoint_available: boolean;
-    profile_matches_checkpoint: boolean;
-    committed_write_audit_rows: number;
-    no_partial_profile_changes: boolean;
-    retry_available: boolean;
+    checkpoint_available?: boolean;
+    profile_matches_checkpoint?: boolean;
+    profile_matches_post_import?: boolean;
+    committed_write_audit_rows?: number;
+    no_partial_profile_changes?: boolean;
+    retry_available?: boolean;
+    manual_changes_detected?: boolean;
+    rollback_available?: boolean;
+    blocked_reason?: string;
   };
   persistence_preflight?: {
     status?: string;
@@ -973,7 +977,8 @@ export function FounderImportReviewWorkspace({
   const canRollback = Boolean(
     importResult?.rollback_available
     && workspace.rollback_status === "AVAILABLE"
-    && ["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(workspace.run_status ?? ""),
+    && ["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(workspace.run_status ?? "")
+    && workspace.import_safety?.rollback_available !== false
   );
 
   function downloadReconciliationHandoff() {
@@ -1139,6 +1144,7 @@ export function FounderImportReviewWorkspace({
         <details><summary>Review decisions and integrity</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Check</th><th scope="col">Value</th></tr></thead><tbody>{Object.entries(postImportReport.review_decisions).map(([name, value]) => <tr key={`decision-${name}`}><td>{name.replaceAll("_", " ")}</td><td>{value}</td></tr>)}{Object.entries(postImportReport.integrity).map(([name, value]) => { const passed = isPostImportIntegrityCheckPassed(name, value); return <tr key={`integrity-${name}`}><td>{name.replaceAll("_", " ")}</td><td><span className={`table-chip ${passed ? "table-chip-success" : "table-chip-danger"}`}>{passed ? "Passed" : "Failed"}</span></td></tr>; })}</tbody></table></div></details>
         {postImportReport.mismatches.length ? <details className="error-text" open><summary>Reconciliation mismatches</summary><pre>{JSON.stringify(postImportReport.mismatches, null, 2)}</pre></details> : null}
         <strong>{postImportReport.result}</strong>
+        {workspace.import_safety?.manual_changes_detected ? <div className="content-subpanel stack-tight" role="status"><span className="table-chip table-chip-warning">Rollback locked after Profile changes</span><p>{workspace.import_safety.blocked_reason}</p><p className="field-support-text">The pre-import checkpoint remains stored. Keep this Profile for comparison testing, then archive it and create a fresh Profile for the next workbook snapshot.</p></div> : null}
         <div className="tracker-nav"><Link className="button-link" href={`/profiles/${profileId}`}>Open Profile Dashboard</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/accounts`}>View Accounts</Link><Link className="button-link" href={`/profiles/${profileId}/tracker/sportsbook-bets`}>View imported ledgers</Link><button className="button-link icon-text-action" onClick={downloadReconciliationHandoff} type="button"><span aria-hidden="true" className="material-symbols-outlined">download</span><span>Download reconciliation</span></button>{canRollback ? <button className="button-link destructive-action" onClick={() => setRollbackConfirmationOpen(true)} type="button">Roll back import</button> : null}</div>
       </section> : null}
       <p className="field-support-text">{workspace.metadata.source_filename} · {workspace.metadata.mapping_version} · checksum {workspace.metadata.workbook_checksum.slice(0, 12)}… · {postImportReport ? "persisted import audit available" : "no production import performed"}</p>

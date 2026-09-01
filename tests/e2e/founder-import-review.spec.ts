@@ -471,6 +471,13 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
     ...workspace(),
     run_status: "COMPLETE",
     rollback_status: "AVAILABLE",
+    import_safety: {
+      checkpoint_available: true,
+      profile_matches_post_import: true,
+      manual_changes_detected: false,
+      rollback_available: true,
+      blocked_reason: "",
+    },
     import_result: {
       status: "COMPLETE",
       rollback_available: true,
@@ -553,6 +560,19 @@ test("completed import exposes the persisted reconciliation and rollback gate", 
   await expect(page.getByRole("dialog", { name: "Roll back this import?" })).toContainText(
     "import-run-demo",
   );
+  await page.getByRole("dialog", { name: "Roll back this import?" }).getByRole("button", { name: "Cancel" }).click();
+
+  completed.import_safety = {
+    checkpoint_available: true,
+    profile_matches_post_import: false,
+    manual_changes_detected: true,
+    rollback_available: false,
+    blocked_reason: "Profile data changed after import. Standard rollback is locked because it would discard later Profile activity.",
+  };
+  await page.reload();
+  await expect(page.getByText("Rollback locked after Profile changes")).toBeVisible();
+  await expect(page.getByText("The pre-import checkpoint remains stored.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Roll back import" })).toHaveCount(0);
 });
 
 test("failed import preserves the approved run and exposes a validated retry path", async ({ page }) => {
