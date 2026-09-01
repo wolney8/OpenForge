@@ -47,8 +47,11 @@ def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path)
     mapping_version = "founder-snapshot-v5"
     approved_at = "2026-08-31T12:00:00+00:00"
     previous_result = {
-        "status": "IMPORT_FAILED",
+        "status": "POST_IMPORT_RECONCILIATION_FAILED",
         "latest_attempt": {"stage": "Profile Accounts", "category": "account_create"},
+        "post_import_reconciliation": {
+            "result": "POST-IMPORT RECONCILIATION: FAILED",
+        },
     }
     with connect() as connection:
         connection.execute(
@@ -113,12 +116,16 @@ def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path)
 
     with connect() as connection:
         connection.execute(
-            "UPDATE profile_import_runs SET status = 'IMPORT_FAILED' WHERE import_run_id = ?",
-            (import_run_id,),
+            "UPDATE profile_import_runs SET status = 'ROLLED_BACK', rollback_status = 'COMPLETE', "
+            "rolled_back_at = ? WHERE import_run_id = ?",
+            (approved_at, import_run_id),
         )
     repaired_workspace = _workspace("profile-import-test", import_run_id)
     assert repaired_workspace["run_status"] == "READY_APPROVED"
+    assert repaired_workspace["rollback_status"] == "COMPLETE"
+    assert repaired_workspace["rolled_back_at"] == approved_at
     assert repaired_workspace["persistence_preflight"]["status"] == "PASSED"
+    assert repaired_workspace["import_result"] == previous_result
     with connect() as connection:
         repaired_status = connection.execute(
             "SELECT status FROM profile_import_runs WHERE import_run_id = ?", (import_run_id,)

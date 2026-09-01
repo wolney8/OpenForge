@@ -624,6 +624,31 @@ test("passed retry preflight clears stale failure state and guards real import c
   const passed = {
     ...failed,
     run_status: "READY_APPROVED",
+    rollback_status: "COMPLETE",
+    rolled_back_at: "2026-08-31T19:54:05Z",
+    import_result: {
+      ...failed.import_result,
+      status: "POST_IMPORT_RECONCILIATION_FAILED",
+      post_import_reconciliation: {
+        profile: {
+          profile_id: "profile-demo",
+          profile_name: "Demo Profile",
+          import_run_id: "import-run-demo",
+          workbook_filename: "founder-snapshot.xlsx",
+          checksum: "a".repeat(64),
+        },
+        accounts: {},
+        ledgers: {},
+        financial_reconciliation: { periods: {}, views: {} },
+        open_positions: {},
+        review_decisions: {},
+        integrity: {},
+        mismatches: [{ category: "historical_attempt" }],
+        rollback_available: false,
+        result: "POST-IMPORT RECONCILIATION: FAILED",
+        handoff: {},
+      },
+    },
     persistence_preflight: {
       status: "PASSED",
       workbook_checksum: "a".repeat(64),
@@ -665,8 +690,15 @@ test("passed retry preflight clears stale failure state and guards real import c
   await expect(page.getByText("Validating import plan…")).toBeVisible();
   await expect(page.locator('[data-pd-id="profile-import.preflight-passed"]')).toContainText("Validation passed");
   await expect(page.getByRole("alert", { name: "Import could not be completed" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Import to Profile" })).toBeEnabled();
-  await page.getByRole("button", { name: "Import to Profile" }).click();
+  const currentState = page.locator('[data-pd-id="profile-import.current-state"]');
+  await expect(currentState).toContainText("Restored and ready to retry");
+  await expect(currentState).toContainText("READY_APPROVED");
+  await expect(currentState).toContainText("Rollback complete");
+  await expect(page.getByRole("heading", { name: "Previous post-import reconciliation" })).toBeVisible();
+  await expect(page.getByText("Historical failed attempt.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry import" })).toBeEnabled();
+  await page.getByRole("button", { name: "Retry import" }).click();
   await expect(page.getByRole("dialog", { name: "Import approved workbook?" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Import approved workbook?" })).toContainText("120 source Accounts");
+  await expect(page.getByRole("dialog", { name: "Import approved workbook?" }).getByRole("button", { name: "Retry import" })).toBeEnabled();
 });
