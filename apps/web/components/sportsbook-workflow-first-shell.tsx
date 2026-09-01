@@ -28,7 +28,11 @@ import {
 } from "@/lib/guided-entry-focus";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
-import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
+import {
+  BookmakerIdentity,
+  catalogueIdForBookmaker,
+  useBookmakerCatalogue,
+} from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue } from "@/components/financial-value";
@@ -2647,7 +2651,7 @@ function getPersistableSportsbookForm(
 }
 
 export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
-  const { catalogue: bookmakerCatalogue } =
+  const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
@@ -6109,6 +6113,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return (
         <BookmakerIdentity
           bookmaker={value}
+          catalogueId={catalogueIdForBookmaker(providerIdsByName, value)}
           catalogue={bookmakerCatalogue}
           mode="Brand badge"
         />

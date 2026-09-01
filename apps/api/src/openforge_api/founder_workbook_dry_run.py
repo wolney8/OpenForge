@@ -312,7 +312,7 @@ def _profile_settings(
 ) -> list[JsonObject]:
     cells = _sheet_cells(content, "Dashboard")
     definitions = (
-        ("username", "B4", "profile.display_name", "IMPORT"),
+        ("username", "B4", "profile.display_name", "PRESERVE_TARGET"),
         ("active_date_preset", "D4", "tracker_settings.active_date_preset", "IMPORT"),
         ("main_bank", "B5", "onboarding.main_bank_catalogue_id", "IMPORT"),
         ("tracking_start_date", "B6", "profile.tracking_start_date", "IMPORT"),

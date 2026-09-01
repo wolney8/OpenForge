@@ -126,6 +126,12 @@ class AccountAbsenceStrategyPayload(BaseModel):
     strategy: str = Field(pattern="^(leave_unchanged|archive|deactivate)$")
 
 
+class ProfileNameStrategyPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: str = Field(pattern="^(preserve_target|apply_workbook_username)$")
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -938,6 +944,55 @@ def put_profile_workbook_account_absence_strategy(
     for row in reconciliation.get("existing_absent_from_workbook", []):
         row["planned_action"] = payload.strategy
     with connect() as connection:
+        connection.execute(
+            """
+            UPDATE profile_import_runs
+            SET summary_json = ?, updated_at = ?
+            WHERE profile_id = ? AND import_run_id = ?
+            """,
+            (_json(run["summary"]), _now(), profile_id, import_run_id),
+        )
+    return _workspace(profile_id, import_run_id)
+
+
+@router.put("/{import_run_id}/profile-name-strategy")
+def put_profile_workbook_name_strategy(
+    profile_id: str,
+    import_run_id: str,
+    payload: ProfileNameStrategyPayload,
+    request: Request,
+) -> dict[str, Any]:
+    require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    if run["approved_at"] or run["status"] in {"IMPORTING", "COMPLETE"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Profile identity strategy cannot change after import approval",
+        )
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(status_code=409, detail="Import write plan is not ready")
+    classification = (
+        "IMPORT" if payload.strategy == "apply_workbook_username" else "PRESERVE_TARGET"
+    )
+    matched = False
+    for item in plan["profile_settings"]:
+        if item.get("setting") == "username" and item.get("target") == "profile.display_name":
+            item["classification"] = classification
+            matched = True
+    if not matched:
+        raise HTTPException(status_code=409, detail="Workbook username mapping is unavailable")
+    for item in run["summary"].get("profile_settings", []):
+        if item.get("setting") == "username":
+            item["classification"] = classification
+    run["summary"]["profile_name_strategy"] = payload.strategy
+    with connect() as connection:
+        save_base_write_plan(
+            connection,
+            import_run_id=import_run_id,
+            profile_id=profile_id,
+            plan=plan,
+        )
         connection.execute(
             """
             UPDATE profile_import_runs

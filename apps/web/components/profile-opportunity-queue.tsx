@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
+import {
+  BookmakerIdentity,
+  catalogueIdForBookmaker,
+  useBookmakerCatalogue,
+} from "@/components/bookmaker-identity";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { apiBaseUrl } from "@/lib/api";
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
@@ -20,6 +24,7 @@ type Opportunity = {
   already_created: boolean;
   target_record_id: string;
   risk_warnings: string[];
+  defaults: Record<string, string>;
 };
 
 function targetHref(profileId: string, row: Opportunity): string {
@@ -32,7 +37,7 @@ export function ProfileOpportunityQueue({ profileId }: { profileId: string }) {
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState("");
   const [message, setMessage] = useState("");
-  const { catalogue } = useBookmakerCatalogue(profileId);
+  const { catalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
 
   const load = useCallback(async () => {
     const response = await fetch(
@@ -115,7 +120,7 @@ export function ProfileOpportunityQueue({ profileId }: { profileId: string }) {
   }
 
   return (
-    <section className="content-subpanel stack" data-pd-id="profile-opportunities.queue">
+    <section className="content-subpanel stack" data-pd-id="profile-opportunities.queue" id="opportunities">
       <header className="quick-actions-ledger-header">
         <div><span className="eyebrow">Profile Opportunities</span><h2>Opportunity queue</h2></div>
         <button className="modal-primary-button icon-text-action" disabled={!weeklyAvailable.length || Boolean(busyKey)} onClick={() => void instantiateWeekly()} type="button">
@@ -129,12 +134,13 @@ export function ProfileOpportunityQueue({ profileId }: { profileId: string }) {
       {!loading && rows.length === 0 ? <p className="field-hint">No recurring or signup opportunities are currently available.</p> : null}
       {!loading && rows.length ? (
         <div className="table-scroll" data-pd-id="profile-opportunities.table-scroll">
-          <table className="data-table">
+          <table className="data-table profile-opportunity-table">
+            <colgroup><col className="opportunity-provider-column" /><col className="opportunity-copy-column" /><col className="opportunity-type-column" /><col className="opportunity-period-column" /><col className="opportunity-state-column" /><col className="opportunity-actions-column" /></colgroup>
             <thead><tr><th>Provider</th><th>Opportunity</th><th>Type</th><th>Period</th><th>State</th><th className="align-end">Actions</th></tr></thead>
             <tbody>{rows.map((row) => (
               <tr key={row.opportunity_key}>
-                <td><BookmakerIdentity bookmaker={row.bookmaker} catalogue={catalogue} mode="Brand badge" /></td>
-                <td><strong>{row.label}</strong>{row.risk_warnings.map((warning) => <small className="field-hint" key={warning}>{warning}</small>)}</td>
+                <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={catalogue} mode="Brand badge" /></td>
+                <td><div className="opportunity-copy"><strong title={row.label}>{row.label}</strong>{row.defaults.opportunityExpiry ? <small>Expires {row.defaults.opportunityExpiry}</small> : null}{row.risk_warnings.map((warning) => <small className="opportunity-risk-copy" key={warning}><span aria-hidden="true" className="material-symbols-outlined">warning</span>{warning}</small>)}</div></td>
                 <td><span className="table-chip table-chip-info">{row.kind}</span></td>
                 <td>{row.recurrence === "Weekly" ? row.period_key : "One off"}</td>
                 <td><span className={`table-chip ${row.already_created ? "table-chip-success" : "table-chip-warning"}`}>{row.already_created ? "Created" : "Available"}</span></td>

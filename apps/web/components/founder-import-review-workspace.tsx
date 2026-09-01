@@ -87,6 +87,11 @@ type Workspace = {
     ready: boolean;
     blockers: string[];
     profile: { profile_id: string; profile_name: string };
+    profile_identity: {
+      workbook_username: string;
+      target_profile_name: string;
+      strategy: "preserve_target" | "apply_workbook_username";
+    };
     profile_settings: Array<{ field: string; value: string | number; target: string }>;
     provider_resolutions: Array<ReviewResolution>;
     historical_ep_resolutions: Array<ReviewResolution>;
@@ -703,6 +708,25 @@ export function FounderImportReviewWorkspace({
     }
   }
 
+  async function updateProfileNameStrategy(strategy: string) {
+    setSaving(true);
+    try {
+      const response = await fetch(`${reviewApi}/profile-name-strategy`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      setWorkspace(await response.json() as Workspace);
+      setMessage(strategy === "preserve_target" ? "Target Profile name will be preserved." : "Workbook username will replace the Profile name when imported.");
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Unable to save the Profile name strategy.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveDecision(advance = false) {
     if (!editing || !draft) return;
     setSaving(true);
@@ -1111,6 +1135,10 @@ export function FounderImportReviewWorkspace({
       <section className="content-subpanel stack-tight" aria-label="Import readiness approval">
         <strong>{workspace.run_status === "READY_APPROVED" ? "Dry run approved" : workspace.reconciliation.import_ready ? "Ready for approval" : "Review required"}</strong>
         <span>{workspace.reconciliation.import_ready ? "Approval locks this reviewed checksum and enables the controlled import summary." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
+        {finalSummary ? <div className="form-grid settings-dialog-form-grid">
+          <div><span className="field-label">Workbook username</span><p className="field-support-text">{finalSummary.profile_identity.workbook_username || "Not supplied"}</p></div>
+          <label className="field-control"><span>Profile name on import</span><select disabled={saving || Boolean(workspace.approved_at)} onChange={(event) => void updateProfileNameStrategy(event.target.value)} value={finalSummary.profile_identity.strategy}><option value="preserve_target">Preserve {finalSummary.profile_identity.target_profile_name}</option><option value="apply_workbook_username">Use workbook username</option></select></label>
+        </div> : null}
         {workspace.reconciliation.import_ready && workspace.run_status !== "READY_APPROVED" ? <div className="tracker-nav">
           <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for the later import gate." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
           <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>

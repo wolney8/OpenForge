@@ -259,7 +259,7 @@ describe("fund manager notification view state", () => {
   });
 
   it("documents timing and Fund Manager-only delivery for every approved source", () => {
-    expect(fundManagerNotificationTypes).toHaveLength(4);
+    expect(fundManagerNotificationTypes).toHaveLength(5);
     for (const notificationType of fundManagerNotificationTypes) {
       expect(notificationType.timing.length).toBeGreaterThan(20);
     }

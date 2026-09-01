@@ -90,6 +90,13 @@ export const fundManagerNotificationTypes = [
     timing: "When active or reopened, then on the due day, 4 hours before, and 2 hours before.",
   },
   {
+    id: "profile_opportunity_reminder",
+    label: "Profile Opportunity Reminders",
+    description:
+      "Surfaces pending signup, current weekly and near-expiry Profile opportunities without creating ledger rows.",
+    timing: "Once per opportunity period while the opportunity is still awaiting action.",
+  },
+  {
     id: "catalogue_transfer_status",
     label: "Account Catalogue Transfers",
     description:
@@ -110,6 +117,7 @@ export const defaultFundManagerNotificationPreferences: FundManagerNotificationP
   database_backup_reminder: true,
   partial_lay_reminder: true,
   free_bet_follow_up_reminder: true,
+  profile_opportunity_reminder: true,
   catalogue_transfer_status: true,
 };
 

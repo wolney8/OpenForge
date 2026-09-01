@@ -13248,6 +13248,95 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   gap: 0.65rem;
 }
 
+.profile-opportunity-table {
+  min-width: 52rem;
+  table-layout: fixed;
+}
+
+.profile-opportunity-table th,
+.profile-opportunity-table td {
+  padding: 0.7rem 0.75rem;
+}
+
+.profile-opportunity-table tbody tr {
+  min-height: 4.5rem;
+}
+
+.profile-opportunity-table .opportunity-provider-column { width: 10rem; }
+.profile-opportunity-table .opportunity-copy-column { width: 34%; }
+.profile-opportunity-table .opportunity-type-column { width: 7.5rem; }
+.profile-opportunity-table .opportunity-period-column { width: 8rem; }
+.profile-opportunity-table .opportunity-state-column { width: 7.5rem; }
+.profile-opportunity-table .opportunity-actions-column { width: 12.5rem; }
+
+.profile-opportunity-table .table-chip,
+.profile-opportunity-table .bookmaker-identity-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.opportunity-copy {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.opportunity-copy > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.opportunity-copy > small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.opportunity-risk-copy {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.opportunity-risk-copy .material-symbols-outlined {
+  color: var(--warning);
+  flex: 0 0 auto;
+  font-size: 1rem;
+  margin-top: 0.05rem;
+}
+
+.account-related-risk-warning,
+.account-signup-offer-draft {
+  border: 1px solid var(--outline);
+  border-radius: 1rem;
+  padding: 0.85rem;
+}
+
+.account-related-risk-warning {
+  background: color-mix(in srgb, var(--warning) 9%, var(--surface-container));
+}
+
+.account-related-risk-warning strong {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.account-related-risk-warning p {
+  margin: 0.35rem 0 0;
+}
+
+.account-signup-offer-draft legend {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  padding: 0 0.35rem;
+  text-transform: uppercase;
+}
+
 .bookmaker-catalogue-row {
   align-items: center;
   border-block-end: 1px solid var(--outline);

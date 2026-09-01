@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -49,6 +49,7 @@ LifecycleValue = Literal[
     "Closed",
     "Archived",
 ]
+SignupOfferStatusValue = Literal["Unknown", "Yes", "No"]
 RestrictionValue = Literal[
     "Bonus Restricted",
     "Soft Limited",
@@ -86,6 +87,7 @@ class AccountPayload(BaseModel):
     channel: str = "Unknown"
     status: StatusValue
     lifecycle_status: LifecycleValue | None = None
+    signup_offer_status: SignupOfferStatusValue = "Unknown"
     restrictions: list[RestrictionValue] = Field(default_factory=list)
     current_balance: str = Field(default="", max_length=40)
     pending_withdrawal_amount: str = Field(default="", max_length=40)
@@ -283,6 +285,11 @@ def set_profile_catalogue_account_selection(
         ) or "Unknown",
         status=status,
         lifecycle_status=lifecycle,
+        signup_offer_status=(
+            cast(SignupOfferStatusValue, existing.signup_offer_status)
+            if existing
+            else "Unknown"
+        ),
         restrictions=[] if existing is None else json.loads(existing.restrictions_json),
         current_balance=(
             payload.current_balance if payload.selected else existing.current_balance

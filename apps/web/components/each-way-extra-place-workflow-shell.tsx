@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { FinancialValue } from "@/components/financial-value";
 import {
   BookmakerIdentity,
+  catalogueIdForBookmaker,
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
@@ -17,8 +18,8 @@ import {
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { apiBaseUrl } from "@/lib/api";
 import {
-  findBookmakerCatalogueEntry,
-  type BookmakerCatalogueRecord,
+  findMasterAccountCatalogueEntry,
+  type MasterAccountCatalogueRecord,
 } from "@/lib/bookmaker-catalogue";
 import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
 import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
@@ -391,7 +392,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [savingRange, setSavingRange] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const parserOwnedDateRef = useRef<string | null>(null);
-  const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
+  const { catalogue: bookmakerCatalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
   useBodyScrollLock(isAnyDialogOpen);
@@ -1121,6 +1122,7 @@ export function EachWayExtraPlaceWorkflowShell({
         onDelete={requestDelete}
         onEdit={openRow}
         onResult={(row, result) => void saveResult(row, result)}
+        providerIdsByName={providerIdsByName}
         rows={paginatedRows}
         currentTime={currentTime}
         visibleColumns={visibleColumns}
@@ -1618,15 +1620,17 @@ function ExtraPlaceTable({
   bookmakerCatalogue,
   currentTime,
   outOfRangeIssueIds,
+  providerIdsByName,
   rows,
   visibleColumns,
   onDelete,
   onEdit,
   onResult,
 }: {
-  bookmakerCatalogue: BookmakerCatalogueRecord[];
+  bookmakerCatalogue: MasterAccountCatalogueRecord[];
   currentTime: number;
   outOfRangeIssueIds: Set<string>;
+  providerIdsByName: Record<string, string>;
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: (row: Row) => void;
@@ -1729,6 +1733,7 @@ function ExtraPlaceTable({
               outsideTrackerRange={outOfRangeIssueIds.has(
                 row.each_way_extra_place_id,
               )}
+              providerIdsByName={providerIdsByName}
               row={row}
               visibleColumns={visibleColumns}
             />
@@ -1752,15 +1757,17 @@ function LedgerRow({
   bookmakerCatalogue,
   currentTime,
   outsideTrackerRange,
+  providerIdsByName,
   row,
   visibleColumns,
   onDelete,
   onEdit,
   onResult,
 }: {
-  bookmakerCatalogue: BookmakerCatalogueRecord[];
+  bookmakerCatalogue: MasterAccountCatalogueRecord[];
   currentTime: number;
   outsideTrackerRange: boolean;
+  providerIdsByName: Record<string, string>;
   row: Row;
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: () => void;
@@ -1824,6 +1831,7 @@ function LedgerRow({
         {row.bookmaker ? (
           <BookmakerIdentity
             bookmaker={row.bookmaker}
+            catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)}
             catalogue={bookmakerCatalogue}
             mode="Brand badge"
           />
@@ -2175,7 +2183,7 @@ function BookmakerChips({
   onPick,
   rows = [],
 }: {
-  catalogue: BookmakerCatalogueRecord[];
+  catalogue: MasterAccountCatalogueRecord[];
   labels: string[];
   onPick: (value: string) => void;
   rows?: Row[];
@@ -2198,7 +2206,7 @@ function BookmakerChips({
   return (
     <div className="extra-place-quick-choice-row">
       {rankedLabels.map((label) => {
-        const entry = findBookmakerCatalogueEntry(catalogue, label);
+        const entry = findMasterAccountCatalogueEntry(catalogue, { accountName: label });
         return (
           <button
             className="review-chip extra-place-bookmaker-chip"
@@ -2231,7 +2239,7 @@ function Calculate({
   preview,
   onCopy,
 }: {
-  bookmakerCatalogue: BookmakerCatalogueRecord[];
+  bookmakerCatalogue: MasterAccountCatalogueRecord[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
   onRaceUpdate: (value: string) => void;

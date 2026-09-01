@@ -107,6 +107,7 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
         "counts_in_cash_total": True,
         "channel": "Online",
         "status": "Active",
+        "signup_offer_status": "Unknown",
         "current_balance": "25.00",
         "pending_withdrawal_amount": "5.00",
         "last_balance_update": "2026-07-01 10:00:00",
@@ -120,6 +121,7 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     assert created["profile_id"] == "profile-demo-001"
     assert created["account_id"]
     assert created["account"] == "Midnite"
+    assert created["signup_offer_status"] == "Unknown"
 
     list_profile_one = client.get("/profiles/profile-demo-001/accounts")
     assert list_profile_one.status_code == 200
@@ -129,7 +131,12 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     assert list_profile_two.status_code == 200
     assert all(row["account_id"] != created["account_id"] for row in list_profile_two.json())
 
-    updated_payload = {**payload, "status": "Limited", "current_balance": "20.00"}
+    updated_payload = {
+        **payload,
+        "status": "Limited",
+        "signup_offer_status": "No",
+        "current_balance": "20.00",
+    }
     update_response = client.put(
         f"/profiles/profile-demo-001/accounts/{created['account_id']}",
         json=updated_payload,
@@ -138,6 +145,7 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     updated = update_response.json()
     assert updated["status"] == "Limited"
     assert updated["current_balance"] == "20.00"
+    assert updated["signup_offer_status"] == "No"
 
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/accounts/{created['account_id']}"
@@ -182,6 +190,46 @@ def test_account_update_returns_safe_feedback_for_persistence_failure(
         "detail": "Account could not be saved. Please try again."
     }
     assert "synthetic persistence detail" not in response.text
+
+
+def test_signup_offer_status_controls_account_opportunity_candidate(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    bookmaker = create_catalogue_bookmaker(client, "Signup Demo Bet")
+    payload = {
+        "account": "Signup Demo Bet",
+        "bookmaker_id": bookmaker["bookmaker_id"],
+        "type": "Bookie",
+        "counts_in_cash_total": True,
+        "channel": "Online",
+        "status": "Not Signed Up",
+        "lifecycle_status": "Not Signed Up",
+        "signup_offer_status": "Unknown",
+        "current_balance": "0.00",
+        "pending_withdrawal_amount": "0.00",
+        "last_balance_update": "",
+        "group_name": "Demo Group",
+        "platform": "Demo Platform",
+    }
+    created = client.post("/profiles/profile-demo-001/accounts", json=payload)
+    assert created.status_code == 201, created.text
+    account_id = created.json()["account_id"]
+
+    candidates = client.get(
+        "/fund-manager/common-bet-combos/profile-opportunities/profile-demo-001"
+    )
+    assert candidates.status_code == 200
+    assert any(row["opportunity_key"] == f"signup:{account_id}" for row in candidates.json())
+
+    suppressed = client.put(
+        f"/profiles/profile-demo-001/accounts/{account_id}",
+        json={**payload, "signup_offer_status": "No"},
+    )
+    assert suppressed.status_code == 200
+    after = client.get(
+        "/fund-manager/common-bet-combos/profile-opportunities/profile-demo-001"
+    )
+    assert all(row["opportunity_key"] != f"signup:{account_id}" for row in after.json())
 
 
 def test_seed_rows_load_into_dedicated_accounts_table(tmp_path: Path) -> None:

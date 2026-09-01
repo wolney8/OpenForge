@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { FinancialTextInput } from "@/components/financial-text-input";
-import { findBookmakerCatalogueEntry, type BookmakerCatalogueRecord } from "@/lib/bookmaker-catalogue";
+import { findMasterAccountCatalogueEntry, type MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
 
 export type CasinoFreeSpinsQuickAddValues = {
   bookmaker: string;
@@ -24,7 +24,7 @@ export type CasinoQuickAddLoadout = {
 
 type CasinoFreeSpinsQuickAddProps = {
   bookmakerOptions: string[];
-  bookmakerCatalogue: BookmakerCatalogueRecord[];
+  bookmakerCatalogue: MasterAccountCatalogueRecord[];
   errorMessage: string;
   initialValues?: CasinoFreeSpinsQuickAddValues | null;
   isSaving: boolean;
@@ -228,7 +228,7 @@ export function CasinoFreeSpinsQuickAdd({
           </select>
           <span className="casino-quick-add-chip-row" data-pd-id="casino-quick-add.bookmaker-chips">
             {getChipValues(usage.bookmaker, bookmakerOptions).map((bookmaker) => {
-              const catalogueEntry = findBookmakerCatalogueEntry(bookmakerCatalogue, bookmaker);
+              const catalogueEntry = findMasterAccountCatalogueEntry(bookmakerCatalogue, { accountName: bookmaker });
               return (
                 <button
                   aria-pressed={effectiveBookmaker === bookmaker}

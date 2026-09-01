@@ -585,6 +585,26 @@ def final_import_summary(
             "profile_id": run["profile_id"],
             "profile_name": profile["display_name"] if profile else run["profile_id"],
         },
+        "profile_identity": {
+            "workbook_username": next(
+                (
+                    row.get("parsed_value", "")
+                    for row in (plan or {}).get("profile_settings", [])
+                    if row.get("setting") == "username"
+                ),
+                "",
+            ),
+            "target_profile_name": profile["display_name"] if profile else run["profile_id"],
+            "strategy": (
+                "apply_workbook_username"
+                if any(
+                    row.get("setting") == "username"
+                    and row.get("classification") == "IMPORT"
+                    for row in (plan or {}).get("profile_settings", [])
+                )
+                else "preserve_target"
+            ),
+        },
         "review_resolutions": [_decision_resolution(item) for item in decision_items],
         "provider_resolutions": [_decision_resolution(item) for item in provider_items],
         "historical_ep_resolutions": [
@@ -598,7 +618,7 @@ def final_import_summary(
                 "value": row.get("parsed_value"),
                 "target": row.get("target"),
             }
-            for row in run["summary"].get("profile_settings", [])
+            for row in (plan or {}).get("profile_settings", [])
             if row.get("classification") == "IMPORT"
         ],
         "accounts": {

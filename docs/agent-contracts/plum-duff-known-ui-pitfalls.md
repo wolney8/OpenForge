@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-01: Ledger provider chips bypassed the Profile Account relationship
+
+- Area: Sportsbook, Free Bets, Casino, Extra Places and Profile reporting tables.
+- Root cause: the shared ledger identity hook loaded the legacy bookmaker list and resolved only by
+  visible text, while Accounts and Import Review used the master Account Catalogue relationship.
+- Prevention: normal provider cells load master catalogue metadata and resolve the Profile
+  Account's stable `catalogue_id` first; normalized names are legacy fallback only. Always render
+  the full canonical brand name through `AccountProviderIdentity`, never the short display name.
+- Regression test: `apps/web/lib/bookmaker-catalogue.test.ts` locks stable-ID precedence and
+  normalized fallback; ledger render paths use the single `BookmakerIdentity` adapter.
+
 ## 2026-08-28: Settings tabs followed content after gaining sticky positioning
 
 - Area: Profile Settings and Fund Manager Settings tab rails.

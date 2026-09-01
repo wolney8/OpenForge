@@ -7,6 +7,7 @@ from openforge_api.founder_workbook_dry_run import (
     LedgerDefinition,
     _ledger_report,
     _period_reconciliation,
+    _profile_settings,
     is_non_transactional_sportsbook_opportunity,
     missing_extra_place_fields,
     normalize_legacy_account_fields,
@@ -61,6 +62,18 @@ def test_stable_import_key_is_repeatable_and_changes_with_source_data() -> None:
 
     assert first == repeated
     assert changed != first
+
+
+def test_workbook_username_preserves_target_profile_name_by_default(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "openforge_api.founder_workbook_dry_run._sheet_cells",
+        lambda _content, _sheet: {"B4": "legacy-user"},
+    )
+    settings = _profile_settings(b"synthetic", synthetic_catalogue())
+    username = next(item for item in settings if item["setting"] == "username")
+    assert username["parsed_value"] == "legacy-user"
+    assert username["target"] == "profile.display_name"
+    assert username["classification"] == "PRESERVE_TARGET"
 
 
 def test_only_lifecycle_proven_unplaced_sportsbook_rows_are_non_transactional() -> None:

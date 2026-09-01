@@ -16,6 +16,7 @@ def account(account_type: str, name: str, status: str) -> AccountRecord:
     return AccountRecord(
         account_id="AC-DEMO",
         profile_id="profile-demo-002",
+        catalogue_id=None,
         bookmaker_id=None,
         account=name,
         type=account_type,
@@ -23,6 +24,7 @@ def account(account_type: str, name: str, status: str) -> AccountRecord:
         channel="Online",
         status=status,
         lifecycle_status="Active" if status == "Active" else status,
+        signup_offer_status="Unknown",
         restrictions_json="[]",
         current_balance="",
         pending_withdrawal_amount="",

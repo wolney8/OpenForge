@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
-import { BookmakerIdentity, useBookmakerCatalogue } from "@/components/bookmaker-identity";
+import {
+  BookmakerIdentity,
+  catalogueIdForBookmaker,
+  useBookmakerCatalogue,
+} from "@/components/bookmaker-identity";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
@@ -250,7 +254,7 @@ function renderAttentionTable({
 }
 
 export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellProps) {
-  const { catalogue: bookmakerCatalogue } = useBookmakerCatalogue(profileId);
+  const { catalogue: bookmakerCatalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
   const [data, setData] = useState<TrackerSummaryDataset | null>(null);
   const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -837,7 +841,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 ) : (
                   summary.bookmakerBreakdown.map((row) => (
                     <tr key={row.bookmaker}>
-                      <td><BookmakerIdentity bookmaker={row.bookmaker} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
+                      <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                       <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
@@ -969,7 +973,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         summary.expiringFreeBets.map((row) => (
                           <tr key={row.free_bet_id}>
                             <td>{row.free_bet_id}</td>
-                            <td><BookmakerIdentity bookmaker={row.bookmaker} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
+                            <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                             <td>{row.status}</td>
                             <td>{formatHumanDisplayDate(row.expiry_datetime, true)}</td>
                             <td className="align-end"><FinancialValue value={Number(row.reporting_value ?? 0)} /></td>

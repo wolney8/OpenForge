@@ -55,6 +55,7 @@ type AccountRecord = {
   channel: string;
   status: string;
   lifecycle_status: string;
+  signup_offer_status: "Unknown" | "Yes" | "No";
   restrictions: string[];
   current_balance: string;
   pending_withdrawal_amount: string;
@@ -77,6 +78,7 @@ type AccountFormState = {
   channel: string;
   status: string;
   lifecycle_status: string;
+  signup_offer_status: "Unknown" | "Yes" | "No";
   restrictions: string[];
   current_balance: string;
   pending_withdrawal_amount: string;
@@ -102,7 +104,31 @@ type ProfileOfferAction = {
   availability_reason: string;
   enabled: boolean;
   archived: boolean;
+  defaults: Record<string, string>;
+  source: "fund_manager" | "profile";
 };
+
+type SignupOfferDraft = {
+  offerName: string;
+  offerType: string;
+  qualifyingRequirement: string;
+  rewardValue: string;
+  expiry: string;
+  notes: string;
+  active: boolean;
+};
+
+function createBlankSignupOfferDraft(): SignupOfferDraft {
+  return {
+    offerName: "",
+    offerType: "Welcome Offer",
+    qualifyingRequirement: "",
+    rewardValue: "",
+    expiry: "",
+    notes: "",
+    active: true,
+  };
+}
 
 type AccountTableMode =
   | "All"
@@ -211,6 +237,7 @@ function createBlankForm(): AccountFormState {
     channel: "Unknown",
     status: "Not Signed Up",
     lifecycle_status: "Not Signed Up",
+    signup_offer_status: "Unknown",
     restrictions: [],
     current_balance: "",
     pending_withdrawal_amount: "",
@@ -234,6 +261,7 @@ function recordToForm(record: AccountRecord, commissionRate = ""): AccountFormSt
     channel: record.channel,
     status: record.status,
     lifecycle_status: record.lifecycle_status,
+    signup_offer_status: record.signup_offer_status,
     restrictions: record.restrictions,
     current_balance: record.current_balance,
     pending_withdrawal_amount: record.pending_withdrawal_amount,
@@ -336,6 +364,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [masterAccountCatalogue, setMasterAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [exchangeCommissions, setExchangeCommissions] = useState<ExchangeCommissionRecord[]>([]);
   const [offerActions, setOfferActions] = useState<ProfileOfferAction[]>([]);
+  const [signupOfferDraft, setSignupOfferDraft] = useState<SignupOfferDraft>(createBlankSignupOfferDraft);
+  const [signupOfferSourceId, setSignupOfferSourceId] = useState("");
   const exchangeCommissionsRef = useRef<ExchangeCommissionRecord[]>([]);
   const [masterAccountContext, setMasterAccountContext] = useState<MasterAccountOperatingContext>({
     jurisdiction: "",
@@ -552,6 +582,39 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     );
   }, [formState.account, offerActions]);
 
+  const selectedSignupOfferActions = useMemo(
+    () => selectedOfferActions.filter((action) =>
+      action.source === "profile"
+      && action.defaults.opportunityEnabled?.toLocaleLowerCase() === "true"
+      && action.defaults.opportunityKind === "Signup"
+    ),
+    [selectedOfferActions]
+  );
+
+  const relatedRestrictionWarnings = useMemo(() => {
+    if (!selectedProvider) return [];
+    const warnings: string[] = [];
+    for (const account of resolvedRows) {
+      if (!account.catalogue_id || account.catalogue_id === selectedProvider.catalogue_id) continue;
+      if (!account.restrictions.length && !/(restricted|gubbed|limited)/i.test(account.status)) continue;
+      const related = masterAccountCatalogue.find((record) => record.catalogue_id === account.catalogue_id);
+      if (!related) continue;
+      const relationships: Array<[string, string, string]> = [
+        ["Risk Team", selectedProvider.risk_team, related.risk_team],
+        ["Operator Group", selectedProvider.operator_group, related.operator_group],
+        ["Platform", selectedProvider.platform, related.platform],
+      ];
+      for (const [label, candidateValue, existingValue] of relationships) {
+        const normalized = candidateValue.trim().toLocaleLowerCase();
+        if (!normalized || ["proprietary", "unknown", "n/a", "none"].includes(normalized)) continue;
+        if (normalized === existingValue.trim().toLocaleLowerCase()) {
+          warnings.push(`This provider shares ${label} ${candidateValue} with ${account.account}, which is restricted on this Profile.`);
+        }
+      }
+    }
+    return [...new Set(warnings)];
+  }, [masterAccountCatalogue, resolvedRows, selectedProvider]);
+
   const accountQuickView = useMemo(() => {
     const activeAccounts = resolvedRows.filter((row) => row.status === "Active").length;
     const restrictedAccounts = resolvedRows.filter((row) =>
@@ -755,6 +818,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     };
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
+    setSignupOfferDraft(createBlankSignupOfferDraft());
+    setSignupOfferSourceId("");
     setErrorMessage("");
     revealEditor();
     setStatusMessage("");
@@ -770,6 +835,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     const blankForm = createBlankForm();
     setFormState(blankForm);
     setPristineFormState(blankForm);
+    setSignupOfferDraft(createBlankSignupOfferDraft());
+    setSignupOfferSourceId("");
     setErrorMessage("");
     revealEditor();
     setStatusMessage("");
@@ -830,6 +897,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       setErrorMessage("Enter the Exchange commission as a decimal fraction from 0 to 1.");
       return;
     }
+    const needsSignupDefinition = formState.type === "Bookie"
+      && formState.signup_offer_status === "Yes"
+      && selectedSignupOfferActions.length === 0;
+    const linkedSignupOffer = selectedOfferActions.find(
+      (action) => `${action.source}:${action.preset_id}` === signupOfferSourceId
+    );
+    if (needsSignupDefinition && !linkedSignupOffer && !signupOfferDraft.offerName.trim()) {
+      setErrorMessage("Enter an offer name or link an existing Account offer before saving Yes.");
+      return;
+    }
     const url = isEditing
       ? `${apiBaseUrl}/profiles/${profileId}/accounts/${selectedId}`
       : `${apiBaseUrl}/profiles/${profileId}/accounts`;
@@ -859,6 +936,54 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       }
 
       const saved = (await response.json()) as AccountRecord;
+      if (needsSignupDefinition) {
+        const linkedDefaults = linkedSignupOffer?.defaults ?? {};
+        const offerName = linkedSignupOffer?.label || signupOfferDraft.offerName.trim();
+        const definitionResponse = await fetch(
+          `${apiBaseUrl}/fund-manager/common-bet-combos/profile-actions/${profileId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ledger_type: "Sportsbook",
+              label: offerName,
+              enabled_fields: linkedSignupOffer?.ledger_type === "Free Bets"
+                ? ["bookmaker", "offerName", "offerType", "freeBetValue"]
+                : ["bookmaker", "offerName", "offerType"],
+              defaults: {
+                ...linkedDefaults,
+                bookmaker: saved.account,
+                offerName,
+                offerType: linkedDefaults.offerType || signupOfferDraft.offerType.trim() || "Welcome Offer",
+                opportunityEnabled: "true",
+                opportunityKind: "Signup",
+                opportunityRecurrence: "One Off",
+                opportunityQualifyingRequirement: linkedDefaults.opportunityQualifyingRequirement || signupOfferDraft.qualifyingRequirement.trim(),
+                opportunityRewardValue: linkedDefaults.opportunityRewardValue || linkedDefaults.freeBetValue || signupOfferDraft.rewardValue.trim(),
+                opportunityExpiry: linkedDefaults.opportunityExpiry || signupOfferDraft.expiry,
+                opportunityNotes: linkedDefaults.opportunityNotes || signupOfferDraft.notes.trim(),
+                opportunityReminderEnabled: "true",
+              },
+              enabled: linkedSignupOffer ? linkedSignupOffer.enabled : signupOfferDraft.active,
+              is_favourite: false,
+              favourite_order: 0,
+              sort_order: 0,
+            }),
+          },
+        );
+        if (!definitionResponse.ok) {
+          setRows((current) => isEditing
+            ? current.map((row) => row.account_id === saved.account_id ? saved : row)
+            : [...current, saved]);
+          const nextForm = recordToForm(saved);
+          setFormState(nextForm);
+          setPristineFormState(nextForm);
+          setErrorMessage(await readApiError(definitionResponse, "Account saved, but the signup opportunity could not be created."));
+          return;
+        }
+        const definition = (await definitionResponse.json()) as ProfileOfferAction;
+        setOfferActions((current) => [...current, definition]);
+      }
       isCreatingDraftRef.current = false;
       setRows((current) => isEditing
         ? current.map((row) => row.account_id === saved.account_id ? saved : row)
@@ -867,6 +992,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       if (refreshed.ok) setRows((await refreshed.json()) as AccountRecord[]);
       setSelectedId(null);
       setWorkflowVisible(false);
+      setSignupOfferDraft(createBlankSignupOfferDraft());
+      setSignupOfferSourceId("");
       setStatusMessage(
         !refreshed.ok
           ? "Account saved. The latest row is shown while the full table refresh retries."
@@ -1335,7 +1462,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <input aria-readonly="true" placeholder="Inherited from Account Catalogue" readOnly value={resolvedAccountType} />
           </label>
           <label className="field-control">
-            <span>Lifecycle</span>
+            <span>Signup / lifecycle</span>
             <select
               onChange={(event) =>
                 setFormState((current) => ({
@@ -1353,6 +1480,56 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               ))}
             </select>
           </label>
+          {resolvedAccountType === "Bookie" ? <section className="field-span-2 account-editor-choice-section stack-tight" aria-labelledby="account-signup-offer-title">
+            <div>
+              <span className="field-label" id="account-signup-offer-title">Sign-up offer available?</span>
+              <p className="field-support-text">Account lifecycle records whether signup is complete. Offer availability controls the reusable Opportunity queue only.</p>
+            </div>
+            <label className="field-control">
+              <span>Offer availability</span>
+              <select
+                onChange={(event) => setFormState((current) => ({
+                  ...current,
+                  signup_offer_status: event.target.value as AccountFormState["signup_offer_status"],
+                }))}
+                value={formState.signup_offer_status}
+              >
+                <option>Unknown</option>
+                <option>Yes</option>
+                <option>No</option>
+              </select>
+            </label>
+            {relatedRestrictionWarnings.length ? <aside className="account-related-risk-warning" role="status">
+              <strong><span aria-hidden="true" className="material-symbols-outlined">warning</span>Potential related restriction</strong>
+              {relatedRestrictionWarnings.map((warning) => <p key={warning}>{warning}</p>)}
+            </aside> : null}
+            {formState.signup_offer_status === "Yes" ? selectedSignupOfferActions.length ? (
+              <div className="stack-tight">
+                <span className="field-label">Linked offer definitions</span>
+                <div className="review-chip-row">{selectedSignupOfferActions.map((action) => <span className="review-chip is-active" key={`${action.preset_id}:${action.ledger_type}`}>{action.label}</span>)}</div>
+              </div>
+            ) : <fieldset className="account-signup-offer-draft">
+              <legend>Draft signup opportunity</legend>
+              {selectedOfferActions.length ? <label className="field-control">
+                <span>Existing offer definition</span>
+                <select onChange={(event) => setSignupOfferSourceId(event.target.value)} value={signupOfferSourceId}>
+                  <option value="">Create a new draft</option>
+                  {selectedOfferActions.map((action) => <option key={`${action.source}:${action.preset_id}`} value={`${action.source}:${action.preset_id}`}>{action.label}</option>)}
+                </select>
+              </label> : null}
+              {!signupOfferSourceId ? (
+              <div className="form-grid">
+                <label className="field-control"><span>Offer name</span><input maxLength={80} onChange={(event) => setSignupOfferDraft((current) => ({ ...current, offerName: event.target.value }))} value={signupOfferDraft.offerName} /></label>
+                <label className="field-control"><span>Offer type</span><input maxLength={120} onChange={(event) => setSignupOfferDraft((current) => ({ ...current, offerType: event.target.value }))} value={signupOfferDraft.offerType} /></label>
+                <label className="field-control"><span>Qualifying requirement</span><input maxLength={240} onChange={(event) => setSignupOfferDraft((current) => ({ ...current, qualifyingRequirement: event.target.value }))} value={signupOfferDraft.qualifyingRequirement} /></label>
+                <label className="field-control"><span>Reward / Free Bet value</span><FinancialTextInput ariaLabel="Signup opportunity reward value" dataPdId="accounts.editor.signup-reward" id="account-signup-reward" onBlur={() => setSignupOfferDraft((current) => ({ ...current, rewardValue: normalizedFinancialInput(current.rewardValue) }))} onChange={(value) => setSignupOfferDraft((current) => ({ ...current, rewardValue: value }))} value={signupOfferDraft.rewardValue} /></label>
+                <MaterialDateField dataPdId="accounts.editor.signup-offer-expiry" label="Expiry / validity" onChange={(value) => setSignupOfferDraft((current) => ({ ...current, expiry: value }))} value={signupOfferDraft.expiry} />
+                <label className="field-control"><span>Status</span><select onChange={(event) => setSignupOfferDraft((current) => ({ ...current, active: event.target.value === "active" }))} value={signupOfferDraft.active ? "active" : "inactive"}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+                <label className="field-control field-span-2"><span>Notes</span><textarea maxLength={1000} onChange={(event) => setSignupOfferDraft((current) => ({ ...current, notes: event.target.value }))} rows={2} value={signupOfferDraft.notes} /></label>
+              </div>
+              ) : <p className="field-support-text">The selected definition will be linked to this Profile and added to the Opportunity Queue.</p>}
+            </fieldset> : null}
+          </section> : null}
           {!selectedId && formState.type === "Exchange" ? (
             <label className="field-control">
               <span>Exchange Commission</span>

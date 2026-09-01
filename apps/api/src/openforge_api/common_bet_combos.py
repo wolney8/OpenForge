@@ -70,8 +70,12 @@ QUICK_ACTION_FIELD_SCHEMAS: dict[str, tuple[str, ...]] = {
 }
 OPPORTUNITY_META_FIELDS = {
     "opportunityEnabled",
+    "opportunityExpiry",
     "opportunityKind",
+    "opportunityQualifyingRequirement",
     "opportunityRecurrence",
+    "opportunityReminderEnabled",
+    "opportunityRewardValue",
     "opportunityNotes",
 }
 
@@ -871,14 +875,15 @@ def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> 
         ]
         for relationship, candidate_value, existing_value in relationships:
             normalized_value = candidate_value.strip().casefold()
-            generic_platform = relationship == "Platform" and normalized_value in {
+            generic_relationship = normalized_value in {
                 "proprietary",
                 "unknown",
                 "n/a",
+                "none",
             }
             if (
                 normalized_value
-                and not generic_platform
+                and not generic_relationship
                 and normalized_value == existing_value.strip().casefold()
             ):
                 warnings.append(
@@ -891,11 +896,25 @@ def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> 
 
 def _profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
     rows: list[ProfileOpportunityResponse] = []
+    signup_action_bookmakers: set[str] = set()
+    profile_accounts = list_accounts(profile_id)
     for action in list_profile_quick_actions(profile_id):
         try:
             defaults = json.loads(action.defaults_json)
         except json.JSONDecodeError:
             continue
+        raw_kind = (
+            str(defaults.get("opportunityKind") or "Reload")
+            if isinstance(defaults, dict)
+            else "Reload"
+        )
+        raw_bookmaker = (
+            str(defaults.get("bookmaker", "")).strip()
+            if isinstance(defaults, dict)
+            else ""
+        )
+        if raw_kind == "Signup" and raw_bookmaker:
+            signup_action_bookmakers.add(raw_bookmaker.casefold())
         if (
             not isinstance(defaults, dict)
             or str(defaults.get("opportunityEnabled", "")).casefold() != "true"
@@ -918,6 +937,14 @@ def _profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
             if action.ledger_type == "Free Bets"
             else get_sportsbook_bet(profile_id, record_id)
         )
+        matching_account = next(
+            (
+                account
+                for account in profile_accounts
+                if account.account.strip().casefold() == raw_bookmaker.casefold()
+            ),
+            None,
+        )
         rows.append(
             ProfileOpportunityResponse(
                 opportunity_key=action.action_id,
@@ -930,15 +957,26 @@ def _profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
                 period_key=period_key,
                 already_created=existing is not None,
                 target_record_id=record_id if existing else "",
+                risk_warnings=(
+                    _related_restriction_warnings(
+                        profile_id, matching_account.catalogue_id
+                    )
+                    if matching_account is not None
+                    else []
+                ),
                 defaults={key: str(value) for key, value in defaults.items()},
             )
         )
 
-    for account in list_accounts(profile_id):
+    for account in profile_accounts:
         lifecycle = f"{account.status} {account.lifecycle_status}".casefold()
         if account.type != "Bookie" or not any(
             state in lifecycle for state in ("not signed up", "pending sign up")
         ):
+            continue
+        if account.signup_offer_status == "No":
+            continue
+        if account.account.strip().casefold() in signup_action_bookmakers:
             continue
         opportunity_key = f"signup:{account.account_id}"
         period_key = "one-off"
@@ -966,6 +1004,7 @@ def _profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
                     "bookmaker": account.account,
                     "offerName": "Signup opportunity",
                     "offerType": "Welcome Offer",
+                    "opportunityReminderEnabled": "true",
                 },
             )
         )

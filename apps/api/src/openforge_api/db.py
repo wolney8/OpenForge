@@ -895,6 +895,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           channel TEXT NOT NULL,
           status TEXT NOT NULL,
           lifecycle_status TEXT NOT NULL DEFAULT 'Active',
+          signup_offer_status TEXT NOT NULL DEFAULT 'Unknown',
           restrictions_json TEXT NOT NULL DEFAULT '[]',
           current_balance TEXT NOT NULL,
           pending_withdrawal_amount TEXT NOT NULL,
@@ -1635,6 +1636,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         )
     ensure_column(connection, "accounts", "sign_up_date", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "accounts", "notes", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "accounts",
+        "signup_offer_status",
+        "TEXT NOT NULL DEFAULT 'Unknown'",
+    )
     ensure_column(
         connection,
         "multi_profile_opportunities",
@@ -5450,6 +5457,7 @@ class AccountRecord:
     channel: str
     status: str
     lifecycle_status: str
+    signup_offer_status: str
     restrictions_json: str
     current_balance: str
     pending_withdrawal_amount: str
@@ -8341,6 +8349,7 @@ def create_account_with_exchange_commission(
         "channel": payload["channel"],
         "status": payload["status"],
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
+        "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
         "restrictions_json": payload.get("restrictions_json", "[]"),
         "current_balance": payload["current_balance"],
         "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
@@ -8366,6 +8375,7 @@ def create_account_with_exchange_commission(
               channel,
               status,
               lifecycle_status,
+              signup_offer_status,
               restrictions_json,
               current_balance,
               pending_withdrawal_amount,
@@ -8376,7 +8386,7 @@ def create_account_with_exchange_commission(
               notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -8437,6 +8447,7 @@ def update_account(
         "channel": payload["channel"],
         "status": payload["status"],
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
+        "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
         "restrictions_json": payload.get("restrictions_json", "[]"),
         "current_balance": payload["current_balance"],
         "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
@@ -8460,6 +8471,7 @@ def update_account(
               channel = ?,
               status = ?,
               lifecycle_status = ?,
+              signup_offer_status = ?,
               restrictions_json = ?,
               current_balance = ?,
               pending_withdrawal_amount = ?,
@@ -8480,6 +8492,7 @@ def update_account(
                 updated["channel"],
                 updated["status"],
                 updated["lifecycle_status"],
+                updated["signup_offer_status"],
                 updated["restrictions_json"],
                 updated["current_balance"],
                 updated["pending_withdrawal_amount"],

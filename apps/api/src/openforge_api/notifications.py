@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from openforge_api.auth import require_request_session
+from openforge_api.common_bet_combos import _profile_opportunities
 from openforge_api.db import (
     connect,
     count_tracker_rows_created_after,
@@ -199,6 +200,78 @@ def exchange_commission_notifications(
     ]
 
 
+def profile_opportunity_notifications(
+    email: str, now: datetime
+) -> list[FundManagerNotificationResponse]:
+    with connect() as connection:
+        profiles = connection.execute(
+            """
+            SELECT profile.profile_id, profile.display_name
+            FROM profiles AS profile
+            JOIN fund_manager_profile_links AS link ON link.profile_id = profile.profile_id
+            WHERE lower(link.email) = lower(?) AND lower(profile.status) = 'active'
+            ORDER BY lower(profile.display_name)
+            """,
+            (email,),
+        ).fetchall()
+    notifications: list[FundManagerNotificationResponse] = []
+    for profile in profiles:
+        profile_id = str(profile["profile_id"])
+        for opportunity in _profile_opportunities(profile_id):
+            if opportunity.already_created:
+                continue
+            defaults = opportunity.defaults
+            reminder_enabled = str(
+                defaults.get("opportunityReminderEnabled", "true")
+            ).casefold() == "true"
+            if not reminder_enabled:
+                continue
+            expiry = parse_timestamp(str(defaults.get("opportunityExpiry", "")))
+            is_expiring = expiry is not None and expiry <= now + timedelta(days=7)
+            is_actionable = (
+                opportunity.kind == "Signup"
+                or opportunity.recurrence == "Weekly"
+                or is_expiring
+            )
+            if not is_actionable:
+                continue
+            due_at = expiry or now
+            title = (
+                "Signup opportunity pending"
+                if opportunity.kind == "Signup"
+                else "Opportunity expires soon"
+                if is_expiring
+                else "Weekly opportunity available"
+            )
+            notifications.append(
+                FundManagerNotificationResponse(
+                    audience="fund_manager",
+                    security_tag="fund_manager_only",
+                    kind="task",
+                    task_state="new",
+                    notification_id=(
+                        f"profile-opportunity:{profile_id}:"
+                        f"{opportunity.opportunity_key}:{opportunity.period_key}"
+                    ),
+                    notification_type="profile_opportunity_reminder",
+                    title=title,
+                    ledger_label="Opportunity Queue",
+                    bookmaker_label=opportunity.bookmaker,
+                    message=opportunity.label,
+                    profile_id=profile_id,
+                    profile_name=str(profile["display_name"]),
+                    record_id=opportunity.opportunity_key,
+                    due_at=format_timestamp(due_at),
+                    settles_at=format_timestamp(expiry) if expiry else "",
+                    created_at=format_timestamp(now),
+                    href=f"/profiles/{profile_id}/tracker/accounts#opportunities",
+                    completion_href="",
+                    tone="warning" if is_expiring else "info",
+                )
+            )
+    return notifications
+
+
 def backup_reminder_notification(now: datetime) -> FundManagerNotificationResponse | None:
     verified_backups = [
         record for record in list_backup_snapshot_records() if record.status == "verified"
@@ -277,6 +350,7 @@ def list_fund_manager_notifications(
     now = datetime.now(UTC)
     notifications = workbook_import_notifications(session.email)
     notifications.extend(exchange_commission_notifications(session.email, now))
+    notifications.extend(profile_opportunity_notifications(session.email, now))
     backup_notification = backup_reminder_notification(now)
     if backup_notification is not None:
         notifications.append(backup_notification)
