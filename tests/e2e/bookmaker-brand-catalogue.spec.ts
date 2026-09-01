@@ -91,7 +91,8 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   ).toHaveValue("Demo Platform");
   await editor.getByRole("button", { name: "Create" }).click();
   await page.getByPlaceholder("Search account rows").fill(brandName);
-  await expect(page.getByText(shortName, { exact: true })).toBeVisible();
+  await expect(page.locator(".bookmaker-identity-badge", { hasText: brandName })).toBeVisible();
+  await expect(page.getByText(shortName, { exact: true })).toHaveCount(0);
   const accountRowsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`);
   expect(accountRowsResponse.ok()).toBeTruthy();
   const accountRecord = (
@@ -138,7 +139,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await initialRowsResponse;
   await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 30_000 });
   await page.getByPlaceholder("Search sportsbook rows").fill(`Catalogue Identity Match ${nonce}`);
-  await expect(page.locator(".bookmaker-identity-badge", { hasText: shortName })).toBeVisible();
+  await expect(page.locator(".bookmaker-identity-badge", { hasText: brandName })).toBeVisible();
 
   await request.put(`${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`, {
     data: { mode: "Name" },
@@ -148,7 +149,7 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await nameModeRowsResponse;
   await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 30_000 });
   await page.getByPlaceholder("Search sportsbook rows").fill(`Catalogue Identity Match ${nonce}`);
-  await expect(page.getByText(brandName, { exact: true })).toBeVisible();
+  await expect(page.locator(".bookmaker-identity-badge", { hasText: brandName })).toBeVisible();
   await expect(page.locator(".bookmaker-identity-badge", { hasText: shortName })).toHaveCount(0);
 
   await request.put(`${apiBaseUrl}/profiles/${profileId}/bookmaker-display-settings`, {
@@ -159,7 +160,8 @@ test("Fund Manager catalogue drives profile Bookie accounts and ledger identity"
   await logoModeRowsResponse;
   await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 30_000 });
   await page.getByPlaceholder("Search sportsbook rows").fill(`Catalogue Identity Match ${nonce}`);
-  await expect(page.locator(".bookmaker-identity-badge", { hasText: shortName })).toBeVisible();
+  await expect(page.locator(".bookmaker-identity-badge", { hasText: brandName })).toBeVisible();
+  await expect(page.getByText(shortName, { exact: true })).toHaveCount(0);
 
   await page.goto(`/profiles/${profileId}/tracker/settings`);
   await expect(page.getByRole("heading", { name: "Bookmaker catalogue" })).toHaveCount(0);

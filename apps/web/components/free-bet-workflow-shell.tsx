@@ -1240,7 +1240,7 @@ export function FreeBetWorkflowShell({
   initialRecordId?: string;
   feeReviewContext?: FeeReviewResolutionContext;
 }) {
-  const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
+  const { catalogue: bookmakerCatalogue } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
@@ -2922,7 +2922,7 @@ export function FreeBetWorkflowShell({
     rowId = selectedId,
     options?: { confirmedSettledReason?: string }
   ) {
-    if (!rowId) {
+    if (!rowId || isPersistingRef.current) {
       return;
     }
 
@@ -2951,7 +2951,10 @@ export function FreeBetWorkflowShell({
       }
     }
 
+    isPersistingRef.current = true;
+    setIsPersisting(true);
     setErrorMessage("");
+    try {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets/${rowId}`, {
       method: "DELETE",
     });
@@ -2969,6 +2972,12 @@ export function FreeBetWorkflowShell({
     setPreviewCalculation(null);
     setStatusMessage(`Deleted free bet ${rowId}.`);
     if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
+    } catch {
+      setErrorMessage("Unable to delete free-bet row");
+    } finally {
+    isPersistingRef.current = false;
+    setIsPersisting(false);
+    }
   }
 
   async function applySuggestedLayValue(mode: Exclude<SingleLayResultMode, "Custom">) {
@@ -3161,7 +3170,7 @@ export function FreeBetWorkflowShell({
         <BookmakerIdentity
           bookmaker={value}
           catalogue={bookmakerCatalogue}
-          mode={bookmakerDisplaySettings?.resolved_mode}
+          mode="Brand badge"
         />
       );
     }
@@ -5193,7 +5202,8 @@ export function FreeBetWorkflowShell({
                       onClick={() => void handleDeleteSelectedRow()}
                       type="button"
                     >
-                      Delete
+                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                      {isPersisting ? "Deleting" : "Delete"}
                     </button>
                   ) : null}
                   <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">

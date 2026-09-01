@@ -15,6 +15,7 @@ from openforge_api.db import (
     list_backup_snapshot_records,
     list_free_bet_follow_up_notifications,
     list_partial_lay_notifications,
+    postgres_runtime_enabled,
     replace_notification_preferences,
     replace_notification_user_state,
 )
@@ -135,6 +136,69 @@ def workbook_import_notifications(email: str) -> list[FundManagerNotificationRes
     return notifications
 
 
+def exchange_commission_notifications(
+    email: str, now: datetime
+) -> list[FundManagerNotificationResponse]:
+    owner_filter = (
+        """
+        AND EXISTS (
+          SELECT 1 FROM fund_manager_profile_links AS link
+          WHERE link.profile_id = account.profile_id
+            AND lower(link.email) = lower(?)
+        )
+        """
+        if postgres_runtime_enabled()
+        else ""
+    )
+    with connect() as connection:
+        rows = connection.execute(
+            f"""
+            SELECT account.account_id, account.account, account.profile_id,
+                   profile.display_name AS profile_name, account.updated_at
+            FROM accounts AS account
+            JOIN profiles AS profile ON profile.profile_id = account.profile_id
+            LEFT JOIN profile_exchange_commissions AS commission
+              ON commission.profile_id = account.profile_id
+             AND lower(commission.exchange_name) = lower(account.account)
+            WHERE lower(account.type) = 'exchange'
+              AND lower(account.lifecycle_status) <> 'archived'
+              AND (commission.commission_rate IS NULL OR trim(commission.commission_rate) = '')
+              {owner_filter}
+            ORDER BY lower(profile.display_name), lower(account.account)
+            """,
+            (email,) if owner_filter else (),
+        ).fetchall()
+    return [
+        FundManagerNotificationResponse(
+            audience="fund_manager",
+            security_tag="fund_manager_only",
+            kind="task",
+            task_state="new",
+            notification_id=(
+                f"exchange-commission:{row['profile_id']}:{row['account_id']}"
+            ),
+            notification_type="exchange_commission_required",
+            title="Set Exchange commission",
+            ledger_label="Profile Accounts",
+            bookmaker_label=str(row["account"]),
+            message=(
+                f"{row['account']} needs a Profile commission before new matched "
+                "calculations can be completed."
+            ),
+            profile_id=str(row["profile_id"]),
+            profile_name=str(row["profile_name"]),
+            record_id=str(row["account_id"]),
+            due_at=format_timestamp(now),
+            settles_at="",
+            created_at=str(row["updated_at"]),
+            href=f"/profiles/{row['profile_id']}/tracker/settings#defaults",
+            completion_href="",
+            tone="warning",
+        )
+        for row in rows
+    ]
+
+
 def backup_reminder_notification(now: datetime) -> FundManagerNotificationResponse | None:
     verified_backups = [
         record for record in list_backup_snapshot_records() if record.status == "verified"
@@ -212,6 +276,7 @@ def list_fund_manager_notifications(
     session = require_request_session(request)
     now = datetime.now(UTC)
     notifications = workbook_import_notifications(session.email)
+    notifications.extend(exchange_commission_notifications(session.email, now))
     backup_notification = backup_reminder_notification(now)
     if backup_notification is not None:
         notifications.append(backup_notification)

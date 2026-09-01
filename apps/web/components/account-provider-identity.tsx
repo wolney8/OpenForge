@@ -7,7 +7,7 @@ export function AccountProviderIdentity({
   fallbackName: string;
   provider: MasterAccountCatalogueRecord | null;
 }) {
-  const label = provider?.short_display_name || provider?.brand_name || fallbackName || "—";
+  const label = provider?.brand_name || fallbackName || "—";
   return (
     <span
       className={`bookmaker-identity bookmaker-identity-badge${provider ? "" : " bookmaker-identity-badge-fallback"}`}

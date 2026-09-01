@@ -1736,7 +1736,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
 }
 
 export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
-  const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
+  const { catalogue: bookmakerCatalogue } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
@@ -3503,7 +3503,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     rowId = selectedId,
     options?: { confirmedSettledReason?: string }
   ) {
-    if (!rowId) {
+    if (!rowId || isPersistingRef.current) {
       return;
     }
 
@@ -3532,7 +3532,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       }
     }
 
+    isPersistingRef.current = true;
+    setIsPersisting(true);
     setErrorMessage("");
+    try {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/casino-offers/${rowId}`, {
       method: "DELETE",
     });
@@ -3548,6 +3551,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted casino offer ${rowId}.`);
     if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
+    } catch {
+      setErrorMessage("Unable to delete casino-offer row");
+    } finally {
+    isPersistingRef.current = false;
+    setIsPersisting(false);
+    }
   }
 
   function renderTableCell(row: TrackerRow, column: TableColumn) {
@@ -3560,7 +3569,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         <BookmakerIdentity
           bookmaker={value}
           catalogue={bookmakerCatalogue}
-          mode={bookmakerDisplaySettings?.resolved_mode}
+          mode="Brand badge"
         />
       );
     }
@@ -5716,7 +5725,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                       onClick={() => void handleDeleteSelectedRow()}
                       type="button"
                     >
-                      Delete
+                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                      {isPersisting ? "Deleting" : "Delete"}
                     </button>
                   ) : null}
                   <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">

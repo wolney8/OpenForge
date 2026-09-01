@@ -6307,6 +6307,19 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   max-width: 100%;
 }
 
+.accounts-id-cell {
+  max-width: 7.5rem;
+  overflow: hidden;
+}
+
+.accounts-id-value {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .accounts-financial-chip {
   min-width: 7.5rem;
   justify-content: center;

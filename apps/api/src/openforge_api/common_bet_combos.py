@@ -1,29 +1,36 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Literal
+from hashlib import sha256
+from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from openforge_api.account_catalogue_source import get_master_account_catalogue
 from openforge_api.db import (
     FundManagerComboPresetRecord,
     ProfileQuickActionRecord,
+    archive_profile_quick_action,
+    create_free_bet,
     create_fund_manager_combo_preset,
     create_profile_quick_action,
+    create_sportsbook_bet,
     delete_fund_manager_combo_presets,
+    get_free_bet,
     get_fund_manager_combo_preset,
+    get_sportsbook_bet,
     list_accounts,
     list_fund_manager_combo_presets,
+    list_profile_quick_actions,
     list_profile_quick_add_loadout_favourites,
     list_profile_quick_add_loadout_overrides,
-    list_profile_quick_actions,
     set_profile_quick_add_loadout_favourite,
-    archive_profile_quick_action,
+    update_fund_manager_combo_preset,
     update_profile_quick_action,
     upsert_profile_quick_add_loadout_override,
-    update_fund_manager_combo_preset,
 )
 
 router = APIRouter(prefix="/fund-manager/common-bet-combos", tags=["common-bet-combos"])
@@ -60,6 +67,12 @@ QUICK_ACTION_FIELD_SCHEMAS: dict[str, tuple[str, ...]] = {
         "bookmakerPlaces", "exchangePlaces", "winExchange", "placeExchange", "winLayOdds",
         "placeLayOdds",
     ),
+}
+OPPORTUNITY_META_FIELDS = {
+    "opportunityEnabled",
+    "opportunityKind",
+    "opportunityRecurrence",
+    "opportunityNotes",
 }
 
 
@@ -221,7 +234,8 @@ class ProfileQuickActionPayload(BaseModel):
     @model_validator(mode="after")
     def validate_field_contract(self) -> "ProfileQuickActionPayload":
         allowed = set(QUICK_ACTION_FIELD_SCHEMAS[self.ledger_type])
-        invalid = (set(self.enabled_fields) | set(self.defaults)) - allowed
+        invalid = set(self.enabled_fields) - allowed
+        invalid |= set(self.defaults) - allowed - OPPORTUNITY_META_FIELDS
         if invalid:
             raise ValueError(f"Profile Quick Action fields are not allowed: {', '.join(sorted(invalid))}")
         if not self.enabled_fields:
@@ -233,6 +247,25 @@ class ProfileQuickAddLoadoutFavouritePayload(BaseModel):
     ledger_type: QuickAddLedger
     is_favourite: bool
     favourite_order: int | None = Field(default=None, ge=1, le=4)
+
+
+class ProfileOpportunityResponse(BaseModel):
+    opportunity_key: str
+    source: Literal["quick_action", "signup_account"]
+    ledger_type: Literal["Sportsbook", "Free Bets"]
+    label: str
+    bookmaker: str
+    recurrence: Literal["One Off", "Weekly"]
+    kind: Literal["Reload", "Signup", "Free Bet"]
+    period_key: str
+    already_created: bool
+    target_record_id: str
+    risk_warnings: list[str] = Field(default_factory=list)
+    defaults: dict[str, str] = Field(default_factory=dict)
+
+
+class InstantiateProfileOpportunityPayload(BaseModel):
+    allow_duplicate: bool = False
 
 
 RETIRED_DEFAULT_COMBO_IDS = {
@@ -612,7 +645,7 @@ def _profile_action_response(record: ProfileQuickActionRecord) -> ProfileQuickAd
     return ProfileQuickAddLoadoutResponse(
         preset_id=action.action_id,
         label=action.label,
-        ledger_type=action.ledger_type,
+        ledger_type=cast(QuickAddLedger, action.ledger_type),
         defaults=defaults if isinstance(defaults, dict) else {},
         enabled=action.enabled,
         availability="eligible",
@@ -783,6 +816,302 @@ def update_profile_quick_add_loadout(
 @router.get("/profile-actions/schemas")
 def list_profile_quick_action_schemas() -> dict[str, list[str]]:
     return {ledger: list(fields) for ledger, fields in QUICK_ACTION_FIELD_SCHEMAS.items()}
+
+
+def _opportunity_period(recurrence: str) -> str:
+    today = date.today()
+    if recurrence == "Weekly":
+        iso_year, iso_week, _ = today.isocalendar()
+        return f"{iso_year}-W{iso_week:02d}"
+    return "one-off"
+
+
+def _opportunity_record_id(
+    profile_id: str,
+    opportunity_key: str,
+    period_key: str,
+    ledger_type: str,
+    duplicate_suffix: str = "",
+) -> str:
+    digest = sha256(
+        f"{profile_id}:{opportunity_key}:{period_key}:{ledger_type}:{duplicate_suffix}".encode()
+    ).hexdigest()[:20].upper()
+    return f"OPP-{'FB' if ledger_type == 'Free Bets' else 'SB'}-{digest}"
+
+
+def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> list[str]:
+    if not catalogue_id:
+        return []
+    catalogue = get_master_account_catalogue()
+    by_id = {record.catalogue_id: record for record in catalogue.records}
+    candidate = by_id.get(catalogue_id)
+    if candidate is None:
+        return []
+    warnings: list[str] = []
+    for account in list_accounts(profile_id):
+        if not account.catalogue_id or account.catalogue_id == catalogue_id:
+            continue
+        try:
+            restrictions = json.loads(account.restrictions_json or "[]")
+        except json.JSONDecodeError:
+            restrictions = []
+        restricted = bool(restrictions) or any(
+            value in account.status.casefold()
+            for value in ("restricted", "gubbed", "limited")
+        )
+        if not restricted:
+            continue
+        existing = by_id.get(account.catalogue_id)
+        if existing is None:
+            continue
+        relationships = [
+            ("Risk Team", candidate.risk_team, existing.risk_team),
+            ("Operator Group", candidate.operator_group, existing.operator_group),
+            ("Platform", candidate.platform, existing.platform),
+        ]
+        for relationship, candidate_value, existing_value in relationships:
+            if candidate_value and candidate_value.casefold() == existing_value.casefold():
+                warnings.append(
+                    f"Potential related restriction: this provider shares {relationship} "
+                    f"{candidate_value} with {account.account}, which is restricted on this Profile."
+                )
+    return list(dict.fromkeys(warnings))
+
+
+def _profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
+    rows: list[ProfileOpportunityResponse] = []
+    for action in list_profile_quick_actions(profile_id):
+        try:
+            defaults = json.loads(action.defaults_json)
+        except json.JSONDecodeError:
+            continue
+        if (
+            not isinstance(defaults, dict)
+            or str(defaults.get("opportunityEnabled", "")).casefold() != "true"
+            or action.ledger_type not in {"Sportsbook", "Free Bets"}
+            or not action.enabled
+        ):
+            continue
+        recurrence = (
+            "Weekly" if defaults.get("opportunityRecurrence") == "Weekly" else "One Off"
+        )
+        kind = str(defaults.get("opportunityKind") or "Reload")
+        if kind not in {"Reload", "Signup", "Free Bet"}:
+            kind = "Reload"
+        period_key = _opportunity_period(recurrence)
+        record_id = _opportunity_record_id(
+            profile_id, action.action_id, period_key, action.ledger_type
+        )
+        existing = (
+            get_free_bet(profile_id, record_id)
+            if action.ledger_type == "Free Bets"
+            else get_sportsbook_bet(profile_id, record_id)
+        )
+        rows.append(
+            ProfileOpportunityResponse(
+                opportunity_key=action.action_id,
+                source="quick_action",
+                ledger_type=cast(Literal["Sportsbook", "Free Bets"], action.ledger_type),
+                label=action.label,
+                bookmaker=str(defaults.get("bookmaker", "")),
+                recurrence=cast(Literal["One Off", "Weekly"], recurrence),
+                kind=cast(Literal["Reload", "Signup", "Free Bet"], kind),
+                period_key=period_key,
+                already_created=existing is not None,
+                target_record_id=record_id if existing else "",
+                defaults={key: str(value) for key, value in defaults.items()},
+            )
+        )
+
+    for account in list_accounts(profile_id):
+        lifecycle = f"{account.status} {account.lifecycle_status}".casefold()
+        if account.type != "Bookie" or not any(
+            state in lifecycle for state in ("not signed up", "pending sign up")
+        ):
+            continue
+        opportunity_key = f"signup:{account.account_id}"
+        period_key = "one-off"
+        record_id = _opportunity_record_id(
+            profile_id, opportunity_key, period_key, "Sportsbook"
+        )
+        rows.append(
+            ProfileOpportunityResponse(
+                opportunity_key=opportunity_key,
+                source="signup_account",
+                ledger_type="Sportsbook",
+                label=f"{account.account} signup opportunity",
+                bookmaker=account.account,
+                recurrence="One Off",
+                kind="Signup",
+                period_key=period_key,
+                already_created=get_sportsbook_bet(profile_id, record_id) is not None,
+                target_record_id=(
+                    record_id if get_sportsbook_bet(profile_id, record_id) is not None else ""
+                ),
+                risk_warnings=_related_restriction_warnings(
+                    profile_id, account.catalogue_id
+                ),
+                defaults={
+                    "bookmaker": account.account,
+                    "offerName": "Signup opportunity",
+                    "offerType": "Welcome Offer",
+                },
+            )
+        )
+    return sorted(rows, key=lambda row: (row.already_created, row.label.casefold()))
+
+
+@router.get(
+    "/profile-opportunities/{profile_id}",
+    response_model=list[ProfileOpportunityResponse],
+)
+def list_profile_opportunities(profile_id: str) -> list[ProfileOpportunityResponse]:
+    return _profile_opportunities(profile_id)
+
+
+def _create_opportunity_target(
+    profile_id: str,
+    opportunity: ProfileOpportunityResponse,
+    *,
+    allow_duplicate: bool,
+) -> ProfileOpportunityResponse:
+    duplicate_suffix = date.today().isoformat() if allow_duplicate else ""
+    record_id = _opportunity_record_id(
+        profile_id,
+        opportunity.opportunity_key,
+        opportunity.period_key,
+        opportunity.ledger_type,
+        duplicate_suffix,
+    )
+    existing = (
+        get_free_bet(profile_id, record_id)
+        if opportunity.ledger_type == "Free Bets"
+        else get_sportsbook_bet(profile_id, record_id)
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="This opportunity already has a row for the selected period.",
+        )
+    defaults = opportunity.defaults
+    notes = "\n".join(
+        value
+        for value in (
+            f"Opportunity: {opportunity.label}",
+            f"Opportunity period: {opportunity.period_key}",
+            defaults.get("opportunityNotes", ""),
+        )
+        if value
+    )
+    bookmaker = opportunity.bookmaker.strip()
+    if not bookmaker:
+        raise HTTPException(status_code=422, detail="Select a bookmaker for this opportunity.")
+    if opportunity.ledger_type == "Free Bets":
+        create_free_bet(
+            profile_id,
+            {
+                "free_bet_id": record_id,
+                "event_name": defaults.get("event", ""),
+                "offer_text": defaults.get("offerName", opportunity.label),
+                "bookmaker": bookmaker,
+                "offer_type": defaults.get("offerType", "Free Bet"),
+                "bet_type": defaults.get("betType", ""),
+                "offer_name": defaults.get("offerName", opportunity.label),
+                "fixture_type": defaults.get("fixtureType", ""),
+                "status": "Prospecting",
+                "result": "Pending",
+                "retention_mode": defaults.get("retention", "SNR") or "SNR",
+                "free_bet_value": defaults.get("freeBetValue", ""),
+                "back_odds": "",
+                "match_strategy": "",
+                "lay_odds_1": "",
+                "lay_actual": "",
+                "lay_matched_stake_1": "",
+                "exchange_name": "",
+                "expiry_datetime": "",
+                "date_settled": "",
+                "user_notes": notes,
+                "manual_override_value": "",
+                "manual_override_reason": "",
+            },
+        )
+    else:
+        create_sportsbook_bet(
+            profile_id,
+            {
+                "sportsbook_bet_id": record_id,
+                "event_name": defaults.get("event", opportunity.label),
+                "offer_text": defaults.get("offerName", opportunity.label),
+                "bookmaker": bookmaker,
+                "offer_type": defaults.get("offerType", "Welcome Offer" if opportunity.kind == "Signup" else "Reload"),
+                "bet_type": defaults.get("betType", "Single"),
+                "offer_name": defaults.get("offerName", opportunity.label),
+                "fixture_type": defaults.get("fixtureType", ""),
+                "market": defaults.get("market", ""),
+                "status": "Prospecting",
+                "result": "Pending",
+                "back_stake": defaults.get("stake", ""),
+                "back_odds": defaults.get("backOdds", ""),
+                "source_combo_preset_id": opportunity.opportunity_key[:64],
+                "source_combo_preset_version": 1,
+                "bonus_trigger": "",
+                "maximum_bonus": "",
+                "bonus_retention_rate": "70",
+                "match_strategy": "No Lay",
+                "lay_odds_1": "",
+                "multi_lay_outcome_1_name": "",
+                "multi_lay_outcomes_json": "[]",
+                "lay_actual": "",
+                "lay_matched_stake_1": "",
+                "exchange_name": "",
+                "date_settled": "",
+                "user_notes": notes,
+                "manual_override_value": "",
+                "manual_override_reason": "",
+            },
+        )
+    return opportunity.model_copy(
+        update={"already_created": True, "target_record_id": record_id}
+    )
+
+
+@router.post(
+    "/profile-opportunities/{profile_id}/{opportunity_key:path}/instantiate",
+    response_model=ProfileOpportunityResponse,
+    status_code=201,
+)
+def instantiate_profile_opportunity(
+    profile_id: str,
+    opportunity_key: str,
+    payload: InstantiateProfileOpportunityPayload,
+) -> ProfileOpportunityResponse:
+    opportunity = next(
+        (
+            row
+            for row in _profile_opportunities(profile_id)
+            if row.opportunity_key == opportunity_key
+        ),
+        None,
+    )
+    if opportunity is None:
+        raise HTTPException(status_code=404, detail="Opportunity was not found.")
+    return _create_opportunity_target(
+        profile_id, opportunity, allow_duplicate=payload.allow_duplicate
+    )
+
+
+@router.post(
+    "/profile-opportunities/{profile_id}/instantiate-weekly",
+    response_model=list[ProfileOpportunityResponse],
+)
+def instantiate_weekly_profile_opportunities(
+    profile_id: str,
+) -> list[ProfileOpportunityResponse]:
+    return [
+        _create_opportunity_target(profile_id, row, allow_duplicate=False)
+        for row in _profile_opportunities(profile_id)
+        if row.recurrence == "Weekly" and not row.already_created
+    ]
 
 
 @router.post("/profile-actions/{profile_id}", response_model=ProfileQuickAddLoadoutResponse, status_code=201)

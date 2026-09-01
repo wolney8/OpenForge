@@ -4841,6 +4841,8 @@ EACH_WAY_EXTRA_PLACE_FIELDS = (
     "status",
     "result",
     "finishing_position",
+    "imported_historical_pnl",
+    "calculation_provenance",
     "user_notes",
 )
 

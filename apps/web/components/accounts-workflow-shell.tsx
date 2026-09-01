@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
+import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
@@ -947,6 +948,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article>
         </section>
+        <ProfileOpportunityQueue profileId={profileId} />
         <>
             <div
               aria-label="Accounts controls"
@@ -1100,11 +1102,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                         >
                           {visibleTableColumns.map((column) => (
                             <td
-                              className={column.align === "end" ? "align-end" : undefined}
+                              className={`${column.align === "end" ? "align-end" : ""}${column.key === "account_id" ? " accounts-id-cell" : ""}`.trim() || undefined}
                               key={column.key}
                             >
                               {column.key === "account" ? (
                                 <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
+                              ) : column.key === "account_id" ? (
+                                <span className="accounts-id-value" title={rowId}>{rowId}</span>
                               ) : column.key === "type" ? (
                                 <span className={`table-chip ${accountTypeChipClass(provider ? masterAccountProfileType(provider) : String(row.type))}`}>
                                   {provider ? masterAccountProfileType(provider) : String(row.type || "—")}

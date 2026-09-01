@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { apiBaseUrl } from "@/lib/api";
+import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
+import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 type ExchangeCommissionRecord = {
@@ -11,6 +14,9 @@ type ExchangeCommissionRecord = {
   commission_rate: string;
   created_at: string;
   updated_at: string;
+  configured: boolean;
+  suggested_commission_rate: string;
+  suggestion_source: string;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -38,15 +44,10 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
   const [errorMessage, setErrorMessage] = useState("");
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [savedAt, setSavedAt] = useState<Record<string, string>>({});
-  const timers = useRef<Record<string, number>>({});
-  const rowsRef = useRef<ExchangeCommissionRecord[]>([]);
-  const pendingValues = useRef<Record<string, string>>({});
+  const [savedRates, setSavedRates] = useState<Record<string, string>>({});
+  const [confirmExchange, setConfirmExchange] = useState<string | null>(null);
 
-  useUnsavedChangesGuard(rows.some((row) => !isValidCommission(row.commission_rate)));
-
-  useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
+  useUnsavedChangesGuard(rows.some((row) => row.commission_rate !== savedRates[row.exchange_name]));
 
   const loadSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, { cache: "no-store" });
@@ -54,10 +55,10 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     const data = (await response.json()) as ExchangeCommissionRecord[];
     setRows(data);
     setSavedAt(Object.fromEntries(data.map((row) => [row.exchange_name, row.updated_at])));
+    setSavedRates(Object.fromEntries(data.map((row) => [row.exchange_name, row.commission_rate])));
   }, [profileId]);
 
   useEffect(() => {
-    const activeTimers = timers.current;
     const timeoutId = window.setTimeout(() => {
       void loadSettings().catch((error: Error) => {
         setErrorMessage(error.message);
@@ -65,13 +66,12 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     }, 0);
     return () => {
       window.clearTimeout(timeoutId);
-      Object.values(activeTimers).forEach((timer) => window.clearTimeout(timer));
     };
   }, [loadSettings]);
 
-  const saveRow = useCallback(async (exchangeName: string, pendingValue?: string) => {
-    const row = rowsRef.current.find((entry) => entry.exchange_name === exchangeName);
-    const commissionRate = pendingValue ?? pendingValues.current[exchangeName] ?? row?.commission_rate ?? "";
+  const saveRow = useCallback(async (exchangeName: string) => {
+    const row = rows.find((entry) => entry.exchange_name === exchangeName);
+    const commissionRate = row?.commission_rate ?? "";
     if (!row || !isValidCommission(commissionRate)) return;
     setSaveStates((current) => ({ ...current, [exchangeName]: "saving" }));
     setErrorMessage("");
@@ -88,49 +88,59 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     const saved = (await response.json()) as ExchangeCommissionRecord;
     setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? saved : entry));
     setSavedAt((current) => ({ ...current, [exchangeName]: saved.updated_at }));
+    setSavedRates((current) => ({ ...current, [exchangeName]: saved.commission_rate }));
     setSaveStates((current) => ({ ...current, [exchangeName]: "saved" }));
-    delete pendingValues.current[exchangeName];
+    dispatchTrackerDataUpdated({ profileId });
+    window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
     if (onSaved) await onSaved();
-  }, [onSaved, profileId]);
-
-  function scheduleSave(exchangeName: string, value: string) {
-    window.clearTimeout(timers.current[exchangeName]);
-    pendingValues.current[exchangeName] = value;
-    setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? { ...entry, commission_rate: value } : entry));
-    setSaveStates((current) => ({ ...current, [exchangeName]: "idle" }));
-    if (!isValidCommission(value)) return;
-    timers.current[exchangeName] = window.setTimeout(() => void saveRow(exchangeName, value), 550);
-  }
-
-  function saveOnBlur(exchangeName: string) {
-    window.clearTimeout(timers.current[exchangeName]);
-    void saveRow(exchangeName, pendingValues.current[exchangeName]);
-  }
+    setConfirmExchange(null);
+  }, [onSaved, profileId, rows]);
 
   return (
     <section aria-label="Exchange commission settings" className="content-subpanel stack" data-pd-id="profile-settings.commission">
       <div><span className="eyebrow">Exchange commission</span><h2>Profile commission defaults</h2></div>
       {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
-      {rows.length === 0 ? <p className="field-hint">No exchange settings exist yet for this profile.</p> : (
+      {rows.length === 0 ? <p className="field-hint">No Exchange Accounts are attached to this Profile.</p> : (
         <div className="form-grid commission-settings-grid">
           {rows.map((row) => {
             const state = saveStates[row.exchange_name] ?? "idle";
             const valid = isValidCommission(row.commission_rate);
+            const dirty = row.commission_rate !== savedRates[row.exchange_name];
             return (
-              <label className="field-control commission-setting" key={`${row.profile_id}:${row.exchange_name}`}>
-                <span>{row.exchange_name}</span>
-                <input aria-describedby={`commission-status-${row.exchange_name}`} aria-invalid={!valid} inputMode="decimal" onBlur={() => saveOnBlur(row.exchange_name)} onChange={(event) => scheduleSave(row.exchange_name, event.target.value)} placeholder="0.02" value={row.commission_rate} />
+              <div className="field-control commission-setting" key={`${row.profile_id}:${row.exchange_name}`}>
+                <label htmlFor={`commission-${row.exchange_name}`}>{row.exchange_name}</label>
+                <input aria-describedby={`commission-status-${row.exchange_name}`} aria-invalid={!valid} id={`commission-${row.exchange_name}`} inputMode="decimal" onChange={(event) => {
+                  const value = event.target.value;
+                  setRows((current) => current.map((entry) => entry.exchange_name === row.exchange_name ? { ...entry, commission_rate: value } : entry));
+                  setSaveStates((current) => ({ ...current, [row.exchange_name]: "idle" }));
+                }} placeholder="0.02" value={row.commission_rate} />
                 <small id={`commission-status-${row.exchange_name}`}>
                   {!valid ? "Enter a decimal fraction from 0 to 1." : null}
                   {state === "saving" ? "Saving" : null}
                   {state === "saved" ? <><span aria-hidden="true" className="material-symbols-outlined">check_circle</span>{formatUpdatedAt(savedAt[row.exchange_name] ?? row.updated_at)}</> : null}
                   {state === "error" ? "Could not save." : null}
                 </small>
-              </label>
+                {row.suggested_commission_rate && !row.configured ? <p className="field-hint">Suggested {Number(row.suggested_commission_rate) * 100}% from {row.suggestion_source.toLowerCase()}.</p> : null}
+                <div className="inline-actions">
+                  {row.suggested_commission_rate && !row.configured ? <button className="button-link compact-action" disabled={state === "saving"} onClick={() => setRows((current) => current.map((entry) => entry.exchange_name === row.exchange_name ? { ...entry, commission_rate: row.suggested_commission_rate } : entry))} type="button">Use suggestion</button> : null}
+                  <button className="modal-primary-button compact-action" disabled={!dirty || !valid || !row.commission_rate.trim() || state === "saving"} onClick={() => setConfirmExchange(row.exchange_name)} type="button">{state === "saving" ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{state === "saving" ? "Saving" : "Save commission"}</span></button>
+                </div>
+              </div>
             );
           })}
         </div>
       )}
+      <ConfirmationDialog
+        busy={Boolean(confirmExchange && saveStates[confirmExchange] === "saving")}
+        busyLabel="Saving"
+        confirmLabel="Apply commission"
+        confirmTone="primary"
+        description={confirmExchange ? `Apply the entered commission to ${confirmExchange} for this Profile. New calculations will use this Profile-specific value.` : ""}
+        onCancel={() => setConfirmExchange(null)}
+        onConfirm={() => confirmExchange && void saveRow(confirmExchange)}
+        open={Boolean(confirmExchange)}
+        title="Confirm Exchange commission"
+      />
     </section>
   );
 }

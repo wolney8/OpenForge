@@ -64,3 +64,30 @@ def test_each_way_extra_place_crud_is_profile_scoped() -> None:
         json={"deletion_reason": "Synthetic regression cleanup"},
     )
     assert deleted.status_code == 204
+
+
+def test_historical_extra_place_preserves_imported_realised_value_without_modern_inputs() -> None:
+    client = TestClient(app)
+    historical = payload(
+        win_exchange="",
+        win_lay_odds="",
+        place_exchange="",
+        place_lay_odds="",
+        bookmaker_places="",
+        exchange_places="",
+        status="Settled",
+        result="Extra Place",
+        imported_historical_pnl="12.34",
+        calculation_provenance="imported_historical",
+        user_notes="Synthetic source provenance retained.",
+    )
+    created = client.post(
+        "/profiles/profile-demo-001/each-way-extra-places", json=historical
+    )
+    assert created.status_code == 201, created.text
+    row = created.json()
+    assert row["calculation_state"] == "historical_imported"
+    assert row["current_value"] == "12.34"
+    assert row["final_value"] == "12.34"
+    assert row["win_lay_stake"] is None
+    assert "were not inferred" in row["calculation_notes"][0]

@@ -1608,7 +1608,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     rowId = selectedId,
     options?: { confirmedSettledReason?: string }
   ) {
-    if (!rowId) {
+    if (!rowId || isPersistingRef.current) {
       return;
     }
 
@@ -1637,7 +1637,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       }
     }
 
+    isPersistingRef.current = true;
+    setIsPersisting(true);
     setErrorMessage("");
+    try {
     const response = await fetch(
       `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${rowId}`,
       {
@@ -1655,6 +1658,12 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     await loadRows(null);
     if (selectedId === rowId) setWorkflowVisible(false);
     setStatusMessage(`Deleted cash adjustment ${rowId}.`);
+    } catch {
+      setErrorMessage("Unable to delete cash-adjustment row");
+    } finally {
+    isPersistingRef.current = false;
+    setIsPersisting(false);
+    }
   }
 
   function handleCancelResolvedEdit() {
@@ -2589,7 +2598,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                           onClick={() => void handleDeleteSelectedRow()}
                           type="button"
                         >
-                          Delete
+                          {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+                          {isPersisting ? "Deleting" : "Delete"}
                         </button>
                       ) : null}
                       <button className="review-chip" disabled={isPersisting} onClick={handleResetForm} type="button">

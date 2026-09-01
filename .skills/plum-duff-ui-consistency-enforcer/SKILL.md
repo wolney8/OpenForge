@@ -132,6 +132,16 @@ use the canonical primitive and computed styling.
   rail and verify its computed position plus scroll geometry rather than patching route-specific
   offsets.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
+- Every mutation control uses the canonical pending-action contract: disable the initiating and
+  competing controls before issuing the request, show the existing button spinner with a concise
+  action label, reject duplicate submissions in code as well as visually, preserve the editor or
+  confirmation state until the response is known, and restore controls on failure. Confirmed
+  deletes remove or refresh the affected row immediately; a second click must never produce a
+  follow-up `not found` error.
+- Normal user-facing provider cells resolve the Account Catalogue relationship and render the full
+  canonical brand name in the shared branded chip. Short display names are reserved for explicitly
+  constrained or token-optimised contexts. Account and record identifiers use bounded,
+  ellipsised cells with the full value available through an accessible title or detail action.
 
 ## 3a. Retrospective audit boundary
 

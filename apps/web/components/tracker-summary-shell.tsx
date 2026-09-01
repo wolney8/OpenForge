@@ -969,7 +969,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         summary.expiringFreeBets.map((row) => (
                           <tr key={row.free_bet_id}>
                             <td>{row.free_bet_id}</td>
-                            <td>{row.bookmaker}</td>
+                            <td><BookmakerIdentity bookmaker={row.bookmaker} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                             <td>{row.status}</td>
                             <td>{formatHumanDisplayDate(row.expiry_datetime, true)}</td>
                             <td className="align-end"><FinancialValue value={Number(row.reporting_value ?? 0)} /></td>

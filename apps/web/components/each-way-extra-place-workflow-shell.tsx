@@ -86,6 +86,8 @@ type Form = {
   status: string;
   result: string;
   finishing_position: string;
+  imported_historical_pnl: string;
+  calculation_provenance: "native" | "imported_historical";
   user_notes: string;
 };
 type QuickAddLoadout = {
@@ -153,6 +155,8 @@ const newForm = (): Form => ({
   status: "Prospecting",
   result: "Pending",
   finishing_position: "",
+  imported_historical_pnl: "",
+  calculation_provenance: "native",
   user_notes: "",
 });
 const numeric = new Set<keyof Form>([
@@ -168,6 +172,7 @@ const numeric = new Set<keyof Form>([
   "place_lay_odds",
   "place_commission",
   "actual_place_lay_stake",
+  "imported_historical_pnl",
 ]);
 const bookmakers = ["Betfred", "Unibet", "Sky Bet", "William Hill"];
 const exchanges = ["Smarkets", "Matchbook", "Betfair Exchange"];
@@ -265,6 +270,9 @@ function decimalDisplay(value: string | null | undefined) {
   return number === null ? "-" : number.toFixed(2);
 }
 function hasRequiredRowGap(row: Row) {
+  if (row.calculation_provenance === "imported_historical") {
+    return !row.imported_historical_pnl?.trim();
+  }
   return [
     row.runner,
     row.race,
@@ -279,6 +287,11 @@ function hasRequiredRowGap(row: Row) {
   ].some((value) => !value?.trim());
 }
 function getRowIssues(row: Row) {
+  if (row.calculation_provenance === "imported_historical") {
+    return row.imported_historical_pnl?.trim()
+      ? []
+      : ["Historical P&L needed"];
+  }
   const labels: Array<[keyof Row, string]> = [
     ["runner", "Runner"],
     ["race", "Race"],
@@ -1210,6 +1223,16 @@ export function EachWayExtraPlaceWorkflowShell({
                       {error}
                     </p>
                   ) : null}
+                  {form.calculation_provenance === "imported_historical" ? (
+                    <section className="content-subpanel stack" data-pd-id="extra-place.editor.historical-mode">
+                      <div><span className="eyebrow">Historical / Manual</span><h3>Imported historical outcome</h3></div>
+                      <p className="field-hint">The source E/W stake, known race details and imported realised P&amp;L are preserved. Missing modern calculator inputs are not inferred.</p>
+                      <div className="form-grid">
+                        <Field label="Imported realised P&L" onChange={(next) => update("imported_historical_pnl", next)} value={form.imported_historical_pnl} />
+                        <div className="field-control"><span>Calculation provenance</span><span className="table-chip table-chip-warning">Historical imported</span></div>
+                      </div>
+                    </section>
+                  ) : null}
                   <div className="form-grid">
                     <LedgerEditorTabPanel activeTabId={step} tabId="calculate">
                       <Calculate
@@ -1357,7 +1380,14 @@ export function EachWayExtraPlaceWorkflowShell({
                     onClick={() => void confirmDelete()}
                     type="button"
                   >
-                    {saving ? "Deleting" : "Delete row"}
+                    {saving ? (
+                      <>
+                        <span aria-hidden="true" className="button-spinner" />
+                        Deleting
+                      </>
+                    ) : (
+                      "Delete row"
+                    )}
                   </button>
                 </div>
               </section>
@@ -1739,7 +1769,7 @@ function LedgerRow({
 }) {
   const rowIssues = getRowIssues(row);
   const issueCount = rowIssues.length;
-  const issue = row.calculation_state !== "resolved" || issueCount > 0;
+  const issue = !["resolved", "historical_imported"].includes(row.calculation_state) || issueCount > 0;
   const outcomes = resultChoices(
     row.mode,
     row.bookmaker_places ?? undefined,
@@ -1766,7 +1796,7 @@ function LedgerRow({
       tabIndex={0}
     >
       <td>
-        {displayIssues.length > 0 ? (
+        {row.calculation_state === "historical_imported" ? <div className="row-issue-overlay"><span className="table-chip table-chip-warning">Historical / Manual</span></div> : displayIssues.length > 0 ? (
           <div aria-label={`Issues for ${row.runner || "Extra Place row"}`} className="row-issue-overlay">
             {visibleIssues.map((label) => (
               <span

@@ -1,8 +1,8 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from openforge_api.calculations.each_way_extra_place import (
     EachWayCalculationInput,
@@ -54,7 +54,20 @@ class EachWayExtraPlacePayload(BaseModel):
     status: Status = "Prospecting"
     result: Result = "Pending"
     finishing_position: str = Field(default="", max_length=40)
+    imported_historical_pnl: str = Field(default="", max_length=40)
+    calculation_provenance: Literal["native", "imported_historical"] = "native"
     user_notes: str = Field(default="", max_length=4000)
+
+    @field_validator("imported_historical_pnl")
+    @classmethod
+    def validate_historical_pnl(cls, value: str) -> str:
+        if not value.strip():
+            return ""
+        try:
+            Decimal(value)
+        except InvalidOperation as error:
+            raise ValueError("Historical realised P&L must be a valid decimal") from error
+        return value
 
 
 class EachWayPreviewPayload(EachWayExtraPlacePayload):
@@ -151,11 +164,23 @@ def build_calculation(
         "current_value",
         "final_value",
     )
-    return {
+    calculation: dict[str, object] = {
         "calculation_state": result.calculation_state,
         "calculation_notes": list(result.calculation_notes),
         **{field: _format(getattr(result, field)) for field in fields},
     }
+    if payload.get("calculation_provenance") == "imported_historical":
+        imported_value = str(payload.get("imported_historical_pnl") or "") or None
+        calculation["current_value"] = imported_value
+        calculation["final_value"] = (
+            imported_value if payload.get("status") == "Settled" else None
+        )
+        calculation["calculation_state"] = "historical_imported"
+        calculation["calculation_notes"] = [
+            "Historical workbook P&L is preserved; missing modern Extra Place inputs "
+            "were not inferred."
+        ]
+    return calculation
 
 
 def build_response(
@@ -166,15 +191,6 @@ def build_response(
     profile_id = str(data["profile_id"])
     resolved = _with_profile_commissions(profile_id, data, commissions)
     calculation = build_calculation(profile_id, resolved, commissions)
-    if data.get("calculation_provenance") == "imported_historical":
-        imported_value = str(data.get("imported_historical_pnl") or "") or None
-        calculation["current_value"] = imported_value
-        calculation["final_value"] = imported_value if data.get("status") == "Settled" else None
-        calculation["calculation_state"] = "historical_imported"
-        calculation["calculation_notes"] = [
-            "Historical workbook P&L is preserved; missing modern Extra Place inputs "
-            "were not inferred."
-        ]
     return {
         **resolved,
         **calculation,

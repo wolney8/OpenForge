@@ -2647,7 +2647,7 @@ function getPersistableSportsbookForm(
 }
 
 export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
-  const { catalogue: bookmakerCatalogue, displaySettings: bookmakerDisplaySettings } =
+  const { catalogue: bookmakerCatalogue } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
@@ -5033,7 +5033,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     rowId = selectedId,
     options?: { confirmedSettledReason?: string }
   ) {
-    if (!rowId) {
+    if (!rowId || isPersistingRef.current) {
       return;
     }
 
@@ -5062,7 +5062,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       }
     }
 
+    isPersistingRef.current = true;
+    setIsPersisting(true);
     setErrorMessage("");
+    try {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${rowId}`, {
       method: "DELETE",
     });
@@ -5080,6 +5083,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     isCreatingDraftRef.current = false;
     setStatusMessage(`Deleted sportsbook bet ${rowId}.`);
     if (feeReviewContext) await refreshFeeReviewResolutionSession(apiBaseUrl, feeReviewContext);
+    } catch {
+      setErrorMessage("Unable to delete sportsbook row");
+    } finally {
+    isPersistingRef.current = false;
+    setIsPersisting(false);
+    }
   }
 
   async function updateRowFromTable(
@@ -6101,7 +6110,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         <BookmakerIdentity
           bookmaker={value}
           catalogue={bookmakerCatalogue}
-          mode={bookmakerDisplaySettings?.resolved_mode}
+          mode="Brand badge"
         />
       );
     }
@@ -9848,10 +9857,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                    {selectedId ? (
 	                      <button
 	                        className="review-chip review-chip-danger"
+	                        disabled={isPersisting}
 	                        onClick={() => void handleDeleteSelectedRow()}
 	                        type="button"
 	                      >
-	                        Delete
+	                        {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+	                        {isPersisting ? "Deleting" : "Delete"}
 	                      </button>
 	                    ) : null}
 	                    <button className="review-chip" onClick={() => void handleResetForm()} type="button">

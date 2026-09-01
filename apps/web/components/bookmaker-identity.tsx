@@ -5,7 +5,6 @@ import Image from "next/image";
 import { apiBaseUrl } from "@/lib/api";
 import {
   findBookmakerCatalogueEntry,
-  getBookmakerDisplayLabel,
   type BookmakerCatalogueRecord,
   type BookmakerDisplaySettings,
 } from "@/lib/bookmaker-catalogue";
@@ -57,7 +56,6 @@ export function BookmakerIdentity({
     return <span>{entry.brand_name}</span>;
   }
 
-  const label = getBookmakerDisplayLabel(entry);
   if (mode === "Logo" && entry.logo_asset_path) {
     return (
       <span className="bookmaker-identity bookmaker-identity-logo" title={entry.brand_name}>
@@ -81,7 +79,7 @@ export function BookmakerIdentity({
       }}
       title={entry.brand_name}
     >
-      {label}
+      {entry.brand_name}
     </span>
   );
 }

@@ -523,6 +523,21 @@ directory before founder workbook dry-run begins.
 - `PD-FR-007H45` COMPLETE: review evidence sections use separate canonical stacked subpanels rather than concatenated headings/text.
 - `PD-FR-007H46` NEEDS VERIFICATION: hosted smoke must confirm prior background analysis, notifications, persisted decisions, reset, Save & next, batch review, compact table, loadouts and P&L impact remain intact.
 
+## Post-Import Operationalisation Pass
+
+- `PD-PO-001` COMPLETE: attached Profile Exchanges without an explicit commission are exposed as Profile-health gaps with a Fund Manager-only notification, Profile Defaults deep link and confirm-before-save suggestion where an existing Profile convention exists.
+- `PD-PO-002` COMPLETE: signed-off Account and ledger Save/Delete paths disable and show canonical progress while a mutation is pending, guard duplicate requests and restore controls after failure.
+- `PD-PO-003` COMPLETE: reusable opportunity definitions remain separate from instantiated Prospecting ledger rows, which carry no realised/reporting P&L before execution.
+- `PD-PO-004` COMPLETE: existing Profile Quick Actions can opt into one-off or weekly opportunity recurrence and instantiate one deterministic Sportsbook prospect per Profile/period.
+- `PD-PO-005` COMPLETE: Not Signed Up and Pending Sign Up Profile Accounts surface opt-in signup opportunities without automatically creating bets.
+- `PD-PO-006` COMPLETE: signup opportunities compare catalogue risk-team, operator-group and platform relationships with restricted Profile Accounts and show non-blocking decision-support warnings.
+- `PD-PO-007` COMPLETE: Free Bet Quick Action opportunities instantiate the existing Prospecting lifecycle with face value preserved, blank strategy and zero current P&L.
+- `PD-PO-008` COMPLETE: explicitly imported historical Extra Place rows preserve imported/manual realised P&L and source provenance without requiring or inventing modern calculator inputs.
+- `PD-PO-009` COMPLETE: Account IDs use the canonical bounded dense-cell treatment with ellipsis and full-value title access rather than overlapping adjacent columns.
+- `PD-PO-010` COMPLETE: normal Account and ledger tables use the shared catalogue-backed full-brand provider chip; compact short names remain limited to explicitly constrained contexts.
+- `PD-PO-011` COMPLETE: synthetic cutover, workbook dry-run and review regressions preserve Account and ledger row accounting, workbook-period parity, open/current values and exposure; no operationalisation path mutates existing imported records.
+- `PD-PO-012` COMPLETE: the opportunity model extends global offer metadata, Profile eligibility, Quick Actions and existing ledger lifecycles rather than introducing a parallel offer subsystem.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import
