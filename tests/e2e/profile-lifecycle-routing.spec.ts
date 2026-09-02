@@ -78,6 +78,58 @@ async function mockProfileDirectory(page: Page) {
 }
 
 test.describe("Profile lifecycle and shell routing", () => {
+  test("defaults the Profile directory to Active and exposes Archived and All", async ({ page }) => {
+    await mockProfileDirectory(page);
+    const archivedProfile = {
+      ...profile,
+      profile_id: "profile-archived-001",
+      display_name: "Archived Comparison",
+      profile_code: "ARCHIVED-001",
+      status: "Archived",
+    };
+    await page.route(/\/(?:api\/)?profiles\/?(?:\?.*)?$/, async (route) => {
+      if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
+        return route.fallback();
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify([profile, archivedProfile]),
+      });
+    });
+    await page.route("**/profiles/profile-archived-001/**", async (route) => {
+      if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
+        return route.fallback();
+      }
+      const url = new URL(route.request().url());
+      const body = url.pathname.endsWith("/tracker-summary-sources")
+        ? {
+            accounts: [], sportsbook_bets: [], free_bets: [], casino_offers: [],
+            cash_adjustments: [], each_way_extra_places: [], balance_snapshots: [],
+            fee_periods: [], tracker_settings: {
+              active_date_preset: "Week (Mon-Sun)", custom_start_date: "",
+              custom_end_date: "", range_back_days: 0, range_forward_days: 0,
+            },
+          }
+        : [];
+      await route.fulfill({ contentType: "application/json", status: 200, body: JSON.stringify(body) });
+    });
+
+    await page.goto("/profiles");
+    const statusFilter = page.locator('[data-pd-id="profiles.directory.status-filter"]');
+    await expect(statusFilter).toHaveValue("Active");
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-archived-001"]')).toHaveCount(0);
+
+    await statusFilter.selectOption("Archived");
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-archived-001"]')).toBeVisible();
+    await expect(page.getByText("Archived", { exact: true }).last()).toBeVisible();
+
+    await statusFilter.selectOption("all");
+    await expect(page.locator('[data-pd-id^="profiles.directory.row."]')).toHaveCount(2);
+  });
+
   test("exposes the existing Profile directory, onboarding, management, and archive lifecycle", async ({ page }) => {
     await mockProfileDirectory(page);
     let currentStatus = profile.status;
@@ -108,7 +160,7 @@ test.describe("Profile lifecycle and shell routing", () => {
 
     await page.goto("/profiles");
     await expect(page.getByRole("heading", { name: "Profiles", exact: true }).first()).toBeVisible();
-    await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("region", { name: "Profile management" })).toBeVisible();
     await expect(page.locator('[data-pd-id="profiles.add-profile"]')).toHaveAttribute("href", "/profiles/new");
 
     const row = page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]');
@@ -117,6 +169,7 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(manageAction).toHaveAccessibleName("Manage Demo Profile");
     await expect(manageAction).toHaveAttribute("href", "/profiles/profile-demo-001/manage");
 
+    await expect(row).toBeVisible({ timeout: 30_000 });
     await row.click();
     const drawer = page.getByRole("dialog", { name: /Profile details for/ });
     await expect(drawer).toBeVisible();
@@ -186,9 +239,54 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(page.getByText("Profile archived.")).toBeVisible();
     await expect(page.locator(".profile-management-header-actions .badge")).toHaveText("Archived");
     await expect(page.locator('[data-pd-id="profile-management.restore"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="profile-management.delete"]')).toBeVisible();
+    await page.getByRole("tab", { name: "Overview" }).click();
+    await expect(page.getByRole("button", { name: "Save overview" })).toBeDisabled();
+    await page.getByRole("tab", { name: "Lifecycle" }).click();
     await page.locator('[data-pd-id="profile-management.restore"]').click();
     await page.getByRole("dialog", { name: "Restore Profile?" }).getByRole("button", { name: "Restore Profile" }).click();
     await expect(page.locator(".profile-management-header-actions .badge")).toHaveText("Active");
+  });
+
+  test("requires the exact archived Profile name before permanent deletion", async ({ page }) => {
+    await mockProfileDirectory(page);
+    await page.route(/\/(?:api\/)?profiles\/profile-demo-001$/, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          contentType: "application/json",
+          status: 200,
+          body: JSON.stringify({ ...profile, status: "Archived" }),
+        });
+        return;
+      }
+      if (route.request().method() === "DELETE") {
+        expect(route.request().postDataJSON()).toEqual({ confirmation_name: "Demo Profile" });
+        await route.fulfill({
+          contentType: "application/json",
+          status: 200,
+          body: JSON.stringify({
+            profile_id: profile.profile_id,
+            display_name: profile.display_name,
+            deleted: true,
+            deleted_record_counts: {},
+          }),
+        });
+        return;
+      }
+      return route.fallback();
+    });
+
+    await page.goto("/profiles/profile-demo-001/manage#lifecycle");
+    await page.locator('[data-pd-id="profile-management.delete"]').click();
+    const confirmation = page.getByRole("dialog", { name: "Delete Profile permanently?" });
+    const deleteButton = confirmation.getByRole("button", { name: "Delete Profile" });
+    await expect(deleteButton).toBeDisabled();
+    await confirmation.getByLabel("Profile name").fill("Wrong name");
+    await expect(deleteButton).toBeDisabled();
+    await confirmation.getByLabel("Profile name").fill("Demo Profile");
+    await expect(deleteButton).toBeEnabled();
+    await deleteButton.click();
+    await expect(page).toHaveURL(/\/profiles$/);
   });
 
   test("keeps Dashboard analytics distinct from Profile management", async ({ page }) => {

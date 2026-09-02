@@ -26,6 +26,7 @@ from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
 from openforge_api.notifications import router as notifications_router
+from openforge_api.profile_lifecycle_middleware import ProfileLifecycleMiddleware
 from openforge_api.profile_workbook_imports import (
     execution_router as profile_import_executions_router,
 )
@@ -36,6 +37,7 @@ from openforge_api.tracker_settings import router as tracker_settings_router
 from openforge_api.tracker_summary_sources import router as tracker_summary_sources_router
 
 app = FastAPI(title=settings.app_name)
+app.add_middleware(ProfileLifecycleMiddleware)
 app.add_middleware(OwnerAuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,

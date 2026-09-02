@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export function ConfirmationDialog({
   busy = false,
@@ -8,6 +8,8 @@ export function ConfirmationDialog({
   cancelLabel = "Cancel",
   confirmLabel,
   confirmTone = "destructive",
+  confirmationText,
+  confirmationLabel = "Type to confirm",
   description,
   onCancel,
   onConfirm,
@@ -19,6 +21,8 @@ export function ConfirmationDialog({
   cancelLabel?: string;
   confirmLabel: string;
   confirmTone?: "destructive" | "primary";
+  confirmationText?: string;
+  confirmationLabel?: string;
   description: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -27,6 +31,7 @@ export function ConfirmationDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const titleId = useId();
+  const [typedConfirmation, setTypedConfirmation] = useState("");
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -34,6 +39,9 @@ export function ConfirmationDialog({
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   }, [open]);
+
+  const confirmationMatches =
+    confirmationText === undefined || typedConfirmation === confirmationText;
 
   return (
     <dialog
@@ -43,16 +51,29 @@ export function ConfirmationDialog({
         event.preventDefault();
         if (!busy) onCancel();
       }}
+      onClose={() => setTypedConfirmation("")}
       ref={dialogRef}
     >
       <div className="stack">
         <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
+        {confirmationText !== undefined ? (
+          <label className="field-control confirmation-dialog-input">
+            <span>{confirmationLabel}</span>
+            <input
+              autoComplete="off"
+              disabled={busy}
+              onChange={(event) => setTypedConfirmation(event.target.value)}
+              value={typedConfirmation}
+            />
+            <small>Enter <strong>{confirmationText}</strong> exactly.</small>
+          </label>
+        ) : null}
         <div className="tracker-nav tracker-nav-right">
           <button className="button-link" disabled={busy} onClick={onCancel} type="button">{cancelLabel}</button>
           <button
             className={confirmTone === "primary" ? "modal-primary-button" : "button-link destructive-action"}
-            disabled={busy}
+            disabled={busy || !confirmationMatches}
             onClick={onConfirm}
             type="button"
           >

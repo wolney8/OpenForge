@@ -226,6 +226,11 @@ data must not be uploaded until every safety gate in `PD-FR-010` is complete.
 | PD-FR-008R6 | Profile archive discoverability | Expose the existing archive lifecycle as a labelled Profile action with retained history | Existing Profile PATCH and archive confirmation | COMPLETE |
 | PD-FR-008R7 | Durable loading contract | Require inert critical content and distinct loading/empty/error/unavailable states | UI consistency enforcer and known pitfalls | COMPLETE |
 | PD-FR-008R8 | Hosted reliability delivery | Verify tests, performance, exact deployment and healthy local runtime | Repository delivery cadence | IN PROGRESS |
+| PD-FR-008L1 | Archived Profile visibility | Default the Profile directory to Active and expose explicit Active, Archived and All filters | Existing Profile directory status control | COMPLETE |
+| PD-FR-008L2 | Historical report retention | Prove archived Profile ledger and fee history remains in period-based Fund Manager aggregates | Existing workbook-first reporting contracts | COMPLETE |
+| PD-FR-008L3 | Archived operational boundary | Keep archived history readable while rejecting new Profile-scoped operational writes until restore | Existing Profile lifecycle and API routes | COMPLETE |
+| PD-FR-008L4 | Permanent Profile deletion | Expose typed-confirmation hard delete only for Archived Profiles | Profile Management Lifecycle and canonical confirmation dialog | COMPLETE |
+| PD-FR-008L5 | Transactional deletion scope | Delete Profile-owned settings, Accounts, ledgers, opportunities, fees, imports and audit provenance through one database cascade transaction | Existing Profile foreign-key ownership graph | COMPLETE |
 | PD-FR-006R1 | Dashboard/Profile information architecture | Keep `/` as cross-Profile analytics and `/profiles` as Profile management | Existing analytics and Profile directory tabs | COMPLETE |
 | PD-FR-006R2 | Founder rollout terminology | Remove the stale Founder Profile setup callout once normal Profiles exist | Existing zero-Profile empty state | COMPLETE |
 | PD-FR-006R3 | Profile ownership verification | Confirm onboarding creates a normal Profile and links it to the authenticated Fund Manager | Existing onboarding transaction and `fund_manager_profile_links` | COMPLETE |

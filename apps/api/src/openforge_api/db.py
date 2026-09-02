@@ -28,6 +28,13 @@ class DuplicateProfileAccountError(ValueError):
     """Raised when a Profile already references the same canonical provider."""
 
 
+@dataclass(frozen=True)
+class ProfileDeletionResult:
+    profile_id: str
+    display_name: str
+    deleted_record_counts: dict[str, int]
+
+
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -5829,6 +5836,126 @@ def get_profile(profile_id: str) -> ProfileRecord | None:
             (profile_id,),
         ).fetchone()
     return map_profile_row(row) if row else None
+
+
+def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
+    """Permanently remove one archived Profile through its database-owned cascade."""
+    scope_queries: dict[str, tuple[tuple[str, str], ...]] = {
+        "profile_settings": (
+            ("profile_tracker_settings", "profile_id"),
+            ("profile_onboarding_settings", "profile_id"),
+            ("profile_bookmaker_display_settings", "profile_id"),
+            ("profile_exchange_commissions", "profile_id"),
+            ("profile_lookup_values", "profile_id"),
+        ),
+        "profile_accounts": (
+            ("accounts", "profile_id"),
+            ("balance_snapshots", "profile_id"),
+        ),
+        "sportsbook": (("sportsbook_bets", "profile_id"),),
+        "free_bets": (("free_bets", "profile_id"),),
+        "casino": (("casino_offers", "profile_id"),),
+        "extra_places": (("each_way_extra_places", "profile_id"),),
+        "cash_adjustments": (("cash_adjustments", "profile_id"),),
+        "opportunities_and_quick_actions": (
+            ("profile_quick_add_loadout_overrides", "profile_id"),
+            ("profile_quick_add_loadout_favourites", "profile_id"),
+            ("profile_quick_actions", "profile_id"),
+            ("multi_profile_entry_batches", "source_profile_id"),
+            ("multi_profile_entry_targets", "target_profile_id"),
+            ("multi_profile_opportunity_targets", "profile_id"),
+        ),
+        "fees": (
+            ("fee_periods", "profile_id"),
+            ("fee_period_revisions", "profile_id"),
+            ("fee_corrections", "profile_id"),
+            ("fee_withdrawal_links", "profile_id"),
+        ),
+        "imports_and_provenance": (
+            ("import_batches", "profile_id"),
+            ("import_staged_rows", "profile_id"),
+            ("import_source_records", "profile_id"),
+            ("profile_import_runs", "profile_id"),
+            ("profile_import_review_items", "profile_id"),
+            ("profile_import_review_decisions", "profile_id"),
+            ("profile_import_write_plans", "profile_id"),
+            ("profile_import_checkpoints", "profile_id"),
+            ("profile_import_write_audit", "profile_id"),
+            ("profile_import_rollback_events", "profile_id"),
+            ("profile_import_executions", "profile_id"),
+        ),
+        "audit_activity": (
+            ("profile_audit", "profile_id"),
+            ("account_audit", "profile_id"),
+            ("sportsbook_bet_audit", "profile_id"),
+            ("free_bet_audit", "profile_id"),
+            ("cash_adjustment_audit", "profile_id"),
+            ("each_way_extra_place_audit", "profile_id"),
+            ("casino_offer_audit", "profile_id"),
+        ),
+    }
+    with connect() as connection:
+        profile = connection.execute(
+            "SELECT profile_id, display_name, status FROM profiles WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+        if profile is None:
+            return None
+        if str(profile["status"]).casefold() != "archived":
+            raise ValueError("Only an Archived Profile can be permanently deleted")
+
+        counts = {
+            domain: sum(
+                int(
+                    connection.execute(
+                        f"SELECT COUNT(*) AS count FROM {table_name} WHERE {profile_column} = ?",
+                        (profile_id,),
+                    ).fetchone()["count"]
+                )
+                for table_name, profile_column in table_names
+            )
+            for domain, table_names in scope_queries.items()
+        }
+        if postgres_runtime_enabled():
+            import_run_rows = connection.execute(
+                "SELECT import_run_id FROM profile_import_runs WHERE profile_id = ?",
+                (profile_id,),
+            ).fetchall()
+            notification_patterns = [f"%:{profile_id}:%"] + [
+                f"%:{row['import_run_id']}:%" for row in import_run_rows
+            ]
+            counts["fund_manager_relationships"] = int(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM fund_manager_profile_links WHERE profile_id = ?",
+                    (profile_id,),
+                ).fetchone()["count"]
+            )
+            counts["notification_state"] = sum(
+                int(
+                    connection.execute(
+                        "SELECT COUNT(*) AS count FROM notification_user_state "
+                        "WHERE notification_id LIKE ?",
+                        (pattern,),
+                    ).fetchone()["count"]
+                )
+                for pattern in notification_patterns
+            )
+            for pattern in notification_patterns:
+                connection.execute(
+                    "DELETE FROM notification_user_state WHERE notification_id LIKE ?",
+                    (pattern,),
+                )
+        deleted = connection.execute(
+            "DELETE FROM profiles WHERE profile_id = ? AND status = 'Archived'",
+            (profile_id,),
+        )
+        if deleted.rowcount != 1:
+            raise RuntimeError("Profile deletion did not complete")
+        return ProfileDeletionResult(
+            profile_id=profile_id,
+            display_name=str(profile["display_name"]),
+            deleted_record_counts=counts,
+        )
 
 
 def get_profile_onboarding_settings(

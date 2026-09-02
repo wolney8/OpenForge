@@ -206,6 +206,196 @@ def test_profile_metadata_can_be_updated_with_audit(tmp_path: Path) -> None:
     assert count_profile_audit_rows("profile-demo-001") == 1
 
 
+def test_archived_profile_remains_readable_but_rejects_operational_writes(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    before = client.get("/profiles/profile-demo-001/tracker-summary-sources")
+
+    archived = client.patch(
+        "/profiles/profile-demo-001", json={"status": "Archived"}
+    )
+    read_after_archive = client.get(
+        "/profiles/profile-demo-001/tracker-summary-sources"
+    )
+    blocked_bet = client.post(
+        "/profiles/profile-demo-001/sportsbook-bets", json={}
+    )
+    blocked_settings = client.patch(
+        "/profiles/profile-demo-001", json={"display_name": "Should Not Change"}
+    )
+    restored = client.patch(
+        "/profiles/profile-demo-001", json={"status": "Active"}
+    )
+
+    assert archived.status_code == 200
+    assert read_after_archive.status_code == 200
+    assert read_after_archive.json() == before.json()
+    assert blocked_bet.status_code == 409
+    assert blocked_bet.json()["detail"].startswith("Archived Profiles are read-only")
+    assert blocked_settings.status_code == 409
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "Active"
+
+
+def test_profile_delete_requires_archive_and_exact_name_then_cascades(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+    payload = profile_onboarding_payload()
+    created = client.post("/profiles/onboarding", json=payload)
+    assert created.status_code == 201
+    profile_id = created.json()["profile"]["profile_id"]
+    timestamp = "2026-09-02T12:00:00Z"
+    import_run_id = "profile-import-synthetic-delete"
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename,
+              workbook_checksum, workbook_size_bytes, effective_at,
+              mapping_version, status, summary_json, reconciliation_json,
+              raw_workbook_retained, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            """,
+            (
+                import_run_id,
+                profile_id,
+                "synthetic@example.invalid",
+                "synthetic.xlsx",
+                "a" * 64,
+                128,
+                timestamp,
+                "synthetic-v1",
+                "REVIEW_REQUIRED",
+                "{}",
+                "{}",
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_review_items (
+              import_run_id, item_id, profile_id, import_id, source_fingerprint,
+              source_sheet, source_row, source_record_id, category, item_json,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "review-item-1",
+                profile_id,
+                "Synthetic:1",
+                "fingerprint-1",
+                "Synthetic",
+                1,
+                "SYN-1",
+                "synthetic_review",
+                "{}",
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_review_decisions (
+              import_run_id, item_id, profile_id, workbook_checksum,
+              mapping_version, source_fingerprint, decision_json, actor_email,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "review-item-1",
+                profile_id,
+                "a" * 64,
+                "synthetic-v1",
+                "fingerprint-1",
+                "{}",
+                "synthetic@example.invalid",
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    second_payload = profile_onboarding_payload()
+    second_payload.update(
+        display_name="Unaffected Profile", profile_code="PROFILE-002"
+    )
+    unaffected = client.post("/profiles/onboarding", json=second_payload)
+    assert unaffected.status_code == 201
+    unaffected_id = unaffected.json()["profile"]["profile_id"]
+
+    active_delete = client.request(
+        "DELETE",
+        f"/profiles/{profile_id}",
+        json={"confirmation_name": "Synthetic Profile"},
+    )
+    assert active_delete.status_code == 409
+
+    assert client.patch(
+        f"/profiles/{profile_id}", json={"status": "Archived"}
+    ).status_code == 200
+    wrong_name = client.request(
+        "DELETE",
+        f"/profiles/{profile_id}",
+        json={"confirmation_name": "Wrong Profile"},
+    )
+    assert wrong_name.status_code == 422
+
+    deleted = client.request(
+        "DELETE",
+        f"/profiles/{profile_id}",
+        json={"confirmation_name": "Synthetic Profile"},
+    )
+    assert deleted.status_code == 200
+    result = deleted.json()
+    assert result["deleted"] is True
+    assert result["deleted_record_counts"]["profile_accounts"] == 3
+    assert result["deleted_record_counts"]["imports_and_provenance"] == 3
+    assert client.get(f"/profiles/{profile_id}").status_code == 404
+    assert client.get(f"/profiles/{unaffected_id}").status_code == 200
+
+    with connect() as connection:
+        tables = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+        profile_owned_tables = []
+        for table in tables:
+            table_name = str(table["name"])
+            foreign_keys = connection.execute(
+                f'PRAGMA foreign_key_list("{table_name}")'
+            ).fetchall()
+            if any(str(row["table"]) == "profiles" for row in foreign_keys):
+                profile_owned_tables.append(table_name)
+                assert all(
+                    str(row["on_delete"]).upper() == "CASCADE"
+                    for row in foreign_keys
+                    if str(row["table"]) == "profiles"
+                )
+        assert profile_owned_tables
+        for table_name in profile_owned_tables:
+            columns = {
+                str(row["name"])
+                for row in connection.execute(
+                    f'PRAGMA table_info("{table_name}")'
+                ).fetchall()
+            }
+            profile_columns = columns.intersection(
+                {"profile_id", "source_profile_id", "target_profile_id"}
+            )
+            for column in profile_columns:
+                count = connection.execute(
+                    f'SELECT COUNT(*) AS count FROM "{table_name}" WHERE "{column}" = ?',
+                    (profile_id,),
+                ).fetchone()["count"]
+                assert count == 0, f"orphaned {table_name}.{column}"
+
+
 def test_profile_fees_cannot_exceed_one_hundred_percent(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)

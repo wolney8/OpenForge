@@ -163,4 +163,21 @@ describe("aggregateCrossProfileReporting", () => {
     expect(result.bookmakerBreakdown[0]?.totalPnl).toBe(10.5);
     expect(result.weeklyReports[0]?.retainedProfit).toBe(11.5);
   });
+
+  it("retains archived Profile history in Fund Manager reporting", () => {
+    const activeResult = aggregateCrossProfileReporting(inputs);
+    const archivedResult = aggregateCrossProfileReporting(
+      inputs.map((profile) =>
+        profile.profileId === "PROFILE-001"
+          ? { ...profile, status: "Archived" }
+          : profile
+      )
+    );
+
+    expect(archivedResult.totals).toEqual(activeResult.totals);
+    expect(archivedResult.weeklyReports).toEqual(activeResult.weeklyReports);
+    expect(archivedResult.monthlyReports).toEqual(activeResult.monthlyReports);
+    expect(archivedResult.profileRows.find((row) => row.profileId === "PROFILE-001")?.status)
+      .toBe("Archived");
+  });
 });

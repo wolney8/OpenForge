@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
@@ -66,6 +67,7 @@ async function responseDetail(response: Response) {
 }
 
 export function FundManagerProfileManagement({ profileId }: { profileId: string }) {
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [session, setSession] = useState<SessionRecord | null>(null);
@@ -75,7 +77,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [lifecycleConfirmation, setLifecycleConfirmation] = useState<"archive" | "restore" | null>(null);
+  const [lifecycleConfirmation, setLifecycleConfirmation] = useState<"archive" | "restore" | "delete" | null>(null);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -186,6 +188,27 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
     if (saved) setLifecycleConfirmation(null);
   }
 
+  async function deleteProfile() {
+    if (isSaving || !profile || lifecycleConfirmation !== "delete") return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation_name: profile.display_name }),
+      });
+      if (!response.ok) throw new Error(await responseDetail(response));
+      window.dispatchEvent(new CustomEvent(PROFILE_DIRECTORY_UPDATED_EVENT, { detail: { profileId } }));
+      setLifecycleConfirmation(null);
+      router.replace("/profiles");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Profile deletion failed.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   const activeAccounts = accounts.filter((account) =>
     account.status !== "Archived" && account.lifecycle_status !== "Archived"
   );
@@ -194,6 +217,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
     Bookie: activeAccounts.filter((account) => account.type === "Bookie").reduce((sum, account) => sum + parseAmount(account.current_balance), 0),
     Exchange: activeAccounts.filter((account) => account.type === "Exchange").reduce((sum, account) => sum + parseAmount(account.current_balance), 0),
   };
+  const isArchived = profile?.status === "Archived";
 
   if (isLoading) {
     return (
@@ -255,11 +279,12 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
         <section aria-labelledby="profile-management-tab-overview" className="analytics-tab-panel stack" hidden={activeSection !== "overview"} id="profile-management-panel-overview" role="tabpanel">
           <div className="section-heading-row"><div><span className="eyebrow">Profile</span><h2>Overview</h2></div></div>
           <div className="profile-management-form-grid">
-            <label className="field-control"><span>Display name</span><input disabled={isSaving} maxLength={120} onChange={(event) => setForm({ ...form, display_name: event.target.value })} value={form.display_name} /></label>
-            <label className="field-control"><span>Profile code</span><input disabled={isSaving} maxLength={32} onChange={(event) => setForm({ ...form, profile_code: event.target.value.toUpperCase() })} pattern="[A-Z0-9-]+" value={form.profile_code} /></label>
-            <label className="field-control"><span>Tracking start</span><input disabled={isSaving} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setForm({ ...form, tracking_start_date: event.target.value })} type="date" value={form.tracking_start_date} /></label>
+            <label className="field-control"><span>Display name</span><input disabled={isSaving || isArchived} maxLength={120} onChange={(event) => setForm({ ...form, display_name: event.target.value })} value={form.display_name} /></label>
+            <label className="field-control"><span>Profile code</span><input disabled={isSaving || isArchived} maxLength={32} onChange={(event) => setForm({ ...form, profile_code: event.target.value.toUpperCase() })} pattern="[A-Z0-9-]+" value={form.profile_code} /></label>
+            <label className="field-control"><span>Tracking start</span><input disabled={isSaving || isArchived} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setForm({ ...form, tracking_start_date: event.target.value })} type="date" value={form.tracking_start_date} /></label>
           </div>
-          <div className="settings-action-row"><button className="modal-primary-button" disabled={isSaving} onClick={() => void saveOverview()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save overview"}</span></button></div>
+          <div className="settings-action-row"><button className="modal-primary-button" disabled={isSaving || isArchived} onClick={() => void saveOverview()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save overview"}</span></button></div>
+          {isArchived ? <p className="field-hint">Archived Profiles are read-only. Restore this Profile to change its settings.</p> : null}
           <dl className="fund-manager-account-details">
             <div><dt>Status</dt><dd>{profile.status}</dd></div>
             <div><dt>Current cash snapshot</dt><dd><FinancialValue value={profile.current_cash_snapshot} /></dd></div>
@@ -280,10 +305,10 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
         <section aria-labelledby="profile-management-tab-financial" className="analytics-tab-panel stack" hidden={activeSection !== "financial"} id="profile-management-panel-financial" role="tabpanel">
           <div><span className="eyebrow">Financial</span><h2>Fees</h2></div>
           <div className="profile-management-form-grid">
-            <label className="field-control"><span>Management fee (%)</span><input disabled={isSaving} max="100" min="0" onChange={(event) => setForm({ ...form, management_fee_percent: event.target.value })} step="0.01" type="number" value={form.management_fee_percent} /></label>
-            <label className="field-control"><span>Investment fee (%)</span><input disabled={isSaving} max="100" min="0" onChange={(event) => setForm({ ...form, investment_fee_percent: event.target.value })} step="0.01" type="number" value={form.investment_fee_percent} /></label>
+            <label className="field-control"><span>Management fee (%)</span><input disabled={isSaving || isArchived} max="100" min="0" onChange={(event) => setForm({ ...form, management_fee_percent: event.target.value })} step="0.01" type="number" value={form.management_fee_percent} /></label>
+            <label className="field-control"><span>Investment fee (%)</span><input disabled={isSaving || isArchived} max="100" min="0" onChange={(event) => setForm({ ...form, investment_fee_percent: event.target.value })} step="0.01" type="number" value={form.investment_fee_percent} /></label>
           </div>
-          <div className="settings-action-row" data-pd-id="profile-management.financial.actions"><Link className="button-link" href={`/profiles?profile=${profileId}`}>Review fee position</Link><button className="modal-primary-button" disabled={isSaving} onClick={() => void saveFees()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save fees"}</span></button></div>
+          <div className="settings-action-row" data-pd-id="profile-management.financial.actions"><Link className="button-link" href={`/profiles?profile=${profileId}`}>Review fee position</Link><button className="modal-primary-button" disabled={isSaving || isArchived} onClick={() => void saveFees()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save fees"}</span></button></div>
         </section>
 
         <section aria-labelledby="profile-management-tab-accounts" className="analytics-tab-panel stack" hidden={activeSection !== "accounts"} id="profile-management-panel-accounts" role="tabpanel">
@@ -319,25 +344,34 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
         <section aria-labelledby="profile-management-tab-lifecycle" className="analytics-tab-panel stack" hidden={activeSection !== "lifecycle"} id="profile-management-panel-lifecycle" role="tabpanel">
           <div><span className="eyebrow">Lifecycle</span><h2>Profile status</h2></div>
           <dl className="fund-manager-account-details"><div><dt>Current status</dt><dd>{profile.status}</dd></div></dl>
-          <p className="field-hint">Archiving removes this Profile from active views while retaining its tracker, import and audit history.</p>
+          <p className="field-hint">Archive preserves tracker, fee, import and audit history for reporting, but makes the Profile read-only until restored.</p>
           {profile.status === "Archived" ? (
-            <button className="modal-primary-button" data-pd-id="profile-management.restore" onClick={() => setLifecycleConfirmation("restore")} type="button"><span aria-hidden="true" className="material-symbols-outlined">unarchive</span><span>Restore Profile</span></button>
+            <div className="stack profile-lifecycle-actions">
+              <button className="modal-primary-button" data-pd-id="profile-management.restore" disabled={isSaving} onClick={() => setLifecycleConfirmation("restore")} type="button"><span aria-hidden="true" className="material-symbols-outlined">unarchive</span><span>Restore Profile</span></button>
+              <div className="content-panel stack profile-lifecycle-danger">
+                <div><span className="eyebrow">Permanent deletion</span><h3>Delete Profile</h3></div>
+                <p>Delete permanently removes this Profile, its Accounts, ledgers, fees, imports, review decisions and audit history. This cannot be undone.</p>
+                <button className="icon-button icon-button-destructive icon-text-action" data-pd-id="profile-management.delete" disabled={isSaving} onClick={() => setLifecycleConfirmation("delete")} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span><span>Delete Profile</span></button>
+              </div>
+            </div>
           ) : (
-            <button className="icon-button icon-button-destructive icon-text-action" data-pd-id="profile-management.archive" onClick={() => setLifecycleConfirmation("archive")} type="button"><span aria-hidden="true" className="material-symbols-outlined">archive</span><span>Archive Profile</span></button>
+            <button className="icon-button icon-button-destructive icon-text-action" data-pd-id="profile-management.archive" disabled={isSaving} onClick={() => setLifecycleConfirmation("archive")} type="button"><span aria-hidden="true" className="material-symbols-outlined">archive</span><span>Archive Profile</span></button>
           )}
         </section>
       </section>
 
       <ConfirmationDialog
         busy={isSaving}
-        busyLabel={lifecycleConfirmation === "archive" ? "Archiving" : "Restoring"}
-        confirmLabel={lifecycleConfirmation === "archive" ? "Archive Profile" : "Restore Profile"}
-        confirmTone={lifecycleConfirmation === "archive" ? "destructive" : "primary"}
-        description={lifecycleConfirmation === "archive" ? `Archive ${profile.display_name}? Historical tracker and import data will be retained.` : `Restore ${profile.display_name} to active Profile views?`}
+        busyLabel={lifecycleConfirmation === "archive" ? "Archiving" : lifecycleConfirmation === "delete" ? "Deleting" : "Restoring"}
+        confirmLabel={lifecycleConfirmation === "archive" ? "Archive Profile" : lifecycleConfirmation === "delete" ? "Delete Profile" : "Restore Profile"}
+        confirmTone={lifecycleConfirmation === "restore" ? "primary" : "destructive"}
+        confirmationLabel="Profile name"
+        confirmationText={lifecycleConfirmation === "delete" ? profile.display_name : undefined}
+        description={lifecycleConfirmation === "archive" ? `Archive ${profile.display_name}? Historical records remain reportable, but any open positions become read-only until the Profile is restored.` : lifecycleConfirmation === "delete" ? `Permanently delete ${profile.display_name} and all Profile-scoped financial, import and audit data? This cannot be undone.` : `Restore ${profile.display_name} to active Profile views?`}
         onCancel={() => setLifecycleConfirmation(null)}
-        onConfirm={() => void updateLifecycle()}
+        onConfirm={() => lifecycleConfirmation === "delete" ? void deleteProfile() : void updateLifecycle()}
         open={lifecycleConfirmation !== null}
-        title={lifecycleConfirmation === "archive" ? "Archive Profile?" : "Restore Profile?"}
+        title={lifecycleConfirmation === "archive" ? "Archive Profile?" : lifecycleConfirmation === "delete" ? "Delete Profile permanently?" : "Restore Profile?"}
       />
     </main>
   );

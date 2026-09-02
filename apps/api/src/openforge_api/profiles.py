@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
     create_profile_with_onboarding,
+    delete_archived_profile,
     get_profile,
     get_profile_onboarding_settings,
     link_fund_manager_profile,
@@ -32,6 +33,17 @@ class ProfileResponse(BaseModel):
     management_fee_percent: str
     investment_fee_percent: str
     current_cash_snapshot: str
+
+
+class ProfileDeletePayload(BaseModel):
+    confirmation_name: str = Field(min_length=1, max_length=120)
+
+
+class ProfileDeleteResponse(BaseModel):
+    profile_id: str
+    display_name: str
+    deleted: bool
+    deleted_record_counts: dict[str, int]
 
 
 class ProfileUpdatePayload(BaseModel):
@@ -313,7 +325,12 @@ def create_profile_onboarding_route(
     invalid_quick_actions: list[str] = []
     for selection in payload.quick_actions:
         config = active_quick_actions.get(selection.preset_id)
-        supported_ledgers = config.get("supported_ledgers", []) if config else []
+        supported_ledgers_value = config.get("supported_ledgers", []) if config else []
+        supported_ledgers = (
+            supported_ledgers_value
+            if isinstance(supported_ledgers_value, list)
+            else []
+        )
         if selection.ledger_type not in supported_ledgers:
             invalid_quick_actions.append(
                 f"{selection.preset_id}:{selection.ledger_type}"
@@ -432,7 +449,15 @@ def create_profile_onboarding_route(
 
 @router.patch("/profiles/{profile_id}", response_model=ProfileResponse)
 def update_profile_route(profile_id: str, payload: ProfileUpdatePayload) -> ProfileResponse:
+    current = get_profile(profile_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
     values = payload.model_dump(exclude_none=True)
+    if current.status.casefold() == "archived" and values != {"status": "Active"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Archived Profiles are read-only. Restore this Profile before making changes.",
+        )
     for fee_field in ("management_fee_percent", "investment_fee_percent"):
         if fee_field in values:
             values[fee_field] = f"{values[fee_field]:.2f}"
@@ -445,3 +470,32 @@ def update_profile_route(profile_id: str, payload: ProfileUpdatePayload) -> Prof
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return ProfileResponse.model_validate(profile.__dict__)
+
+
+@router.delete("/profiles/{profile_id}", response_model=ProfileDeleteResponse)
+def delete_profile_route(
+    profile_id: str, payload: ProfileDeletePayload
+) -> ProfileDeleteResponse:
+    profile = get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if profile.status.casefold() != "archived":
+        raise HTTPException(
+            status_code=409, detail="Archive this Profile before permanently deleting it."
+        )
+    if payload.confirmation_name != profile.display_name:
+        raise HTTPException(
+            status_code=422, detail="Enter the exact Profile name to confirm deletion."
+        )
+    try:
+        deleted = delete_archived_profile(profile_id)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return ProfileDeleteResponse(
+        profile_id=deleted.profile_id,
+        display_name=deleted.display_name,
+        deleted=True,
+        deleted_record_counts=deleted.deleted_record_counts,
+    )

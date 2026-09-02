@@ -4151,6 +4151,10 @@ html[data-theme="dark"] .notification-count-badge {
   backdrop-filter: blur(6px);
 }
 
+.confirmation-dialog-input {
+  margin-block: 0.25rem;
+}
+
 .cookie-notice {
   position: fixed;
   z-index: 90;
@@ -4560,6 +4564,20 @@ html[data-theme="dark"] .notification-count-badge {
 .profile-management-shell .analytics-tab-panel > .icon-text-action,
 .profile-management-shell .analytics-tab-panel > .modal-primary-button {
   justify-self: start;
+}
+
+.profile-lifecycle-actions,
+.profile-lifecycle-danger {
+  align-items: start;
+}
+
+.profile-lifecycle-danger {
+  width: min(100%, 42rem);
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--outline));
+}
+
+.profile-lifecycle-danger p {
+  margin: 0;
 }
 
 @media (max-width: 720px) {

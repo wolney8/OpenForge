@@ -89,6 +89,7 @@ function aggregateReportRows(rows: ReportRow[]): ReportRow[] {
 export function aggregateCrossProfileReporting(
   profiles: ProfileReportingInput[]
 ): CrossProfileReportingResult {
+  // Current lifecycle status is display/scope metadata, not a historical-report exclusion.
   const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
     const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0, extraPlaces: 0 };
     return {

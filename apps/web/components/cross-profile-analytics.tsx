@@ -351,7 +351,7 @@ export function CrossProfileAnalytics({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab);
   const [directoryQuery, setDirectoryQuery] = useState("");
-  const [directoryStatus, setDirectoryStatus] = useState("all");
+  const [directoryStatus, setDirectoryStatus] = useState("Active");
   const [directoryPage, setDirectoryPage] = useState(1);
   const [pinnedProfileIds, setPinnedProfileIds] = useState<string[]>([]);
   const [detailProfileId, setDetailProfileId] = useState<string | null>(initialDetailProfileId ?? null);
@@ -988,10 +988,9 @@ export function CrossProfileAnalytics({
                 setDirectoryPage(1);
               }}
             >
-              <option value="all">All statuses</option>
-              {[...new Set(profileRecords.map((profile) => normalizeProfileStatus(profile.status)))].map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
+              <option value="Active">Active</option>
+              <option value="Archived">Archived</option>
+              <option value="all">All</option>
             </select>
           </span>
         </label>
