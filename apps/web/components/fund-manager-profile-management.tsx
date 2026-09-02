@@ -8,6 +8,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { invalidateCachedJson } from "@/lib/client-json-cache";
 import { PROFILE_DIRECTORY_UPDATED_EVENT } from "@/lib/recent-profiles";
 
 type ProfileRecord = {
@@ -199,9 +200,11 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
         body: JSON.stringify({ confirmation_name: profile.display_name }),
       });
       if (!response.ok) throw new Error(await responseDetail(response));
+      invalidateCachedJson(`${apiBaseUrl}/profiles`);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}`);
       window.dispatchEvent(new CustomEvent(PROFILE_DIRECTORY_UPDATED_EVENT, { detail: { profileId } }));
       setLifecycleConfirmation(null);
-      router.replace("/profiles");
+      router.replace("/profiles?status=Archived");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Profile deletion failed.");
     } finally {

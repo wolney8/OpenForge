@@ -130,6 +130,55 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(page.locator('[data-pd-id^="profiles.directory.row."]')).toHaveCount(2);
   });
 
+  test("settles an empty Archived directory while financial summaries load separately", async ({ page }) => {
+    await mockProfileDirectory(page);
+    let summaryRequests = 0;
+    await page.route("**/profiles/profile-demo-001/tracker-summary-sources", async (route) => {
+      summaryRequests += 1;
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          accounts: [], sportsbook_bets: [], free_bets: [], casino_offers: [],
+          cash_adjustments: [], each_way_extra_places: [], balance_snapshots: [],
+          fee_periods: [], tracker_settings: {
+            active_date_preset: "Week (Mon-Sun)", custom_start_date: "",
+            custom_end_date: "", range_back_days: 0, range_forward_days: 0,
+          },
+        }),
+      });
+    });
+
+    await page.goto("/profiles?status=Archived");
+    await expect(page.locator('[data-pd-id="profiles.directory.status-filter"]')).toHaveValue("Archived");
+    await expect(page.locator('[data-pd-id="profiles.directory.empty"]')).toContainText("No archived Profiles");
+    await expect(page.getByRole("button", { name: "View Active Profiles" })).toBeEnabled();
+    await expect(page.getByText("Loading combined profile reporting")).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="profiles.financial-summary.loading"]')).toBeVisible();
+
+    await page.getByRole("button", { name: "View Active Profiles" }).click();
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="profiles.directory.status-filter"]')).toHaveValue("Active");
+    await expect(page.locator('[data-pd-id="profiles.financial-summary.loading"]')).toBeHidden();
+    expect(summaryRequests).toBe(1);
+  });
+
+  test("does not retry a terminal deleted-Profile reporting response", async ({ page }) => {
+    await mockProfileDirectory(page);
+    let summaryRequests = 0;
+    await page.route("**/profiles/profile-demo-001/tracker-summary-sources", async (route) => {
+      summaryRequests += 1;
+      await route.fulfill({ contentType: "application/json", status: 404, body: "{}" });
+    });
+
+    await page.goto("/profiles");
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]')).toBeVisible();
+    await expect(page.getByText("1 profile load failed.")).toBeVisible();
+    await page.waitForTimeout(10_500);
+    expect(summaryRequests).toBe(1);
+  });
+
   test("exposes the existing Profile directory, onboarding, management, and archive lifecycle", async ({ page }) => {
     await mockProfileDirectory(page);
     let currentStatus = profile.status;
@@ -286,7 +335,7 @@ test.describe("Profile lifecycle and shell routing", () => {
     await confirmation.getByLabel("Profile name").fill("Demo Profile");
     await expect(deleteButton).toBeEnabled();
     await deleteButton.click();
-    await expect(page).toHaveURL(/\/profiles$/);
+    await expect(page).toHaveURL(/\/profiles\?status=Archived$/);
   });
 
   test("keeps Dashboard analytics distinct from Profile management", async ({ page }) => {

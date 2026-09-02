@@ -88,6 +88,11 @@ use the canonical primitive and computed styling.
   `LedgerLoadingIndicator` or a layout-preserving skeleton inside its stable shell; a small
   isolated action uses the canonical button spinner; empty and error states remain semantically
   distinct. Never add an artificial delay. Verify light/dark and reduced-motion behaviour.
+- A successful zero-row filter is a settled `empty` state and must never wait for unrelated
+  financial/reporting requests. Directory identity and lifecycle rows render once their own
+  request settles; secondary summaries use local loading placeholders. Deletion must invalidate
+  the entity and collection caches, cancel or ignore stale entity reads, and settle navigation on
+  a deterministic filter state. A deleted-entity `404` is terminal and must not enter a retry loop.
 - Route/page critical loading must retain `aria-busy` until every query required to make the page
   usable has settled. Its canonical overlay intercepts pointer input and the underlying controls
   are `inert`; stale controls must never remain clickable through a translucent loader. Secondary

@@ -3,6 +3,18 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-02: Secondary Profile reporting blocked an empty directory
+
+- Area: Fund Manager Profiles directory and post-delete navigation.
+- Root cause: the directory shared one blocking loading flag with full cross-Profile reporting;
+  failed reads for a deleted Profile were retried every ten seconds and repeatedly restored the
+  combined-reporting loader instead of settling an empty Archived filter.
+- Prevention: Profile identity/status is the directory's only critical dataset. Financial
+  summaries load locally, collection/entity caches are invalidated before deterministic
+  post-delete navigation, and deleted-entity `404` failures are never retried.
+- Regression test: `tests/e2e/profile-lifecycle-routing.spec.ts` verifies zero Archived results,
+  immediate directory interaction, local reporting placeholders and no deleted-Profile retries.
+
 ## 2026-09-02: Route progress left the previous page interactive
 
 - Area: authenticated application shell and all internal route transitions.

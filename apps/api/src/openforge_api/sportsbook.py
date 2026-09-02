@@ -23,6 +23,7 @@ from openforge_api.db import (
     delete_sportsbook_bet,
     get_multi_profile_entry_batch_target,
     get_profile_exchange_commission,
+    get_profile_exchange_commission_map,
     get_sportsbook_bet,
     list_accounts,
     list_multi_profile_entry_batch_targets,
@@ -480,14 +481,10 @@ def reminder_timestamp(value: str, *, end_of_day_for_date: bool = False) -> floa
 
 @router.get("", response_model=list[SportsbookBetResponse])
 def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]:
-    commission_cache: dict[str, str] = {}
+    commission_cache = get_profile_exchange_commission_map(profile_id)
 
     def resolve_commission(exchange_name: str) -> str:
-        if exchange_name not in commission_cache:
-            commission_cache[exchange_name] = get_profile_exchange_commission(
-                profile_id, exchange_name
-            )
-        return commission_cache[exchange_name]
+        return commission_cache.get(exchange_name, "")
 
     return [
         build_response(

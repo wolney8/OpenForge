@@ -656,19 +656,22 @@ def parse_seed_bool(value: Any) -> bool:
 
 @contextmanager
 def connect() -> Iterator[Any]:
+    database_mode = settings.database_mode.strip().lower() or "local"
+    if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
+        # Each PostgreSQL call owns its connection. Serializing independent hosted
+        # reads behind the SQLite process lock creates avoidable request waterfalls.
+        postgres_connection = connect_postgres(settings.neon_database_url)
+        try:
+            yield postgres_connection
+            postgres_connection.commit()
+        except Exception:
+            postgres_connection.rollback()
+            raise
+        finally:
+            postgres_connection.close()
+        return
+
     with database_operation_lock:
-        database_mode = settings.database_mode.strip().lower() or "local"
-        if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
-            postgres_connection = connect_postgres(settings.neon_database_url)
-            try:
-                yield postgres_connection
-                postgres_connection.commit()
-            except Exception:
-                postgres_connection.rollback()
-                raise
-            finally:
-                postgres_connection.close()
-            return
         if database_mode not in SUPPORTED_SQLITE_RUNTIME_MODES:
             raise RuntimeError(
                 "Database mode "

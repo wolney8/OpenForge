@@ -19,6 +19,7 @@ from openforge_api.db import (
     delete_free_bet,
     get_free_bet,
     get_profile_exchange_commission,
+    get_profile_exchange_commission_map,
     get_profile_tracker_settings,
     list_free_bet_follow_up_reminder_audit,
     list_free_bets,
@@ -267,14 +268,10 @@ def build_response(
 @router.get("", response_model=list[FreeBetResponse])
 def list_profile_free_bets(profile_id: str) -> list[FreeBetResponse]:
     tracker_settings = get_profile_tracker_settings(profile_id)
-    commission_cache: dict[str, str] = {}
+    commission_cache = get_profile_exchange_commission_map(profile_id)
 
     def resolve_commission(exchange_name: str) -> str:
-        if exchange_name not in commission_cache:
-            commission_cache[exchange_name] = get_profile_exchange_commission(
-                profile_id, exchange_name
-            )
-        return commission_cache[exchange_name]
+        return commission_cache.get(exchange_name, "")
 
     return [
         build_response(

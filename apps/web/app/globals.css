@@ -8790,6 +8790,43 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border-radius: inherit;
 }
 
+.profile-reporting-secondary-loader {
+  position: relative;
+  min-height: 11rem;
+}
+
+.profile-reporting-secondary-loader > .ledger-loading-overlay {
+  inset: 0;
+  border-radius: inherit;
+}
+
+.profile-reporting-cell-loading {
+  display: inline-flex;
+  width: min(7rem, 100%);
+  min-width: 4rem;
+  vertical-align: middle;
+}
+
+.profile-reporting-cell-loading .material-linear-progress {
+  width: 100%;
+}
+
+.profile-directory-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--action-group-gap);
+  min-height: 6rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 42rem) {
+  .profile-directory-empty-state {
+    flex-direction: column;
+  }
+}
+
 .ledger-loading-indicator {
   display: grid;
   gap: 0.8rem;

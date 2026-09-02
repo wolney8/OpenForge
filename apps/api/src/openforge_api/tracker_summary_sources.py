@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter
@@ -18,21 +19,36 @@ router = APIRouter(tags=["tracker-summary"])
 
 
 @router.get("/profiles/{profile_id}/tracker-summary-sources")
-def get_profile_tracker_summary_sources(profile_id: str) -> dict[str, Any]:
+async def get_profile_tracker_summary_sources(profile_id: str) -> dict[str, Any]:
     """Bundle the existing read contracts used by Dashboard and Reports.
 
     The response deliberately reuses each signed-off endpoint serializer so the
     aggregation transport cannot introduce a second financial interpretation.
     """
 
-    return {
-        "accounts": list_profile_accounts(profile_id),
-        "sportsbook_bets": list_profile_sportsbook_bets(profile_id),
-        "free_bets": list_profile_free_bets(profile_id),
-        "casino_offers": list_profile_casino_offers(profile_id),
-        "cash_adjustments": list_profile_cash_adjustments(profile_id),
-        "each_way_extra_places": list_profile_each_way_extra_places(profile_id),
-        "balance_snapshots": list_profile_balance_snapshots(profile_id),
-        "fee_periods": list_profile_fee_periods(profile_id),
-        "tracker_settings": get_tracker_settings(profile_id),
-    }
+    keys = (
+        "accounts",
+        "sportsbook_bets",
+        "free_bets",
+        "casino_offers",
+        "cash_adjustments",
+        "each_way_extra_places",
+        "balance_snapshots",
+        "fee_periods",
+        "tracker_settings",
+    )
+    readers = (
+        list_profile_accounts,
+        list_profile_sportsbook_bets,
+        list_profile_free_bets,
+        list_profile_casino_offers,
+        list_profile_cash_adjustments,
+        list_profile_each_way_extra_places,
+        list_profile_balance_snapshots,
+        list_profile_fee_periods,
+        get_tracker_settings,
+    )
+    values = await asyncio.gather(
+        *(asyncio.to_thread(reader, profile_id) for reader in readers)
+    )
+    return dict(zip(keys, values, strict=True))

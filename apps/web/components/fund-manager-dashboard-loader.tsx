@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   CrossProfileAnalytics,
   type AnalyticsTab,
+  type DirectoryStatus,
   type ProfileDescriptor,
 } from "@/components/cross-profile-analytics";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -38,12 +39,14 @@ export function FundManagerDashboardLoader({
   initialDetailProfileId,
   initialFeeReviewMonth,
   initialOpportunityId,
+  initialDirectoryStatus,
   pageKind = "dashboard",
 }: {
   initialTab: AnalyticsTab;
   initialDetailProfileId?: string;
   initialFeeReviewMonth?: string;
   initialOpportunityId?: string;
+  initialDirectoryStatus?: DirectoryStatus;
   pageKind?: "dashboard" | "profiles" | "reports";
 }) {
   const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
@@ -127,6 +130,7 @@ export function FundManagerDashboardLoader({
           initialDetailProfileId={initialDetailProfileId}
           initialFeeReviewMonth={initialFeeReviewMonth}
           initialOpportunityId={initialOpportunityId}
+          initialDirectoryStatus={initialDirectoryStatus}
           key={initialTab}
           profiles={profiles}
         />

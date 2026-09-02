@@ -69,7 +69,33 @@ test.describe("Cross-ledger loading parity", () => {
     await expect(page.getByRole("heading", { name: "Create the first Profile" })).toBeVisible();
   });
 
-  test("Profiles keeps critical controls inert until reporting is ready", async ({ page }) => {
+  test("Profiles keeps directory controls usable while financial reporting loads locally", async ({ page }) => {
+    await page.route("**/api/auth/session**", (route) => route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({
+        authenticated: true,
+        auth_provider: "google",
+        email: "founder@example.invalid",
+        linked_profile_ids: [profileId],
+        name: "Synthetic Founder",
+        role: "fund_manager",
+      }),
+    }));
+    await page.route("**/api/auth/activity", (route) => route.fulfill({ status: 204 }));
+    await page.route(/\/api\/profiles\/?(?:\?.*)?$/, (route) => route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify([{
+        profile_id: profileId,
+        display_name: "Demo Profile",
+        profile_code: "DEMO-001",
+        status: "Active",
+        tracking_start_date: "2026-01-01",
+        management_fee_percent: "0.00",
+        investment_fee_percent: "0.00",
+      }]),
+    }));
     let releaseSummary: (() => void) | undefined;
     const summaryGate = new Promise<void>((resolve) => { releaseSummary = resolve; });
     await page.route("**/tracker-summary-sources", async (route) => {
@@ -101,20 +127,17 @@ test.describe("Cross-ledger loading parity", () => {
     const analytics = page.locator(".cross-profile-analytics");
     const controls = page.locator(".fund-manager-control-bar.is-directory");
     const tabs = page.locator('[data-pd-id="profiles.navigation.tabs"]');
-    await expect(analytics).toHaveAttribute("aria-busy", "true");
-    await expect(controls).toHaveAttribute("inert", "");
-    await expect(tabs).toHaveAttribute("inert", "");
-    await expect(page.getByText("Loading combined profile reporting")).toBeVisible();
+    await expect(analytics).toHaveAttribute("aria-busy", "false");
+    await expect(controls).not.toHaveAttribute("inert", "");
+    await expect(tabs).not.toHaveAttribute("inert", "");
+    await expect(page.locator('[data-pd-id="profiles.financial-summary.loading"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]')).toBeVisible();
     await expect(page.getByText("Unavailable", { exact: true })).toHaveCount(0);
-    expect(await page.locator(".cross-profile-analytics > .ledger-loading-overlay").evaluate(
-      (element) => getComputedStyle(element).pointerEvents
-    )).toBe("auto");
 
     releaseSummary?.();
     await navigation;
     await expect(analytics).toHaveAttribute("aria-busy", "false");
-    await expect(controls).not.toHaveAttribute("inert", "");
-    await expect(tabs).not.toHaveAttribute("inert", "");
+    await expect(page.locator('[data-pd-id="profiles.financial-summary.loading"]')).toBeHidden();
   });
 
   test("Profile Accounts keeps its data shell busy until all initial sources resolve", async ({ page }) => {

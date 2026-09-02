@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from openforge_api import tracker_summary_sources
 from openforge_api.config import settings
 from openforge_api.db import (
     connect,
@@ -89,6 +92,47 @@ def test_tracker_summary_sources_reuse_signed_off_read_contracts(tmp_path: Path)
         individual = client.get(f"/profiles/{profile_id}/{endpoint}")
         assert individual.status_code == 200
         assert sources[key] == individual.json()
+
+
+def test_tracker_summary_sources_reads_existing_contracts_concurrently(monkeypatch) -> None:
+    reader_names = (
+        "list_profile_accounts",
+        "list_profile_sportsbook_bets",
+        "list_profile_free_bets",
+        "list_profile_casino_offers",
+        "list_profile_cash_adjustments",
+        "list_profile_each_way_extra_places",
+        "list_profile_balance_snapshots",
+        "list_profile_fee_periods",
+        "get_tracker_settings",
+    )
+
+    def slow_reader(profile_id: str) -> list[str]:
+        assert profile_id == "profile-demo-001"
+        time.sleep(0.05)
+        return [profile_id]
+
+    for name in reader_names:
+        monkeypatch.setattr(tracker_summary_sources, name, slow_reader)
+
+    started = time.perf_counter()
+    result = asyncio.run(
+        tracker_summary_sources.get_profile_tracker_summary_sources("profile-demo-001")
+    )
+    elapsed = time.perf_counter() - started
+
+    assert set(result) == {
+        "accounts",
+        "sportsbook_bets",
+        "free_bets",
+        "casino_offers",
+        "cash_adjustments",
+        "each_way_extra_places",
+        "balance_snapshots",
+        "fee_periods",
+        "tracker_settings",
+    }
+    assert elapsed < 0.25
 
 
 def profile_onboarding_payload() -> dict[str, object]:

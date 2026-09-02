@@ -7,7 +7,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue } from "./financial-value";
-import { readCachedJson } from "@/lib/client-json-cache";
+import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
 import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
   aggregateCrossProfileReporting,
@@ -73,6 +73,7 @@ export type ProfileDescriptor = {
 };
 
 export type AnalyticsTab = "profiles" | "performance" | "exposure" | "fees" | "reports";
+export type DirectoryStatus = "Active" | "Archived" | "all";
 type TrackerSettingsRecord = {
   active_date_preset: DatePreset;
   custom_start_date: string;
@@ -110,7 +111,16 @@ type ProfileLoadFailure = {
   profileId: string;
   displayName: string;
   message: string;
+  status?: number;
 };
+
+function ReportingCellLoading({ label }: { label: string }) {
+  return (
+    <span aria-label={label} className="profile-reporting-cell-loading" role="status">
+      <span aria-hidden="true" className="material-linear-progress"><span /></span>
+    </span>
+  );
+}
 
 function ReportTable({
   feeHeading,
@@ -331,10 +341,12 @@ export function CrossProfileAnalytics({
   initialDetailProfileId,
   initialFeeReviewMonth,
   initialOpportunityId,
+  initialDirectoryStatus = "Active",
 }: CrossProfileAnalyticsProps & {
   initialDetailProfileId?: string;
   initialFeeReviewMonth?: string;
   initialOpportunityId?: string;
+  initialDirectoryStatus?: DirectoryStatus;
 }) {
   const router = useRouter();
   const profileRecords = profiles;
@@ -351,7 +363,7 @@ export function CrossProfileAnalytics({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab);
   const [directoryQuery, setDirectoryQuery] = useState("");
-  const [directoryStatus, setDirectoryStatus] = useState("Active");
+  const [directoryStatus, setDirectoryStatus] = useState<DirectoryStatus>(initialDirectoryStatus);
   const [directoryPage, setDirectoryPage] = useState(1);
   const [pinnedProfileIds, setPinnedProfileIds] = useState<string[]>([]);
   const [detailProfileId, setDetailProfileId] = useState<string | null>(initialDetailProfileId ?? null);
@@ -425,14 +437,14 @@ export function CrossProfileAnalytics({
       cachedFrame = window.requestAnimationFrame(() => {
         if (!controller.signal.aborted) setIsLoading(true);
       });
-      beginShellLoading();
+      if (initialTab !== "profiles") beginShellLoading();
     }
 
     void Promise.allSettled(
       profiles.map(async (profile) => {
-        const sources = await fetchTrackerSummarySources(profile.profileId, {
-          signal: controller.signal,
-        });
+        // Share the in-flight bundle across React remounts. The controller still
+        // prevents a stale result from mutating the current directory state.
+        const sources = await fetchTrackerSummarySources(profile.profileId);
         return {
           profile,
           dataset: {
@@ -469,6 +481,7 @@ export function CrossProfileAnalytics({
             displayName: profile.displayName,
             message:
               result.reason instanceof Error ? result.reason.message : "Unknown profile load error",
+            status: result.reason instanceof JsonRequestError ? result.reason.status : undefined,
           });
         }
       });
@@ -477,7 +490,7 @@ export function CrossProfileAnalytics({
       setTrackerSettings(nextTrackerSettings);
       setFailures(nextFailures);
       setIsLoading(false);
-      if (!hasCompleteCriticalCache) endShellLoading();
+      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     });
 
     return () => {
@@ -485,12 +498,13 @@ export function CrossProfileAnalytics({
       if (cachedFrame !== null) {
         window.cancelAnimationFrame(cachedFrame);
       }
-      if (!hasCompleteCriticalCache) endShellLoading();
+      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     };
-  }, [profiles, loadRevision]);
+  }, [initialTab, profiles, loadRevision]);
 
   useEffect(() => {
-    if (failures.length === 0) {
+    const retryableFailures = failures.filter((failure) => failure.status !== 404);
+    if (retryableFailures.length === 0) {
       return;
     }
 
@@ -501,7 +515,7 @@ export function CrossProfileAnalytics({
       window.clearInterval(intervalId);
       window.removeEventListener("focus", retry);
     };
-  }, [failures.length]);
+  }, [failures]);
 
   const resolvedRange = useMemo(
     () => resolveDateRange({ preset, customStart, customEnd }),
@@ -907,15 +921,19 @@ export function CrossProfileAnalytics({
     setFeeReviewProfileId(profileId);
   }
 
+  const reportingIsCritical = activeTab !== "profiles";
+  const blockingReportingLoad = isLoading && reportingIsCritical;
+  const failedProfileIds = new Set(failures.map((failure) => failure.profileId));
+
   return (
     <section
-      aria-busy={isLoading}
+      aria-busy={blockingReportingLoad}
       className="content-panel stack cross-profile-analytics"
       aria-labelledby="combined-analytics-title"
     >
       <div
         className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}
-        inert={isLoading ? true : undefined}
+        inert={blockingReportingLoad ? true : undefined}
       >
         {activeTab !== "profiles" && activeTab !== "fees" ? (
         <details className="profile-report-picker fund-manager-control-slot-profile">
@@ -984,7 +1002,7 @@ export function CrossProfileAnalytics({
               data-pd-id="profiles.directory.status-filter"
               value={directoryStatus}
               onChange={(event) => {
-                setDirectoryStatus(event.target.value);
+                setDirectoryStatus(event.target.value as DirectoryStatus);
                 setDirectoryPage(1);
               }}
             >
@@ -1060,7 +1078,7 @@ export function CrossProfileAnalytics({
         </div>
       </div>
 
-      {isLoading ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
+      {blockingReportingLoad ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (
         <div className="validation-message" role="alert">
@@ -1140,13 +1158,21 @@ export function CrossProfileAnalytics({
             </dl>
           </article>
         </section>
+      ) : activeTab === "profiles" ? (
+        <section
+          aria-busy="true"
+          className="portfolio-dashboard-view profile-reporting-secondary-loader"
+          data-pd-id="profiles.financial-summary.loading"
+        >
+          <LedgerLoadingIndicator label="Loading Profile financial summaries" />
+        </section>
       ) : null}
 
       <div
         aria-label="Fund Manager profile and analytics sections"
         className="analytics-tab-list"
         data-pd-id="profiles.navigation.tabs"
-        inert={isLoading ? true : undefined}
+        inert={blockingReportingLoad ? true : undefined}
         role="tablist"
       >
         {analyticsTabs.map((tab) => (
@@ -1505,7 +1531,7 @@ export function CrossProfileAnalytics({
         </>
       ) : null}
 
-      {activeTab === "profiles" && !isLoading ? (
+      {activeTab === "profiles" ? (
       <section
         aria-labelledby="analytics-tab-profiles"
         className="analytics-tab-panel content-subpanel stack profile-directory"
@@ -1513,27 +1539,33 @@ export function CrossProfileAnalytics({
         id="analytics-panel-profiles"
         role="tabpanel"
       >
-        <section className="stat-strip" aria-label="All-profile headline totals">
+        <section
+          aria-busy={isLoading}
+          className="stat-strip"
+          aria-label="All-profile headline totals"
+        >
           <article className="stat-card">
             <span className="eyebrow">Gross P&amp;L</span>
-            <strong><FinancialValue value={allProfilesCombined.totals.grossBettingPnl} /></strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : <FinancialValue value={allProfilesCombined.totals.grossBettingPnl} />}</strong>
             <span>Sportsbook + Free Bets + Casino</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Retained profit</span>
-            <strong><FinancialValue value={allProfilesCombined.totals.retainedProfit} /></strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading retained profit" /> : <FinancialValue value={allProfilesCombined.totals.retainedProfit} />}</strong>
             <span>Gross P&amp;L after signed withdrawals and costs</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Current Account Cash</span>
-            <strong><FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} /></strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : <FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />}</strong>
             <span>Current bookmaker, exchange, and bank balances</span>
           </article>
           <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
             <span className="eyebrow">Available to Withdraw</span>
-            <strong><FinancialValue value={allProfilesFeePosition.availableToWithdraw} /></strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading available fees" /> : <FinancialValue value={allProfilesFeePosition.availableToWithdraw} />}</strong>
             <span>
-              {allProfilesFeePosition.crystallisedPeriodCount > 0
+              {isLoading
+                ? "Loading fee position"
+                : allProfilesFeePosition.crystallisedPeriodCount > 0
                 ? `${formatMoney(allProfilesFeePosition.feesEarned)} earned · ${formatMoney(allProfilesFeePosition.feesWithdrawn)} withdrawn`
                 : "No crystallised fee periods in this range"}
             </span>
@@ -1583,7 +1615,18 @@ export function CrossProfileAnalytics({
             </thead>
             <tbody>
               {visibleDirectoryProfiles.length === 0 ? (
-                <tr><td colSpan={10}>No profiles match the directory controls.</td></tr>
+                <tr>
+                  <td colSpan={10}>
+                    <div className="profile-directory-empty-state" data-pd-id="profiles.directory.empty" role="status">
+                      <strong>{directoryStatus === "Archived" ? "No archived Profiles" : directoryStatus === "Active" ? "No active Profiles" : "No Profiles match these controls"}</strong>
+                      {directoryStatus === "Archived" ? (
+                        <button className="button-link" onClick={() => { setDirectoryStatus("Active"); setDirectoryPage(1); }} type="button">
+                          View Active Profiles
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
               ) : visibleDirectoryProfiles.map((profile) => {
                 const isPinned = pinnedProfileIds.includes(profile.profileId);
                 return (
@@ -1640,18 +1683,16 @@ export function CrossProfileAnalytics({
                         </span>
                       </span>
                     </td>
-                    <td>{profile.summary ? <FinancialValue value={profile.summary.grossBettingPnl} /> : "Unavailable"}</td>
+                    <td>{profile.summary ? <FinancialValue value={profile.summary.grossBettingPnl} /> : isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} profit and loss`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : <FinancialValue value={0} />}</td>
                     <td>
                       <span className="table-status">
-                        <FinancialValue
-                          value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0}
-                        />
+                        {isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} fee position`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : <FinancialValue value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0} />}
                       </span>
                     </td>
-                    <td>{profile.summary ? profile.summary.openBets : "Unavailable"}</td>
+                    <td>{profile.summary ? profile.summary.openBets : isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} open positions`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : 0}</td>
                     <td>
                       <div className="directory-actions" onClick={(event) => event.stopPropagation()}>
-                        {profile.summary ? <OperationalActionLinks row={profile.summary} /> : "Unavailable"}
+                        {profile.summary ? <OperationalActionLinks row={profile.summary} /> : isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} actions`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : null}
                         <span className="directory-navigation-actions">
                           <Link
                             aria-label={`Manage ${profile.displayName}`}
@@ -1773,26 +1814,26 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight">
               <h3>Selected Range Performance</h3>
               <dl className="profile-detail-list">
-                <div><dt>Sportsbook</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("sportsbook") ?? 0} /> : "Unavailable"}</dd></div>
-                <div><dt>Free Bets</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("free-bets") ?? 0} /> : "Unavailable"}</dd></div>
-                <div><dt>Casino</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("casino") ?? 0} /> : "Unavailable"}</dd></div>
-                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("cash-adjustments") ?? 0} /> : "Unavailable"}</dd></div>
-                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.reportingModel.selectedRange.grossBettingPnl} /> : "Unavailable"}</dd></div>
+                <div><dt>Sportsbook</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("sportsbook") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Sportsbook reporting" /> : "Unavailable"}</dd></div>
+                <div><dt>Free Bets</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("free-bets") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Free Bet reporting" /> : "Unavailable"}</dd></div>
+                <div><dt>Casino</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("casino") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Casino reporting" /> : "Unavailable"}</dd></div>
+                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("cash-adjustments") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Cash Adjustment reporting" /> : "Unavailable"}</dd></div>
+                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.reportingModel.selectedRange.grossBettingPnl} /> : isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight">
               <h3>Current Cash</h3>
               <dl className="profile-detail-list">
-                <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : "Unavailable"}</dd></div>
+                <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
-                <div><dt>Estimated Fees</dt><dd><FinancialValue value={detailFeePosition?.estimatedFees ?? 0} /></dd></div>
-                <div><dt>Fees Earned</dt><dd><FinancialValue value={detailFeePosition?.feesEarned ?? 0} /></dd></div>
-                <div><dt>Available to Withdraw</dt><dd><FinancialValue value={detailFeePosition?.availableToWithdraw ?? 0} /></dd></div>
-                <div><dt>Fees Withdrawn</dt><dd><FinancialValue value={detailFeePosition?.feesWithdrawn ?? 0} /></dd></div>
+                <div><dt>Estimated Fees</dt><dd>{isLoading ? <ReportingCellLoading label="Loading estimated fees" /> : <FinancialValue value={detailFeePosition?.estimatedFees ?? 0} />}</dd></div>
+                <div><dt>Fees Earned</dt><dd>{isLoading ? <ReportingCellLoading label="Loading fees earned" /> : <FinancialValue value={detailFeePosition?.feesEarned ?? 0} />}</dd></div>
+                <div><dt>Available to Withdraw</dt><dd>{isLoading ? <ReportingCellLoading label="Loading fees available to withdraw" /> : <FinancialValue value={detailFeePosition?.availableToWithdraw ?? 0} />}</dd></div>
+                <div><dt>Fees Withdrawn</dt><dd>{isLoading ? <ReportingCellLoading label="Loading withdrawn fees" /> : <FinancialValue value={detailFeePosition?.feesWithdrawn ?? 0} />}</dd></div>
               </dl>
               <button
                 className="button-link"

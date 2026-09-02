@@ -12,6 +12,13 @@ const inFlightJsonRequests = new Map<string, Promise<unknown>>();
 
 export const TRACKER_STALE_WHILE_REFRESH_MS = 300_000;
 
+export class JsonRequestError extends Error {
+  constructor(public readonly status: number) {
+    super(`Request failed with status ${status}`);
+    this.name = "JsonRequestError";
+  }
+}
+
 export function readCachedJson<T>(url: string, maxAgeMs = 60_000): T | null {
   const entry = jsonCache.get(url);
   if (!entry) return null;
@@ -43,7 +50,7 @@ export async function fetchJsonAndCache<T>(
     const response = await fetch(url, { cache: "no-store", signal: options.signal });
     if (!response.ok) {
       redirectExpiredSession(response);
-      throw new Error(`Request failed with status ${response.status}`);
+      throw new JsonRequestError(response.status);
     }
     return writeCachedJson(url, (await response.json()) as T);
   };
