@@ -41,6 +41,7 @@ export function FundManagerAccountPage() {
     DEFAULT_SESSION_SECURITY_PREFERENCE
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSavingPreference, setIsSavingPreference] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
@@ -82,15 +83,34 @@ export function FundManagerAccountPage() {
   }, []);
 
   async function updatePreference(next: SessionSecurityPreference) {
-    if (!session) return;
-    const saved = await persistSessionSecurityPreference(next);
-    if (!saved) {
-      setStatusMessage("Security preference was not saved. Try again.");
-      return;
+    if (!session || isSavingPreference) return;
+    setIsSavingPreference(true);
+    try {
+      const saved = await persistSessionSecurityPreference(next);
+      if (!saved) {
+        setStatusMessage("Security preference was not saved. Try again.");
+        return;
+      }
+      const sessionResponse = await fetch("/api/auth/session", {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (!sessionResponse.ok) {
+        setStatusMessage("Security preference was saved, but session status could not be refreshed.");
+        return;
+      }
+      const refreshedSession = (await sessionResponse.json()) as FundManagerSession;
+      setSession(refreshedSession);
+      setPreference(next);
+      saveSessionSecurityPreference(session.email, next);
+      setStatusMessage(
+        next.autoLogoutEnabled
+          ? `Auto Logout is on after ${next.timeoutMinutes} minutes of inactivity.`
+          : "Auto Logout is off. The absolute session expiry still applies."
+      );
+    } finally {
+      setIsSavingPreference(false);
     }
-    setPreference(next);
-    saveSessionSecurityPreference(session.email, next);
-    setStatusMessage("Security preference saved.");
   }
 
   async function logout() {
@@ -143,6 +163,11 @@ export function FundManagerAccountPage() {
                   (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000
                 ).toLocaleString("en-GB")}
               </span>
+              <small>
+                {session.session_policy?.auto_logout_enabled
+                  ? `${session.session_policy.timeout_minutes} minute inactivity policy is active.`
+                  : "Auto Logout is off; this is the absolute session expiry."}
+              </small>
             </div>
             <div className="profile-future-setting-row">
               <span>
@@ -153,11 +178,12 @@ export function FundManagerAccountPage() {
                 aria-pressed={preference.autoLogoutEnabled}
                 className={`material-switch${preference.autoLogoutEnabled ? " is-selected" : ""}`}
                 data-pd-id="fund-manager-account.auto-logout"
+                disabled={isSavingPreference}
                 onClick={() => void updatePreference({ ...preference, autoLogoutEnabled: !preference.autoLogoutEnabled })}
                 type="button"
               >
                 <span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span>
-                <span>{preference.autoLogoutEnabled ? "On" : "Off"}</span>
+                <span>{isSavingPreference ? "Saving" : preference.autoLogoutEnabled ? "On" : "Off"}</span>
               </button>
             </div>
             {preference.autoLogoutEnabled ? (
@@ -165,6 +191,7 @@ export function FundManagerAccountPage() {
                 <span>Inactivity period</span>
                 <select
                   data-pd-id="fund-manager-account.auto-logout-timeout"
+                  disabled={isSavingPreference}
                   onChange={(event) => void updatePreference({
                     ...preference,
                     timeoutMinutes: Number(event.target.value) as SessionTimeoutMinutes,

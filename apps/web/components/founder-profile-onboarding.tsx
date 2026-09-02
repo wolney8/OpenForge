@@ -10,6 +10,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { PercentageTextInput } from "@/components/percentage-text-input";
 import { apiBaseUrl } from "@/lib/api";
+import { beginRouteTransition } from "@/lib/shell-loading";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { formatDecimalInput } from "@/lib/decimal-input";
 import type { LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
@@ -598,6 +599,7 @@ export function ProfileOnboarding() {
       }
       const created = await response.json() as { profile: { profile_id: string } };
       setIsDirty(false);
+      beginRouteTransition();
       router.push(`/profiles/${created.profile.profile_id}/tracker/dashboard`);
       router.refresh();
     } catch (caught) {
@@ -610,6 +612,7 @@ export function ProfileOnboarding() {
   async function cancelOnboarding() {
     if (!(await confirmDiscardChanges())) return;
     setIsDirty(false);
+    beginRouteTransition();
     router.push("/profiles");
   }
 

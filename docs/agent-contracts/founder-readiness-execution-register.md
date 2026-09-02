@@ -554,6 +554,19 @@ directory before founder workbook dry-run begins.
 - `PD-PO-011` COMPLETE: synthetic cutover, workbook dry-run and review regressions preserve Account and ledger row accounting, workbook-period parity, open/current values and exposure; no operationalisation path mutates existing imported records.
 - `PD-PO-012` COMPLETE: the opportunity model extends global offer metadata, Profile eligibility, Quick Actions and existing ledger lifecycles rather than introducing a parallel offer subsystem.
 
+## Hosted Interaction Reliability Pass
+
+- `PD-HR-001` IMPLEMENTED — HOSTED VERIFICATION PENDING: the Profiles directory exposes a labelled Manage row action that opens the
+  existing Profile lifecycle drawer and its canonical archive confirmation.
+- `PD-HR-002` IMPLEMENTED — HOSTED VERIFICATION PENDING: Production session authority was audited directly in Neon; focus/resume now
+  validates without touching activity, while visible keyboard/pointer/touch interaction uses the
+  existing throttled server activity endpoint.
+- `PD-HR-003` IMPLEMENTED — HOSTED VERIFICATION PENDING: the canonical shell route transition progress now locks prior-page and
+  header interaction, marks the page busy, rejects repeated navigation and releases on route
+  resolution or a bounded navigation failure path.
+- `PD-HR-004` COMPLETE: repeated shell/page/table/modal regions have canonical developer-facing
+  names and stable inspection targets in the accessibility contract.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import

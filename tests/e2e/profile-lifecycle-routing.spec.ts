@@ -99,19 +99,14 @@ test.describe("Profile lifecycle and shell routing", () => {
 
     await page.goto("/profiles");
     await expect(page.getByRole("heading", { name: "Profiles", exact: true }).first()).toBeVisible();
-    await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('[data-pd-id="profiles.add-profile"]')).toHaveAttribute("href", "/profiles/new");
 
-    await Promise.all([
-      page.waitForURL(/\/profiles\/new$/),
-      page.locator('[data-pd-id="profiles.add-profile"]').click(),
-    ]);
-    await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Create Profile", exact: true })).toBeVisible();
-    await page.goto("/profiles");
-
     const row = page.locator('[data-pd-id="profiles.directory.row.profile-demo-001"]');
-    await row.click();
+    const manageAction = page.locator('[data-pd-id="profiles.profile-demo-001.actions.manage"]');
+    await expect(manageAction).toBeVisible();
+    await expect(manageAction).toHaveAccessibleName("Manage Demo Profile");
+    await manageAction.click();
     const drawer = page.getByRole("dialog", { name: /Profile details for/ });
     await expect(drawer).toBeVisible();
     const archiveAction = drawer.getByRole("button", { name: "Archive Profile" });
@@ -121,6 +116,13 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(confirmation).toBeVisible();
     await confirmation.locator('[data-pd-id="profiles.archive.confirm"]').click();
     await expect(row.getByText("Archived", { exact: true })).toBeVisible();
+
+    await Promise.all([
+      page.waitForURL(/\/profiles\/new$/),
+      page.locator('[data-pd-id="profiles.add-profile"]').click(),
+    ]);
+    await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create Profile", exact: true })).toBeVisible();
   });
 
   test("keeps Dashboard analytics distinct from Profile management", async ({ page }) => {
@@ -134,7 +136,7 @@ test.describe("Profile lifecycle and shell routing", () => {
 
     await page.goto("/profiles");
     await expect(page.getByRole("heading", { name: "Profiles", exact: true }).first()).toBeVisible();
-    await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible();
+    await expect(page.getByRole("region", { name: "Profile management" })).toBeVisible();
     await expect(page.locator("#analytics-panel-performance")).toHaveCount(0);
   });
 
@@ -153,6 +155,33 @@ test.describe("Profile lifecycle and shell routing", () => {
     expect(geometry.viewport).toBeGreaterThan(0);
     await page.evaluate(() => window.dispatchEvent(new Event("plum-duff:shell-loading-end")));
     await expect(progress).not.toHaveClass(/is-active/);
+
+    await page.evaluate(() => window.dispatchEvent(new Event("plum-duff:route-transition-start")));
+    await expect(page.locator('[data-pd-id="app-shell.route-transition-lock"]')).toBeVisible();
+    await expect(page.locator(".main-shell")).toHaveAttribute("inert", "");
+    await expect(page.locator(".main-shell")).toHaveAttribute("aria-busy", "true");
+    await expect(progress).toHaveClass(/is-active/);
+    await page.evaluate(() => window.dispatchEvent(new Event("plum-duff:route-transition-end")));
+    await expect(page.locator('[data-pd-id="app-shell.route-transition-lock"]')).toHaveCount(0);
+    await expect(page.locator(".main-shell")).not.toHaveAttribute("inert", "");
+
+    await page.evaluate(() => {
+      const link = document.createElement("a");
+      link.href = "/reports";
+      link.textContent = "Synthetic route";
+      link.dataset.pdId = "test.route-transition-link";
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const current = Number(document.body.dataset.routeTransitionClicks ?? "0");
+        document.body.dataset.routeTransitionClicks = String(current + 1);
+      });
+      document.querySelector(".main-shell")?.append(link);
+    });
+    const routeLink = page.locator('[data-pd-id="test.route-transition-link"]');
+    await routeLink.click();
+    await routeLink.click({ force: true });
+    await expect.poll(() => page.locator("body").getAttribute("data-route-transition-clicks")).toBe("1");
+    await page.evaluate(() => window.dispatchEvent(new Event("plum-duff:route-transition-end")));
 
     const controls = page.locator(".fund-manager-control-bar.is-analytics");
     const profileScope = controls.locator(".fund-manager-control-slot-profile");

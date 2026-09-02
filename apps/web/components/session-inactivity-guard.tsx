@@ -5,8 +5,8 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
-  inactivityRemainingMs,
   loadSessionSecurityPreference,
+  MEANINGFUL_SESSION_ACTIVITY_EVENTS,
   persistSessionSecurityPreference,
   SESSION_ACTIVITY_STORAGE_KEY,
   SESSION_LOGOUT_STORAGE_KEY,
@@ -23,8 +23,36 @@ export function SessionInactivityGuard() {
   const [warningOpen, setWarningOpen] = useState(false);
   const logoutStartedRef = useRef(false);
   const lastActivityWriteRef = useRef(0);
+  const resumeValidationRef = useRef<Promise<boolean> | null>(null);
+
+  const expireClientSession = useCallback(() => {
+    window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+    window.location.replace("/login?error=session_expired");
+  }, []);
+
+  const validateResumedSession = useCallback(() => {
+    if (resumeValidationRef.current) return resumeValidationRef.current;
+    const validation = fetch("/api/auth/session", {
+      cache: "no-store",
+      credentials: "include",
+    }).then(async (response) => {
+      if (response.status === 401) {
+        expireClientSession();
+        return false;
+      }
+      if (!response.ok) return false;
+      const value = (await response.json()) as FundManagerSession;
+      setSession(value);
+      return true;
+    }).catch(() => false).finally(() => {
+      resumeValidationRef.current = null;
+    });
+    resumeValidationRef.current = validation;
+    return validation;
+  }, [expireClientSession]);
 
   const markActivity = useCallback((force = false) => {
+    if (document.visibilityState !== "visible") return;
     const now = Date.now();
     if (!force && now - lastActivityWriteRef.current < ACTIVITY_WRITE_THROTTLE_MS) return;
     lastActivityWriteRef.current = now;
@@ -35,8 +63,7 @@ export function SessionInactivityGuard() {
       method: "POST",
     }).then(async (response) => {
       if (response.status === 401) {
-        window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
-        window.location.replace("/login?error=session_expired");
+        expireClientSession();
         return;
       }
       if (!response.ok) return;
@@ -46,7 +73,7 @@ export function SessionInactivityGuard() {
       if (!payload.session_policy) return;
       setSession((current) => current ? { ...current, session_policy: payload.session_policy } : current);
     }).catch(() => undefined);
-  }, []);
+  }, [expireClientSession]);
 
   const logout = useCallback(async (reason: "expired" | "manual") => {
     if (logoutStartedRef.current) return;
@@ -90,13 +117,30 @@ export function SessionInactivityGuard() {
           if (!saved) resolved = DEFAULT_SESSION_SECURITY_PREFERENCE;
         }
         setPreference(resolved);
-        markActivity(true);
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [markActivity]);
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const validateOnFocus = () => {
+      void validateResumedSession();
+    };
+    const validateOnVisibility = () => {
+      if (document.visibilityState === "visible") void validateResumedSession();
+    };
+    window.addEventListener("focus", validateOnFocus);
+    window.addEventListener("pageshow", validateOnFocus);
+    document.addEventListener("visibilitychange", validateOnVisibility);
+    return () => {
+      window.removeEventListener("focus", validateOnFocus);
+      window.removeEventListener("pageshow", validateOnFocus);
+      document.removeEventListener("visibilitychange", validateOnVisibility);
+    };
+  }, [session, validateResumedSession]);
 
   useEffect(() => {
     if (!session) return;
@@ -133,17 +177,8 @@ export function SessionInactivityGuard() {
     const recordActivity = () => markActivity();
     const checkExpiry = () => {
       const now = Date.now();
-      const lastActivityAt = Number(
-        window.localStorage.getItem(SESSION_ACTIVITY_STORAGE_KEY) ?? now
-      );
-      const remaining = Math.min(
-        inactivityRemainingMs({
-          lastActivityAt: Number.isFinite(lastActivityAt) ? lastActivityAt : now,
-          now,
-          timeoutMinutes: preference.timeoutMinutes,
-        }),
-        (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000 - now
-      );
+      const remaining =
+        (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000 - now;
       if (remaining <= 0) {
         void logout("expired");
       } else {
@@ -151,14 +186,14 @@ export function SessionInactivityGuard() {
       }
     };
 
-    for (const eventName of ["keydown", "pointerdown", "touchstart", "focus"] as const) {
+    for (const eventName of MEANINGFUL_SESSION_ACTIVITY_EVENTS) {
       window.addEventListener(eventName, recordActivity, { passive: true });
     }
     const interval = window.setInterval(checkExpiry, 1_000);
     checkExpiry();
     return () => {
       window.clearInterval(interval);
-      for (const eventName of ["keydown", "pointerdown", "touchstart", "focus"] as const) {
+      for (const eventName of MEANINGFUL_SESSION_ACTIVITY_EVENTS) {
         window.removeEventListener(eventName, recordActivity);
       }
     };

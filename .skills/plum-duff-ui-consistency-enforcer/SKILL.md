@@ -136,6 +136,14 @@ use the canonical primitive and computed styling.
   scrolling unless the approved feature explicitly requires that behaviour. Reuse the shared tab
   rail and verify its computed position plus scroll geometry rather than patching route-specific
   offsets.
+- Canonical loading follows one hierarchy. A route transition uses the shell progress bar and makes
+  the previous page/navigation inert until the destination route resolves. A critical page load
+  uses the blocking, layout-preserving page loader until required queries settle. A section load
+  uses only its local skeleton/loader. A background refresh remains non-blocking and uses subtle
+  status only. Do not show competing indicators for the same scope.
+- Route transitions reject repeated navigation while active. The previous page uses `inert` and
+  `aria-busy`; the initiating navigation control exposes a disabled state. Loading, empty,
+  unavailable and error remain separate states and must never be inferred from absent pending data.
 - Do not fix one instance without searching the current route, sibling routes and shared primitive.
 - Every mutation control uses the canonical pending-action contract: disable the initiating and
   competing controls before issuing the request, show the existing button spinner with a concise

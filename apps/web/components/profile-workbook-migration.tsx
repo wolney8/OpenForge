@@ -8,6 +8,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { beginRouteTransition } from "@/lib/shell-loading";
 
 type ImportRun = {
   import_run_id: string;
@@ -123,6 +124,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
       });
       if (!response.ok) throw new Error(await apiError(response));
       const result = await response.json() as AnalysisResult;
+      beginRouteTransition();
       router.push(`/profiles/${profileId}/imports/${result.metadata.import_run_id}/review`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to analyse the workbook.");

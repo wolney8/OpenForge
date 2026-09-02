@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { beginRouteTransition } from "@/lib/shell-loading";
 import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
 
 type SearchResult = {
@@ -76,6 +77,7 @@ export function GlobalSearch() {
     if (!(await confirmUnsavedTrackerChanges())) return;
     setIsOpen(false);
     setQuery("");
+    beginRouteTransition();
     router.push(result.href);
   };
 

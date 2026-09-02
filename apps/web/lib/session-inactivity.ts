@@ -1,6 +1,11 @@
 export const SESSION_SECURITY_PREFERENCE_EVENT = "pd-session-security-preference";
 export const SESSION_ACTIVITY_STORAGE_KEY = "pd-session-activity";
 export const SESSION_LOGOUT_STORAGE_KEY = "pd-session-logout";
+export const MEANINGFUL_SESSION_ACTIVITY_EVENTS = [
+  "keydown",
+  "pointerdown",
+  "touchstart",
+] as const;
 
 let sessionExpiryRedirectStarted = false;
 

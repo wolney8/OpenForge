@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
+import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { PROFILE_DIRECTORY_UPDATED_EVENT } from "@/lib/recent-profiles";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue } from "./financial-value";
@@ -867,17 +867,17 @@ export function CrossProfileAnalytics({
 
   function selectTab(tab: AnalyticsTab) {
     if (tab === "profiles") {
-      beginShellLoading();
+      beginRouteTransition();
       router.push("/profiles");
       return;
     }
     if (tab === "performance") {
-      beginShellLoading();
+      beginRouteTransition();
       router.push("/");
       return;
     }
     if (tab === "reports") {
-      beginShellLoading();
+      beginRouteTransition();
       router.push("/reports");
       return;
     }
@@ -1850,6 +1850,16 @@ export function CrossProfileAnalytics({
                       <div className="directory-actions" onClick={(event) => event.stopPropagation()}>
                         {profile.summary ? <OperationalActionLinks row={profile.summary} /> : "Unavailable"}
                         <span className="directory-navigation-actions">
+                          <button
+                            aria-label={`Manage ${profile.displayName}`}
+                            className="button-link report-action-link"
+                            data-pd-id={`profiles.${profile.profileId}.actions.manage`}
+                            onClick={() => openProfileDetails(profile.profileId)}
+                            type="button"
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined">manage_accounts</span>
+                            <span>Manage</span>
+                          </button>
                           <Link
                             aria-label={`Open ${profile.displayName} dashboard`}
                             className="directory-nav-action"

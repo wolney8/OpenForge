@@ -106,6 +106,31 @@ Use semantic role/name locators for user behaviour tests. Use `data-pd-id` for s
 geometry, style parity and cases where role/name alone cannot identify the implementation region.
 Do not test against CSS classes alone when a stable identifier is warranted.
 
+### Canonical UI terminology
+
+Use these names and inspection identifiers when recording screenshot findings or implementation
+issues. Technical selectors remain developer-facing and must not be rendered as normal UI copy.
+
+| Canonical name | Stable inspection target |
+|---|---|
+| Application header | `app-shell.top-bar` |
+| Burger / drawer navigation | `app-navigation.trigger` / `app-navigation.drawer` |
+| Route progress bar | `app-shell.loading-progress` |
+| Route interaction lock | `app-shell.route-transition-lock` |
+| Page loading overlay | `<feature>.loading-overlay` or the shared `.ledger-loading-overlay` |
+| Page header | `<feature>.page-header` |
+| Control bar | `<feature>.control-bar` |
+| Stat card group | `<feature>.stats` |
+| Table toolbar | `<feature>.table-toolbar` |
+| Filter loadouts | `<feature>.loadouts` |
+| Table viewport | `<feature>.table-scroll` |
+| Row actions | `<feature>.<row-id>.actions` |
+| Modal header / body / footer | `<feature>.dialog.header` / `.body` / `.footer` |
+| Tab navigation | `<feature>.tabs` |
+
+Prefer the canonical name in issue restatements, followed by the visible label and stable
+`data-pd-id` where available.
+
 ## Keyboard and focus
 
 - Every interactive workflow must be keyboard operable with visible focus.

@@ -294,6 +294,24 @@ textarea {
   animation: shell-loading-progress 900ms ease-in-out infinite;
 }
 
+.shell-route-transition-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  cursor: progress;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.app-frame.is-route-transitioning .main-shell {
+  cursor: progress;
+}
+
+[data-route-transition-source] {
+  cursor: progress;
+  opacity: 0.62;
+}
+
 @keyframes shell-loading-progress {
   from { transform: translateX(-110%); }
   to { transform: translateX(340%); }

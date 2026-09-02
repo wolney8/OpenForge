@@ -42,7 +42,7 @@ import {
   PROFILE_DIRECTORY_UPDATED_EVENT,
   recordRecentProfile,
 } from "@/lib/recent-profiles";
-import { beginShellLoading } from "@/lib/shell-loading";
+import { beginRouteTransition } from "@/lib/shell-loading";
 import {
   APP_CONFIRMATION_OPEN_EVENT,
   confirmUnsavedTrackerChanges,
@@ -591,7 +591,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     setProfileSearch("");
     setSelectedCommandProfileId(null);
     setTrackerMenuOpen(false);
-    beginShellLoading();
+    beginRouteTransition();
     router.push(href);
   };
 

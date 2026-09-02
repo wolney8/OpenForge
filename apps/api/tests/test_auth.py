@@ -179,6 +179,29 @@ def test_server_session_enforces_inactivity_and_activity_reset() -> None:
         assert validate_request_session(token, now=start + 1_700) is None
 
 
+def test_configured_session_expires_after_twelve_hours_without_meaningful_activity() -> None:
+    with configured_auth():
+        start = 2_000_000_000
+        token = create_session_token(
+            subject="google-founder-001",
+            email="founder@example.invalid",
+            name="Founder",
+            now=start,
+        )
+        session = read_session_token(token)
+        assert session is not None
+        upsert_fund_manager_security_preference(
+            email=session.email,
+            auto_logout_enabled=True,
+            timeout_minutes=30,
+        )
+
+        assert validate_request_session(token, now=start + 1_799) is not None
+        expired_at = start + 12 * 60 * 60 - 1
+        assert validate_request_session(token, now=expired_at) is None
+        assert local_fund_manager_sessions[session.session_id]["revoked_at"] == expired_at
+
+
 def test_activity_endpoint_returns_the_refreshed_server_deadline(monkeypatch) -> None:
     with configured_auth():
         start = 2_000_000_000

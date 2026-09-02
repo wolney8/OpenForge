@@ -3,6 +3,38 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-02: Route progress left the previous page interactive
+
+- Area: authenticated application shell and all internal route transitions.
+- Root cause: the shared progress line observed navigation but did not own an interaction lock, so
+  old-page controls could issue repeated pushes while the destination was resolving.
+- Prevention: route transition progress synchronously marks the previous shell `inert` and
+  `aria-busy`, suppresses repeated navigation, and releases on destination resolution or failure.
+  Critical destination data continues to use the established in-page loader.
+- Regression test: `tests/e2e/profile-lifecycle-routing.spec.ts` verifies the shared route lock,
+  progress state and release behavior.
+
+## 2026-09-02: Browser focus was treated as authenticated activity
+
+- Area: Fund Manager inactivity/session guard.
+- Root cause: `focus` shared the meaningful-activity handler with keyboard/pointer input, allowing a
+  resumed browser to attempt an activity extension instead of first reading server authority.
+- Prevention: focus, pageshow and visibility resume validate the persisted session without touching
+  it. Only visible keyboard, pointer and touch interaction call the throttled activity endpoint;
+  polling never updates inactivity.
+- Regression tests: API coverage holds a configured session inactive for twelve hours; Playwright
+  confirms focus validates without posting activity and keyboard interaction does post activity.
+
+## 2026-09-02: Profile lifecycle action was hidden behind implicit row behavior
+
+- Area: Fund Manager Profiles directory.
+- Root cause: the canonical archive action existed in the details drawer, but opening that drawer
+  depended on clicking an otherwise action-dense table row with no explicit management label.
+- Prevention: Profile rows expose one visible Manage action that opens the canonical details/lifecycle
+  drawer. Archive remains a single confirmed action inside that drawer rather than being duplicated.
+- Regression test: `tests/e2e/profile-lifecycle-routing.spec.ts` enters the lifecycle through the
+  labelled Manage action and confirms archive behavior.
+
 ## 2026-09-01: Ledger provider chips bypassed the Profile Account relationship
 
 - Area: Sportsbook, Free Bets, Casino, Extra Places and Profile reporting tables.
