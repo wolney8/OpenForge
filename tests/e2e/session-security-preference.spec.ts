@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("Auto Logout changes only after the server persists the preference", async ({ page }) => {
+test("Auto Logout moves optimistically, blocks duplicates, and reverts on failure", async ({ page }) => {
+  await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
   await page.route("**/fund-manager/import-executions", (route) =>
     route.fulfill({ body: "[]", contentType: "application/json", status: 200 })
   );
@@ -34,12 +35,15 @@ test("Auto Logout changes only after the server persists the preference", async 
     await route.fulfill({ status: 204, body: "" });
   });
   let shouldFail = true;
+  let releaseFirstSave: (() => void) | undefined;
+  const firstSaveGate = new Promise<void>((resolve) => { releaseFirstSave = resolve; });
   await page.route("**/api/auth/security-preference", async (route) => {
     if (route.request().method() !== "PUT") {
       await route.continue();
       return;
     }
     if (shouldFail) {
+      await firstSaveGate;
       await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
       return;
     }
@@ -58,8 +62,14 @@ test("Auto Logout changes only after the server persists the preference", async 
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
   await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(toggle).toHaveAttribute("aria-busy", "true");
+  await expect(toggle).toBeDisabled();
+  await expect(toggle.locator(".button-spinner")).toBeVisible();
+  releaseFirstSave?.();
   await expect(page.getByText("Security preference was not saved. Try again.")).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(toggle).toBeEnabled();
 
   shouldFail = false;
   await toggle.click();
@@ -68,6 +78,7 @@ test("Auto Logout changes only after the server persists the preference", async 
 });
 
 test("focus validates the session without recording meaningful activity", async ({ page }) => {
+  await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
   let sessionChecks = 0;
   let activityTouches = 0;
   await page.route("**/fund-manager/import-executions", (route) =>

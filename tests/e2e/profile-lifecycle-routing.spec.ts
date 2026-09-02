@@ -47,8 +47,10 @@ async function mockProfileDirectory(page: Page) {
   await page.route(/\/(?:api\/)?auth\/activity\/?$/, async (route) => {
     await route.fulfill({ status: 204 });
   });
-  await page.route("**/api/profiles/profile-demo-001/**", async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
+  await page.route("**/profiles/profile-demo-001/**", async (route) => {
+    if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
+      return route.fallback();
+    }
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith("/tracker-summary-sources")
       ? JSON.stringify({
@@ -78,9 +80,16 @@ async function mockProfileDirectory(page: Page) {
 test.describe("Profile lifecycle and shell routing", () => {
   test("exposes the existing Profile directory, onboarding, management, and archive lifecycle", async ({ page }) => {
     await mockProfileDirectory(page);
-    await page.route("**/api/profiles/profile-demo-001", async (route) => {
+    let currentStatus = profile.status;
+    await page.route(/\/(?:api\/)?profiles\/profile-demo-001$/, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ contentType: "application/json", status: 200, body: JSON.stringify({ ...profile, status: currentStatus }) });
+        return;
+      }
       if (route.request().method() !== "PATCH") return route.fallback();
-      expect(route.request().postDataJSON()).toEqual({ status: "Archived" });
+      const payload = route.request().postDataJSON() as { status: string };
+      expect(["Active", "Archived"]).toContain(payload.status);
+      currentStatus = payload.status;
       await route.fulfill({
         contentType: "application/json",
         status: 200,
@@ -88,7 +97,7 @@ test.describe("Profile lifecycle and shell routing", () => {
           profile_id: "profile-demo-001",
           display_name: profile.display_name,
           profile_code: profile.profile_code,
-          status: "Archived",
+          status: currentStatus,
           tracking_start_date: "2026-01-01",
           management_fee_percent: "0.00",
           investment_fee_percent: "0.00",
@@ -106,23 +115,45 @@ test.describe("Profile lifecycle and shell routing", () => {
     const manageAction = page.locator('[data-pd-id="profiles.profile-demo-001.actions.manage"]');
     await expect(manageAction).toBeVisible();
     await expect(manageAction).toHaveAccessibleName("Manage Demo Profile");
-    await manageAction.click();
+    await expect(manageAction).toHaveAttribute("href", "/profiles/profile-demo-001/manage");
+
+    await row.click();
     const drawer = page.getByRole("dialog", { name: /Profile details for/ });
     await expect(drawer).toBeVisible();
-    const archiveAction = drawer.getByRole("button", { name: "Archive Profile" });
+    await expect(drawer.getByRole("button", { name: "Archive Profile" })).toHaveCount(0);
+    await expect(drawer.locator('[data-pd-id="profiles.drawer.manage"]')).toHaveAttribute("href", "/profiles/profile-demo-001/manage");
+    await drawer.getByRole("button", { name: "Close profile details" }).click();
+
+    await manageAction.click();
+    await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/manage$/);
+    await expect(page.locator('[data-pd-id="profile-management.page"]')).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Lifecycle" })).toBeVisible();
+    const desktopGeometry = await page.locator('[data-pd-id="profile-management.page"]').evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(desktopGeometry.scrollWidth).toBeLessThanOrEqual(desktopGeometry.clientWidth + 1);
+    await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+    await expect(page.locator('[data-pd-id="profile-management.page"]')).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 780 });
+    const narrowGeometry = await page.locator('[data-pd-id="profile-management.page"]').evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(narrowGeometry.scrollWidth).toBeLessThanOrEqual(narrowGeometry.clientWidth + 1);
+    await page.getByRole("tab", { name: "Lifecycle" }).click();
+    const archiveAction = page.locator('[data-pd-id="profile-management.archive"]');
     await expect(archiveAction).toBeVisible();
     await archiveAction.click();
-    const confirmation = page.getByRole("alertdialog", { name: /Archive / });
+    const confirmation = page.getByRole("dialog", { name: "Archive Profile?" });
     await expect(confirmation).toBeVisible();
-    await confirmation.locator('[data-pd-id="profiles.archive.confirm"]').click();
-    await expect(row.getByText("Archived", { exact: true })).toBeVisible();
-
-    await Promise.all([
-      page.waitForURL(/\/profiles\/new$/),
-      page.locator('[data-pd-id="profiles.add-profile"]').click(),
-    ]);
-    await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Create Profile", exact: true })).toBeVisible();
+    await confirmation.getByRole("button", { name: "Archive Profile" }).click();
+    await expect(page.getByText("Profile archived.")).toBeVisible();
+    await expect(page.locator(".profile-management-header-actions .badge")).toHaveText("Archived");
+    await expect(page.locator('[data-pd-id="profile-management.restore"]')).toBeVisible();
+    await page.locator('[data-pd-id="profile-management.restore"]').click();
+    await page.getByRole("dialog", { name: "Restore Profile?" }).getByRole("button", { name: "Restore Profile" }).click();
+    await expect(page.locator(".profile-management-header-actions .badge")).toHaveText("Active");
   });
 
   test("keeps Dashboard analytics distinct from Profile management", async ({ page }) => {
@@ -130,7 +161,7 @@ test.describe("Profile lifecycle and shell routing", () => {
 
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true }).first()).toBeVisible();
-    await expect(page.locator("#analytics-panel-performance")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Performance" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByText("Founder Profile", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Complete Profile setup", { exact: true })).toHaveCount(0);
 

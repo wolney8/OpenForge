@@ -567,6 +567,24 @@ directory before founder workbook dry-run begins.
 - `PD-HR-004` COMPLETE: repeated shell/page/table/modal regions have canonical developer-facing
   names and stable inspection targets in the accessibility contract.
 
+## Profile Management UX Pass
+
+- `PD-PM-001` IMPLEMENTED — HOSTED VERIFICATION PENDING: Auto Logout uses the shared optimistic
+  persisted-toggle contract with busy feedback, duplicate prevention and failure rollback.
+- `PD-PM-002` IMPLEMENTED — HOSTED VERIFICATION PENDING: My Account Security reuses the Account
+  Details grouped-row geometry for session, cookie and logout controls.
+- `PD-PM-003` IMPLEMENTED — HOSTED VERIFICATION PENDING: My Account, Settings, Notifications and
+  Logout are owned by the authenticated identity menu; the burger retains operational routes.
+- `PD-PM-004` IMPLEMENTED — HOSTED VERIFICATION PENDING: Profile directory Manage uses the same
+  icon-only action geometry, tooltip and accessible name as adjacent navigation actions.
+- `PD-PM-005` IMPLEMENTED — HOSTED VERIFICATION PENDING: the Profile drawer is read-only summary
+  and quick navigation; inline administration and lifecycle destruction were removed.
+- `PD-PM-006` IMPLEMENTED — HOSTED VERIFICATION PENDING: `/profiles/{profileId}/manage` is the
+  canonical Fund Manager Profile administration route with Overview, Access, Financial, Accounts,
+  Security, Activity and Lifecycle sections.
+- `PD-PM-007` IMPLEMENTED — HOSTED VERIFICATION PENDING: Archive and Restore are available only in
+  Profile Management → Lifecycle through the canonical high-consequence confirmation dialog.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import

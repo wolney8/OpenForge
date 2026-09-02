@@ -4214,6 +4214,39 @@ html[data-theme="dark"] .notification-count-badge {
   color: var(--muted);
 }
 
+.fund-manager-security-details > div,
+.fund-manager-security-actions > div {
+  align-items: center;
+}
+
+.fund-manager-security-details > div > span:first-child,
+.fund-manager-security-actions > div > span:first-child {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.fund-manager-security-details small,
+.fund-manager-security-actions small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.fund-manager-security-details > div > :last-child,
+.fund-manager-security-actions > div > :last-child {
+  justify-self: end;
+}
+
+.persisted-toggle {
+  min-height: 2.5rem;
+  padding-block: 0.25rem;
+}
+
+.persisted-toggle .button-spinner {
+  width: 1rem;
+  height: 1rem;
+}
+
 .fund-manager-timeout-field {
   width: min(22rem, 100%);
 }
@@ -4429,6 +4462,11 @@ html[data-theme="dark"] .notification-count-badge {
   margin: 0;
 }
 
+.profile-drawer-section > .button-link {
+  align-self: start;
+  margin-top: 0.25rem;
+}
+
 .profile-drawer-icon-actions {
   display: inline-flex;
   align-items: center;
@@ -4469,6 +4507,61 @@ html[data-theme="dark"] .notification-count-badge {
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: profile-drawer-spin 700ms linear infinite;
+}
+
+.profile-drawer-manage-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding-inline: 0.9rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+}
+
+.profile-management-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.profile-management-shell > .analytics-tab-panel {
+  gap: 1rem;
+}
+
+.profile-management-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.profile-management-form-grid > .field-control:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.profile-management-shell .settings-action-row {
+  gap: 0.75rem;
+}
+
+.profile-management-shell .analytics-tab-panel > .icon-text-action,
+.profile-management-shell .analytics-tab-panel > .modal-primary-button {
+  justify-self: start;
+}
+
+@media (max-width: 720px) {
+  .profile-management-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-management-form-grid > .field-control:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .profile-management-header-actions {
+    justify-content: flex-start;
+  }
 }
 
 @keyframes profile-drawer-spin {

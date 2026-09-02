@@ -3,6 +3,28 @@ import { expect, test } from "@playwright/test";
 const drawerName = "Plum Duff navigation";
 
 test.describe("Global application navigation drawer", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/fund-manager/import-executions", (route) => route.fulfill({ json: [] }));
+    await page.route("**/api/fund-manager/notifications**", (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      return route.fulfill({
+        json: pathname.endsWith("/state")
+          ? { dismissed_ids: [], read_keys: [] }
+          : pathname.endsWith("/preferences") ? { preferences: {} } : [],
+      });
+    });
+    await page.route("**/api/auth/session", (route) => route.fulfill({
+      json: {
+        authenticated: true,
+        email: "founder@example.invalid",
+        expires_at: 2_100_000_000,
+        name: "Demo Founder",
+        role: "fund_manager",
+      },
+    }));
+    await page.route("**/api/auth/activity", (route) => route.fulfill({ status: 204 }));
+  });
+
   test("contains navigation, traps focus, and restores the trigger on dismissal", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 820 });
     await page.goto("/profiles");
@@ -21,8 +43,10 @@ test.describe("Global application navigation drawer", () => {
     await expect(page.locator('[data-pd-id="app-navigation.profiles.view-all"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.profiles.add"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.account-catalogue"]')).toBeVisible();
-    await expect(page.locator('[data-pd-id="app-navigation.notifications"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="app-navigation.reports"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-navigation.notifications"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-navigation.settings"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Import Review" })).toHaveCount(0);
 
     const openState = await page.evaluate(() => ({
@@ -38,8 +62,7 @@ test.describe("Global application navigation drawer", () => {
     await expect(page.locator('[data-pd-id="app-navigation.registration-requests"]')).toContainText(
       "Registration Requests"
     );
-    await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toContainText("Logout");
-    await page.locator('[data-pd-id="app-navigation.logout"]').focus();
+    await page.locator('[data-pd-id="app-navigation.reports"]').focus();
     await page.keyboard.press("Tab");
     await expect(closeButton).toBeFocused();
 
@@ -119,23 +142,10 @@ test.describe("Global application navigation drawer", () => {
     );
     expect(secondBackground).not.toBe(firstGeometry.background);
 
-    await page.locator('[data-pd-id="app-navigation.settings"]').click();
+    await page.locator('[data-pd-id="app-navigation.close"]').click();
+    await page.locator('[data-pd-id="fund-manager-identity.trigger"]').click();
+    await page.locator('[data-pd-id="fund-manager-identity.settings"]').click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(drawer).toBeHidden();
-  });
-
-  test("reports a failed logout instead of claiming the session ended", async ({ page }) => {
-    await page.route("**/api/auth/logout", async (route) => {
-      await route.fulfill({ status: 503, body: "Unavailable" });
-    });
-    await page.goto("/profiles");
-    await page.locator('[data-pd-id="app-navigation.trigger"]').click();
-    await page.locator('[data-pd-id="app-navigation.logout"]').click();
-
-    await expect(page.locator(".app-navigation-drawer .error-text")).toHaveText(
-      "Could not sign out. Please try again."
-    );
-    await expect(page).toHaveURL(/\/profiles$/);
-    await expect(page.locator('[data-pd-id="app-navigation.logout"]')).toBeEnabled();
   });
 });

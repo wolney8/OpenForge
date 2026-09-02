@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
@@ -46,9 +46,7 @@ const navigationItems = [
     label: "Account Catalogue",
     icon: "account_balance",
   },
-  { id: "notifications", href: "/notifications", label: "Notifications", icon: "notifications" },
   { id: "reports", href: "/reports", label: "Reports", icon: "summarize" },
-  { id: "settings", href: "/settings", label: "Settings", icon: "settings" },
 ] as const;
 
 export function AppNavigationDrawer({
@@ -62,9 +60,6 @@ export function AppNavigationDrawer({
   triggerRef,
 }: AppNavigationDrawerProps) {
   const pathname = usePathname() ?? "";
-  const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState(false);
   const [locationHash, setLocationHash] = useState("");
   const [profilesExpanded, setProfilesExpanded] = useState(pathname.startsWith("/profiles"));
   const portalReady = useSyncExternalStore(
@@ -137,9 +132,8 @@ export function AppNavigationDrawer({
     if (id === "account-catalogue") {
       return pathname === "/settings" && locationHash === "#catalogue";
     }
-    if (id === "notifications") return pathname === "/notifications";
     if (id === "reports") return pathname === "/reports";
-    return id === "settings" && pathname === "/settings";
+    return false;
   };
 
   return createPortal(
@@ -264,31 +258,6 @@ export function AppNavigationDrawer({
               </Link>
             );
           })}
-          <button
-            className="app-navigation-drawer-link app-navigation-drawer-button app-navigation-drawer-logout"
-            data-pd-id="app-navigation.logout"
-            disabled={isLoggingOut}
-            onClick={() => {
-              setIsLoggingOut(true);
-              setLogoutError(false);
-              void fetch("/api/auth/logout", { method: "POST", credentials: "include" })
-                .then((response) => {
-                  if (!response.ok) throw new Error("Logout failed");
-                  router.replace("/login?signed_out=1");
-                })
-                .catch(() => {
-                  setLogoutError(true);
-                  setIsLoggingOut(false);
-                });
-            }}
-            type="button"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">logout</span>
-            <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
-          </button>
-          {logoutError ? (
-            <p className="error-text" role="alert">Could not sign out. Please try again.</p>
-          ) : null}
         </nav>
 
         {isInsideProfile ? (

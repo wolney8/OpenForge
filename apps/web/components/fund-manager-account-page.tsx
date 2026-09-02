@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { StatusToast } from "@/components/status-toast";
+import { PersistedToggle } from "@/components/persisted-toggle";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
   loadSessionSecurityPreference,
@@ -82,32 +83,36 @@ export function FundManagerAccountPage() {
     };
   }, []);
 
-  async function updatePreference(next: SessionSecurityPreference) {
-    if (!session || isSavingPreference) return;
+  async function updatePreference(next: SessionSecurityPreference): Promise<boolean> {
+    if (!session || isSavingPreference) return false;
     setIsSavingPreference(true);
     try {
       const saved = await persistSessionSecurityPreference(next);
       if (!saved) {
         setStatusMessage("Security preference was not saved. Try again.");
-        return;
+        return false;
       }
+      setPreference(next);
+      saveSessionSecurityPreference(session.email, next);
       const sessionResponse = await fetch("/api/auth/session", {
         cache: "no-store",
         credentials: "include",
       });
       if (!sessionResponse.ok) {
         setStatusMessage("Security preference was saved, but session status could not be refreshed.");
-        return;
+        return true;
       }
       const refreshedSession = (await sessionResponse.json()) as FundManagerSession;
       setSession(refreshedSession);
-      setPreference(next);
-      saveSessionSecurityPreference(session.email, next);
       setStatusMessage(
         next.autoLogoutEnabled
           ? `Auto Logout is on after ${next.timeoutMinutes} minutes of inactivity.`
           : "Auto Logout is off. The absolute session expiry still applies."
       );
+      return true;
+    } catch {
+      setStatusMessage("Security preference was not saved. Try again.");
+      return false;
     } finally {
       setIsSavingPreference(false);
     }
@@ -156,35 +161,35 @@ export function FundManagerAccountPage() {
         </div>
         {session ? (
           <div className="stack fund-manager-security-controls">
-            <div className="profile-future-setting-row">
-              <span>Current session</span>
-              <span className="table-chip table-chip-status-placed">
-                Active until {new Date(
-                  (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000
-                ).toLocaleString("en-GB")}
-              </span>
-              <small>
-                {session.session_policy?.auto_logout_enabled
-                  ? `${session.session_policy.timeout_minutes} minute inactivity policy is active.`
-                  : "Auto Logout is off; this is the absolute session expiry."}
-              </small>
-            </div>
-            <div className="profile-future-setting-row">
-              <span>
+            <div className="fund-manager-account-details fund-manager-security-details">
+              <div>
+                <span>
+                  <strong>Current session</strong>
+                  <small>
+                    {session.session_policy?.auto_logout_enabled
+                      ? `${session.session_policy.timeout_minutes} minute inactivity policy is active.`
+                      : "Auto Logout is off; this is the absolute session expiry."}
+                  </small>
+                </span>
+                <span className="table-chip table-chip-status-placed">
+                  Active until {new Date(
+                    (session.session_policy?.effective_expires_at ?? session.expires_at) * 1000
+                  ).toLocaleString("en-GB")}
+                </span>
+              </div>
+              <div>
+                <span>
                 <strong>Auto Logout</strong>
                 <small>End this session after a period without activity.</small>
-              </span>
-              <button
-                aria-pressed={preference.autoLogoutEnabled}
-                className={`material-switch${preference.autoLogoutEnabled ? " is-selected" : ""}`}
-                data-pd-id="fund-manager-account.auto-logout"
+                </span>
+                <PersistedToggle
+                checked={preference.autoLogoutEnabled}
+                dataPdId="fund-manager-account.auto-logout"
                 disabled={isSavingPreference}
-                onClick={() => void updatePreference({ ...preference, autoLogoutEnabled: !preference.autoLogoutEnabled })}
-                type="button"
-              >
-                <span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span>
-                <span>{isSavingPreference ? "Saving" : preference.autoLogoutEnabled ? "On" : "Off"}</span>
-              </button>
+                label="Auto Logout"
+                onChange={(autoLogoutEnabled) => updatePreference({ ...preference, autoLogoutEnabled })}
+                />
+              </div>
             </div>
             {preference.autoLogoutEnabled ? (
               <label className="field-control fund-manager-timeout-field">
@@ -204,26 +209,19 @@ export function FundManagerAccountPage() {
                 </select>
               </label>
             ) : null}
-            <footer className="settings-action-row">
-              <button
-                className="button-link"
-                data-pd-id="fund-manager-account.cookie-information"
-                onClick={() => window.dispatchEvent(new Event(COOKIE_NOTICE_OPEN_EVENT))}
-                type="button"
-              >
-                Cookie information
-              </button>
-              <button
-                className="button-link destructive-action"
-                data-pd-id="fund-manager-account.logout"
-                disabled={isLoggingOut}
-                onClick={() => void logout()}
-                type="button"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined">logout</span>
-                <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
-              </button>
-            </footer>
+            <div className="fund-manager-account-details fund-manager-security-actions">
+              <div>
+                <span><strong>Cookie information</strong><small>Review storage used by Plum Duff.</small></span>
+                <button className="button-link" data-pd-id="fund-manager-account.cookie-information" onClick={() => window.dispatchEvent(new Event(COOKIE_NOTICE_OPEN_EVENT))} type="button">View</button>
+              </div>
+              <div>
+                <span><strong>Logout</strong><small>End the current Plum Duff session.</small></span>
+                <button className="button-link destructive-action" data-pd-id="fund-manager-account.logout" disabled={isLoggingOut} onClick={() => void logout()} type="button">
+                  <span aria-hidden="true" className="material-symbols-outlined">logout</span>
+                  <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
         <p className="field-hint">Additional security controls will appear here when they are available.</p>

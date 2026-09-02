@@ -728,3 +728,19 @@ cause, prevention rule and regression test.
   `Unavailable`.
 - Test added: `tests/e2e/hosted-reliability.spec.ts` covers blocked controls, delayed Profile
   reporting and the restored Profile archive lifecycle.
+
+## 2026-09-02: Persisted toggles and Profile administration gave delayed or conflicting feedback
+
+- Area: My Account security preference, Profile directory actions and Profile summary drawer.
+- Root cause: the persisted switch waited for the server response before moving, while Profile
+  editing and destructive lifecycle controls accumulated inside a quick-summary drawer with no
+  authoritative management destination.
+- Prevention: use `PersistedToggle` for immediate optimistic position, busy state, duplicate-click
+  prevention and failure rollback. Keep the Profile drawer read-only; route icon-only Manage
+  actions to `/profiles/{profileId}/manage`, where Profile forms and Archive/Restore are owned.
+  Personal account destinations remain in the authenticated identity menu rather than being
+  duplicated as global operational navigation.
+- Test added: `tests/e2e/session-security-preference.spec.ts`,
+  `tests/e2e/fund-manager-identity-shell.spec.ts`, `tests/e2e/app-navigation-drawer.spec.ts` and
+  `tests/e2e/profile-lifecycle-routing.spec.ts` cover the shared toggle, navigation ownership,
+  summary drawer and management lifecycle.

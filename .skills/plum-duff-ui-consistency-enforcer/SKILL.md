@@ -151,6 +151,18 @@ use the canonical primitive and computed styling.
   confirmation state until the response is known, and restore controls on failure. Confirmed
   deletes remove or refresh the affected row immediately; a second click must never produce a
   follow-up `not found` error.
+- Persisted toggles use the canonical optimistic async-toggle contract. Move the switch to the
+  requested position immediately, mark it `aria-busy`, disable repeat interaction and show the
+  compact inline spinner until the server responds. Keep the requested state on success; on
+  failure restore the previous state and use canonical error feedback. Never leave a persisted
+  switch visually unchanged while an accepted user action is saving.
+- The Profile directory drawer is a read-only summary and quick-navigation surface. Profile
+  identity, fees, access administration and destructive lifecycle actions belong to the canonical
+  Profile Management route; do not duplicate editable management forms or Archive/Restore in the
+  summary drawer.
+- Operational destinations remain in the global navigation drawer. Personal destinations such as
+  My Account, Settings, Notifications and Logout belong to the authenticated identity menu; do not
+  render them as competing primary rows in both menus.
 - Normal user-facing provider cells resolve the Account Catalogue relationship and render the full
   canonical brand name in the shared branded chip. Short display names are reserved for explicitly
   constrained or token-optimised contexts. Account and record identifiers use bounded,

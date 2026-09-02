@@ -10,6 +10,22 @@ const session = {
 
 test.describe("Fund Manager identity shell", () => {
   test.beforeEach(async ({ page }) => {
+    await page.route("**/api/profiles", async (route) => {
+      await route.fulfill({ contentType: "application/json", json: [], status: 200 });
+    });
+    await page.route("**/api/fund-manager/import-executions", async (route) => {
+      await route.fulfill({ contentType: "application/json", json: [], status: 200 });
+    });
+    await page.route("**/api/fund-manager/notifications**", async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      await route.fulfill({
+        contentType: "application/json",
+        json: pathname.endsWith("/state")
+          ? { dismissed_ids: [], read_keys: [] }
+          : pathname.endsWith("/preferences") ? { preferences: {} } : [],
+        status: 200,
+      });
+    });
     await page.route("**/api/auth/session", async (route) => {
       await route.fulfill({ contentType: "application/json", json: session, status: 200 });
     });
@@ -30,6 +46,8 @@ test.describe("Fund Manager identity shell", () => {
     await expect(page.locator('[data-pd-id="fund-manager-identity.menu"]')).toContainText(
       "founder@example.invalid"
     );
+    await expect(page.locator('[data-pd-id="fund-manager-identity.settings"]')).toHaveAttribute("href", "/settings");
+    await expect(page.locator('[data-pd-id="fund-manager-identity.notifications"]')).toHaveAttribute("href", "/notifications");
     await page.locator('[data-pd-id="fund-manager-identity.account"]').click();
     await expect(page).toHaveURL(/\/account$/);
     await expect(page.locator('[data-pd-id="fund-manager-account.identity"]')).toContainText(
@@ -45,6 +63,21 @@ test.describe("Fund Manager identity shell", () => {
     await page.locator('[data-pd-id="fund-manager-identity.trigger"]').click();
     await page.locator('[data-pd-id="fund-manager-identity.logout"]').click();
     await expect(page).toHaveURL(/\/login\?signed_out=1$/);
+  });
+
+  test("restores identity-menu logout after a failed request", async ({ page }) => {
+    await page.route("**/api/auth/logout", async (route) => {
+      await route.fulfill({ status: 503, body: "Unavailable" });
+    });
+    await page.goto("/profiles");
+    await page.locator('[data-pd-id="fund-manager-identity.trigger"]').click();
+    const logout = page.locator('[data-pd-id="fund-manager-identity.logout"]');
+    await logout.click();
+    await expect(page.locator('[data-pd-id="fund-manager-identity.menu"] .error-text')).toHaveText(
+      "Could not sign out. Please try again."
+    );
+    await expect(logout).toBeEnabled();
+    await expect(page).toHaveURL(/\/profiles$/);
   });
 
   test("keeps delayed identity and notification controls visibly loading", async ({ page }) => {

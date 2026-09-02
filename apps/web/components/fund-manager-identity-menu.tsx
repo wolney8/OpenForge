@@ -139,6 +139,24 @@ export function FundManagerIdentityMenu() {
           <span aria-hidden="true" className="material-symbols-outlined">manage_accounts</span>
           <span>My Account</span>
         </Link>
+        <Link
+          className="profile-command-add-action"
+          data-pd-id="fund-manager-identity.settings"
+          href="/settings"
+          onClick={() => setOpenPathname(null)}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined">settings</span>
+          <span>Settings</span>
+        </Link>
+        <Link
+          className="profile-command-add-action"
+          data-pd-id="fund-manager-identity.notifications"
+          href="/notifications"
+          onClick={() => setOpenPathname(null)}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined">notifications</span>
+          <span>Notifications</span>
+        </Link>
         <button
           className="profile-command-add-action"
           data-pd-id="fund-manager-identity.logout"
