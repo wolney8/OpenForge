@@ -75,15 +75,21 @@ type SelectedQuickAction = {
 };
 
 type Stage = "profile" | "modules" | "accounts" | "quick-actions" | "review";
+type SetupPath = "fresh" | "import";
 
 type AccountColumnKey = "use" | "provider" | "type" | "status" | "opening_balance" | "commission" | "cash_total";
 type AccountSortKey = "provider" | "type" | "status" | "opening_balance";
 
-const stages: Array<{ id: Stage; label: string }> = [
+const freshStages: Array<{ id: Stage; label: string }> = [
   { id: "profile", label: "Profile" },
   { id: "modules", label: "Modules" },
   { id: "accounts", label: "Accounts" },
   { id: "quick-actions", label: "Quick Actions" },
+  { id: "review", label: "Review" },
+];
+
+const importStages: Array<{ id: Stage; label: string }> = [
+  { id: "profile", label: "Profile" },
   { id: "review", label: "Review" },
 ];
 
@@ -166,6 +172,7 @@ function isRecentlyIntroduced(value?: string): boolean {
 export function ProfileOnboarding() {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>("profile");
+  const [setupPath, setSetupPath] = useState<SetupPath>("fresh");
   const [isDirty, setIsDirty] = useState(false);
   const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [catalogue, setCatalogue] = useState<CatalogueRecord[]>([]);
@@ -237,6 +244,8 @@ export function ProfileOnboarding() {
       active = false;
     };
   }, []);
+
+  const onboardingStages = setupPath === "import" ? importStages : freshStages;
 
   useEffect(() => {
     let active = true;
@@ -461,7 +470,7 @@ export function ProfileOnboarding() {
     return true;
   }
 
-  const activeStageIndex = stages.findIndex((item) => item.id === stage);
+  const activeStageIndex = onboardingStages.findIndex((item) => item.id === stage);
   const guidedTarget = useMemo(() => {
     if (!profile.display_name.trim()) {
       return { stage: "profile" as Stage, field: "display-name", message: "Enter The Display Name." };
@@ -507,8 +516,8 @@ export function ProfileOnboarding() {
     selectedRecords,
     stage,
   ]);
-  const onboardingTabs: LedgerEditorTabDefinition[] = stages.map((item, index) => {
-    const priorInvalid = stages.slice(0, index).some((prior) => !stageIsValid(prior.id));
+  const onboardingTabs: LedgerEditorTabDefinition[] = onboardingStages.map((item, index) => {
+    const priorInvalid = onboardingStages.slice(0, index).some((prior) => !stageIsValid(prior.id));
     const status = priorInvalid
       ? "locked"
       : index < activeStageIndex
@@ -542,21 +551,21 @@ export function ProfileOnboarding() {
       setError(stage === "profile" ? "Complete the Profile identity and fee percentages." : stage === "accounts" ? "Select at least one Exchange and enter its commission rate." : "Review the required selections before continuing.");
       return;
     }
-    const index = stages.findIndex((item) => item.id === stage);
-    setStage(stages[Math.min(stages.length - 1, index + 1)].id);
+    const index = onboardingStages.findIndex((item) => item.id === stage);
+    setStage(onboardingStages[Math.min(onboardingStages.length - 1, index + 1)].id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function goPrevious() {
     setError("");
-    const index = stages.findIndex((item) => item.id === stage);
-    setStage(stages[Math.max(0, index - 1)].id);
+    const index = onboardingStages.findIndex((item) => item.id === stage);
+    setStage(onboardingStages[Math.max(0, index - 1)].id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function selectStage(target: Stage) {
-    const targetIndex = stages.findIndex((item) => item.id === target);
-    const invalidStage = stages
+    const targetIndex = onboardingStages.findIndex((item) => item.id === target);
+    const invalidStage = onboardingStages
       .slice(0, targetIndex)
       .find((item) => !stageIsValid(item.id));
     if (invalidStage) {
@@ -578,14 +587,16 @@ export function ProfileOnboarding() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...profile,
+          setup_path: setupPath,
           starting_bankroll: normalizeTwoDecimals(profile.starting_bankroll),
           management_fee_percent: normalizeTwoDecimals(profile.management_fee_percent),
           investment_fee_percent: normalizeTwoDecimals(profile.investment_fee_percent),
           iteration_number: Number(profile.iteration_number),
           enabled_modules: enabledModules,
           weekly_extra_place_loss_budget: weeklyExtraPlaceBudget,
-          accounts: serializeSelectedAccounts(selectedAccounts),
-          quick_actions: Object.values(selectedQuickActions),
+          accounts: setupPath === "fresh" ? serializeSelectedAccounts(selectedAccounts) : [],
+          quick_actions: setupPath === "fresh" ? Object.values(selectedQuickActions) : [],
+          main_bank_catalogue_id: setupPath === "fresh" ? profile.main_bank_catalogue_id : "",
           preferences: { operating_jurisdiction: profile.operating_jurisdiction },
         }),
       });
@@ -600,7 +611,9 @@ export function ProfileOnboarding() {
       const created = await response.json() as { profile: { profile_id: string } };
       setIsDirty(false);
       beginRouteTransition();
-      router.push(`/profiles/${created.profile.profile_id}/tracker/dashboard`);
+      router.push(setupPath === "import"
+        ? `/profiles/${created.profile.profile_id}/tracker/settings?setup=import#import-export`
+        : `/profiles/${created.profile.profile_id}/tracker/dashboard`);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to create Profile.");
@@ -640,7 +653,7 @@ export function ProfileOnboarding() {
         >
           <button className="guided-entry-action" onClick={focusGuidedTarget} type="button">
             <span className="eyebrow">Next required</span>
-            <strong>{guidedTarget.stage !== stage ? `Go To ${stages.find((item) => item.id === guidedTarget.stage)?.label} And ${guidedTarget.message}` : guidedTarget.message}</strong>
+            <strong>{guidedTarget.stage !== stage ? `Go To ${onboardingStages.find((item) => item.id === guidedTarget.stage)?.label} And ${guidedTarget.message}` : guidedTarget.message}</strong>
           </button>
           <button aria-label="Dismiss Profile setup guide" className="icon-button guided-entry-dismiss" onClick={() => setGuidedEntryDismissed(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
         </section>
@@ -651,13 +664,30 @@ export function ProfileOnboarding() {
       {stage === "profile" ? (
         <LedgerEditorTabPanel activeTabId={stage} tabId="profile">
         <section className="analytics-tab-panel stack">
+          <section className="content-subpanel stack-tight" data-pd-id="profile-onboarding.setup-path">
+            <div><span className="eyebrow">Setup path</span><h2>How should this Profile start?</h2></div>
+            <div aria-label="Profile setup path" className="settings-card-grid" role="radiogroup">
+              <label className={`profile-filter-chip${setupPath === "fresh" ? " is-selected" : ""}`}>
+                <input checked={setupPath === "fresh"} name="profile-setup-path" onChange={() => { setIsDirty(true); setSetupPath("fresh"); setStage("profile"); }} type="radio" />
+                <span>Start fresh</span>
+                <small>Configure modules, Accounts and Quick Actions now.</small>
+              </label>
+              <label className={`profile-filter-chip${setupPath === "import" ? " is-selected" : ""}`}>
+                <input checked={setupPath === "import"} name="profile-setup-path" onChange={() => { setIsDirty(true); setSetupPath("import"); setStage("profile"); }} type="radio" />
+                <span>Import existing workbook/data</span>
+                <small>Create the Profile, then use the existing dry-run and review workflow.</small>
+              </label>
+            </div>
+          </section>
           <div className="form-grid">
             <label className={`field-control${guidedTarget.field === "display-name" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="display-name"><span>Display Name</span><input autoComplete="name" autoFocus maxLength={120} onChange={(event) => setProfileValue("display_name", event.target.value)} value={profile.display_name} /></label>
             <label className={`field-control${guidedTarget.field === "profile-code" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="profile-code"><span>Profile Code</span><input maxLength={32} onChange={(event) => setProfileValue("profile_code", event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))} placeholder="PROFILE-001" value={profile.profile_code} /></label>
-            <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
-            <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
-            <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
-            <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" clearInitialZeroOnFocus dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} valueTone={parseAmount(profile.starting_bankroll) > 0 ? "positive" : "neutral"} /></label>
+            {setupPath === "fresh" ? <>
+              <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
+              <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
+              <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
+              <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" clearInitialZeroOnFocus dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} valueTone={parseAmount(profile.starting_bankroll) > 0 ? "positive" : "neutral"} /></label>
+            </> : null}
             <label className={`field-control${guidedTarget.field === "management-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="management-fee"><span>Management Fee</span><PercentageTextInput ariaLabel="Management Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.management-fee" id="profile-onboarding-management-fee" onChange={(value) => setProfileValue("management_fee_percent", value)} value={profile.management_fee_percent} valueMode="percentage-points" /></label>
             <label className={`field-control${guidedTarget.field === "investment-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="investment-fee"><span>Investment Fee</span><PercentageTextInput ariaLabel="Investment Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.investment-fee" id="profile-onboarding-investment-fee" onChange={(value) => setProfileValue("investment_fee_percent", value)} value={profile.investment_fee_percent} valueMode="percentage-points" /></label>
             <label className="field-control"><span>Operating Jurisdiction</span><select disabled value={profile.operating_jurisdiction}><option value="GB">United Kingdom (GB)</option></select></label>
@@ -770,12 +800,15 @@ export function ProfileOnboarding() {
           <h2>Review Profile</h2>
           <div className="stat-grid founder-onboarding-review-grid">
             <article className="stat-card"><span className="eyebrow">Profile</span><strong>{profile.display_name || "Not set"}</strong><span>{profile.profile_code || "No code"}</span></article>
-            <article className="stat-card"><span className="eyebrow">Modules</span><strong>{enabledModules.length}</strong><span>{enabledModules.join(" · ")}</span></article>
-            <article className="stat-card"><span className="eyebrow">Accounts</span><strong>{selectedRecords.length}</strong><span>{selectedBanks.length ? `${selectedBanks.length} bank selected` : "No bank selected"}</span></article>
-            <article className="stat-card"><span className="eyebrow">Quick Actions</span><strong>{Object.keys(selectedQuickActions).length}</strong><span>Optional favourites selected</span></article>
-            <article className="stat-card"><span className="eyebrow">Opening Account Cash</span><strong>£ {selectedCash.toFixed(2)}</strong><span>Starting bankroll: £ {parseAmount(profile.starting_bankroll).toFixed(2)}</span></article>
+            <article className="stat-card"><span className="eyebrow">Setup</span><strong>{setupPath === "import" ? "Workbook import" : "Start fresh"}</strong><span>{setupPath === "import" ? "Dry run and review required" : "Configure now"}</span></article>
+            {setupPath === "fresh" ? <>
+              <article className="stat-card"><span className="eyebrow">Modules</span><strong>{enabledModules.length}</strong><span>{enabledModules.join(" · ")}</span></article>
+              <article className="stat-card"><span className="eyebrow">Accounts</span><strong>{selectedRecords.length}</strong><span>{selectedBanks.length ? `${selectedBanks.length} bank selected` : "No bank selected"}</span></article>
+              <article className="stat-card"><span className="eyebrow">Quick Actions</span><strong>{Object.keys(selectedQuickActions).length}</strong><span>Optional favourites selected</span></article>
+              <article className="stat-card"><span className="eyebrow">Opening Account Cash</span><strong>£ {selectedCash.toFixed(2)}</strong><span>Starting bankroll: £ {parseAmount(profile.starting_bankroll).toFixed(2)}</span></article>
+            </> : null}
           </div>
-          <p className="field-hint">Provider identity comes from the Fund Manager Account Catalogue. Statuses, balances, restrictions, and preferences belong only to this Profile.</p>
+          <p className="field-hint">{setupPath === "import" ? "The workbook dry run can populate tracking settings, iteration, bankroll, main bank, Profile Accounts, balances and supported ledgers. Profile name and fee terms remain the Fund Manager's explicit choices; effective timestamp, review decisions and final import still require confirmation." : "Provider identity comes from the Fund Manager Account Catalogue. Statuses, balances, restrictions, and preferences belong only to this Profile."}</p>
         </section></LedgerEditorTabPanel>
       ) : null}
 
@@ -784,7 +817,7 @@ export function ProfileOnboarding() {
         <button className="button-link" disabled={isSaving} onClick={() => void cancelOnboarding()} type="button">Cancel</button>
         <div className="tracker-nav">
           <button className="review-chip review-chip-action-previous" disabled={stage === "profile" || isSaving} onClick={goPrevious} type="button">Previous</button>
-          {stage !== "review" ? <button className="review-chip review-chip-action-next" disabled={catalogueState === "error" || isSaving} onClick={goNext} type="button">Next</button> : <button className="modal-primary-button icon-text-action" disabled={isSaving || catalogueState !== "ready" || !stageIsValid("profile")} onClick={() => void createProfile()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">person_add</span>}<span>{isSaving ? "Creating Profile" : "Create Profile"}</span></button>}
+          {stage !== "review" ? <button className="review-chip review-chip-action-next" disabled={(setupPath === "fresh" && catalogueState === "error") || isSaving} onClick={goNext} type="button">Next</button> : <button className="modal-primary-button icon-text-action" disabled={isSaving || (setupPath === "fresh" && catalogueState !== "ready") || !stageIsValid("profile")} onClick={() => void createProfile()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">person_add</span>}<span>{isSaving ? "Creating Profile" : setupPath === "import" ? "Create and import" : "Create Profile"}</span></button>}
         </div>
       </footer>
     </section>

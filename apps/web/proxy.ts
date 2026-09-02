@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_SESSION_COOKIE, verifyFounderSessionToken } from "@/lib/auth-session";
 
 function authenticationRequired() {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.OPENFORGE_E2E_AUTH_BYPASS === "true"
+  ) return false;
   return process.env.OPENFORGE_AUTH_REQUIRED === "true" || Boolean(process.env.VERCEL);
 }
 

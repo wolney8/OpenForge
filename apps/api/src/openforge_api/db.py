@@ -32,6 +32,7 @@ class DuplicateProfileAccountError(ValueError):
 class ProfileDeletionResult:
     profile_id: str
     display_name: str
+    deletion_audit_id: str
     deleted_record_counts: dict[str, int]
 
 
@@ -712,6 +713,16 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           changed_at TEXT NOT NULL,
           payload_json TEXT NOT NULL,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_deletion_audit (
+          deletion_audit_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          profile_code TEXT NOT NULL,
+          deleted_at TEXT NOT NULL,
+          deleted_by TEXT NOT NULL,
+          import_identity_json TEXT NOT NULL DEFAULT '[]'
         );
 
         CREATE TABLE IF NOT EXISTS bookmaker_catalogue (
@@ -5841,7 +5852,9 @@ def get_profile(profile_id: str) -> ProfileRecord | None:
     return map_profile_row(row) if row else None
 
 
-def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
+def delete_archived_profile(
+    profile_id: str, *, deleted_by: str = "local-fund-manager"
+) -> ProfileDeletionResult | None:
     """Permanently remove one archived Profile through its database-owned cascade."""
     scope_queries: dict[str, tuple[tuple[str, str], ...]] = {
         "profile_settings": (
@@ -5899,7 +5912,11 @@ def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
     }
     with connect() as connection:
         profile = connection.execute(
-            "SELECT profile_id, display_name, status FROM profiles WHERE profile_id = ?",
+            """
+            SELECT profile_id, display_name, profile_code, status
+            FROM profiles
+            WHERE profile_id = ?
+            """,
             (profile_id,),
         ).fetchone()
         if profile is None:
@@ -5919,11 +5936,16 @@ def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
             )
             for domain, table_names in scope_queries.items()
         }
+        import_run_rows = connection.execute(
+            """
+            SELECT import_run_id, workbook_checksum, mapping_version
+            FROM profile_import_runs
+            WHERE profile_id = ?
+            ORDER BY created_at, import_run_id
+            """,
+            (profile_id,),
+        ).fetchall()
         if postgres_runtime_enabled():
-            import_run_rows = connection.execute(
-                "SELECT import_run_id FROM profile_import_runs WHERE profile_id = ?",
-                (profile_id,),
-            ).fetchall()
             notification_patterns = [f"%:{profile_id}:%"] + [
                 f"%:{row['import_run_id']}:%" for row in import_run_rows
             ]
@@ -5948,6 +5970,34 @@ def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
                     "DELETE FROM notification_user_state WHERE notification_id LIKE ?",
                     (pattern,),
                 )
+        deletion_audit_id = f"profile-deletion-{uuid4().hex}"
+        connection.execute(
+            """
+            INSERT INTO profile_deletion_audit (
+              deletion_audit_id, profile_id, display_name, profile_code,
+              deleted_at, deleted_by, import_identity_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                deletion_audit_id,
+                profile_id,
+                str(profile["display_name"]),
+                str(profile["profile_code"]),
+                utc_now(),
+                deleted_by,
+                json.dumps(
+                    [
+                        {
+                            "import_run_id": str(row["import_run_id"]),
+                            "workbook_checksum": str(row["workbook_checksum"]),
+                            "mapping_version": str(row["mapping_version"]),
+                        }
+                        for row in import_run_rows
+                    ],
+                    sort_keys=True,
+                ),
+            ),
+        )
         deleted = connection.execute(
             "DELETE FROM profiles WHERE profile_id = ? AND status = 'Archived'",
             (profile_id,),
@@ -5957,6 +6007,7 @@ def delete_archived_profile(profile_id: str) -> ProfileDeletionResult | None:
         return ProfileDeletionResult(
             profile_id=profile_id,
             display_name=str(profile["display_name"]),
+            deletion_audit_id=deletion_audit_id,
             deleted_record_counts=counts,
         )
 
@@ -6717,6 +6768,76 @@ def create_fund_manager_combo_preset(
     created = get_fund_manager_combo_preset(record["preset_id"])
     assert created is not None
     return created
+
+
+def seed_fund_manager_combo_presets(
+    *, defaults: tuple[dict[str, Any], ...], retired_ids: set[str]
+) -> None:
+    """Apply shipped Quick Action defaults in one idempotent transaction."""
+    with connect() as connection:
+        if retired_ids:
+            placeholders = ", ".join("?" for _ in retired_ids)
+            connection.execute(
+                f"DELETE FROM fund_manager_combo_presets WHERE preset_id IN ({placeholders})",
+                tuple(sorted(retired_ids)),
+            )
+        for payload in defaults:
+            bookmakers = [
+                str(value).strip()
+                for value in payload.get("bookmakers", [])
+                if str(value).strip()
+            ]
+            legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
+            if not bookmakers and legacy_bookmaker:
+                bookmakers = [legacy_bookmaker]
+            timestamp = utc_now()
+            values = (
+                payload["preset_id"],
+                str(payload["name"]).strip(),
+                payload.get("ledger_type", "Sportsbook"),
+                bookmakers[0] if len(bookmakers) == 1 else "",
+                json.dumps(bookmakers, sort_keys=True),
+                str(payload.get("offer_type", "")).strip(),
+                str(payload.get("bet_type", "")).strip(),
+                str(payload.get("offer_name", "")).strip(),
+                str(payload.get("fixture_type", "")).strip(),
+                str(payload.get("default_back_stake", "")).strip(),
+                str(payload.get("minimum_back_odds", "")).strip(),
+                str(payload.get("game", "")).strip(),
+                str(payload.get("cash_stake", "")).strip(),
+                str(payload.get("credit_amount", "")).strip(),
+                str(payload.get("bonus_amount", "")).strip(),
+                str(payload.get("wager_multiplier", "")).strip(),
+                str(payload.get("required_spins", "")).strip(),
+                str(payload.get("spin_stake", "")).strip(),
+                str(payload.get("free_spins_awarded", "")).strip(),
+                str(payload.get("free_spins_value", "")).strip(),
+                str(payload.get("default_strategy", "")).strip(),
+                json.dumps(payload.get("allowed_strategies", []), sort_keys=True),
+                json.dumps(payload.get("quick_add", {}), sort_keys=True),
+                payload.get("status", "Active"),
+                int(payload.get("sort_order", 0)),
+                timestamp,
+                timestamp,
+            )
+            connection.execute(
+                """
+                INSERT INTO fund_manager_combo_presets (
+                  preset_id, name, ledger_type, bookmaker, bookmakers_json,
+                  offer_type, bet_type, offer_name, fixture_type,
+                  default_back_stake, minimum_back_odds, game, cash_stake,
+                  credit_amount, bonus_amount, wager_multiplier, required_spins,
+                  spin_stake, free_spins_awarded, free_spins_value,
+                  default_strategy, allowed_strategies_json, quick_add_json,
+                  status, version, sort_order, created_at, updated_at
+                ) VALUES (
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, 1, ?, ?, ?
+                )
+                ON CONFLICT (preset_id) DO NOTHING
+                """,
+                values,
+            )
 
 
 def update_fund_manager_combo_preset(

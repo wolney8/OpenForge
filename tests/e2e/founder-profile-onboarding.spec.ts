@@ -84,6 +84,30 @@ const quickActions = [
   },
 ];
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/session", (route) => route.fulfill({
+    json: {
+      authenticated: true,
+      email: "founder@example.invalid",
+      expires_at: 2_100_000_000,
+      name: "Demo Founder",
+      role: "fund_manager",
+    },
+  }));
+  await page.route("**/api/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/fund-manager/import-executions", (route) =>
+    route.fulfill({ json: [] })
+  );
+  await page.route("**/api/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      json: pathname.endsWith("/state")
+        ? { dismissed_ids: [], read_keys: [] }
+        : pathname.endsWith("/preferences") ? { preferences: {} } : [],
+    });
+  });
+});
+
 test("Profile onboarding distinguishes a pending catalogue from an empty catalogue", async ({ page }) => {
   let releaseCatalogue: (() => void) | undefined;
   const catalogueGate = new Promise<void>((resolve) => {
@@ -310,6 +334,50 @@ test("Profile onboarding requires an Exchange and its commission before continui
   await expect(page.getByLabel("Exchange A commission (%)")).toHaveValue("2.00");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Actions" })).toBeVisible();
+  await expect(page.getByText("No optional Quick Actions are configured for the enabled ledgers.")).toBeVisible();
+  await expect(page.getByText("Quick Actions could not be loaded.")).toHaveCount(0);
+});
+
+test("Profile onboarding hands an import setup to the existing Profile workflow", async ({ page }) => {
+  let submitted: Record<string, unknown> | undefined;
+  await page.route("**/account-catalogue/source", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalogue) });
+  });
+  await page.route("**/fund-manager/common-bet-combos?active_only=true", async (route) => {
+    await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/profiles/onboarding", async (route) => {
+    submitted = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        profile: { profile_id: "profile-import-001" },
+        onboarding: {},
+        selected_account_count: 0,
+        selected_quick_action_count: 0,
+      }),
+    });
+  });
+
+  await page.goto("/profiles/new");
+  await page.getByLabel("Profile setup path").getByText("Import existing workbook/data").click();
+  await page.getByLabel("Display Name").fill("Import Target");
+  await page.getByLabel("Profile Code").fill("IMPORT-001");
+  await expect(page.getByLabel("Starting Bankroll")).toHaveCount(0);
+  await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Review Profile" })).toBeVisible();
+  await expect(page.getByText("The workbook dry run can populate tracking settings")).toBeVisible();
+  await page.getByRole("button", { name: "Create and import" }).click();
+
+  await expect(page).toHaveURL(/\/profiles\/profile-import-001\/tracker\/settings\?setup=import#import-export$/);
+  expect(submitted).toMatchObject({
+    setup_path: "import",
+    display_name: "Import Target",
+    accounts: [],
+    quick_actions: [],
+    main_bank_catalogue_id: "",
+  });
 });
 
 test("Profile onboarding Cancel uses the shared unsaved-change guard", async ({ page }) => {

@@ -26,13 +26,18 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm dev:api",
+      env: { ...process.env, OPENFORGE_AUTH_REQUIRED: "false" },
       url: "http://127.0.0.1:8010/healthz",
       reuseExistingServer: true,
       timeout: 120000,
     },
     {
       command: "pnpm dev:web",
-      env: { ...process.env, OPENFORGE_AUTH_REQUIRED: "false" },
+      env: {
+        ...process.env,
+        OPENFORGE_AUTH_REQUIRED: "false",
+        OPENFORGE_E2E_AUTH_BYPASS: "true",
+      },
       url: "http://127.0.0.1:3010/login",
       reuseExistingServer: true,
       timeout: 120000,

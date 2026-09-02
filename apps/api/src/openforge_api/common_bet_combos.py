@@ -4,7 +4,7 @@ import json
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -18,7 +18,6 @@ from openforge_api.db import (
     create_fund_manager_combo_preset,
     create_profile_quick_action,
     create_sportsbook_bet,
-    delete_fund_manager_combo_presets,
     get_free_bet,
     get_fund_manager_combo_preset,
     get_sportsbook_bet,
@@ -27,6 +26,7 @@ from openforge_api.db import (
     list_profile_quick_actions,
     list_profile_quick_add_loadout_favourites,
     list_profile_quick_add_loadout_overrides,
+    seed_fund_manager_combo_presets,
     set_profile_quick_add_loadout_favourite,
     update_fund_manager_combo_preset,
     update_profile_quick_action,
@@ -290,7 +290,7 @@ RETIRED_DEFAULT_COMBO_IDS = {
 
 # Current recurring reloads verified against Matched Betting Blog on 2026-07-20.
 # These are descriptive workflow presets, never calculation or profitability authority.
-DEFAULT_COMBOS: tuple[dict[str, object], ...] = (
+DEFAULT_COMBOS: tuple[dict[str, Any], ...] = (
     {
         "preset_id": "COMBO-MBB-20260720-SKY-2UP",
         "name": "Sky Bet - 2 Up Wins",
@@ -591,12 +591,10 @@ def serialize(record: FundManagerComboPresetRecord) -> CommonBetComboResponse:
 
 
 def seed_default_combos() -> None:
-    delete_fund_manager_combo_presets(RETIRED_DEFAULT_COMBO_IDS)
-    existing_ids = {row.preset_id for row in list_fund_manager_combo_presets()}
-    for preset in DEFAULT_COMBOS:
-        if preset["preset_id"] in existing_ids:
-            continue
-        create_fund_manager_combo_preset(dict(preset))
+    seed_fund_manager_combo_presets(
+        defaults=DEFAULT_COMBOS,
+        retired_ids=RETIRED_DEFAULT_COMBO_IDS,
+    )
 
 
 @router.get("", response_model=list[CommonBetComboResponse])

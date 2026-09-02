@@ -399,12 +399,28 @@ def test_profile_delete_requires_archive_and_exact_name_then_cascades(
     assert deleted.status_code == 200
     result = deleted.json()
     assert result["deleted"] is True
+    assert result["deletion_audit_id"].startswith("profile-deletion-")
     assert result["deleted_record_counts"]["profile_accounts"] == 3
     assert result["deleted_record_counts"]["imports_and_provenance"] == 3
     assert client.get(f"/profiles/{profile_id}").status_code == 404
     assert client.get(f"/profiles/{unaffected_id}").status_code == 200
 
     with connect() as connection:
+        deletion_audit = connection.execute(
+            "SELECT * FROM profile_deletion_audit WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+        assert deletion_audit is not None
+        assert deletion_audit["display_name"] == "Synthetic Profile"
+        assert deletion_audit["profile_code"] == "PROFILE-001"
+        assert deletion_audit["deleted_by"] == "local-fund-manager"
+        assert json.loads(deletion_audit["import_identity_json"]) == [
+            {
+                "import_run_id": import_run_id,
+                "mapping_version": "synthetic-v1",
+                "workbook_checksum": "a" * 64,
+            }
+        ]
         tables = connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         ).fetchall()
@@ -632,6 +648,32 @@ def test_profile_onboarding_requires_exchange_and_commission_without_partial_wri
         ).fetchone()[0]
     assert profile_count == 0
     assert commission_count == 0
+
+
+def test_profile_onboarding_import_path_creates_target_without_duplicate_setup(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+    payload = profile_onboarding_payload()
+    payload.update(
+        setup_path="import",
+        accounts=[],
+        main_bank_catalogue_id="",
+        quick_actions=[],
+    )
+
+    response = client.post("/profiles/onboarding", json=payload)
+
+    assert response.status_code == 201, response.text
+    created = response.json()
+    profile_id = created["profile"]["profile_id"]
+    assert created["profile"]["display_name"] == "Synthetic Profile"
+    assert created["selected_account_count"] == 0
+    assert created["selected_quick_action_count"] == 0
+    assert client.get(f"/profiles/{profile_id}/accounts").json() == []
+    assert client.get(f"/profiles/{profile_id}/onboarding").status_code == 200
 
 
 def test_profile_onboarding_can_be_reused_for_isolated_profiles(tmp_path: Path) -> None:

@@ -42,6 +42,7 @@ class ProfileDeletePayload(BaseModel):
 class ProfileDeleteResponse(BaseModel):
     profile_id: str
     display_name: str
+    deletion_audit_id: str
     deleted: bool
     deleted_record_counts: dict[str, int]
 
@@ -120,6 +121,7 @@ class ProfileOnboardingQuickActionPayload(BaseModel):
 
 
 class ProfileOnboardingCreatePayload(BaseModel):
+    setup_path: Literal["fresh", "import"] = "fresh"
     display_name: str = Field(min_length=1, max_length=120)
     profile_code: str = Field(
         min_length=3, max_length=32, pattern=r"^[A-Z0-9-]+$"
@@ -295,7 +297,7 @@ def create_profile_onboarding_route(
         for account in payload.accounts
         if active_records[account.catalogue_id].account_type == "Exchange"
     ]
-    if not selected_exchanges:
+    if payload.setup_path == "fresh" and not selected_exchanges:
         raise HTTPException(
             status_code=422,
             detail="Select at least one Exchange for this Profile",
@@ -305,7 +307,7 @@ def create_profile_onboarding_route(
         for account in selected_exchanges
         if account.commission_rate is None
     ]
-    if exchanges_without_commission:
+    if payload.setup_path == "fresh" and exchanges_without_commission:
         raise HTTPException(
             status_code=422,
             detail={
@@ -474,7 +476,7 @@ def update_profile_route(profile_id: str, payload: ProfileUpdatePayload) -> Prof
 
 @router.delete("/profiles/{profile_id}", response_model=ProfileDeleteResponse)
 def delete_profile_route(
-    profile_id: str, payload: ProfileDeletePayload
+    profile_id: str, payload: ProfileDeletePayload, request: Request
 ) -> ProfileDeleteResponse:
     profile = get_profile(profile_id)
     if profile is None:
@@ -488,7 +490,13 @@ def delete_profile_route(
             status_code=422, detail="Enter the exact Profile name to confirm deletion."
         )
     try:
-        deleted = delete_archived_profile(profile_id)
+        auth_session = getattr(request.state, "auth_session", None)
+        deleted = delete_archived_profile(
+            profile_id,
+            deleted_by=(
+                auth_session.email if auth_session is not None else "local-fund-manager"
+            ),
+        )
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if deleted is None:
@@ -496,6 +504,7 @@ def delete_profile_route(
     return ProfileDeleteResponse(
         profile_id=deleted.profile_id,
         display_name=deleted.display_name,
+        deletion_audit_id=deleted.deletion_audit_id,
         deleted=True,
         deleted_record_counts=deleted.deleted_record_counts,
     )

@@ -91,6 +91,23 @@ def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
     assert preset["preset_id"] not in {row["preset_id"] for row in active.json()}
 
 
+def test_default_quick_action_bootstrap_is_idempotent_for_fresh_onboarding(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    first = client.get("/fund-manager/common-bet-combos?active_only=true")
+    second = client.get("/fund-manager/common-bet-combos?active_only=true")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    first_ids = [row["preset_id"] for row in first.json()]
+    second_ids = [row["preset_id"] for row in second.json()]
+    assert first_ids == second_ids
+    assert len(first_ids) == len(set(first_ids))
+
+
 def test_retired_seed_is_removed_without_deleting_custom_presets(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
