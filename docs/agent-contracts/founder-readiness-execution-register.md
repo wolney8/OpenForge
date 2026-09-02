@@ -584,6 +584,12 @@ directory before founder workbook dry-run begins.
   Security, Activity and Lifecycle sections.
 - `PD-PM-007` IMPLEMENTED — HOSTED VERIFICATION PENDING: Archive and Restore are available only in
   Profile Management → Lifecycle through the canonical high-consequence confirmation dialog.
+- `PD-PM-008` IMPLEMENTED — HOSTED VERIFICATION PENDING: Profile Management uses the canonical
+  URL-aware accessible tab contract and renders exactly one selected panel at a time.
+- `PD-PM-009` IMPLEMENTED — HOSTED VERIFICATION PENDING: Profile Management fee actions use the
+  shared wrapping action-group layout and canonical spacing token at desktop and narrow widths.
+- `PD-PM-010` IMPLEMENTED — HOSTED VERIFICATION PENDING: all Fund Manager Settings tabs retain the
+  canonical page-shell alignment when their content changes document scrollbar requirements.
 
 ## Safety Gate
 

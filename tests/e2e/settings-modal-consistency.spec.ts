@@ -1,5 +1,32 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/session**", (route) =>
+    route.fulfill({
+      body: JSON.stringify({
+        authenticated: true,
+        auth_provider: "google",
+        email: "founder@example.invalid",
+        linked_profile_ids: [],
+        name: "Synthetic Founder",
+        role: "fund_manager",
+      }),
+      contentType: "application/json",
+      status: 200,
+    })
+  );
+  await page.route("**/auth/activity**", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const body = pathname.endsWith("/state")
+      ? { dismissed_ids: [], read_keys: [] }
+      : pathname.endsWith("/preferences")
+        ? { preferences: {} }
+        : [];
+    return route.fulfill({ body: JSON.stringify(body), contentType: "application/json", status: 200 });
+  });
+});
+
 test("Fund Manager settings sections render proper summary cards", async ({ page }) => {
   const expected = [
     ["catalogue", "Account Catalogue summary", ["Bookmakers", "Exchanges", "Banks", "Active Providers"]],
@@ -72,6 +99,53 @@ test("Fund Manager data tabs share panel and search-filter geometry", async ({ p
   await expect(siteSettings.getByLabel("Production persistence status")).toBeVisible();
   await expect(siteSettings.getByRole("cell", { name: "Profile import runs" })).toBeVisible();
   await expect(siteSettings.getByRole("cell", { name: "Import review decisions" })).toBeVisible();
+});
+
+test("Fund Manager settings tabs keep the canonical shell aligned", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 760 });
+  await page.route("**/api/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.includes("/auth/") || pathname.includes("/fund-manager/notifications")) {
+      return route.fallback();
+    }
+    return route.abort();
+  });
+  await page.goto("/settings#catalogue");
+
+  const sections = [
+    ["Account Catalogue", "account-catalogue.section"],
+    ["Lists", "fund-manager-authorities.section"],
+    ["Notifications", "fund-manager-notifications.settings"],
+    ["Site Settings", "fund-manager-site-settings.section"],
+    ["Quick Actions", "common-bet-combos.section"],
+    ["Database", "database-backups.section"],
+  ] as const;
+  let canonical: { pageLeft: number; tabsLeft: number; panelLeft: number } | null = null;
+
+  for (const [tabName, sectionId] of sections) {
+    await page.getByRole("tab", { name: tabName, exact: true }).click();
+    const panel = page.locator(`[data-pd-id="${sectionId}"]`);
+    await expect(panel).toBeVisible();
+    await expect(page.locator('[data-pd-id="fund-manager-settings.page"] [role="tabpanel"]:visible')).toHaveCount(1);
+    const geometry = await panel.evaluate((element) => {
+      const pageShell = document.querySelector<HTMLElement>('[data-pd-id="fund-manager-settings.page"]');
+      const tabs = document.querySelector<HTMLElement>('[data-pd-id="fund-manager-settings.tabs"]');
+      if (!pageShell || !tabs) throw new Error("Settings shell geometry is unavailable");
+      return {
+        pageLeft: pageShell.getBoundingClientRect().left,
+        tabsLeft: tabs.getBoundingClientRect().left,
+        panelLeft: element.getBoundingClientRect().left,
+      };
+    });
+    if (!canonical) canonical = geometry;
+    else {
+      expect(Math.abs(geometry.pageLeft - canonical.pageLeft), `${tabName}: page shell`).toBeLessThanOrEqual(1);
+      expect(Math.abs(geometry.tabsLeft - canonical.tabsLeft), `${tabName}: tabs`).toBeLessThanOrEqual(1);
+      expect(Math.abs(geometry.panelLeft - canonical.panelLeft), `${tabName}: panel`).toBeLessThanOrEqual(1);
+    }
+  }
+
+  await expect(page.locator("html")).toHaveCSS("scrollbar-gutter", /stable/);
 });
 
 test("Fund Manager Quick Actions uses an inline paginated table and bounded editor", async ({ page }) => {

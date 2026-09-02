@@ -156,6 +156,15 @@ use the canonical primitive and computed styling.
   compact inline spinner until the server responds. Keep the requested state on success; on
   failure restore the previous state and use canonical error feedback. Never leave a persisted
   switch visually unchanged while an accepted user action is saving.
+- Adjacent interactive controls use the shared action-group layout and spacing token. The group
+  must establish flex/grid layout, preserve the canonical gap, and wrap cleanly at reduced widths;
+  a `gap` declaration on a normal block container is not sufficient. Do not add per-button margins.
+- Tab panels must honour their native `hidden` state even when composed with grid/flex utility
+  classes. Only the selected panel renders in the content area; click, URL state and arrow/Home/End
+  keyboard navigation remain synchronized with the canonical tab rail.
+- Canonical centred page shells reserve stable scrollbar geometry and derive width from their
+  containing block. Switching between short and long sibling tabs must not horizontally shift the
+  page header, tab rail or rounded content panel.
 - The Profile directory drawer is a read-only summary and quick-navigation surface. Profile
   identity, fees, access administration and destructive lifecycle actions belong to the canonical
   Profile Management route; do not duplicate editable management forms or Archive/Restore in the

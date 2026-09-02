@@ -65,6 +65,7 @@
   --shape-medium: 0.95rem;
   --shape-large: 1.25rem;
   --shape-full: 999px;
+  --action-group-gap: 0.75rem;
   --shadow: 0 18px 48px rgba(25, 39, 52, 0.12);
   --hero-glow: radial-gradient(circle at top, rgba(0, 91, 99, 0.14), transparent 36%);
   --floating-nav-surface: rgba(231, 237, 244, 0.98);
@@ -190,6 +191,10 @@ body {
     linear-gradient(180deg, var(--bg) 0%, var(--bg-muted) 100%);
   color: var(--text);
   font-family: var(--font-sans);
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -2108,7 +2113,7 @@ html[data-theme="dark"] .notification-count-badge {
 
 .page-shell {
   box-sizing: border-box;
-  width: min(1560px, calc(100vw - 2rem));
+  width: min(1560px, calc(100% - 2rem));
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
@@ -2223,7 +2228,14 @@ html[data-theme="dark"] .notification-count-badge {
 .tracker-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--action-group-gap);
+}
+
+.settings-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--action-group-gap);
 }
 
 .split-hero {
@@ -3577,6 +3589,10 @@ html[data-theme="dark"] .notification-count-badge {
   min-width: 0;
 }
 
+.analytics-tab-panel[hidden] {
+  display: none;
+}
+
 .profile-settings-tab-list {
   position: static;
   flex-wrap: wrap;
@@ -4539,10 +4555,6 @@ html[data-theme="dark"] .notification-count-badge {
 
 .profile-management-form-grid > .field-control:last-child:nth-child(odd) {
   grid-column: 1 / -1;
-}
-
-.profile-management-shell .settings-action-row {
-  gap: 0.75rem;
 }
 
 .profile-management-shell .analytics-tab-panel > .icon-text-action,
@@ -13317,7 +13329,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 
   .page-shell {
-    width: min(100vw - 1rem, 1200px);
+    width: min(calc(100% - 1rem), 1200px);
   }
 
   .hero-panel,

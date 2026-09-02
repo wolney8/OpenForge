@@ -128,6 +128,34 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/manage$/);
     await expect(page.locator('[data-pd-id="profile-management.page"]')).toBeVisible();
     await expect(page.getByRole("tab", { name: "Lifecycle" })).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "Lifecycle" })).toBeHidden();
+    await expect(page.locator('[role="tabpanel"]:visible')).toHaveCount(1);
+    await page.getByRole("tab", { name: "Financial / Fees" }).click();
+    await expect(page).toHaveURL(/#financial$/);
+    await expect(page.getByRole("tabpanel", { name: "Financial / Fees" })).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "Overview" })).toBeHidden();
+    await page.reload();
+    await expect(page.getByRole("tab", { name: "Financial / Fees" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Financial / Fees" })).toBeVisible();
+    const actionGroup = page.locator('[data-pd-id="profile-management.financial.actions"]');
+    const actionGeometry = await actionGroup.evaluate((element) => {
+      const controls = Array.from(element.children).map((child) => child.getBoundingClientRect());
+      return {
+        display: getComputedStyle(element).display,
+        gap: Number.parseFloat(getComputedStyle(element).columnGap),
+        separated: controls.length === 2 && controls[1].left - controls[0].right >= 11,
+      };
+    });
+    expect(actionGeometry.display).toBe("flex");
+    expect(actionGeometry.gap).toBeGreaterThanOrEqual(12);
+    expect(actionGeometry.separated).toBe(true);
+    await page.getByRole("tab", { name: "Financial / Fees" }).press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Accounts" })).toBeFocused();
+    await expect(page.getByRole("tab", { name: "Accounts" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Accounts" }).press("Home");
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeFocused();
+    await expect(page.locator('[role="tabpanel"]:visible')).toHaveCount(1);
     const desktopGeometry = await page.locator('[data-pd-id="profile-management.page"]').evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -141,6 +169,13 @@ test.describe("Profile lifecycle and shell routing", () => {
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(narrowGeometry.scrollWidth).toBeLessThanOrEqual(narrowGeometry.clientWidth + 1);
+    await page.getByRole("tab", { name: "Financial / Fees" }).click();
+    const narrowActions = await actionGroup.evaluate((element) => ({
+      contained: element.scrollWidth <= element.clientWidth + 1,
+      gap: Number.parseFloat(getComputedStyle(element).columnGap),
+    }));
+    expect(narrowActions.contained).toBe(true);
+    expect(narrowActions.gap).toBeGreaterThanOrEqual(12);
     await page.getByRole("tab", { name: "Lifecycle" }).click();
     const archiveAction = page.locator('[data-pd-id="profile-management.archive"]');
     await expect(archiveAction).toBeVisible();

@@ -46,6 +46,10 @@ const sections = [
 
 type SectionId = (typeof sections)[number]["id"];
 
+function isSection(value: string): value is SectionId {
+  return sections.some((section) => section.id === value);
+}
+
 function parseAmount(value: string) {
   const parsed = Number(value.replaceAll(",", ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -72,6 +76,16 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [lifecycleConfirmation, setLifecycleConfirmation] = useState<"archive" | "restore" | null>(null);
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const value = window.location.hash.slice(1);
+      if (isSection(value)) setActiveSection(value);
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -269,7 +283,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
             <label className="field-control"><span>Management fee (%)</span><input disabled={isSaving} max="100" min="0" onChange={(event) => setForm({ ...form, management_fee_percent: event.target.value })} step="0.01" type="number" value={form.management_fee_percent} /></label>
             <label className="field-control"><span>Investment fee (%)</span><input disabled={isSaving} max="100" min="0" onChange={(event) => setForm({ ...form, investment_fee_percent: event.target.value })} step="0.01" type="number" value={form.investment_fee_percent} /></label>
           </div>
-          <div className="settings-action-row"><Link className="button-link" href={`/profiles?profile=${profileId}`}>Review fee position</Link><button className="modal-primary-button" disabled={isSaving} onClick={() => void saveFees()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save fees"}</span></button></div>
+          <div className="settings-action-row" data-pd-id="profile-management.financial.actions"><Link className="button-link" href={`/profiles?profile=${profileId}`}>Review fee position</Link><button className="modal-primary-button" disabled={isSaving} onClick={() => void saveFees()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save fees"}</span></button></div>
         </section>
 
         <section aria-labelledby="profile-management-tab-accounts" className="analytics-tab-panel stack" hidden={activeSection !== "accounts"} id="profile-management-panel-accounts" role="tabpanel">

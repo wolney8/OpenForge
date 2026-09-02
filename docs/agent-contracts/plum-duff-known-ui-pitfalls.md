@@ -744,3 +744,17 @@ cause, prevention rule and regression test.
   `tests/e2e/fund-manager-identity-shell.spec.ts`, `tests/e2e/app-navigation-drawer.spec.ts` and
   `tests/e2e/profile-lifecycle-routing.spec.ts` cover the shared toggle, navigation ownership,
   summary drawer and management lifecycle.
+
+## 2026-09-02: Utility layout classes overrode tabs and ineffective gaps joined actions
+
+- Area: Fund Manager Profile Management and Fund Manager Settings.
+- Root cause: Profile Management tab panels combined native `hidden` with the grid-based `stack`
+  utility, whose authored `display` rule overrode browser hidden styling. The fee action container
+  declared `gap` without flex/grid layout, while settings tabs with different document heights
+  changed scrollbar geometry and shifted the centred shell.
+- Prevention: the canonical tab-panel selector enforces `display: none` for hidden panels; shared
+  settings actions establish wrapping flex layout with the action-group spacing token; canonical
+  page shells reserve stable scrollbar space and use containing-block width.
+- Test added: `tests/e2e/profile-lifecycle-routing.spec.ts` verifies single-panel tab behaviour,
+  keyboard navigation and action separation; `tests/e2e/settings-modal-consistency.spec.ts`
+  verifies sibling Settings tabs retain the same horizontal shell geometry.
