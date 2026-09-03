@@ -130,6 +130,15 @@ type Workspace = {
       message?: string;
     };
   } | null;
+  previous_execution?: {
+    import_run_id: string;
+    status: string;
+    stage: string;
+    completed_units: number;
+    total_units: number;
+    percentage: number;
+    completed_at?: string;
+  } | null;
   import_safety?: {
     checkpoint_available?: boolean;
     profile_matches_checkpoint?: boolean;
@@ -959,6 +968,7 @@ export function FounderImportReviewWorkspace({
       const response = await fetch(`${reviewApi}/import`, {
         method: "POST",
         credentials: "include",
+        keepalive: true,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workbook_checksum: workspace.metadata.workbook_checksum,

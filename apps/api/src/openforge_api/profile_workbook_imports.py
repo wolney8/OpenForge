@@ -497,7 +497,15 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["final_import_summary"] = final_summary
     workspace["persistence_preflight"] = preflight
     workspace["import_result"] = run.get("result", {})
-    workspace["execution"] = load_import_execution(import_run_id)
+    execution = load_import_execution(import_run_id)
+    if run["status"] in {"ANALYSING", "READY", "REVIEW_REQUIRED", "READY_APPROVED"}:
+        # A checksum/mapping-compatible re-analysis deliberately reuses the ImportRun.
+        # Its prior terminal execution is attempt history, not the current workflow state.
+        workspace["execution"] = None
+        workspace["previous_execution"] = execution
+    else:
+        workspace["execution"] = execution
+        workspace["previous_execution"] = None
     workspace["checkpoint_id"] = run.get("checkpoint_id", "")
     workspace["rollback_status"] = run.get("rollback_status", "")
     workspace["approved_at"] = run.get("approved_at", "")
@@ -1018,13 +1026,41 @@ def delete_profile_workbook_import(
         "RECONCILING",
         "COMPLETE",
         "POST_IMPORT_RECONCILIATION_FAILED",
-        "ROLLED_BACK",
     }:
         raise HTTPException(
             status_code=409,
             detail="This import run cannot be deleted in its current state",
         )
     with connect() as connection:
+        execution = connection.execute(
+            "SELECT status FROM profile_import_executions WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        active_writes = connection.execute(
+            "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+            "WHERE import_run_id = ? AND rolled_back_at = ''",
+            (import_run_id,),
+        ).fetchone()
+        if execution is not None and str(execution["status"]) == "RUNNING":
+            raise HTTPException(status_code=409, detail="A running import cannot be deleted")
+        if active_writes is not None and int(active_writes["count"]):
+            raise HTTPException(
+                status_code=409,
+                detail="This import has active Profile writes and cannot be deleted",
+            )
+        # These audit tables intentionally retain failed/rolled-back attempts and do not
+        # cascade from the run. Explicit deletion is required for a user-confirmed purge.
+        for table in (
+            "profile_import_executions",
+            "profile_import_rollback_events",
+            "profile_import_write_audit",
+            "profile_import_checkpoints",
+            "profile_import_write_plans",
+        ):
+            connection.execute(
+                f"DELETE FROM {table} WHERE import_run_id = ?",  # noqa: S608
+                (import_run_id,),
+            )
         connection.execute(
             """
             DELETE FROM profile_import_review_decisions

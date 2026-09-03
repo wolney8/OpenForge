@@ -3,6 +3,20 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-03: Re-analysis inherited a terminal import execution
+
+- Area: Profile Import/Export history, Import Review and Delete review confirmation.
+- Root cause: checksum-compatible analysis intentionally reused its ImportRun, but the workspace
+  exposed the prior rolled-back execution as current state. Review deletion also removed the run
+  before non-cascading execution/checkpoint/audit children, and its generic response parser labelled
+  the resulting constraint error as an analysis failure.
+- Prevention: persisted ImportRun status is authoritative; terminal executions attached to a newly
+  ready/approved run are attempt history only. Confirmed deletion removes all non-active run metadata
+  in one server transaction, uses action-specific errors, and import-start requests use navigation-safe
+  delivery before resumable server execution takes over.
+- Regression tests: API coverage verifies current/previous execution separation and dependent audit
+  deletion; Playwright verifies restored `READY_APPROVED` actions and dedicated delete failure state.
+
 ## 2026-09-02: Secondary Profile reporting blocked an empty directory
 
 - Area: Fund Manager Profiles directory and post-delete navigation.

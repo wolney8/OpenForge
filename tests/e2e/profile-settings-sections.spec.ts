@@ -2,6 +2,30 @@ import { expect, test } from "@playwright/test";
 
 const settingsPath = "/profiles/profile-demo-001/tracker/settings";
 
+async function mockAuthenticatedSession(page: import("@playwright/test").Page) {
+  await page.route("**/api/**", async (route) => {
+    if (new URL(route.request().url()).pathname === "/api/auth/session") {
+      await route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: 2_100_000_000,
+          linked_profile_ids: ["profile-demo-001"],
+          name: "Synthetic Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+}
+
 test("profile settings use keyboard-accessible section tabs and retain deep links", async ({ page }) => {
   await page.route("**/profiles/profile-demo-001/workbook-imports", async (route) => {
     await route.fulfill({ contentType: "application/json", body: "[]" });
@@ -105,6 +129,91 @@ test("Fund Manager Profile Settings links to the authoritative management page",
     "href",
     "/profiles/profile-demo-001/manage"
   );
+});
+
+test("workbook history reconstructs an approved import action after reload", async ({ page }) => {
+  await mockAuthenticatedSession(page);
+  const run = {
+    import_run_id: "profile-import-ready",
+    source_filename: "synthetic-approved.xlsx",
+    workbook_checksum: "a".repeat(64),
+    effective_at: "2026-09-03T10:13:00+01:00",
+    mapping_version: "founder-snapshot-v5",
+    status: "READY_APPROVED",
+    raw_workbook_retained: false,
+    approved_at: "2026-09-03T12:00:00+00:00",
+    completed_at: "",
+    checkpoint_id: "",
+    rollback_status: "",
+    rolled_back_at: "",
+    row_counts: { sportsbook: 1 },
+    updated_at: "2026-09-03T12:00:00+00:00",
+  };
+  await page.route("**/profiles/profile-demo-001/workbook-imports", async (route) => {
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify([run]) });
+  });
+
+  await page.goto(`${settingsPath}#import-export`);
+  const importAction = page.getByRole("link", { name: "Import to Profile" });
+  await expect(importAction).toHaveAttribute(
+    "href",
+    "/profiles/profile-demo-001/imports/profile-import-ready/review",
+  );
+
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Import to Profile" })).toBeVisible();
+});
+
+test("delete review reports deletion errors and succeeds without workbook analysis", async ({ page }) => {
+  await mockAuthenticatedSession(page);
+  const run = {
+    import_run_id: "profile-import-delete",
+    source_filename: "synthetic-abandoned.xlsx",
+    workbook_checksum: "b".repeat(64),
+    effective_at: "2026-09-03T10:13:00+01:00",
+    mapping_version: "founder-snapshot-v5",
+    status: "READY_APPROVED",
+    raw_workbook_retained: false,
+    approved_at: "2026-09-03T12:00:00+00:00",
+    completed_at: "",
+    checkpoint_id: "",
+    rollback_status: "",
+    rolled_back_at: "",
+    row_counts: { sportsbook: 1 },
+    updated_at: "2026-09-03T12:00:00+00:00",
+  };
+  let deleted = false;
+  let deleteAttempts = 0;
+  await page.route("**/profiles/profile-demo-001/workbook-imports**", async (route) => {
+    const request = route.request();
+    if (request.method() === "DELETE") {
+      deleteAttempts += 1;
+      if (deleteAttempts === 1) {
+        await route.fulfill({ status: 500, body: "failed" });
+        return;
+      }
+      deleted = true;
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(deleted ? [] : [run]),
+    });
+  });
+
+  await page.goto(`${settingsPath}#import-export`);
+  await page.getByRole("button", { name: "Delete review synthetic-abandoned.xlsx" }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete workbook review?" });
+  await dialog.getByRole("button", { name: "Delete review" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Unable to delete the workbook review.");
+  await expect(dialog).not.toContainText("Unable to analyse the workbook");
+  await expect(dialog.getByRole("button", { name: "Delete review" })).toBeEnabled();
+
+  await dialog.getByRole("button", { name: "Delete review" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("No workbook awaiting review")).toBeVisible();
+  await expect(page.locator(".status-toast")).toContainText("Workbook review deleted");
 });
 
 test("profile settings tabs remain in normal document flow", async ({ page }) => {

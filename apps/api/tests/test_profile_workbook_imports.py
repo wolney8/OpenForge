@@ -120,18 +120,201 @@ def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path)
             "rolled_back_at = ? WHERE import_run_id = ?",
             (approved_at, import_run_id),
         )
+        connection.execute(
+            """
+            INSERT INTO profile_import_executions (
+              execution_id, import_run_id, profile_id, actor_email, status, stage,
+              stage_cursor, completed_units, total_units, progress_json, error_json,
+              attempt_count, started_at, updated_at, completed_at
+            ) VALUES (?, ?, ?, ?, 'POST_IMPORT_RECONCILIATION_FAILED', 'RECONCILING',
+                      0, 1, 1, '{}', '{}', 1, ?, ?, ?)
+            """,
+            (
+                "execution-previous",
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                approved_at,
+                approved_at,
+                approved_at,
+            ),
+        )
     repaired_workspace = _workspace("profile-import-test", import_run_id)
     assert repaired_workspace["run_status"] == "READY_APPROVED"
     assert repaired_workspace["rollback_status"] == "COMPLETE"
     assert repaired_workspace["rolled_back_at"] == approved_at
     assert repaired_workspace["persistence_preflight"]["status"] == "PASSED"
     assert repaired_workspace["import_result"] == previous_result
+    assert repaired_workspace["execution"] is None
+    assert repaired_workspace["previous_execution"]["status"] == (
+        "POST_IMPORT_RECONCILIATION_FAILED"
+    )
     with connect() as connection:
         repaired_status = connection.execute(
             "SELECT status FROM profile_import_runs WHERE import_run_id = ?", (import_run_id,)
         ).fetchone()
     assert repaired_status is not None
     assert repaired_status["status"] == "READY_APPROVED"
+
+
+def test_delete_review_removes_rolled_back_attempt_metadata_transactionally(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_database(tmp_path)
+    monkeypatch.setattr(
+        "openforge_api.profile_workbook_imports.require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid"),
+    )
+    import_run_id = "profile-import-removable"
+    timestamp = "2026-09-03T12:00:00+00:00"
+    summary = {
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 1,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+        "profile_settings": [],
+        "accounts": {},
+        "ledgers": {},
+        "extra_places": {},
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, approved_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 100, ?, ?, 'READY_APPROVED', ?, '{}', ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                "synthetic.xlsx",
+                "b" * 64,
+                timestamp,
+                "founder-snapshot-v5",
+                json.dumps(summary),
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_review_items (
+              import_run_id, item_id, profile_id, import_id, source_fingerprint,
+              source_sheet, source_row, source_record_id, category, item_json,
+              created_at, updated_at
+            ) VALUES (?, 'review-1', ?, 'source-1', ?, 'Accounts', 2, 'IT1-AC-0001',
+                      'missing_provider', '{}', ?, ?)
+            """,
+            (import_run_id, "profile-import-test", "c" * 64, timestamp, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_review_decisions (
+              import_run_id, item_id, profile_id, workbook_checksum, mapping_version,
+              source_fingerprint, decision_json, actor_email, created_at, updated_at
+            ) VALUES (?, 'review-1', ?, ?, 'founder-snapshot-v5', ?, '{}', ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "b" * 64,
+                "c" * 64,
+                "founder@example.invalid",
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO profile_import_write_plans VALUES (?, ?, '{}', ?, ?, ?)",
+            (import_run_id, "profile-import-test", "d" * 64, timestamp, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_checkpoints (
+              checkpoint_id, import_run_id, profile_id, workbook_checksum, mapping_version,
+              snapshot_json, snapshot_checksum, status, created_at, restored_at
+            ) VALUES ('checkpoint-1', ?, ?, ?, 'founder-snapshot-v5', '{}', ?,
+                      'RESTORED', ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "b" * 64,
+                "e" * 64,
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_write_audit (
+              import_run_id, import_key, profile_id, entity_type, entity_id, operation,
+              before_json, after_json, created_at, rolled_back_at
+            ) VALUES (?, 'write-1', ?, 'accounts', 'account-1', 'create', '{}', '{}', ?, ?)
+            """,
+            (import_run_id, "profile-import-test", timestamp, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_rollback_events (
+              rollback_event_id, import_run_id, profile_id, actor_email, checkpoint_id,
+              status, summary_json, created_at, completed_at
+            ) VALUES ('rollback-1', ?, ?, ?, 'checkpoint-1', 'COMPLETE', '{}', ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_executions (
+              execution_id, import_run_id, profile_id, actor_email, status, stage,
+              stage_cursor, completed_units, total_units, progress_json, error_json,
+              attempt_count, started_at, updated_at, completed_at
+            ) VALUES ('execution-1', ?, ?, ?, 'ROLLED_BACK', 'RECONCILING', 0, 1, 1,
+                      '{}', '{}', 1, ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    response = TestClient(app).delete(
+        f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
+    )
+    assert response.status_code == 204, response.text
+
+    with connect() as connection:
+        for table in (
+            "profile_import_review_decisions",
+            "profile_import_review_items",
+            "profile_import_write_plans",
+            "profile_import_checkpoints",
+            "profile_import_write_audit",
+            "profile_import_rollback_events",
+            "profile_import_executions",
+            "profile_import_runs",
+        ):
+            count = connection.execute(
+                f"SELECT COUNT(*) AS count FROM {table} WHERE import_run_id = ?",  # noqa: S608
+                (import_run_id,),
+            ).fetchone()
+            assert count is not None
+            assert int(count["count"]) == 0
 
 
 def test_uploaded_founder_snapshot_matches_private_regression_oracle(

@@ -11,6 +11,7 @@ export function ConfirmationDialog({
   confirmationText,
   confirmationLabel = "Type to confirm",
   description,
+  error,
   onCancel,
   onConfirm,
   open,
@@ -24,6 +25,7 @@ export function ConfirmationDialog({
   confirmationText?: string;
   confirmationLabel?: string;
   description: string;
+  error?: string;
   onCancel: () => void;
   onConfirm: () => void;
   open: boolean;
@@ -57,6 +59,7 @@ export function ConfirmationDialog({
       <div className="stack">
         <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
+        {error ? <p className="error-text" role="alert">{error}</p> : null}
         {confirmationText !== undefined ? (
           <label className="field-control confirmation-dialog-input">
             <span>{confirmationLabel}</span>

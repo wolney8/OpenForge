@@ -48,15 +48,36 @@ async function fileToBase64(file: File): Promise<string> {
   return dataUrl.slice(dataUrl.indexOf(",") + 1);
 }
 
-async function apiError(response: Response): Promise<string> {
+async function apiError(response: Response, fallback: string): Promise<string> {
   const body = await response.json().catch(() => null) as { detail?: string | { msg?: string }[] } | null;
   if (typeof body?.detail === "string") return body.detail;
   if (Array.isArray(body?.detail)) return body.detail.map((item) => item.msg ?? "Invalid value").join(". ");
-  return "Unable to analyse the workbook.";
+  return fallback;
 }
 
 function runStatus(value: string): string {
   return value.replaceAll("_", " ").toLocaleLowerCase().replace(/^./, (letter) => letter.toLocaleUpperCase());
+}
+
+function runActionLabel(run: ImportRun): string {
+  if (run.status === "READY_APPROVED") return "Import to Profile";
+  if (["IMPORTING", "RECONCILING"].includes(run.status)) return "View progress";
+  if (["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)) {
+    return "Reconciliation";
+  }
+  return "Review";
+}
+
+async function fetchRuns(profileId: string, signal?: AbortSignal): Promise<ImportRun[]> {
+  const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/workbook-imports`, {
+    cache: "no-store",
+    credentials: "include",
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Unable to load workbook reviews."));
+  }
+  return response.json() as Promise<ImportRun[]>;
 }
 
 export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
@@ -64,6 +85,8 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
   const [runs, setRuns] = useState<ImportRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [analysing, setAnalysing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [effectiveAt, setEffectiveAt] = useState(localDateTimeValue);
@@ -71,15 +94,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${apiBaseUrl}/profiles/${profileId}/workbook-imports`, {
-      cache: "no-store",
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(await apiError(response));
-        return response.json() as Promise<ImportRun[]>;
-      })
+    fetchRuns(profileId, controller.signal)
       .then(setRuns)
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -122,7 +137,9 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
           effective_at: new Date(effectiveAt).toISOString(),
         }),
       });
-      if (!response.ok) throw new Error(await apiError(response));
+      if (!response.ok) {
+        throw new Error(await apiError(response, "Unable to analyse the workbook."));
+      }
       const result = await response.json() as AnalysisResult;
       beginRouteTransition();
       router.push(`/profiles/${profileId}/imports/${result.metadata.import_run_id}/review`);
@@ -134,21 +151,24 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
   }
 
   async function deleteReview() {
-    if (!deleteRun) return;
-    setAnalysing(true);
+    if (!deleteRun || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       const response = await fetch(
         `${apiBaseUrl}/profiles/${profileId}/workbook-imports/${deleteRun.import_run_id}`,
         { method: "DELETE", credentials: "include" },
       );
-      if (!response.ok) throw new Error(await apiError(response));
-      setRuns((current) => current.filter((run) => run.import_run_id !== deleteRun.import_run_id));
+      if (!response.ok) {
+        throw new Error(await apiError(response, "Unable to delete the workbook review."));
+      }
+      setRuns(await fetchRuns(profileId));
       setMessage("Workbook review deleted. Profile data was not changed.");
       setDeleteRun(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to delete the workbook review.");
+      setDeleteError(error instanceof Error ? error.message : "Unable to delete the workbook review.");
     } finally {
-      setAnalysing(false);
+      setDeleting(false);
     }
   }
 
@@ -190,7 +210,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
                 <td>{run.completed_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.completed_at)) : "—"}</td>
                 <td><span className={`table-chip ${run.status === "COMPLETE" ? "table-chip-success" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "table-chip-danger" : "table-chip-neutral"}`}>{run.status === "COMPLETE" ? "Passed" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "Failed" : "Pending"}</span><span className="table-status">{run.rollback_status ? `Rollback ${run.rollback_status.toLocaleLowerCase()}` : "No import writes"}</span></td>
                 <td><span className="spreadsheet-row-id" title={run.workbook_checksum}>{run.workbook_checksum.slice(0, 12)}…</span></td>
-                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{run.completed_at ? "Reconciliation" : "Review"}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED", "ROLLED_BACK"].includes(run.status)} onClick={() => setDeleteRun(run)} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{runActionLabel(run)}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)} onClick={() => { setDeleteError(""); setDeleteRun(run); }} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
               </tr>)}</tbody>
             </table>
           </div>
@@ -202,11 +222,12 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         )}
       </section>
       <ConfirmationDialog
-        busy={analysing}
+        busy={deleting}
         busyLabel="Deleting"
         confirmLabel="Delete review"
         description={`This removes the dry run, review items, decisions and reconciliation for ${deleteRun?.source_filename ?? "this workbook"}. It does not change the source workbook or any Profile data.`}
-        onCancel={() => setDeleteRun(null)}
+        error={deleteError}
+        onCancel={() => { setDeleteError(""); setDeleteRun(null); }}
         onConfirm={() => void deleteReview()}
         open={deleteRun !== null}
         title="Delete workbook review?"
