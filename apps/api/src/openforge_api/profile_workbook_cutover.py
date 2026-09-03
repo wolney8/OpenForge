@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import sqlite3
@@ -10,6 +11,11 @@ from typing import Any
 from uuid import uuid4
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
+from openforge_api.accounts import (
+    LIFECYCLE_STATUSES,
+    list_profile_accounts,
+    resolve_account_lifecycle_and_restrictions,
+)
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
@@ -29,6 +35,8 @@ from openforge_api.db import (
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
 from openforge_api.postgres_schema import sqlite_type_to_postgres
 from openforge_api.sportsbook import build_response as build_sportsbook_response
+from openforge_api.sportsbook import list_profile_sportsbook_bets
+from openforge_api.tracker_summary_sources import get_profile_tracker_summary_sources
 
 PROFILE_TABLES = (
     "profiles",
@@ -994,10 +1002,24 @@ def _account_write_state(
     elif not isinstance(restrictions_json, str):
         restrictions_json = _json(restrictions_json)
 
+    try:
+        parsed_restrictions = json.loads(restrictions_json)
+    except json.JSONDecodeError as error:
+        raise ImportCutoverError("Account restrictions must be a JSON list") from error
+    if not isinstance(parsed_restrictions, list) or not all(
+        isinstance(value, str) for value in parsed_restrictions
+    ):
+        raise ImportCutoverError("Account restrictions must be a list of strings")
+
+    try:
+        lifecycle_status, restrictions = resolve_account_lifecycle_and_restrictions(
+            status=str(source_state.get("status") or "Active"),
+            lifecycle_status=source_state.get("lifecycle_status"),
+            restrictions=parsed_restrictions,
+        )
+    except ValueError as error:
+        raise ImportCutoverError(str(error)) from error
     state = {column: source_state.get(column) for column in ACCOUNT_WRITE_COLUMNS}
-    lifecycle_status = (
-        source_state.get("lifecycle_status") or source_state.get("status") or "Active"
-    )
     current_balance = source_state.get("current_balance")
     if str(lifecycle_status).casefold() == "pending sign up" and not str(
         current_balance or ""
@@ -1013,7 +1035,7 @@ def _account_write_state(
             "platform": provider.platform,
             "lifecycle_status": lifecycle_status,
             "current_balance": current_balance,
-            "restrictions_json": restrictions_json,
+            "restrictions_json": _json(restrictions),
         }
     )
     return state
@@ -2113,6 +2135,68 @@ def generate_post_import_reconciliation(
     return report
 
 
+def generate_post_import_operational_health(*, profile_id: str) -> dict[str, Any]:
+    """Prove that persisted import state can serve normal Profile navigation."""
+    with connect() as connection:
+        tracker_settings = connection.execute(
+            "SELECT 1 FROM profile_tracker_settings WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        onboarding_settings = connection.execute(
+            "SELECT 1 FROM profile_onboarding_settings WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        invalid_lifecycle_rows = connection.execute(
+            "SELECT account_id, lifecycle_status FROM accounts WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchall()
+    invalid_lifecycles = [
+        {
+            "account_id": str(row["account_id"]),
+            "lifecycle_status": str(row["lifecycle_status"]),
+        }
+        for row in invalid_lifecycle_rows
+        if str(row["lifecycle_status"]) not in LIFECYCLE_STATUSES
+    ]
+    checks: dict[str, dict[str, Any]] = {
+        "profile_tracker_settings": {"passed": tracker_settings is not None},
+        "profile_onboarding_settings": {"passed": onboarding_settings is not None},
+        "account_lifecycle_domain": {
+            "passed": not invalid_lifecycles,
+            "invalid_rows": invalid_lifecycles,
+        },
+    }
+    try:
+        list_profile_accounts(profile_id)
+        checks["accounts"] = {"passed": True}
+    except Exception as error:
+        checks["accounts"] = {"passed": False, "reason": str(error)}
+    try:
+        list_profile_sportsbook_bets(profile_id)
+        checks["sportsbook_workflow"] = {"passed": True}
+        checks["sportsbook_current_week_summary"] = {"passed": True}
+    except Exception as error:
+        checks["sportsbook_workflow"] = {"passed": False, "reason": str(error)}
+        checks["sportsbook_current_week_summary"] = {"passed": False, "reason": str(error)}
+    try:
+        asyncio.run(get_profile_tracker_summary_sources(profile_id))
+        checks["tracker_summary_sources"] = {"passed": True, "http_status": 200}
+        checks["dashboard"] = {"passed": True}
+        checks["reports"] = {"passed": True}
+    except Exception as error:
+        checks["tracker_summary_sources"] = {
+            "passed": False,
+            "http_status": 500,
+            "reason": str(error),
+        }
+        checks["dashboard"] = {"passed": False, "reason": "tracker_summary_sources failed"}
+        checks["reports"] = {"passed": False, "reason": "tracker_summary_sources failed"}
+    return {
+        "status": "OPERATIONAL HEALTH: PASSED"
+        if all(check["passed"] for check in checks.values())
+        else "OPERATIONAL HEALTH: FAILED",
+        "checks": checks,
+    }
+
+
 def _apply_write_plan(
     connection: Any,
     *,
@@ -2397,12 +2481,18 @@ def execute_import(
                 write_result=write_result,
                 plan=plan,
             )
-            passed = report["result"] == "POST-IMPORT RECONCILIATION: PASSED"
+        operational_health = generate_post_import_operational_health(profile_id=profile_id)
+        with connect() as connection:
+            passed = (
+                report["result"] == "POST-IMPORT RECONCILIATION: PASSED"
+                and operational_health["status"] == "OPERATIONAL HEALTH: PASSED"
+            )
             final_status = "COMPLETE" if passed else "POST_IMPORT_RECONCILIATION_FAILED"
             result = {
                 **write_result,
                 "status": final_status,
                 "post_import_reconciliation": report,
+                "operational_health": operational_health,
             }
             result["post_import_state_checksum"] = _profile_state_checksum(connection, profile_id)
             connection.execute(

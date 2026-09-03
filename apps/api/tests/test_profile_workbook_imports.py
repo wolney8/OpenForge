@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.main import app
+from openforge_api.profile_workbook_cutover import _profile_state_checksum
 from openforge_api.profile_workbook_imports import _save_preflight_result, _workspace
 
 
@@ -38,6 +39,130 @@ def configure_database(tmp_path: Path) -> None:
                 "0.00",
             ),
         )
+
+
+def test_recovery_diagnostics_require_a_fund_manager_session(tmp_path: Path) -> None:
+    configure_database(tmp_path)
+
+    response = TestClient(app).get(
+        "/profiles/profile-import-test/workbook-imports/recovery-diagnostics"
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Access unavailable"}
+
+
+def test_recovery_diagnostics_are_profile_scoped_read_only_and_report_safe_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_database(tmp_path)
+    monkeypatch.setattr(
+        "openforge_api.profile_workbook_imports.require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid", role="fund_manager"),
+    )
+    timestamp = "2026-09-03T12:00:00+00:00"
+    import_run_id = "profile-import-diagnostics"
+    with connect() as connection:
+        checksum = _profile_state_checksum(connection, "profile-import-test")
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, completed_at, checkpoint_id, result_json, rollback_status,
+              created_at, updated_at
+            ) VALUES (?, ?, ?, 'synthetic.xlsx', ?, 100, ?, 'founder-snapshot-v5', 'COMPLETE',
+                      '{}', '{}', ?, 'checkpoint-diagnostics', ?, 'AVAILABLE', ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                "d" * 64,
+                timestamp,
+                timestamp,
+                json.dumps(
+                    {
+                        "post_import_state_checksum": checksum,
+                        "post_import_reconciliation": {
+                            "status": "POST-IMPORT RECONCILIATION: PASSED"
+                        },
+                    }
+                ),
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_checkpoints (
+              checkpoint_id, import_run_id, profile_id, workbook_checksum, mapping_version,
+              snapshot_json, snapshot_checksum, status, created_at, restored_at
+            ) VALUES ('checkpoint-diagnostics', ?, ?, ?, 'founder-snapshot-v5', '{}', ?,
+                      'AVAILABLE', ?, '')
+            """,
+            (import_run_id, "profile-import-test", "d" * 64, "c" * 64, timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_executions (
+              execution_id, import_run_id, profile_id, actor_email, status, stage,
+              stage_cursor, completed_units, total_units, progress_json, error_json,
+              attempt_count, started_at, updated_at, completed_at
+            ) VALUES ('execution-diagnostics', ?, ?, ?, 'COMPLETE', 'RECONCILING', 0, 1, 1,
+                      '{}', '{}', 1, ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                "profile-import-test",
+                "founder@example.invalid",
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_write_audit (
+              import_run_id, import_key, profile_id, entity_type, entity_id, operation,
+              before_json, after_json, created_at, rolled_back_at
+            ) VALUES (?, 'accounts:2', ?, 'accounts', 'account-diagnostics', 'create', '{}',
+                      '{}', ?, '')
+            """,
+            (import_run_id, "profile-import-test", timestamp),
+        )
+
+    response = TestClient(app).get(
+        "/profiles/profile-import-test/workbook-imports/recovery-diagnostics"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "profile_id": "profile-import-test",
+        "profile_display_name": "Import Test",
+        "import_run_id": import_run_id,
+        "execution_id": "execution-diagnostics",
+        "import_status": "COMPLETE",
+        "reconciliation_status": "POST-IMPORT RECONCILIATION: PASSED",
+        "checkpoint_id": "checkpoint-diagnostics",
+        "checkpoint_status": "AVAILABLE",
+        "checkpoint_checksum": "c" * 64,
+        "recorded_post_import_checksum": checksum,
+        "current_profile_checksum": checksum,
+        "current_matches_post_import_checksum": True,
+        "manual_post_import_mutation_detected": False,
+        "rollback_available": True,
+        "active_write_audit_row_count": 1,
+        "execution_running": False,
+        "import_started_at": "",
+        "import_completed_at": timestamp,
+        "import_rolled_back_at": "",
+        "rollback_conclusion": "ROLLBACK SAFE",
+        "rollback_reason": (
+            "The current Profile checksum matches the recorded post-import checksum."
+        ),
+    }
 
 
 def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path) -> None:

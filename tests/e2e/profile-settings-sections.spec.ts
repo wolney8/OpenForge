@@ -131,6 +131,66 @@ test("Fund Manager Profile Settings links to the authoritative management page",
   );
 });
 
+test("Fund Manager can load read-only import recovery diagnostics", async ({ page }) => {
+  let diagnosticRequests = 0;
+  await page.route("**/api/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") {
+      return route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: 2_100_000_000,
+          linked_profile_ids: ["profile-demo-001"],
+          name: "Synthetic Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+      });
+    }
+    if (pathname.endsWith("/workbook-imports/recovery-diagnostics")) {
+      diagnosticRequests += 1;
+      return route.fulfill({ json: {
+        profile_id: "profile-demo-001", profile_display_name: "Synthetic Profile",
+        import_run_id: "profile-import-diagnostics", execution_id: "execution-diagnostics",
+        import_status: "POST_IMPORT_RECONCILIATION_FAILED", reconciliation_status: "FAILED",
+        checkpoint_id: "checkpoint-diagnostics", checkpoint_status: "AVAILABLE",
+        checkpoint_checksum: "a".repeat(64), recorded_post_import_checksum: "b".repeat(64),
+        current_profile_checksum: "b".repeat(64), current_matches_post_import_checksum: true,
+        manual_post_import_mutation_detected: false, rollback_available: true,
+        active_write_audit_row_count: 747, execution_running: false, import_started_at: "",
+        import_completed_at: "2026-09-03T12:00:00+00:00", import_rolled_back_at: "",
+        rollback_conclusion: "ROLLBACK SAFE",
+        rollback_reason: "The current Profile checksum matches the recorded post-import checksum.",
+      } });
+    }
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto(`${settingsPath}#import-export`);
+  const diagnostics = page.locator('[data-pd-id="profile-import.recovery-diagnostics"]');
+  await expect(diagnostics.getByRole("heading", { name: "Recovery diagnostics" })).toBeVisible();
+  await diagnostics.getByRole("button", { name: "Load import recovery diagnostics" }).click();
+  await expect(diagnostics.getByText("ROLLBACK SAFE")).toBeVisible();
+  await expect(diagnostics).toContainText("profile-import-diagnostics");
+  await expect(diagnostics).toContainText("747");
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    await expect(diagnostics.getByText("ROLLBACK SAFE")).toHaveCSS("background-color", /rgb/);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const diagnosticsGeometry = await diagnostics.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(diagnosticsGeometry.scrollWidth).toBeLessThanOrEqual(diagnosticsGeometry.clientWidth);
+  expect(diagnosticRequests).toBe(1);
+});
+
 test("workbook history reconstructs an approved import action after reload", async ({ page }) => {
   await mockAuthenticatedSession(page);
   const run = {

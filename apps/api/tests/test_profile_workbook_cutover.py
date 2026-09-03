@@ -128,8 +128,6 @@ def configure_cutover_database(tmp_path: Path) -> None:
             """,
             (PROFILE_ID, now, now),
         )
-
-
 def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> None:
     result = {
         "profile_settings": [
@@ -723,9 +721,49 @@ def test_account_write_state_translates_mapper_fields_to_canonical_columns() -> 
 
     assert "account_id" not in state
     assert "restrictions" not in state
-    assert state["restrictions_json"] == '["bonus_restricted"]'
+    assert state["restrictions_json"] == '["Bonus Restricted"]'
     assert state["catalogue_id"] == "BOOKMAKER-DEMO-001"
     assert state["account"] == "Bookmaker A"
+
+
+def test_account_write_state_rejects_a_restriction_as_a_lifecycle() -> None:
+    class Provider:
+        brand_name = "Bookmaker A"
+        account_type = "Bookmaker"
+        operator_group = "Operator A"
+        platform = "Platform A"
+
+    with pytest.raises(ImportCutoverError, match="Invalid account lifecycle status"):
+        _account_write_state(
+            {
+                "status": "Bonus Restricted",
+                "lifecycle_status": "Bonus Restricted",
+                "restrictions_json": "[]",
+            },
+            catalogue_id="BOOKMAKER-DEMO-001",
+            provider=Provider(),
+        )
+
+
+def test_account_write_state_preserves_restricted_active_account_semantics() -> None:
+    class Provider:
+        brand_name = "Bookmaker A"
+        account_type = "Bookmaker"
+        operator_group = "Operator A"
+        platform = "Platform A"
+
+    state = _account_write_state(
+        {
+            "status": "Bonus Restricted",
+            "lifecycle_status": "Active",
+            "restrictions_json": "[\"Bonus Restricted\"]",
+        },
+        catalogue_id="BOOKMAKER-DEMO-001",
+        provider=Provider(),
+    )
+
+    assert state["lifecycle_status"] == "Active"
+    assert state["restrictions_json"] == '["Bonus Restricted"]'
 
 
 def test_approved_failed_run_remains_retryable_without_resetting_review() -> None:
@@ -804,6 +842,12 @@ def test_transactional_import_reconciles_and_rolls_back(tmp_path: Path) -> None:
     assert result["status"] == "COMPLETE", result["post_import_reconciliation"]["mismatches"]
     report = result["post_import_reconciliation"]
     assert report["result"] == "POST-IMPORT RECONCILIATION: PASSED"
+    assert result["operational_health"]["status"] == "OPERATIONAL HEALTH: PASSED"
+    assert result["operational_health"]["checks"]["tracker_summary_sources"] == {
+        "passed": True,
+        "http_status": 200,
+    }
+    assert result["operational_health"]["checks"]["accounts"] == {"passed": True}
     assert report["financial_reconciliation"]["periods"]["year"]["difference"] == "0.00"
     assert report["accounts"]["bookmaker_balance_total"]["actual"] == "12.00"
     assert report["profile"]["profile_name"] == "Imported Synthetic Profile"

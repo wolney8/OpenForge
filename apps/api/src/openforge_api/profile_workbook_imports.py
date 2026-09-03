@@ -39,6 +39,7 @@ from openforge_api.profile_import_execution import (
 from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
+    _profile_state_checksum,
     build_base_write_plan,
     completed_import_rollback_safety,
     failed_import_safety,
@@ -843,6 +844,111 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
         record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
         history.append(record)
     return history
+
+
+@router.get("/recovery-diagnostics")
+def get_profile_import_recovery_diagnostics(
+    profile_id: str, request: Request
+) -> dict[str, Any]:
+    """Return only the selected Profile's rollback-safety metadata."""
+    require_request_session(request)
+    with connect() as connection:
+        profile = connection.execute(
+            "SELECT profile_id, display_name FROM profiles WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        if profile is None:
+            raise HTTPException(status_code=404, detail="Profile was not found")
+        run = connection.execute(
+            "SELECT * FROM profile_import_runs WHERE profile_id = ? "
+            "ORDER BY updated_at DESC LIMIT 1",
+            (profile_id,),
+        ).fetchone()
+        current_checksum = _profile_state_checksum(connection, profile_id)
+        active_execution_count = int(
+            connection.execute(
+                "SELECT COUNT(*) AS count FROM profile_import_executions "
+                "WHERE profile_id = ? AND status = 'RUNNING'",
+                (profile_id,),
+            ).fetchone()["count"]
+        )
+        if run is None:
+            return {
+                "profile_id": profile_id,
+                "profile_display_name": str(profile["display_name"]),
+                "current_profile_checksum": current_checksum,
+                "execution_running": bool(active_execution_count),
+                "rollback_conclusion": "ROLLBACK UNAVAILABLE",
+                "rollback_reason": "This Profile has no workbook import run.",
+            }
+        run_record = dict(run)
+        result = json.loads(run_record.get("result_json") or "{}")
+        checkpoint = connection.execute(
+            "SELECT * FROM profile_import_checkpoints WHERE import_run_id = ?",
+            (run_record["import_run_id"],),
+        ).fetchone()
+        execution = connection.execute(
+            "SELECT * FROM profile_import_executions WHERE import_run_id = ? "
+            "ORDER BY updated_at DESC LIMIT 1",
+            (run_record["import_run_id"],),
+        ).fetchone()
+        active_write_audit_rows = int(
+            connection.execute(
+                "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+                "WHERE import_run_id = ? AND rolled_back_at = ''",
+                (run_record["import_run_id"],),
+            ).fetchone()["count"]
+        )
+    recorded_checksum = str(result.get("post_import_state_checksum") or "")
+    current_matches_post_import = bool(
+        recorded_checksum and current_checksum == recorded_checksum
+    )
+    checkpoint_status = str(checkpoint["status"]) if checkpoint is not None else ""
+    rollback_available = bool(
+        run_record["status"] in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}
+        and run_record.get("rollback_status") == "AVAILABLE"
+        and checkpoint is not None
+        and current_matches_post_import
+    )
+    if rollback_available:
+        conclusion = "ROLLBACK SAFE"
+        reason = "The current Profile checksum matches the recorded post-import checksum."
+    elif recorded_checksum and not current_matches_post_import:
+        conclusion = "ROLLBACK LOCKED — PROFILE CHANGED"
+        reason = "The Profile changed after import, so standard rollback is locked."
+    elif not checkpoint or not recorded_checksum:
+        conclusion = "STATE INDETERMINATE"
+        reason = "The checkpoint or recorded post-import checksum is unavailable."
+    else:
+        conclusion = "ROLLBACK UNAVAILABLE"
+        reason = "The import status does not permit standard rollback."
+    reconciliation = result.get("post_import_reconciliation") or {}
+    return {
+        "profile_id": profile_id,
+        "profile_display_name": str(profile["display_name"]),
+        "import_run_id": str(run_record["import_run_id"]),
+        "execution_id": "" if execution is None else str(execution["execution_id"]),
+        "import_status": str(run_record["status"]),
+        "reconciliation_status": str(
+            reconciliation.get("status") or reconciliation.get("result") or ""
+        ),
+        "checkpoint_id": "" if checkpoint is None else str(checkpoint["checkpoint_id"]),
+        "checkpoint_status": checkpoint_status,
+        "checkpoint_checksum": "" if checkpoint is None else str(checkpoint["snapshot_checksum"]),
+        "recorded_post_import_checksum": recorded_checksum,
+        "current_profile_checksum": current_checksum,
+        "current_matches_post_import_checksum": current_matches_post_import,
+        "manual_post_import_mutation_detected": bool(
+            recorded_checksum and not current_matches_post_import
+        ),
+        "rollback_available": rollback_available,
+        "active_write_audit_row_count": active_write_audit_rows,
+        "execution_running": bool(active_execution_count),
+        "import_started_at": str(run_record.get("import_started_at") or ""),
+        "import_completed_at": str(run_record.get("completed_at") or ""),
+        "import_rolled_back_at": str(run_record.get("rolled_back_at") or ""),
+        "rollback_conclusion": conclusion,
+        "rollback_reason": reason,
+    }
 
 
 @router.post("/analyse")

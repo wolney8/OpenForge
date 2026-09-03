@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Literal, cast
 
@@ -31,6 +32,8 @@ StatusValue = Literal[
     "Not Signed Up",
     "Active",
     "Bonus Restricted",
+    "Promo Restricted",
+    "Stake Restricted",
     "Limited",
     "Gubbed",
     "Blocked",
@@ -38,6 +41,7 @@ StatusValue = Literal[
     "Closed",
     "Pending Sign Up",
     "Inactive",
+    "Suspended",
     "Archived",
 ]
 LifecycleValue = Literal[
@@ -68,12 +72,42 @@ LEGACY_ACCOUNT_STATES: dict[str, tuple[LifecycleValue, list[RestrictionValue]]] 
     "gubbed": ("Active", ["Bonus Restricted"]),
     "bonus restricted": ("Active", ["Bonus Restricted"]),
     "limited": ("Active", ["Soft Limited"]),
+    "stake restricted": ("Active", ["Soft Limited"]),
+    "promo restricted": ("Active", ["Bonus Restricted"]),
     "blocked": ("Suspended", []),
     "inactive": ("Not Signed Up", []),
     "not using": ("Not Signed Up", []),
     "suspended": ("Suspended", []),
     "closed": ("Closed", []),
     "archived": ("Archived", []),
+}
+
+LIFECYCLE_STATUSES = frozenset(
+    {
+        "Not Signed Up",
+        "Pending Sign Up",
+        "Verification Pending",
+        "Active",
+        "Suspended",
+        "Closed",
+        "Archived",
+    }
+)
+RESTRICTION_STATUSES = frozenset(
+    {
+        "Bonus Restricted",
+        "Soft Limited",
+        "Casino Only",
+        "Sportsbook Only",
+        "KYC Blocked",
+        "Risk Blocked",
+        "Deposit Restricted",
+        "Withdrawal Restricted",
+    }
+)
+_RESTRICTION_ALIASES = {
+    "bonus_restricted": "Bonus Restricted",
+    "soft_limited": "Soft Limited",
 }
 
 
@@ -121,6 +155,33 @@ class AccountCreatePayload(AccountPayload):
     commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
 
 
+def resolve_account_lifecycle_and_restrictions(
+    *,
+    status: str,
+    lifecycle_status: str | None,
+    restrictions: Sequence[str],
+) -> tuple[str, list[str]]:
+    """Keep operational lifecycle distinct from legacy account-health statuses."""
+    explicit_lifecycle = (lifecycle_status or "").strip()
+    if explicit_lifecycle and explicit_lifecycle not in LIFECYCLE_STATUSES:
+        raise ValueError(f"Invalid account lifecycle status: {explicit_lifecycle}")
+    derived_lifecycle, derived_restrictions = LEGACY_ACCOUNT_STATES.get(
+        status.strip().casefold(), ("Active", [])
+    )
+    normalized_restrictions = [
+        _RESTRICTION_ALIASES.get(item.strip().casefold(), item.strip())
+        for item in restrictions
+        if item.strip()
+    ]
+    values = list(dict.fromkeys([*derived_restrictions, *normalized_restrictions]))
+    invalid_restrictions = sorted(set(values) - RESTRICTION_STATUSES)
+    if invalid_restrictions:
+        raise ValueError(
+            "Invalid account restriction value(s): " + ", ".join(invalid_restrictions)
+        )
+    return explicit_lifecycle or derived_lifecycle, values
+
+
 class ProfileAccountCatalogueSelectionPayload(BaseModel):
     selected: bool
     status: StatusValue = "Not Signed Up"
@@ -132,14 +193,13 @@ class ProfileAccountCatalogueSelectionPayload(BaseModel):
 def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     values = payload.model_dump()
     values.pop("commission_rate", None)
-    legacy_lifecycle, legacy_restrictions = LEGACY_ACCOUNT_STATES.get(
-        payload.status.casefold(),
-        ("Active", []),
+    lifecycle_status, restrictions = resolve_account_lifecycle_and_restrictions(
+        status=payload.status,
+        lifecycle_status=payload.lifecycle_status,
+        restrictions=payload.restrictions,
     )
-    values["lifecycle_status"] = payload.lifecycle_status or legacy_lifecycle
-    values["restrictions_json"] = json.dumps(
-        list(dict.fromkeys([*legacy_restrictions, *payload.restrictions]))
-    )
+    values["lifecycle_status"] = lifecycle_status
+    values["restrictions_json"] = json.dumps(restrictions)
     values.pop("restrictions", None)
     master_catalogue = load_master_account_catalogue()
     expected_master_type = "Bookmaker" if payload.type == "Bookie" else payload.type

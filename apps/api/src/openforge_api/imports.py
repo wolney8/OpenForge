@@ -16,7 +16,7 @@ from openforge_api.account_catalogue_source import (
     MasterAccountCatalogueRecord,
     load_master_account_catalogue,
 )
-from openforge_api.accounts import AccountPayload
+from openforge_api.accounts import AccountPayload, resolve_account_lifecycle_and_restrictions
 from openforge_api.backups import create_verified_local_backup
 from openforge_api.calculations.cash_adjustment_values import (
     CashAdjustmentCalculationInput,
@@ -1468,6 +1468,16 @@ def map_account_import_fields(
     warnings: list[dict[str, str]] = []
     account_name = field_text(mapped, "account")
     account_type = field_text(mapped, "type")
+    try:
+        lifecycle_status, restrictions = resolve_account_lifecycle_and_restrictions(
+            status=field_text(mapped, "status"),
+            lifecycle_status=None,
+            restrictions=[],
+        )
+        mapped["lifecycle_status"] = lifecycle_status
+        mapped["restrictions"] = restrictions
+    except ValueError as error:
+        errors.append(issue("invalid_account_state", str(error)))
     if field_text(mapped, "status").casefold() == "pending sign up" and not field_text(
         mapped, "current_balance"
     ):

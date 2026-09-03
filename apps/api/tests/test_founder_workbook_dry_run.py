@@ -2,6 +2,8 @@ from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+
 from openforge_api.account_catalogue_source import MasterAccountCatalogue
 from openforge_api.founder_workbook_dry_run import (
     LedgerDefinition,
@@ -208,7 +210,50 @@ def test_pending_signup_account_without_source_balance_uses_zero_point_in_time_b
 
     assert errors == []
     assert mapped["status"] == "Pending Sign Up"
+    assert mapped["lifecycle_status"] == "Pending Sign Up"
+    assert mapped["restrictions"] == []
     assert mapped["current_balance"] == "0.00"
+
+
+@pytest.mark.parametrize(
+    ("source_status", "expected_status", "expected_lifecycle", "expected_restrictions"),
+    [
+        ("Active", "Active", "Active", []),
+        ("Bonus Restricted", "Bonus Restricted", "Active", ["Bonus Restricted"]),
+        ("Gubbed", "Gubbed", "Active", ["Bonus Restricted"]),
+        ("Stake Restricted", "Stake Restricted", "Active", ["Soft Limited"]),
+        ("Promo Restricted", "Promo Restricted", "Active", ["Bonus Restricted"]),
+        ("Pending Sign Up", "Pending Sign Up", "Pending Sign Up", []),
+        ("Closed", "Closed", "Closed", []),
+        ("Suspended", "Suspended", "Suspended", []),
+    ],
+)
+def test_account_import_separates_lifecycle_from_restriction_statuses(
+    monkeypatch,
+    source_status: str,
+    expected_status: str,
+    expected_lifecycle: str,
+    expected_restrictions: list[str],
+) -> None:
+    monkeypatch.setattr(
+        "openforge_api.imports.resolve_account_catalogue_record",
+        lambda _name, _type: synthetic_catalogue().records[0],
+    )
+
+    mapped, errors, _warnings = map_account_import_fields(
+        {
+            "Account": "Demo Bet",
+            "Type": "Bookie",
+            "Status": source_status,
+            "CurrentBalance": "0.00",
+            "Counts In Cash Total": True,
+        }
+    )
+
+    assert errors == []
+    assert mapped["status"] == expected_status
+    assert mapped["lifecycle_status"] == expected_lifecycle
+    assert mapped["restrictions"] == expected_restrictions
 
 
 def test_extra_place_completeness_never_invents_missing_terms() -> None:
