@@ -389,7 +389,7 @@ export function CrossProfileAnalytics({
 
   useEffect(() => {
     const controller = new AbortController();
-    let cachedFrame: number | null = null;
+    let stateTimer: number | null = null;
     const cachedDatasets = new Map<string, TrackerSummaryDataset>();
     const cachedFeePeriods = new Map<string, FeePeriodApiRecord[]>();
     const cachedTrackerSettings = new Map<string, TrackerSettingsRecord>();
@@ -425,26 +425,27 @@ export function CrossProfileAnalytics({
       cachedDatasets.size === profiles.length &&
       cachedTrackerSettings.size === profiles.length;
 
-    if (hasCompleteCriticalCache) {
-      cachedFrame = window.requestAnimationFrame(() => {
-        if (controller.signal.aborted) return;
+    // React state updates from effects remain asynchronous, but the task is
+    // cancelled if the request settles first. This prevents a delayed loading
+    // write from overwriting a successful post-auth response.
+    stateTimer = window.setTimeout(() => {
+      if (controller.signal.aborted) return;
+      if (hasCompleteCriticalCache) {
         setDatasets(cachedDatasets);
         if (cachedFeePeriods.size > 0) setFeePeriods(cachedFeePeriods);
         if (cachedTrackerSettings.size > 0) setTrackerSettings(cachedTrackerSettings);
         setIsLoading(false);
-      });
-    } else {
-      cachedFrame = window.requestAnimationFrame(() => {
-        if (!controller.signal.aborted) setIsLoading(true);
-      });
-      if (initialTab !== "profiles") beginShellLoading();
-    }
+      } else {
+        setIsLoading(true);
+      }
+    }, 0);
+    if (!hasCompleteCriticalCache && initialTab !== "profiles") beginShellLoading();
 
     void Promise.allSettled(
       profiles.map(async (profile) => {
-        // Share the in-flight bundle across React remounts. The controller still
-        // prevents a stale result from mutating the current directory state.
-        const sources = await fetchTrackerSummarySources(profile.profileId);
+        const sources = await fetchTrackerSummarySources(profile.profileId, {
+          signal: controller.signal,
+        });
         return {
           profile,
           dataset: {
@@ -463,6 +464,10 @@ export function CrossProfileAnalytics({
     ).then((results) => {
       if (controller.signal.aborted) {
         return;
+      }
+      if (stateTimer !== null) {
+        window.clearTimeout(stateTimer);
+        stateTimer = null;
       }
 
       const nextDatasets = new Map<string, TrackerSummaryDataset>();
@@ -495,9 +500,7 @@ export function CrossProfileAnalytics({
 
     return () => {
       controller.abort();
-      if (cachedFrame !== null) {
-        window.cancelAnimationFrame(cachedFrame);
-      }
+      if (stateTimer !== null) window.clearTimeout(stateTimer);
       if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     };
   }, [initialTab, profiles, loadRevision]);

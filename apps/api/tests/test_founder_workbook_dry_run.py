@@ -14,6 +14,7 @@ from openforge_api.founder_workbook_dry_run import (
     resolve_provider,
     stable_import_key,
 )
+from openforge_api.imports import map_account_import_fields
 
 
 def synthetic_catalogue() -> MasterAccountCatalogue:
@@ -164,6 +165,29 @@ def test_legacy_account_values_are_normalized_without_erasing_source_semantics()
         "Status Restricted -> Bonus Restricted",
         "Channel App Only -> Mobile",
     ]
+
+
+def test_pending_signup_account_without_source_balance_uses_zero_point_in_time_balance(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "openforge_api.imports.resolve_account_catalogue_record",
+        lambda _name, _type: synthetic_catalogue().records[0],
+    )
+
+    mapped, errors, _warnings = map_account_import_fields(
+        {
+            "Account": "Demo Bet",
+            "Type": "Bookie",
+            "Status": "Pending Sign Up",
+            "CurrentBalance": "",
+            "Counts In Cash Total": True,
+        }
+    )
+
+    assert errors == []
+    assert mapped["status"] == "Pending Sign Up"
+    assert mapped["current_balance"] == "0.00"
 
 
 def test_extra_place_completeness_never_invents_missing_terms() -> None:

@@ -73,6 +73,40 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   expect(duplicateKeyErrors).toEqual([]);
 });
 
+test("Fund Manager Profile Settings links to the authoritative management page", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") {
+      return route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: 2_100_000_000,
+          linked_profile_ids: ["profile-demo-001"],
+          name: "Synthetic Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+      });
+    }
+    if (pathname === "/api/profiles/profile-demo-001") {
+      return route.fulfill({ json: { display_name: "Synthetic Profile" } });
+    }
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto(settingsPath);
+
+  await expect(page.getByRole("link", { name: "Manage Profile" })).toHaveAttribute(
+    "href",
+    "/profiles/profile-demo-001/manage"
+  );
+});
+
 test("profile settings tabs remain in normal document flow", async ({ page }) => {
   await page.goto(settingsPath);
   const tabs = page.getByRole("tablist", { name: "Profile settings sections" });

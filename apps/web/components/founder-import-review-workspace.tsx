@@ -16,7 +16,10 @@ import { apiBaseUrl } from "@/lib/api";
 import { resolveImportRunPresentation } from "@/lib/import-run-presentation";
 import { isPostImportIntegrityCheckPassed } from "@/lib/post-import-integrity";
 import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
-import type { MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
+import type {
+  MasterAccountCatalogueRecord,
+  MasterAccountType,
+} from "@/lib/bookmaker-catalogue";
 
 type ReviewStatus =
   | "UNREVIEWED"
@@ -307,6 +310,8 @@ type Draft = {
   offerName: string;
   strategy: string;
   canonicalText: string;
+  providerRecord: MasterAccountCatalogueRecord | null;
+  providerCatalogueAcknowledged: boolean;
 };
 
 const loadouts = [
@@ -373,7 +378,7 @@ const safeBatchActions: Record<string, { action: string; label: string; descript
 function optionsFor(item: ReviewItem) {
   if (item.category === "missing_provider") return [
     ["map_existing_provider", "Map to existing provider"],
-    ["create_provider_candidate", "Create catalogue candidate"],
+    ["create_provider_candidate", "Add to Account Catalogue and use for this Account"],
     ["mark_historical_provider", "Mark historical / archived"],
     ["defer", "Defer"],
   ];
@@ -451,9 +456,58 @@ function decisionEffect(action: string, item: ReviewItem): string {
     provide_override_reason: "Keeps the workbook override and records the reason you provide.",
     remove_override: "Removes the imported override instruction; the source value remains retained for audit.",
     historical_imported_behavior: "Keeps the historical override behaviour without inventing a missing reason.",
-    create_provider_candidate: "Records a blocked catalogue candidate only; normal global catalogue validation is still required.",
+    create_provider_candidate: "Creates one Fund Manager-confirmed global catalogue provider using the proposed metadata, then links this Profile Account to it. The workbook remains unchanged.",
   };
   return effects[action] ?? `Records this decision against ${item.source_sheet} row ${item.source_row} without modifying the workbook.`;
+}
+
+function sourceField(item: ReviewItem, name: string): string {
+  const value = item.source_fields[name];
+  return value === null || value === undefined ? "" : String(value).trim();
+}
+
+function proposedCatalogueId(accountType: MasterAccountType, brandName: string): string {
+  const slug = brandName
+    .toLocaleUpperCase("en-GB")
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `${accountType.toLocaleUpperCase("en-GB")}-${slug}`;
+}
+
+function providerProposal(item: ReviewItem): MasterAccountCatalogueRecord | null {
+  if (item.category !== "missing_provider") return null;
+  const brandName = sourceField(item, "Account") || item.context.provider.trim();
+  const sourceType = sourceField(item, "Type").toLocaleLowerCase("en-GB");
+  const accountType: MasterAccountType = sourceType === "exchange"
+    ? "Exchange"
+    : sourceType === "bank"
+      ? "Bank"
+      : "Bookmaker";
+  return {
+    catalogue_id: proposedCatalogueId(accountType, brandName),
+    account_type: accountType,
+    operating_jurisdictions: ["GB"],
+    operating_subdivisions: [],
+    operating_channels: ["web"],
+    brand_name: brandName,
+    short_display_name: brandName.slice(0, 32),
+    legal_operator: "",
+    operator_group: sourceField(item, "Group"),
+    platform: sourceField(item, "Platform"),
+    risk_team: sourceField(item, "RiskTeam"),
+    licence_reference: "",
+    licence_status: "",
+    canonical_domain: "",
+    status: "Active",
+    foreground_colour: "#FFFFFF",
+    background_colour: "#455A64",
+    logo_asset_path: "",
+    source: "Fund Manager-confirmed workbook import review",
+    confidence: "Unverified",
+    last_verified_date: "",
+    introduced_at: "",
+    evidence: [],
+  };
 }
 
 function initialDraft(item: ReviewItem): Draft {
@@ -465,6 +519,8 @@ function initialDraft(item: ReviewItem): Draft {
     offerName: String(item.decision?.override_fields?.offer_name ?? ""),
     strategy: String(item.decision?.override_fields?.strategy ?? ""),
     canonicalText: String(item.decision?.override_fields?.canonical_text ?? ""),
+    providerRecord: providerProposal(item),
+    providerCatalogueAcknowledged: false,
   };
 }
 
@@ -731,6 +787,29 @@ export function FounderImportReviewWorkspace({
     if (!editing || !draft) return;
     setSaving(true);
     try {
+      let decisionAction = draft.action;
+      let catalogueId = draft.catalogueId;
+      let reviewNote = draft.note;
+      if (draft.action === "create_provider_candidate") {
+        if (!draft.providerRecord || !draft.providerCatalogueAcknowledged) {
+          throw new Error("Confirm the proposed global provider metadata before adding it.");
+        }
+        const catalogueResponse = await fetch(`${apiBaseUrl}/account-catalogue/source/records`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft.providerRecord),
+        });
+        if (!catalogueResponse.ok) throw new Error(await responseMessage(catalogueResponse));
+        const createdProvider = await catalogueResponse.json() as MasterAccountCatalogueRecord;
+        setCatalogue((current) => [
+          ...current.filter((provider) => provider.catalogue_id !== createdProvider.catalogue_id),
+          createdProvider,
+        ].sort((left, right) => left.brand_name.localeCompare(right.brand_name)));
+        decisionAction = "map_existing_provider";
+        catalogueId = createdProvider.catalogue_id;
+        reviewNote = reviewNote.trim() || "Added through Fund Manager import review and linked to this Profile Account.";
+      }
       const response = await fetch(`${reviewApi}/decisions/${editing.item_id}`, {
         method: "PUT",
         credentials: "include",
@@ -738,10 +817,10 @@ export function FounderImportReviewWorkspace({
         body: JSON.stringify({
           item_id: editing.item_id,
           source_fingerprint: editing.source_fingerprint,
-          action: draft.action,
+          action: decisionAction,
           target_type: draft.targetType,
-          catalogue_id: draft.catalogueId,
-          note: draft.note,
+          catalogue_id: catalogueId,
+          note: reviewNote,
           override_fields: Object.fromEntries([
             ["offer_name", draft.offerName.trim()],
             ["strategy", draft.strategy.trim()],
@@ -757,7 +836,9 @@ export function FounderImportReviewWorkspace({
         : null;
       setEditing(nextItem ?? null);
       setDraft(nextItem ? initialDraft(nextItem) : null);
-      setMessage("Import review decision saved.");
+      setMessage(draft.action === "create_provider_candidate"
+        ? "Provider added to the Account Catalogue and linked to this Profile Account."
+        : "Import review decision saved.");
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to save the review decision.");
     } finally {
@@ -1240,6 +1321,20 @@ export function FounderImportReviewWorkspace({
             <div className="form-grid">
               <label className="field-control"><span>Decision</span><select onChange={(event) => setDraft((current) => current ? { ...current, action: event.target.value, targetType: event.target.value === "reclassify" ? "Sportsbook Bet" : current.targetType } : current)} value={draft.action}>{optionsFor(editing).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               {draft.action === "map_existing_provider" ? <label className="field-control"><span>Catalogue provider</span><select onChange={(event) => setDraft((current) => current ? { ...current, catalogueId: event.target.value } : current)} value={draft.catalogueId}><option value="">Select provider</option>{catalogue.map((provider) => <option key={provider.catalogue_id} value={provider.catalogue_id}>{provider.brand_name} · {provider.account_type}</option>)}</select></label> : null}
+              {draft.action === "create_provider_candidate" && draft.providerRecord ? <>
+                <label className="field-control"><span>Catalogue ID</span><input maxLength={64} onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, catalogue_id: event.target.value } } : current)} value={draft.providerRecord.catalogue_id} /></label>
+                <label className="field-control"><span>Account type</span><select onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, account_type: event.target.value as MasterAccountType } } : current)} value={draft.providerRecord.account_type}><option>Bookmaker</option><option>Exchange</option><option>Bank</option></select></label>
+                <label className="field-control"><span>Canonical brand name</span><input maxLength={120} onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, brand_name: event.target.value, short_display_name: event.target.value.slice(0, 32) } } : current)} value={draft.providerRecord.brand_name} /></label>
+                <label className="field-control"><span>Operator group / source Group</span><input maxLength={120} onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, operator_group: event.target.value } } : current)} value={draft.providerRecord.operator_group} /></label>
+                <label className="field-control"><span>Platform</span><input maxLength={120} onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, platform: event.target.value } } : current)} value={draft.providerRecord.platform} /></label>
+                <label className="field-control"><span>Risk team</span><input maxLength={120} onChange={(event) => setDraft((current) => current?.providerRecord ? { ...current, providerRecord: { ...current.providerRecord, risk_team: event.target.value } } : current)} value={draft.providerRecord.risk_team} /></label>
+                <div className="content-subpanel stack-tight field-span-2">
+                  <span className="eyebrow">Proposed global provider</span>
+                  <span>GB web availability · Unverified confidence · neutral accessible brand colours.</span>
+                  <span className="field-support-text">Workbook metadata is proposed for confirmation; it is not treated as verified global evidence.</span>
+                  <label className="checkbox-control"><input checked={draft.providerCatalogueAcknowledged} onChange={(event) => setDraft((current) => current ? { ...current, providerCatalogueAcknowledged: event.target.checked } : current)} type="checkbox" /><span>Add this provider globally and use it for this Profile Account</span></label>
+                </div>
+              </> : null}
               {draft.action === "reclassify" ? <label className="field-control"><span>Target ledger</span><select onChange={(event) => setDraft((current) => current ? { ...current, targetType: event.target.value } : current)} value={draft.targetType}><option>Sportsbook Bet</option><option>Free Bet</option><option>Casino Offer</option><option>Extra Place</option><option>Mug Bet</option></select></label> : null}
               {draft.action === "edit_mapping" && editing.issue_types.includes("missing_offer_name") ? <label className="field-control"><span>Offer name</span><input onChange={(event) => setDraft((current) => current ? { ...current, offerName: event.target.value } : current)} value={draft.offerName} /></label> : null}
               {draft.action === "edit_mapping" && (editing.issue_types.includes("missing_strategy") || editing.issue_types.includes("advanced_lay")) ? <label className="field-control"><span>Strategy</span><input onChange={(event) => setDraft((current) => current ? { ...current, strategy: event.target.value } : current)} value={draft.strategy} /></label> : null}
@@ -1247,13 +1342,13 @@ export function FounderImportReviewWorkspace({
               <label className="field-control field-span-2"><span>Review note / reason</span><textarea onChange={(event) => setDraft((current) => current ? { ...current, note: event.target.value } : current)} rows={3} value={draft.note} /></label>
             </div>
             <section className="content-subpanel stack-tight"><span className="eyebrow">Decision effect</span><span>{decisionEffect(draft.action, editing)}</span></section>
-            {draft.action === "create_provider_candidate" ? <p className="warning-text">This records a blocked candidate decision only. Complete normal catalogue validation before resolving it. <Link href="/settings#catalogue">Open Account Catalogue</Link>.</p> : null}
+            {draft.action === "create_provider_candidate" ? <p className="warning-text">This is a global Fund Manager action. Review the proposed metadata above, or <Link href="/settings#catalogue">open Account Catalogue</Link> to complete a fuller provider record first.</p> : null}
             <details><summary>Technical details</summary><p>{editing.reason}</p>{editing.missing_fields.length ? <p>Unsupported fields: {editing.missing_fields.join(", ")}.</p> : null}<p className="spreadsheet-row-id">{editing.import_id}</p><dl className="spreadsheet-row-details">{Object.entries(editing.source_fields).filter(([, value]) => value !== "" && value !== null).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{String(value)}</dd></div>)}</dl></details>
           </div>
           <footer className="workflow-editor-footer tracker-nav">
             <button className="button-link" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button">Cancel</button>
-            <button className="button-link icon-text-action" disabled={saving} onClick={() => void saveDecision(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">skip_next</span><span>Save &amp; next</span></button>
-            <button className="modal-primary-button icon-text-action" disabled={saving} onClick={() => void saveDecision()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">save</span>}<span>{saving ? "Saving" : "Save decision"}</span></button>
+            <button className="button-link icon-text-action" disabled={saving || (draft.action === "create_provider_candidate" && !draft.providerCatalogueAcknowledged)} onClick={() => void saveDecision(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">skip_next</span><span>Save &amp; next</span></button>
+            <button className="modal-primary-button icon-text-action" disabled={saving || (draft.action === "create_provider_candidate" && !draft.providerCatalogueAcknowledged)} onClick={() => void saveDecision()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">save</span>}<span>{saving ? "Saving" : draft.action === "create_provider_candidate" ? "Add provider and use" : "Save decision"}</span></button>
           </footer>
         </section>
       </div>, document.body) : null}

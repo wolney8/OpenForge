@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { KeyboardEvent, useEffect, useState } from "react";
 
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
@@ -31,6 +32,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [profileName, setProfileName] = useState(profileId);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [canManageProfile, setCanManageProfile] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -53,6 +55,24 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
       isActive = false;
     };
   }, [profileId]);
+
+  useEffect(() => {
+    let isActive = true;
+    void fetch("/api/auth/session", {
+      cache: "no-store",
+      credentials: "include",
+    })
+      .then((response) => response.ok ? response.json() as Promise<{ role?: string }> : null)
+      .then((session) => {
+        if (isActive) setCanManageProfile(session?.role === "fund_manager");
+      })
+      .catch(() => {
+        if (isActive) setCanManageProfile(false);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -107,6 +127,16 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
       >
         <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Settings for {profileName} Profile</h1>
+          {canManageProfile ? (
+            <Link
+              className="modal-primary-button button-link icon-text-action"
+              data-pd-id="profile-settings.manage-profile"
+              href={`/profiles/${profileId}/manage`}
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">manage_accounts</span>
+              <span>Manage Profile</span>
+            </Link>
+          ) : null}
         </div>
         {isProfileLoading ? (
           <LedgerLoadingIndicator

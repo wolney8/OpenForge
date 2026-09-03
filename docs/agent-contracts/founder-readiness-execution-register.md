@@ -602,6 +602,14 @@ directory before founder workbook dry-run begins.
 - `PD-PM-010` IMPLEMENTED — HOSTED VERIFICATION PENDING: all Fund Manager Settings tabs retain the
   canonical page-shell alignment when their content changes document scrollbar requirements.
 
+## Second Comparison Import Readiness
+
+- `PD-FR-007H47` IMPLEMENTED — HOSTED VERIFICATION PENDING: post-auth combined reporting uses a cancellable loading-state task and aborts stale mount-owned requests, so deferred state cannot overwrite a completed request and leave the Dashboard indefinitely loading.
+- `PD-FR-007H48` IMPLEMENTED — HOSTED VERIFICATION PENDING: Profile Settings exposes one Fund Manager-authorised `Manage Profile` shortcut to the existing authoritative `/profiles/{profileId}/manage` page; the global Profiles directory remains the administrative index.
+- `PD-FR-007H49` IMPLEMENTED — HOSTED VERIFICATION PENDING: missing-provider review can create one explicitly confirmed, unverified global Account Catalogue record through the canonical catalogue validator and immediately persist the matching Profile Account decision.
+- `PD-FR-007H50` COMPLETE: `Pending Sign Up` Accounts remain prospective Profile Accounts, retain their lifecycle state, use a numeric zero balance when the workbook is blank, and create no betting P&L.
+- `PD-FR-007H51` COMPLETE: Production review audit classifies five missing providers, one Free Bet override-without-reason and two historical Extra Place decisions; no deterministic ledger row was added to review.
+
 ## Safety Gate
 
 `PD-FR-008` may move out of `BLOCKED` only after notification sign-off, catalogue import

@@ -1462,6 +1462,10 @@ def map_account_import_fields(
     warnings: list[dict[str, str]] = []
     account_name = field_text(mapped, "account")
     account_type = field_text(mapped, "type")
+    if field_text(mapped, "status").casefold() == "pending sign up" and not field_text(
+        mapped, "current_balance"
+    ):
+        mapped["current_balance"] = "0.00"
     catalogue = resolve_account_catalogue_record(account_name, account_type)
     if catalogue is None:
         errors.append(

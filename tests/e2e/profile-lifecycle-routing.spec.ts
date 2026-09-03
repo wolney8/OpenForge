@@ -78,6 +78,23 @@ async function mockProfileDirectory(page: Page) {
 }
 
 test.describe("Profile lifecycle and shell routing", () => {
+  test("a fast post-auth reporting response cannot restore a stale loading state", async ({ page }) => {
+    await page.addInitScript(() => {
+      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback: FrameRequestCallback) => window.setTimeout(
+        () => nativeRequestAnimationFrame(callback),
+        500,
+      );
+    });
+    await mockProfileDirectory(page);
+
+    await page.goto("/");
+    await expect(page.getByText("Loading combined profile reporting")).toBeHidden();
+    await page.waitForTimeout(750);
+    await expect(page.getByText("Loading combined profile reporting")).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  });
+
   test("defaults the Profile directory to Active and exposes Archived and All", async ({ page }) => {
     await mockProfileDirectory(page);
     const archivedProfile = {

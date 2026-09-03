@@ -8,7 +8,16 @@ const baseItem = {
   calculation_provenance: "imported_historical",
   review_status: "UNREVIEWED",
   decision: null,
-  source_fields: { Bookmaker: "Demo Bet", FinalNetPnL: "4.25" },
+  source_fields: {
+    Bookmaker: "Demo Bet",
+    FinalNetPnL: "4.25",
+    Account: "Historical Provider",
+    Type: "Bookie",
+    Status: "Pending Sign Up",
+    Group: "Demo Operator Group",
+    Platform: "Demo Platform",
+    RiskTeam: "Demo Risk Team",
+  },
   context: {
     date: "2026-08-01",
     provider: "Demo Bet",
@@ -342,8 +351,62 @@ test("filter modal and missing-provider actions use canonical dialogs", async ({
   await page.getByRole("button", { name: "Review Accounts row 14" }).click();
   const editor = page.getByRole("dialog", { name: "Review import mapping" });
   await expect(editor.getByRole("option", { name: "Map to existing provider" })).toBeAttached();
-  await expect(editor.getByRole("option", { name: "Create catalogue candidate" })).toBeAttached();
+  await expect(editor.getByRole("option", { name: "Add to Account Catalogue and use for this Account" })).toBeAttached();
   await expect(editor.getByRole("option", { name: "Mark historical / archived" })).toBeAttached();
+});
+
+test("missing provider can be confirmed once globally and linked to the Profile Account", async ({ page }) => {
+  await mockShell(page);
+  let cataloguePayload: Record<string, unknown> | null = null;
+  let decisionPayload: Record<string, unknown> | null = null;
+  await page.route("**/account-catalogue/source/records", async (route) => {
+    cataloguePayload = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ contentType: "application/json", json: cataloguePayload, status: 201 });
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/decisions/review-provider-123456", async (route) => {
+    decisionPayload = route.request().postDataJSON() as Record<string, unknown>;
+    const reviewed = workspace();
+    reviewed.items[2].review_status = "REVIEWED_OVERRIDDEN";
+    reviewed.items[2].decision = {
+      action: "map_existing_provider",
+      status: "REVIEWED_OVERRIDDEN",
+      note: "Added through review",
+      target_type: reviewed.items[2].proposed_target,
+      catalogue_id: "BOOKMAKER-HISTORICAL-PROVIDER",
+      actor: "founder@example.invalid",
+      updated_at: "2026-09-03T10:30:00Z",
+    };
+    await route.fulfill({ contentType: "application/json", json: reviewed });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await page.getByRole("button", { name: "Missing Provider" }).click();
+  await page.getByRole("button", { name: "Review Accounts row 14" }).click();
+  const editor = page.getByRole("dialog", { name: "Review import mapping" });
+  await editor.getByLabel("Decision").selectOption("create_provider_candidate");
+  await expect(editor.getByLabel("Canonical brand name")).toHaveValue("Historical Provider");
+  await expect(editor.getByLabel("Operator group / source Group")).toHaveValue("Demo Operator Group");
+  await expect(editor.getByLabel("Platform")).toHaveValue("Demo Platform");
+  await expect(editor.getByLabel("Risk team")).toHaveValue("Demo Risk Team");
+  const save = editor.getByRole("button", { name: "Add provider and use" });
+  await expect(save).toBeDisabled();
+  await editor.getByLabel("Add this provider globally and use it for this Profile Account").check();
+  await save.click();
+  await expect(page.getByText("Provider added to the Account Catalogue and linked to this Profile Account.")).toBeVisible();
+
+  expect(cataloguePayload).toMatchObject({
+    catalogue_id: "BOOKMAKER-HISTORICAL-PROVIDER",
+    account_type: "Bookmaker",
+    brand_name: "Historical Provider",
+    operator_group: "Demo Operator Group",
+    platform: "Demo Platform",
+    risk_team: "Demo Risk Team",
+    confidence: "Unverified",
+  });
+  expect(decisionPayload).toMatchObject({
+    action: "map_existing_provider",
+    catalogue_id: "BOOKMAKER-HISTORICAL-PROVIDER",
+  });
 });
 
 test("persisted analysis progress completes without holding the review page", async ({ page }) => {

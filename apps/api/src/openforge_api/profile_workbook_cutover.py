@@ -995,6 +995,14 @@ def _account_write_state(
         restrictions_json = _json(restrictions_json)
 
     state = {column: source_state.get(column) for column in ACCOUNT_WRITE_COLUMNS}
+    lifecycle_status = (
+        source_state.get("lifecycle_status") or source_state.get("status") or "Active"
+    )
+    current_balance = source_state.get("current_balance")
+    if str(lifecycle_status).casefold() == "pending sign up" and not str(
+        current_balance or ""
+    ).strip():
+        current_balance = "0.00"
     state.update(
         {
             "catalogue_id": catalogue_id,
@@ -1003,7 +1011,8 @@ def _account_write_state(
             "type": "Bookie" if provider.account_type == "Bookmaker" else provider.account_type,
             "group_name": provider.operator_group,
             "platform": provider.platform,
-            "lifecycle_status": source_state.get("lifecycle_status") or "Active",
+            "lifecycle_status": lifecycle_status,
+            "current_balance": current_balance,
             "restrictions_json": restrictions_json,
         }
     )
