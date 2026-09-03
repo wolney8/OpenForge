@@ -3,6 +3,18 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-03: Recovery evidence was nested inside a broken tracker route
+
+- Area: `PD-FIX-RECOVERY-001`, Import/Export recovery diagnostics.
+- Root cause: the read-only recovery component was reachable only through the Profile Settings
+  tracker module, so a recovery workflow had no direct route independent of the failed tracker
+  surfaces it was intended to diagnose.
+- Prevention: rollback-safety evidence has a dedicated Fund Manager route under
+  `/fund-manager/import-recovery/:profileId`. It may request only the recovery-metadata endpoint;
+  it must not hydrate Accounts or call tracker-summary, Sportsbook, Dashboard, or Reports.
+- Regression test: `tests/e2e/import-recovery-route.spec.ts` loads the direct route while mocked
+  Account and tracker-summary failures remain unavailable, and asserts neither is requested.
+
 ## 2026-09-03: Re-analysis inherited a terminal import execution
 
 - Area: Profile Import/Export history, Import Review and Delete review confirmation.

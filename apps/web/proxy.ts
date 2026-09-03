@@ -34,6 +34,7 @@ export const config = {
     "/notifications/:path*",
     "/settings/:path*",
     "/account/:path*",
+    "/fund-manager/:path*",
     "/imports/:path*",
   ],
 };

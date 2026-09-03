@@ -109,7 +109,7 @@ function resolveProfileId(pathname: string): string | null {
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
   return pathname === "/" ||
-    ["/profiles", "/reports", "/performance", "/notifications", "/settings", "/account", "/imports"].some(
+    ["/profiles", "/reports", "/performance", "/notifications", "/settings", "/account", "/fund-manager", "/imports"].some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
