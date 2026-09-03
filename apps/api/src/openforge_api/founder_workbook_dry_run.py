@@ -44,6 +44,12 @@ from openforge_api.xlsx_import import (
 
 FOUNDER_MAPPING_VERSION = "founder-snapshot-v5"
 
+# Historical provider names remain valid import evidence while resolving to the
+# current Account Catalogue identity.
+APPROVED_PROVIDER_ALIASES: dict[tuple[str, str], str] = {
+    ("bookmaker", "fitzwilliam"): "BOOKMAKER-FITZBET",
+}
+
 NON_TRANSACTIONAL_SPORTSBOOK_STATUSES = frozenset({"prospecting", "not placed"})
 NON_TRANSACTIONAL_SPORTSBOOK_RESULTS = frozenset({"", "pending"})
 
@@ -171,7 +177,8 @@ def resolve_provider(
     if len(exact) == 1:
         return _resolved(name, account_type, "EXACT", exact[0], "brand/short exact", "high")
 
-    alias_id = (aliases or {}).get((expected_type.casefold(), folded))
+    approved_aliases = {**APPROVED_PROVIDER_ALIASES, **(aliases or {})}
+    alias_id = approved_aliases.get((expected_type.casefold(), folded))
     if alias_id:
         alias_matches = [record for record in candidates if record.catalogue_id == alias_id]
         if len(alias_matches) == 1:

@@ -56,6 +56,27 @@ def test_provider_resolution_is_explicit_and_type_scoped() -> None:
     assert resolve_provider("Demo Bet", "Bank", catalogue).classification == "MISSING"
 
 
+def test_historical_fitzwilliam_alias_resolves_to_canonical_fitzbet() -> None:
+    catalogue = synthetic_catalogue()
+    catalogue.records.append(
+        catalogue.records[0].model_copy(
+            update={
+                "catalogue_id": "BOOKMAKER-FITZBET",
+                "brand_name": "Fitzbet",
+                "short_display_name": "Fitzbet",
+                "canonical_domain": "https://fitzwilliam.bet",
+            }
+        )
+    )
+
+    result = resolve_provider("Fitzwilliam", "Bookie", catalogue)
+
+    assert result.classification == "ALIAS"
+    assert result.catalogue_id == "BOOKMAKER-FITZBET"
+    assert result.canonical_brand == "Fitzbet"
+    assert resolve_provider("Fitzwilliam", "Bank", catalogue).classification == "MISSING"
+
+
 def test_stable_import_key_is_repeatable_and_changes_with_source_data() -> None:
     first = stable_import_key("Sportsbook Bets", 2, "DEMO-001", {"Stake": "5.00"})
     repeated = stable_import_key("Sportsbook Bets", 2, "DEMO-001", {"Stake": "5.00"})
