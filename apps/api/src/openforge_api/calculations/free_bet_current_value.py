@@ -151,6 +151,8 @@ def _manual_override_fallback(
     base_reference_lay_stake: MoneyOrNone = None,
     underlay_reference_lay_stake: MoneyOrNone = None,
     overlay_reference_lay_stake: MoneyOrNone = None,
+    actual_lay_stake: MoneyOrNone = None,
+    liability: MoneyOrNone = None,
 ) -> FreeBetCalculationResult | None:
     """Preserve an audited imported result when modern inputs are incomplete."""
 
@@ -171,15 +173,15 @@ def _manual_override_fallback(
         base_reference_lay_stake=base_reference_lay_stake,
         underlay_reference_lay_stake=underlay_reference_lay_stake,
         overlay_reference_lay_stake=overlay_reference_lay_stake,
-        actual_lay_stake_1=None,
-        calculated_liability_1=None,
+        actual_lay_stake_1=actual_lay_stake,
+        calculated_liability_1=liability,
         scenario_pnl_if_back_wins=None,
         scenario_pnl_if_lay_wins=None,
         projected_current_pnl=resolved if counts_as_open else None,
         actual_net_pnl=None,
         final_net_pnl=None if counts_as_open else resolved,
         reporting_value=resolved,
-        lay_status="Not Laid",
+        lay_status=_lay_status(calculation_input.match_strategy, actual_lay_stake, None),
         counts_as_open=counts_as_open,
         is_overdue=is_overdue,
     )
@@ -353,6 +355,12 @@ def calculate_free_bet_current_value(
 
     manual_lay_mode = calculation_input.match_strategy in {"Custom", "Partial Lay"}
     if not no_lay_mode and (lay_odds_1 is None or commission_1 is None):
+        fallback_actual_lay_stake = parse_decimal(calculation_input.lay_actual)
+        fallback_liability = (
+            quantize_money(fallback_actual_lay_stake * (lay_odds_1 - Decimal("1")))
+            if fallback_actual_lay_stake is not None and lay_odds_1 is not None
+            else None
+        )
         override_result = _manual_override_fallback(
             calculation_input,
             counts_as_open=counts_as_open,
@@ -361,6 +369,8 @@ def calculate_free_bet_current_value(
                 "Exchange inputs are incomplete, so the modern calculation cannot be "
                 "reconstructed."
             ),
+            actual_lay_stake=fallback_actual_lay_stake,
+            liability=fallback_liability,
         )
         if override_result is not None:
             return override_result

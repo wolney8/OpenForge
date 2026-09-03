@@ -1276,6 +1276,9 @@ def map_sportsbook_import_fields(
             "lay_commission_1": "",
         }
     )
+    mapped["lay_actual"] = mapped.get("lay_actual") or normalized_fields.get(
+        "LayStake1", ""
+    )
     for field_name, limit in {
         "event_name": 200,
         "offer_text": 200,
@@ -1366,6 +1369,9 @@ def map_free_bet_import_fields(
         target: normalized_fields.get(source, "") for source, target in FREE_BET_SOURCE_MAP.items()
     }
     mapped["lay_commission_1"] = ""
+    mapped["lay_actual"] = mapped.get("lay_actual") or normalized_fields.get(
+        "LayStake1", ""
+    )
     for field_name, limit in {
         "event_name": 200,
         "offer_text": 200,

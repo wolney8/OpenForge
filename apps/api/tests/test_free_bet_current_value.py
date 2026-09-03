@@ -349,3 +349,29 @@ def test_imported_settled_override_survives_incomplete_exchange_inputs() -> None
     assert result.calculation_state == "resolved"
     assert result.reporting_value == Decimal("9.33")
     assert result.final_net_pnl == Decimal("9.33")
+
+
+def test_imported_open_value_preserves_liability_without_commission() -> None:
+    result = calculate_free_bet_current_value(
+        FreeBetCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="FB-IMPORTED-OPEN",
+            status="Placed",
+            result="Pending",
+            retention_mode="SNR",
+            free_bet_value="25.00",
+            back_odds="11.00",
+            match_strategy="Standard",
+            lay_odds_1="11.50",
+            lay_actual="21.74",
+            lay_commission_1="",
+            manual_override_value="21.73",
+            manual_override_reason="Imported workbook current value retained",
+        ),
+        as_of_datetime=datetime(2026, 8, 29, 16, 5, tzinfo=UTC),
+    )
+
+    assert result.counts_as_open is True
+    assert result.actual_lay_stake_1 == Decimal("21.74")
+    assert result.calculated_liability_1 == Decimal("228.27")
+    assert result.reporting_value == Decimal("21.73")

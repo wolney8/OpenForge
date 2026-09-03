@@ -12,6 +12,8 @@ from openforge_api.db import ImportBatchRecord, ImportSourceRecord
 from openforge_api.imports import (
     ImportRowPayload,
     canonical_source_hash,
+    map_free_bet_import_fields,
+    map_sportsbook_import_fields,
     reconcile_cash_adjustment_values,
     reconcile_casino_offer_values,
     reconcile_free_bet_values,
@@ -21,6 +23,36 @@ from openforge_api.imports import (
     stage_import_rows,
 )
 from openforge_api.main import app
+
+
+def test_import_mapping_preserves_workbook_selected_lay_stake() -> None:
+    shared = {
+        "Status": "Placed",
+        "Result": "Pending",
+        "Bookmaker": "Bookmaker A",
+        "EventName": "Demo event",
+        "BetType": "Single",
+        "OfferType": "Free Bet",
+        "OfferName": "Demo offer",
+        "FixtureType": "Football",
+        "BackOdds": "11.00",
+        "MatchStrategy": "Standard",
+        "LayOdds1": "11.50",
+        "LayStake1": "21.74",
+        "Lay (Actual)": "",
+        "Exchange": "Exchange A",
+    }
+    sportsbook, sportsbook_errors = map_sportsbook_import_fields(
+        {**shared, "BackStake": "25.00"}
+    )
+    free_bet, free_bet_errors = map_free_bet_import_fields(
+        {**shared, "FreeBetRetentionMode": "SNR", "FreeBetValue": "25.00"}
+    )
+
+    assert sportsbook_errors == []
+    assert free_bet_errors == []
+    assert sportsbook["lay_actual"] == "21.74"
+    assert free_bet["lay_actual"] == "21.74"
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = json.loads(

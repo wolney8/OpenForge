@@ -1240,6 +1240,18 @@ def _apply_decision(
         payload["manual_override_reason"] = (
             "Imported settled workbook value retained for cutover parity"
         )
+    imported_value = str(row.get("imported_current_pnl") or "")
+    if (
+        imported_value
+        and not realised_value
+        and not str(row.get("current_worst_case_pnl") or "")
+        and "manual_override_value" in payload
+        and not str(payload.get("manual_override_value") or "")
+    ):
+        payload["manual_override_value"] = imported_value
+        payload["manual_override_reason"] = (
+            "Imported workbook value retained for a non-settled reporting state"
+        )
     return payload
 
 

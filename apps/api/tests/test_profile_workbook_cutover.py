@@ -633,6 +633,23 @@ def test_settled_import_preserves_approved_workbook_value() -> None:
     )
 
 
+def test_other_reporting_state_preserves_approved_workbook_value() -> None:
+    result = _apply_decision(
+        {"status": "Error", "manual_override_value": "", "manual_override_reason": ""},
+        {
+            "imported_current_pnl": "-8.60",
+            "current_worst_case_pnl": "",
+            "realised_pnl": "",
+        },
+        None,
+    )
+
+    assert result["manual_override_value"] == "-8.60"
+    assert result["manual_override_reason"] == (
+        "Imported workbook value retained for a non-settled reporting state"
+    )
+
+
 def test_settled_import_uses_formal_report_date_when_transaction_date_is_blank() -> None:
     payload = _apply_formal_report_date(
         {"date_settled": ""},
