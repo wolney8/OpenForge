@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from openforge_api.db import connect, postgres_runtime_enabled
 from openforge_api.profile_workbook_cutover import (
@@ -15,9 +16,11 @@ from openforge_api.profile_workbook_cutover import (
     _checkpoint_state_checksum,
     _decision_map,
     _ledger_write_entries,
+    _profile_snapshot,
     _profile_state_checksum,
-    create_checkpoint,
+    _profile_state_manifest,
     final_import_summary,
+    generate_post_import_operational_health,
     generate_post_import_reconciliation,
     insert_ledger_batch,
     rollback_incomplete_import,
@@ -59,14 +62,11 @@ def _setting_units(plan: dict[str, Any]) -> int:
     return sum(
         1
         for item in plan["profile_settings"]
-        if item.get("classification") == "IMPORT"
-        and item.get("parsed_value") not in {None, ""}
+        if item.get("classification") == "IMPORT" and item.get("parsed_value") not in {None, ""}
     )
 
 
-def _planned_units(
-    plan: dict[str, Any], decisions: dict[str, dict[str, Any]]
-) -> dict[str, int]:
+def _planned_units(plan: dict[str, Any], decisions: dict[str, dict[str, Any]]) -> dict[str, int]:
     ledger_counts = {ledger: 0 for _stage, ledger in LEDGER_STAGES}
     for target, _source, _row, _item, _ep_item in _ledger_write_entries(plan, decisions):
         ledger_counts[target] += 1
@@ -87,7 +87,161 @@ def _execution_record(row: Any) -> dict[str, Any]:
         if int(record["total_units"])
         else 0
     )
+    if "attempt_number" in record:
+        record["attempt_count"] = int(record["attempt_number"])
+    record["legacy_ambiguous"] = bool(record.get("legacy_ambiguous", False))
     return record
+
+
+def _fingerprint_json(value: str) -> str:
+    try:
+        decoded = json.loads(value or "{}")
+    except json.JSONDecodeError:
+        decoded = value
+    return hashlib.sha256(_json(decoded).encode()).hexdigest()
+
+
+def _archive_legacy_attempt(connection: Any, import_run_id: str) -> None:
+    """Preserve the old one-row model without inventing unrecoverable attempt history."""
+    if (
+        connection.execute(
+            "SELECT 1 FROM profile_import_attempts WHERE import_run_id = ? LIMIT 1",
+            (import_run_id,),
+        ).fetchone()
+        is not None
+    ):
+        return
+    legacy = connection.execute(
+        "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchone()
+    if legacy is None:
+        return
+    run = connection.execute(
+        "SELECT result_json, rollback_status, rolled_back_at FROM profile_import_runs "
+        "WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchone()
+    result = json.loads(str(run["result_json"] or "{}")) if run is not None else {}
+    execution_id = str(legacy["execution_id"])
+    connection.execute(
+        """
+        INSERT INTO profile_import_attempts (
+          execution_id, import_run_id, profile_id, actor_email, attempt_number,
+          status, stage, stage_cursor, completed_units, total_units, progress_json,
+          error_json, reconciliation_json, post_import_checksum,
+          post_import_manifest_json, rollback_status, rolled_back_at,
+          legacy_ambiguous, started_at, updated_at, completed_at
+        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, 1, ?, ?, ?)
+        """,
+        (
+            execution_id,
+            import_run_id,
+            legacy["profile_id"],
+            legacy["actor_email"],
+            legacy["status"],
+            legacy["stage"],
+            legacy["stage_cursor"],
+            legacy["completed_units"],
+            legacy["total_units"],
+            legacy["progress_json"],
+            legacy["error_json"],
+            _json(result.get("post_import_reconciliation") or {}),
+            str(result.get("post_import_state_checksum") or ""),
+            str(run["rollback_status"] or "") if run is not None else "",
+            str(run["rolled_back_at"] or "") if run is not None else "",
+            legacy["started_at"],
+            legacy["updated_at"],
+            legacy["completed_at"],
+        ),
+    )
+    checkpoint = connection.execute(
+        "SELECT * FROM profile_import_checkpoints WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchone()
+    if checkpoint is not None:
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempt_checkpoints (
+              checkpoint_id, execution_id, import_run_id, profile_id,
+              pre_import_checksum, snapshot_json, snapshot_checksum, status,
+              created_at, rolled_back_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(checkpoint_id) DO NOTHING
+            """,
+            (
+                checkpoint["checkpoint_id"],
+                execution_id,
+                import_run_id,
+                checkpoint["profile_id"],
+                checkpoint["snapshot_checksum"],
+                checkpoint["snapshot_json"],
+                checkpoint["snapshot_checksum"],
+                checkpoint["status"],
+                checkpoint["created_at"],
+                checkpoint["restored_at"],
+            ),
+        )
+    audits = connection.execute(
+        "SELECT * FROM profile_import_write_audit WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchall()
+    for audit in audits:
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempt_write_audit (
+              execution_id, import_run_id, import_key, profile_id, entity_type,
+              entity_id, operation, before_json, after_json, before_fingerprint,
+              after_fingerprint, created_at, rolled_back_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(execution_id, import_key) DO NOTHING
+            """,
+            (
+                execution_id,
+                import_run_id,
+                audit["import_key"],
+                audit["profile_id"],
+                audit["entity_type"],
+                audit["entity_id"],
+                audit["operation"],
+                audit["before_json"],
+                audit["after_json"],
+                _fingerprint_json(str(audit["before_json"])),
+                _fingerprint_json(str(audit["after_json"])),
+                audit["created_at"],
+                audit["rolled_back_at"],
+            ),
+        )
+
+
+def _sync_current_attempt(connection: Any, import_run_id: str) -> None:
+    execution = connection.execute(
+        "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchone()
+    if execution is None:
+        return
+    connection.execute(
+        """
+        UPDATE profile_import_attempts
+        SET status = ?, stage = ?, stage_cursor = ?, completed_units = ?,
+            total_units = ?, progress_json = ?, error_json = ?, updated_at = ?,
+            completed_at = ?
+        WHERE execution_id = ?
+        """,
+        (
+            execution["status"],
+            execution["stage"],
+            execution["stage_cursor"],
+            execution["completed_units"],
+            execution["total_units"],
+            execution["progress_json"],
+            execution["error_json"],
+            execution["updated_at"],
+            execution["completed_at"],
+            execution["execution_id"],
+        ),
+    )
 
 
 def load_import_execution(import_run_id: str) -> dict[str, Any] | None:
@@ -142,8 +296,7 @@ def _append_run_event(
     job["events"] = events[-50:]
     summary["job"] = job
     connection.execute(
-        "UPDATE profile_import_runs SET summary_json = ?, updated_at = ? "
-        "WHERE import_run_id = ?",
+        "UPDATE profile_import_runs SET summary_json = ?, updated_at = ? WHERE import_run_id = ?",
         (_json(summary), _now(), import_run_id),
     )
 
@@ -189,24 +342,8 @@ def start_import_execution(
     plan: dict[str, Any],
 ) -> dict[str, Any]:
     readiness = validate_staged_execution_readiness(run=run, workspace=workspace, plan=plan)
-    checkpoint = create_checkpoint(profile_id=profile_id, import_run_id=import_run_id, run=run)
-    execution_id = "import-execution-" + hashlib.sha256(import_run_id.encode()).hexdigest()[:24]
+    execution_id = f"import-execution-{uuid4().hex}"
     now = _now()
-    progress = {
-        "planned_units": readiness["planned_units"],
-        "counts": {
-            "profile_settings": 0,
-            "accounts": {
-                "created": 0,
-                "updated": 0,
-                "unchanged": 0,
-                "absent_changed": 0,
-            },
-            "ledgers": {ledger: 0 for _stage, ledger in LEDGER_STAGES},
-        },
-        "last_state_checksum": checkpoint["snapshot_checksum"],
-        "checkpoint_id": checkpoint["checkpoint_id"],
-    }
     with connect() as connection:
         existing = connection.execute(
             "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
@@ -221,7 +358,116 @@ def start_import_execution(
         ).fetchone()
         if active_writes is not None and int(active_writes["count"]):
             raise ImportCutoverError("This import run already has committed writes")
-        previous_attempts = int(existing["attempt_count"]) if existing is not None else 0
+        _archive_legacy_attempt(connection, import_run_id)
+        previous_attempts = connection.execute(
+            "SELECT COALESCE(MAX(attempt_number), 0) AS count "
+            "FROM profile_import_attempts WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        attempt_number = int(previous_attempts["count"]) + 1
+        snapshot = _profile_snapshot(connection, profile_id)
+        snapshot_json = _json(snapshot)
+        snapshot_checksum = hashlib.sha256(snapshot_json.encode()).hexdigest()
+        checkpoint_id = f"import-checkpoint-{uuid4().hex}"
+        progress = {
+            "planned_units": readiness["planned_units"],
+            "counts": {
+                "profile_settings": 0,
+                "accounts": {
+                    "created": 0,
+                    "updated": 0,
+                    "unchanged": 0,
+                    "absent_changed": 0,
+                },
+                "ledgers": {ledger: 0 for _stage, ledger in LEDGER_STAGES},
+            },
+            "last_state_checksum": snapshot_checksum,
+            "checkpoint_id": checkpoint_id,
+        }
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempts (
+              execution_id, import_run_id, profile_id, actor_email, attempt_number,
+              status, stage, stage_cursor, completed_units, total_units, progress_json,
+              error_json, rollback_status, started_at, updated_at, completed_at
+            ) VALUES (?, ?, ?, ?, ?, 'RUNNING', 'PREPARING', 0, 0, ?, ?, '{}',
+                      'AVAILABLE', ?, ?, '')
+            """,
+            (
+                execution_id,
+                import_run_id,
+                profile_id,
+                actor_email,
+                attempt_number,
+                readiness["total_units"],
+                _json(progress),
+                now,
+                now,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempt_checkpoints (
+              checkpoint_id, execution_id, import_run_id, profile_id,
+              pre_import_checksum, snapshot_json, snapshot_checksum, status,
+              created_at, rolled_back_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', ?, '')
+            """,
+            (
+                checkpoint_id,
+                execution_id,
+                import_run_id,
+                profile_id,
+                snapshot_checksum,
+                snapshot_json,
+                snapshot_checksum,
+                now,
+            ),
+        )
+        legacy_checkpoint = connection.execute(
+            "SELECT checkpoint_id FROM profile_import_checkpoints WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        if legacy_checkpoint is None:
+            connection.execute(
+                """
+                INSERT INTO profile_import_checkpoints (
+                  checkpoint_id, import_run_id, profile_id, workbook_checksum,
+                  mapping_version, snapshot_json, snapshot_checksum, status,
+                  created_at, restored_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', ?, '')
+                """,
+                (
+                    checkpoint_id,
+                    import_run_id,
+                    profile_id,
+                    run["workbook_checksum"],
+                    run["mapping_version"],
+                    snapshot_json,
+                    snapshot_checksum,
+                    now,
+                ),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE profile_import_checkpoints
+                SET checkpoint_id = ?, profile_id = ?, workbook_checksum = ?,
+                    mapping_version = ?, snapshot_json = ?, snapshot_checksum = ?,
+                    status = 'AVAILABLE', created_at = ?, restored_at = ''
+                WHERE import_run_id = ?
+                """,
+                (
+                    checkpoint_id,
+                    profile_id,
+                    run["workbook_checksum"],
+                    run["mapping_version"],
+                    snapshot_json,
+                    snapshot_checksum,
+                    now,
+                    import_run_id,
+                ),
+            )
         connection.execute(
             """
             INSERT INTO profile_import_executions (
@@ -230,6 +476,7 @@ def start_import_execution(
               attempt_count, started_at, updated_at, completed_at
             ) VALUES (?, ?, ?, ?, 'RUNNING', 'PREPARING', 0, 0, ?, ?, '{}', ?, ?, ?, '')
             ON CONFLICT(import_run_id) DO UPDATE SET
+              execution_id = excluded.execution_id,
               actor_email = excluded.actor_email,
               status = 'RUNNING',
               stage = 'PREPARING',
@@ -250,7 +497,7 @@ def start_import_execution(
                 actor_email,
                 readiness["total_units"],
                 _json(progress),
-                previous_attempts + 1,
+                attempt_number,
                 now,
                 now,
             ),
@@ -265,7 +512,7 @@ def start_import_execution(
                     {
                         "status": "IMPORTING",
                         "execution_id": execution_id,
-                        "checkpoint_id": checkpoint["checkpoint_id"],
+                        "checkpoint_id": checkpoint_id,
                     }
                 ),
                 now,
@@ -307,6 +554,8 @@ def _write_result(
     return {
         "status": "RECONCILING",
         "import_run_id": import_run_id,
+        "execution_id": execution["execution_id"],
+        "attempt_number": execution["attempt_count"],
         "actor_email": execution["actor_email"],
         "checkpoint_id": progress["checkpoint_id"],
         "profile_settings_updated": progress["counts"]["profile_settings"],
@@ -318,14 +567,130 @@ def _write_result(
         "completed_at": now,
         "duration_seconds": max(
             0,
-            int(
-                (
-                    datetime.fromisoformat(now)
-                    - datetime.fromisoformat(started_at)
-                ).total_seconds()
-            ),
+            int((datetime.fromisoformat(now) - datetime.fromisoformat(started_at)).total_seconds()),
         ),
     }
+
+
+def _finish_reconciliation(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+    approved_summary: dict[str, Any],
+) -> dict[str, Any]:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        if row is None:
+            raise ImportCutoverError("Import execution is unavailable")
+        execution = _execution_record(row)
+        progress = dict(execution["progress"])
+        write_result = _write_result(
+            execution=execution, progress=progress, import_run_id=import_run_id
+        )
+        write_result["skipped_non_transactional"] = (
+            approved_summary["ledgers"].get("sportsbook", {}).get("non_transactional", 0)
+        )
+        financial = generate_post_import_reconciliation(
+            connection=connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            workspace=workspace,
+            summary=approved_summary,
+            write_result=write_result,
+            plan=plan,
+        )
+        post_import_checksum = _profile_state_checksum(connection, profile_id)
+        manifest = _profile_state_manifest(connection, profile_id)
+
+    # Operational probes own normal service connections. Running them after the
+    # financial read transaction avoids nested SQLite locks while exercising the
+    # same hydration/reporting boundaries used by hosted navigation.
+    operational = generate_post_import_operational_health(profile_id=profile_id)
+    passed = (
+        financial["result"] == "POST-IMPORT RECONCILIATION: PASSED"
+        and operational["status"] == "OPERATIONAL HEALTH: PASSED"
+    )
+    final_status = "COMPLETE" if passed else "POST_IMPORT_RECONCILIATION_FAILED"
+    completed_units = int(execution["total_units"])
+    result = {
+        **write_result,
+        "status": final_status,
+        "post_import_reconciliation": financial,
+        "operational_health": operational,
+        "post_import_state_checksum": post_import_checksum,
+    }
+    now = _now()
+    with connect() as connection:
+        if _profile_state_checksum(connection, profile_id) != post_import_checksum:
+            raise ImportCutoverError("Profile state changed during post-import health checks")
+        connection.execute(
+            "UPDATE profile_import_executions SET status = ?, completed_units = ?, "
+            "progress_json = ?, completed_at = ?, updated_at = ? "
+            "WHERE import_run_id = ? AND execution_id = ? AND status = 'RUNNING'",
+            (
+                final_status,
+                completed_units,
+                _json(progress),
+                now,
+                now,
+                import_run_id,
+                execution["execution_id"],
+            ),
+        )
+        connection.execute(
+            "UPDATE profile_import_runs SET status = ?, completed_at = ?, result_json = ?, "
+            "rollback_status = 'AVAILABLE', updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (final_status, now, _json(result), now, profile_id, import_run_id),
+        )
+        connection.execute(
+            """
+            UPDATE profile_import_attempts
+            SET status = ?, stage = 'RECONCILING', completed_units = ?,
+                progress_json = ?, reconciliation_json = ?, post_import_checksum = ?,
+                post_import_manifest_json = ?, rollback_status = 'AVAILABLE',
+                completed_at = ?, updated_at = ?
+            WHERE execution_id = ?
+            """,
+            (
+                final_status,
+                completed_units,
+                _json(progress),
+                _json({"financial": financial, "operational": operational}),
+                post_import_checksum,
+                _json(manifest),
+                now,
+                now,
+                execution["execution_id"],
+            ),
+        )
+        _append_run_event(
+            connection,
+            import_run_id=import_run_id,
+            kind="import_complete" if passed else "import_reconciliation_failed",
+            title="Profile import complete" if passed else "Import reconciliation failed",
+            message=(
+                "The imported Profile passed financial reconciliation and operational health."
+                if passed
+                else (
+                    "The imported Profile failed a required acceptance gate. Rollback is available."
+                )
+            ),
+        )
+        final_row = connection.execute(
+            "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+    if final_row is None:
+        raise ImportCutoverError("Completed execution could not be loaded")
+    return _execution_record(final_row)
 
 
 def advance_import_execution(
@@ -347,6 +712,15 @@ def advance_import_execution(
     expected_state_checksum = ""
     failure_stage = str(previous["stage"])
     try:
+        if failure_stage == "RECONCILING":
+            return _finish_reconciliation(
+                profile_id=profile_id,
+                import_run_id=import_run_id,
+                run=run,
+                workspace=workspace,
+                plan=plan,
+                approved_summary=approved_summary,
+            )
         with connect() as connection:
             lock_suffix = " FOR UPDATE" if postgres_runtime_enabled() else ""
             row = connection.execute(
@@ -429,74 +803,6 @@ def advance_import_execution(
                 if next_cursor >= int(batch_result["total"]):
                     next_stage = _next_stage(stage)
                     next_cursor = 0
-            elif stage == "RECONCILING":
-                write_result = _write_result(
-                    execution=execution,
-                    progress=progress,
-                    import_run_id=import_run_id,
-                )
-                write_result["skipped_non_transactional"] = approved_summary["ledgers"].get(
-                    "sportsbook", {}
-                ).get("non_transactional", 0)
-                report = generate_post_import_reconciliation(
-                    connection=connection,
-                    profile_id=profile_id,
-                    import_run_id=import_run_id,
-                    run=run,
-                    workspace=workspace,
-                    summary=approved_summary,
-                    write_result=write_result,
-                    plan=plan,
-                )
-                passed = report["result"] == "POST-IMPORT RECONCILIATION: PASSED"
-                final_status = "COMPLETE" if passed else "POST_IMPORT_RECONCILIATION_FAILED"
-                completed_units = int(execution["total_units"])
-                result = {
-                    **write_result,
-                    "status": final_status,
-                    "post_import_reconciliation": report,
-                    "post_import_state_checksum": _profile_state_checksum(connection, profile_id),
-                }
-                now = _now()
-                connection.execute(
-                    "UPDATE profile_import_executions SET status = ?, completed_units = ?, "
-                    "progress_json = ?, completed_at = ?, updated_at = ? WHERE import_run_id = ?",
-                    (
-                        final_status,
-                        completed_units,
-                        _json(progress),
-                        now,
-                        now,
-                        import_run_id,
-                    ),
-                )
-                connection.execute(
-                    "UPDATE profile_import_runs SET status = ?, completed_at = ?, "
-                    "result_json = ?, rollback_status = 'AVAILABLE', updated_at = ? "
-                    "WHERE profile_id = ? AND import_run_id = ?",
-                    (final_status, now, _json(result), now, profile_id, import_run_id),
-                )
-                _append_run_event(
-                    connection,
-                    import_run_id=import_run_id,
-                    kind="import_complete" if passed else "import_reconciliation_failed",
-                    title="Profile import complete" if passed else "Import reconciliation failed",
-                    message=(
-                        "The imported Profile reconciled with the approved workbook plan."
-                        if passed
-                        else (
-                            "The persisted Profile differs from the approved plan. "
-                            "Rollback is available."
-                        )
-                    ),
-                )
-                final_row = connection.execute(
-                    "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
-                    (import_run_id,),
-                ).fetchone()
-                if final_row is None:
-                    raise ImportCutoverError("Completed execution could not be loaded")
-                return _execution_record(final_row)
             else:
                 raise ImportCutoverError(f"Unsupported import execution stage: {stage}")
 
@@ -515,6 +821,7 @@ def advance_import_execution(
                     import_run_id,
                 ),
             )
+            _sync_current_attempt(connection, import_run_id)
             connection.execute(
                 "UPDATE profile_import_runs SET updated_at = ? WHERE import_run_id = ?",
                 (now, import_run_id),
@@ -574,6 +881,7 @@ def advance_import_execution(
                     "error_json = ?, completed_at = ?, updated_at = ? WHERE import_run_id = ?",
                     (_json(failure), now, now, import_run_id),
                 )
+                _sync_current_attempt(connection, import_run_id)
                 connection.execute(
                     "UPDATE profile_import_runs SET status = 'IMPORT_FAILED', "
                     "result_json = ?, updated_at = ? WHERE import_run_id = ?",

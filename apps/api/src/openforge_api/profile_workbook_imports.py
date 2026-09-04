@@ -40,6 +40,7 @@ from openforge_api.profile_workbook_cutover import (
     ImportCutoverError,
     ImportPersistenceError,
     _profile_state_checksum,
+    _profile_state_manifest,
     build_base_write_plan,
     completed_import_rollback_safety,
     failed_import_safety,
@@ -818,6 +819,34 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
             """,
             (profile_id,),
         ).fetchall()
+        attempt_rows = connection.execute(
+            """
+            SELECT attempt.import_run_id, attempt.execution_id, attempt.attempt_number,
+                   attempt.status, attempt.rollback_status, attempt.legacy_ambiguous,
+                   attempt.started_at, attempt.completed_at, attempt.reconciliation_json,
+                   checkpoint.checkpoint_id, checkpoint.status AS checkpoint_status
+            FROM profile_import_attempts AS attempt
+            LEFT JOIN profile_import_attempt_checkpoints AS checkpoint
+              ON checkpoint.execution_id = attempt.execution_id
+            WHERE attempt.profile_id = ?
+            ORDER BY attempt.import_run_id, attempt.attempt_number DESC
+            """,
+            (profile_id,),
+        ).fetchall()
+    attempts_by_run: dict[str, list[dict[str, Any]]] = {}
+    for attempt_row in attempt_rows:
+        attempt = dict(attempt_row)
+        attempt["legacy_ambiguous"] = bool(attempt["legacy_ambiguous"])
+        attempt_reconciliation = json.loads(attempt.pop("reconciliation_json") or "{}")
+        attempt["reconciliation_status"] = str(
+            (attempt_reconciliation.get("financial") or attempt_reconciliation).get("result")
+            or (attempt_reconciliation.get("financial") or attempt_reconciliation).get("status")
+            or ""
+        )
+        attempt["operational_health_status"] = str(
+            (attempt_reconciliation.get("operational") or {}).get("status") or ""
+        )
+        attempts_by_run.setdefault(str(attempt["import_run_id"]), []).append(attempt)
     history: list[dict[str, Any]] = []
     for row in rows:
         record = dict(row)
@@ -842,15 +871,89 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
             "extra_places": result_ledgers.get("extra_places", 0),
         }
         record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
+        record["attempts"] = attempts_by_run.get(str(record["import_run_id"]), [])
+        if record["attempts"]:
+            latest_attempt = record["attempts"][0]
+            record["status"] = latest_attempt["status"]
+            record["checkpoint_id"] = latest_attempt.get("checkpoint_id") or ""
+            record["rollback_status"] = latest_attempt["rollback_status"]
+            record["completed_at"] = latest_attempt["completed_at"]
         history.append(record)
     return history
 
 
+def _manifest_drift(stored: dict[str, Any], current: dict[str, Any]) -> list[dict[str, Any]]:
+    changes: list[dict[str, Any]] = []
+    for table in sorted(set(stored) | set(current)):
+        before_rows = stored.get(table) or {}
+        after_rows = current.get(table) or {}
+        for row_id in sorted(set(before_rows) | set(after_rows)):
+            before = before_rows.get(row_id)
+            after = after_rows.get(row_id)
+            if before is None:
+                operation = "added"
+            elif after is None:
+                operation = "removed"
+            elif before.get("fingerprint") != after.get("fingerprint"):
+                operation = "modified"
+            else:
+                continue
+            changes.append(
+                {
+                    "domain": table,
+                    "row_id": row_id,
+                    "operation": operation,
+                    "timestamp": str((after or before or {}).get("updated_at") or ""),
+                    "actor": "",
+                    "source": "",
+                }
+            )
+    return changes
+
+
+def _attach_drift_audit_evidence(
+    connection: Any,
+    *,
+    profile_id: str,
+    drift: list[dict[str, Any]],
+    completed_at: str,
+) -> None:
+    audit_sources = {
+        "accounts": ("account_audit", "account_id"),
+        "sportsbook_bets": ("sportsbook_bet_audit", "sportsbook_bet_id"),
+        "free_bets": ("free_bet_audit", "free_bet_id"),
+        "casino_offers": ("casino_offer_audit", "casino_offer_id"),
+        "cash_adjustments": ("cash_adjustment_audit", "cash_adjustment_id"),
+        "each_way_extra_places": (
+            "each_way_extra_place_audit",
+            "each_way_extra_place_id",
+        ),
+    }
+    for change in drift:
+        source = audit_sources.get(str(change["domain"]))
+        if source is None:
+            continue
+        table, id_column = source
+        evidence = connection.execute(
+            f"SELECT action, changed_at, payload_json FROM {table} "  # noqa: S608
+            f"WHERE profile_id = ? AND {id_column} = ? AND changed_at >= ? "
+            "ORDER BY changed_at DESC LIMIT 1",
+            (profile_id, change["row_id"], completed_at),
+        ).fetchone()
+        if evidence is None:
+            continue
+        payload = json.loads(str(evidence["payload_json"] or "{}"))
+        change["timestamp"] = str(evidence["changed_at"] or change["timestamp"])
+        change["source"] = table
+        change["source_action"] = str(evidence["action"] or "")
+        change["actor"] = str(
+            payload.get("actor_email") or payload.get("actor_id") or payload.get("updated_by") or ""
+        )
+
+
 @router.get("/recovery-diagnostics")
-def get_profile_import_recovery_diagnostics(
-    profile_id: str, request: Request
-) -> dict[str, Any]:
-    """Return only the selected Profile's rollback-safety metadata."""
+def get_profile_import_recovery_diagnostics(profile_id: str, request: Request) -> dict[str, Any]:
+    """Return read-only, attempt-scoped recovery evidence for one Profile."""
     require_request_session(request)
     with connect() as connection:
         profile = connection.execute(
@@ -864,9 +967,10 @@ def get_profile_import_recovery_diagnostics(
             (profile_id,),
         ).fetchone()
         current_checksum = _profile_state_checksum(connection, profile_id)
+        current_manifest = _profile_state_manifest(connection, profile_id)
         active_execution_count = int(
             connection.execute(
-                "SELECT COUNT(*) AS count FROM profile_import_executions "
+                "SELECT COUNT(*) AS count FROM profile_import_attempts "
                 "WHERE profile_id = ? AND status = 'RUNNING'",
                 (profile_id,),
             ).fetchone()["count"]
@@ -877,75 +981,120 @@ def get_profile_import_recovery_diagnostics(
                 "profile_display_name": str(profile["display_name"]),
                 "current_profile_checksum": current_checksum,
                 "execution_running": bool(active_execution_count),
+                "attempts": [],
+                "drift": [],
                 "rollback_conclusion": "ROLLBACK UNAVAILABLE",
                 "rollback_reason": "This Profile has no workbook import run.",
             }
         run_record = dict(run)
-        result = json.loads(run_record.get("result_json") or "{}")
-        checkpoint = connection.execute(
-            "SELECT * FROM profile_import_checkpoints WHERE import_run_id = ?",
+        attempt_rows = connection.execute(
+            """
+            SELECT attempt.*, checkpoint.checkpoint_id, checkpoint.status AS checkpoint_status,
+                   checkpoint.pre_import_checksum AS checkpoint_checksum,
+                   checkpoint.created_at AS checkpoint_created_at,
+                   checkpoint.rolled_back_at AS checkpoint_rolled_back_at
+            FROM profile_import_attempts AS attempt
+            LEFT JOIN profile_import_attempt_checkpoints AS checkpoint
+              ON checkpoint.execution_id = attempt.execution_id
+            WHERE attempt.import_run_id = ?
+            ORDER BY attempt.attempt_number DESC
+            """,
             (run_record["import_run_id"],),
-        ).fetchone()
-        execution = connection.execute(
-            "SELECT * FROM profile_import_executions WHERE import_run_id = ? "
-            "ORDER BY updated_at DESC LIMIT 1",
-            (run_record["import_run_id"],),
-        ).fetchone()
-        active_write_audit_rows = int(
-            connection.execute(
-                "SELECT COUNT(*) AS count FROM profile_import_write_audit "
-                "WHERE import_run_id = ? AND rolled_back_at = ''",
-                (run_record["import_run_id"],),
-            ).fetchone()["count"]
+        ).fetchall()
+        attempts: list[dict[str, Any]] = []
+        for index, row in enumerate(attempt_rows):
+            record = dict(row)
+            reconciliation = json.loads(record.pop("reconciliation_json") or "{}")
+            record.pop("progress_json", None)
+            record.pop("error_json", None)
+            record.pop("post_import_manifest_json", None)
+            record["legacy_ambiguous"] = bool(record["legacy_ambiguous"])
+            record["is_latest_attempt"] = index == 0
+            record["reconciliation_status"] = str(
+                (reconciliation.get("financial") or reconciliation).get("result")
+                or (reconciliation.get("financial") or reconciliation).get("status")
+                or ""
+            )
+            record["operational_health_status"] = str(
+                (reconciliation.get("operational") or {}).get("status") or ""
+            )
+            record["active_write_audit_row_count"] = int(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM profile_import_attempt_write_audit "
+                    "WHERE execution_id = ? AND rolled_back_at = ''",
+                    (record["execution_id"],),
+                ).fetchone()["count"]
+            )
+            attempts.append(record)
+        latest_row = attempt_rows[0] if attempt_rows else None
+        stored_manifest = (
+            json.loads(str(latest_row["post_import_manifest_json"] or "{}"))
+            if latest_row is not None
+            else {}
         )
-    recorded_checksum = str(result.get("post_import_state_checksum") or "")
-    current_matches_post_import = bool(
-        recorded_checksum and current_checksum == recorded_checksum
-    )
-    checkpoint_status = str(checkpoint["status"]) if checkpoint is not None else ""
+        drift = _manifest_drift(stored_manifest, current_manifest) if stored_manifest else []
+        if drift and latest_row is not None:
+            _attach_drift_audit_evidence(
+                connection,
+                profile_id=profile_id,
+                drift=drift,
+                completed_at=str(latest_row["completed_at"] or ""),
+            )
+    recorded_checksum = "" if latest_row is None else str(latest_row["post_import_checksum"] or "")
+    current_matches = bool(recorded_checksum and recorded_checksum == current_checksum)
+    checkpoint_exists = bool(latest_row is not None and latest_row["checkpoint_id"])
+    latest_status = "" if latest_row is None else str(latest_row["status"])
+    latest_rollback_status = "" if latest_row is None else str(latest_row["rollback_status"])
     rollback_available = bool(
-        run_record["status"] in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}
-        and run_record.get("rollback_status") == "AVAILABLE"
-        and checkpoint is not None
-        and current_matches_post_import
+        latest_status in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}
+        and latest_rollback_status == "AVAILABLE"
+        and checkpoint_exists
+        and current_matches
     )
     if rollback_available:
         conclusion = "ROLLBACK SAFE"
-        reason = "The current Profile checksum matches the recorded post-import checksum."
-    elif recorded_checksum and not current_matches_post_import:
+        reason = (
+            "The latest attempt has its own available checkpoint and unchanged post-import state."
+        )
+    elif recorded_checksum and not current_matches:
         conclusion = "ROLLBACK LOCKED — PROFILE CHANGED"
-        reason = "The Profile changed after import, so standard rollback is locked."
-    elif not checkpoint or not recorded_checksum:
+        reason = (
+            "Post-import Profile drift was detected; its origin is reported only "
+            "where audit evidence exists."
+        )
+    elif not checkpoint_exists or not recorded_checksum:
         conclusion = "STATE INDETERMINATE"
-        reason = "The checkpoint or recorded post-import checksum is unavailable."
+        reason = "The latest attempt lacks a checkpoint or post-import fingerprint manifest."
     else:
         conclusion = "ROLLBACK UNAVAILABLE"
-        reason = "The import status does not permit standard rollback."
-    reconciliation = result.get("post_import_reconciliation") or {}
+        reason = "The latest attempt status does not permit standard rollback."
+    latest = attempts[0] if attempts else {}
     return {
         "profile_id": profile_id,
         "profile_display_name": str(profile["display_name"]),
         "import_run_id": str(run_record["import_run_id"]),
-        "execution_id": "" if execution is None else str(execution["execution_id"]),
-        "import_status": str(run_record["status"]),
-        "reconciliation_status": str(
-            reconciliation.get("status") or reconciliation.get("result") or ""
-        ),
-        "checkpoint_id": "" if checkpoint is None else str(checkpoint["checkpoint_id"]),
-        "checkpoint_status": checkpoint_status,
-        "checkpoint_checksum": "" if checkpoint is None else str(checkpoint["snapshot_checksum"]),
+        "execution_id": str(latest.get("execution_id") or ""),
+        "attempt_number": latest.get("attempt_number"),
+        "import_status": latest_status or str(run_record["status"]),
+        "reconciliation_status": str(latest.get("reconciliation_status") or ""),
+        "operational_health_status": str(latest.get("operational_health_status") or ""),
+        "checkpoint_id": str(latest.get("checkpoint_id") or ""),
+        "checkpoint_status": str(latest.get("checkpoint_status") or ""),
+        "checkpoint_checksum": str(latest.get("checkpoint_checksum") or ""),
         "recorded_post_import_checksum": recorded_checksum,
         "current_profile_checksum": current_checksum,
-        "current_matches_post_import_checksum": current_matches_post_import,
-        "manual_post_import_mutation_detected": bool(
-            recorded_checksum and not current_matches_post_import
-        ),
+        "current_matches_post_import_checksum": current_matches,
+        "post_import_profile_drift_detected": bool(recorded_checksum and not current_matches),
+        "manual_post_import_mutation_detected": False,
+        "drift_evidence_status": "AVAILABLE" if stored_manifest else "UNAVAILABLE_LEGACY",
+        "drift": drift,
         "rollback_available": rollback_available,
-        "active_write_audit_row_count": active_write_audit_rows,
+        "active_write_audit_row_count": int(latest.get("active_write_audit_row_count") or 0),
         "execution_running": bool(active_execution_count),
-        "import_started_at": str(run_record.get("import_started_at") or ""),
-        "import_completed_at": str(run_record.get("completed_at") or ""),
-        "import_rolled_back_at": str(run_record.get("rolled_back_at") or ""),
+        "import_started_at": str(latest.get("started_at") or ""),
+        "import_completed_at": str(latest.get("completed_at") or ""),
+        "import_rolled_back_at": str(latest.get("rolled_back_at") or ""),
+        "attempts": attempts,
         "rollback_conclusion": conclusion,
         "rollback_reason": reason,
     }
@@ -1157,6 +1306,9 @@ def delete_profile_workbook_import(
         # These audit tables intentionally retain failed/rolled-back attempts and do not
         # cascade from the run. Explicit deletion is required for a user-confirmed purge.
         for table in (
+            "profile_import_attempt_write_audit",
+            "profile_import_attempt_checkpoints",
+            "profile_import_attempts",
             "profile_import_executions",
             "profile_import_rollback_events",
             "profile_import_write_audit",

@@ -224,9 +224,9 @@ def test_migration_readiness_blocks_stale_verified_backup(tmp_path: Path) -> Non
         "postgresql://neondb_owner:secret@example.neon.tech/plum-duff-app-db?sslmode=require"
     )
     backup = create_verified_local_backup(reason="Synthetic stale cutover backup")
-    stale_created_at = (datetime.now(UTC) - timedelta(days=2)).isoformat(
-        timespec="seconds"
-    ).replace("+00:00", "Z")
+    stale_created_at = (
+        (datetime.now(UTC) - timedelta(days=2)).isoformat(timespec="seconds").replace("+00:00", "Z")
+    )
     with connect() as connection:
         connection.execute(
             """
@@ -274,6 +274,9 @@ def test_postgres_schema_plan_generates_current_tracker_tables(tmp_path: Path) -
     assert "profile_import_runs" in plan.table_names
     assert "profile_import_review_items" in plan.table_names
     assert "profile_import_review_decisions" in plan.table_names
+    assert "profile_import_attempts" in plan.table_names
+    assert "profile_import_attempt_checkpoints" in plan.table_names
+    assert "profile_import_attempt_write_audit" in plan.table_names
     assert len(plan.schema_signature) == 64
     assert plan.statement_count >= len(plan.table_names)
 
@@ -446,9 +449,7 @@ def test_neon_schema_status_accepts_complete_remote_schema(tmp_path: Path) -> No
     with connect() as connection:
         expected_tables = list(build_postgres_schema_plan(connection).table_names)
 
-    status = build_neon_schema_status(
-        neon_table_lister=lambda _connection_url: expected_tables
-    )
+    status = build_neon_schema_status(neon_table_lister=lambda _connection_url: expected_tables)
 
     assert status.neon_status == "reachable"
     assert status.schema_ready_for_data_load is True
@@ -618,8 +619,7 @@ def test_neon_data_load_blocks_non_empty_remote_tables(tmp_path: Path) -> None:
             ),
             neon_table_lister=lambda _connection_url: package_preview.insert_order,
             neon_row_count_lister=lambda _connection_url, table_names: {
-                table_name: 1 if table_name == "profiles" else 0
-                for table_name in table_names
+                table_name: 1 if table_name == "profiles" else 0 for table_name in table_names
             },
             neon_data_loader=lambda _connection_url, table_names: len(table_names),
         )
@@ -643,9 +643,7 @@ def test_neon_data_load_uses_guarded_loader_and_verifies_row_counts(
     local_count_map = {record.table_name: record.row_count for record in local_counts}
     call_count = {"row_count_lister": 0, "loader": 0}
 
-    def fake_row_count_lister(
-        _connection_url: str, table_names: list[str]
-    ) -> dict[str, int]:
+    def fake_row_count_lister(_connection_url: str, table_names: list[str]) -> dict[str, int]:
         call_count["row_count_lister"] += 1
         if call_count["row_count_lister"] == 1:
             return {table_name: 0 for table_name in table_names}
@@ -712,9 +710,7 @@ def test_neon_data_verification_reports_mismatched_content_fingerprint(
     local_counts = list_local_row_counts_for_tables(package_preview.insert_order)
     local_count_map = {record.table_name: record.row_count for record in local_counts}
     remote_hashes = build_local_table_content_fingerprints(package_preview.insert_order)
-    remote_hashes["profiles"] = build_combined_content_fingerprint(
-        {"profiles": "different"}
-    )
+    remote_hashes["profiles"] = build_combined_content_fingerprint({"profiles": "different"})
 
     response = verify_neon_data_load(
         neon_table_lister=lambda _connection_url: package_preview.insert_order,
@@ -772,9 +768,7 @@ def test_neon_cutover_readiness_blocks_mismatched_staging_data(
     local_counts = list_local_row_counts_for_tables(package_preview.insert_order)
     local_count_map = {record.table_name: record.row_count for record in local_counts}
     remote_hashes = build_local_table_content_fingerprints(package_preview.insert_order)
-    remote_hashes["profiles"] = build_combined_content_fingerprint(
-        {"profiles": "different"}
-    )
+    remote_hashes["profiles"] = build_combined_content_fingerprint({"profiles": "different"})
 
     response = build_neon_cutover_readiness(
         neon_connector=lambda _connection_url: ("plum-duff-app-db", "neondb_owner"),

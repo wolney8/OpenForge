@@ -12,7 +12,10 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.main import app
-from openforge_api.profile_workbook_cutover import _profile_state_checksum
+from openforge_api.profile_workbook_cutover import (
+    _profile_state_checksum,
+    _profile_state_manifest,
+)
 from openforge_api.profile_workbook_imports import _save_preflight_result, _workspace
 
 
@@ -138,11 +141,12 @@ def test_recovery_diagnostics_are_profile_scoped_read_only_and_report_safe_rollb
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload == {
+    expected = {
         "profile_id": "profile-import-test",
         "profile_display_name": "Import Test",
         "import_run_id": import_run_id,
         "execution_id": "execution-diagnostics",
+        "attempt_number": 1,
         "import_status": "COMPLETE",
         "reconciliation_status": "POST-IMPORT RECONCILIATION: PASSED",
         "checkpoint_id": "checkpoint-diagnostics",
@@ -151,18 +155,58 @@ def test_recovery_diagnostics_are_profile_scoped_read_only_and_report_safe_rollb
         "recorded_post_import_checksum": checksum,
         "current_profile_checksum": checksum,
         "current_matches_post_import_checksum": True,
+        "post_import_profile_drift_detected": False,
         "manual_post_import_mutation_detected": False,
         "rollback_available": True,
         "active_write_audit_row_count": 1,
         "execution_running": False,
-        "import_started_at": "",
+        "import_started_at": timestamp,
         "import_completed_at": timestamp,
         "import_rolled_back_at": "",
         "rollback_conclusion": "ROLLBACK SAFE",
         "rollback_reason": (
-            "The current Profile checksum matches the recorded post-import checksum."
+            "The latest attempt has its own available checkpoint and unchanged post-import state."
         ),
     }
+    assert {key: payload[key] for key in expected} == expected
+    assert payload["drift_evidence_status"] == "UNAVAILABLE_LEGACY"
+    assert payload["drift"] == []
+    assert payload["attempts"][0]["execution_id"] == "execution-diagnostics"
+    assert payload["attempts"][0]["legacy_ambiguous"] is True
+    assert payload["attempts"][0]["is_latest_attempt"] is True
+
+    # New attempts retain row fingerprints, so checksum drift is concrete evidence
+    # rather than an unsupported claim that a person manually edited the Profile.
+    with connect() as connection:
+        manifest = _profile_state_manifest(connection, "profile-import-test")
+        connection.execute(
+            "UPDATE profile_import_attempts SET post_import_manifest_json = ?, "
+            "legacy_ambiguous = 0 WHERE execution_id = 'execution-diagnostics'",
+            (json.dumps(manifest),),
+        )
+        connection.execute(
+            "UPDATE profiles SET display_name = 'Import Test Updated' "
+            "WHERE profile_id = 'profile-import-test'"
+        )
+
+    drift_response = TestClient(app).get(
+        "/profiles/profile-import-test/workbook-imports/recovery-diagnostics"
+    )
+    assert drift_response.status_code == 200
+    drift_payload = drift_response.json()
+    assert drift_payload["rollback_conclusion"] == "ROLLBACK LOCKED — PROFILE CHANGED"
+    assert drift_payload["post_import_profile_drift_detected"] is True
+    assert drift_payload["manual_post_import_mutation_detected"] is False
+    assert drift_payload["drift"] == [
+        {
+            "domain": "profiles",
+            "row_id": "profile-import-test",
+            "operation": "modified",
+            "timestamp": "",
+            "actor": "",
+            "source": "",
+        }
+    ]
 
 
 def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path) -> None:
@@ -432,6 +476,9 @@ def test_delete_review_removes_rolled_back_attempt_metadata_transactionally(
             "profile_import_write_audit",
             "profile_import_rollback_events",
             "profile_import_executions",
+            "profile_import_attempt_write_audit",
+            "profile_import_attempt_checkpoints",
+            "profile_import_attempts",
             "profile_import_runs",
         ):
             count = connection.execute(

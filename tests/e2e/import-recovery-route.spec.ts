@@ -47,7 +47,7 @@ test("Fund Manager recovery route bypasses tracker and Account hydration", async
           recorded_post_import_checksum: "b".repeat(64),
           current_profile_checksum: "b".repeat(64),
           current_matches_post_import_checksum: true,
-          manual_post_import_mutation_detected: false,
+          post_import_profile_drift_detected: false,
           rollback_available: true,
           active_write_audit_row_count: 747,
           execution_running: false,
@@ -56,6 +56,16 @@ test("Fund Manager recovery route bypasses tracker and Account hydration", async
           import_rolled_back_at: "",
           rollback_conclusion: "ROLLBACK SAFE",
           rollback_reason: "The current Profile checksum matches the recorded post-import checksum.",
+          attempts: [{
+            execution_id: "execution-will", attempt_number: 2,
+            status: "POST_IMPORT_RECONCILIATION_FAILED", checkpoint_id: "checkpoint-will",
+            checkpoint_status: "AVAILABLE",
+            reconciliation_status: "POST-IMPORT RECONCILIATION: PASSED",
+            operational_health_status: "OPERATIONAL HEALTH: FAILED",
+            rollback_status: "AVAILABLE", legacy_ambiguous: false, is_latest_attempt: true,
+            started_at: "2026-09-03T10:13:00+01:00",
+            completed_at: "2026-09-03T10:20:00+01:00",
+          }],
         },
       });
     }
@@ -69,6 +79,7 @@ test("Fund Manager recovery route bypasses tracker and Account hydration", async
 
   await expect(diagnostics.getByText("ROLLBACK SAFE")).toBeVisible();
   await expect(diagnostics).toContainText("profile-import-b9670d82dc3b5355bb66e6a33fcb1c68");
+  await expect(diagnostics).toContainText("Current / latest attempt");
   expect(recoveryRequests).toBe(1);
   expect(trackerSummaryRequests).toBe(0);
   expect(accountsRequests).toBe(0);

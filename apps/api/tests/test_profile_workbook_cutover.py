@@ -128,6 +128,8 @@ def configure_cutover_database(tmp_path: Path) -> None:
             """,
             (PROFILE_ID, now, now),
         )
+
+
 def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> None:
     result = {
         "profile_settings": [
@@ -659,9 +661,10 @@ def test_settled_import_uses_formal_report_date_when_transaction_date_is_blank()
 
 
 def test_historical_extra_place_uses_approved_report_date_when_source_date_is_blank() -> None:
-    assert _historical_extra_place_date(
-        {}, {"formal_report_date": "2026-08-19T17:20:00"}
-    ) == "2026-08-19T17:20:00"
+    assert (
+        _historical_extra_place_date({}, {"formal_report_date": "2026-08-19T17:20:00"})
+        == "2026-08-19T17:20:00"
+    )
 
 
 def test_legacy_checkpoint_ignores_derived_bookmaker_link() -> None:
@@ -756,7 +759,7 @@ def test_account_write_state_preserves_restricted_active_account_semantics() -> 
         {
             "status": "Bonus Restricted",
             "lifecycle_status": "Active",
-            "restrictions_json": "[\"Bonus Restricted\"]",
+            "restrictions_json": '["Bonus Restricted"]',
         },
         catalogue_id="BOOKMAKER-DEMO-001",
         provider=Provider(),
@@ -1028,15 +1031,21 @@ def test_staged_import_is_resumable_and_reconciles(tmp_path: Path) -> None:
     assert execution["status"] == "COMPLETE"
     assert execution["percentage"] == 100
     with connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM profile_import_write_audit "
-            "WHERE import_run_id = ? AND rolled_back_at = ''",
-            (RUN_ID,),
-        ).fetchone()[0] == 8
-        assert connection.execute(
-            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
-            (PROFILE_ID,),
-        ).fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM profile_import_write_audit "
+                "WHERE import_run_id = ? AND rolled_back_at = ''",
+                (RUN_ID,),
+            ).fetchone()[0]
+            == 8
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
+                (PROFILE_ID,),
+            ).fetchone()[0]
+            == 2
+        )
         summary = json.loads(
             connection.execute(
                 "SELECT summary_json FROM profile_import_runs WHERE import_run_id = ?",
@@ -1061,9 +1070,7 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
     configure_cutover_database(tmp_path)
     plan = synthetic_plan()
 
-    def clones(
-        base: dict[str, object], *, prefix: str, count: int
-    ) -> list[dict[str, object]]:
+    def clones(base: dict[str, object], *, prefix: str, count: int) -> list[dict[str, object]]:
         rows: list[dict[str, object]] = []
         for index in range(count):
             row = json.loads(json.dumps(base))
@@ -1085,9 +1092,7 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
         return rows
 
     sportsbook_rows = plan["ledgers"]["sportsbook"]
-    sportsbook_rows.extend(
-        clones(sportsbook_rows[0], prefix="sportsbook", count=501)
-    )
+    sportsbook_rows.extend(clones(sportsbook_rows[0], prefix="sportsbook", count=501))
     second_ep = clones(sportsbook_rows[1], prefix="extra-place", count=1)[0]
     sportsbook_rows.append(second_ep)
     excluded = clones(sportsbook_rows[0], prefix="prospecting", count=5)
@@ -1109,15 +1114,9 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
     run["summary"]["ledgers"]["sportsbook"].update(
         {"source_rows": 510, "settled": 504, "non_transactional": 5}
     )
-    run["summary"]["ledgers"]["free_bets"].update(
-        {"source_rows": 166, "settled": 166}
-    )
-    run["summary"]["ledgers"]["casino"].update(
-        {"source_rows": 20, "settled": 20}
-    )
-    run["summary"]["ledgers"]["cash_adjustments"].update(
-        {"source_rows": 23, "settled": 23}
-    )
+    run["summary"]["ledgers"]["free_bets"].update({"source_rows": 166, "settled": 166})
+    run["summary"]["ledgers"]["casino"].update({"source_rows": 20, "settled": 20})
+    run["summary"]["ledgers"]["cash_adjustments"].update({"source_rows": 23, "settled": 23})
     run["summary"]["extra_places"]["row_count"] = 2
     workspace["items"].append(
         {
@@ -1152,22 +1151,37 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
     assert execution["status"] == "COMPLETE"
     assert requests >= 25
     with connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
-            (PROFILE_ID,),
-        ).fetchone()[0] == 503
-        assert connection.execute(
-            "SELECT COUNT(*) FROM free_bets WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 166
-        assert connection.execute(
-            "SELECT COUNT(*) FROM casino_offers WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 20
-        assert connection.execute(
-            "SELECT COUNT(*) FROM cash_adjustments WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 23
-        assert connection.execute(
-            "SELECT COUNT(*) FROM each_way_extra_places WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
+                (PROFILE_ID,),
+            ).fetchone()[0]
+            == 503
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM free_bets WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 166
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM casino_offers WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 20
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM cash_adjustments WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 23
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM each_way_extra_places WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 2
+        )
 
 
 def test_staged_failure_restores_checkpoint_and_remains_retryable(
@@ -1186,6 +1200,8 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         workspace=workspace,
         plan=plan,
     )
+    first_execution_id = execution["execution_id"]
+    first_checkpoint_id = execution["progress"]["checkpoint_id"]
     while execution["stage"] != "SPORTSBOOK":
         execution = advance_import_execution(
             profile_id=PROFILE_ID,
@@ -1197,9 +1213,10 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         )
 
     with connect() as connection:
-        assert _profile_state_checksum(connection, PROFILE_ID) == execution["progress"][
-            "last_state_checksum"
-        ]
+        assert (
+            _profile_state_checksum(connection, PROFILE_ID)
+            == execution["progress"]["last_state_checksum"]
+        )
 
     def fail_batch(*_args: object, **_kwargs: object) -> dict[str, object]:
         raise RuntimeError("synthetic staged failure")
@@ -1222,15 +1239,24 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
     assert safety["no_partial_profile_changes"] is True
     assert safety["retry_available"] is True
     with connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT display_name FROM profiles WHERE profile_id = ?", (PROFILE_ID,)
-        ).fetchone()[0] == "Synthetic Cutover"
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT display_name FROM profiles WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == "Synthetic Cutover"
+        )
         summary = json.loads(
             connection.execute(
                 "SELECT summary_json FROM profile_import_runs WHERE import_run_id = ?",
@@ -1260,6 +1286,11 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         workspace=workspace,
         plan=plan,
     )
+    second_execution_id = execution["execution_id"]
+    second_checkpoint_id = execution["progress"]["checkpoint_id"]
+    assert second_execution_id != first_execution_id
+    assert second_checkpoint_id != first_checkpoint_id
+    assert execution["attempt_count"] == 2
     while execution["status"] == "RUNNING":
         execution = advance_import_execution(
             profile_id=PROFILE_ID,
@@ -1270,3 +1301,61 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
             plan=plan,
         )
     assert execution["status"] == "COMPLETE"
+    with connect() as connection:
+        attempts = connection.execute(
+            "SELECT execution_id, attempt_number, status FROM profile_import_attempts "
+            "WHERE import_run_id = ? ORDER BY attempt_number",
+            (RUN_ID,),
+        ).fetchall()
+        assert [tuple(row) for row in attempts] == [
+            (first_execution_id, 1, "ROLLED_BACK"),
+            (second_execution_id, 2, "COMPLETE"),
+        ]
+        checkpoints = connection.execute(
+            "SELECT execution_id, checkpoint_id, status FROM "
+            "profile_import_attempt_checkpoints WHERE import_run_id = ? "
+            "ORDER BY created_at",
+            (RUN_ID,),
+        ).fetchall()
+        assert {tuple(row) for row in checkpoints} == {
+            (first_execution_id, first_checkpoint_id, "RESTORED"),
+            (second_execution_id, second_checkpoint_id, "AVAILABLE"),
+        }
+        first_active = connection.execute(
+            "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
+            "WHERE execution_id = ? AND rolled_back_at = ''",
+            (first_execution_id,),
+        ).fetchone()[0]
+        second_active = connection.execute(
+            "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
+            "WHERE execution_id = ? AND rolled_back_at = ''",
+            (second_execution_id,),
+        ).fetchone()[0]
+        assert first_active == 0
+        assert second_active > 0
+        current_checksum = _profile_state_checksum(connection, PROFILE_ID)
+
+    stale_first_attempt = load_persisted_run(run)
+    stale_first_attempt["status"] = "COMPLETE"
+    stale_first_attempt["rollback_status"] = "AVAILABLE"
+    stale_first_attempt["result"] = {
+        "execution_id": first_execution_id,
+        "post_import_state_checksum": current_checksum,
+    }
+    with pytest.raises(ImportCutoverError, match="latest import execution attempt"):
+        rollback_import(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=stale_first_attempt,
+        )
+    with connect() as connection:
+        assert _profile_state_checksum(connection, PROFILE_ID) == current_checksum
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
+                "WHERE execution_id = ? AND rolled_back_at = ''",
+                (second_execution_id,),
+            ).fetchone()[0]
+            == second_active
+        )

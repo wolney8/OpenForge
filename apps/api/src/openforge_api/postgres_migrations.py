@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20260829_001_runtime_baseline"
+MIGRATION_ID = "20260904_001_import_attempt_lineage"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """
@@ -217,6 +217,79 @@ def apply_postgres_migrations(connection_url: str) -> str:
                     cursor.execute(statement)
                 for statement in RUNTIME_EXTENSION_STATEMENTS:
                     cursor.execute(statement)
+
+                # The former schema retained only one mutable execution/checkpoint/audit
+                # set per ImportRun. Preserve that evidence as one explicitly ambiguous
+                # legacy attempt; never infer attempts that cannot be recovered.
+                cursor.execute(
+                    """
+                    INSERT INTO profile_import_attempts (
+                      execution_id, import_run_id, profile_id, actor_email, attempt_number,
+                      status, stage, stage_cursor, completed_units, total_units,
+                      progress_json, error_json, reconciliation_json, post_import_checksum,
+                      post_import_manifest_json, rollback_status, rolled_back_at,
+                      legacy_ambiguous, started_at, updated_at, completed_at
+                    )
+                    SELECT execution.execution_id, execution.import_run_id,
+                           execution.profile_id, execution.actor_email, 1,
+                           execution.status, execution.stage, execution.stage_cursor,
+                           execution.completed_units, execution.total_units,
+                           execution.progress_json, execution.error_json,
+                           COALESCE(
+                             (run.result_json::jsonb -> 'post_import_reconciliation')::text,
+                             '{}'
+                           ),
+                           COALESCE(run.result_json::jsonb ->> 'post_import_state_checksum', ''),
+                           '{}', run.rollback_status, run.rolled_back_at, 1,
+                           execution.started_at, execution.updated_at, execution.completed_at
+                    FROM profile_import_executions AS execution
+                    JOIN profile_import_runs AS run
+                      ON run.import_run_id = execution.import_run_id
+                    WHERE NOT EXISTS (
+                      SELECT 1 FROM profile_import_attempts AS attempt
+                      WHERE attempt.import_run_id = execution.import_run_id
+                    )
+                    ON CONFLICT (execution_id) DO NOTHING
+                    """
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO profile_import_attempt_checkpoints (
+                      checkpoint_id, execution_id, import_run_id, profile_id,
+                      pre_import_checksum, snapshot_json, snapshot_checksum, status,
+                      created_at, rolled_back_at
+                    )
+                    SELECT checkpoint.checkpoint_id, attempt.execution_id,
+                           checkpoint.import_run_id, checkpoint.profile_id,
+                           checkpoint.snapshot_checksum, checkpoint.snapshot_json,
+                           checkpoint.snapshot_checksum, checkpoint.status,
+                           checkpoint.created_at, checkpoint.restored_at
+                    FROM profile_import_checkpoints AS checkpoint
+                    JOIN profile_import_attempts AS attempt
+                      ON attempt.import_run_id = checkpoint.import_run_id
+                     AND attempt.legacy_ambiguous = 1
+                    ON CONFLICT (checkpoint_id) DO NOTHING
+                    """
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO profile_import_attempt_write_audit (
+                      execution_id, import_run_id, import_key, profile_id, entity_type,
+                      entity_id, operation, before_json, after_json, before_fingerprint,
+                      after_fingerprint, created_at, rolled_back_at
+                    )
+                    SELECT attempt.execution_id, audit.import_run_id, audit.import_key,
+                           audit.profile_id, audit.entity_type, audit.entity_id,
+                           audit.operation, audit.before_json, audit.after_json,
+                           md5(audit.before_json), md5(audit.after_json),
+                           audit.created_at, audit.rolled_back_at
+                    FROM profile_import_write_audit AS audit
+                    JOIN profile_import_attempts AS attempt
+                      ON attempt.import_run_id = audit.import_run_id
+                     AND attempt.legacy_ambiguous = 1
+                    ON CONFLICT (execution_id, import_key) DO NOTHING
+                    """
+                )
 
                 cursor.execute(
                     """

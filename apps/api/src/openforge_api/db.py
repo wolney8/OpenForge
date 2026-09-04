@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -1145,6 +1146,76 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_profile_import_executions_status
           ON profile_import_executions(status, updated_at);
 
+        CREATE TABLE IF NOT EXISTS profile_import_attempts (
+          execution_id TEXT NOT NULL,
+          import_run_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          actor_email TEXT NOT NULL,
+          attempt_number INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          stage TEXT NOT NULL,
+          stage_cursor INTEGER NOT NULL DEFAULT 0,
+          completed_units INTEGER NOT NULL DEFAULT 0,
+          total_units INTEGER NOT NULL DEFAULT 0,
+          progress_json TEXT NOT NULL DEFAULT '{}',
+          error_json TEXT NOT NULL DEFAULT '{}',
+          reconciliation_json TEXT NOT NULL DEFAULT '{}',
+          post_import_checksum TEXT NOT NULL DEFAULT '',
+          post_import_manifest_json TEXT NOT NULL DEFAULT '{}',
+          rollback_status TEXT NOT NULL DEFAULT '',
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          legacy_ambiguous INTEGER NOT NULL DEFAULT 0,
+          started_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (execution_id),
+          UNIQUE (import_run_id, attempt_number),
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_attempt_checkpoints (
+          checkpoint_id TEXT PRIMARY KEY,
+          execution_id TEXT NOT NULL UNIQUE,
+          import_run_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          pre_import_checksum TEXT NOT NULL,
+          snapshot_json TEXT NOT NULL,
+          snapshot_checksum TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          FOREIGN KEY (execution_id) REFERENCES profile_import_attempts(execution_id),
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_import_attempt_write_audit (
+          execution_id TEXT NOT NULL,
+          import_run_id TEXT NOT NULL,
+          import_key TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          before_json TEXT NOT NULL,
+          after_json TEXT NOT NULL,
+          before_fingerprint TEXT NOT NULL,
+          after_fingerprint TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (execution_id, import_key),
+          FOREIGN KEY (execution_id) REFERENCES profile_import_attempts(execution_id),
+          FOREIGN KEY (import_run_id) REFERENCES profile_import_runs(import_run_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_attempts_run
+          ON profile_import_attempts(import_run_id, attempt_number DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_import_attempt_audit_profile
+          ON profile_import_attempt_write_audit(profile_id, import_run_id, execution_id);
+
         CREATE TABLE IF NOT EXISTS backup_snapshots (
           backup_snapshot_id TEXT PRIMARY KEY,
           created_at TEXT NOT NULL,
@@ -1967,8 +2038,123 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "settlement_other_costs",
     ):
         ensure_column(connection, "casino_offers", column_name, "TEXT NOT NULL DEFAULT ''")
+    migrate_legacy_import_attempt_history(connection)
     seed_database(connection)
     seed_bookmaker_catalogue_from_existing(connection)
+
+
+def migrate_legacy_import_attempt_history(connection: Any) -> None:
+    """Copy the former mutable run-level recovery rows into one explicit legacy attempt."""
+    executions = connection.execute(
+        "SELECT * FROM profile_import_executions ORDER BY import_run_id"
+    ).fetchall()
+    for execution in executions:
+        import_run_id = str(execution["import_run_id"])
+        if (
+            connection.execute(
+                "SELECT 1 FROM profile_import_attempts WHERE import_run_id = ? LIMIT 1",
+                (import_run_id,),
+            ).fetchone()
+            is not None
+        ):
+            continue
+        run = connection.execute(
+            "SELECT result_json, rollback_status, rolled_back_at "
+            "FROM profile_import_runs WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        result = json.loads(str(run["result_json"] or "{}")) if run is not None else {}
+        execution_id = str(execution["execution_id"])
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempts (
+              execution_id, import_run_id, profile_id, actor_email, attempt_number,
+              status, stage, stage_cursor, completed_units, total_units, progress_json,
+              error_json, reconciliation_json, post_import_checksum,
+              post_import_manifest_json, rollback_status, rolled_back_at,
+              legacy_ambiguous, started_at, updated_at, completed_at
+            ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, 1, ?, ?, ?)
+            """,
+            (
+                execution_id,
+                import_run_id,
+                execution["profile_id"],
+                execution["actor_email"],
+                execution["status"],
+                execution["stage"],
+                execution["stage_cursor"],
+                execution["completed_units"],
+                execution["total_units"],
+                execution["progress_json"],
+                execution["error_json"],
+                json.dumps(result.get("post_import_reconciliation") or {}, sort_keys=True),
+                str(result.get("post_import_state_checksum") or ""),
+                str(run["rollback_status"] or "") if run is not None else "",
+                str(run["rolled_back_at"] or "") if run is not None else "",
+                execution["started_at"],
+                execution["updated_at"],
+                execution["completed_at"],
+            ),
+        )
+        checkpoint = connection.execute(
+            "SELECT * FROM profile_import_checkpoints WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        if checkpoint is not None:
+            connection.execute(
+                """
+                INSERT INTO profile_import_attempt_checkpoints (
+                  checkpoint_id, execution_id, import_run_id, profile_id,
+                  pre_import_checksum, snapshot_json, snapshot_checksum, status,
+                  created_at, rolled_back_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(checkpoint_id) DO NOTHING
+                """,
+                (
+                    checkpoint["checkpoint_id"],
+                    execution_id,
+                    import_run_id,
+                    checkpoint["profile_id"],
+                    checkpoint["snapshot_checksum"],
+                    checkpoint["snapshot_json"],
+                    checkpoint["snapshot_checksum"],
+                    checkpoint["status"],
+                    checkpoint["created_at"],
+                    checkpoint["restored_at"],
+                ),
+            )
+        audits = connection.execute(
+            "SELECT * FROM profile_import_write_audit WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchall()
+        for audit in audits:
+            before_json = str(audit["before_json"] or "{}")
+            after_json = str(audit["after_json"] or "{}")
+            connection.execute(
+                """
+                INSERT INTO profile_import_attempt_write_audit (
+                  execution_id, import_run_id, import_key, profile_id, entity_type,
+                  entity_id, operation, before_json, after_json, before_fingerprint,
+                  after_fingerprint, created_at, rolled_back_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(execution_id, import_key) DO NOTHING
+                """,
+                (
+                    execution_id,
+                    import_run_id,
+                    audit["import_key"],
+                    audit["profile_id"],
+                    audit["entity_type"],
+                    audit["entity_id"],
+                    audit["operation"],
+                    before_json,
+                    after_json,
+                    hashlib.sha256(before_json.encode()).hexdigest(),
+                    hashlib.sha256(after_json.encode()).hexdigest(),
+                    audit["created_at"],
+                    audit["rolled_back_at"],
+                ),
+            )
 
 
 def seed_bookmaker_catalogue_from_existing(connection: sqlite3.Connection) -> None:
@@ -5899,6 +6085,9 @@ def delete_archived_profile(
             ("profile_import_write_audit", "profile_id"),
             ("profile_import_rollback_events", "profile_id"),
             ("profile_import_executions", "profile_id"),
+            ("profile_import_attempt_write_audit", "profile_id"),
+            ("profile_import_attempt_checkpoints", "profile_id"),
+            ("profile_import_attempts", "profile_id"),
         ),
         "audit_activity": (
             ("profile_audit", "profile_id"),
@@ -6783,9 +6972,7 @@ def seed_fund_manager_combo_presets(
             )
         for payload in defaults:
             bookmakers = [
-                str(value).strip()
-                for value in payload.get("bookmakers", [])
-                if str(value).strip()
+                str(value).strip() for value in payload.get("bookmakers", []) if str(value).strip()
             ]
             legacy_bookmaker = str(payload.get("bookmaker", "")).strip()
             if not bookmakers and legacy_bookmaker:

@@ -606,8 +606,7 @@ def final_import_summary(
             "strategy": (
                 "apply_workbook_username"
                 if any(
-                    row.get("setting") == "username"
-                    and row.get("classification") == "IMPORT"
+                    row.get("setting") == "username" and row.get("classification") == "IMPORT"
                     for row in (plan or {}).get("profile_settings", [])
                 )
                 else "preserve_target"
@@ -689,10 +688,7 @@ def final_import_summary(
 def _canonical_profile_snapshot(
     snapshot: dict[str, list[dict[str, Any]]],
 ) -> dict[str, list[dict[str, Any]]]:
-    canonical = {
-        table: [dict(row) for row in rows]
-        for table, rows in snapshot.items()
-    }
+    canonical = {table: [dict(row) for row in rows] for table, rows in snapshot.items()}
     # This legacy catalogue link is derived from the canonical provider name on startup.
     # It is not Profile-owned state and must not invalidate an import checkpoint.
     for row in canonical.get("accounts", []):
@@ -905,6 +901,9 @@ def _audit_write(
     before: dict[str, Any] | None,
     after: dict[str, Any] | None,
 ) -> None:
+    before_json = _json(before or {})
+    after_json = _json(after or {})
+    created_at = _now()
     connection.execute(
         """
         INSERT INTO profile_import_write_audit (
@@ -929,11 +928,40 @@ def _audit_write(
             entity_type,
             entity_id,
             operation,
-            _json(before or {}),
-            _json(after or {}),
-            _now(),
+            before_json,
+            after_json,
+            created_at,
         ),
     )
+    execution = connection.execute(
+        "SELECT execution_id FROM profile_import_executions WHERE import_run_id = ?",
+        (import_run_id,),
+    ).fetchone()
+    if execution is not None:
+        connection.execute(
+            """
+            INSERT INTO profile_import_attempt_write_audit (
+              execution_id, import_run_id, import_key, profile_id, entity_type,
+              entity_id, operation, before_json, after_json, before_fingerprint,
+              after_fingerprint, created_at, rolled_back_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')
+            ON CONFLICT(execution_id, import_key) DO NOTHING
+            """,
+            (
+                execution["execution_id"],
+                import_run_id,
+                import_key,
+                profile_id,
+                entity_type,
+                entity_id,
+                operation,
+                before_json,
+                after_json,
+                _checksum(before or {}),
+                _checksum(after or {}),
+                created_at,
+            ),
+        )
 
 
 def _apply_profile_settings(
@@ -1021,9 +1049,10 @@ def _account_write_state(
         raise ImportCutoverError(str(error)) from error
     state = {column: source_state.get(column) for column in ACCOUNT_WRITE_COLUMNS}
     current_balance = source_state.get("current_balance")
-    if str(lifecycle_status).casefold() == "pending sign up" and not str(
-        current_balance or ""
-    ).strip():
+    if (
+        str(lifecycle_status).casefold() == "pending sign up"
+        and not str(current_balance or "").strip()
+    ):
         current_balance = "0.00"
     state.update(
         {
@@ -1363,10 +1392,7 @@ def _ledger_write_entries(
 
 def _historical_extra_place_date(source: dict[str, Any], row: dict[str, Any]) -> str:
     return str(
-        source.get("DatePlaced")
-        or source.get("Date")
-        or row.get("formal_report_date")
-        or ""
+        source.get("DatePlaced") or source.get("Date") or row.get("formal_report_date") or ""
     )
 
 
@@ -1535,9 +1561,7 @@ def insert_ledger_batch(
     limit: int,
 ) -> dict[str, Any]:
     entries = [
-        entry
-        for entry in _ledger_write_entries(plan, decisions)
-        if entry[0] == target_ledger
+        entry for entry in _ledger_write_entries(plan, decisions) if entry[0] == target_ledger
     ]
     batch = entries[offset : offset + limit]
     inserted = 0
@@ -1583,6 +1607,22 @@ def _insert_ledger_rows(
 
 def _profile_state_checksum(connection: Any, profile_id: str) -> str:
     return _checksum(_profile_snapshot(connection, profile_id))
+
+
+def _profile_state_manifest(connection: Any, profile_id: str) -> dict[str, Any]:
+    """Return row-level fingerprints without exposing Profile field values."""
+    snapshot = _profile_snapshot(connection, profile_id)
+    manifest: dict[str, Any] = {}
+    for table, rows in snapshot.items():
+        identifier = PROFILE_TABLE_ORDER[table]
+        manifest[table] = {
+            str(row[identifier]): {
+                "fingerprint": _checksum(row),
+                "updated_at": str(row.get("updated_at") or ""),
+            }
+            for row in rows
+        }
+    return manifest
 
 
 def _decimal(value: Any) -> Decimal:
@@ -1843,11 +1883,7 @@ def generate_post_import_reconciliation(
         for name in ledger_entity_types.values()
     }
     seen_entities: set[tuple[str, str]] = set()
-    plan_rows = {
-        str(row["import_key"]): row
-        for rows in plan["ledgers"].values()
-        for row in rows
-    }
+    plan_rows = {str(row["import_key"]): row for rows in plan["ledgers"].values() for row in rows}
     for audit in audit_rows:
         entity_type = str(audit["entity_type"])
         if entity_type not in ledger_entity_types:
@@ -2373,8 +2409,7 @@ def completed_import_rollback_safety(
 
 def approved_run_is_retryable(run: dict[str, Any]) -> bool:
     return run["status"] == "READY_APPROVED" or (
-        run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
-        and bool(run.get("approved_at"))
+        run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"} and bool(run.get("approved_at"))
     )
 
 
@@ -2529,13 +2564,25 @@ def execute_import(
 
 
 def _restore_import_writes(
-    connection: Any, *, profile_id: str, import_run_id: str
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    execution_id: str = "",
 ) -> tuple[int, int]:
-    audit_rows = connection.execute(
-        "SELECT * FROM profile_import_write_audit WHERE import_run_id = ? "
-        "AND rolled_back_at = '' ORDER BY created_at DESC, import_key DESC",
-        (import_run_id,),
-    ).fetchall()
+    if execution_id:
+        audit_rows = connection.execute(
+            "SELECT * FROM profile_import_attempt_write_audit WHERE import_run_id = ? "
+            "AND execution_id = ? AND rolled_back_at = '' "
+            "ORDER BY created_at DESC, import_key DESC",
+            (import_run_id, execution_id),
+        ).fetchall()
+    else:
+        audit_rows = connection.execute(
+            "SELECT * FROM profile_import_write_audit WHERE import_run_id = ? "
+            "AND rolled_back_at = '' ORDER BY created_at DESC, import_key DESC",
+            (import_run_id,),
+        ).fetchall()
     deleted = 0
     restored = 0
     for raw in audit_rows:
@@ -2612,6 +2659,11 @@ def rollback_incomplete_import(
     now = _now()
     event_id = f"import-rollback-{uuid4().hex}"
     with connect() as connection:
+        execution = connection.execute(
+            "SELECT execution_id FROM profile_import_executions WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        execution_id = str(execution["execution_id"]) if execution is not None else ""
         current_state_checksum = _profile_state_checksum(connection, profile_id)
         if not expected_state_checksum or current_state_checksum != expected_state_checksum:
             raise ImportCutoverError(
@@ -2621,12 +2673,21 @@ def rollback_incomplete_import(
             connection,
             profile_id=profile_id,
             import_run_id=import_run_id,
+            execution_id=execution_id,
         )
-        checkpoint = connection.execute(
-            "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
-            "WHERE import_run_id = ?",
-            (import_run_id,),
-        ).fetchone()
+        checkpoint = (
+            connection.execute(
+                "SELECT snapshot_json, snapshot_checksum FROM "
+                "profile_import_attempt_checkpoints WHERE execution_id = ?",
+                (execution_id,),
+            ).fetchone()
+            if execution_id
+            else connection.execute(
+                "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
+                "WHERE import_run_id = ?",
+                (import_run_id,),
+            ).fetchone()
+        )
         if checkpoint is not None:
             _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
@@ -2642,6 +2703,17 @@ def rollback_incomplete_import(
             "UPDATE profile_import_write_audit SET rolled_back_at = ? WHERE import_run_id = ?",
             (now, import_run_id),
         )
+        if execution_id:
+            connection.execute(
+                "UPDATE profile_import_attempt_write_audit SET rolled_back_at = ? "
+                "WHERE execution_id = ?",
+                (now, execution_id),
+            )
+            connection.execute(
+                "UPDATE profile_import_attempt_checkpoints SET status = 'RESTORED', "
+                "rolled_back_at = ? WHERE execution_id = ?",
+                (now, execution_id),
+            )
         connection.execute(
             "UPDATE profile_import_checkpoints SET status = 'AVAILABLE', restored_at = ? "
             "WHERE import_run_id = ?",
@@ -2660,8 +2732,7 @@ def rollback_incomplete_import(
                 profile_id,
                 actor_email,
                 connection.execute(
-                    "SELECT checkpoint_id FROM profile_import_checkpoints "
-                    "WHERE import_run_id = ?",
+                    "SELECT checkpoint_id FROM profile_import_checkpoints WHERE import_run_id = ?",
                     (import_run_id,),
                 ).fetchone()["checkpoint_id"],
                 _json(summary),
@@ -2674,6 +2745,13 @@ def rollback_incomplete_import(
             "error_json = ?, completed_at = ?, updated_at = ? WHERE import_run_id = ?",
             (_json(error), now, now, import_run_id),
         )
+        if execution_id:
+            connection.execute(
+                "UPDATE profile_import_attempts SET status = 'ROLLED_BACK', "
+                "rollback_status = 'COMPLETE', rolled_back_at = ?, error_json = ?, "
+                "completed_at = ?, updated_at = ? WHERE execution_id = ?",
+                (now, _json(error), now, now, execution_id),
+            )
         connection.execute(
             "UPDATE profile_import_runs SET status = 'IMPORT_FAILED', "
             "result_json = ?, rollback_status = 'COMPLETE', rolled_back_at = ?, updated_at = ? "
@@ -2709,6 +2787,20 @@ def rollback_import(
     now = _now()
     event_id = f"import-rollback-{uuid4().hex}"
     with connect() as connection:
+        execution_id = str(result.get("execution_id") or "")
+        if not execution_id:
+            execution = connection.execute(
+                "SELECT execution_id FROM profile_import_executions WHERE import_run_id = ?",
+                (import_run_id,),
+            ).fetchone()
+            execution_id = str(execution["execution_id"]) if execution is not None else ""
+        latest_attempt = connection.execute(
+            "SELECT execution_id FROM profile_import_attempts WHERE import_run_id = ? "
+            "ORDER BY attempt_number DESC LIMIT 1",
+            (import_run_id,),
+        ).fetchone()
+        if latest_attempt is not None and str(latest_attempt["execution_id"]) != execution_id:
+            raise ImportCutoverError("Only the latest import execution attempt can be rolled back")
         if not expected_state or _profile_state_checksum(connection, profile_id) != expected_state:
             raise ImportCutoverError(
                 "Profile data changed after import; review before rolling back this run"
@@ -2717,12 +2809,21 @@ def rollback_import(
             connection,
             profile_id=profile_id,
             import_run_id=import_run_id,
+            execution_id=execution_id,
         )
-        checkpoint = connection.execute(
-            "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
-            "WHERE import_run_id = ?",
-            (import_run_id,),
-        ).fetchone()
+        checkpoint = (
+            connection.execute(
+                "SELECT snapshot_json, snapshot_checksum FROM "
+                "profile_import_attempt_checkpoints WHERE execution_id = ?",
+                (execution_id,),
+            ).fetchone()
+            if execution_id
+            else connection.execute(
+                "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
+                "WHERE import_run_id = ?",
+                (import_run_id,),
+            ).fetchone()
+        )
         if checkpoint is not None:
             _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
@@ -2738,6 +2839,23 @@ def rollback_import(
             "UPDATE profile_import_write_audit SET rolled_back_at = ? WHERE import_run_id = ?",
             (now, import_run_id),
         )
+        if execution_id:
+            connection.execute(
+                "UPDATE profile_import_attempt_write_audit SET rolled_back_at = ? "
+                "WHERE execution_id = ?",
+                (now, execution_id),
+            )
+            connection.execute(
+                "UPDATE profile_import_attempt_checkpoints SET status = 'RESTORED', "
+                "rolled_back_at = ? WHERE execution_id = ?",
+                (now, execution_id),
+            )
+            connection.execute(
+                "UPDATE profile_import_attempts SET status = 'ROLLED_BACK', "
+                "rollback_status = 'COMPLETE', rolled_back_at = ?, updated_at = ? "
+                "WHERE execution_id = ?",
+                (now, now, execution_id),
+            )
         connection.execute(
             "UPDATE profile_import_checkpoints SET status = 'RESTORED', restored_at = ? "
             "WHERE import_run_id = ?",

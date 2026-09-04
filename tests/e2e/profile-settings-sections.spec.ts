@@ -161,11 +161,19 @@ test("Fund Manager can load read-only import recovery diagnostics", async ({ pag
         checkpoint_id: "checkpoint-diagnostics", checkpoint_status: "AVAILABLE",
         checkpoint_checksum: "a".repeat(64), recorded_post_import_checksum: "b".repeat(64),
         current_profile_checksum: "b".repeat(64), current_matches_post_import_checksum: true,
-        manual_post_import_mutation_detected: false, rollback_available: true,
+        post_import_profile_drift_detected: false, rollback_available: true,
         active_write_audit_row_count: 747, execution_running: false, import_started_at: "",
         import_completed_at: "2026-09-03T12:00:00+00:00", import_rolled_back_at: "",
         rollback_conclusion: "ROLLBACK SAFE",
         rollback_reason: "The current Profile checksum matches the recorded post-import checksum.",
+        attempts: [{
+          execution_id: "execution-diagnostics", attempt_number: 2, status: "COMPLETE",
+          checkpoint_id: "checkpoint-diagnostics", checkpoint_status: "AVAILABLE",
+          reconciliation_status: "POST-IMPORT RECONCILIATION: PASSED",
+          operational_health_status: "OPERATIONAL HEALTH: PASSED", rollback_status: "AVAILABLE",
+          legacy_ambiguous: false, is_latest_attempt: true,
+          started_at: "2026-09-03T11:55:00+00:00", completed_at: "2026-09-03T12:00:00+00:00",
+        }],
       } });
     }
     return route.fulfill({ json: [] });
@@ -178,6 +186,8 @@ test("Fund Manager can load read-only import recovery diagnostics", async ({ pag
   await expect(diagnostics.getByText("ROLLBACK SAFE")).toBeVisible();
   await expect(diagnostics).toContainText("profile-import-diagnostics");
   await expect(diagnostics).toContainText("747");
+  await expect(diagnostics).toContainText("Current / latest attempt");
+  await expect(diagnostics.getByRole("heading", { name: "Attempt 2" })).toBeVisible();
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
     await expect(diagnostics.getByText("ROLLBACK SAFE")).toHaveCSS("background-color", /rgb/);

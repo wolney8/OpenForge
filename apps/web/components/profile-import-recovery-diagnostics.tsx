@@ -10,15 +10,18 @@ type RecoveryDiagnostics = {
   profile_display_name: string;
   import_run_id?: string;
   execution_id?: string;
+  attempt_number?: number;
   import_status?: string;
   reconciliation_status?: string;
+  operational_health_status?: string;
   checkpoint_id?: string;
   checkpoint_status?: string;
   checkpoint_checksum?: string;
   recorded_post_import_checksum?: string;
   current_profile_checksum: string;
   current_matches_post_import_checksum?: boolean;
-  manual_post_import_mutation_detected?: boolean;
+  post_import_profile_drift_detected?: boolean;
+  drift_evidence_status?: string;
   rollback_available?: boolean;
   active_write_audit_row_count?: number;
   execution_running: boolean;
@@ -27,6 +30,28 @@ type RecoveryDiagnostics = {
   import_rolled_back_at?: string;
   rollback_conclusion: string;
   rollback_reason: string;
+  drift?: Array<{
+    domain: string;
+    row_id: string;
+    operation: string;
+    timestamp: string;
+    actor: string;
+    source: string;
+  }>;
+  attempts?: Array<{
+    execution_id: string;
+    attempt_number: number;
+    status: string;
+    reconciliation_status: string;
+    operational_health_status: string;
+    checkpoint_id?: string;
+    checkpoint_status?: string;
+    rollback_status: string;
+    legacy_ambiguous: boolean;
+    is_latest_attempt: boolean;
+    started_at: string;
+    completed_at: string;
+  }>;
 };
 
 const fields: Array<[keyof RecoveryDiagnostics, string]> = [
@@ -34,15 +59,18 @@ const fields: Array<[keyof RecoveryDiagnostics, string]> = [
   ["profile_display_name", "Profile"],
   ["import_run_id", "ImportRun ID"],
   ["execution_id", "Execution ID"],
+  ["attempt_number", "Latest attempt"],
   ["import_status", "Import status"],
   ["reconciliation_status", "Reconciliation"],
+  ["operational_health_status", "Operational health"],
   ["checkpoint_id", "Checkpoint ID"],
   ["checkpoint_status", "Checkpoint status"],
   ["checkpoint_checksum", "Checkpoint checksum"],
   ["recorded_post_import_checksum", "Recorded post-import checksum"],
   ["current_profile_checksum", "Current Profile checksum"],
   ["current_matches_post_import_checksum", "Current checksum matches post-import"],
-  ["manual_post_import_mutation_detected", "Manual mutation detected"],
+  ["post_import_profile_drift_detected", "Post-import Profile drift detected"],
+  ["drift_evidence_status", "Row-level drift evidence"],
   ["rollback_available", "Rollback available"],
   ["active_write_audit_row_count", "Active write-audit rows"],
   ["execution_running", "Execution running"],
@@ -110,6 +138,59 @@ export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: str
               </div>
             ))}
           </dl>
+          {diagnostics.drift?.length ? <section aria-labelledby="import-recovery-drift-title" className="stack" data-pd-id="profile-import.recovery-diagnostics.drift">
+            <div>
+              <h3 id="import-recovery-drift-title">Post-import Profile drift</h3>
+              <p className="field-hint">User attribution is shown only when a matching audit record identifies an actor.</p>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead><tr><th scope="col">Domain</th><th scope="col">Row ID</th><th scope="col">Change</th><th scope="col">Timestamp</th><th scope="col">Actor / source</th></tr></thead>
+                <tbody>{diagnostics.drift.map((change) => <tr key={`${change.domain}:${change.row_id}:${change.operation}`}>
+                  <td>{change.domain}</td>
+                  <td><span className="spreadsheet-row-id" title={change.row_id}>{change.row_id}</span></td>
+                  <td>{change.operation}</td>
+                  <td>{display(change.timestamp)}</td>
+                  <td>{change.actor || change.source || "Unattributed"}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          </section> : null}
+          <section aria-labelledby="import-recovery-attempt-history-title" className="stack" data-pd-id="profile-import.recovery-diagnostics.attempt-history">
+            <div>
+              <h3 id="import-recovery-attempt-history-title">Attempt history</h3>
+              <p className="field-hint">Each attempt retains its own execution, checkpoint, reconciliation and rollback state.</p>
+            </div>
+            {(diagnostics.attempts ?? []).map((attempt) => (
+              <article className="content-subpanel stack" data-pd-id={`profile-import.recovery-diagnostics.attempt-${attempt.attempt_number}`} key={attempt.execution_id}>
+                <div className="workflow-panel-header">
+                  <div>
+                    <span className="eyebrow">{attempt.is_latest_attempt ? "Current / latest attempt" : "Historical attempt"}</span>
+                    <h4>Attempt {attempt.attempt_number}</h4>
+                  </div>
+                  {attempt.legacy_ambiguous ? <span className="table-chip table-chip-neutral">Legacy history — attempt boundaries unavailable</span> : null}
+                </div>
+                <dl className="profile-future-settings-list">
+                  {([
+                    ["Execution ID", attempt.execution_id],
+                    ["Status", attempt.status],
+                    ["Checkpoint", attempt.checkpoint_id],
+                    ["Checkpoint status", attempt.checkpoint_status],
+                    ["Financial reconciliation", attempt.reconciliation_status],
+                    ["Operational health", attempt.operational_health_status],
+                    ["Rollback", attempt.rollback_status],
+                    ["Started", attempt.started_at],
+                    ["Completed", attempt.completed_at],
+                  ] as Array<[string, string | undefined]>).map(([label, value]) => (
+                    <div className="profile-future-setting-row" key={label}>
+                      <dt>{label}</dt>
+                      <dd className={label.includes("ID") || label === "Checkpoint" ? "spreadsheet-row-id" : undefined}>{display(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            ))}
+          </section>
         </>
       ) : <p className="field-hint">Load diagnostics to inspect the latest ImportRun. This action does not change Profile data.</p>}
     </section>
