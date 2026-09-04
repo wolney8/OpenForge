@@ -5,7 +5,7 @@ import binascii
 import hashlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import PurePath
 from typing import Any
 from uuid import uuid4
@@ -49,6 +49,7 @@ from openforge_api.profile_workbook_cutover import (
     load_base_write_plan,
     rollback_import,
     save_base_write_plan,
+    validate_import_approval_preflight,
     validate_import_preflight,
 )
 
@@ -60,6 +61,7 @@ logger = logging.getLogger(__name__)
 
 MAX_WORKBOOK_BYTES = 3 * 1024 * 1024
 MAX_WORKBOOK_BASE64_CHARACTERS = 4_400_000
+APPROVAL_INTERRUPTED_AFTER = timedelta(seconds=315)
 
 REVIEW_MUTABLE_STATUSES = {
     "REVIEW_REQUIRED",
@@ -480,6 +482,45 @@ def _load_run(profile_id: str, import_run_id: str) -> dict[str, Any]:
     return record
 
 
+def _approval_request_state(run: dict[str, Any]) -> dict[str, Any]:
+    persisted_status = str(run.get("status") or "")
+    job = run.get("summary", {}).get("job") or {}
+    updated_at = str(run.get("updated_at") or "")
+    state = "NOT_STARTED"
+    retry_available = False
+    reason = ""
+    if persisted_status == "APPROVING":
+        state = "APPROVING"
+        try:
+            heartbeat = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+            if heartbeat.tzinfo is None:
+                heartbeat = heartbeat.replace(tzinfo=UTC)
+            if datetime.now(UTC) - heartbeat >= APPROVAL_INTERRUPTED_AFTER:
+                state = "INTERRUPTED"
+                retry_available = True
+                reason = (
+                    "The approval request exceeded the server execution window. No Profile "
+                    "data was imported; approval can be retried."
+                )
+        except ValueError:
+            state = "INDETERMINATE"
+            reason = "The approval heartbeat could not be interpreted safely."
+    elif persisted_status == "READY_APPROVED":
+        state = "READY_APPROVED"
+    elif persisted_status == "FAILED" and str(job.get("stage") or "").startswith("Approval"):
+        state = "FAILED"
+        retry_available = True
+        reason = str(job.get("error") or "Approval validation failed.")
+    return {
+        "status": state,
+        "persisted_status": persisted_status,
+        "stage": str(job.get("stage") or ""),
+        "updated_at": updated_at,
+        "retry_available": retry_available,
+        "reason": reason,
+    }
+
+
 def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     run = _load_run(profile_id, import_run_id)
     with connect() as connection:
@@ -518,6 +559,7 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     }
     workspace = apply_review_decisions(metadata, items, decisions)
     workspace["run_status"] = run["status"]
+    workspace["approval"] = _approval_request_state(run)
     workspace["source_summary"] = run["summary"]
     workspace["financial_reconciliation"] = run["reconciliation"]
     plan = load_base_write_plan(profile_id, import_run_id)
@@ -594,7 +636,10 @@ def _failure_detail(
 def _preflight_is_valid(run: dict[str, Any], preflight: dict[str, Any]) -> bool:
     return (
         preflight.get("status") == "PASSED"
-        and preflight.get("transaction_constructed") is True
+        and (
+            preflight.get("transaction_constructed") is True
+            or preflight.get("validation_mode") == "schema_and_domain_contracts"
+        )
         and preflight.get("writes_committed") is False
         and preflight.get("workbook_checksum") == run["workbook_checksum"]
         and preflight.get("mapping_version") == run["mapping_version"]
@@ -1768,7 +1813,20 @@ def _approve_import_job(
         )
         return
     try:
-        preflight_result = validate_import_preflight(
+        refreshed = _load_run(profile_id, import_run_id)
+        existing_events = list((refreshed["summary"].get("job") or {}).get("events") or [])
+        _update_run_job(
+            import_run_id,
+            status="APPROVING",
+            job=_job_state(
+                stage="Validating Account and ledger contracts",
+                percentage=0,
+                events=existing_events,
+                progress_mode="indeterminate",
+            ),
+        )
+        run = _load_run(profile_id, import_run_id)
+        preflight_result = validate_import_approval_preflight(
             profile_id=profile_id,
             import_run_id=import_run_id,
             run=run,
@@ -1839,7 +1897,6 @@ def approve_profile_workbook_import(
     import_run_id: str,
     payload: ImportApprovalPayload,
     request: Request,
-    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     session = require_request_session(request)
     run = _load_run(profile_id, import_run_id)
@@ -1854,7 +1911,15 @@ def approve_profile_workbook_import(
         run["status"] == "FAILED"
         and str((run["summary"].get("job") or {}).get("stage") or "") == "Approval failed"
     )
-    if run["status"] not in {"REVIEW_COMPLETE", "DRY_RUN_READY", "READY"} and not approval_retry:
+    interrupted_retry = (
+        run["status"] == "APPROVING"
+        and _approval_request_state(run)["status"] == "INTERRUPTED"
+    )
+    if (
+        run["status"] not in {"REVIEW_COMPLETE", "DRY_RUN_READY", "READY"}
+        and not approval_retry
+        and not interrupted_retry
+    ):
         if run["status"] == "APPROVING":
             raise HTTPException(status_code=409, detail="Dry-run approval is already running")
         raise HTTPException(status_code=409, detail="The dry run is not ready for approval")
@@ -1865,33 +1930,35 @@ def approve_profile_workbook_import(
         "Approving dry run",
         "The server write plan is being validated without committing Profile data.",
     )
+    previous_updated_at = str(run.get("updated_at") or "")
     with connect() as connection:
         updated = connection.execute(
             "UPDATE profile_import_runs SET status = 'APPROVING', owner_email = ?, "
             "summary_json = ?, updated_at = ? WHERE profile_id = ? AND import_run_id = ? "
-            "AND (status IN ('REVIEW_COMPLETE', 'DRY_RUN_READY', 'READY') "
-            "OR (status = 'FAILED' AND approved_at = ''))",
+            "AND status = ? AND updated_at = ?",
             (
                 session.email,
                 _json(
                     {
                         **summary,
                         "job": _job_state(
-                            stage="Validating approved write plan",
-                            percentage=50,
+                            stage="Validating checksum and approved write plan",
+                            percentage=0,
                             events=[*previous_events, started],
+                            progress_mode="indeterminate",
                         ),
                     }
                 ),
                 _now(),
                 profile_id,
                 import_run_id,
+                run["status"],
+                previous_updated_at,
             ),
         )
     if updated.rowcount != 1:
         raise HTTPException(status_code=409, detail="Dry-run approval is already running")
-    background_tasks.add_task(
-        _approve_import_job,
+    _approve_import_job(
         profile_id=profile_id,
         import_run_id=import_run_id,
         actor_email=session.email,

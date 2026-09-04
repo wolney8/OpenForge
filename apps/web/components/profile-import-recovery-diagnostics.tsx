@@ -116,7 +116,14 @@ export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: str
         { cache: "no-store", credentials: "include" },
       );
       const body = await response.json().catch(() => null) as RecoveryDiagnostics & { detail?: string } | null;
-      if (!response.ok || !body) throw new Error(body?.detail ?? "Unable to load recovery diagnostics.");
+      if (
+        !response.ok ||
+        !body ||
+        typeof body.rollback_conclusion !== "string" ||
+        typeof body.profile_id !== "string"
+      ) {
+        throw new Error(body?.detail ?? "Unable to load recovery diagnostics.");
+      }
       setDiagnostics(body);
     } catch (error) {
       setDiagnosticsError(

@@ -6,6 +6,7 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 import { invalidateCachedJson } from "@/lib/client-json-cache";
@@ -69,6 +70,7 @@ async function responseDetail(response: Response) {
 
 export function FundManagerProfileManagement({ profileId }: { profileId: string }) {
   const router = useRouter();
+  const authoritativeSession = useAuthoritativeSession();
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [session, setSession] = useState<SessionRecord | null>(null);
@@ -95,28 +97,26 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
     void Promise.all([
       fetch(`${apiBaseUrl}/profiles/${profileId}`, { cache: "no-store" }),
       fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" }),
-      fetch("/api/auth/session", { cache: "no-store", credentials: "include" }),
-    ]).then(async ([profileResponse, accountsResponse, sessionResponse]) => {
+    ]).then(async ([profileResponse, accountsResponse]) => {
       if (!profileResponse.ok) throw new Error(await responseDetail(profileResponse));
       if (!accountsResponse.ok) throw new Error(await responseDetail(accountsResponse));
-      if (!sessionResponse.ok) throw new Error("Account access could not be verified.");
-      const [nextProfile, nextAccounts, nextSession] = await Promise.all([
+      if (!authoritativeSession) throw new Error("Account access could not be verified.");
+      const [nextProfile, nextAccounts] = await Promise.all([
         profileResponse.json() as Promise<ProfileRecord>,
         accountsResponse.json() as Promise<AccountRecord[]>,
-        sessionResponse.json() as Promise<SessionRecord>,
       ]);
       if (!active) return;
       setProfile(nextProfile);
       setForm(nextProfile);
       setAccounts(nextAccounts);
-      setSession(nextSession);
+      setSession(authoritativeSession);
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : "Profile management could not be loaded.");
     }).finally(() => {
       if (active) setIsLoading(false);
     });
     return () => { active = false; };
-  }, [profileId]);
+  }, [authoritativeSession, profileId]);
 
   function selectSection(section: SectionId) {
     setActiveSection(section);

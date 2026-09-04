@@ -3,6 +3,45 @@ import { expect, test } from "@playwright/test";
 const forbiddenPublicTerms = /bookmaker|exchange|subscriber|fund manager|profile|ledger|allowlist|route guard|account balance/i;
 
 test.describe("pre-auth privacy and session controls", () => {
+  test("settles the authoritative session before mounting the protected shell", async ({ page }) => {
+    let sessionRequests = 0;
+    await page.route("**/api/auth/session", async (route) => {
+      sessionRequests += 1;
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      await route.fulfill({
+        contentType: "application/json",
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          name: "Demo Founder",
+          role: "fund_manager",
+        },
+        status: 200,
+      });
+    });
+    await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
+    await page.route("**/api/fund-manager/**", (route) => route.fulfill({ json: [] }));
+
+    await page.goto("/profiles");
+    await expect(page.locator('[data-pd-id="session.bootstrap"]')).toContainText("Checking session…");
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
+    expect(sessionRequests).toBe(1);
+  });
+
+  test("redirects an expired authoritative session without exposing a usable shell", async ({ page }) => {
+    await page.route("**/api/auth/session", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await route.fulfill({ status: 401, json: { detail: "Session expired" } });
+    });
+
+    await page.goto("/profiles");
+    await expect(page.locator('[data-pd-id="session.bootstrap"]')).toContainText("Checking session…");
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/login\?error=session_expired$/);
+  });
+
   test("uses neutral public error and not-found states", async ({ page }) => {
     await page.goto("/login?error=not_authorized");
     await expect(page.getByText("Access unavailable. Contact the administrator.")).toBeVisible();

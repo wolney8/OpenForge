@@ -17,13 +17,18 @@ import {
 const WARNING_WINDOW_MS = 60_000;
 const ACTIVITY_WRITE_THROTTLE_MS = 5_000;
 
-export function SessionInactivityGuard() {
-  const [session, setSession] = useState<FundManagerSession | null>(null);
+export function SessionInactivityGuard({
+  initialSession = null,
+}: {
+  initialSession?: FundManagerSession | null;
+}) {
+  const [session, setSession] = useState<FundManagerSession | null>(initialSession);
   const [preference, setPreference] = useState<SessionSecurityPreference | null>(null);
   const [warningOpen, setWarningOpen] = useState(false);
   const logoutStartedRef = useRef(false);
   const lastActivityWriteRef = useRef(0);
   const resumeValidationRef = useRef<Promise<boolean> | null>(null);
+  const wasInactiveRef = useRef(false);
 
   const expireClientSession = useCallback(() => {
     window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
@@ -88,56 +93,75 @@ export function SessionInactivityGuard() {
 
   useEffect(() => {
     let active = true;
-    void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
-      .then((response) => {
-        if (!response.ok) {
-          if (
-            response.status === 401 &&
-            !["localhost", "127.0.0.1"].includes(window.location.hostname)
-          ) {
-            window.location.replace("/login?error=session_expired");
-          }
-          throw new Error("Session unavailable");
-        }
-        return response.json() as Promise<FundManagerSession>;
-      })
-      .then(async (value) => {
+    const initialise = async (value: FundManagerSession) => {
         if (!active) return;
         setSession(value);
         const policy = value.session_policy;
-        let resolved = policy?.preference_configured
+        const resolved = policy?.preference_configured
           ? {
               autoLogoutEnabled: policy.auto_logout_enabled,
               timeoutMinutes: policy.timeout_minutes as SessionSecurityPreference["timeoutMinutes"],
             }
           : loadSessionSecurityPreference(value.email);
+        setPreference(resolved);
         if (!policy?.preference_configured) {
           const saved = await persistSessionSecurityPreference(resolved);
           if (!active) return;
-          if (!saved) resolved = DEFAULT_SESSION_SECURITY_PREFERENCE;
+          if (!saved) setPreference(DEFAULT_SESSION_SECURITY_PREFERENCE);
         }
-        setPreference(resolved);
+    };
+    if (initialSession) {
+      void initialise(initialSession);
+      return () => {
+        active = false;
+      };
+    }
+    void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((response) => {
+        if (!response.ok) {
+          if (response.status === 401) window.location.replace("/login?error=session_expired");
+          throw new Error("Session unavailable");
+        }
+        return response.json() as Promise<FundManagerSession>;
       })
+      .then(initialise)
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialSession]);
 
   useEffect(() => {
     if (!session) return;
     const validateOnFocus = () => {
+      if (!wasInactiveRef.current) return;
+      wasInactiveRef.current = false;
       void validateResumedSession();
     };
     const validateOnVisibility = () => {
-      if (document.visibilityState === "visible") void validateResumedSession();
+      if (document.visibilityState === "hidden") {
+        wasInactiveRef.current = true;
+        return;
+      }
+      validateOnFocus();
+    };
+    const markInactive = () => {
+      wasInactiveRef.current = true;
+    };
+    const validateRestoredPage = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        wasInactiveRef.current = false;
+        void validateResumedSession();
+      }
     };
     window.addEventListener("focus", validateOnFocus);
-    window.addEventListener("pageshow", validateOnFocus);
+    window.addEventListener("blur", markInactive);
+    window.addEventListener("pageshow", validateRestoredPage);
     document.addEventListener("visibilitychange", validateOnVisibility);
     return () => {
       window.removeEventListener("focus", validateOnFocus);
-      window.removeEventListener("pageshow", validateOnFocus);
+      window.removeEventListener("blur", markInactive);
+      window.removeEventListener("pageshow", validateRestoredPage);
       document.removeEventListener("visibilitychange", validateOnVisibility);
     };
   }, [session, validateResumedSession]);

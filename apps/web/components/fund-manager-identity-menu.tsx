@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { FundManagerSession } from "@/components/fund-manager-account-page";
+import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
 import { APP_CONFIRMATION_OPEN_EVENT } from "@/lib/use-unsaved-changes-guard";
 
 export function FundManagerIdentityMenu() {
@@ -11,33 +11,11 @@ export function FundManagerIdentityMenu() {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const [session, setSession] = useState<FundManagerSession | null>(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const session = useAuthoritativeSession();
   const [openPathname, setOpenPathname] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const isOpen = openPathname === pathname;
-
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
-      .then((response) => {
-        if (!response.ok) throw new Error("Session unavailable");
-        return response.json() as Promise<FundManagerSession>;
-      })
-      .then((value) => {
-        if (active) setSession(value);
-      })
-      .catch(() => {
-        if (active) setSession(null);
-      })
-      .finally(() => {
-        if (active) setIsSessionLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     const closeForAppConfirmation = () => setOpenPathname(null);
@@ -66,18 +44,6 @@ export function FundManagerIdentityMenu() {
     };
   }, [isOpen]);
 
-  if (!session && isSessionLoading) {
-    return (
-      <span
-        aria-label="Loading account controls"
-        className="fund-manager-identity-trigger is-loading"
-        data-pd-id="fund-manager-identity.loading"
-        role="status"
-      >
-        <span aria-hidden="true" className="button-spinner" />
-      </span>
-    );
-  }
   if (!session) return null;
   const initial = session.name.trim().charAt(0).toLocaleUpperCase() || "F";
 

@@ -3,6 +3,33 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-04: Protected shell mounted before authoritative session hydration
+
+- Area: authenticated application entry and session inactivity handling.
+- Root cause: route middleware accepted a cryptographically valid cookie while the database-backed
+  session could already be inactive. The client mounted the protected shell and launched data
+  requests concurrently with `/api/auth/session`, so an expired session briefly looked usable and
+  several protected reads failed together.
+- Prevention: authenticated routes first render the blocking `Checking session…` gate. Only a 200
+  Fund Manager session mounts navigation, Profile reads, polling, or inactivity listeners; a 401
+  redirects directly to login. The validated bootstrap session seeds the inactivity guard, and
+  polling/background requests never count as meaningful activity.
+- Test added: `tests/e2e/pre-auth-security.spec.ts` delays valid and expired session responses and
+  proves the protected shell remains unmounted until authority settles.
+
+## 2026-09-04: Serverless background approval outlived the request window
+
+- Area: Profile workbook dry-run approval.
+- Root cause: FastAPI `BackgroundTasks` still runs before the serverless response is fully complete.
+  Approval replayed the entire write plan inside a forced-rollback transaction, exceeded Vercel's
+  300-second function limit, and left the persisted claim at `APPROVING` while the UI polled it
+  indefinitely.
+- Prevention: approval performs a bounded synchronous checksum, schema, Account, and ledger-domain
+  validation without attempting Profile writes. Attempt-scoped import remains checkpointed and
+  fully reconciled. An approval heartbeat older than the server window is authoritatively exposed
+  as `INTERRUPTED`, polling stops, and the duplicate-safe approval endpoint permits one retry.
+- Tests added: focused API lifecycle/domain-boundary tests and Import Review Playwright coverage.
+
 ## 2026-09-04: Import approval borrowed the rerun spinner and left stale workspace state
 
 - Area: Profile workbook review, dry-run approval and return-later navigation.
@@ -826,3 +853,15 @@ cause, prevention rule and regression test.
 - Test added: `tests/e2e/profile-lifecycle-routing.spec.ts` verifies single-panel tab behaviour,
   keyboard navigation and action separation; `tests/e2e/settings-modal-consistency.spec.ts`
   verifies sibling Settings tabs retain the same horizontal shell geometry.
+## 2026-09-04: Import tables compressed actions, chips, and stacked cell text
+
+- Area: Profile Import/Export history and Import Review workspace.
+- Root cause: import-specific rows used the generic padded `icon-button` directly, reduced table
+  cell padding locally, and approximated stacked text spacing with per-child margins. Fixed-width
+  columns could then compress status chips below their canonical geometry.
+- Prevention: table icon actions use `table-action-row` plus `table-action-button`; primary and
+  supporting cell copy uses `table-cell-stack`; `table-chip` is non-shrinking; wide import tables
+  retain canonical padding inside their existing local scroll container. Modal and panel spacing
+  continue to come from shared shells rather than route-specific margins.
+- Test added: `tests/e2e/founder-import-review.spec.ts` checks action geometry, stacked-cell gaps,
+  chip minimum height, table containment, modal spacing, and reduced-viewport overflow.

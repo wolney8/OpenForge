@@ -212,26 +212,26 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         </div>
         {loading ? <LedgerLoadingIndicator label="Loading workbook reviews" /> : runs.length ? (
           <div className="table-scroll">
-            <table className="data-table">
+            <table className="data-table profile-import-history-table" data-pd-id="profile-import.history-table">
               <thead><tr><th scope="col">Workbook</th><th scope="col">Effective</th><th scope="col">Status</th><th scope="col">Rows</th><th scope="col">Imported</th><th scope="col">Reconciliation / rollback</th><th scope="col">Checksum</th><th scope="col">Actions</th></tr></thead>
               <tbody>{runs.map((run) => <tr key={run.import_run_id}>
-                <td><strong>{run.source_filename}</strong><span className="table-status">{run.mapping_version}</span></td>
+                <td><div className="table-cell-stack"><strong>{run.source_filename}</strong><span className="table-status">{run.mapping_version}</span></div></td>
                 <td>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.effective_at))}</td>
                 <td><span className="table-chip table-chip-neutral">{runStatus(run.status)}</span></td>
-                <td><strong>{Object.values(run.row_counts ?? {}).reduce((total, value) => total + value, 0)}</strong><span className="table-status">{Object.entries(run.row_counts ?? {}).filter(([, value]) => value).map(([name, value]) => `${name.replaceAll("_", " ")} ${value}`).join(" · ") || "Awaiting analysis"}</span></td>
+                <td><div className="table-cell-stack"><strong>{Object.values(run.row_counts ?? {}).reduce((total, value) => total + value, 0)}</strong><span className="table-status">{Object.entries(run.row_counts ?? {}).filter(([, value]) => value).map(([name, value]) => `${name.replaceAll("_", " ")} ${value}`).join(" · ") || "Awaiting analysis"}</span></div></td>
                 <td>{run.completed_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.completed_at)) : "—"}</td>
                 <td>
-                  <span className={`table-chip ${run.status === "COMPLETE" ? "table-chip-success" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "table-chip-danger" : "table-chip-neutral"}`}>{run.status === "COMPLETE" ? "Passed" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "Failed" : "Pending"}</span>
+                  <div className="table-cell-stack"><span className={`table-chip ${run.status === "COMPLETE" ? "table-chip-success" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "table-chip-danger" : "table-chip-neutral"}`}>{run.status === "COMPLETE" ? "Passed" : run.status === "POST_IMPORT_RECONCILIATION_FAILED" ? "Failed" : "Pending"}</span>
                   <span className="table-status">{run.rollback_status ? `Rollback ${run.rollback_status.toLocaleLowerCase()}` : "No import writes"}</span>
                   {run.attempts?.length ? <details className="stack-tight" data-pd-id={`profile-workbook-migration.attempts-${run.import_run_id}`}>
                     <summary>{run.attempts.length} {run.attempts.length === 1 ? "attempt" : "attempts"} · latest Attempt {run.attempts[0].attempt_number}</summary>
                     {run.attempts.map((attempt, index) => <span className="table-status" key={attempt.execution_id}>
                       <strong>{index === 0 ? "Latest · " : ""}Attempt {attempt.attempt_number}</strong> — {runStatus(attempt.status)} · checkpoint {attempt.checkpoint_status || "unavailable"} · financial {attempt.reconciliation_status || "pending"} · operational {attempt.operational_health_status || "pending"} · rollback {attempt.rollback_status || "unavailable"}{attempt.legacy_ambiguous ? " · legacy boundaries unavailable" : ""}
                     </span>)}
-                  </details> : null}
+                  </details> : null}</div>
                 </td>
                 <td><span className="spreadsheet-row-id" title={run.workbook_checksum}>{run.workbook_checksum.slice(0, 12)}…</span></td>
-                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{runActionLabel(run)}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "ANALYSED", "APPROVING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)} onClick={() => { setDeleteError(""); setDeleteRun(run); }} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                <td><div className="table-action-row"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{runActionLabel(run)}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive table-action-button" disabled={["ANALYSING", "ANALYSED", "APPROVING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)} onClick={() => { setDeleteError(""); setDeleteRun(run); }} title={run.completed_at ? "Imported runs remain in audit history" : `Delete review ${run.source_filename}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
               </tr>)}</tbody>
             </table>
           </div>

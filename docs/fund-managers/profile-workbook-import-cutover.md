@@ -6,6 +6,23 @@ This workflow writes an approved Profile workbook plan only after review decisio
 reconciliation are persisted. Uploaded workbook bytes remain transient and are not stored in Git,
 Neon or deployment artifacts.
 
+## Approval boundary
+
+`Approve dry run` is a bounded, duplicate-safe server action. It verifies the workbook checksum,
+resolved review state, immutable write plan, Production schema requirements, Account lifecycle and
+restriction contracts, and every mapped ledger payload without attempting Profile writes. Its
+persisted validation record explicitly says `schema_and_domain_contracts`, `writes_attempted:
+false`, and `writes_committed: false`.
+
+The attempt-scoped import is still the authoritative persistence test: it creates a fresh
+checkpoint immediately before writes, applies staged writes, then runs financial and operational
+reconciliation. A prior legacy validation that constructed the full transaction and forced a
+rollback remains readable. New approvals do not replay hundreds of Production writes inside a
+single serverless request.
+
+An approval claim older than the server execution window is exposed as `INTERRUPTED`, not as an
+indefinite active spinner. It is safe to retry because approval never mutates Profile data.
+
 ## Controlled Import
 
 The server, not the browser, reloads the approved import run, decisions and canonical write plan.

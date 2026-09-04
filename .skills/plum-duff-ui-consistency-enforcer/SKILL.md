@@ -79,6 +79,17 @@ use the canonical primitive and computed styling.
 - Destructive actions use the shared danger treatment in every state; local selector specificity
   must not override their red border, surface or icon colour.
 - Equivalent actions occupy stable slots so rows align when an optional action is absent.
+- Table action controls use `table-action-row` and `table-action-button`; do not let the generic
+  `icon-button` padding enlarge an icon-only row action. Adjacent row actions keep the shared
+  action-group gap and contextual tooltip/accessibility text.
+- Stacked table-cell primary and supporting text uses the shared `table-cell-stack` gap and line
+  height. Do not simulate that hierarchy with arbitrary child margins or remove the table's
+  required cell padding to make content fit.
+- Status chips retain the shared minimum height and internal padding and may not shrink inside a
+  flex/grid/table column. Widen or locally scroll the table rather than compressing chip geometry.
+- Modal body/footer spacing comes from the canonical modal shell and spacing tokens. Page and
+  panel edges use the shared content shells; one-off margins are prohibited where those layout
+  primitives already express the relationship.
 - Loading states show only controls that intentionally remain available. Do not leave duplicate or
   misleading close/actions visible.
 - Every asynchronous data surface must distinguish `loading`, `empty`, `error` and `populated`
@@ -207,6 +218,9 @@ For tables and rows, assert:
 - action slots have matching centres and dimensions;
 - optional actions do not shift destructive actions;
 - narrow viewports use the intended local scroll or reflow.
+- stacked primary/supporting text retains a measurable gap, chips remain at least the canonical
+  minimum height, and table cell padding does not collapse below the selected dense/standard
+  primitive.
 
 For controls and icons, assert:
 

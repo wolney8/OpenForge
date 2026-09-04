@@ -4,6 +4,7 @@ export type ImportWorkflowState =
   | "REVIEW_COMPLETE"
   | "DRY_RUN_READY"
   | "APPROVING"
+  | "APPROVAL_INTERRUPTED"
   | "READY_APPROVED"
   | "IMPORTING"
   | "RECONCILING"
@@ -34,6 +35,7 @@ const currentStepByState: Record<ImportWorkflowState, number> = {
   REVIEW_COMPLETE: 3,
   DRY_RUN_READY: 4,
   APPROVING: 4,
+  APPROVAL_INTERRUPTED: 4,
   READY_APPROVED: 5,
   IMPORTING: 5,
   RECONCILING: 6,
@@ -75,7 +77,9 @@ export function importWorkflowSteps(
   return steps.map(([key, label], index) => {
     let stepState: ImportWorkflowStepState = index < current ? "completed" : index === current ? "current" : "upcoming";
     if (state === "REVIEW_REQUIRED" && index === current) stepState = "blocked";
-    if (state === "FAILED" && index === current) stepState = "failed";
+    if ((state === "FAILED" || state === "APPROVAL_INTERRUPTED") && index === current) {
+      stepState = "failed";
+    }
     if (state === "COMPLETE") stepState = "completed";
     return { key, label, state: stepState };
   });
@@ -88,6 +92,7 @@ export function importWorkflowLabel(state: ImportWorkflowState): string {
     REVIEW_COMPLETE: "Review complete",
     DRY_RUN_READY: "Dry run ready",
     APPROVING: "Approving dry run",
+    APPROVAL_INTERRUPTED: "Approval interrupted",
     READY_APPROVED: "Ready to import",
     IMPORTING: "Importing",
     RECONCILING: "Reconciling",

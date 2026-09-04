@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { StatusToast } from "@/components/status-toast";
 import { PersistedToggle } from "@/components/persisted-toggle";
+import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
   loadSessionSecurityPreference,
@@ -36,7 +37,8 @@ export type FundManagerSession = {
 
 export function FundManagerAccountPage() {
   const router = useRouter();
-  const [session, setSession] = useState<FundManagerSession | null>(null);
+  const authoritativeSession = useAuthoritativeSession();
+  const [session, setSession] = useState<FundManagerSession | null>(authoritativeSession);
   const [failed, setFailed] = useState(false);
   const [preference, setPreference] = useState<SessionSecurityPreference>(
     DEFAULT_SESSION_SECURITY_PREFERENCE
@@ -46,13 +48,10 @@ export function FundManagerAccountPage() {
   const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
+    if (!authoritativeSession) return;
     let active = true;
-    void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
-      .then((response) => {
-        if (!response.ok) throw new Error("Session unavailable");
-        return response.json() as Promise<FundManagerSession>;
-      })
-      .then(async (value) => {
+    void (async () => {
+        const value = authoritativeSession;
         if (active) {
           setSession(value);
           const legacyPreference = loadSessionSecurityPreference(value.email);
@@ -74,14 +73,14 @@ export function FundManagerAccountPage() {
           setPreference(resolved);
           saveSessionSecurityPreference(value.email, resolved);
         }
-      })
+      })()
       .catch(() => {
         if (active) setFailed(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [authoritativeSession]);
 
   async function updatePreference(next: SessionSecurityPreference): Promise<boolean> {
     if (!session || isSavingPreference) return false;

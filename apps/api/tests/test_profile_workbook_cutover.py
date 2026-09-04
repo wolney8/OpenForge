@@ -31,6 +31,7 @@ from openforge_api.profile_workbook_cutover import (
     failed_import_safety,
     rollback_import,
     save_base_write_plan,
+    validate_import_approval_preflight,
     validate_import_preflight,
 )
 
@@ -878,6 +879,61 @@ def test_persistence_preflight_constructs_and_rolls_back_exact_write_set(tmp_pat
             ).fetchone()[0]
             == "Synthetic Cutover"
         )
+
+
+def test_approval_preflight_validates_schema_and_domain_without_attempting_writes(
+    tmp_path: Path,
+) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+
+    result = validate_import_approval_preflight(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        run=run,
+        workspace=workspace,
+        plan=plan,
+    )
+
+    assert result["status"] == "PASSED"
+    assert result["validation_mode"] == "schema_and_domain_contracts"
+    assert result["domain_rows_validated"] == 7
+    assert result["transaction_constructed"] is False
+    assert result["writes_attempted"] is False
+    assert result["writes_committed"] is False
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM profile_import_write_audit WHERE import_run_id = ?", (RUN_ID,)
+        ).fetchone()[0] == 0
+
+
+def test_approval_preflight_rejects_restriction_in_lifecycle_before_any_write(
+    tmp_path: Path,
+) -> None:
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    plan["accounts"][0]["mapped_profile_state"]["lifecycle_status"] = "Bonus Restricted"
+    run, workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+
+    with pytest.raises(ImportCutoverError, match="Invalid account lifecycle status"):
+        validate_import_approval_preflight(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
+
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+        ).fetchone()[0] == 0
 
 
 def test_transactional_import_reconciles_and_rolls_back(tmp_path: Path) -> None:

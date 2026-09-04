@@ -99,6 +99,14 @@ type ReviewItem = {
 
 type Workspace = {
   run_status?: string;
+  approval?: {
+    status: "NOT_STARTED" | "APPROVING" | "READY_APPROVED" | "FAILED" | "INTERRUPTED" | "INDETERMINATE";
+    persisted_status: string;
+    stage: string;
+    updated_at: string;
+    retry_available: boolean;
+    reason: string;
+  };
   approved_at?: string;
   completed_at?: string;
   rollback_status?: string;
@@ -717,7 +725,7 @@ export function FounderImportReviewWorkspace({
 
   useEffect(() => {
     const persistedStatus = workspace?.run_status;
-    const persistedMutation = persistedStatus === "APPROVING"
+    const persistedMutation = workspace?.approval?.status === "APPROVING"
       ? "APPROVING"
       : ["ANALYSING", "ANALYSED"].includes(persistedStatus ?? "")
         ? "ANALYSIS"
@@ -729,19 +737,25 @@ export function FounderImportReviewWorkspace({
     if (persistedMutation === "ANALYSIS") beginShellLoading();
     let cancelled = false;
     let timeoutId: number | undefined;
-    const pollDelay = persistedMutation === "APPROVING" ? 750 : 1500;
+    const pollDelay = 1500;
     const schedulePoll = () => {
       if (!cancelled) timeoutId = window.setTimeout(() => void poll(), pollDelay);
     };
     const poll = async () => {
       try {
-        const response = await fetch(`${reviewApi}`, { credentials: "include", cache: "no-store" });
+        const controller = new AbortController();
+        const requestTimeout = window.setTimeout(() => controller.abort(), 20_000);
+        const response = await fetch(`${reviewApi}`, {
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
+        }).finally(() => window.clearTimeout(requestTimeout));
         if (!response.ok) throw new Error(await responseMessage(response));
         const next = await response.json() as Workspace;
         if (cancelled) return;
         setWorkspace(next);
         const stillRunning = persistedMutation === "APPROVING"
-          ? next.run_status === "APPROVING"
+          ? next.approval?.status === "APPROVING"
           : ["ANALYSING", "ANALYSED"].includes(next.run_status ?? "");
         if (stillRunning) {
           schedulePoll();
@@ -753,8 +767,8 @@ export function FounderImportReviewWorkspace({
             activeMutationRef.current = null;
             setActiveMutation(null);
           }
-          if (next.run_status === "FAILED") {
-            setApprovalError(next.source_summary?.job?.error || "Unable to approve the workbook review.");
+          if (next.run_status === "FAILED" || next.approval?.status === "INTERRUPTED") {
+            setApprovalError(next.approval?.reason || next.source_summary?.job?.error || "Unable to approve the workbook review.");
           } else {
             setApprovalAcknowledged(false);
             setMessage("Workbook dry run approved. No Profile data was imported.");
@@ -779,7 +793,7 @@ export function FounderImportReviewWorkspace({
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       endShellLoading();
     };
-  }, [reviewApi, workspace?.run_status]);
+  }, [reviewApi, workspace?.approval?.status, workspace?.run_status]);
 
   useEffect(() => {
     const dialog = editing ? editorRef.current : filterOpen ? filterRef.current : null;
@@ -1031,21 +1045,39 @@ export function FounderImportReviewWorkspace({
   async function approveReview() {
     if (!workspace?.reconciliation.import_ready || !approvalAcknowledged) return;
     if (!startMutation("approve")) return;
+    const approvalSourceWorkspace = workspace;
+    let approvalRequestRejected = false;
     setApprovalError("");
+    setWorkspace((current) => current ? {
+      ...current,
+      run_status: "APPROVING",
+      approval: {
+        status: "APPROVING",
+        persisted_status: "APPROVING",
+        stage: "Submitting approval validation",
+        updated_at: new Date().toISOString(),
+        retry_available: false,
+        reason: "",
+      },
+    } : current);
     try {
       const response = await fetch(`${reviewApi}/approve`, {
         method: "POST",
         credentials: "include",
+        keepalive: true,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workbook_checksum: workspace.metadata.workbook_checksum,
           acknowledged: true,
         }),
       });
-      if (!response.ok) throw new Error(await responseMessage(response));
+      if (!response.ok) {
+        approvalRequestRejected = true;
+        throw new Error(await responseMessage(response));
+      }
       const result = await response.json() as Workspace;
       setWorkspace(result);
-      if (result.run_status !== "APPROVING") {
+      if (result.approval?.status !== "APPROVING") {
         finishMutation("approve");
         if (result.run_status === "FAILED") {
           setApprovalError(result.source_summary?.job?.error || "Unable to approve the workbook review.");
@@ -1055,6 +1087,7 @@ export function FounderImportReviewWorkspace({
         }
       }
     } catch (caught) {
+      if (approvalRequestRejected) setWorkspace(approvalSourceWorkspace);
       setApprovalError(caught instanceof Error ? caught.message : "Unable to approve the workbook review.");
       finishMutation("approve");
     }
@@ -1186,11 +1219,13 @@ export function FounderImportReviewWorkspace({
   const importResult = workspace.import_result;
   const execution = workspace.execution;
   const postImportReport = importResult?.post_import_reconciliation;
-  const workflowState = normalizeImportWorkflowState(workspace.run_status, {
-    approvedAt: workspace.approved_at,
-    executionStage: execution?.stage,
-    failureStage: job?.stage,
-  });
+  const workflowState = workspace.approval?.status === "INTERRUPTED"
+    ? "APPROVAL_INTERRUPTED"
+    : normalizeImportWorkflowState(workspace.run_status, {
+        approvedAt: workspace.approved_at,
+        executionStage: execution?.stage,
+        failureStage: job?.stage,
+      });
   const workflowSteps = importWorkflowSteps(workflowState, {
     approvedAt: workspace.approved_at,
     executionStage: execution?.stage,
@@ -1201,8 +1236,10 @@ export function FounderImportReviewWorkspace({
   const rerunBusy = activeMutation === "rerun";
   const approvalBusy = activeMutation === "approve" || workflowState === "APPROVING";
   const approvalFailed = workflowState === "FAILED" && job?.stage === "Approval failed";
+  const approvalInterrupted = workflowState === "APPROVAL_INTERRUPTED";
   const approvalReady = ["REVIEW_COMPLETE", "DRY_RUN_READY"].includes(workflowState)
-    || approvalFailed;
+    || approvalFailed
+    || approvalInterrupted;
   const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
     && workspace.persistence_preflight.workbook_checksum === workspace.metadata.workbook_checksum
     && workspace.persistence_preflight.mapping_version === workspace.metadata.mapping_version;
@@ -1268,14 +1305,18 @@ export function FounderImportReviewWorkspace({
       <section aria-busy={approvalBusy || undefined} aria-labelledby="import-workflow-current-title" className="content-subpanel stack-tight import-workflow-current" data-pd-id="profile-import.current-workflow-state">
         <header className="workflow-panel-header">
           <div><span className="eyebrow">Current state</span><h2 id="import-workflow-current-title">{importWorkflowLabel(workflowState)}</h2></div>
-          <span className={`table-chip ${workflowState === "COMPLETE" || workflowState === "READY_APPROVED" ? "table-chip-success" : workflowState === "FAILED" || workflowState === "REVIEW_REQUIRED" ? "table-chip-danger" : "table-chip-info"}`}>{workflowState}</span>
+          <span className={`table-chip ${workflowState === "COMPLETE" || workflowState === "READY_APPROVED" ? "table-chip-success" : workflowState === "FAILED" || workflowState === "APPROVAL_INTERRUPTED" || workflowState === "REVIEW_REQUIRED" ? "table-chip-danger" : "table-chip-info"}`}>{workflowState}</span>
         </header>
         {workflowState === "REVIEW_REQUIRED" ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" onClick={() => { const first = workspace.items.find((item) => item.review_status === "UNREVIEWED" || item.review_status === "BLOCKED"); if (first) openEditor(first); else reviewTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">rule</span><span>Resolve reviews</span></button></div> : null}
         {(approvalReady || workflowState === "APPROVING") ? <>
           <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} disabled={approvalBusy} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for import approval." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
-          {approvalError || approvalFailed ? <p className="error-text" data-pd-id="profile-import.approval-error" role="alert">{approvalError || job?.error || "Unable to approve the workbook review."}</p> : null}
-          <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" data-pd-id="profile-import.approve" disabled={!approvalAcknowledged || conflictingMutation} onClick={() => void approveReview()} type="button">{approvalBusy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">verified</span>}<span>{approvalBusy ? "Approving..." : "Approve dry run"}</span></button></div>
+          {approvalError || approvalFailed || approvalInterrupted ? <p className="error-text" data-pd-id="profile-import.approval-error" role="alert">{approvalError || workspace.approval?.reason || job?.error || "Unable to approve the workbook review."}</p> : null}
+          <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" data-pd-id="profile-import.approve" disabled={!approvalAcknowledged || conflictingMutation} onClick={() => void approveReview()} type="button">{approvalBusy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">verified</span>}<span>{approvalBusy ? "Approving..." : approvalInterrupted ? "Retry approval" : "Approve dry run"}</span></button></div>
         </> : null}
+        {workflowState === "APPROVING" ? <div aria-live="polite" className="stack-tight" data-pd-id="profile-import.approval-progress">
+          <LedgerLoadingIndicator label={workspace.approval?.stage || job?.stage || "Validating approval"} />
+          <span className="field-support-text">The server is validating the checksum, Account contracts, ledger contracts, and persistence schema. No Profile data is being imported.</span>
+        </div> : null}
         {workflowState === "READY_APPROVED" ? <><p>The approved server write plan is persisted. No Profile data has been imported.</p><div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" data-pd-id="profile-import.start" disabled={!canImport || conflictingMutation} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>{importPresentation.importActionLabel}</span></button></div></> : null}
         {workflowState === "COMPLETE" ? <div className="tracker-nav tracker-nav-right"><a className="modal-primary-button icon-text-action" href="#profile-import-reconciliation"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>View reconciliation</span></a></div> : null}
         {["IMPORTING", "RECONCILING"].includes(workflowState) ? <p>The server-side action continues if you leave. Returning to this page restores its persisted progress.</p> : null}
@@ -1368,14 +1409,14 @@ export function FounderImportReviewWorkspace({
             const isSelected = selected.has(item.item_id);
             return <tr aria-selected={isSelected} className={isSelected ? "is-selected-row" : undefined} key={item.item_id} onClick={(event) => { if (!rowInteractionTarget(event.target)) toggleSelected(item.item_id); }} onKeyDown={(event) => { if (event.key === " " && !rowInteractionTarget(event.target)) { event.preventDefault(); toggleSelected(item.item_id); } }} tabIndex={0}>
               <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for review action`} checked={isSelected} onChange={() => toggleSelected(item.item_id)} type="checkbox" /></td>
-              <td><strong>{item.source_sheet} · {item.source_row}</strong><span className="table-status">{item.source_record_id || "No source ID"}</span><span className="spreadsheet-row-id" title={item.import_id}>{item.import_id.slice(0, 18)}…</span></td>
-              <td>{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={item.context.event || item.context.offer_name}>{item.context.event || item.context.offer_name || "No event label"}</span></td>
-              <td><strong>{item.context.offer_type || "—"}</strong><span className="table-status">{[item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></td>
-              <td>{item.context.pnl ? <FinancialValue animate={false} value={item.context.pnl} /> : "—"}<span className="table-status">{item.calculation_provenance.replaceAll("_", " ")}</span></td>
+              <td><div className="table-cell-stack table-cell-stack-centered"><strong>{item.source_sheet} · {item.source_row}</strong><span className="table-status">{item.source_record_id || "No source ID"}</span><span className="spreadsheet-row-id" title={item.import_id}>{item.import_id.slice(0, 18)}…</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered">{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={item.context.event || item.context.offer_name}>{item.context.event || item.context.offer_name || "No event label"}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered"><strong>{item.context.offer_type || "—"}</strong><span className="table-status">{[item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered">{item.context.pnl ? <FinancialValue animate={false} value={item.context.pnl} /> : "—"}<span className="table-status">{item.calculation_provenance.replaceAll("_", " ")}</span></div></td>
               <td><span className="import-review-truncate" title={item.proposed_target}>{item.proposed_target}</span></td>
-              <td><span className="table-chip table-chip-warning">{labels[item.issue_type] ?? item.issue_type.replaceAll("_", " ")}</span><span className="table-status import-review-truncate" title={issueExplanation(item)}>{issueExplanation(item)}</span></td>
-              <td><span className={`table-chip ${statusClass(item.review_status)}`}>{statusLabels[item.review_status]}</span>{item.decision?.note ? <span className="table-status">{item.decision.note}</span> : null}</td>
-              <td><button aria-label={`Review ${item.source_sheet} row ${item.source_row}`} className="icon-button" onClick={() => openEditor(item)} title="Review mapping" type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span></button></td>
+              <td><div className="table-cell-stack table-cell-stack-centered"><span className="table-chip table-chip-warning">{labels[item.issue_type] ?? item.issue_type.replaceAll("_", " ")}</span><span className="table-status import-review-truncate" title={issueExplanation(item)}>{issueExplanation(item)}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered"><span className={`table-chip ${statusClass(item.review_status)}`}>{statusLabels[item.review_status]}</span>{item.decision?.note ? <span className="table-status">{item.decision.note}</span> : null}</div></td>
+              <td><button aria-label={`Review ${item.source_sheet} row ${item.source_row}`} className="icon-button table-action-button" onClick={() => openEditor(item)} title={`Review ${item.source_sheet} row ${item.source_row}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span></button></td>
             </tr>;
           }) : <tr><td className="empty-cell" colSpan={9}>No import exceptions match the current view.</td></tr>}</tbody>
         </table>

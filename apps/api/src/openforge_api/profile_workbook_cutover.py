@@ -13,6 +13,7 @@ from uuid import uuid4
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.accounts import (
     LIFECYCLE_STATUSES,
+    AccountPayload,
     list_profile_accounts,
     resolve_account_lifecycle_and_restrictions,
 )
@@ -20,7 +21,9 @@ from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
 )
+from openforge_api.cash_adjustments import CashAdjustmentPayload
 from openforge_api.cash_adjustments import build_response as build_cash_response
+from openforge_api.casino_offers import CasinoOfferPayload
 from openforge_api.casino_offers import build_response as build_casino_response
 from openforge_api.db import (
     CashAdjustmentRecord,
@@ -32,10 +35,12 @@ from openforge_api.db import (
     connect,
     initialize_database,
 )
+from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
+from openforge_api.free_bets import FreeBetPayload
 from openforge_api.postgres_schema import sqlite_type_to_postgres
+from openforge_api.sportsbook import SportsbookBetPayload, list_profile_sportsbook_bets
 from openforge_api.sportsbook import build_response as build_sportsbook_response
-from openforge_api.sportsbook import list_profile_sportsbook_bets
 from openforge_api.tracker_summary_sources import get_profile_tracker_summary_sources
 
 PROFILE_TABLES = (
@@ -2350,6 +2355,119 @@ def validate_import_preflight(
             raise _PreflightRollback()
     except _PreflightRollback:
         return result
+
+
+def validate_import_approval_preflight(
+    *,
+    profile_id: str,
+    import_run_id: str,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate the immutable plan and domain contracts without replaying every write.
+
+    The real import remains attempt-scoped, checkpointed, and reconciled. Approval must not
+    replay hundreds of Production writes inside a request merely to roll them all back; that
+    exceeded the serverless request lifetime and left an indeterminate approval claim.
+    """
+
+    summary = final_import_summary(run=run, workspace=workspace, plan=plan)
+    if not summary["ready"]:
+        raise ImportCutoverError("The import write plan is not ready for approval")
+    decisions = _decision_map(workspace)
+    catalogue = _catalogue_records()
+    account_rows_validated = 0
+    for source in plan["accounts"]:
+        item = _decision_for(decisions, str(source["import_key"]), category="missing_provider")
+        if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
+            continue
+        catalogue_id = str(source.get("catalogue_id") or _resolved_provider(item))
+        provider = catalogue.get(catalogue_id)
+        if provider is None:
+            raise ImportCutoverError(
+                f"Account row {source['source_row']} has no global provider"
+            )
+        state = _account_write_state(
+            dict(source["mapped_profile_state"]),
+            catalogue_id=catalogue_id,
+            provider=provider,
+        )
+        restrictions = json.loads(str(state.pop("restrictions_json")))
+        AccountPayload.model_validate({**state, "restrictions": restrictions})
+        account_rows_validated += 1
+
+    ledger_counts: Counter[str] = Counter()
+    for target, ledger, row, item, _ep_item in _ledger_write_entries(plan, decisions):
+        if target == "extra_places":
+            source = row.get("source_fields") or {}
+            source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
+            status = (
+                "Placed"
+                if str(row.get("status", "")).casefold() in {"placed", "pending", "active"}
+                else "Settled"
+            )
+            EachWayExtraPlacePayload.model_validate(
+                {
+                    "placed_at": _historical_extra_place_date(source, row),
+                    "runner": str(source.get("Selection") or source.get("Runner") or ""),
+                    "race": str(source.get("Event") or source.get("Fixture") or ""),
+                    "bookmaker": str(source.get("Bookmaker") or ""),
+                    "bookmaker_account": str(source.get("Bookmaker") or ""),
+                    "mode": "Extra Place",
+                    "each_way_stake": str(source.get("BackStake") or source.get("Stake") or ""),
+                    "back_odds": str(source.get("BackOdds") or ""),
+                    "win_exchange": str(source.get("Exchange") or ""),
+                    "win_lay_odds": str(source.get("LayOdds1") or ""),
+                    "actual_win_lay_stake": str(source.get("LayActual") or ""),
+                    "status": status,
+                    "result": "Pending" if status == "Placed" else "Unplaced",
+                    "imported_historical_pnl": source_pnl,
+                    "calculation_provenance": "imported_historical",
+                }
+            )
+        else:
+            payload = {
+                key: value
+                for key, value in dict(row.get("mapped_payload") or {}).items()
+                if key in LEDGER_COLUMNS[ledger]
+            }
+            payload = _apply_decision(payload, row, item)
+            payload = _apply_formal_report_date(payload, row, ledger)
+            if ledger == "sportsbook":
+                SportsbookBetPayload.model_validate(payload)
+            elif ledger == "free_bets":
+                FreeBetPayload.model_validate(payload)
+            elif ledger == "casino":
+                CasinoOfferPayload.model_validate(payload)
+            else:
+                CashAdjustmentPayload.model_validate(payload)
+        ledger_counts[target] += 1
+
+    with connect() as connection:
+        schema_compatibility = _validate_schema_compatibility(connection, plan)
+        existing_writes = connection.execute(
+            "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+            "WHERE import_run_id = ? AND rolled_back_at = ''",
+            (import_run_id,),
+        ).fetchone()
+        if existing_writes and int(existing_writes["count"]):
+            raise ImportCutoverError("This approved workbook has already written Profile data")
+
+    return {
+        "status": "PASSED",
+        "validation_mode": "schema_and_domain_contracts",
+        "profile_settings": sum(
+            item.get("classification") == "IMPORT" for item in plan["profile_settings"]
+        ),
+        "accounts": {"validated": account_rows_validated},
+        "ledgers": dict(ledger_counts),
+        "domain_rows_validated": account_rows_validated + sum(ledger_counts.values()),
+        "schema_compatibility": schema_compatibility,
+        "transaction_constructed": False,
+        "writes_attempted": False,
+        "writes_committed": False,
+    }
 
 
 def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:

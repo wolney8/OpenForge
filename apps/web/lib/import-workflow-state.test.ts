@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  importWorkflowLabel,
   importWorkflowSteps,
   isConflictingImportMutation,
   normalizeImportWorkflowState,
@@ -28,6 +29,12 @@ describe("import workflow state", () => {
   it("marks required review as blocked and places approval failures at approval", () => {
     expect(importWorkflowSteps("REVIEW_REQUIRED")[2].state).toBe("blocked");
     expect(importWorkflowSteps("FAILED", { failureStage: "Approval failed" })[4].state).toBe("failed");
+  });
+
+  it("marks an interrupted approval as failed at approval without blocking retry", () => {
+    expect(importWorkflowSteps("APPROVAL_INTERRUPTED")[4].state).toBe("failed");
+    expect(importWorkflowLabel("APPROVAL_INTERRUPTED")).toBe("Approval interrupted");
+    expect(isConflictingImportMutation("APPROVAL_INTERRUPTED", "APPROVING")).toBe(false);
   });
 
   it("treats both persisted analysis phases and server mutations as conflicting", () => {

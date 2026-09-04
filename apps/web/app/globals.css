@@ -1049,6 +1049,13 @@ textarea {
   cursor: wait;
 }
 
+.fund-manager-identity-trigger > .material-symbols-outlined {
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  overflow: hidden;
+  line-height: 1;
+}
+
 .fund-manager-avatar {
   display: inline-flex;
   align-items: center;
@@ -3004,6 +3011,17 @@ html[data-theme="dark"] .notification-count-badge {
   min-width: 0;
 }
 
+.session-bootstrap-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.session-bootstrap-shell > .content-panel {
+  width: min(32rem, 100%);
+}
+
 .import-workflow-stepper {
   max-width: 100%;
   min-width: 0;
@@ -3131,7 +3149,7 @@ html[data-theme="dark"] .notification-count-badge {
 
 .import-review-table th,
 .import-review-table td {
-  padding: 0.55rem 0.7rem;
+  padding: 0.85rem 0.9rem;
   text-align: center;
   vertical-align: middle;
 }
@@ -3147,14 +3165,7 @@ html[data-theme="dark"] .notification-count-badge {
 .import-review-table th:nth-child(9) { width: 6rem; }
 
 .import-review-table td {
-  height: 4.75rem;
-}
-
-.import-review-table td > strong,
-.import-review-table td > .table-status,
-.import-review-table td > .spreadsheet-row-id {
-  display: block;
-  margin-block: 0.15rem;
+  min-height: 5.25rem;
 }
 
 .import-review-truncate {
@@ -5850,6 +5861,20 @@ html[data-theme="dark"] .notification-count-badge {
   font-size: 0.95rem;
 }
 
+.table-cell-stack {
+  align-items: start;
+  display: grid;
+  gap: 0.35rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.table-cell-stack-centered {
+  align-items: center;
+  justify-items: center;
+  text-align: center;
+}
+
 .table-inline-field {
   display: block;
 }
@@ -6000,6 +6025,8 @@ html[data-theme="dark"] .notification-count-badge {
   text-align: center;
   white-space: normal;
   line-height: 1.15;
+  box-sizing: border-box;
+  flex: 0 0 auto;
 }
 
 .table-chip-muted {
@@ -10925,6 +10952,21 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   align-items: stretch;
 }
 
+.profile-import-history-table {
+  min-width: 100rem;
+}
+
+.profile-import-history-table th:nth-child(1) { min-width: 17rem; }
+.profile-import-history-table th:nth-child(3) { min-width: 10rem; }
+.profile-import-history-table th:nth-child(4) { min-width: 16rem; }
+.profile-import-history-table th:nth-child(6) { min-width: 18rem; }
+.profile-import-history-table th:nth-child(8) { min-width: 14rem; text-align: center; }
+.profile-import-history-table td:last-child { overflow: visible; text-align: center; }
+
+.profile-import-history-table .table-cell-stack > .table-chip {
+  justify-self: start;
+}
+
 .profile-action-links {
   display: flex;
   flex-wrap: wrap;
@@ -13434,8 +13476,16 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 
   .top-bar-actions {
+    flex-wrap: wrap;
+    min-width: 0;
     width: 100%;
     justify-content: space-between;
+  }
+
+  .profile-summary-menu-shell {
+    flex: 1 0 100%;
+    min-width: 0;
+    width: 100%;
   }
 
   .top-app-bar-public .top-bar-actions {
@@ -13458,6 +13508,21 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 @media (max-width: 640px) {
   .main-shell {
     padding-top: 1rem;
+  }
+
+  .workflow-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workflow-panel-header > .tracker-nav {
+    justify-content: flex-start;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .workflow-panel-header > .tracker-nav > * {
+    max-width: 100%;
   }
 
   .page-shell {

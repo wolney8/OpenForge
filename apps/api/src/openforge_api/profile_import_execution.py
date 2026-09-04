@@ -311,7 +311,10 @@ def validate_staged_execution_readiness(
     preflight = run.get("summary", {}).get("persistence_preflight", {})
     preflight_valid = (
         preflight.get("status") == "PASSED"
-        and preflight.get("transaction_constructed") is True
+        and (
+            preflight.get("transaction_constructed") is True
+            or preflight.get("validation_mode") == "schema_and_domain_contracts"
+        )
         and preflight.get("writes_committed") is False
         and preflight.get("workbook_checksum") == run.get("workbook_checksum")
         and preflight.get("mapping_version") == run.get("mapping_version")

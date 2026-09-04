@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import openforge_api.profile_workbook_imports as workbook_imports
@@ -20,7 +20,7 @@ from openforge_api.profile_workbook_cutover import (
 )
 from openforge_api.profile_workbook_imports import (
     ImportApprovalPayload,
-    _approve_import_job,
+    _approval_request_state,
     _save_preflight_result,
     _workspace,
     approve_profile_workbook_import,
@@ -334,7 +334,7 @@ def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path)
     assert repaired_status["status"] == "READY_APPROVED"
 
 
-def test_approval_claim_is_persisted_duplicate_safe_and_completes_from_background(
+def test_approval_claim_is_persisted_duplicate_safe_and_completes_in_request(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     configure_database(tmp_path)
@@ -388,6 +388,9 @@ def test_approval_claim_is_persisted_duplicate_safe_and_completes_from_backgroun
         persisted_summary = json.loads(row["summary_json"])
         return {
             "run_status": row["status"],
+            "approval": _approval_request_state(
+                workbook_imports._load_run(profile_id, run_id)
+            ),
             "approved_at": row["approved_at"],
             "metadata": {"workbook_checksum": checksum},
             "reconciliation": {"import_ready": True},
@@ -397,33 +400,21 @@ def test_approval_claim_is_persisted_duplicate_safe_and_completes_from_backgroun
     monkeypatch.setattr(workbook_imports, "_workspace", fake_workspace)
     monkeypatch.setattr(
         workbook_imports,
-        "validate_import_preflight",
+        "validate_import_approval_preflight",
         lambda **_kwargs: {
             "status": "PASSED",
             "transaction_constructed": True,
             "writes_committed": False,
         },
     )
-    tasks = BackgroundTasks()
     payload = ImportApprovalPayload(workbook_checksum=checksum, acknowledged=True)
 
-    claimed = approve_profile_workbook_import(
-        "profile-import-test", import_run_id, payload, object(), tasks
+    completed = approve_profile_workbook_import(
+        "profile-import-test", import_run_id, payload, object()
     )
 
-    assert claimed["run_status"] == "APPROVING"
-    assert len(tasks.tasks) == 1
-    with pytest.raises(HTTPException, match="already running"):
-        approve_profile_workbook_import(
-            "profile-import-test", import_run_id, payload, object(), BackgroundTasks()
-        )
-
-    _approve_import_job(
-        profile_id="profile-import-test",
-        import_run_id=import_run_id,
-        actor_email="founder@example.invalid",
-    )
-
+    assert completed["run_status"] == "READY_APPROVED"
+    assert completed["approval"]["status"] == "READY_APPROVED"
     with connect() as connection:
         persisted = connection.execute(
             "SELECT status, approved_at, summary_json FROM profile_import_runs "
@@ -434,6 +425,109 @@ def test_approval_claim_is_persisted_duplicate_safe_and_completes_from_backgroun
     assert persisted["status"] == "READY_APPROVED"
     assert persisted["approved_at"]
     assert json.loads(persisted["summary_json"])["persistence_preflight"]["status"] == "PASSED"
+
+    with pytest.raises(HTTPException, match="already running"):
+        with connect() as connection:
+            connection.execute(
+                "UPDATE profile_import_runs SET status = 'APPROVING', approved_at = '', "
+                "updated_at = ? WHERE import_run_id = ?",
+                (workbook_imports._now(), import_run_id),
+            )
+        approve_profile_workbook_import(
+            "profile-import-test", import_run_id, payload, object()
+        )
+
+
+def test_stale_approval_is_reported_interrupted_and_can_be_retried(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_database(tmp_path)
+    import_run_id = "profile-import-interrupted-approval"
+    checksum = "b" * 64
+    timestamp = "2026-09-04T10:00:00+00:00"
+    summary = {
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 0,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+        "job": {"stage": "Validating Account and ledger contracts", "events": []},
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, created_at, updated_at
+            ) VALUES (?, 'profile-import-test', ?, 'synthetic.xlsx', ?, 100, ?,
+                      'founder-snapshot-v8', 'APPROVING', ?, '{}', ?, ?)
+            """,
+            (
+                import_run_id,
+                "founder@example.invalid",
+                checksum,
+                timestamp,
+                json.dumps(summary),
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    run = workbook_imports._load_run("profile-import-test", import_run_id)
+    assert _approval_request_state(run) == {
+        "status": "INTERRUPTED",
+        "persisted_status": "APPROVING",
+        "stage": "Validating Account and ledger contracts",
+        "updated_at": timestamp,
+        "retry_available": True,
+        "reason": (
+            "The approval request exceeded the server execution window. No Profile data was "
+            "imported; approval can be retried."
+        ),
+    }
+
+    monkeypatch.setattr(
+        workbook_imports,
+        "require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid"),
+    )
+    monkeypatch.setattr(workbook_imports, "load_base_write_plan", lambda *_args: {})
+    monkeypatch.setattr(
+        workbook_imports,
+        "validate_import_approval_preflight",
+        lambda **_kwargs: {
+            "status": "PASSED",
+            "validation_mode": "schema_and_domain_contracts",
+            "transaction_constructed": False,
+            "writes_attempted": False,
+            "writes_committed": False,
+        },
+    )
+
+    original_workspace = workbook_imports._workspace
+
+    def fake_workspace(profile_id: str, run_id: str) -> dict[str, object]:
+        run_value = workbook_imports._load_run(profile_id, run_id)
+        return {
+            "run_status": run_value["status"],
+            "approval": _approval_request_state(run_value),
+            "approved_at": run_value["approved_at"],
+            "metadata": {"workbook_checksum": checksum},
+            "reconciliation": {"import_ready": True},
+            "source_summary": run_value["summary"],
+        }
+
+    monkeypatch.setattr(workbook_imports, "_workspace", fake_workspace)
+    retried = approve_profile_workbook_import(
+        "profile-import-test",
+        import_run_id,
+        ImportApprovalPayload(workbook_checksum=checksum, acknowledged=True),
+        object(),
+    )
+    assert retried["run_status"] == "READY_APPROVED"
+    assert retried["approval"]["status"] == "READY_APPROVED"
+    monkeypatch.setattr(workbook_imports, "_workspace", original_workspace)
 
 
 def test_delete_review_removes_rolled_back_attempt_metadata_transactionally(

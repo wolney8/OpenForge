@@ -331,6 +331,30 @@ test("founder review uses canonical controls and exposes explicit EP choices", a
   await expect(page.getByLabel("Import review top controls")).toBeVisible();
   await expect(page.getByLabel("Import review bottom controls")).toBeVisible();
 
+  const reviewTable = page.locator('[data-pd-id="founder-import-review.table-scroll"]');
+  const reviewGeometry = await reviewTable.evaluate((scroll) => {
+    const action = scroll.querySelector<HTMLElement>(".table-action-button")!;
+    const chip = scroll.querySelector<HTMLElement>(".table-chip")!;
+    const stack = scroll.querySelector<HTMLElement>(".table-cell-stack")!;
+    const cell = scroll.querySelector<HTMLElement>("tbody td")!;
+    const cellStyle = getComputedStyle(cell);
+    return {
+      actionHeight: action.getBoundingClientRect().height,
+      actionWidth: action.getBoundingClientRect().width,
+      cellPaddingInline:
+        Number.parseFloat(cellStyle.paddingLeft) + Number.parseFloat(cellStyle.paddingRight),
+      chipHeight: chip.getBoundingClientRect().height,
+      ownsOverflow: scroll.scrollWidth >= scroll.clientWidth,
+      stackGap: Number.parseFloat(getComputedStyle(stack).gap),
+    };
+  });
+  expect(reviewGeometry.actionHeight).toBeCloseTo(reviewGeometry.actionWidth, 0);
+  expect(reviewGeometry.actionHeight).toBeLessThanOrEqual(40);
+  expect(reviewGeometry.cellPaddingInline).toBeGreaterThanOrEqual(28);
+  expect(reviewGeometry.chipHeight).toBeGreaterThanOrEqual(32);
+  expect(reviewGeometry.ownsOverflow).toBe(true);
+  expect(reviewGeometry.stackGap).toBeGreaterThanOrEqual(5);
+
   await page.getByRole("button", { name: "Extra Place" }).click();
   await expect(page.getByText("EP (Extra Places)")).toBeVisible();
   await page.getByRole("button", { name: "Review Sportsbook Bets row 66" }).click();
@@ -660,6 +684,70 @@ test("approval failure restores only the approval controls and reports the serve
   await expect(approve).toBeEnabled();
   await expect(approve).toContainText("Approve dry run");
   await expect(rerun).toBeEnabled();
+});
+
+test("an interrupted persisted approval stops polling and permits one authoritative retry", async ({ page }) => {
+  await mockShell(page);
+  let workspaceRequests = 0;
+  let approvalRequests = 0;
+  let current = {
+    ...dryRunReadyWorkspace(),
+    run_status: "APPROVING",
+    approval: {
+      status: "INTERRUPTED",
+      persisted_status: "APPROVING",
+      stage: "Validating Account and ledger contracts",
+      updated_at: "2026-09-04T10:00:00Z",
+      retry_available: true,
+      reason: "The approval request exceeded the server execution window. No Profile data was imported; approval can be retried.",
+    },
+  };
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    if (route.request().method() === "GET") {
+      workspaceRequests += 1;
+      await route.fulfill({ contentType: "application/json", json: current });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/approve", async (route) => {
+    approvalRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    current = {
+      ...current,
+      run_status: "READY_APPROVED",
+      approved_at: "2026-09-04T12:30:00Z",
+      approval: {
+        ...current.approval,
+        status: "READY_APPROVED",
+        persisted_status: "READY_APPROVED",
+        retry_available: false,
+        reason: "",
+      },
+      persistence_preflight: {
+        status: "PASSED",
+        workbook_checksum: "a".repeat(64),
+        mapping_version: "founder-snapshot-v8",
+        writes_committed: false,
+      },
+    };
+    await route.fulfill({ contentType: "application/json", json: current });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await expect(page.locator('[data-pd-id="profile-import.current-workflow-state"]')).toContainText("APPROVAL_INTERRUPTED");
+  await expect(page.locator('[data-pd-id="profile-import.approval-error"]')).toContainText("approval request exceeded");
+  await expect(page.locator('[data-pd-id="profile-import.approval-progress"]')).toHaveCount(0);
+  await page.waitForTimeout(2_000);
+  expect(workspaceRequests).toBe(1);
+
+  await page.getByLabel("I confirm this checksum and reconciliation are ready for import approval.").check();
+  const retry = page.getByRole("button", { name: "Retry approval" });
+  const approvalControl = page.locator('[data-pd-id="profile-import.approve"]');
+  await retry.click();
+  await expect(approvalControl).toContainText("Approving...");
+  await expect(page.getByRole("button", { name: "Import to Profile" })).toBeVisible();
+  expect(approvalRequests).toBe(1);
 });
 
 test("persisted import execution resumes through the authenticated shell monitor", async ({

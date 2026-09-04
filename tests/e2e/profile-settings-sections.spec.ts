@@ -230,6 +230,48 @@ test("workbook history reconstructs an approved import action after reload", asy
     "/profiles/profile-demo-001/imports/profile-import-ready/review",
   );
 
+  const history = page.locator('[data-pd-id="profile-import.history-table"]');
+  const deleteAction = history.getByRole("button", { name: "Delete review synthetic-approved.xlsx" });
+  const statusChip = history.locator(".table-chip").first();
+  const stack = history.locator(".table-cell-stack").first();
+  const geometry = await page.evaluate(() => {
+    const table = document.querySelector('[data-pd-id="profile-import.history-table"]')!;
+    const scroll = table.closest(".table-scroll")!;
+    const action = table.querySelector(".table-action-button")!;
+    const actionGroup = action.parentElement!;
+    const chip = table.querySelector(".table-chip")!;
+    const cellStack = table.querySelector(".table-cell-stack")!;
+    const cell = table.querySelector("tbody td")!;
+    const actionStyle = getComputedStyle(action);
+    const cellStyle = getComputedStyle(cell);
+    return {
+      actionHeight: action.getBoundingClientRect().height,
+      actionWidth: action.getBoundingClientRect().width,
+      actionGap: Number.parseFloat(getComputedStyle(actionGroup).gap),
+      chipHeight: chip.getBoundingClientRect().height,
+      stackGap: Number.parseFloat(getComputedStyle(cellStack).gap),
+      cellPaddingInline: Number.parseFloat(cellStyle.paddingLeft) + Number.parseFloat(cellStyle.paddingRight),
+      scrollOwnsOverflow: scroll.scrollWidth >= scroll.clientWidth,
+    };
+  });
+  expect(geometry.actionHeight).toBeCloseTo(geometry.actionWidth, 0);
+  expect(geometry.actionHeight).toBeLessThanOrEqual(40);
+  expect(geometry.actionGap).toBeGreaterThanOrEqual(8);
+  expect(geometry.chipHeight).toBeGreaterThanOrEqual(32);
+  expect(geometry.stackGap).toBeGreaterThanOrEqual(5);
+  expect(geometry.cellPaddingInline).toBeGreaterThanOrEqual(30);
+  expect(geometry.scrollOwnsOverflow).toBe(true);
+  await expect(deleteAction).toHaveAttribute("title", "Delete review synthetic-approved.xlsx");
+  await expect(statusChip).toBeVisible();
+  await expect(stack).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    await expect(statusChip).toHaveCSS("min-height", "32px");
+  }
+
   await page.reload();
   await expect(page.getByRole("link", { name: "Import to Profile" })).toBeVisible();
 });

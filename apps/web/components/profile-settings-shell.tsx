@@ -11,6 +11,7 @@ import { ProfileSecuritySettings, ProfileSubscriberSettings } from "@/components
 import { ProfileSpreadsheetTransfer } from "@/components/profile-spreadsheet-transfer";
 import { ProfileQuickAddLoadoutSettings } from "@/components/profile-quick-add-loadout-settings";
 import { TrackerDateSettings } from "@/components/tracker-date-settings";
+import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
 import { apiBaseUrl } from "@/lib/api";
 
 const settingsSections = [
@@ -29,10 +30,11 @@ function isSettingsSection(value: string): value is SettingsSection {
 }
 
 export function ProfileSettingsShell({ profileId }: { profileId: string }) {
+  const authoritativeSession = useAuthoritativeSession();
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [profileName, setProfileName] = useState(profileId);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
-  const [canManageProfile, setCanManageProfile] = useState(false);
+  const canManageProfile = authoritativeSession?.role === "fund_manager";
 
   useEffect(() => {
     let isActive = true;
@@ -55,24 +57,6 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
       isActive = false;
     };
   }, [profileId]);
-
-  useEffect(() => {
-    let isActive = true;
-    void fetch("/api/auth/session", {
-      cache: "no-store",
-      credentials: "include",
-    })
-      .then((response) => response.ok ? response.json() as Promise<{ role?: string }> : null)
-      .then((session) => {
-        if (isActive) setCanManageProfile(session?.role === "fund_manager");
-      })
-      .catch(() => {
-        if (isActive) setCanManageProfile(false);
-      });
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   useEffect(() => {
     const syncFromHash = () => {

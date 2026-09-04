@@ -7,11 +7,13 @@ import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue } from "@/components/financial-value";
+import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
 import { GlobalSearch } from "@/components/global-search";
 import { ImportExecutionMonitor } from "@/components/import-execution-monitor";
 import { NotificationCentre } from "@/components/notification-centre";
 import { SessionInactivityGuard } from "@/components/session-inactivity-guard";
+import { SessionBootstrapGate } from "@/components/session-bootstrap-gate";
 import { ShellLoadingProgress } from "@/components/shell-loading-progress";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiBaseUrl } from "@/lib/api";
@@ -115,6 +117,27 @@ function isAuthenticatedApplicationPath(pathname: string): boolean {
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPublicAuthRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/cookies" ||
+    !isAuthenticatedApplicationPath(pathname ?? "");
+  if (isPublicAuthRoute) return <AppChromeContent>{children}</AppChromeContent>;
+  return (
+    <SessionBootstrapGate>
+      {(session) => <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
+    </SessionBootstrapGate>
+  );
+}
+
+function AppChromeContent({
+  children,
+  initialSession = null,
+}: {
+  children: React.ReactNode;
+  initialSession?: FundManagerSession | null;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublicAuthRoute =
@@ -817,7 +840,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             triggerRef={appMenuTriggerRef}
           />
         </Suspense> : null}
-        {!isPublicAuthRoute ? <SessionInactivityGuard /> : null}
+        {!isPublicAuthRoute ? <SessionInactivityGuard initialSession={initialSession} /> : null}
         {!isPublicAuthRoute ? <ImportExecutionMonitor /> : null}
         <div className="main-shell" id="main-content">
           {children}
