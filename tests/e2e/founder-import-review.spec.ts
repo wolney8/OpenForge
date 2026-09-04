@@ -195,7 +195,7 @@ function dryRunReadyWorkspace() {
   ready.items = [];
   ready.metadata = {
     ...ready.metadata,
-    mapping_version: "founder-snapshot-v7",
+    mapping_version: "founder-snapshot-v8",
     original_partial_count: 0,
     provider_conflict_count: 0,
     historical_ep_count: 0,
@@ -438,6 +438,7 @@ test("missing provider can be confirmed once globally and linked to the Profile 
     await route.fulfill({ contentType: "application/json", json: reviewed });
   });
 
+  await page.setViewportSize({ width: 768, height: 800 });
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   await page.getByRole("button", { name: "Missing Provider" }).click();
   await page.getByRole("button", { name: "Review Accounts row 14" }).click();
@@ -468,36 +469,92 @@ test("missing provider can be confirmed once globally and linked to the Profile 
   });
 });
 
-test("persisted analysis progress completes without holding the review page", async ({ page }) => {
+test("persisted analysis stages poll serially and complete without holding the review page", async ({ page }) => {
+  test.setTimeout(15_000);
   await mockShell(page);
-  const analysing = workspace();
-  Object.assign(analysing, { run_status: "ANALYSING" });
-  analysing.source_summary = {
-    ...analysing.source_summary,
+  const preparing = workspace();
+  Object.assign(preparing, { run_status: "ANALYSING" });
+  preparing.source_summary = {
+    ...preparing.source_summary,
     job: {
-      stage: "Inspecting workbook and mapping rows",
-      percentage: 15,
+      stage: "Preparing workbook analysis",
+      percentage: 0,
       rows_analysed: 0,
-      total_rows: 710,
+      total_rows: 0,
       estimated_seconds_remaining: null,
+      work_units_completed: 0,
+      work_units_total: 9,
+      progress_mode: "staged",
       error: "",
     },
-  } as typeof analysing.source_summary;
-  let requests = 0;
+  } as typeof preparing.source_summary;
+  const mappingFreeBets = structuredClone(preparing);
+  mappingFreeBets.source_summary = {
+    ...mappingFreeBets.source_summary,
+    job: {
+      stage: "Mapping Free Bets",
+      percentage: 33,
+      rows_analysed: 0,
+      total_rows: 0,
+      estimated_seconds_remaining: null,
+      work_units_completed: 3,
+      work_units_total: 9,
+      progress_mode: "staged",
+      error: "",
+    },
+  } as typeof mappingFreeBets.source_summary;
+  let workspaceRequests = 0;
+  let catalogueRequests = 0;
+  let activeWorkspaceRequests = 0;
+  let maxConcurrentWorkspaceRequests = 0;
+  await page.route("**/account-catalogue/source", async (route) => {
+    catalogueRequests += 1;
+    await route.fallback();
+  });
   await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
-    requests += 1;
+    const requestNumber = ++workspaceRequests;
+    activeWorkspaceRequests += 1;
+    maxConcurrentWorkspaceRequests = Math.max(
+      maxConcurrentWorkspaceRequests,
+      activeWorkspaceRequests,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1_600));
+    const responseBody = requestNumber === 1
+      ? preparing
+      : requestNumber === 2
+        ? mappingFreeBets
+        : workspace();
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify(requests < 3 ? analysing : workspace()),
+      body: JSON.stringify(responseBody),
     });
+    activeWorkspaceRequests -= 1;
   });
 
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
-  await expect(page.getByRole("progressbar", { name: /Inspecting workbook/ })).toHaveAttribute("aria-valuenow", "15");
+  const progress = page.getByRole("progressbar", { name: /Preparing workbook analysis/ });
+  await expect(progress).toHaveAttribute("aria-valuemax", "9");
+  await expect(progress).toHaveAttribute("aria-valuenow", "0");
+  await expect(page.getByText("Stage 1 of 9 · progress saved")).toBeVisible();
+  await expect(page.getByText("0/9")).toBeVisible();
   await expect(page.locator('[data-pd-id="profile-import.save-leave"]')).toHaveAttribute("aria-disabled", "true");
-  await expect(page.getByRole("progressbar", { name: /Inspecting workbook/ })).toBeHidden({ timeout: 6_000 });
+  await expect(page.getByRole("progressbar", { name: /Mapping Free Bets/ })).toHaveAttribute("aria-valuenow", "3", { timeout: 7_000 });
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    const geometry = await page.evaluate(() => ({
+      body: document.body.scrollWidth,
+      document: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+    expect(geometry.body).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.document).toBeLessThanOrEqual(geometry.viewport);
+  }
+  await expect(page.getByRole("progressbar", { name: /Mapping Free Bets/ })).toBeHidden({ timeout: 7_000 });
   await expect(page.getByRole("link", { name: "Save & leave" })).toBeVisible();
   await expect(page.getByText(/Dry run updated from persisted review decisions/)).toBeVisible();
+  expect(workspaceRequests).toBe(3);
+  expect(catalogueRequests).toBe(1);
+  expect(maxConcurrentWorkspaceRequests).toBe(1);
 });
 
 test("approval owns its busy state and READY_APPROVED survives leave and return", async ({ page }) => {
@@ -520,7 +577,7 @@ test("approval owns its busy state and READY_APPROVED survives leave and return"
       persistence_preflight: {
         status: "PASSED",
         workbook_checksum: "a".repeat(64),
-        mapping_version: "founder-snapshot-v7",
+        mapping_version: "founder-snapshot-v8",
         writes_committed: false,
       },
     };

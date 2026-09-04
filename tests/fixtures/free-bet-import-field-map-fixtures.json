@@ -89,6 +89,43 @@
         "Lay (Actual)": "",
         "LayMatchedStake1": ""
       }
+    },
+    {
+      "case_id": "FI-005",
+      "source_record_id": "DEMO-FB-0172",
+      "fields": {
+        "FreeBetID": "DEMO-FB-0172",
+        "DateSettling": "2026-08-20T15:10:00",
+        "ExpiryDateTime": "",
+        "EventName": "Synthetic terminal Void selection",
+        "Offer": "Synthetic free bet",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Free Bet",
+        "BetType": "Single",
+        "OfferName": "Synthetic historical Void",
+        "FixtureType": "Football",
+        "Status": "Void",
+        "Result": "Void",
+        "CountsAsOpen": false,
+        "FreeBetRetentionMode": "SNR",
+        "FreeBetValue": "10.0",
+        "BackOdds": "10.0",
+        "MatchStrategy": "Standard",
+        "LayOdds1": "11.0",
+        "LayStake1": "8.18",
+        "LayMatchedStake1": "8.18",
+        "Liability1": "81.8",
+        "LayStatus": "Fully Laid",
+        "Exchange": "Exchange A",
+        "Lay (Actual)": "",
+        "FinalNetPnL": "0.0",
+        "CalcNetPnL": "0",
+        "NetPnL": "0",
+        "ManualOverrideReason": "",
+        "OriginQualBetID": "DEMO-QB-0172",
+        "OfferGroupID": "DEMO-GROUP-0172",
+        "UserNotes": ""
+      }
     }
   ]
 }

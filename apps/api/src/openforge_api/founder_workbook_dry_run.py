@@ -26,6 +26,7 @@ from openforge_api.imports import (
     CASINO_OFFER_SOURCE_MAP,
     FREE_BET_SOURCE_MAP,
     SPORTSBOOK_SOURCE_MAP,
+    is_historical_free_bet_void_zero_import,
     is_historical_void_zero_import,
     map_account_import_fields,
     map_cash_adjustment_import_fields,
@@ -44,7 +45,8 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v7"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v8"
+FOUNDER_ANALYSIS_WORK_UNIT_TOTAL = 9
 
 # Historical provider names remain valid import evidence while resolving to the
 # current Account Catalogue identity.
@@ -504,6 +506,9 @@ def _ledger_report(
         automatic_historical_void_zero = (
             definition.key == "sportsbook"
             and is_historical_void_zero_import(row.fields)
+        ) or (
+            definition.key == "free_bets"
+            and is_historical_free_bet_void_zero_import(row.fields)
         )
         if automatic_historical_extra_place:
             # Historical EP persistence uses source identity/P&L, not current calculator inputs.
@@ -547,7 +552,13 @@ def _ledger_report(
                     "source_field": next(
                         (
                             name
-                            for name in ("ManualOverrideValue", "FinalNetPnL")
+                            for name in (
+                                "ManualOverrideValue",
+                                "FinalNetPnL",
+                                "NetPnL",
+                                "ReportingValue",
+                                "CalcNetPnL",
+                            )
                             if str(row.fields.get(name) or "").strip()
                         ),
                         "FinalNetPnL",
@@ -1097,22 +1108,44 @@ def build_founder_workbook_dry_run_bytes(
     effective_at: str,
     source_path: str = "uploaded-workbook",
     catalogue_path: Path | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> JsonObject:
     """Analyse workbook bytes without retaining or mutating the uploaded source."""
+    def report_progress(stage: str, completed_units: int) -> None:
+        if progress_callback is not None:
+            progress_callback(stage, completed_units, FOUNDER_ANALYSIS_WORK_UNIT_TOTAL)
+
+    report_progress("Preparing workbook analysis", 0)
     catalogue = load_master_account_catalogue(catalogue_path)
     effective_date = date.fromisoformat(effective_at[:10])
+    checksum = hashlib.sha256(content).hexdigest()
+
+    report_progress("Resolving Accounts and providers", 1)
     account_report = _account_report(content, catalogue)
-    ledgers = {
-        definition.key: _ledger_report(
+
+    ledger_stage_labels = {
+        "sportsbook": "Mapping Sportsbook",
+        "free_bets": "Mapping Free Bets",
+        "casino": "Mapping Casino Offers",
+        "cash_adjustments": "Mapping Cash Adjustments",
+    }
+    ledgers: dict[str, JsonObject] = {}
+    for completed_units, definition in enumerate(LEDGERS, start=2):
+        report_progress(ledger_stage_labels[definition.key], completed_units)
+        ledgers[definition.key] = _ledger_report(
             content,
             definition,
             effective_date=effective_date,
         )
-        for definition in LEDGERS
-    }
+
+    report_progress("Validating historical records", 6)
     ep_report = _extra_place_report(content)
+
+    report_progress("Building dry-run plan", 7)
     reports = _report_blocks(content)
-    checksum = hashlib.sha256(content).hexdigest()
+    profile_settings = _profile_settings(content, catalogue)
+    sheet_names = _sheet_names(content)
+    reconciliation = _period_reconciliation(ledgers, reports, effective_at)
     blocked = account_report["blocked_count"]
     partial = sum(ledger["summary"]["partial"] for ledger in ledgers.values())
     provider_blockers = sum(
@@ -1131,12 +1164,12 @@ def build_founder_workbook_dry_run_bytes(
             "input_modified": False,
         },
         "schema": {
-            "sheets": _sheet_names(content),
+            "sheets": sheet_names,
             "accounts": account_report["schema"],
             **{key: value["schema"] for key, value in ledgers.items()},
         },
         "accounts": account_report,
-        "profile_settings": _profile_settings(content, catalogue),
+        "profile_settings": profile_settings,
         "mapping_specification": {
             "accounts": _field_mapping_table(
                 account_report["schema"]["headers"], ACCOUNT_SOURCE_MAP, "AccountID"
@@ -1167,7 +1200,7 @@ def build_founder_workbook_dry_run_bytes(
         "ledgers": ledgers,
         "extra_places": ep_report,
         "reports": reports,
-        "reconciliation": _period_reconciliation(ledgers, reports, effective_at),
+        "reconciliation": reconciliation,
         "readiness": {
             "status": (
                 "BLOCKED" if blocked or partial or provider_blockers or ep_blockers else "PASSED"

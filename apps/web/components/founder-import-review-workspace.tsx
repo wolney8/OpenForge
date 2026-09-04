@@ -192,6 +192,9 @@ type Workspace = {
       rows_analysed: number;
       total_rows: number;
       estimated_seconds_remaining: number | null;
+      work_units_completed?: number;
+      work_units_total?: number;
+      progress_mode?: "determinate" | "staged" | "indeterminate";
       error: string;
     };
     ledgers: Record<string, {
@@ -567,8 +570,18 @@ async function responseMessage(response: Response) {
   return "Unable to update the import review.";
 }
 
-async function fetchWorkspaceData(profileId: string, importRunId: string) {
-  const [reviewResponse, catalogueResponse] = await Promise.all([
+type WorkspaceData = {
+  review: Workspace;
+  catalogue: MasterAccountCatalogueRecord[];
+};
+
+const inFlightWorkspaceLoads = new Map<string, Promise<WorkspaceData>>();
+
+function fetchWorkspaceData(profileId: string, importRunId: string): Promise<WorkspaceData> {
+  const key = `${profileId}:${importRunId}`;
+  const existing = inFlightWorkspaceLoads.get(key);
+  if (existing) return existing;
+  const load = Promise.all([
     fetch(`${apiBaseUrl}/profiles/${profileId}/workbook-imports/${importRunId}`, {
       credentials: "include",
       cache: "no-store",
@@ -577,16 +590,22 @@ async function fetchWorkspaceData(profileId: string, importRunId: string) {
       credentials: "include",
       cache: "no-store",
     }),
-  ]);
-  if (!reviewResponse.ok) throw new Error(await responseMessage(reviewResponse));
-  const review = await reviewResponse.json() as Workspace;
-  const document = catalogueResponse.ok
-    ? await catalogueResponse.json() as { records?: MasterAccountCatalogueRecord[] }
-    : null;
-  return {
-    review,
-    catalogue: (document?.records ?? []).filter((record) => record.status !== "Archived"),
-  };
+  ]).then(async ([reviewResponse, catalogueResponse]) => {
+    if (!reviewResponse.ok) throw new Error(await responseMessage(reviewResponse));
+    const review = await reviewResponse.json() as Workspace;
+    const document = catalogueResponse.ok
+      ? await catalogueResponse.json() as { records?: MasterAccountCatalogueRecord[] }
+      : null;
+    return {
+      review,
+      catalogue: (document?.records ?? []).filter((record) => record.status !== "Archived"),
+    };
+  });
+  inFlightWorkspaceLoads.set(key, load);
+  void load.finally(() => {
+    if (inFlightWorkspaceLoads.get(key) === load) inFlightWorkspaceLoads.delete(key);
+  }).catch(() => undefined);
+  return load;
 }
 
 export function FounderImportReviewWorkspace({
@@ -708,44 +727,56 @@ export function FounderImportReviewWorkspace({
       return;
     }
     if (persistedMutation === "ANALYSIS") beginShellLoading();
-    const interval = window.setInterval(() => {
-      void fetch(`${reviewApi}`, { credentials: "include", cache: "no-store" })
-        .then(async (response) => {
-          if (!response.ok) throw new Error(await responseMessage(response));
-          return response.json() as Promise<Workspace>;
-        })
-        .then((next) => {
-          setWorkspace(next);
-          const stillRunning = persistedMutation === "APPROVING"
-            ? next.run_status === "APPROVING"
-            : ["ANALYSING", "ANALYSED"].includes(next.run_status ?? "");
-          if (!stillRunning) {
-            endShellLoading();
-            window.clearInterval(interval);
-            if (persistedMutation === "APPROVING") {
-              if (activeMutationRef.current === "approve") {
-                activeMutationRef.current = null;
-                setActiveMutation(null);
-              }
-              if (next.run_status === "FAILED") {
-                setApprovalError(next.source_summary?.job?.error || "Unable to approve the workbook review.");
-              } else {
-                setApprovalAcknowledged(false);
-                setMessage("Workbook dry run approved. No Profile data was imported.");
-              }
-            } else {
-              if (activeMutationRef.current === "rerun") {
-                activeMutationRef.current = null;
-                setActiveMutation(null);
-              }
-              setMessage(next.run_status === "FAILED" ? "Workbook analysis failed." : "Dry run updated from persisted review decisions.");
-            }
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    const pollDelay = persistedMutation === "APPROVING" ? 750 : 1500;
+    const schedulePoll = () => {
+      if (!cancelled) timeoutId = window.setTimeout(() => void poll(), pollDelay);
+    };
+    const poll = async () => {
+      try {
+        const response = await fetch(`${reviewApi}`, { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error(await responseMessage(response));
+        const next = await response.json() as Workspace;
+        if (cancelled) return;
+        setWorkspace(next);
+        const stillRunning = persistedMutation === "APPROVING"
+          ? next.run_status === "APPROVING"
+          : ["ANALYSING", "ANALYSED"].includes(next.run_status ?? "");
+        if (stillRunning) {
+          schedulePoll();
+          return;
+        }
+        endShellLoading();
+        if (persistedMutation === "APPROVING") {
+          if (activeMutationRef.current === "approve") {
+            activeMutationRef.current = null;
+            setActiveMutation(null);
           }
-        })
-        .catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : "Unable to refresh the persisted import state."));
-    }, persistedMutation === "APPROVING" ? 750 : 1500);
+          if (next.run_status === "FAILED") {
+            setApprovalError(next.source_summary?.job?.error || "Unable to approve the workbook review.");
+          } else {
+            setApprovalAcknowledged(false);
+            setMessage("Workbook dry run approved. No Profile data was imported.");
+          }
+        } else {
+          if (activeMutationRef.current === "rerun") {
+            activeMutationRef.current = null;
+            setActiveMutation(null);
+          }
+          setMessage(next.run_status === "FAILED" ? "Workbook analysis failed." : "Dry run updated from persisted review decisions.");
+        }
+      } catch (caught: unknown) {
+        if (!cancelled) {
+          setMessage(caught instanceof Error ? caught.message : "Unable to refresh the persisted import state.");
+          schedulePoll();
+        }
+      }
+    };
+    schedulePoll();
     return () => {
-      window.clearInterval(interval);
+      cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       endShellLoading();
     };
   }, [reviewApi, workspace?.run_status]);
@@ -1136,6 +1167,18 @@ export function FounderImportReviewWorkspace({
   const futureOpenRows = ledgerSummaries.reduce((total, ledger) => total + ledger.future_settling_open, 0);
   const annualReconciliation = workspace.financial_reconciliation?.year;
   const job = workspace.source_summary?.job;
+  const analysisWorkTotal = job?.work_units_total ?? 0;
+  const analysisWorkCompleted = Math.min(
+    Math.max(job?.work_units_completed ?? 0, 0),
+    analysisWorkTotal,
+  );
+  const analysisUsesStages = job?.progress_mode === "staged" && analysisWorkTotal > 0;
+  const analysisStageNumber = analysisUsesStages
+    ? Math.min(analysisWorkCompleted + 1, analysisWorkTotal)
+    : 0;
+  const analysisProgressPercentage = analysisUsesStages
+    ? Math.round(analysisWorkCompleted / analysisWorkTotal * 100)
+    : job?.percentage ?? 0;
   const pnlImpactIsZero = Number(workspace.reconciliation.pnl_impact) === 0;
   const selectedDecisionCount = workspace.items.filter((item) => selected.has(item.item_id) && item.decision).length;
   const accountChanges = workspace.source_summary?.accounts?.change_reconciliation;
@@ -1238,8 +1281,8 @@ export function FounderImportReviewWorkspace({
         {["IMPORTING", "RECONCILING"].includes(workflowState) ? <p>The server-side action continues if you leave. Returning to this page restores its persisted progress.</p> : null}
       </section>
       {["ANALYSING", "ANALYSED"].includes(workspace.run_status ?? "") && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
-        <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{job.percentage}%</span></div>
-        <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
+        <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{analysisUsesStages ? `Stage ${analysisStageNumber} of ${analysisWorkTotal} · progress saved` : job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{analysisUsesStages ? `${analysisWorkCompleted}/${analysisWorkTotal}` : `${job.percentage}%`}</span></div>
+        <div aria-label={analysisUsesStages ? `${job.stage}: ${analysisWorkCompleted} of ${analysisWorkTotal} work stages complete` : `${job.stage}: ${job.percentage}%`} aria-valuemax={analysisUsesStages ? analysisWorkTotal : 100} aria-valuemin={0} aria-valuenow={analysisUsesStages ? analysisWorkCompleted : job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${analysisProgressPercentage}%` }} /></div>
       </section> : null}
       {execution?.status === "RUNNING" ? <section aria-busy="true" aria-live="polite" className="content-subpanel stack-tight import-analysis-status" data-pd-id="profile-import.execution-progress">
         <div className="workflow-panel-header"><div><strong>{executionStageLabel}</strong><span>{execution.completed_units} / {execution.total_units} planned writes validated or persisted</span></div><span className="table-chip table-chip-info">{execution.percentage}%</span></div>

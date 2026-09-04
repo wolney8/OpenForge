@@ -44,7 +44,8 @@ retry instruction.
 The existing `ANALYSING` queue value remains a compatible internal precursor and is presented as
 the analysis step; it cannot accept review, approval, delete or import mutations.
 
-Mapping version `founder-snapshot-v7` recognises terminal Void evidence before review items are
-created. Existing v6 review snapshots remain immutable; because workbook bytes are deliberately
-not retained, a same-workbook upload is required to obtain a v7 analysis rather than rewriting
-historical review evidence.
+Mapping version `founder-snapshot-v7` recognises Sportsbook terminal Void evidence before review
+items are created, but did not apply the equivalent boundary to Free Bets. Mapping version
+`founder-snapshot-v8` adds that Free Bet boundary before payload validation. Existing v6/v7 review
+snapshots remain immutable; because workbook bytes are deliberately not retained, a same-workbook
+upload is required to obtain a v8 analysis rather than rewriting historical review evidence.

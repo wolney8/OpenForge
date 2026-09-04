@@ -1260,6 +1260,23 @@ def is_historical_void_zero_import(fields: dict[str, JsonScalar]) -> bool:
     return value.is_finite() and value == Decimal("0")
 
 
+def is_historical_free_bet_void_zero_import(fields: dict[str, JsonScalar]) -> bool:
+    """Identify deterministic terminal Free Bet Void evidence before payload validation."""
+    if not is_historical_void_zero_import(fields):
+        return False
+    status = first_non_blank_field_text(fields, "status", "Status").casefold()
+    result = first_non_blank_field_text(fields, "result", "Result").casefold()
+    counts_as_open = first_non_blank_field_text(fields, "counts_as_open", "CountsAsOpen")
+    if counts_as_open.casefold() in {"true", "1", "yes"}:
+        return False
+    terminal_status = status in {"void", "settled", "expired", "converted"}
+    terminal_result = "void" in {
+        token for token in result.replace("/", " ").replace("-", " ").split()
+    }
+    explicitly_not_open = counts_as_open.casefold() in {"false", "0", "no"}
+    return status == "void" or (terminal_result and (terminal_status or explicitly_not_open))
+
+
 def _shorten_import_text(value: JsonScalar, limit: int) -> str:
     text = str(value or "")
     if len(text) <= limit:
@@ -1435,6 +1452,13 @@ def map_free_bet_import_fields(
         "fixture_type": 120,
     }.items():
         mapped[field_name] = _shorten_import_text(mapped.get(field_name, ""), limit)
+    if is_historical_free_bet_void_zero_import(normalized_fields):
+        # FinalNetPnL normally maps to a discretionary override. A terminal Void zero is result
+        # evidence, so remove that override before the generic Free Bet payload validator runs.
+        mapped["status"] = "Void"
+        mapped["result"] = "Void"
+        mapped["manual_override_value"] = ""
+        mapped["manual_override_reason"] = ""
     errors: list[dict[str, str]] = []
     if field_text(fields, "MatchStrategy") == "Partial Lay" and not (
         field_text(fields, "Lay (Actual)") or field_text(fields, "LayMatchedStake1")
@@ -1757,6 +1781,9 @@ def stage_import_rows(
             historical_void_zero = (
                 source_sheet == "Sportsbook Bets"
                 and is_historical_void_zero_import(row.fields)
+            ) or (
+                source_sheet == "Free Bets"
+                and is_historical_free_bet_void_zero_import(row.fields)
             )
             if override_value and not override_reason and not historical_void_zero:
                 errors.append(

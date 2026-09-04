@@ -13,6 +13,7 @@ from openforge_api.db import ImportBatchRecord, ImportSourceRecord
 from openforge_api.imports import (
     ImportRowPayload,
     canonical_source_hash,
+    is_historical_free_bet_void_zero_import,
     is_historical_void_zero_import,
     map_free_bet_import_fields,
     map_sportsbook_import_fields,
@@ -868,6 +869,52 @@ def test_free_bets_v1_blocks_unsafe_override_and_incomplete_partial_lay() -> Non
     assert any(item["code"] == "override_reason_required" for item in staged_rows[0]["errors"])
     assert staged_rows[1]["staged_action"] == "blocked"
     assert any(item["code"] == "incomplete_partial_lay" for item in staged_rows[1]["errors"])
+
+
+def test_free_bets_v1_normalises_full_historical_void_shape_before_validation() -> None:
+    case = free_bet_fixture("FI-005")
+    fields = case["fields"]
+    assert isinstance(fields, dict)
+
+    mapped, mapping_errors = map_free_bet_import_fields(fields)
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Free Bets",
+                source_record_id=str(case["source_record_id"]),
+                fields=fields,
+            )
+        ],
+        mapping_version="free-bets-v1",
+        source_lookup=no_existing_source,
+    )[0]
+
+    assert is_historical_free_bet_void_zero_import(fields)
+    assert mapping_errors == []
+    assert mapped["status"] == "Void"
+    assert mapped["result"] == "Void"
+    assert mapped["manual_override_value"] == ""
+    assert mapped["manual_override_reason"] == ""
+    assert mapped["lay_odds_1"] == "11.0"
+    assert mapped["lay_actual"] == "8.18"
+    assert mapped["lay_matched_stake_1"] == "8.18"
+    assert staged["staged_action"] == "insert"
+    assert staged["fields"]["Liability1"] == "81.8"
+    assert staged["fields"]["LayStatus"] == "Fully Laid"
+    assert not any(item["code"] == "override_reason_required" for item in staged["errors"])
+
+
+def test_free_bets_v1_nonzero_manual_override_still_requires_reason() -> None:
+    case = free_bet_fixture("FI-003")
+    fields = case["fields"]
+    assert isinstance(fields, dict)
+
+    mapped, errors = map_free_bet_import_fields(fields)
+
+    assert mapped["manual_override_value"] == "4.25"
+    assert any("manual_override_reason is required" in item["message"] for item in errors)
+    assert not is_historical_free_bet_void_zero_import(fields)
 
 
 def test_casino_offers_v1_maps_reference_values_and_excludes_helpers() -> None:

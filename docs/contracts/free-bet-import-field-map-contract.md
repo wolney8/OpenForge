@@ -47,7 +47,7 @@ authority.
 | `Exchange` | `exchange_name` | Preserve; commission resolves from profile settings |
 | `Lay (Actual)` | `lay_actual` | Preserve explicit actual value |
 | `LayMatchedStake1` | `lay_matched_stake_1` | Preserve explicit matched value |
-| `FinalNetPnL` | `manual_override_value` | Requires an explicit override reason |
+| `FinalNetPnL` | `manual_override_value` | Requires an explicit override reason, except when terminal Void evidence resolves exactly to zero as defined below |
 | `ManualOverrideReason` | `manual_override_reason` | Plum Duff extension for safe round trip |
 | `OriginQualBetID` | `origin_qual_bet_id` | Preserve source link |
 | `OfferGroupID` | `offer_group_id` | Preserve source group |
@@ -83,6 +83,18 @@ and overdue state from the free-bet calculation contract.
 - Unknown statuses/results/strategies block through controlled payload validation.
 - Profile collisions and changed existing identities block.
 
+## Imported historical Void boundary
+
+A historical Free Bet is deterministic Void evidence when its source Status or Result resolves to
+`Void`, its lifecycle is terminal/not open, and its finite audited `FinalNetPnL`, `NetPnL`,
+`ReportingValue` or `CalcNetPnL` resolves exactly to `0.00`. Before payload validation the import
+mapper must canonicalise Status and Result to `Void` and must not translate that zero into a
+discretionary `manual_override_value`. The source zero and complete source row remain in import
+provenance, while the Free Bet calculation contract independently resolves Void P&L to `0.00`.
+
+This exception does not apply to non-Void rows, open/contradictory rows or any non-zero manual
+override. Those retain the normal explicit-reason requirement.
+
 ## Confirmation and export
 
 - A verified local backup is mandatory immediately before confirmation.
@@ -97,4 +109,3 @@ and overdue state from the free-bet calculation contract.
 - Entered source text is preserved exactly where the database contract stores text.
 - Recomputed money values use the upstream free-bet calculation contract and `0.01` tolerance.
 - No silent rounding, commission default, retention-mode inference, or P&L normalisation.
-

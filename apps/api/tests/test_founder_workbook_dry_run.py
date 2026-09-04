@@ -1,9 +1,12 @@
+import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+import openforge_api.founder_workbook_dry_run as dry_run
 from openforge_api.account_catalogue_source import MasterAccountCatalogue
 from openforge_api.founder_workbook_dry_run import (
     LedgerDefinition,
@@ -19,7 +22,72 @@ from openforge_api.founder_workbook_dry_run import (
     resolve_provider,
     stable_import_key,
 )
-from openforge_api.imports import map_account_import_fields, map_sportsbook_import_fields
+from openforge_api.imports import (
+    map_account_import_fields,
+    map_free_bet_import_fields,
+    map_sportsbook_import_fields,
+)
+
+ROOT = Path(__file__).resolve().parents[3]
+FREE_BET_FIXTURES = json.loads(
+    (ROOT / "tests" / "fixtures" / "free-bet-import-field-map-fixtures.json").read_text()
+)["cases"]
+
+
+def free_bet_fixture(case_id: str) -> dict[str, object]:
+    return next(case for case in FREE_BET_FIXTURES if case["case_id"] == case_id)
+
+
+def test_workbook_analysis_reports_real_stage_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account_report = {
+        "blocked_count": 0,
+        "resolution_counts": {},
+        "schema": {"headers": []},
+    }
+    ledger_report = {"summary": {"partial": 0}, "schema": {"headers": []}}
+    monkeypatch.setattr(dry_run, "load_master_account_catalogue", lambda _path: object())
+    monkeypatch.setattr(dry_run, "_account_report", lambda _content, _catalogue: account_report)
+    monkeypatch.setattr(
+        dry_run,
+        "_ledger_report",
+        lambda _content, _definition, *, effective_date: ledger_report,
+    )
+    monkeypatch.setattr(
+        dry_run,
+        "_extra_place_report",
+        lambda _content: {"classification_counts": {}},
+    )
+    monkeypatch.setattr(dry_run, "_report_blocks", lambda _content: {})
+    monkeypatch.setattr(dry_run, "_profile_settings", lambda _content, _catalogue: {})
+    monkeypatch.setattr(dry_run, "_sheet_names", lambda _content: [])
+    monkeypatch.setattr(
+        dry_run,
+        "_period_reconciliation",
+        lambda _ledgers, _reports, _effective_at: {},
+    )
+    progress: list[tuple[str, int, int]] = []
+
+    dry_run.build_founder_workbook_dry_run_bytes(
+        b"synthetic workbook",
+        source_filename="synthetic.xlsx",
+        effective_at="2026-08-20T15:10:00+01:00",
+        progress_callback=lambda stage, completed, total: progress.append(
+            (stage, completed, total)
+        ),
+    )
+
+    assert progress == [
+        ("Preparing workbook analysis", 0, 9),
+        ("Resolving Accounts and providers", 1, 9),
+        ("Mapping Sportsbook", 2, 9),
+        ("Mapping Free Bets", 3, 9),
+        ("Mapping Casino Offers", 4, 9),
+        ("Mapping Cash Adjustments", 5, 9),
+        ("Validating historical records", 6, 9),
+        ("Building dry-run plan", 7, 9),
+    ]
 
 
 def synthetic_catalogue() -> MasterAccountCatalogue:
@@ -416,6 +484,57 @@ def test_terminal_void_with_audited_zero_never_enters_dry_run_review() -> None:
     assert row["errors"] == []
     assert row["automatic_historical_void_zero"] is True
     assert row["mapped_payload"]["manual_override_value"] == ""
+    assert row["normalizations"][0]["rule"] == "historical_void_zero_is_result_evidence"
+
+
+def test_full_historical_free_bet_void_shape_retains_zero_and_matching_provenance() -> None:
+    case = free_bet_fixture("FI-005")
+    fields = case["fields"]
+    assert isinstance(fields, dict)
+    parsed = SimpleNamespace(
+        headers=tuple(fields),
+        table_name="SyntheticFreeBets",
+        table_reference="A1:AZ2",
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id=str(case["source_record_id"]),
+                outside_table_range=False,
+                fields=fields,
+            )
+        ],
+    )
+    definition = LedgerDefinition(
+        key="free_bets",
+        sheet_name="Free Bets",
+        mapping_version="free-bets-v1",
+        parser=lambda _content: parsed,
+        mapper=map_free_bet_import_fields,
+        settled_statuses=frozenset({"settled", "expired", "void", "converted"}),
+        open_statuses=frozenset({"prospecting", "available", "placed"}),
+        formal_report_statuses=frozenset({"placed", "settled"}),
+        pnl_fields=("FinalNetPnL", "NetPnL", "ReportingValue"),
+        report_date_fields=("DateSettling",),
+        settlement_date_fields=("DateSettling",),
+        liability_fields=("Liability1",),
+    )
+
+    report = _ledger_report(b"synthetic", definition, effective_date=date(2026, 8, 29))
+
+    row = report["validation_rows"][0]
+    assert row["migration_state"] == "mapped"
+    assert row["errors"] == []
+    assert row["automatic_historical_void_zero"] is True
+    assert row["mapped_payload"]["status"] == "Void"
+    assert row["mapped_payload"]["result"] == "Void"
+    assert row["mapped_payload"]["manual_override_value"] == ""
+    assert row["mapped_payload"]["lay_odds_1"] == "11.0"
+    assert row["mapped_payload"]["lay_actual"] == "8.18"
+    assert row["mapped_payload"]["lay_matched_stake_1"] == "8.18"
+    assert row["source_fields"]["Liability1"] == "81.8"
+    assert row["source_fields"]["LayStatus"] == "Fully Laid"
+    assert row["imported_current_pnl"] == "0.00"
+    assert row["realised_pnl"] == "0.00"
     assert row["normalizations"][0]["rule"] == "historical_void_zero_is_result_evidence"
 
 

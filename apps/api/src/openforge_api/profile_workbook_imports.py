@@ -27,6 +27,7 @@ from openforge_api.founder_import_review import (
     build_review_items_from_dry_run,
 )
 from openforge_api.founder_workbook_dry_run import (
+    FOUNDER_ANALYSIS_WORK_UNIT_TOTAL,
     FOUNDER_MAPPING_VERSION,
     build_founder_workbook_dry_run_bytes,
 )
@@ -376,6 +377,9 @@ def _job_state(
     total_rows: int = 0,
     events: list[dict[str, Any]] | None = None,
     error: str = "",
+    work_units_completed: int = 0,
+    work_units_total: int = 0,
+    progress_mode: str = "determinate",
 ) -> dict[str, Any]:
     return {
         "stage": stage,
@@ -383,9 +387,35 @@ def _job_state(
         "rows_analysed": rows_analysed,
         "total_rows": total_rows,
         "estimated_seconds_remaining": None,
+        "work_units_completed": work_units_completed,
+        "work_units_total": work_units_total,
+        "progress_mode": progress_mode,
         "events": events or [],
         "error": error,
     }
+
+
+def _analysis_job_state(
+    *,
+    stage: str,
+    work_units_completed: int,
+    events: list[dict[str, Any]] | None = None,
+    rows_analysed: int = 0,
+    total_rows: int = 0,
+    error: str = "",
+) -> dict[str, Any]:
+    completed = max(0, min(work_units_completed, FOUNDER_ANALYSIS_WORK_UNIT_TOTAL))
+    return _job_state(
+        stage=stage,
+        percentage=round(completed / FOUNDER_ANALYSIS_WORK_UNIT_TOTAL * 100),
+        rows_analysed=rows_analysed,
+        total_rows=total_rows,
+        events=events,
+        error=error,
+        work_units_completed=completed,
+        work_units_total=FOUNDER_ANALYSIS_WORK_UNIT_TOTAL,
+        progress_mode="staged",
+    )
 
 
 def _event(kind: str, title: str, message: str) -> dict[str, Any]:
@@ -727,18 +757,32 @@ def _analyse_workbook_job(
     _update_run_job(
         import_run_id,
         status="ANALYSING",
-        job=_job_state(
-            stage="Inspecting workbook and mapping rows",
-            percentage=15,
+        job=_analysis_job_state(
+            stage="Preparing workbook analysis",
+            work_units_completed=0,
             events=[started],
         ),
     )
     try:
+        def persist_progress(stage: str, completed_units: int, total_units: int) -> None:
+            if total_units != FOUNDER_ANALYSIS_WORK_UNIT_TOTAL:
+                raise ValueError("Unexpected workbook analysis work-unit total")
+            _update_run_job(
+                import_run_id,
+                status="ANALYSING",
+                job=_analysis_job_state(
+                    stage=stage,
+                    work_units_completed=completed_units,
+                    events=[started],
+                ),
+            )
+
         result = build_founder_workbook_dry_run_bytes(
             content,
             source_filename=source_filename,
             source_path="authenticated-upload",
             effective_at=effective_at,
+            progress_callback=persist_progress,
         )
         result["accounts"]["change_reconciliation"] = _account_change_reconciliation(
             profile_id,
@@ -752,9 +796,9 @@ def _analyse_workbook_job(
         _update_run_job(
             import_run_id,
             status="ANALYSED",
-            job=_job_state(
-                stage="Saving review items",
-                percentage=85,
+            job=_analysis_job_state(
+                stage="Saving dry-run plan and review",
+                work_units_completed=8,
                 rows_analysed=total_rows,
                 total_rows=total_rows,
                 events=[started],
@@ -819,9 +863,9 @@ def _analyse_workbook_job(
             status=status,
             summary=summary,
             reconciliation=result["reconciliation"],
-            job=_job_state(
+            job=_analysis_job_state(
                 stage="Review ready" if items else "Analysis complete",
-                percentage=100,
+                work_units_completed=FOUNDER_ANALYSIS_WORK_UNIT_TOTAL,
                 rows_analysed=total_rows,
                 total_rows=total_rows,
                 events=events,
@@ -1170,9 +1214,9 @@ def analyse_profile_workbook(
         "The workbook is queued for background analysis.",
     )
     summary = _empty_summary()
-    summary["job"] = _job_state(
+    summary["job"] = _analysis_job_state(
         stage="Queued for analysis",
-        percentage=5,
+        work_units_completed=0,
         events=[started],
     )
     with connect() as connection:
