@@ -1,6 +1,6 @@
 # Contract: Sportsbook Workbook Import Field Map
 
-_Last updated: 2026-07-15_
+_Last updated: 2026-09-04_
 
 ## Status and scope
 
@@ -74,14 +74,18 @@ These source values may remain in staged audit payloads but must not become appl
 - `WeekLabel`
 
 `FinalNetPnL` is not silently converted into an override. A source override must be supplied through
-`ManualOverrideValue` with `ManualOverrideReason`.
+`ManualOverrideValue` with `ManualOverrideReason`, except that an explicitly audited `0.00` on a
+terminal historical Void row is canonical Void-result evidence rather than a discretionary
+override. That deterministic case imports with no manual override and retains its source value and
+normalisation rule in import provenance.
 
 ## Required validation
 
 - `QualBetID`, `EventName`, `Bookmaker`, `Status`, `Result` and `MatchStrategy` are required.
 - Status, result and strategy must pass the current sportsbook API authorities.
 - Money/odds text must pass the existing sportsbook payload and calculation validation.
-- A manual override without a reason blocks the row.
+- A manual override without a reason blocks the row, apart from the exact historical Void-zero rule
+  above.
 - Existing changed source identity blocks until the Fund Manager explicitly approves an update.
 
 ## Advanced-row gate
@@ -101,6 +105,14 @@ the current sportsbook payload validation.
 Legacy text that exceeds a constrained canonical field is retained in import provenance and only
 the constrained copy is shortened. A missing event label may use a neutral migration-generated
 historical label when the remaining source identity and financial state are preservable.
+
+## Historical Extra Places
+
+A terminal Sportsbook row identified as Extra Places that lacks modern EP calculator fields may be
+routed automatically to the existing `imported_historical` Extra Places mode only when it contains
+a finite audited historical P&L. Source identity, available source fields, imported P&L and mapping
+provenance are retained; missing calculator inputs are not invented. Rows without terminal state or
+audited P&L remain review-blocked.
 
 ## Export boundary
 

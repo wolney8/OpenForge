@@ -242,6 +242,12 @@ ACCOUNT_SOURCE_MAP = {
     "Notes": "notes",
 }
 
+# Type-scoped workbook spellings that have an established canonical catalogue identity.
+ACCOUNT_PROVIDER_ALIASES = {
+    ("bookmaker", "betdragon"): "BOOKMAKER-DRAGONBET",
+    ("bookmaker", "fitzwilliam"): "BOOKMAKER-FITZBET",
+}
+
 JsonScalar = str | int | float | bool | list[str] | None
 SourceLookup = Callable[[str, str], ImportSourceRecord | None]
 
@@ -561,13 +567,17 @@ def resolve_account_catalogue_record(
     if expected_type is None:
         return None
     normalized_name = account_name.strip().casefold()
+    alias_id = ACCOUNT_PROVIDER_ALIASES.get((expected_type.casefold(), normalized_name))
     return next(
         (
             record
             for record in load_master_account_catalogue().records
             if record.account_type == expected_type
-            and normalized_name
-            in {record.brand_name.casefold(), record.short_display_name.casefold()}
+            and (
+                record.catalogue_id == alias_id
+                or normalized_name
+                in {record.brand_name.casefold(), record.short_display_name.casefold()}
+            )
         ),
         None,
     )
@@ -1211,6 +1221,25 @@ def normalize_workbook_match_strategy(value: JsonScalar) -> str:
     return text
 
 
+def is_historical_void_zero_import(fields: dict[str, JsonScalar]) -> bool:
+    """Identify a terminal Void whose explicit zero is result evidence, not an override."""
+    status = field_text(fields, "status", "Status").casefold()
+    result = field_text(fields, "result", "Result").casefold()
+    value_text = field_text(
+        fields,
+        "manual_override_value",
+        "ManualOverrideValue",
+        "FinalNetPnL",
+    )
+    if "void" not in {status, result} or not value_text:
+        return False
+    try:
+        value = Decimal(value_text.replace(",", "").replace("£", ""))
+    except InvalidOperation:
+        return False
+    return value.is_finite() and value == Decimal("0")
+
+
 def _shorten_import_text(value: JsonScalar, limit: int) -> str:
     text = str(value or "")
     if len(text) <= limit:
@@ -1299,6 +1328,9 @@ def map_sportsbook_import_fields(
         status in {"Void", "Cancelled", "Free Bet Awarded"} or result == "Void"
     ):
         mapped["match_strategy"] = "No Lay"
+    if is_historical_void_zero_import(normalized_fields):
+        mapped["manual_override_value"] = ""
+        mapped["manual_override_reason"] = ""
 
     errors: list[dict[str, str]] = []
     match_strategy = field_text(mapped, "match_strategy")
@@ -1482,6 +1514,8 @@ def map_account_import_fields(
         mapped, "current_balance"
     ):
         mapped["current_balance"] = "0.00"
+    if field_text(mapped, "status").casefold() == "pending sign up":
+        mapped["counts_in_cash_total"] = False
     catalogue = resolve_account_catalogue_record(account_name, account_type)
     if catalogue is None:
         errors.append(
@@ -1699,7 +1733,11 @@ def stage_import_rows(
             )
             if source_sheet == "Casino Offers" and not override_reason:
                 override_reason = field_text(row.fields, "UserNotes", "user_notes")
-            if override_value and not override_reason:
+            historical_void_zero = (
+                source_sheet == "Sportsbook Bets"
+                and is_historical_void_zero_import(row.fields)
+            )
+            if override_value and not override_reason and not historical_void_zero:
                 errors.append(
                     issue(
                         "override_reason_required",

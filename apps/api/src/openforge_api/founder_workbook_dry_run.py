@@ -20,11 +20,13 @@ from openforge_api.account_catalogue_source import (
 )
 from openforge_api.db import extract_shared_strings, extract_sheet_paths
 from openforge_api.imports import (
+    ACCOUNT_PROVIDER_ALIASES,
     ACCOUNT_SOURCE_MAP,
     CASH_ADJUSTMENT_SOURCE_MAP,
     CASINO_OFFER_SOURCE_MAP,
     FREE_BET_SOURCE_MAP,
     SPORTSBOOK_SOURCE_MAP,
+    is_historical_void_zero_import,
     map_account_import_fields,
     map_cash_adjustment_import_fields,
     map_casino_offer_import_fields,
@@ -42,13 +44,11 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v5"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v6"
 
 # Historical provider names remain valid import evidence while resolving to the
 # current Account Catalogue identity.
-APPROVED_PROVIDER_ALIASES: dict[tuple[str, str], str] = {
-    ("bookmaker", "fitzwilliam"): "BOOKMAKER-FITZBET",
-}
+APPROVED_PROVIDER_ALIASES = ACCOUNT_PROVIDER_ALIASES
 
 NON_TRANSACTIONAL_SPORTSBOOK_STATUSES = frozenset({"prospecting", "not placed"})
 NON_TRANSACTIONAL_SPORTSBOOK_RESULTS = frozenset({"", "pending"})
@@ -281,6 +281,19 @@ def is_non_transactional_sportsbook_opportunity(fields: JsonObject) -> bool:
     )
 
 
+def is_importable_historical_extra_place(fields: JsonObject) -> bool:
+    """Return true for terminal EP rows with auditable P&L but no modern calculator shape."""
+    offer_type = str(fields.get("OfferType", "")).strip().casefold()
+    status = str(fields.get("Status", "")).strip().casefold()
+    source_pnl = _decimal(_first_value(fields, LEDGERS[0].pnl_fields))
+    return (
+        offer_type in {"ep", "ep (extra places)", "extra place", "extra places"}
+        and bool(missing_extra_place_fields(fields))
+        and status in LEDGERS[0].settled_statuses
+        and source_pnl is not None
+    )
+
+
 def _first_value(fields: JsonObject, names: tuple[str, ...]) -> object:
     for name in names:
         value = fields.get(name, "")
@@ -394,6 +407,13 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
         if balance is not None and canonical_type in balances:
             balances[canonical_type] += balance
         normalized_fields, transformations = normalize_legacy_account_fields(row.fields)
+        if resolution.catalogue_id and resolution.canonical_brand:
+            source_name = str(row.fields.get("Account", "")).strip()
+            normalized_fields["Account"] = resolution.canonical_brand
+            if resolution.classification == "ALIAS":
+                transformations.append(
+                    f"Account {source_name} -> {resolution.canonical_brand} (approved alias)"
+                )
         mapped, errors, warnings = map_account_import_fields(normalized_fields)
         key = stable_import_key(parsed.table_name, row.source_row, row.source_record_id, row.fields)
         if key in seen_keys:
@@ -410,6 +430,9 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
                 "import_key": key,
                 "catalogue_id": resolution.catalogue_id or "",
                 "canonical_brand": resolution.canonical_brand or "",
+                "source_provider_name": resolution.workbook_name,
+                "provider_resolution_classification": resolution.classification,
+                "provider_match_method": resolution.match_method,
                 "account_type": canonical_type,
                 "mapped_profile_state": mapped,
                 "source_fields": dict(row.fields),
@@ -474,6 +497,17 @@ def _ledger_report(
         mapped_result = definition.mapper(row.fields)
         mapped_payload = dict(mapped_result[0])
         errors = list(mapped_result[1])
+        automatic_historical_extra_place = (
+            definition.key == "sportsbook"
+            and is_importable_historical_extra_place(row.fields)
+        )
+        automatic_historical_void_zero = (
+            definition.key == "sportsbook"
+            and is_historical_void_zero_import(row.fields)
+        )
+        if automatic_historical_extra_place:
+            # Historical EP persistence uses source identity/P&L, not current calculator inputs.
+            errors = []
         source_map = {
             "sportsbook": SPORTSBOOK_SOURCE_MAP,
             "free_bets": FREE_BET_SOURCE_MAP,
@@ -481,6 +515,38 @@ def _ledger_report(
             "cash_adjustments": CASH_ADJUSTMENT_SOURCE_MAP,
         }[definition.key]
         normalizations: list[JsonObject] = []
+        if automatic_historical_extra_place:
+            normalizations.append(
+                {
+                    "rule": "historical_extra_place_imported_pnl",
+                    "source_field": next(
+                        (
+                            name
+                            for name in definition.pnl_fields
+                            if str(row.fields.get(name) or "").strip()
+                        ),
+                        "FinalNetPnL",
+                    ),
+                    "target_field": "imported_historical_pnl",
+                    "source_preserved": True,
+                }
+            )
+        if automatic_historical_void_zero:
+            normalizations.append(
+                {
+                    "rule": "historical_void_zero_is_result_evidence",
+                    "source_field": next(
+                        (
+                            name
+                            for name in ("ManualOverrideValue", "FinalNetPnL")
+                            if str(row.fields.get(name) or "").strip()
+                        ),
+                        "FinalNetPnL",
+                    ),
+                    "target_field": "result",
+                    "source_preserved": True,
+                }
+            )
         for source_field, target_field in source_map.items():
             source_value = str(row.fields.get(source_field) or "")
             target_value = str(mapped_payload.get(target_field) or "")
@@ -725,6 +791,8 @@ def _ledger_report(
                 "source_date": settlement_date,
                 "formal_report_date": report_date,
                 "date_quality": date_quality,
+                "automatic_historical_extra_place": automatic_historical_extra_place,
+                "automatic_historical_void_zero": automatic_historical_void_zero,
             }
         )
     partial = sum(item["migration_state"] == "partial" for item in rows)
@@ -788,7 +856,13 @@ def _extra_place_report(content: bytes) -> JsonObject:
     classifications: Counter[str] = Counter()
     for row in ep_rows:
         missing = missing_extra_place_fields(row.fields)
-        classification = "fully_mappable" if not missing else "insufficient_historical_data"
+        classification = (
+            "fully_mappable"
+            if not missing
+            else "historical_importable"
+            if is_importable_historical_extra_place(row.fields)
+            else "insufficient_historical_data"
+        )
         classifications[classification] += 1
         details.append(
             {

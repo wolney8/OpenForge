@@ -21,6 +21,7 @@ from openforge_api.profile_workbook_cutover import (
     _checkpoint_state_checksum,
     _checksum,
     _historical_extra_place_date,
+    _ledger_write_entries,
     _profile_state_checksum,
     _storage_value,
     approved_run_is_retryable,
@@ -148,6 +149,9 @@ def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> N
                     "import_key": "accounts:2",
                     "catalogue_id": "BOOKMAKER-DEMO-001",
                     "canonical_brand": "Bookmaker A",
+                    "source_provider_name": "Legacy Bookmaker A",
+                    "provider_resolution_classification": "ALIAS",
+                    "provider_match_method": "approved alias",
                     "account_type": "Bookmaker",
                     "mapped_profile_state": {"current_balance": "12.00"},
                     "source_fields": {"LegacyPrivateColumn": "not retained"},
@@ -196,6 +200,9 @@ def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> N
     encoded = json.dumps(plan)
     assert "Source-only value" not in encoded
     assert "LegacyPrivateColumn" not in encoded
+    assert plan["accounts"][0]["source_provider_name"] == "Legacy Bookmaker A"
+    assert plan["accounts"][0]["provider_resolution_classification"] == "ALIAS"
+    assert plan["accounts"][0]["provider_match_method"] == "approved alias"
     assert plan["ledgers"]["sportsbook"][0]["source_fields"] == {
         "Bookmaker": "Bookmaker A",
         "Selection": "Synthetic runner",
@@ -631,6 +638,52 @@ def test_settled_import_preserves_approved_workbook_value() -> None:
     assert result["manual_override_reason"] == (
         "Imported settled workbook value retained for cutover parity"
     )
+
+
+def test_historical_void_zero_is_not_reintroduced_as_a_manual_override() -> None:
+    result = _apply_decision(
+        {
+            "status": "Void",
+            "result": "Void",
+            "manual_override_value": "",
+            "manual_override_reason": "",
+        },
+        {
+            "imported_current_pnl": "0.00",
+            "realised_pnl": "0.00",
+            "automatic_historical_void_zero": True,
+        },
+        None,
+    )
+
+    assert result["status"] == "Void"
+    assert result["result"] == "Void"
+    assert result["manual_override_value"] == ""
+    assert result["manual_override_reason"] == ""
+
+
+def test_automatic_historical_extra_place_routes_without_a_saved_decision() -> None:
+    row = {
+        "import_key": "sportsbook:historical-ep",
+        "action": "insert",
+        "automatic_historical_extra_place": True,
+    }
+    plan = {
+        "ledgers": {
+            "sportsbook": [row],
+            "free_bets": [],
+            "casino": [],
+            "cash_adjustments": [],
+        }
+    }
+
+    entries = _ledger_write_entries(plan, {})
+
+    assert len(entries) == 1
+    assert entries[0][0] == "extra_places"
+    assert entries[0][1] == "sportsbook"
+    assert entries[0][2] is row
+    assert entries[0][3:] == (None, None)
 
 
 def test_other_reporting_state_preserves_approved_workbook_value() -> None:

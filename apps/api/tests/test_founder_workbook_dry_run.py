@@ -7,9 +7,12 @@ import pytest
 from openforge_api.account_catalogue_source import MasterAccountCatalogue
 from openforge_api.founder_workbook_dry_run import (
     LedgerDefinition,
+    _account_report,
+    _extra_place_report,
     _ledger_report,
     _period_reconciliation,
     _profile_settings,
+    is_importable_historical_extra_place,
     is_non_transactional_sportsbook_opportunity,
     missing_extra_place_fields,
     normalize_legacy_account_fields,
@@ -77,6 +80,87 @@ def test_historical_fitzwilliam_alias_resolves_to_canonical_fitzbet() -> None:
     assert result.catalogue_id == "BOOKMAKER-FITZBET"
     assert result.canonical_brand == "Fitzbet"
     assert resolve_provider("Fitzwilliam", "Bank", catalogue).classification == "MISSING"
+
+
+def test_betdragon_alias_resolves_to_existing_dragonbet_and_preserves_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    catalogue = synthetic_catalogue()
+    catalogue.records.append(
+        catalogue.records[0].model_copy(
+            update={
+                "catalogue_id": "BOOKMAKER-DRAGONBET",
+                "brand_name": "DragonBet",
+                "short_display_name": "DragonBet",
+            }
+        )
+    )
+    parsed = SimpleNamespace(
+        table_name="Synthetic_Accounts",
+        table_reference="A1:F2",
+        headers=("AccountID", "Account", "Type", "Status"),
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id="DEMO-ACCOUNT-001",
+                fields={
+                    "Account": "BetDragon",
+                    "Type": "Bookie",
+                    "Status": "Pending Sign Up",
+                    "CurrentBalance": "",
+                },
+            )
+        ],
+    )
+    mapped_inputs: list[dict[str, object]] = []
+
+    def capture_mapping(fields: dict[str, object]) -> tuple[dict[str, object], list, list]:
+        mapped_inputs.append(fields)
+        return (
+            {
+                "account": fields["Account"],
+                "status": fields["Status"],
+                "lifecycle_status": "Pending Sign Up",
+                "current_balance": "0.00",
+                "counts_in_cash_total": False,
+            },
+            [],
+            [],
+        )
+
+    monkeypatch.setattr(
+        "openforge_api.founder_workbook_dry_run.parse_account_xlsx", lambda _content: parsed
+    )
+    monkeypatch.setattr(
+        "openforge_api.founder_workbook_dry_run.map_account_import_fields", capture_mapping
+    )
+
+    report = _account_report(b"synthetic", catalogue)
+    row = report["validation_rows"][0]
+
+    assert mapped_inputs[0]["Account"] == "DragonBet"
+    assert row["catalogue_id"] == "BOOKMAKER-DRAGONBET"
+    assert row["canonical_brand"] == "DragonBet"
+    assert row["source_provider_name"] == "BetDragon"
+    assert row["provider_resolution_classification"] == "ALIAS"
+    assert report["resolution_counts"] == {"ALIAS": 1}
+    assert report["blocked_count"] == 0
+
+    monkeypatch.setattr("openforge_api.imports.load_master_account_catalogue", lambda: catalogue)
+    mapped, errors, _warnings = map_account_import_fields(
+        {
+            "Account": "BetDragon",
+            "Type": "Bookie",
+            "Status": "Pending Sign Up",
+            "CurrentBalance": "",
+            "Counts In Cash Total": True,
+        }
+    )
+    assert errors == []
+    assert mapped["account"] == "DragonBet"
+    assert mapped["lifecycle_status"] == "Pending Sign Up"
+    assert mapped["current_balance"] == "0.00"
+    assert mapped["counts_in_cash_total"] is False
 
 
 def test_stable_import_key_is_repeatable_and_changes_with_source_data() -> None:
@@ -213,6 +297,75 @@ def test_pending_signup_account_without_source_balance_uses_zero_point_in_time_b
     assert mapped["lifecycle_status"] == "Pending Sign Up"
     assert mapped["restrictions"] == []
     assert mapped["current_balance"] == "0.00"
+    assert mapped["counts_in_cash_total"] is False
+
+
+def test_terminal_historical_extra_place_with_audited_pnl_is_automatic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fields = {
+        "OfferType": "EP (Extra Places)",
+        "Status": "Settled",
+        "Result": "Lose",
+        "FinalNetPnL": "2.50",
+        "DateSettling": "2026-08-20",
+        "Bookmaker": "Bookmaker A",
+    }
+    parsed = SimpleNamespace(
+        table_name="Synthetic_Sportsbook",
+        table_reference="A1:F2",
+        headers=tuple(fields),
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id="DEMO-EP-001",
+                outside_table_range=False,
+                fields=fields,
+            )
+        ],
+    )
+    definition = LedgerDefinition(
+        key="sportsbook",
+        sheet_name="Sportsbook Bets",
+        mapping_version="test-v1",
+        parser=lambda _content: parsed,
+        mapper=lambda _fields: (
+            {},
+            [{"code": "invalid_sportsbook_payload", "message": "modern inputs missing"}],
+        ),
+        settled_statuses=frozenset({"settled", "void"}),
+        open_statuses=frozenset({"placed"}),
+        formal_report_statuses=None,
+        pnl_fields=("FinalNetPnL",),
+        report_date_fields=("DateSettling",),
+        settlement_date_fields=("DateSettling",),
+        liability_fields=(),
+    )
+    monkeypatch.setattr(
+        "openforge_api.founder_workbook_dry_run.parse_sportsbook_xlsx", lambda _content: parsed
+    )
+
+    assert is_importable_historical_extra_place(fields)
+    ledger_report = _ledger_report(b"synthetic", definition, effective_date=date(2026, 8, 29))
+    ep_report = _extra_place_report(b"synthetic")
+
+    row = ledger_report["validation_rows"][0]
+    assert row["migration_state"] == "mapped"
+    assert row["action"] == "insert"
+    assert row["automatic_historical_extra_place"] is True
+    assert row["source_pnl"] == "2.50"
+    assert row["normalizations"][0]["rule"] == "historical_extra_place_imported_pnl"
+    assert ep_report["classification_counts"] == {"historical_importable": 1}
+
+
+def test_extra_place_without_audited_pnl_still_requires_review() -> None:
+    assert not is_importable_historical_extra_place(
+        {
+            "OfferType": "EP",
+            "Status": "Settled",
+            "FinalNetPnL": "",
+        }
+    )
 
 
 @pytest.mark.parametrize(

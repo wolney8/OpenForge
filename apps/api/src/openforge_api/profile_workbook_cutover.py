@@ -382,6 +382,9 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                 "import_key",
                 "catalogue_id",
                 "canonical_brand",
+                "source_provider_name",
+                "provider_resolution_classification",
+                "provider_match_method",
                 "account_type",
                 "mapped_profile_state",
             )
@@ -417,6 +420,8 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                         "current_worst_case_pnl",
                         "realised_pnl",
                         "formal_report_date",
+                        "automatic_historical_extra_place",
+                        "automatic_historical_void_zero",
                     )
                 }
                 | {
@@ -560,8 +565,11 @@ def final_import_summary(
                     continue
                 if (
                     ledger == "sportsbook"
-                    and (ep_item or {}).get("decision", {}).get("action")
-                    == "historical_extra_place"
+                    and (
+                        row.get("automatic_historical_extra_place")
+                        or (ep_item or {}).get("decision", {}).get("action")
+                        == "historical_extra_place"
+                    )
                 ):
                     planned_ledger_counts["extra_places"] += 1
                 else:
@@ -1284,6 +1292,7 @@ def _apply_decision(
     realised_value = str(row.get("realised_pnl") or "")
     if (
         realised_value
+        and not row.get("automatic_historical_void_zero")
         and "manual_override_value" in payload
         and not str(payload.get("manual_override_value") or "")
     ):
@@ -1383,7 +1392,11 @@ def _ledger_write_entries(
             ep_action = str((ep_item or {}).get("decision", {}).get("action", ""))
             target = (
                 "extra_places"
-                if ledger == "sportsbook" and ep_action == "historical_extra_place"
+                if ledger == "sportsbook"
+                and (
+                    row.get("automatic_historical_extra_place")
+                    or ep_action == "historical_extra_place"
+                )
                 else ledger
             )
             entries.append((target, ledger, row, item, ep_item))

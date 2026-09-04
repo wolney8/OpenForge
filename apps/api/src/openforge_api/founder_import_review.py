@@ -385,6 +385,8 @@ def _build_items() -> tuple[dict[str, Any], list[dict[str, Any]]]:
 
     sports_rows = {row.source_row: row for row in parse_sportsbook_xlsx(content).rows}
     for ep_row in ep_report.get("rows", []):
+        if ep_row.get("classification") != "insufficient_historical_data":
+            continue
         ep_source_row = sports_rows[int(ep_row["source_row"])]
         import_id = stable_import_key(
             "Sportsbook Bets",
@@ -488,6 +490,8 @@ def build_review_items_from_dry_run(
 
     sports_rows = {row.source_row: row for row in parse_sportsbook_xlsx(content).rows}
     for ep_row in result["extra_places"].get("rows", []):
+        if ep_row.get("classification") != "insufficient_historical_data":
+            continue
         ep_source_row = sports_rows[int(ep_row["source_row"])]
         import_id = stable_import_key(
             "Sportsbook Bets",

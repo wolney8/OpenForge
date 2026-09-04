@@ -115,6 +115,38 @@
         "MultiLayOutcomesJson": "[{\"id\":\"branch-a\",\"label\":\"Synthetic outcome A\",\"layOdds\":\"5.00\",\"placedMatchedStake\":\"4.00\"},{\"id\":\"branch-b\",\"label\":\"Synthetic outcome B\",\"layOdds\":\"6.00\",\"placedMatchedStake\":\"3.00\"}]"
       },
       "expected_action": "insert"
+    },
+    {
+      "case_id": "SI-011",
+      "source_record_id": "DEMO-QB-011",
+      "fields": {
+        "DateSettling": "2026-07-20T20:00:00",
+        "EventName": "Synthetic void event",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "Bet & Get",
+        "Status": "Void",
+        "Result": "Void",
+        "MatchStrategy": "No Lay",
+        "ManualOverrideValue": "0.00",
+        "ManualOverrideReason": ""
+      },
+      "expected_action": "insert",
+      "expected_manual_override_value": ""
+    },
+    {
+      "case_id": "SI-012",
+      "source_record_id": "DEMO-QB-012",
+      "fields": {
+        "DateSettling": "2026-07-20T20:00:00",
+        "EventName": "Synthetic historical race",
+        "Bookmaker": "Bookmaker A",
+        "OfferType": "EP (Extra Places)",
+        "Status": "Settled",
+        "Result": "Lose",
+        "FinalNetPnL": "2.50"
+      },
+      "expected_action": "historical_extra_place",
+      "expected_imported_historical_pnl": "2.50"
     }
   ]
 }

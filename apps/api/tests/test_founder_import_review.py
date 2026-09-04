@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
+import openforge_api.founder_import_review as review_module
 from openforge_api.founder_import_review import (
     ReviewDecisionPayload,
     _with_decisions,
     _write_decisions,
+    build_review_items_from_dry_run,
     build_review_workspace,
 )
 
@@ -83,6 +87,78 @@ def test_destructive_or_ambiguous_decisions_require_a_reason() -> None:
 
     accepted = ReviewDecisionPayload.model_validate({**base, "note": "Duplicate source row"})
     assert accepted.note == "Duplicate source row"
+
+
+def test_automatic_historical_extra_place_is_not_a_review_item(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    empty = SimpleNamespace(rows=[])
+    sports = SimpleNamespace(
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id="DEMO-EP-001",
+                fields={
+                    "OfferType": "EP",
+                    "Status": "Settled",
+                    "FinalNetPnL": "2.50",
+                },
+            )
+        ]
+    )
+    monkeypatch.setattr("openforge_api.founder_import_review.parse_account_xlsx", lambda _: empty)
+    monkeypatch.setattr(
+        "openforge_api.founder_import_review.parse_sportsbook_xlsx", lambda _: sports
+    )
+    monkeypatch.setattr(
+        review_module,
+        "LEDGERS",
+        tuple(
+            replace(
+                definition,
+                parser=(
+                    lambda _, is_sportsbook=definition.key == "sportsbook": (
+                        sports if is_sportsbook else empty
+                    )
+                ),
+            )
+            for definition in review_module.LEDGERS
+        ),
+    )
+    result = {
+        "metadata": {
+            "source_filename": "synthetic.xlsx",
+            "effective_at": "2026-09-04T00:00:00+00:00",
+            "sha256": "a" * 64,
+            "mapping_version": "founder-snapshot-v6",
+        },
+        "accounts": {"resolutions": [], "validation_rows": []},
+        "ledgers": {
+            "sportsbook": {"validation_rows": []},
+            "free_bets": {"validation_rows": []},
+            "casino": {"validation_rows": []},
+            "cash_adjustments": {"validation_rows": []},
+        },
+        "extra_places": {
+            "rows": [
+                {
+                    "source_row": 2,
+                    "classification": "historical_importable",
+                    "missing_fields": ["place_terms"],
+                }
+            ]
+        },
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 0,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+    }
+
+    metadata_result, items = build_review_items_from_dry_run(result, b"synthetic")
+
+    assert items == []
+    assert metadata_result["historical_ep_count"] == 0
 
 
 def test_current_private_review_is_read_only_and_complete_when_available(

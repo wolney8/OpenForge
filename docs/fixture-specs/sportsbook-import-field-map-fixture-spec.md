@@ -20,5 +20,7 @@ _Last updated: 2026-07-15_
 | SI-008 | Bounded XLSX containing excluded sheet relation | Only sportsbook table is read |
 | SI-009 | Confirm, export and re-import | Backup required; all exported rows become no-ops |
 | SI-010 | Populated row beyond stale XLSX table range | Row staged with visible review warning |
+| SI-011 | Historical Void with audited zero override and no reason | Imports as Void with no discretionary manual override and retains provenance |
+| SI-012 | Terminal historical Extra Place with audited P&L but no modern calculator fields | Routes to imported-historical EP mode without a review decision or invented inputs |
 
 All values are synthetic.

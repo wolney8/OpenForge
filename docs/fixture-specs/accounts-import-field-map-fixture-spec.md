@@ -23,5 +23,7 @@ All cases are synthetic and contain no real account-holder data or credentials.
 | AI-010 | Export/re-import | Entered fields and source identity round-trip; unchanged row is no-op |
 | AI-011 | Blank current balance | Compatible and remains blank; never coerced to zero |
 | AI-012 | Archived historical account authority | Compatible with warning; excluded from new sign-up suggestions |
+| AI-013 | `BetDragon` bookmaker alias | Resolves to canonical `DragonBet`, retains source provenance, and creates no catalogue duplicate |
+| AI-014 | Pending Sign Up with blank balance | Imports as lifecycle Pending Sign Up, balance `0.00`, excluded from cash totals, and remains a signup Opportunity candidate |
 
 Executable synthetic cases live in `tests/fixtures/accounts-import-field-map-fixtures.json`.

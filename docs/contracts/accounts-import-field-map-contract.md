@@ -1,6 +1,6 @@
 # Accounts Import Field Map Contract
 
-Last updated: 2026-07-17
+Last updated: 2026-09-04
 
 ## Status
 
@@ -40,6 +40,10 @@ boundary as the other issue #12 ledgers.
 ## Master Catalogue Resolution
 
 - Match `Account` case-insensitively to `brand_name` or `short_display_name`.
+- Apply the approved, type-scoped historical alias map before declaring a provider missing. The
+  workbook name remains import provenance while the Profile Account uses the canonical catalogue
+  identity. In particular, bookmaker `BetDragon` resolves to `DragonBet`; this never creates a
+  second catalogue provider.
 - Map workbook `Bookie` to catalogue `Bookmaker`; `Exchange` and `Bank` map directly.
 - Unknown or wrong-type catalogue records block confirmation. Archived records remain importable
   for historical profile parity, produce a warning, and must not be suggested for new sign-ups.
@@ -49,8 +53,10 @@ boundary as the other issue #12 ledgers.
 
 ## Financial and Data Safety
 
-- `CurrentBalance` is imported exactly as entered after decimal validation; a workbook blank remains
-  blank and must not be silently converted to zero. No P&L calculation may replace it.
+- `CurrentBalance` is imported exactly as entered after decimal validation. A workbook blank remains
+  blank except for `Pending Sign Up`, where it is deterministically represented as `0.00` because
+  no funded account exists yet. A Pending Sign Up account is excluded from cash totals and remains
+  eligible for the existing opt-in signup Opportunity workflow. No P&L calculation may replace it.
 - `PendingWithdrawalAmount` is not converted into a cash adjustment.
 - No silent rounding, currency conversion, or sign correction.
 - `LastPromoUsed` is never persisted from the workbook.

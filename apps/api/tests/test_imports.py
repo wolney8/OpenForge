@@ -382,6 +382,38 @@ def test_manual_override_without_reason_is_blocked() -> None:
     assert staged[0]["errors"][0]["code"] == "override_reason_required"
 
 
+def test_historical_void_zero_does_not_require_a_manual_override_reason() -> None:
+    fields = {
+        "EventName": "Synthetic void event",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Void",
+        "Result": "Void",
+        "MatchStrategy": "No Lay",
+        "ManualOverrideValue": "0.00",
+        "ManualOverrideReason": "",
+    }
+
+    mapped, mapping_errors = map_sportsbook_import_fields(fields)
+    staged = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[
+            ImportRowPayload(
+                sheet="Sportsbook Bets",
+                source_record_id="DEMO-VOID-001",
+                fields=fields,
+            )
+        ],
+        source_lookup=no_existing_source,
+    )
+
+    assert mapping_errors == []
+    assert mapped["status"] == "Void"
+    assert mapped["result"] == "Void"
+    assert mapped["manual_override_value"] == ""
+    assert mapped["manual_override_reason"] == ""
+    assert not any(error["code"] == "override_reason_required" for error in staged[0]["errors"])
+
+
 def test_current_value_difference_is_visible_warning() -> None:
     inputs = fixture("IO-006")["inputs"]
     assert isinstance(inputs, dict)

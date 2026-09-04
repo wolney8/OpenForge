@@ -94,6 +94,46 @@
         "staged_action": "insert",
         "warning_code": "account_catalogue_entry_archived"
       }
+    },
+    {
+      "case_id": "AI-013",
+      "source_record_id": "DEMO-ACCOUNT-013",
+      "fields": {
+        "Account": "BetDragon",
+        "Type": "Bookie",
+        "Counts In Cash Total": true,
+        "Channel": "Unknown",
+        "Status": "Pending Sign Up",
+        "CurrentBalance": "",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "insert",
+        "canonical_account": "DragonBet",
+        "source_provider_name": "BetDragon",
+        "lifecycle_status": "Pending Sign Up",
+        "current_balance": "0.00",
+        "counts_in_cash_total": false
+      }
+    },
+    {
+      "case_id": "AI-014",
+      "source_record_id": "DEMO-ACCOUNT-014",
+      "fields": {
+        "Account": "Smarkets",
+        "Type": "Exchange",
+        "Counts In Cash Total": true,
+        "Channel": "Online",
+        "Status": "Pending Sign Up",
+        "CurrentBalance": "",
+        "PendingWithdrawalAmount": ""
+      },
+      "expected": {
+        "staged_action": "insert",
+        "lifecycle_status": "Pending Sign Up",
+        "current_balance": "0.00",
+        "counts_in_cash_total": false
+      }
     }
   ]
 }
