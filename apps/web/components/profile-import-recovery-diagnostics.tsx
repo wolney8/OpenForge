@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
+import { invalidateCachedJson } from "@/lib/client-json-cache";
+import { PROFILE_DIRECTORY_UPDATED_EVENT } from "@/lib/recent-profiles";
+import { beginRouteTransition } from "@/lib/shell-loading";
 
 type RecoveryDiagnostics = {
   profile_id: string;
   profile_display_name: string;
+  profile_status: string;
   import_run_id?: string;
   execution_id?: string;
   attempt_number?: number;
@@ -57,6 +63,7 @@ type RecoveryDiagnostics = {
 const fields: Array<[keyof RecoveryDiagnostics, string]> = [
   ["profile_id", "Profile ID"],
   ["profile_display_name", "Profile"],
+  ["profile_status", "Profile status"],
   ["import_run_id", "ImportRun ID"],
   ["execution_id", "Execution ID"],
   ["attempt_number", "Latest attempt"],
@@ -85,14 +92,24 @@ function display(value: RecoveryDiagnostics[keyof RecoveryDiagnostics] | undefin
   return String(value);
 }
 
+async function responseDetail(response: Response) {
+  const body = await response.json().catch(() => null) as { detail?: string } | null;
+  return body?.detail || `Request failed with status ${response.status}`;
+}
+
 export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: string }) {
+  const router = useRouter();
+  const initialLoadStarted = useRef(false);
   const [diagnostics, setDiagnostics] = useState<RecoveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"archive" | "delete" | null>(null);
+  const [confirmation, setConfirmation] = useState<"archive" | "delete" | null>(null);
   const [message, setMessage] = useState("");
+  const [diagnosticsError, setDiagnosticsError] = useState("");
 
-  async function loadDiagnostics() {
-    if (loading) return;
+  const loadDiagnostics = useCallback(async () => {
     setLoading(true);
+    setDiagnosticsError("");
     try {
       const response = await fetch(
         `${apiBaseUrl}/profiles/${profileId}/workbook-imports/recovery-diagnostics`,
@@ -102,9 +119,75 @@ export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: str
       if (!response.ok || !body) throw new Error(body?.detail ?? "Unable to load recovery diagnostics.");
       setDiagnostics(body);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load recovery diagnostics.");
+      setDiagnosticsError(
+        error instanceof Error ? error.message : "Unable to load recovery diagnostics.",
+      );
     } finally {
       setLoading(false);
+    }
+  }, [profileId]);
+
+  useEffect(() => {
+    if (initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
+    void loadDiagnostics();
+  }, [loadDiagnostics]);
+
+  async function archiveProfile() {
+    if (pendingAction || confirmation !== "archive") return;
+    setPendingAction("archive");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/fund-manager/import-recovery/${profileId}/archive`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ confirmation: "ARCHIVE PROFILE" }),
+        },
+      );
+      if (!response.ok) throw new Error(await responseDetail(response));
+      setConfirmation(null);
+      setMessage("Profile archived. Permanent deletion is now available.");
+      invalidateCachedJson(`${apiBaseUrl}/profiles`);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}`);
+      window.dispatchEvent(new CustomEvent(PROFILE_DIRECTORY_UPDATED_EVENT, { detail: { profileId } }));
+      await loadDiagnostics();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Profile archive failed.");
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function permanentlyDeleteProfile() {
+    if (pendingAction || confirmation !== "delete" || !diagnostics) return;
+    setPendingAction("delete");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/fund-manager/import-recovery/${profileId}/permanent-delete`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ confirmation_name: diagnostics.profile_display_name }),
+        },
+      );
+      if (!response.ok) throw new Error(await responseDetail(response));
+      invalidateCachedJson(`${apiBaseUrl}/profiles`);
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}`);
+      invalidateCachedJson(
+        `${apiBaseUrl}/profiles/${profileId}/workbook-imports/recovery-diagnostics`,
+      );
+      window.dispatchEvent(new CustomEvent(PROFILE_DIRECTORY_UPDATED_EVENT, { detail: { profileId } }));
+      setConfirmation(null);
+      beginRouteTransition();
+      router.replace("/profiles?status=Archived");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Profile deletion failed.");
+      setPendingAction(null);
     }
   }
 
@@ -117,9 +200,9 @@ export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: str
           <h2 id="import-recovery-diagnostics-title">Recovery diagnostics</h2>
           <p className="field-hint">Read-only rollback-safety metadata for this Profile&apos;s latest workbook import.</p>
         </div>
-        <button aria-label="Load import recovery diagnostics" className="button-link icon-text-action" data-pd-id="profile-import.recovery-diagnostics.load" disabled={loading} onClick={() => void loadDiagnostics()} type="button">
+        <button aria-label="Refresh import recovery diagnostics" className="button-link icon-text-action" data-pd-id="profile-import.recovery-diagnostics.load" disabled={loading || pendingAction !== null} onClick={() => void loadDiagnostics()} type="button">
           {loading ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">troubleshoot</span>}
-          <span>{loading ? "Loading" : "Load diagnostics"}</span>
+          <span>{loading ? "Loading" : "Refresh diagnostics"}</span>
         </button>
       </div>
       {diagnostics ? (
@@ -191,8 +274,70 @@ export function ProfileImportRecoveryDiagnostics({ profileId }: { profileId: str
               </article>
             ))}
           </section>
+          <section aria-labelledby="import-recovery-actions-title" className="content-panel stack profile-lifecycle-danger" data-pd-id="profile-import.recovery-actions">
+            <div>
+              <span className="eyebrow">Emergency Profile lifecycle</span>
+              <h3 id="import-recovery-actions-title">Recovery actions</h3>
+            </div>
+            <p>
+              These actions use only Profile identity and lifecycle metadata. They do not load
+              Accounts, tracker summaries, ledgers, reporting, or Profile Management.
+            </p>
+            {diagnostics.profile_status === "Active" ? (
+              <button
+                className="icon-button icon-button-destructive icon-text-action"
+                data-pd-id="profile-import.recovery-actions.archive"
+                disabled={pendingAction !== null || loading}
+                onClick={() => setConfirmation("archive")}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">archive</span>
+                <span>Archive Profile</span>
+              </button>
+            ) : diagnostics.profile_status === "Archived" ? (
+              <div className="stack">
+                <p className="field-hint">
+                  This Profile is Archived. Permanent deletion removes only Profile-scoped data
+                  and cannot be undone.
+                </p>
+                <button
+                  className="icon-button icon-button-destructive icon-text-action"
+                  data-pd-id="profile-import.recovery-actions.delete"
+                  disabled={pendingAction !== null || loading}
+                  onClick={() => setConfirmation("delete")}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                  <span>Permanently Delete Profile</span>
+                </button>
+              </div>
+            ) : (
+              <p className="field-hint">
+                Emergency recovery supports Active → Archived → permanently deleted. Current
+                status: {diagnostics.profile_status}.
+              </p>
+            )}
+          </section>
         </>
-      ) : <p className="field-hint">Load diagnostics to inspect the latest ImportRun. This action does not change Profile data.</p>}
+      ) : diagnosticsError ? (
+        <p className="error-text" role="alert">{diagnosticsError}</p>
+      ) : (
+        <p className="field-hint">Loading Profile identity and import recovery metadata.</p>
+      )}
+      <ConfirmationDialog
+        busy={pendingAction !== null}
+        busyLabel={confirmation === "archive" ? "Archiving" : "Deleting"}
+        confirmLabel={confirmation === "archive" ? "Archive Profile" : "Permanently Delete Profile"}
+        confirmationLabel="Profile name"
+        confirmationText={confirmation === "delete" ? diagnostics?.profile_display_name : undefined}
+        description={confirmation === "archive"
+          ? `Archive ${diagnostics?.profile_display_name ?? "this Profile"}? The Profile becomes read-only and permanent deletion becomes available.`
+          : `Permanently delete ${diagnostics?.profile_display_name ?? "this Profile"} and all Profile-scoped financial, import, and audit data? This cannot be undone.`}
+        onCancel={() => setConfirmation(null)}
+        onConfirm={() => confirmation === "archive" ? void archiveProfile() : void permanentlyDeleteProfile()}
+        open={confirmation !== null}
+        title={confirmation === "archive" ? "Archive Profile?" : "Delete Profile permanently?"}
+      />
     </section>
   );
 }

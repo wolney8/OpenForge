@@ -31,6 +31,7 @@ from openforge_api.profile_workbook_imports import (
     execution_router as profile_import_executions_router,
 )
 from openforge_api.profile_workbook_imports import router as profile_workbook_imports_router
+from openforge_api.profiles import recovery_router as profile_recovery_router
 from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
@@ -48,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(profiles_router)
+app.include_router(profile_recovery_router)
 app.include_router(auth_router)
 app.include_router(global_search_router)
 app.include_router(account_catalogue_source_router)

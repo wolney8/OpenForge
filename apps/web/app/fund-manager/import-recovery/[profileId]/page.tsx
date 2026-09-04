@@ -14,8 +14,8 @@ export default async function ImportRecoveryPage({ params }: ImportRecoveryPageP
           <span className="eyebrow">Fund Manager recovery</span>
           <h1 id="import-recovery-title">Import Recovery</h1>
           <p className="field-hint">
-            Read-only rollback-safety evidence. This route does not load tracker reporting,
-            Accounts, Sportsbook, or Reports.
+            Rollback-safety evidence and emergency Profile lifecycle controls. This route does not
+            load tracker reporting, Accounts, Sportsbook, Reports, or Profile Management.
           </p>
         </div>
         <ProfileImportRecoveryDiagnostics profileId={profileId} />

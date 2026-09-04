@@ -5,8 +5,11 @@ import json
 import sqlite3
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from openforge_api import tracker_summary_sources
 from openforge_api.config import settings
@@ -221,6 +224,32 @@ def test_profile_detail_returns_404_for_unknown_profile(tmp_path: Path) -> None:
 
     response = client.get("/profiles/missing-profile")
     assert response.status_code == 404
+
+
+def test_malformed_account_lifecycle_reproduces_management_accounts_500(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    settings.auth_required = False
+    with connect() as connection:
+        account_id = connection.execute(
+            "SELECT account_id FROM accounts WHERE profile_id = ? ORDER BY account_id LIMIT 1",
+            ("profile-demo-001",),
+        ).fetchone()["account_id"]
+        connection.execute(
+            "UPDATE accounts SET lifecycle_status = 'Bonus Restricted' WHERE account_id = ?",
+            (account_id,),
+        )
+
+    client = TestClient(app)
+    assert client.get("/profiles/profile-demo-001").status_code == 200
+    with pytest.raises(ValidationError) as raised:
+        client.get("/profiles/profile-demo-001/accounts")
+    assert "lifecycle_status" in str(raised.value)
+    assert "Bonus Restricted" in str(raised.value)
+
+    production_style_client = TestClient(app, raise_server_exceptions=False)
+    assert production_style_client.get("/profiles/profile-demo-001/accounts").status_code == 500
 
 
 def test_profile_metadata_can_be_updated_with_audit(tmp_path: Path) -> None:
@@ -454,6 +483,131 @@ def test_profile_delete_requires_archive_and_exact_name_then_cascades(
                     (profile_id,),
                 ).fetchone()["count"]
                 assert count == 0, f"orphaned {table_name}.{column}"
+
+
+def test_emergency_recovery_archive_and_delete_bypass_broken_account_hydration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    settings.auth_required = False
+    client = TestClient(app)
+    session = SimpleNamespace(email="founder@example.invalid", role="fund_manager")
+    monkeypatch.setattr(
+        "openforge_api.profiles.require_request_session", lambda _request: session
+    )
+
+    payload = profile_onboarding_payload()
+    created = client.post("/profiles/onboarding", json=payload)
+    assert created.status_code == 201
+    profile_id = created.json()["profile"]["profile_id"]
+    unaffected_payload = profile_onboarding_payload()
+    unaffected_payload.update(
+        display_name="Unaffected Profile", profile_code="PROFILE-RECOVERY-002"
+    )
+    unaffected = client.post("/profiles/onboarding", json=unaffected_payload)
+    assert unaffected.status_code == 201
+    unaffected_id = unaffected.json()["profile"]["profile_id"]
+
+    with connect() as connection:
+        broken_account_id = connection.execute(
+            "SELECT account_id FROM accounts WHERE profile_id = ? ORDER BY account_id LIMIT 1",
+            (profile_id,),
+        ).fetchone()["account_id"]
+        connection.execute(
+            "UPDATE accounts SET lifecycle_status = 'Bonus Restricted' WHERE account_id = ?",
+            (broken_account_id,),
+        )
+        global_catalogue_count = connection.execute(
+            "SELECT COUNT(*) AS count FROM bookmaker_catalogue"
+        ).fetchone()["count"]
+        fund_manager_settings_count = connection.execute(
+            "SELECT COUNT(*) AS count FROM fund_manager_settings"
+        ).fetchone()["count"]
+    catalogue_source_before = Path(settings.account_catalogue_source).read_bytes()
+
+    broken_domain_client = TestClient(app, raise_server_exceptions=False)
+    assert broken_domain_client.get(f"/profiles/{profile_id}/accounts").status_code == 500
+
+    missing_confirmation = client.post(
+        f"/fund-manager/import-recovery/{profile_id}/archive", json={}
+    )
+    assert missing_confirmation.status_code == 422
+    archived = client.post(
+        f"/fund-manager/import-recovery/{profile_id}/archive",
+        json={"confirmation": "ARCHIVE PROFILE"},
+    )
+    assert archived.status_code == 200
+    assert archived.json() == {
+        "profile_id": profile_id,
+        "display_name": "Synthetic Profile",
+        "status": "Archived",
+    }
+    assert client.post(
+        f"/fund-manager/import-recovery/{profile_id}/archive",
+        json={"confirmation": "ARCHIVE PROFILE"},
+    ).status_code == 409
+
+    wrong_name = client.request(
+        "DELETE",
+        f"/fund-manager/import-recovery/{profile_id}/permanent-delete",
+        json={"confirmation_name": "Wrong Profile"},
+    )
+    assert wrong_name.status_code == 422
+    deleted = client.request(
+        "DELETE",
+        f"/fund-manager/import-recovery/{profile_id}/permanent-delete",
+        json={"confirmation_name": "Synthetic Profile"},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    assert client.get(f"/profiles/{profile_id}").status_code == 404
+    assert client.get(f"/profiles/{unaffected_id}").status_code == 200
+    assert all(
+        row["profile_id"] != profile_id for row in client.get("/profiles").json()
+    )
+    with connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM bookmaker_catalogue"
+        ).fetchone()["count"] == global_catalogue_count
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM fund_manager_settings"
+        ).fetchone()["count"] == fund_manager_settings_count
+        assert connection.execute(
+            "SELECT deleted_by FROM profile_deletion_audit WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()["deleted_by"] == "founder@example.invalid"
+    assert Path(settings.account_catalogue_source).read_bytes() == catalogue_source_before
+
+    recreated = client.post("/profiles/onboarding", json=payload)
+    assert recreated.status_code == 201
+    assert recreated.json()["profile"]["display_name"] == "Synthetic Profile"
+
+
+def test_emergency_recovery_actions_require_fund_manager_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_temp_database(tmp_path)
+    settings.auth_required = False
+    client = TestClient(app)
+
+    unauthenticated = client.post(
+        "/fund-manager/import-recovery/profile-demo-001/archive",
+        json={"confirmation": "ARCHIVE PROFILE"},
+    )
+    assert unauthenticated.status_code == 401
+
+    monkeypatch.setattr(
+        "openforge_api.profiles.require_request_session",
+        lambda _request: SimpleNamespace(
+            email="subscriber@example.invalid", role="subscriber"
+        ),
+    )
+    forbidden = client.post(
+        "/fund-manager/import-recovery/profile-demo-001/archive",
+        json={"confirmation": "ARCHIVE PROFILE"},
+    )
+    assert forbidden.status_code == 403
 
 
 def test_profile_fees_cannot_exceed_one_hundred_percent(tmp_path: Path) -> None:

@@ -954,10 +954,13 @@ def _attach_drift_audit_evidence(
 @router.get("/recovery-diagnostics")
 def get_profile_import_recovery_diagnostics(profile_id: str, request: Request) -> dict[str, Any]:
     """Return read-only, attempt-scoped recovery evidence for one Profile."""
-    require_request_session(request)
+    session = require_request_session(request)
+    if session.role != "fund_manager":
+        raise HTTPException(status_code=403, detail="Fund Manager access is required")
     with connect() as connection:
         profile = connection.execute(
-            "SELECT profile_id, display_name FROM profiles WHERE profile_id = ?", (profile_id,)
+            "SELECT profile_id, display_name, status FROM profiles WHERE profile_id = ?",
+            (profile_id,),
         ).fetchone()
         if profile is None:
             raise HTTPException(status_code=404, detail="Profile was not found")
@@ -979,6 +982,7 @@ def get_profile_import_recovery_diagnostics(profile_id: str, request: Request) -
             return {
                 "profile_id": profile_id,
                 "profile_display_name": str(profile["display_name"]),
+                "profile_status": str(profile["status"]),
                 "current_profile_checksum": current_checksum,
                 "execution_running": bool(active_execution_count),
                 "attempts": [],
@@ -1072,6 +1076,7 @@ def get_profile_import_recovery_diagnostics(profile_id: str, request: Request) -
     return {
         "profile_id": profile_id,
         "profile_display_name": str(profile["display_name"]),
+        "profile_status": str(profile["status"]),
         "import_run_id": str(run_record["import_run_id"]),
         "execution_id": str(latest.get("execution_id") or ""),
         "attempt_number": latest.get("attempt_number"),

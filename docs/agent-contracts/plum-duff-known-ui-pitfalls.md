@@ -3,6 +3,21 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-04: Profile recovery actions depended on healthy Account hydration
+
+- Area: `PD-FIX-RECOVERY-002` through `PD-FIX-RECOVERY-005`, emergency Profile lifecycle.
+- Root cause: Profile Management loaded identity, all Profile Accounts and session state in one
+  blocking request group. A malformed imported Account lifecycle value made the Accounts request
+  return 500, preventing even identity-only Archive and Delete controls from mounting.
+- Prevention: the dedicated Fund Manager import-recovery route owns an emergency Active → Archived
+  → permanent-delete path. Its server operations read only Profile identity/lifecycle metadata and
+  reuse the database-owned Profile cascade; they must never hydrate Account or reporting response
+  models. Permanent deletion retains Archived-state and exact-name confirmation requirements.
+- Regression tests: `apps/api/tests/test_profiles.py` persists a deliberately invalid synthetic
+  Account lifecycle and proves recovery archive/delete still work while Account hydration returns
+  500; `tests/e2e/import-recovery-route.spec.ts` proves no Profile Management, Account or reporting
+  requests occur and verifies confirmation, pending, theme and reduced-viewport behaviour.
+
 ## 2026-09-03: Recovery evidence was nested inside a broken tracker route
 
 - Area: `PD-FIX-RECOVERY-001`, Import/Export recovery diagnostics.

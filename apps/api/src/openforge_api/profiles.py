@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
+from openforge_api.auth import AuthSession, require_request_session
 from openforge_api.db import (
     create_profile_with_onboarding,
     delete_archived_profile,
@@ -22,6 +23,9 @@ from openforge_api.db import (
 )
 
 router = APIRouter(tags=["profiles"])
+recovery_router = APIRouter(
+    prefix="/fund-manager/import-recovery", tags=["profile-recovery"]
+)
 
 
 class ProfileResponse(BaseModel):
@@ -47,6 +51,16 @@ class ProfileDeleteResponse(BaseModel):
     deleted_record_counts: dict[str, int]
 
 
+class ProfileRecoveryArchivePayload(BaseModel):
+    confirmation: Literal["ARCHIVE PROFILE"]
+
+
+class ProfileRecoveryLifecycleResponse(BaseModel):
+    profile_id: str
+    display_name: str
+    status: Literal["Archived"]
+
+
 class ProfileUpdatePayload(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=120)
     profile_code: str | None = Field(
@@ -64,6 +78,42 @@ class ProfileUpdatePayload(BaseModel):
         if self.tracking_start_date is not None and self.tracking_start_date > date.today():
             raise ValueError("Tracking start date cannot be in the future")
         return self
+
+
+def _require_fund_manager(request: Request) -> AuthSession:
+    session = require_request_session(request)
+    if session.role != "fund_manager":
+        raise HTTPException(status_code=403, detail="Fund Manager access is required")
+    return session
+
+
+def _delete_profile_with_confirmation(
+    profile_id: str, *, confirmation_name: str, deleted_by: str
+) -> ProfileDeleteResponse:
+    profile = get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if profile.status.casefold() != "archived":
+        raise HTTPException(
+            status_code=409, detail="Archive this Profile before permanently deleting it."
+        )
+    if confirmation_name != profile.display_name:
+        raise HTTPException(
+            status_code=422, detail="Enter the exact Profile name to confirm deletion."
+        )
+    try:
+        deleted = delete_archived_profile(profile_id, deleted_by=deleted_by)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return ProfileDeleteResponse(
+        profile_id=deleted.profile_id,
+        display_name=deleted.display_name,
+        deletion_audit_id=deleted.deletion_audit_id,
+        deleted=True,
+        deleted_record_counts=deleted.deleted_record_counts,
+    )
 
 
 ProfileModule = Literal[
@@ -478,33 +528,52 @@ def update_profile_route(profile_id: str, payload: ProfileUpdatePayload) -> Prof
 def delete_profile_route(
     profile_id: str, payload: ProfileDeletePayload, request: Request
 ) -> ProfileDeleteResponse:
+    auth_session = getattr(request.state, "auth_session", None)
+    return _delete_profile_with_confirmation(
+        profile_id,
+        confirmation_name=payload.confirmation_name,
+        deleted_by=(auth_session.email if auth_session is not None else "local-fund-manager"),
+    )
+
+
+@recovery_router.post(
+    "/{profile_id}/archive", response_model=ProfileRecoveryLifecycleResponse
+)
+def archive_profile_from_recovery(
+    profile_id: str, payload: ProfileRecoveryArchivePayload, request: Request
+) -> ProfileRecoveryLifecycleResponse:
+    """Archive one broken Profile without hydrating its operational domains."""
+    _require_fund_manager(request)
     profile = get_profile(profile_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    if profile.status.casefold() != "archived":
+    if profile.status.casefold() == "archived":
+        raise HTTPException(status_code=409, detail="Profile is already Archived")
+    if profile.status.casefold() != "active":
         raise HTTPException(
-            status_code=409, detail="Archive this Profile before permanently deleting it."
+            status_code=409,
+            detail=f"Only an Active Profile can use emergency archive (current: {profile.status}).",
         )
-    if payload.confirmation_name != profile.display_name:
-        raise HTTPException(
-            status_code=422, detail="Enter the exact Profile name to confirm deletion."
-        )
-    try:
-        auth_session = getattr(request.state, "auth_session", None)
-        deleted = delete_archived_profile(
-            profile_id,
-            deleted_by=(
-                auth_session.email if auth_session is not None else "local-fund-manager"
-            ),
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    if deleted is None:
+    updated = update_profile_metadata(profile_id, status="Archived")
+    if updated is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return ProfileDeleteResponse(
-        profile_id=deleted.profile_id,
-        display_name=deleted.display_name,
-        deletion_audit_id=deleted.deletion_audit_id,
-        deleted=True,
-        deleted_record_counts=deleted.deleted_record_counts,
+    return ProfileRecoveryLifecycleResponse(
+        profile_id=updated.profile_id,
+        display_name=updated.display_name,
+        status="Archived",
+    )
+
+
+@recovery_router.delete(
+    "/{profile_id}/permanent-delete", response_model=ProfileDeleteResponse
+)
+def delete_profile_from_recovery(
+    profile_id: str, payload: ProfileDeletePayload, request: Request
+) -> ProfileDeleteResponse:
+    """Delete one Archived Profile through the existing database-owned cascade."""
+    session = _require_fund_manager(request)
+    return _delete_profile_with_confirmation(
+        profile_id,
+        confirmation_name=payload.confirmation_name,
+        deleted_by=session.email,
     )
