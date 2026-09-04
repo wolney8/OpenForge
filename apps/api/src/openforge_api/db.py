@@ -16,7 +16,7 @@ from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 from openforge_api.config import settings
-from openforge_api.postgres_runtime import connect_postgres
+from openforge_api.postgres_runtime import connect_postgres, connect_postgres_read_only
 
 database_operation_lock = threading.RLock()
 local_fund_manager_sessions: dict[str, dict[str, Any]] = {}
@@ -690,6 +690,40 @@ def connect() -> Iterator[Any]:
             yield sqlite_connection
             sqlite_connection.commit()
         finally:
+            sqlite_connection.close()
+
+
+@contextmanager
+def connect_read_only() -> Iterator[Any]:
+    """Open a snapshot-capable query connection without initialization or commit side effects."""
+    database_mode = settings.database_mode.strip().lower() or "local"
+    if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
+        postgres_connection = connect_postgres_read_only(settings.neon_database_url)
+        try:
+            yield postgres_connection
+        finally:
+            postgres_connection.rollback()
+            postgres_connection.close()
+        return
+
+    with database_operation_lock:
+        if database_mode not in SUPPORTED_SQLITE_RUNTIME_MODES:
+            raise RuntimeError(
+                "Database mode "
+                f"{settings.database_mode!r} is not a supported runtime adapter. "
+                "Use local, recovery-local, or neon to prevent split-brain data."
+            )
+        database_path = settings.database_path.resolve()
+        sqlite_connection = sqlite3.connect(
+            f"file:{database_path.as_posix()}?mode=ro", uri=True
+        )
+        sqlite_connection.row_factory = sqlite3.Row
+        sqlite_connection.execute("PRAGMA query_only = ON")
+        sqlite_connection.execute("BEGIN")
+        try:
+            yield sqlite_connection
+        finally:
+            sqlite_connection.rollback()
             sqlite_connection.close()
 
 

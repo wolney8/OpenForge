@@ -7,6 +7,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
 import { ProfileWorkbookMigration } from "@/components/profile-workbook-migration";
 import { ProfileImportRecoveryDiagnostics } from "@/components/profile-import-recovery-diagnostics";
+import { PortableProfileExport } from "@/components/portable-profile-export";
 import { apiBaseUrl } from "@/lib/api";
 import { formatFinancialValue } from "@/lib/financial-display";
 
@@ -564,6 +565,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
     <>
       <ProfileWorkbookMigration profileId={profileId} />
       <ProfileImportRecoveryDiagnostics profileId={profileId} />
+      <PortableProfileExport profileId={profileId} />
     </>
     <section className="content-subpanel stack spreadsheet-transfer-panel">
       <div className="workflow-panel-header">

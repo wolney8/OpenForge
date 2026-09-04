@@ -10981,6 +10981,17 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   align-items: stretch;
 }
 
+.portable-profile-export-feedback {
+  display: grid;
+  min-height: 6.5rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.portable-profile-export-feedback .spreadsheet-row-id {
+  overflow-wrap: anywhere;
+}
+
 .profile-import-history-table {
   min-width: 100rem;
 }

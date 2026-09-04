@@ -27,6 +27,7 @@ from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
 from openforge_api.notifications import router as notifications_router
 from openforge_api.profile_lifecycle_middleware import ProfileLifecycleMiddleware
+from openforge_api.profile_portable_export import router as profile_portable_export_router
 from openforge_api.profile_workbook_imports import (
     execution_router as profile_import_executions_router,
 )
@@ -50,6 +51,7 @@ app.add_middleware(
 )
 app.include_router(profiles_router)
 app.include_router(profile_recovery_router)
+app.include_router(profile_portable_export_router)
 app.include_router(auth_router)
 app.include_router(global_search_router)
 app.include_router(account_catalogue_source_router)

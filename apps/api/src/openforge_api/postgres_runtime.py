@@ -122,3 +122,13 @@ def connect_postgres(connection_url: str) -> PostgresConnectionAdapter:
     ensure_postgres_schema(connection_url)
     connection = psycopg.connect(connection_url, connect_timeout=10)
     return PostgresConnectionAdapter(connection)
+
+
+def connect_postgres_read_only(connection_url: str) -> PostgresConnectionAdapter:
+    """Open an existing PostgreSQL store without running schema initialization."""
+    if not connection_url.strip():
+        raise RuntimeError("PostgreSQL runtime requires a configured database URL")
+    connection = psycopg.connect(connection_url, connect_timeout=10)
+    adapter = PostgresConnectionAdapter(connection)
+    adapter.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+    return adapter
