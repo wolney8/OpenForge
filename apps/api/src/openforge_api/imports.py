@@ -1184,6 +1184,15 @@ def field_text(fields: dict[str, JsonScalar], *names: str) -> str:
     return ""
 
 
+def first_non_blank_field_text(fields: dict[str, JsonScalar], *names: str) -> str:
+    """Return the first populated alias without letting an empty alias mask a later value."""
+    for name in names:
+        value = fields.get(name)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
 def issue(code: str, message: str) -> dict[str, str]:
     return {"code": code, "message": message}
 
@@ -1223,15 +1232,26 @@ def normalize_workbook_match_strategy(value: JsonScalar) -> str:
 
 def is_historical_void_zero_import(fields: dict[str, JsonScalar]) -> bool:
     """Identify a terminal Void whose explicit zero is result evidence, not an override."""
-    status = field_text(fields, "status", "Status").casefold()
-    result = field_text(fields, "result", "Result").casefold()
-    value_text = field_text(
+    status = first_non_blank_field_text(fields, "status", "Status").casefold()
+    result = first_non_blank_field_text(fields, "result", "Result").casefold()
+    manual_override = first_non_blank_field_text(
         fields,
         "manual_override_value",
         "ManualOverrideValue",
-        "FinalNetPnL",
     )
-    if "void" not in {status, result} or not value_text:
+    audited_pnl = first_non_blank_field_text(
+        fields,
+        "FinalNetPnL",
+        "NetPnL",
+        "ReportingValue",
+        "CalcNetPnL",
+    )
+    value_text = manual_override or audited_pnl
+    terminal_void = any(
+        "void" in {token for token in value.replace("/", " ").replace("-", " ").split()}
+        for value in (status, result)
+    )
+    if not terminal_void or not value_text:
         return False
     try:
         value = Decimal(value_text.replace(",", "").replace("£", ""))
@@ -1329,6 +1349,7 @@ def map_sportsbook_import_fields(
     ):
         mapped["match_strategy"] = "No Lay"
     if is_historical_void_zero_import(normalized_fields):
+        mapped["result"] = "Void"
         mapped["manual_override_value"] = ""
         mapped["manual_override_reason"] = ""
 

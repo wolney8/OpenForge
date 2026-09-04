@@ -19,7 +19,7 @@ from openforge_api.founder_workbook_dry_run import (
     resolve_provider,
     stable_import_key,
 )
-from openforge_api.imports import map_account_import_fields
+from openforge_api.imports import map_account_import_fields, map_sportsbook_import_fields
 
 
 def synthetic_catalogue() -> MasterAccountCatalogue:
@@ -366,6 +366,57 @@ def test_extra_place_without_audited_pnl_still_requires_review() -> None:
             "FinalNetPnL": "",
         }
     )
+
+
+def test_terminal_void_with_audited_zero_never_enters_dry_run_review() -> None:
+    fields = {
+        "QualBetID": "DEMO-VOID-001",
+        "EventName": "Synthetic void event",
+        "Bookmaker": "Bookmaker A",
+        "Status": "Settled",
+        "Result": "Void - Stake Returned",
+        "MatchStrategy": "No Lay",
+        "ManualOverrideValue": "£0.00",
+        "ManualOverrideReason": "",
+        "FinalNetPnL": "0.00",
+        "DateSettling": "2026-08-20",
+    }
+    parsed = SimpleNamespace(
+        headers=tuple(fields),
+        table_name="SyntheticSportsbook",
+        table_reference="A1:Z2",
+        rows=[
+            SimpleNamespace(
+                source_row=2,
+                source_record_id="DEMO-VOID-001",
+                outside_table_range=False,
+                fields=fields,
+            )
+        ],
+    )
+    definition = LedgerDefinition(
+        key="sportsbook",
+        sheet_name="Sportsbook Bets",
+        mapping_version="sportsbook-v1",
+        parser=lambda _content: parsed,
+        mapper=map_sportsbook_import_fields,
+        settled_statuses=frozenset({"settled", "void"}),
+        open_statuses=frozenset({"placed"}),
+        formal_report_statuses=None,
+        pnl_fields=("FinalNetPnL", "NetPnL", "ReportingValue"),
+        report_date_fields=("DateSettling",),
+        settlement_date_fields=("DateSettling",),
+        liability_fields=(),
+    )
+
+    report = _ledger_report(b"synthetic", definition, effective_date=date(2026, 8, 29))
+
+    row = report["validation_rows"][0]
+    assert row["migration_state"] == "mapped"
+    assert row["errors"] == []
+    assert row["automatic_historical_void_zero"] is True
+    assert row["mapped_payload"]["manual_override_value"] == ""
+    assert row["normalizations"][0]["rule"] == "historical_void_zero_is_result_evidence"
 
 
 @pytest.mark.parametrize(

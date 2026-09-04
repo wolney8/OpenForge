@@ -823,8 +823,13 @@ def advance_import_execution(
             )
             _sync_current_attempt(connection, import_run_id)
             connection.execute(
-                "UPDATE profile_import_runs SET updated_at = ? WHERE import_run_id = ?",
-                (now, import_run_id),
+                "UPDATE profile_import_runs SET status = ?, updated_at = ? "
+                "WHERE import_run_id = ?",
+                (
+                    "RECONCILING" if next_stage == "RECONCILING" else "IMPORTING",
+                    now,
+                    import_run_id,
+                ),
             )
             next_row = connection.execute(
                 "SELECT * FROM profile_import_executions WHERE import_run_id = ?",

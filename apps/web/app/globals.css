@@ -3004,6 +3004,71 @@ html[data-theme="dark"] .notification-count-badge {
   min-width: 0;
 }
 
+.import-workflow-stepper {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.45rem;
+}
+
+.import-workflow-stepper ol {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(7, minmax(8.4rem, 1fr));
+  list-style: none;
+  margin: 0;
+  min-width: 62rem;
+  padding: 0;
+}
+
+.import-workflow-stepper li {
+  align-items: center;
+  background: var(--surface-container);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+  color: var(--muted);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.42rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.68rem;
+  white-space: nowrap;
+}
+
+.import-workflow-stepper li .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.import-workflow-stepper li.is-completed {
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-container));
+  border-color: color-mix(in srgb, var(--success) 52%, var(--outline));
+  color: var(--success);
+}
+
+.import-workflow-stepper li.is-current {
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 62%, var(--outline));
+  color: var(--primary-strong);
+}
+
+.import-workflow-stepper li.is-blocked,
+.import-workflow-stepper li.is-failed {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 68%, var(--outline));
+  color: var(--danger);
+}
+
+.import-workflow-current {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--outline));
+}
+
+.founder-import-review .button-link[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .founder-import-review .extra-place-table-heading-controls {
   max-width: 100%;
   min-width: 0;

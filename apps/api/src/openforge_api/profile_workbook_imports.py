@@ -60,6 +60,26 @@ logger = logging.getLogger(__name__)
 MAX_WORKBOOK_BYTES = 3 * 1024 * 1024
 MAX_WORKBOOK_BASE64_CHARACTERS = 4_400_000
 
+REVIEW_MUTABLE_STATUSES = {
+    "REVIEW_REQUIRED",
+    "REVIEW_COMPLETE",
+    "DRY_RUN_READY",
+    "READY",  # legacy persisted state
+}
+PRE_IMPORT_WORKFLOW_STATUSES = {
+    "ANALYSING",
+    *REVIEW_MUTABLE_STATUSES,
+    "APPROVING",
+    "READY_APPROVED",
+}
+CONFLICTING_MUTATION_STATUSES = {
+    "ANALYSING",
+    "ANALYSED",
+    "APPROVING",
+    "IMPORTING",
+    "RECONCILING",
+}
+
 
 class WorkbookAnalysisPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -500,7 +520,7 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     workspace["persistence_preflight"] = preflight
     workspace["import_result"] = run.get("result", {})
     execution = load_import_execution(import_run_id)
-    if run["status"] in {"ANALYSING", "READY", "REVIEW_REQUIRED", "READY_APPROVED"}:
+    if run["status"] in PRE_IMPORT_WORKFLOW_STATUSES:
         # A checksum/mapping-compatible re-analysis deliberately reuses the ImportRun.
         # Its prior terminal execution is attempt history, not the current workflow state.
         workspace["execution"] = None
@@ -632,6 +652,11 @@ def _save_decision(
     actor_email: str,
 ) -> None:
     run = _load_run(profile_id, import_run_id)
+    if run["status"] not in REVIEW_MUTABLE_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail="Review decisions cannot change in the current import state",
+        )
     now = _now()
     with connect() as connection:
         connection.execute(
@@ -667,6 +692,23 @@ def _save_decision(
             """,
             (now, import_run_id),
         )
+
+
+def _persist_review_readiness(profile_id: str, import_run_id: str) -> dict[str, Any]:
+    """Persist review completion instead of inferring it from browser-local state."""
+    workspace = _workspace(profile_id, import_run_id)
+    next_status = (
+        "REVIEW_COMPLETE"
+        if workspace["reconciliation"]["import_ready"]
+        else "REVIEW_REQUIRED"
+    )
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profile_import_runs SET status = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (next_status, _now(), profile_id, import_run_id),
+        )
+    return _workspace(profile_id, import_run_id)
 
 
 def _analyse_workbook_job(
@@ -709,7 +751,7 @@ def _analyse_workbook_job(
         ) + len(result.get("accounts", {}).get("validation_rows", []))
         _update_run_job(
             import_run_id,
-            status="ANALYSING",
+            status="ANALYSED",
             job=_job_state(
                 stage="Saving review items",
                 percentage=85,
@@ -754,7 +796,7 @@ def _analyse_workbook_job(
                         now,
                     ),
                 )
-        status = "REVIEW_REQUIRED" if items else "READY"
+        status = "REVIEW_REQUIRED" if items else "DRY_RUN_READY"
         events = [
             started,
             _event(
@@ -872,12 +914,8 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
         }
         record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
         record["attempts"] = attempts_by_run.get(str(record["import_run_id"]), [])
-        if record["attempts"]:
-            latest_attempt = record["attempts"][0]
-            record["status"] = latest_attempt["status"]
-            record["checkpoint_id"] = latest_attempt.get("checkpoint_id") or ""
-            record["rollback_status"] = latest_attempt["rollback_status"]
-            record["completed_at"] = latest_attempt["completed_at"]
+        # ImportRun status is the current workflow authority. Attempts are immutable history and
+        # must not make a terminal historical execution masquerade as the active review state.
         history.append(record)
     return history
 
@@ -1282,6 +1320,8 @@ def delete_profile_workbook_import(
     run = _load_run(profile_id, import_run_id)
     if run["status"] in {
         "ANALYSING",
+        "ANALYSED",
+        "APPROVING",
         "IMPORTING",
         "RECONCILING",
         "COMPLETE",
@@ -1395,7 +1435,7 @@ def put_profile_workbook_import_decision(
         decision=decision,
         actor_email=session.email,
     )
-    return _workspace(profile_id, import_run_id)
+    return _persist_review_readiness(profile_id, import_run_id)
 
 
 @router.post("/{import_run_id}/decisions/batch")
@@ -1453,7 +1493,7 @@ def put_profile_workbook_import_batch(
                 "updated_at": now,
             },
         )
-    return _workspace(profile_id, import_run_id)
+    return _persist_review_readiness(profile_id, import_run_id)
 
 
 @router.post("/{import_run_id}/decisions/reset")
@@ -1472,6 +1512,11 @@ def reset_profile_workbook_import_decisions(
     if requested_ids - valid_ids:
         raise HTTPException(status_code=404, detail="One or more review items were not found")
     run = _load_run(profile_id, import_run_id)
+    if run["status"] not in REVIEW_MUTABLE_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail="Review decisions cannot reset in the current import state",
+        )
     with connect() as connection:
         if requested_ids:
             placeholders = ",".join("?" for _ in requested_ids)
@@ -1554,19 +1599,13 @@ def _rerun_review_job(profile_id: str, import_run_id: str) -> None:
                 (profile_id, import_run_id),
             ).fetchone()["count"]
         )
-    _update_run_job(
-        import_run_id,
-        status="ANALYSING",
-        job=_job_state(
-            stage="Applying saved review decisions",
-            percentage=25,
-            total_rows=item_count,
-            events=events,
-        ),
-    )
     try:
         workspace = _workspace(profile_id, import_run_id)
-        status = "READY" if workspace["reconciliation"]["import_ready"] else "REVIEW_REQUIRED"
+        status = (
+            "DRY_RUN_READY"
+            if workspace["reconciliation"]["import_ready"]
+            else "REVIEW_REQUIRED"
+        )
         events.append(
             _event(
                 "analysis_complete",
@@ -1625,28 +1664,65 @@ def rerun_profile_workbook_import(
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     require_request_session(request)
-    _load_run(profile_id, import_run_id)
+    run = _load_run(profile_id, import_run_id)
+    if run["status"] in CONFLICTING_MUTATION_STATUSES:
+        raise HTTPException(status_code=409, detail="Another import action is already running")
+    if run["status"] in {"COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"}:
+        raise HTTPException(status_code=409, detail="A completed import cannot rerun its dry run")
+    summary = dict(run["summary"])
+    summary.pop("persistence_preflight", None)
+    previous_events = list((summary.get("job") or {}).get("events") or [])
+    item_count = len(_workspace(profile_id, import_run_id)["items"])
+    started = _event(
+        "analysis_started",
+        "Review reconciliation started",
+        "Saved review decisions are being reapplied in the background.",
+    )
+    with connect() as connection:
+        updated = connection.execute(
+            "UPDATE profile_import_runs SET status = 'ANALYSING', summary_json = ?, "
+            "approved_at = '', updated_at = ? WHERE profile_id = ? AND import_run_id = ? "
+            "AND status NOT IN ('ANALYSING', 'ANALYSED', 'APPROVING', 'IMPORTING', 'RECONCILING')",
+            (
+                _json(
+                    {
+                        **summary,
+                        "job": _job_state(
+                            stage="Applying saved review decisions",
+                            percentage=25,
+                            total_rows=item_count,
+                            events=[*previous_events, started],
+                        ),
+                    }
+                ),
+                _now(),
+                profile_id,
+                import_run_id,
+            ),
+        )
+    if updated.rowcount != 1:
+        raise HTTPException(status_code=409, detail="Another import action is already running")
     background_tasks.add_task(_rerun_review_job, profile_id, import_run_id)
     return _workspace(profile_id, import_run_id)
 
 
-@router.post("/{import_run_id}/approve")
-def approve_profile_workbook_import(
-    profile_id: str,
-    import_run_id: str,
-    payload: ImportApprovalPayload,
-    request: Request,
-) -> dict[str, Any]:
-    session = require_request_session(request)
+def _approve_import_job(
+    *, profile_id: str, import_run_id: str, actor_email: str
+) -> None:
     run = _load_run(profile_id, import_run_id)
     workspace = _workspace(profile_id, import_run_id)
-    if payload.workbook_checksum != workspace["metadata"]["workbook_checksum"]:
-        raise HTTPException(status_code=409, detail="Workbook checksum does not match this review")
-    if not payload.acknowledged or not workspace["reconciliation"]["import_ready"]:
-        raise HTTPException(status_code=422, detail="Resolve review blockers before approval")
     plan = load_base_write_plan(profile_id, import_run_id)
     if plan is None:
-        raise HTTPException(status_code=409, detail="Re-analyse this workbook before approval")
+        _update_run_job(
+            import_run_id,
+            status="FAILED",
+            job=_job_state(
+                stage="Approval failed",
+                percentage=100,
+                error="Re-analyse this workbook before approval.",
+            ),
+        )
+        return
     try:
         preflight_result = validate_import_preflight(
             profile_id=profile_id,
@@ -1655,42 +1731,128 @@ def approve_profile_workbook_import(
             workspace=workspace,
             plan=plan,
         )
-    except ImportPersistenceError as error:
-        logger.exception(
-            "Workbook persistence preflight failed at %s (%s)", error.stage, error.category
+        _save_preflight_result(
+            import_run_id=import_run_id,
+            profile_id=profile_id,
+            run=run,
+            result=preflight_result,
         )
-        raise HTTPException(
-            status_code=409,
-            detail=_failure_detail(
-                import_run_id=import_run_id,
-                error=error,
-                retry_available=False,
+    except (ImportPersistenceError, ImportCutoverError) as error:
+        logger.exception("Workbook approval preflight failed")
+        detail = (
+            f"Approval validation failed at {error.stage}. No Profile data was imported."
+            if isinstance(error, ImportPersistenceError)
+            else f"{error}. No Profile data was imported."
+        )
+        _update_run_job(
+            import_run_id,
+            status="FAILED",
+            job=_job_state(
+                stage="Approval failed",
+                percentage=100,
+                error=detail,
             ),
-        ) from error
-    except ImportCutoverError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    _save_preflight_result(
-        import_run_id=import_run_id,
-        profile_id=profile_id,
-        run=run,
-        result=preflight_result,
-    )
+        )
+        return
+    except Exception:
+        logger.exception("Unexpected workbook approval failure")
+        _update_run_job(
+            import_run_id,
+            status="FAILED",
+            job=_job_state(
+                stage="Approval failed",
+                percentage=100,
+                error="Approval could not be completed. No Profile data was imported.",
+            ),
+        )
+        return
     now = _now()
+    completed = _event(
+        "approval_complete",
+        "Dry run approved",
+        "The persisted write plan is ready to import.",
+    )
+    refreshed = _load_run(profile_id, import_run_id)
+    prior_events = list((refreshed["summary"].get("job") or {}).get("events") or [])
+    summary = dict(refreshed["summary"])
+    summary["job"] = _job_state(
+        stage="Ready to import",
+        percentage=100,
+        events=[*prior_events, completed],
+    )
     with connect() as connection:
         connection.execute(
-            """
-            UPDATE profile_import_runs
-            SET status = 'READY_APPROVED', owner_email = ?, approved_at = ?, updated_at = ?
-            WHERE profile_id = ? AND import_run_id = ?
-            """,
-            (session.email, now, now, profile_id, import_run_id),
+            "UPDATE profile_import_runs SET status = 'READY_APPROVED', owner_email = ?, "
+            "approved_at = ?, summary_json = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ? AND status = 'APPROVING'",
+            (actor_email, now, _json(summary), now, profile_id, import_run_id),
         )
-    return {
-        "import_run_id": import_run_id,
-        "status": "READY_APPROVED",
-        "real_import_performed": False,
-        "next_requirement": "Review the final server write plan before importing",
-    }
+
+
+@router.post("/{import_run_id}/approve")
+def approve_profile_workbook_import(
+    profile_id: str,
+    import_run_id: str,
+    payload: ImportApprovalPayload,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    workspace = _workspace(profile_id, import_run_id)
+    if payload.workbook_checksum != workspace["metadata"]["workbook_checksum"]:
+        raise HTTPException(status_code=409, detail="Workbook checksum does not match this review")
+    if not payload.acknowledged or not workspace["reconciliation"]["import_ready"]:
+        raise HTTPException(status_code=422, detail="Resolve review blockers before approval")
+    if load_base_write_plan(profile_id, import_run_id) is None:
+        raise HTTPException(status_code=409, detail="Re-analyse this workbook before approval")
+    approval_retry = (
+        run["status"] == "FAILED"
+        and str((run["summary"].get("job") or {}).get("stage") or "") == "Approval failed"
+    )
+    if run["status"] not in {"REVIEW_COMPLETE", "DRY_RUN_READY", "READY"} and not approval_retry:
+        if run["status"] == "APPROVING":
+            raise HTTPException(status_code=409, detail="Dry-run approval is already running")
+        raise HTTPException(status_code=409, detail="The dry run is not ready for approval")
+    summary = dict(run["summary"])
+    previous_events = list((summary.get("job") or {}).get("events") or [])
+    started = _event(
+        "approval_started",
+        "Approving dry run",
+        "The server write plan is being validated without committing Profile data.",
+    )
+    with connect() as connection:
+        updated = connection.execute(
+            "UPDATE profile_import_runs SET status = 'APPROVING', owner_email = ?, "
+            "summary_json = ?, updated_at = ? WHERE profile_id = ? AND import_run_id = ? "
+            "AND (status IN ('REVIEW_COMPLETE', 'DRY_RUN_READY', 'READY') "
+            "OR (status = 'FAILED' AND approved_at = ''))",
+            (
+                session.email,
+                _json(
+                    {
+                        **summary,
+                        "job": _job_state(
+                            stage="Validating approved write plan",
+                            percentage=50,
+                            events=[*previous_events, started],
+                        ),
+                    }
+                ),
+                _now(),
+                profile_id,
+                import_run_id,
+            ),
+        )
+    if updated.rowcount != 1:
+        raise HTTPException(status_code=409, detail="Dry-run approval is already running")
+    background_tasks.add_task(
+        _approve_import_job,
+        profile_id=profile_id,
+        import_run_id=import_run_id,
+        actor_email=session.email,
+    )
+    return _workspace(profile_id, import_run_id)
 
 
 @router.post("/{import_run_id}/preflight")

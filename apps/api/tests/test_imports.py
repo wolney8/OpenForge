@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Callable
 
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -12,6 +13,7 @@ from openforge_api.db import ImportBatchRecord, ImportSourceRecord
 from openforge_api.imports import (
     ImportRowPayload,
     canonical_source_hash,
+    is_historical_void_zero_import,
     map_free_bet_import_fields,
     map_sportsbook_import_fields,
     reconcile_cash_adjustment_values,
@@ -93,8 +95,10 @@ SPORTSBOOK_RECONCILIATION_FIXTURES = json.loads(
 
 
 def configure_temp_database(tmp_path: Path) -> None:
+    settings.environment = "local"
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    settings.auth_required = False
 
 
 def fixture(case_id: str) -> dict[str, object]:
@@ -412,6 +416,54 @@ def test_historical_void_zero_does_not_require_a_manual_override_reason() -> Non
     assert mapped["manual_override_value"] == ""
     assert mapped["manual_override_reason"] == ""
     assert not any(error["code"] == "override_reason_required" for error in staged[0]["errors"])
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        (
+            {
+                "status": "",
+                "Status": "Settled",
+                "Result": "Void - Stake Returned",
+                "manual_override_value": "",
+                "ManualOverrideValue": "£0.00",
+                "FinalNetPnL": "0.00",
+            },
+            True,
+        ),
+        (
+            {
+                "Status": "Void",
+                "Result": "",
+                "ManualOverrideValue": "",
+                "NetPnL": "0.00",
+            },
+            True,
+        ),
+        (
+            {
+                "Status": "Settled",
+                "Result": "Void",
+                "ManualOverrideValue": "1.00",
+                "FinalNetPnL": "0.00",
+            },
+            False,
+        ),
+        (
+            {
+                "Status": "Settled",
+                "Result": "Won",
+                "ManualOverrideValue": "0.00",
+            },
+            False,
+        ),
+    ],
+)
+def test_historical_void_zero_recognises_source_aliases_without_hiding_real_overrides(
+    fields: dict[str, str], expected: bool
+) -> None:
+    assert is_historical_void_zero_import(fields) is expected
 
 
 def test_current_value_difference_is_visible_warning() -> None:

@@ -40,6 +40,7 @@ const baseItem = {
 
 function workspace() {
   return {
+    run_status: "REVIEW_REQUIRED",
     metadata: {
       source_filename: "founder-snapshot.xlsx",
       effective_at: "2026-08-29T16:05:00+01:00[Europe/London]",
@@ -184,6 +185,64 @@ function workspace() {
       row_count_impact: 0,
       import_ready: false,
       real_import_performed: false,
+    },
+  };
+}
+
+function dryRunReadyWorkspace() {
+  const ready = workspace();
+  ready.run_status = "DRY_RUN_READY";
+  ready.items = [];
+  ready.metadata = {
+    ...ready.metadata,
+    mapping_version: "founder-snapshot-v7",
+    original_partial_count: 0,
+    provider_conflict_count: 0,
+    historical_ep_count: 0,
+  };
+  ready.reconciliation = {
+    ...ready.reconciliation,
+    original_partial_count: 0,
+    resolved_partial_count: 0,
+    remaining_partial_count: 0,
+    review_status_counts: {
+      UNREVIEWED: 0,
+      REVIEWED_ACCEPTED: 0,
+      REVIEWED_OVERRIDDEN: 0,
+      DEFERRED: 0,
+      EXCLUDED: 0,
+      BLOCKED: 0,
+    },
+    import_ready: true,
+  };
+  return {
+    ...ready,
+    final_import_summary: {
+      ready: true,
+      blockers: [],
+      profile: { profile_id: "profile-demo", profile_name: "Demo Profile" },
+      profile_identity: {
+        workbook_username: "Demo Profile",
+        target_profile_name: "Demo Profile",
+        strategy: "preserve_target",
+      },
+      profile_settings: [],
+      provider_resolutions: [],
+      historical_ep_resolutions: [],
+      accounts: { total_source: 0, create: 0, update: 0 },
+      ledgers: {},
+      extra_places: {},
+      financial: {
+        open_current_pnl: "0.00",
+        settled_pnl: "0.00",
+        open_exposure: "0.00",
+        review_pnl_impact: "0.00",
+        periods: {},
+      },
+      rollback: {
+        application_checkpoint: true,
+        neon_platform_restore: "manual_plan_dependent_backstop",
+      },
     },
   };
 }
@@ -435,9 +494,115 @@ test("persisted analysis progress completes without holding the review page", as
 
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   await expect(page.getByRole("progressbar", { name: /Inspecting workbook/ })).toHaveAttribute("aria-valuenow", "15");
-  await expect(page.getByRole("link", { name: "Save & leave" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-import.save-leave"]')).toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("progressbar", { name: /Inspecting workbook/ })).toBeHidden({ timeout: 6_000 });
-  await expect(page.getByText(/Review decisions remain saved/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save & leave" })).toBeVisible();
+  await expect(page.getByText(/Dry run updated from persisted review decisions/)).toBeVisible();
+});
+
+test("approval owns its busy state and READY_APPROVED survives leave and return", async ({ page }) => {
+  await mockShell(page);
+  let current = dryRunReadyWorkspace();
+  let importRequests = 0;
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ contentType: "application/json", json: current });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/approve", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    current = {
+      ...current,
+      run_status: "READY_APPROVED",
+      approved_at: "2026-09-04T10:00:00Z",
+      persistence_preflight: {
+        status: "PASSED",
+        workbook_checksum: "a".repeat(64),
+        mapping_version: "founder-snapshot-v7",
+        writes_committed: false,
+      },
+    };
+    await route.fulfill({ contentType: "application/json", json: current });
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/import", async (route) => {
+    importRequests += 1;
+    await route.fulfill({ contentType: "application/json", json: { status: "STARTED" } });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await expect(page.getByText("No import exceptions match the current view.")).toBeVisible();
+  await expect(page.locator('[data-pd-id="profile-import.current-workflow-state"]')).toContainText("DRY_RUN_READY");
+  await page.getByLabel("I confirm this checksum and reconciliation are ready for import approval.").check();
+  const approve = page.locator('[data-pd-id="profile-import.approve"]');
+  const rerun = page.locator('[data-pd-id="profile-import.rerun"]');
+  await approve.click();
+  await expect(approve).toBeDisabled();
+  await expect(approve).toContainText("Approving...");
+  await expect(approve.locator(".button-spinner")).toBeVisible();
+  await expect(rerun).toContainText("Rerun dry run");
+  await expect(rerun.locator(".button-spinner")).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="profile-import.save-leave"]')).toHaveAttribute("aria-disabled", "true");
+
+  await expect(page.locator('[data-pd-id="profile-import.current-workflow-state"]')).toContainText("READY_APPROVED");
+  await expect(page.getByRole("button", { name: "Import to Profile" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve dry run" })).toHaveCount(0);
+  await expect(rerun).toBeEnabled();
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  const stepper = page.getByRole("navigation", { name: "Workbook import progress" });
+  await expect(stepper.getByText("Approval")).toBeVisible();
+  await expect(stepper.getByText("Import", { exact: true }).locator(".." )).toHaveAttribute("aria-current", "step");
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    await expect(stepper).toHaveCSS("overflow-x", "auto");
+  }
+  const geometry = await page.evaluate(() => ({
+    body: document.body.scrollWidth,
+    document: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }));
+  expect(geometry.body).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.document).toBeLessThanOrEqual(geometry.viewport);
+  expect((await rerun.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect((await page.getByRole("button", { name: "Import to Profile" }).boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+  await page.goto("/profiles");
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await expect(page.locator('[data-pd-id="profile-import.current-workflow-state"]')).toContainText("READY_APPROVED");
+  await expect(page.getByRole("button", { name: "Import to Profile" })).toBeVisible();
+  expect(importRequests).toBe(0);
+});
+
+test("approval failure restores only the approval controls and reports the server error", async ({ page }) => {
+  await mockShell(page);
+  const current = dryRunReadyWorkspace();
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
+    await route.fulfill({ contentType: "application/json", json: current });
+  });
+  await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo/approve", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      json: { detail: "Approval preflight rejected the persisted write plan" },
+    });
+  });
+
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+  await page.getByLabel("I confirm this checksum and reconciliation are ready for import approval.").check();
+  const approve = page.locator('[data-pd-id="profile-import.approve"]');
+  const rerun = page.locator('[data-pd-id="profile-import.rerun"]');
+  await approve.click();
+  await expect(approve).toContainText("Approving...");
+  await expect(rerun.locator(".button-spinner")).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="profile-import.approval-error"]')).toContainText(
+    "Approval preflight rejected the persisted write plan",
+  );
+  await expect(approve).toBeEnabled();
+  await expect(approve).toContainText("Approve dry run");
+  await expect(rerun).toBeEnabled();
 });
 
 test("persisted import execution resumes through the authenticated shell monitor", async ({
@@ -476,7 +641,7 @@ test("persisted import execution resumes through the authenticated shell monitor
 
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   const progress = page.locator('[data-pd-id="profile-import.execution-progress"]');
-  await expect(progress).toContainText("Sportsbook");
+  await expect(progress).toContainText("Writing Profile data");
   await expect.poll(() => advanced).toBe(true);
   await page.waitForTimeout(500);
   const terminalRequestCount = executionListRequests;

@@ -3,6 +3,21 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-04: Import approval borrowed the rerun spinner and left stale workspace state
+
+- Area: Profile workbook review, dry-run approval and return-later navigation.
+- Root cause: every review mutation shared one browser `saving` flag, while approval patched only
+  the local status string after the server also persisted preflight data. The header rerun action
+  therefore displayed another action's progress and the page could not render the complete
+  approved write-plan state until a reload.
+- Prevention: ImportRun workflow state is persisted server-side. Each mutation owns a named
+  in-flight lock and only its initiating control renders that progress. Approval/rerun are
+  duplicate-safe server transitions, the response reloads the authoritative workspace, and the
+  semantic workflow stepper is derived from the same persisted state.
+- Regression tests: focused API state-transition coverage and
+  `tests/e2e/founder-import-review.spec.ts` prove Approve owns `Approving...`, Rerun remains idle,
+  READY_APPROVED restores after leave/return, and no import request is sent.
+
 ## 2026-09-04: Profile recovery actions depended on healthy Account hydration
 
 - Area: `PD-FIX-RECOVERY-002` through `PD-FIX-RECOVERY-005`, emergency Profile lifecycle.

@@ -44,7 +44,7 @@ from openforge_api.xlsx_import import (
     read_date_style_indexes,
 )
 
-FOUNDER_MAPPING_VERSION = "founder-snapshot-v6"
+FOUNDER_MAPPING_VERSION = "founder-snapshot-v7"
 
 # Historical provider names remain valid import evidence while resolving to the
 # current Account Catalogue identity.
@@ -508,6 +508,15 @@ def _ledger_report(
         if automatic_historical_extra_place:
             # Historical EP persistence uses source identity/P&L, not current calculator inputs.
             errors = []
+        elif automatic_historical_void_zero:
+            # The terminal result and audited zero are sufficient provenance for this known
+            # migration case. Preserve unrelated validation failures, if any.
+            errors = [
+                error
+                for error in errors
+                if "manual_override_reason" not in str(error.get("message", ""))
+                and str(error.get("code", "")) != "override_reason_required"
+            ]
         source_map = {
             "sportsbook": SPORTSBOOK_SOURCE_MAP,
             "free_bets": FREE_BET_SOURCE_MAP,

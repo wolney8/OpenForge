@@ -7,8 +7,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fastapi import BackgroundTasks, HTTPException
 from fastapi.testclient import TestClient
 
+import openforge_api.profile_workbook_imports as workbook_imports
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.main import app
@@ -16,7 +18,13 @@ from openforge_api.profile_workbook_cutover import (
     _profile_state_checksum,
     _profile_state_manifest,
 )
-from openforge_api.profile_workbook_imports import _save_preflight_result, _workspace
+from openforge_api.profile_workbook_imports import (
+    ImportApprovalPayload,
+    _approve_import_job,
+    _save_preflight_result,
+    _workspace,
+    approve_profile_workbook_import,
+)
 
 
 def configure_database(tmp_path: Path) -> None:
@@ -326,6 +334,108 @@ def test_passed_preflight_restores_approved_failed_run_readiness(tmp_path: Path)
     assert repaired_status["status"] == "READY_APPROVED"
 
 
+def test_approval_claim_is_persisted_duplicate_safe_and_completes_from_background(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_database(tmp_path)
+    import_run_id = "profile-import-approval-state"
+    checksum = "a" * 64
+    timestamp = "2026-09-04T10:00:00+00:00"
+    summary = {
+        "readiness": {
+            "partial_rows_requiring_mapping_decisions": 0,
+            "provider_conflicts": 0,
+            "historical_ep_rows_requiring_review": 0,
+        },
+        "job": {"events": []},
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, created_at, updated_at
+            ) VALUES (?, 'profile-import-test', ?, 'synthetic.xlsx', ?, 100, ?,
+                      'founder-snapshot-v7', 'DRY_RUN_READY', ?, '{}', ?, ?)
+            """,
+            (
+                import_run_id,
+                "founder@example.invalid",
+                checksum,
+                timestamp,
+                json.dumps(summary),
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    monkeypatch.setattr(
+        workbook_imports,
+        "require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid"),
+    )
+    monkeypatch.setattr(workbook_imports, "load_base_write_plan", lambda *_args: {})
+
+    def fake_workspace(profile_id: str, run_id: str) -> dict[str, object]:
+        with connect() as connection:
+            row = connection.execute(
+                "SELECT status, summary_json, approved_at FROM profile_import_runs "
+                "WHERE profile_id = ? AND import_run_id = ?",
+                (profile_id, run_id),
+            ).fetchone()
+        assert row is not None
+        persisted_summary = json.loads(row["summary_json"])
+        return {
+            "run_status": row["status"],
+            "approved_at": row["approved_at"],
+            "metadata": {"workbook_checksum": checksum},
+            "reconciliation": {"import_ready": True},
+            "source_summary": persisted_summary,
+        }
+
+    monkeypatch.setattr(workbook_imports, "_workspace", fake_workspace)
+    monkeypatch.setattr(
+        workbook_imports,
+        "validate_import_preflight",
+        lambda **_kwargs: {
+            "status": "PASSED",
+            "transaction_constructed": True,
+            "writes_committed": False,
+        },
+    )
+    tasks = BackgroundTasks()
+    payload = ImportApprovalPayload(workbook_checksum=checksum, acknowledged=True)
+
+    claimed = approve_profile_workbook_import(
+        "profile-import-test", import_run_id, payload, object(), tasks
+    )
+
+    assert claimed["run_status"] == "APPROVING"
+    assert len(tasks.tasks) == 1
+    with pytest.raises(HTTPException, match="already running"):
+        approve_profile_workbook_import(
+            "profile-import-test", import_run_id, payload, object(), BackgroundTasks()
+        )
+
+    _approve_import_job(
+        profile_id="profile-import-test",
+        import_run_id=import_run_id,
+        actor_email="founder@example.invalid",
+    )
+
+    with connect() as connection:
+        persisted = connection.execute(
+            "SELECT status, approved_at, summary_json FROM profile_import_runs "
+            "WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+    assert persisted is not None
+    assert persisted["status"] == "READY_APPROVED"
+    assert persisted["approved_at"]
+    assert json.loads(persisted["summary_json"])["persistence_preflight"]["status"] == "PASSED"
+
+
 def test_delete_review_removes_rolled_back_attempt_metadata_transactionally(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -531,6 +641,10 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         "openforge_api.notifications.require_request_session",
         lambda _request: SimpleNamespace(email="founder@example.invalid"),
     )
+    monkeypatch.setattr(
+        "openforge_api.notifications.profile_opportunity_notifications",
+        lambda _email, _now: [],
+    )
     notifications = client.get("/fund-manager/notifications")
     assert notifications.status_code == 200
     import_notifications = [
@@ -547,11 +661,11 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
         item["href"] == f"/profiles/profile-import-test/imports/{import_run_id}/review"
         for item in import_notifications
     )
-    assert workspace["metadata"]["mapping_version"] == "founder-snapshot-v5"
+    assert workspace["metadata"]["mapping_version"] == "founder-snapshot-v7"
     assert workspace["metadata"]["original_partial_count"] == 1
-    assert workspace["metadata"]["provider_conflict_count"] == 1
-    assert workspace["metadata"]["historical_ep_count"] == 2
-    assert len(workspace["items"]) == 4
+    assert workspace["metadata"]["provider_conflict_count"] == 0
+    assert workspace["metadata"]["historical_ep_count"] == 0
+    assert len(workspace["items"]) == 1
     assert workspace["reconciliation"]["pnl_impact"] == "0.00"
     assert workspace["source_summary"]["accounts"]["row_count"] == 120
     assert workspace["source_summary"]["accounts"]["balances"] == {
@@ -561,13 +675,13 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     }
     assert workspace["source_summary"]["accounts"]["pending_withdrawals"] == "50.00"
     account_changes = workspace["source_summary"]["accounts"]["change_reconciliation"]
-    assert account_changes["counts"]["new_profile_accounts"] == 119
-    assert account_changes["counts"]["balances_to_update"] == 103
-    assert account_changes["counts"]["balance_writes_for_new_accounts"] == 103
+    assert account_changes["counts"]["new_profile_accounts"] == 120
+    assert account_changes["counts"]["balances_to_update"] == 108
+    assert account_changes["counts"]["balance_writes_for_new_accounts"] == 108
     assert account_changes["counts"]["balance_updates_for_existing_accounts"] == 0
     assert account_changes["counts"]["workbook_accounts_accounted"] == 120
-    assert account_changes["counts"]["resolved_workbook_accounts"] == 119
-    assert account_changes["counts"]["workbook_accounts_not_found_globally"] == 1
+    assert account_changes["counts"]["resolved_workbook_accounts"] == 120
+    assert account_changes["counts"]["workbook_accounts_not_found_globally"] == 0
     assert account_changes["default_absent_strategy"] == "leave_unchanged"
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["source_rows"] == 502
     assert workspace["source_summary"]["ledgers"]["sportsbook"]["mapped"] == 497
@@ -597,7 +711,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
 
     reloaded = client.get(f"/profiles/profile-import-test/workbook-imports/{import_run_id}")
     assert reloaded.status_code == 200
-    assert len(reloaded.json()["items"]) == 4
+    assert len(reloaded.json()["items"]) == 1
 
     override_missing_reason = next(
         item for item in workspace["items"] if "override_missing_reason" in item["issue_types"]
@@ -614,6 +728,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     )
     assert decision.status_code == 200, decision.text
     assert decision.json()["reconciliation"]["resolved_partial_count"] == 1
+    assert decision.json()["run_status"] == "REVIEW_COMPLETE"
 
     repeated = client.post(
         "/profiles/profile-import-test/workbook-imports/analyse",
@@ -635,7 +750,7 @@ def test_uploaded_founder_snapshot_matches_private_regression_oracle(
     rerun_workspace = client.get(
         f"/profiles/profile-import-test/workbook-imports/{import_run_id}"
     ).json()
-    assert rerun_workspace["run_status"] == "REVIEW_REQUIRED"
+    assert rerun_workspace["run_status"] == "DRY_RUN_READY"
     assert rerun_workspace["reconciliation"]["remaining_partial_count"] == 0
     assert rerun_workspace["financial_reconciliation"]["year"]["difference"] == "0.00"
     assert {event["kind"] for event in rerun_workspace["source_summary"]["job"]["events"]} >= {

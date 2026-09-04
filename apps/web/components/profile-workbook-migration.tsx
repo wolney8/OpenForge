@@ -72,10 +72,11 @@ function runStatus(value: string): string {
 
 function runActionLabel(run: ImportRun): string {
   if (run.status === "READY_APPROVED") return "Import to Profile";
-  if (["IMPORTING", "RECONCILING"].includes(run.status)) return "View progress";
+  if (["ANALYSING", "ANALYSED", "APPROVING", "IMPORTING", "RECONCILING"].includes(run.status)) return "View progress";
   if (["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)) {
     return "Reconciliation";
   }
+  if (["REVIEW_COMPLETE", "DRY_RUN_READY", "READY"].includes(run.status)) return "Approve dry run";
   return "Review";
 }
 
@@ -230,7 +231,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
                   </details> : null}
                 </td>
                 <td><span className="spreadsheet-row-id" title={run.workbook_checksum}>{run.workbook_checksum.slice(0, 12)}…</span></td>
-                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{runActionLabel(run)}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)} onClick={() => { setDeleteError(""); setDeleteRun(run); }} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
+                <td><div className="tracker-nav"><Link className="button-link compact-action" href={`/profiles/${profileId}/imports/${run.import_run_id}/review`}>{runActionLabel(run)}</Link><button aria-label={`Delete review ${run.source_filename}`} className="icon-button icon-button-destructive" disabled={["ANALYSING", "ANALYSED", "APPROVING", "IMPORTING", "RECONCILING", "COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)} onClick={() => { setDeleteError(""); setDeleteRun(run); }} title={run.completed_at ? "Imported runs remain in audit history" : "Delete review"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></td>
               </tr>)}</tbody>
             </table>
           </div>

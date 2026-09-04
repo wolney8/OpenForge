@@ -13,6 +13,12 @@ import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
 import { IMPORT_EXECUTION_REFRESH_EVENT } from "@/components/import-execution-monitor";
 import { apiBaseUrl } from "@/lib/api";
+import {
+  importWorkflowLabel,
+  importWorkflowSteps,
+  isConflictingImportMutation,
+  normalizeImportWorkflowState,
+} from "@/lib/import-workflow-state";
 import { resolveImportRunPresentation } from "@/lib/import-run-presentation";
 import { isPostImportIntegrityCheckPassed } from "@/lib/post-import-integrity";
 import { beginShellLoading, endShellLoading } from "@/lib/shell-loading";
@@ -30,6 +36,17 @@ type ReviewStatus =
   | "BLOCKED";
 
 type PreflightRequestState = "IDLE" | "VALIDATING" | "PASSED" | "FAILED";
+type MutationKind =
+  | "account-strategy"
+  | "profile-name"
+  | "decision"
+  | "batch"
+  | "rerun"
+  | "reset"
+  | "approve"
+  | "import"
+  | "preflight"
+  | "rollback";
 
 type ReviewDecision = {
   action: string;
@@ -583,7 +600,8 @@ export function FounderImportReviewWorkspace({
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [catalogue, setCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [activeMutation, setActiveMutation] = useState<MutationKind | null>(null);
+  const activeMutationRef = useRef<MutationKind | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -608,9 +626,25 @@ export function FounderImportReviewWorkspace({
   const [importConfirmationOpen, setImportConfirmationOpen] = useState(false);
   const [rollbackConfirmationOpen, setRollbackConfirmationOpen] = useState(false);
   const [preflightRequestState, setPreflightRequestState] = useState<PreflightRequestState>("IDLE");
+  const [approvalError, setApprovalError] = useState("");
   const editorRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
   const loadoutRef = useRef<HTMLDivElement | null>(null);
+  const reviewTableRef = useRef<HTMLDivElement | null>(null);
+  const saving = activeMutation !== null;
+
+  function startMutation(kind: MutationKind): boolean {
+    if (activeMutationRef.current !== null) return false;
+    activeMutationRef.current = kind;
+    setActiveMutation(kind);
+    return true;
+  }
+
+  function finishMutation(kind: MutationKind) {
+    if (activeMutationRef.current !== kind) return;
+    activeMutationRef.current = null;
+    setActiveMutation(null);
+  }
 
   async function loadWorkspace() {
     setLoading(true);
@@ -663,11 +697,17 @@ export function FounderImportReviewWorkspace({
   }, [importRunId, profileId]);
 
   useEffect(() => {
-    if (workspace?.run_status !== "ANALYSING") {
+    const persistedStatus = workspace?.run_status;
+    const persistedMutation = persistedStatus === "APPROVING"
+      ? "APPROVING"
+      : ["ANALYSING", "ANALYSED"].includes(persistedStatus ?? "")
+        ? "ANALYSIS"
+        : null;
+    if (!persistedMutation) {
       endShellLoading();
       return;
     }
-    beginShellLoading();
+    if (persistedMutation === "ANALYSIS") beginShellLoading();
     const interval = window.setInterval(() => {
       void fetch(`${reviewApi}`, { credentials: "include", cache: "no-store" })
         .then(async (response) => {
@@ -676,14 +716,34 @@ export function FounderImportReviewWorkspace({
         })
         .then((next) => {
           setWorkspace(next);
-          if (next.run_status !== "ANALYSING") {
+          const stillRunning = persistedMutation === "APPROVING"
+            ? next.run_status === "APPROVING"
+            : ["ANALYSING", "ANALYSED"].includes(next.run_status ?? "");
+          if (!stillRunning) {
             endShellLoading();
             window.clearInterval(interval);
-            setMessage(next.run_status === "FAILED" ? "Workbook analysis failed." : "Workbook analysis updated. Review decisions remain saved.");
+            if (persistedMutation === "APPROVING") {
+              if (activeMutationRef.current === "approve") {
+                activeMutationRef.current = null;
+                setActiveMutation(null);
+              }
+              if (next.run_status === "FAILED") {
+                setApprovalError(next.source_summary?.job?.error || "Unable to approve the workbook review.");
+              } else {
+                setApprovalAcknowledged(false);
+                setMessage("Workbook dry run approved. No Profile data was imported.");
+              }
+            } else {
+              if (activeMutationRef.current === "rerun") {
+                activeMutationRef.current = null;
+                setActiveMutation(null);
+              }
+              setMessage(next.run_status === "FAILED" ? "Workbook analysis failed." : "Dry run updated from persisted review decisions.");
+            }
           }
         })
-        .catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : "Unable to refresh workbook analysis."));
-    }, 1500);
+        .catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : "Unable to refresh the persisted import state."));
+    }, persistedMutation === "APPROVING" ? 750 : 1500);
     return () => {
       window.clearInterval(interval);
       endShellLoading();
@@ -755,7 +815,7 @@ export function FounderImportReviewWorkspace({
   }
 
   async function updateAccountAbsenceStrategy(strategy: string) {
-    setSaving(true);
+    if (!startMutation("account-strategy")) return;
     try {
       const response = await fetch(`${reviewApi}/account-absence-strategy`, {
         method: "PUT",
@@ -769,12 +829,12 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to save the account strategy.");
     } finally {
-      setSaving(false);
+      finishMutation("account-strategy");
     }
   }
 
   async function updateProfileNameStrategy(strategy: string) {
-    setSaving(true);
+    if (!startMutation("profile-name")) return;
     try {
       const response = await fetch(`${reviewApi}/profile-name-strategy`, {
         method: "PUT",
@@ -788,13 +848,13 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to save the Profile name strategy.");
     } finally {
-      setSaving(false);
+      finishMutation("profile-name");
     }
   }
 
   async function saveDecision(advance = false) {
     if (!editing || !draft) return;
-    setSaving(true);
+    if (!startMutation("decision")) return;
     try {
       let decisionAction = draft.action;
       let catalogueId = draft.catalogueId;
@@ -851,7 +911,7 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to save the review decision.");
     } finally {
-      setSaving(false);
+      finishMutation("decision");
     }
   }
 
@@ -868,7 +928,7 @@ export function FounderImportReviewWorkspace({
 
   async function applyBatch() {
     if (!batchPreview) return;
-    setSaving(true);
+    if (!startMutation("batch")) return;
     try {
       const response = await fetch(`${reviewApi}/decisions/batch`, {
         method: "POST",
@@ -890,12 +950,12 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to apply the batch review.");
     } finally {
-      setSaving(false);
+      finishMutation("batch");
     }
   }
 
   async function rerun() {
-    setSaving(true);
+    if (!startMutation("rerun")) return;
     try {
       const response = await fetch(`${reviewApi}/rerun`, {
         method: "POST",
@@ -905,16 +965,16 @@ export function FounderImportReviewWorkspace({
       const result = await response.json() as Workspace;
       setWorkspace(result);
       setMessage(result.run_status === "ANALYSING" ? "Review reconciliation started. You can leave this page." : "Dry run rerun completed without importing data.");
+      if (result.run_status !== "ANALYSING") finishMutation("rerun");
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to rerun the dry run.");
-    } finally {
-      setSaving(false);
+      finishMutation("rerun");
     }
   }
 
   async function resetDecisions() {
     if (!resetScope || !workspace) return;
-    setSaving(true);
+    if (!startMutation("reset")) return;
     try {
       const itemIds = resetScope === "selected"
         ? workspace.items.filter((item) => selected.has(item.item_id) && item.decision).map((item) => item.item_id)
@@ -933,13 +993,14 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to reset review decisions.");
     } finally {
-      setSaving(false);
+      finishMutation("reset");
     }
   }
 
   async function approveReview() {
     if (!workspace?.reconciliation.import_ready || !approvalAcknowledged) return;
-    setSaving(true);
+    if (!startMutation("approve")) return;
+    setApprovalError("");
     try {
       const response = await fetch(`${reviewApi}/approve`, {
         method: "POST",
@@ -951,19 +1012,26 @@ export function FounderImportReviewWorkspace({
         }),
       });
       if (!response.ok) throw new Error(await responseMessage(response));
-      setWorkspace((current) => current ? { ...current, run_status: "READY_APPROVED" } : current);
-      setApprovalAcknowledged(false);
-      setMessage("Workbook dry run approved. No Profile data was imported.");
+      const result = await response.json() as Workspace;
+      setWorkspace(result);
+      if (result.run_status !== "APPROVING") {
+        finishMutation("approve");
+        if (result.run_status === "FAILED") {
+          setApprovalError(result.source_summary?.job?.error || "Unable to approve the workbook review.");
+        } else {
+          setApprovalAcknowledged(false);
+          setMessage("Workbook dry run approved. No Profile data was imported.");
+        }
+      }
     } catch (caught) {
-      setMessage(caught instanceof Error ? caught.message : "Unable to approve the workbook review.");
-    } finally {
-      setSaving(false);
+      setApprovalError(caught instanceof Error ? caught.message : "Unable to approve the workbook review.");
+      finishMutation("approve");
     }
   }
 
   async function importWorkbook() {
     if (!workspace?.final_import_summary?.ready) return;
-    setSaving(true);
+    if (!startMutation("import")) return;
     try {
       const response = await fetch(`${reviewApi}/import`, {
         method: "POST",
@@ -989,13 +1057,13 @@ export function FounderImportReviewWorkspace({
       setMessage(caught instanceof Error ? caught.message : "Unable to import the workbook safely.");
       setImportConfirmationOpen(false);
     } finally {
-      setSaving(false);
+      finishMutation("import");
     }
   }
 
   async function validateImport() {
     if (!workspace) return;
-    setSaving(true);
+    if (!startMutation("preflight")) return;
     setMessage("");
     setPreflightRequestState("VALIDATING");
     beginShellLoading();
@@ -1035,12 +1103,12 @@ export function FounderImportReviewWorkspace({
       setMessage(caught instanceof Error ? caught.message : "Unable to validate the import safely.");
     } finally {
       endShellLoading();
-      setSaving(false);
+      finishMutation("preflight");
     }
   }
 
   async function rollBackImport() {
-    setSaving(true);
+    if (!startMutation("rollback")) return;
     try {
       const response = await fetch(`${reviewApi}/rollback`, {
         method: "POST",
@@ -1055,7 +1123,7 @@ export function FounderImportReviewWorkspace({
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Unable to roll back this import.");
     } finally {
-      setSaving(false);
+      finishMutation("rollback");
     }
   }
 
@@ -1075,6 +1143,23 @@ export function FounderImportReviewWorkspace({
   const importResult = workspace.import_result;
   const execution = workspace.execution;
   const postImportReport = importResult?.post_import_reconciliation;
+  const workflowState = normalizeImportWorkflowState(workspace.run_status, {
+    approvedAt: workspace.approved_at,
+    executionStage: execution?.stage,
+    failureStage: job?.stage,
+  });
+  const workflowSteps = importWorkflowSteps(workflowState, {
+    approvedAt: workspace.approved_at,
+    executionStage: execution?.stage,
+    failureStage: job?.stage,
+  });
+  const persistedMutationActive = isConflictingImportMutation(workflowState, workspace.run_status);
+  const conflictingMutation = saving || persistedMutationActive;
+  const rerunBusy = activeMutation === "rerun";
+  const approvalBusy = activeMutation === "approve" || workflowState === "APPROVING";
+  const approvalFailed = workflowState === "FAILED" && job?.stage === "Approval failed";
+  const approvalReady = ["REVIEW_COMPLETE", "DRY_RUN_READY"].includes(workflowState)
+    || approvalFailed;
   const preflightPassed = workspace.persistence_preflight?.status === "PASSED"
     && workspace.persistence_preflight.workbook_checksum === workspace.metadata.workbook_checksum
     && workspace.persistence_preflight.mapping_version === workspace.metadata.mapping_version;
@@ -1095,6 +1180,11 @@ export function FounderImportReviewWorkspace({
     && ["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(workspace.run_status ?? "")
     && workspace.import_safety?.rollback_available !== false
   );
+  const executionStageLabel = execution?.stage === "PREPARING"
+    ? "Preparing import"
+    : execution?.stage === "RECONCILING"
+      ? "Running financial reconciliation and operational health checks"
+      : "Writing Profile data";
 
   function downloadReconciliationHandoff() {
     if (!postImportReport) return;
@@ -1115,23 +1205,48 @@ export function FounderImportReviewWorkspace({
       <header className="sportsbook-page-header">
         <div><span className="eyebrow">Profile workbook</span><h1 className="sportsbook-page-title">Import Review</h1></div>
         <div className="tracker-nav tracker-nav-right">
-          <Link className="button-link" href={`/profiles/${profileId}/tracker/settings#import-export`}>Save &amp; leave</Link>
-          <button className="button-link icon-text-action" disabled={saving || workspace.run_status === "ANALYSING"} onClick={() => void rerun()} type="button">
-            {saving || workspace.run_status === "ANALYSING" ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
-            <span>Rerun dry run</span>
+          {conflictingMutation
+            ? <span aria-disabled="true" className="button-link is-disabled" data-pd-id="profile-import.save-leave">Save &amp; leave</span>
+            : <Link className="button-link" data-pd-id="profile-import.save-leave" href={`/profiles/${profileId}/tracker/settings#import-export`}>Save &amp; leave</Link>}
+          <button className="button-link icon-text-action" data-pd-id="profile-import.rerun" disabled={conflictingMutation || ["COMPLETE", "RECONCILING", "IMPORTING"].includes(workflowState)} onClick={() => void rerun()} type="button">
+            {rerunBusy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
+            <span>{rerunBusy ? "Rerunning..." : "Rerun dry run"}</span>
           </button>
         </div>
       </header>
-      {workspace.run_status === "ANALYSING" && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
+      <nav aria-label="Workbook import progress" className="import-workflow-stepper" data-pd-id="profile-import.workflow-stepper">
+        <ol>
+          {workflowSteps.map((step) => <li aria-current={step.state === "current" || step.state === "blocked" || step.state === "failed" ? "step" : undefined} className={`is-${step.state}`} key={step.key}>
+            <span aria-hidden="true" className="material-symbols-outlined">{step.state === "completed" ? "check_circle" : step.state === "failed" ? "error" : step.state === "blocked" ? "lock" : "radio_button_checked"}</span>
+            <span>{step.label}</span>
+          </li>)}
+        </ol>
+      </nav>
+      <section aria-busy={approvalBusy || undefined} aria-labelledby="import-workflow-current-title" className="content-subpanel stack-tight import-workflow-current" data-pd-id="profile-import.current-workflow-state">
+        <header className="workflow-panel-header">
+          <div><span className="eyebrow">Current state</span><h2 id="import-workflow-current-title">{importWorkflowLabel(workflowState)}</h2></div>
+          <span className={`table-chip ${workflowState === "COMPLETE" || workflowState === "READY_APPROVED" ? "table-chip-success" : workflowState === "FAILED" || workflowState === "REVIEW_REQUIRED" ? "table-chip-danger" : "table-chip-info"}`}>{workflowState}</span>
+        </header>
+        {workflowState === "REVIEW_REQUIRED" ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" onClick={() => { const first = workspace.items.find((item) => item.review_status === "UNREVIEWED" || item.review_status === "BLOCKED"); if (first) openEditor(first); else reviewTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">rule</span><span>Resolve reviews</span></button></div> : null}
+        {(approvalReady || workflowState === "APPROVING") ? <>
+          <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} disabled={approvalBusy} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for import approval." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
+          {approvalError || approvalFailed ? <p className="error-text" data-pd-id="profile-import.approval-error" role="alert">{approvalError || job?.error || "Unable to approve the workbook review."}</p> : null}
+          <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" data-pd-id="profile-import.approve" disabled={!approvalAcknowledged || conflictingMutation} onClick={() => void approveReview()} type="button">{approvalBusy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">verified</span>}<span>{approvalBusy ? "Approving..." : "Approve dry run"}</span></button></div>
+        </> : null}
+        {workflowState === "READY_APPROVED" ? <><p>The approved server write plan is persisted. No Profile data has been imported.</p><div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" data-pd-id="profile-import.start" disabled={!canImport || conflictingMutation} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>{importPresentation.importActionLabel}</span></button></div></> : null}
+        {workflowState === "COMPLETE" ? <div className="tracker-nav tracker-nav-right"><a className="modal-primary-button icon-text-action" href="#profile-import-reconciliation"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>View reconciliation</span></a></div> : null}
+        {["IMPORTING", "RECONCILING"].includes(workflowState) ? <p>The server-side action continues if you leave. Returning to this page restores its persisted progress.</p> : null}
+      </section>
+      {["ANALYSING", "ANALYSED"].includes(workspace.run_status ?? "") && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
         <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{job.percentage}%</span></div>
         <div aria-label={`${job.stage}: ${job.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${job.percentage}%` }} /></div>
       </section> : null}
       {execution?.status === "RUNNING" ? <section aria-busy="true" aria-live="polite" className="content-subpanel stack-tight import-analysis-status" data-pd-id="profile-import.execution-progress">
-        <div className="workflow-panel-header"><div><strong>{execution.stage.replaceAll("_", " ").toLocaleLowerCase().replace(/^./, (value) => value.toLocaleUpperCase())}</strong><span>{execution.completed_units} / {execution.total_units} planned writes validated or persisted</span></div><span className="table-chip table-chip-info">{execution.percentage}%</span></div>
+        <div className="workflow-panel-header"><div><strong>{executionStageLabel}</strong><span>{execution.completed_units} / {execution.total_units} planned writes validated or persisted</span></div><span className="table-chip table-chip-info">{execution.percentage}%</span></div>
         <div aria-label={`Import ${execution.stage}: ${execution.percentage}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={execution.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${execution.percentage}%` }} /></div>
         <span className="field-support-text">This import is persisted and resumable. You may navigate elsewhere while it continues.</span>
       </section> : null}
-      {workspace.run_status === "FAILED" && !workspace.approved_at ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
+      {workspace.run_status === "FAILED" && !workspace.approved_at && !approvalFailed ? <p className="error-text" role="alert">{job?.error || "Workbook analysis failed. Review the workbook and try again."}</p> : null}
       {preflightRequestState === "VALIDATING" ? <section aria-live="polite" aria-busy="true" className="content-subpanel stack-tight" data-pd-id="profile-import.preflight-validating">
         <LedgerLoadingIndicator label="Validating import plan…" />
         <span className="field-support-text">The approved write plan is being validated with a forced rollback. No Profile changes will be committed.</span>
@@ -1180,7 +1295,7 @@ export function FounderImportReviewWorkspace({
         <div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Workbook row</th><th scope="col">Provider</th><th scope="col">Type</th><th scope="col">Planned action</th><th scope="col">Changes</th></tr></thead><tbody>{accountChanges.entries.map((entry) => <tr key={`${entry.source_row}-${entry.canonical_brand}`}><td>{entry.source_row}</td><td>{entry.canonical_brand}</td><td><span className="table-chip table-chip-neutral">{entry.account_type}</span></td><td><span className={`table-chip ${entry.action === "blocked" ? "table-chip-danger" : entry.action === "unchanged" ? "table-chip-neutral" : "table-chip-info"}`}>{entry.action}</span></td><td>{entry.changes.length ? entry.changes.map((change) => change.field.replaceAll("_", " ")).join(", ") : "No changes"}</td></tr>)}</tbody></table></div>
         {accountChanges.existing_absent_from_workbook.length ? <p className="field-support-text">{accountChanges.existing_absent_from_workbook.length} existing Profile Accounts are absent from this workbook. The selected strategy is recorded explicitly and is not applied during dry run.</p> : null}
       </details> : null}
-      <div aria-label="Import review controls" className="sportsbook-review-bar" role="toolbar">
+      <div aria-label="Import review controls" className="sportsbook-review-bar" ref={reviewTableRef} role="toolbar">
         <label className="field-control table-search-field"><span className="visually-hidden">Search import exceptions</span><input aria-label="Search import exceptions" onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search import exceptions" type="search" value={search} /></label>
         <div className="extra-place-toolbar-actions">
           <button className="button-link icon-text-action" disabled={!commonBatchIssue} onClick={previewBatch} title={commonBatchIssue ? "Review selected matching rows" : "Select rows sharing a safe batch rule"} type="button"><span aria-hidden="true" className="material-symbols-outlined">library_add_check</span><span>Review selected</span></button>
@@ -1223,18 +1338,13 @@ export function FounderImportReviewWorkspace({
         </table>
       </LedgerTableScroll>
       <LedgerPagination ariaLabel="Import review" currentPage={effectivePage} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />
-      <section className="content-subpanel stack-tight" aria-label="Import readiness approval">
-        <strong>{workspace.run_status === "READY_APPROVED" ? "Dry run approved" : workspace.reconciliation.import_ready ? "Ready for approval" : "Review required"}</strong>
-        <span>{workspace.reconciliation.import_ready ? "Approval locks this reviewed checksum and enables the controlled import summary." : `${workspace.reconciliation.remaining_partial_count} partial rows still require an accepted review decision.`}</span>
-        {finalSummary ? <div className="form-grid settings-dialog-form-grid">
+      {finalSummary?.profile_identity ? <section className="content-subpanel stack-tight" aria-label="Import Profile identity">
+        <strong>Profile identity on import</strong>
+        <div className="form-grid settings-dialog-form-grid">
           <div><span className="field-label">Workbook username</span><p className="field-support-text">{finalSummary.profile_identity.workbook_username || "Not supplied"}</p></div>
           <label className="field-control"><span>Profile name on import</span><select disabled={saving || Boolean(workspace.approved_at)} onChange={(event) => void updateProfileNameStrategy(event.target.value)} value={finalSummary.profile_identity.strategy}><option value="preserve_target">Preserve {finalSummary.profile_identity.target_profile_name}</option><option value="apply_workbook_username">Use workbook username</option></select></label>
-        </div> : null}
-        {workspace.reconciliation.import_ready && workspace.run_status !== "READY_APPROVED" ? <div className="tracker-nav">
-          <label className="spreadsheet-confirmation-control"><input checked={approvalAcknowledged} onChange={(event) => setApprovalAcknowledged(event.target.checked)} type="checkbox" /><span>{pnlImpactIsZero ? "I confirm this checksum and reconciliation are ready for the later import gate." : `I confirm the ${workspace.reconciliation.pnl_impact} P&L impact caused by the listed review decisions and approve this dry run.`}</span></label>
-          <button className="modal-primary-button icon-text-action" disabled={!approvalAcknowledged || saving} onClick={() => void approveReview()} type="button"><span aria-hidden="true" className="material-symbols-outlined">verified</span><span>Approve dry run</span></button>
-        </div> : null}
-      </section>
+        </div>
+      </section> : null}
       {approvedReadyStatus && finalSummary ? <section className="content-subpanel stack" data-pd-id="profile-import.final-summary">
         <header className="workflow-panel-header"><div><span className="eyebrow">Approved write plan</span><h2>Final import summary</h2></div><span className={`table-chip ${finalSummary.ready ? "table-chip-success" : "table-chip-danger"}`}>{finalSummary.ready ? "Ready" : "Blocked"}</span></header>
         {finalSummary.blockers.length ? <div className="error-text" role="alert">{finalSummary.blockers.map((blocker) => <span key={blocker}>{blocker}</span>)}</div> : null}
@@ -1249,9 +1359,9 @@ export function FounderImportReviewWorkspace({
         <details className="stack-tight"><summary>Ledger write plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Source</th><th scope="col">Import</th><th scope="col">Non-transactional</th><th scope="col">Historical / partial</th><th scope="col">Open</th><th scope="col">Settled</th></tr></thead><tbody>{Object.entries(finalSummary.ledgers).map(([name, values]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{values.source_rows ?? 0}</td><td>{values.transactional_rows ?? 0}</td><td>{values.non_transactional ?? 0}</td><td>{values.historical_or_partial ?? 0}</td><td>{values.open ?? 0}</td><td>{values.settled ?? 0}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Saved blocking-item resolutions</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Source</th><th scope="col">Category</th><th scope="col">Resolution</th><th scope="col">Target</th></tr></thead><tbody>{[...finalSummary.provider_resolutions, ...finalSummary.historical_ep_resolutions].map((resolution) => <tr key={`${resolution.category}-${resolution.source_sheet}-${resolution.source_row}`}><td>{resolution.source_sheet} row {resolution.source_row}</td><td>{resolution.category.replaceAll("_", " ")}</td><td><span className="table-chip table-chip-success">{resolution.action.replaceAll("_", " ")}</span></td><td>{resolution.target || resolution.catalogue_id || "Recorded historical decision"}</td></tr>)}</tbody></table></div></details>
         <details className="stack-tight"><summary>Financial plan</summary><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Period</th><th scope="col">Approved total</th><th scope="col">Difference</th></tr></thead><tbody>{Object.entries(finalSummary.financial.periods).map(([period, values]) => <tr key={period}><td>{period}</td><td><FinancialValue animate={false} value={values.workbook_report?.total ?? "0.00"} /></td><td><FinancialValue animate={false} value={values.difference ?? "0.00"} /></td></tr>)}</tbody></table></div></details>
-        {finalSummary.ready ? <div className="tracker-nav tracker-nav-right"><button className="modal-primary-button icon-text-action" disabled={!canImport || saving} onClick={() => setImportConfirmationOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">database_upload</span><span>{importPresentation.importActionLabel}</span></button></div> : approvedReadyStatus ? <div className="tracker-nav tracker-nav-right"><button className="button-link icon-text-action" disabled={saving} onClick={() => void validateImport()} type="button"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>Validate import</span></button></div> : null}
+        {!finalSummary.ready && approvedReadyStatus ? <div className="tracker-nav tracker-nav-right"><button className="button-link icon-text-action" disabled={saving} onClick={() => void validateImport()} type="button"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>Validate import</span></button></div> : null}
       </section> : null}
-      {postImportReport ? <section className="content-subpanel stack" data-pd-id="profile-import.reconciliation">
+      {postImportReport ? <section className="content-subpanel stack" data-pd-id="profile-import.reconciliation" id="profile-import-reconciliation">
         <header className="workflow-panel-header"><div><span className="eyebrow">Attempt history</span><h2>{importPresentation.hasPreviousFailedAttempt ? "Previous post-import reconciliation" : "Post-Import Reconciliation"}</h2></div><span className={`table-chip ${postImportReport.result.endsWith("PASSED") ? "table-chip-success" : "table-chip-danger"}`}>{postImportReport.result.replace("POST-IMPORT RECONCILIATION: ", "")}</span></header>
         {importPresentation.restoredRetryable ? <p><strong>Historical failed attempt.</strong> Rollback completed and the current ImportRun is restored, validated and retryable.</p> : null}
         <p>{postImportReport.profile.profile_name} · {postImportReport.profile.workbook_filename} · ImportRunID {postImportReport.profile.import_run_id} · checksum {postImportReport.profile.checksum.slice(0, 12)}…</p>
