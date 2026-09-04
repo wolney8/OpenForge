@@ -1,0 +1,51 @@
+{
+  "fixture_id": "september-import-baseline-v1",
+  "mapping_version": "founder-snapshot-v8",
+  "effective_at": "2026-09-03T16:00:00+00:00",
+  "source_counts": {
+    "accounts": 28,
+    "sportsbook": 510,
+    "free_bets": 166,
+    "casino": 20,
+    "cash_adjustments": 23,
+    "total": 747
+  },
+  "expected_persisted_counts": {
+    "accounts": 28,
+    "sportsbook": 503,
+    "extra_places": 2,
+    "free_bets": 166,
+    "casino": 20,
+    "cash_adjustments": 23,
+    "excluded_non_transactional": 5
+  },
+  "financial_controls": {
+    "week": "40.96",
+    "month": "0.00",
+    "year": "1145.31",
+    "settled_realised_pnl": "1121.99",
+    "other_included_states": "-8.60",
+    "total_equivalent_pnl": "1145.31",
+    "open_current_worst_case_pnl": "31.92",
+    "exposure": "490.08"
+  },
+  "integrity_controls": {
+    "source_rows_accounted": 747,
+    "duplicates": 0,
+    "missing": 0
+  },
+  "acceptance_gates": {
+    "financial": "PASS",
+    "operational_health": "PASS"
+  },
+  "protected_behaviours": [
+    "account_lifecycle_restriction_separation",
+    "historical_void_zero_without_discretionary_override",
+    "automatic_historical_extra_place",
+    "provider_alias_resolution",
+    "attempt_scoped_execution_checkpoint_audit",
+    "lay_stake_fallback",
+    "commission_independent_liability",
+    "error_state_imported_pnl"
+  ]
+}

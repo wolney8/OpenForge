@@ -1,6 +1,6 @@
 # Fixture Spec: Spreadsheet Import and Export Round Trip
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-09-04_
 
 ## Contract covered
 
@@ -27,6 +27,7 @@ Parser tests construct a minimal synthetic XLSX entirely in memory; no raw workb
 | IO-010 | Profile sportsbook export re-imported | Original identities retained; all unchanged rows are no-ops |
 | IO-011 | Operator confirms one of two compatible rows | One imported; one retained as operator-skipped |
 | IO-012 | Delete dry-run and confirmed batches | Dry-run removed; confirmed audit deletion blocked |
+| IO-013 | Synthetic 747-row September import baseline using `founder-snapshot-v8` | Exact financial controls, zero missing/duplicates, and financial plus operational-health gates pass |
 | FI-001 to FI-006 | Free Bets mapping, safety, profile isolation and round trip | Follow `free-bet-import-field-map-fixture-spec.md` |
 | CI-001 to CI-006 | Casino Offers mapping, resolution boundary and round trip | Follow `casino-offer-import-field-map-fixture-spec.md` |
 | CAI-001 to CAI-008 | Cash Adjustments mapping, helper exclusion, profile isolation and round trip | Follow `cash-adjustment-import-field-map-fixture-spec.md` |
@@ -43,3 +44,5 @@ Parser tests construct a minimal synthetic XLSX entirely in memory; no raw workb
 - No fixture may write until dry-run is confirmed.
 - All written rows use the selected `profile_id`.
 - Recomputed money comparisons use the referenced contract tolerance.
+- IO-013 is driven by `tests/fixtures/founder-snapshot-v8-september-regression.json`.
+  It preserves only aggregate controls and synthetic rows; it contains no source workbook data.

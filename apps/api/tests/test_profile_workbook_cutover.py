@@ -7,6 +7,7 @@ import pytest
 
 from openforge_api.config import settings
 from openforge_api.db import connect
+from openforge_api.founder_workbook_dry_run import FOUNDER_MAPPING_VERSION
 from openforge_api.profile_import_execution import (
     advance_import_execution,
     load_import_execution,
@@ -38,6 +39,12 @@ from openforge_api.profile_workbook_cutover import (
 PROFILE_ID = "profile-cutover-test"
 RUN_ID = "import-run-cutover-test"
 CHECKSUM = "a" * 64
+SEPTEMBER_BASELINE_PATH = (
+    Path(__file__).parents[3]
+    / "tests"
+    / "fixtures"
+    / "founder-snapshot-v8-september-regression.json"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -55,7 +62,7 @@ def restore_runtime_settings() -> object:
     ) = original
 
 
-def configure_cutover_database(tmp_path: Path) -> None:
+def configure_cutover_database(tmp_path: Path, *, catalogue_count: int = 1) -> None:
     settings.database_mode = "local"
     settings.database_url = f"sqlite:///{tmp_path / 'cutover.sqlite3'}"
     settings.account_catalogue_source = str(tmp_path / "catalogue.json")
@@ -72,19 +79,20 @@ def configure_cutover_database(tmp_path: Path) -> None:
                 },
                 "records": [
                     {
-                        "catalogue_id": "BOOKMAKER-DEMO-001",
+                        "catalogue_id": f"BOOKMAKER-DEMO-{index:03d}",
                         "account_type": "Bookmaker",
                         "operating_jurisdictions": ["GB"],
                         "operating_subdivisions": [],
                         "operating_channels": ["web"],
-                        "brand_name": "Bookmaker A",
-                        "short_display_name": "Bookmaker A",
+                        "brand_name": f"Bookmaker {index}",
+                        "short_display_name": f"Bookmaker {index}",
                         "operator_group": "Synthetic Group",
                         "platform": "Synthetic Platform",
                         "foreground_colour": "#FFFFFF",
                         "background_colour": "#455A64",
                         "source": "Synthetic fixture",
                     }
+                    for index in range(1, catalogue_count + 1)
                 ],
             }
         ),
@@ -1175,8 +1183,15 @@ def test_staged_import_is_resumable_and_reconciles(tmp_path: Path) -> None:
     assert failed_import_safety(PROFILE_ID, RUN_ID)["no_partial_profile_changes"] is True
 
 
-def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
-    configure_cutover_database(tmp_path)
+def test_founder_snapshot_v8_september_baseline_reconciles_at_scale(
+    tmp_path: Path,
+) -> None:
+    baseline = json.loads(SEPTEMBER_BASELINE_PATH.read_text(encoding="utf-8"))
+    source_counts = baseline["source_counts"]
+    persisted_counts = baseline["expected_persisted_counts"]
+    financial = baseline["financial_controls"]
+    integrity = baseline["integrity_controls"]
+    configure_cutover_database(tmp_path, catalogue_count=source_counts["accounts"])
     plan = synthetic_plan()
 
     def clones(base: dict[str, object], *, prefix: str, count: int) -> list[dict[str, object]]:
@@ -1200,9 +1215,121 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
             rows.append(row)
         return rows
 
+    plan["accounts"] = [
+        {
+            "source_row": index + 2,
+            "import_key": f"accounts:{index + 2}",
+            "catalogue_id": f"BOOKMAKER-DEMO-{index + 1:03d}",
+            "mapped_profile_state": {
+                "account": f"Bookmaker {index + 1}",
+                "type": "Bookie",
+                "counts_in_cash_total": True,
+                "channel": "Online",
+                "status": "Active",
+                "lifecycle_status": (
+                    "Pending Sign Up" if index == 1 else "Closed" if index == 2 else "Active"
+                ),
+                "restrictions_json": (
+                    '["Bonus Restricted"]'
+                    if index == 3
+                    else '["Soft Limited"]'
+                    if index == 4
+                    else "[]"
+                ),
+                "current_balance": "" if index == 1 else "0.00",
+                "pending_withdrawal_amount": "0.00",
+                "last_balance_update": "2026-09-03",
+                "group_name": "",
+                "platform": "",
+                "sign_up_date": "",
+                "notes": "Synthetic September baseline",
+            },
+        }
+        for index in range(source_counts["accounts"])
+    ]
+
     sportsbook_rows = plan["ledgers"]["sportsbook"]
-    sportsbook_rows.extend(clones(sportsbook_rows[0], prefix="sportsbook", count=501))
+    settled_payload = sportsbook_rows[0]["mapped_payload"]
+    settled_payload["date_settled"] = "2026-09-03"
+    settled_payload["manual_override_value"] = "17.64"
+    sportsbook_rows[0].update(
+        {
+            "source_pnl": "17.64",
+            "imported_current_pnl": "17.64",
+            "realised_pnl": "17.64",
+            "formal_report_date": "2026-09-03",
+        }
+    )
+    sportsbook_rows[1]["automatic_historical_extra_place"] = True
+    sportsbook_rows[1]["mapped_payload"]["manual_override_value"] = "0.00"
+    sportsbook_rows[1].update(
+        {
+            "source_pnl": "0.00",
+            "imported_current_pnl": "0.00",
+            "realised_pnl": "0.00",
+            "formal_report_date": "2026-09-03",
+        }
+    )
+    open_payload = sportsbook_rows[2]["mapped_payload"]
+    open_payload.update(
+        {
+            "back_stake": "458.16",
+            "back_odds": "2.00",
+            "match_strategy": "Custom",
+            "lay_odds_1": "2.00",
+            "lay_actual": "490.08",
+            "lay_matched_stake_1": "490.08",
+            "lay_commission_1": "0",
+            "date_settled": "2026-09-06",
+            "manual_override_value": "31.92",
+            "manual_override_reason": "Synthetic audited open value",
+        }
+    )
+    sportsbook_rows[2].update(
+        {
+            "source_pnl": "31.92",
+            "imported_current_pnl": "31.92",
+            "current_worst_case_pnl": "31.92",
+            "realised_pnl": "",
+            "formal_report_date": "2026-09-06",
+        }
+    )
+
+    scaled_sportsbook = clones(sportsbook_rows[0], prefix="sportsbook", count=501)
+    older_settled = scaled_sportsbook[0]
+    older_settled["mapped_payload"]["date_settled"] = "2026-06-15"
+    older_settled["mapped_payload"]["manual_override_value"] = "1104.35"
+    older_settled.update(
+        {
+            "source_pnl": "1104.35",
+            "imported_current_pnl": "1104.35",
+            "realised_pnl": "1104.35",
+            "formal_report_date": "2026-06-15",
+        }
+    )
+    included_error = scaled_sportsbook[1]
+    included_error["mapped_payload"].update(
+        {
+            "status": "Error",
+            "result": "Pending",
+            "date_settled": "2026-09-03",
+            "manual_override_value": "-8.60",
+            "manual_override_reason": "Synthetic audited non-settled state",
+        }
+    )
+    included_error.update(
+        {
+            "status": "Error",
+            "source_pnl": "-8.60",
+            "imported_current_pnl": "-8.60",
+            "current_worst_case_pnl": "",
+            "realised_pnl": "",
+            "formal_report_date": "2026-09-03",
+        }
+    )
+    sportsbook_rows.extend(scaled_sportsbook)
     second_ep = clones(sportsbook_rows[1], prefix="extra-place", count=1)[0]
+    second_ep["automatic_historical_extra_place"] = True
     sportsbook_rows.append(second_ep)
     excluded = clones(sportsbook_rows[0], prefix="prospecting", count=5)
     for row in excluded:
@@ -1218,23 +1345,82 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
     plan["ledgers"]["cash_adjustments"].extend(
         clones(plan["ledgers"]["cash_adjustments"][0], prefix="cash", count=22)
     )
-    plan["extra_places"]["row_count"] = 2
-    run, workspace = run_and_workspace()
-    run["summary"]["ledgers"]["sportsbook"].update(
-        {"source_rows": 510, "settled": 504, "non_transactional": 5}
+    plan["ledgers"]["free_bets"][0]["mapped_payload"]["manual_override_value"] = "0.00"
+    plan["ledgers"]["free_bets"][0].update(
+        {"source_pnl": "0.00", "imported_current_pnl": "0.00", "realised_pnl": "0.00"}
     )
-    run["summary"]["ledgers"]["free_bets"].update({"source_rows": 166, "settled": 166})
-    run["summary"]["ledgers"]["casino"].update({"source_rows": 20, "settled": 20})
-    run["summary"]["ledgers"]["cash_adjustments"].update({"source_rows": 23, "settled": 23})
-    run["summary"]["extra_places"]["row_count"] = 2
-    workspace["items"].append(
+    plan["ledgers"]["casino"][0]["mapped_payload"].update(
+        {"calc_net_pnl": "0.00", "final_net_pnl": "0.00"}
+    )
+    plan["ledgers"]["casino"][0].update(
+        {"source_pnl": "0.00", "imported_current_pnl": "0.00", "realised_pnl": "0.00"}
+    )
+    plan["extra_places"]["row_count"] = persisted_counts["extra_places"]
+    run, workspace = run_and_workspace()
+    run.update(
         {
-            **workspace["items"][0],
-            "item_id": "ep-review-2",
-            "import_id": second_ep["import_key"],
-            "source_row": second_ep["source_row"],
+            "effective_at": baseline["effective_at"],
+            "mapping_version": baseline["mapping_version"],
+            "source_filename": "synthetic-september-baseline.xlsx",
         }
     )
+    run["summary"]["accounts"].update(
+        {
+            "row_count": source_counts["accounts"],
+            "change_reconciliation": {
+                "counts": {"new_profile_accounts": source_counts["accounts"]},
+                "default_absent_strategy": "leave_unchanged",
+                "existing_absent_from_workbook": [],
+            },
+        }
+    )
+    run["summary"]["ledgers"]["sportsbook"].update(
+        {
+            "source_rows": source_counts["sportsbook"],
+            "settled": 504,
+            "non_transactional": persisted_counts["excluded_non_transactional"],
+            "open_current_worst_case_pnl": financial["open_current_worst_case_pnl"],
+            "open_exposure": financial["exposure"],
+            "realised_settled_pnl": financial["settled_realised_pnl"],
+        }
+    )
+    run["summary"]["ledgers"]["free_bets"].update(
+        {
+            "source_rows": source_counts["free_bets"],
+            "settled": source_counts["free_bets"],
+            "realised_settled_pnl": "0.00",
+        }
+    )
+    run["summary"]["ledgers"]["casino"].update(
+        {
+            "source_rows": source_counts["casino"],
+            "settled": source_counts["casino"],
+            "realised_settled_pnl": "0.00",
+        }
+    )
+    run["summary"]["ledgers"]["cash_adjustments"].update(
+        {
+            "source_rows": source_counts["cash_adjustments"],
+            "settled": source_counts["cash_adjustments"],
+        }
+    )
+    run["summary"]["extra_places"]["row_count"] = persisted_counts["extra_places"]
+    period_totals = {
+        "week": financial["week"],
+        "month": financial["month"],
+        "year": financial["year"],
+    }
+    for period_name, total in period_totals.items():
+        run["reconciliation"][period_name] = {
+            "workbook_report": {"total": total},
+            "financial_views": {
+                "realised_settled_pnl": {"total": financial["settled_realised_pnl"]},
+                "open_current_worst_case_pnl": {"total": financial["open_current_worst_case_pnl"]},
+                "other_workbook_included_pnl": {"total": financial["other_included_states"]},
+            },
+            "difference": "0.00",
+        }
+    workspace["items"] = []
     persist_run_and_plan(run, plan)
     approve_synthetic_preflight(run, workspace, plan)
 
@@ -1257,39 +1443,83 @@ def test_real_sized_staged_import_uses_bounded_batches(tmp_path: Path) -> None:
             plan=plan,
         )
         requests += 1
-    assert execution["status"] == "COMPLETE"
+    result = load_persisted_run(run)["result"]
+    assert execution["status"] == "COMPLETE", result.get("post_import_reconciliation", {}).get(
+        "mismatches"
+    )
     assert requests >= 25
+    assert baseline["mapping_version"] == FOUNDER_MAPPING_VERSION
+    report = result["post_import_reconciliation"]
+    assert report["result"] == "POST-IMPORT RECONCILIATION: PASSED"
+    assert result["operational_health"]["status"] == "OPERATIONAL HEALTH: PASSED"
+    assert all(check["passed"] for check in result["operational_health"]["checks"].values())
+    assert report["financial_reconciliation"]["periods"]["week"]["post_import"] == financial["week"]
+    assert report["financial_reconciliation"]["periods"]["year"]["post_import"] == financial["year"]
+    assert (
+        report["financial_reconciliation"]["views"]["other_included_states"]["actual"]
+        == financial["other_included_states"]
+    )
+    assert (
+        report["financial_reconciliation"]["views"]["total_equivalent_pnl"]["actual"]
+        == financial["total_equivalent_pnl"]
+    )
+    assert (
+        report["open_positions"]["current_worst_case_pnl"]["actual"]
+        == financial["open_current_worst_case_pnl"]
+    )
+    assert report["open_positions"]["liability_exposure"]["actual"] == financial["exposure"]
+    assert report["integrity"]["all_expected_source_rows_accounted_for"] is True
+    actual_source_rows = len(plan["accounts"]) + sum(len(rows) for rows in plan["ledgers"].values())
+    assert actual_source_rows == integrity["source_rows_accounted"]
+    assert source_counts["total"] == integrity["source_rows_accounted"]
+    assert (
+        sum(row["duplicate_count"] for row in report["ledgers"].values()) == integrity["duplicates"]
+    )
+    assert sum(row["missing_count"] for row in report["ledgers"].values()) == integrity["missing"]
+    assert baseline["acceptance_gates"] == {
+        "financial": "PASS" if report["result"] == "POST-IMPORT RECONCILIATION: PASSED" else "FAIL",
+        "operational_health": "PASS"
+        if result["operational_health"]["status"] == "OPERATIONAL HEALTH: PASSED"
+        else "FAIL",
+    }
+    assert report["review_decisions"]["applied"] == 0
     with connect() as connection:
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
                 (PROFILE_ID,),
             ).fetchone()[0]
-            == 503
+            == persisted_counts["sportsbook"]
         )
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM free_bets WHERE profile_id = ?", (PROFILE_ID,)
             ).fetchone()[0]
-            == 166
+            == persisted_counts["free_bets"]
         )
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM casino_offers WHERE profile_id = ?", (PROFILE_ID,)
             ).fetchone()[0]
-            == 20
+            == persisted_counts["casino"]
         )
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM cash_adjustments WHERE profile_id = ?", (PROFILE_ID,)
             ).fetchone()[0]
-            == 23
+            == persisted_counts["cash_adjustments"]
         )
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM each_way_extra_places WHERE profile_id = ?", (PROFILE_ID,)
             ).fetchone()[0]
-            == 2
+            == persisted_counts["extra_places"]
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM accounts WHERE profile_id = ?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == persisted_counts["accounts"]
         )
 
 
