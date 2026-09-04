@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { FinancialValue } from "@/components/financial-value";
+import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   buildDashboardTargetProgress,
   buildDashboardTrend,
@@ -32,6 +33,8 @@ type PortfolioDashboardViewProps = {
   isRangeSaving: boolean;
   onPresetChange: (preset: DatePreset) => void;
   profileId: string;
+  rangeError?: string;
+  requestedRange: ResolvedDateRange;
   resolvedRange: ResolvedDateRange;
   settings: DashboardTargetSettings & {
     dashboard_view_mode?: string | null;
@@ -70,6 +73,8 @@ export function PortfolioDashboardView({
   isRangeSaving,
   onPresetChange,
   profileId,
+  rangeError,
+  requestedRange,
   resolvedRange,
   settings,
   summary,
@@ -166,14 +171,21 @@ export function PortfolioDashboardView({
       data-pd-id="dashboard.portfolio-view"
     >
       <div className="dashboard-primary-row">
-        <article className="dashboard-visual-card dashboard-performance-card portfolio-hero-card">
+        <article
+          aria-busy={isRangeSaving}
+          className="dashboard-visual-card dashboard-performance-card portfolio-hero-card"
+          data-pd-id="dashboard.selected-range-performance"
+        >
           <div className="dashboard-visual-header">
             <div>
               <span className="eyebrow">Portfolio P&amp;L</span>
               <h3>Selected Range Performance</h3>
             </div>
-            <span className="badge" title={`Tracker range: ${resolvedRange.preset}`}>
-              {formatResolvedDateRange(resolvedRange)}
+            <span
+              className="badge"
+              title={`Tracker range: ${requestedRange.preset}`}
+            >
+              {formatResolvedDateRange(requestedRange)}
             </span>
           </div>
           <div className="dashboard-period-control" aria-label="Dashboard range shortcuts">
@@ -194,26 +206,51 @@ export function PortfolioDashboardView({
               );
             })}
           </div>
-          <strong className="dashboard-hero-value">
-            <FinancialValue
-              label="Selected range portfolio profit and loss"
-              value={summary.profitQuickView.overallPnl}
-            />
-          </strong>
-          <DashboardChartSurface
-            area={dashboardSparkline.area}
-            label="Selected range P&L trend"
-            line={dashboardSparkline.line}
-            points={dashboardTrend}
-          />
-          <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
-            {dashboardTrend.slice(-5).map((point) => (
-              <span key={point.key}>
-                <small>{point.label}</small>
-                <FinancialValue animate={false} value={point.cumulativeValue} />
-              </span>
-            ))}
+          <div className="dashboard-performance-data">
+            <div
+              aria-hidden={isRangeSaving ? true : undefined}
+              className={`dashboard-performance-content ${
+                isRangeSaving ? "is-range-pending" : ""
+              }`}
+              inert={isRangeSaving ? true : undefined}
+            >
+              <strong className="dashboard-hero-value">
+                <FinancialValue
+                  label="Selected range portfolio profit and loss"
+                  value={summary.profitQuickView.overallPnl}
+                />
+              </strong>
+              <DashboardChartSurface
+                area={dashboardSparkline.area}
+                label="Selected range P&L trend"
+                line={dashboardSparkline.line}
+                points={dashboardTrend}
+              />
+              <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
+                {dashboardTrend.slice(-5).map((point) => (
+                  <span key={point.key}>
+                    <small>{point.label}</small>
+                    <FinancialValue animate={false} value={point.cumulativeValue} />
+                  </span>
+                ))}
+              </div>
+            </div>
+            {isRangeSaving ? (
+              <LedgerLoadingIndicator
+                dataPdId="dashboard.selected-range-loading"
+                label={`Updating ${formatResolvedDateRange(requestedRange)} performance`}
+              />
+            ) : null}
           </div>
+          {rangeError ? (
+            <p
+              className="error-text dashboard-range-error"
+              data-pd-id="dashboard.selected-range-error"
+              role="alert"
+            >
+              {rangeError}
+            </p>
+          ) : null}
         </article>
 
         <section className="dashboard-health-grid" aria-label="Profile operational dashboard cards">

@@ -2353,6 +2353,32 @@ html[data-theme="dark"] .notification-count-badge {
     );
 }
 
+.dashboard-performance-data,
+.dashboard-performance-content {
+  display: grid;
+  min-width: 0;
+  gap: inherit;
+}
+
+.dashboard-performance-data {
+  position: relative;
+}
+
+.dashboard-performance-content.is-range-pending {
+  visibility: hidden;
+}
+
+.dashboard-performance-data > .ledger-loading-overlay {
+  inset: 0;
+  place-items: center;
+  padding: 0;
+  border-radius: 0;
+}
+
+.dashboard-range-error {
+  margin: 0;
+}
+
 .portfolio-hero-card {
   min-width: 0;
   grid-row: auto;
@@ -7479,9 +7505,6 @@ html[data-theme="dark"] .ledger-editor-tab-button-matching {
     transition: none;
   }
 
-  .material-linear-progress span {
-    animation-duration: 2.4s;
-  }
 }
 
 .data-table tbody tr:hover .row-issue-overlay,
@@ -8962,6 +8985,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 @keyframes material-linear-progress {
   to {
     left: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .material-linear-progress span {
+    animation-duration: 2.4s;
   }
 }
 

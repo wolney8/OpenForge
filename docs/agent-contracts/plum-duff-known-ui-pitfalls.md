@@ -865,3 +865,20 @@ cause, prevention rule and regression test.
   continue to come from shared shells rather than route-specific margins.
 - Test added: `tests/e2e/founder-import-review.spec.ts` checks action geometry, stacked-cell gaps,
   chip minimum height, table containment, modal spacing, and reduced-viewport overflow.
+
+## 2026-09-04: A requested reporting range labelled a stale financial value
+
+- Area: Profile Dashboard Selected Range Performance.
+- Root cause: the displayed range and calculated value both remained bound to the last committed
+  tracker settings until the save request completed, so a noticeable persistence delay looked like
+  an ignored interaction. There was also no synchronous guard against programmatic duplicate
+  submissions.
+- Prevention: range controls reflect the requested preset immediately, while the committed value
+  stays out of both visual and accessibility presentation behind a section-local
+  `LedgerLoadingIndicator`. Keep the prior committed settings for rollback, set `aria-busy` only on
+  the affected card, disable competing controls, and guard the mutation synchronously before the
+  request begins. Never invent percentage progress for an unquantified settings save.
+- Test added: `apps/web/lib/tracker-settings-client.test.ts` verifies the single-request persistence
+  contract, and `tests/e2e/selected-range-async.spec.ts` covers keyboard submission, local pending
+  state, stale-value suppression, duplicate-request rejection, failure rollback, light/dark themes,
+  stable geometry, and narrow viewport containment.

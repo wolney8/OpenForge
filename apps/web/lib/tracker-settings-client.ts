@@ -1,6 +1,6 @@
-import { apiBaseUrl } from "@/lib/api";
-import { invalidateCachedJson } from "@/lib/client-json-cache";
-import type { DatePreset } from "@/lib/tracker-summary";
+import { apiBaseUrl } from "./api";
+import { invalidateCachedJson } from "./client-json-cache";
+import type { DatePreset } from "./tracker-summary";
 
 export const TRACKER_SETTINGS_UPDATED_EVENT = "plum-duff-tracker-settings-updated";
 

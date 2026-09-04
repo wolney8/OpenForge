@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
 import {
@@ -263,8 +263,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
   const [settings, setSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
+  const [pendingTrackerRange, setPendingTrackerRange] = useState<DatePreset | null>(null);
+  const [trackerRangeError, setTrackerRangeError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loadRevision, setLoadRevision] = useState(0);
+  const trackerRangeMutationInFlight = useRef(false);
 
   const loadData = useCallback(async () => {
     const urls = {
@@ -401,18 +404,41 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     [settings]
   );
 
+  const displayedRange = useMemo(() => {
+    const trackerSettings = settings;
+    return trackerSettings
+      ? resolveDateRange({
+          preset: pendingTrackerRange ?? trackerSettings.active_date_preset,
+          customStart: trackerSettings.custom_start_date,
+          customEnd: trackerSettings.custom_end_date,
+          rangeBackDays: trackerSettings.range_back_days,
+          rangeForwardDays: trackerSettings.range_forward_days,
+        })
+      : resolvedRange;
+  }, [pendingTrackerRange, resolvedRange, settings]);
+
   const updateTrackerDatePreset = useCallback(
     async (preset: DatePreset) => {
-      if (!settings || settings.active_date_preset === preset) return;
+      if (
+        trackerRangeMutationInFlight.current ||
+        !settings ||
+        settings.active_date_preset === preset
+      ) {
+        return;
+      }
+      trackerRangeMutationInFlight.current = true;
+      setPendingTrackerRange(preset);
       setIsTrackerRangeSaving(true);
-      setErrorMessage("");
+      setTrackerRangeError("");
       try {
         const savedSettings = await saveTrackerDatePreset(profileId, settings, preset);
         setSettings(savedSettings);
       } catch (error) {
-        setErrorMessage(readErrorMessage(error, "Unable to save tracker range."));
+        setTrackerRangeError(readErrorMessage(error, "Unable to save tracker range."));
       } finally {
+        setPendingTrackerRange(null);
         setIsTrackerRangeSaving(false);
+        trackerRangeMutationInFlight.current = false;
       }
     },
     [profileId, settings]
@@ -587,11 +613,13 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         </div>
         <section className="stat-strip" aria-label="Tracker range and reporting">
           <TrackerRangeCard
-            activePreset={settings?.active_date_preset ?? "Week (Mon-Sun)"}
+            activePreset={
+              pendingTrackerRange ?? settings?.active_date_preset ?? "Week (Mon-Sun)"
+            }
             isSaving={isTrackerRangeSaving}
             onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
-            rangeDetail={formatResolvedDateRangeContext(resolvedRange)}
-            rangeContext={formatResolvedDateRange(resolvedRange)}
+            rangeDetail={formatResolvedDateRangeContext(displayedRange)}
+            rangeContext={formatResolvedDateRange(displayedRange)}
           />
           {summary && !isDashboardLike ? (
             <>
@@ -631,6 +659,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
             </>
           ) : null}
         </section>
+        {!isDashboardLike && trackerRangeError ? (
+          <p className="error-text" role="alert">
+            {trackerRangeError}
+          </p>
+        ) : null}
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
       </section>
 
@@ -638,11 +671,15 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
         <>
           {isDashboardLike && (
             <PortfolioDashboardView
-              activePreset={settings?.active_date_preset ?? "Week (Mon-Sun)"}
+              activePreset={
+                pendingTrackerRange ?? settings?.active_date_preset ?? "Week (Mon-Sun)"
+              }
               isRangeSaving={isTrackerRangeSaving}
               onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
               profileId={profileId}
               dataset={data ?? undefined}
+              rangeError={trackerRangeError}
+              requestedRange={displayedRange}
               resolvedRange={resolvedRange}
               settings={{
                 dashboard_view_mode: settings?.dashboard_view_mode,
