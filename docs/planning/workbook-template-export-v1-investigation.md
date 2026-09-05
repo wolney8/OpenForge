@@ -6,6 +6,11 @@ Investigation ID: `TEMPLATE-INVESTIGATION-001`
 
 Date: 2026-09-04
 
+> Superseded for workbook/script structural authority by
+> [`workbook-template-export-v1-compatibility.md`](./workbook-template-export-v1-compatibility.md),
+> which validates the supplied September template and current helper script together. The May
+> findings below remain historical approach evidence only.
+
 ## Scope and safety boundary
 
 This investigation compares ways to create a fresh working workbook from an approved template.
