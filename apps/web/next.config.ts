@@ -5,10 +5,13 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   async rewrites() {
     if (process.env.NODE_ENV !== "development") return [];
+    const localApiBaseUrl =
+      process.env.OPENFORGE_INTERNAL_API_BASE_URL?.trim().replace(/\/+$/, "") ||
+      "http://127.0.0.1:8010";
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:8010/:path*",
+        destination: `${localApiBaseUrl}/:path*`,
       },
     ];
   },
