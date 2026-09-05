@@ -175,10 +175,17 @@ def inspect_workbook(path: Path) -> dict[str, object]:
                 "tables": tables,
             }
 
-        defined_names = {
-            str(item.get("name")): item.text
+        defined_name_records = [
+            {
+                "name": str(item.get("name")),
+                "local_sheet_id": str(item.get("localSheetId", "")),
+                "reference": str(item.text),
+            }
             for item in workbook.findall(f".//{{{MAIN_NS}}}definedName")
             if item.text
+        ]
+        defined_names = {
+            str(item["name"]): item["reference"] for item in defined_name_records
         }
         return {
             "sha256": sha256_file(path),
@@ -188,6 +195,7 @@ def inspect_workbook(path: Path) -> dict[str, object]:
             "invalid_normalized_headers": invalid_normalized_headers,
             "sheets": sheets,
             "defined_names": defined_names,
+            "defined_name_records": defined_name_records,
         }
 
 
@@ -369,6 +377,28 @@ def validate_structure(
         "SETTINGS_NAMES",
         all(item["passed"] for item in settings_results.values()),
         settings_results,
+    )
+
+    defined_name_records = {
+        (item["name"], item["local_sheet_id"]): item["reference"]
+        for item in workbook["defined_name_records"]
+    }
+    growth_name_results = {}
+    for sheet_name, ledger in manifest["ledgers"].items():
+        for item in ledger.get("growth_defined_names", []):
+            identity = (item["name"], str(item.get("local_sheet_id", "")))
+            actual = defined_name_records.get(identity)
+            growth_name_results[f"{identity[0]}|{identity[1]}"] = {
+                "sheet": sheet_name,
+                "actual": actual,
+                "expected": item["source_reference"],
+                "passed": actual == item["source_reference"],
+            }
+    add(
+        "GROWTH_DEFINED_NAMES",
+        bool(growth_name_results)
+        and all(item["passed"] for item in growth_name_results.values()),
+        growth_name_results,
     )
 
     iteration = workbook["sheets"].get("Dashboard", {}).get("cells", {}).get("B7")

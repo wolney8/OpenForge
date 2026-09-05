@@ -1,0 +1,237 @@
+{
+  "contract": "workbook-template-export-v1",
+  "contract_version": 1,
+  "output_classification": "STRUCTURALLY VALID WORKING-WORKBOOK EXPORT — GOOGLE RUNTIME VALIDATION PENDING",
+  "source_template_sha256": "7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a",
+  "source_helper_sha256": "9635a565f860e9927a2e01d4a8d5b4b5f796890b3612cb12ce8d8d5b38258122",
+  "generated_hardened_helper_sha256": "c9b17ac0be73a771912cfcc31df544575a32f89176ddec9ed339143d2237c14d",
+  "profile_control_cells": {
+    "Dashboard": {
+      "B4": {"source": "profiles.display_name", "encoding": "text"},
+      "D4": {"source": "profile_tracker_settings.active_date_preset", "encoding": "text"},
+      "F4": {"source": "profile_tracker_settings.custom_start_date", "encoding": "date"},
+      "B5": {"source": "profile_onboarding_settings.main_bank_catalogue_id", "transform": "catalogue_brand_name", "encoding": "text"},
+      "D5": {"source": "profile_tracker_settings.range_back_days", "encoding": "integer"},
+      "F5": {"source": "profile_tracker_settings.custom_end_date", "encoding": "date"},
+      "B6": {"source": "profiles.tracking_start_date", "encoding": "date"},
+      "D6": {"source": "profile_tracker_settings.range_forward_days", "encoding": "integer"},
+      "F6": {"source": "profile_onboarding_settings.starting_bankroll", "encoding": "decimal"},
+      "B7": {"source": "profile_onboarding_settings.iteration_number", "encoding": "integer"},
+      "D7": {"source": "profile_tracker_settings.free_bet_expiry_alert_window_days", "encoding": "integer"}
+    }
+  },
+  "cleared_unmodelled_control_cells": {
+    "Dashboard": ["F7", "B8"]
+  },
+  "settings_write_zones": {
+    "exchange_commissions": {
+      "sheet": "Settings",
+      "range": "H3:I1002",
+      "columns": {"H": "exchange_name", "I": "commission_rate"},
+      "encodings": {"H": "text", "I": "decimal"}
+    }
+  },
+  "sanitization": {
+    "clear_table_bodies": [
+      {"sheet": "Reload Templates", "table": "Reload_Templates"},
+      {"sheet": "SignupUsers", "table": "Table1"},
+      {"sheet": "Profitability Audit", "table": "Table2"}
+    ],
+    "clear_all_formula_caches": true,
+    "clear_chart_caches": true,
+    "scrub_unreferenced_shared_strings": true,
+    "reject_comment_parts": true,
+    "reject_nonempty_person_metadata": true
+  },
+  "ledgers": {
+    "Accounts": {
+      "database_table": "accounts",
+      "runtime_id": "account_id",
+      "source_sheet": "Accounts",
+      "source_entity_type": "account",
+      "columns": {
+        "AccountID": {"source": "$export_id", "encoding": "text"},
+        "Account": {"source": "account", "encoding": "text"},
+        "Type": {"source": "type", "encoding": "text"},
+        "Counts In Cash Total": {"source": "counts_in_cash_total", "encoding": "boolean"},
+        "Channel": {"source": "channel", "encoding": "text"},
+        "Status": {"source": "$account_workbook_status", "encoding": "text"},
+        "Stake Access": {"source": "$empty", "encoding": "text"},
+        "Promo Access": {"source": "$empty", "encoding": "text"},
+        "CurrentBalance": {"source": "current_balance", "encoding": "decimal_or_empty"},
+        "PendingWithdrawalAmount": {"source": "pending_withdrawal_amount", "encoding": "decimal_or_empty"},
+        "LastBalanceUpdate": {"source": "last_balance_update", "encoding": "datetime_or_empty"},
+        "Group": {"source": "group_name", "encoding": "text"},
+        "Platform": {"source": "platform", "encoding": "text"},
+        "RiskTeam": {"source": "$catalogue_risk_team", "encoding": "text"},
+        "SignUpDate": {"source": "sign_up_date", "encoding": "date_or_empty"},
+        "Notes": {"source": "notes", "encoding": "text"}
+      }
+    },
+    "Cash Adjustments": {
+      "database_table": "cash_adjustments",
+      "runtime_id": "cash_adjustment_id",
+      "source_sheet": "Cash Adjustments",
+      "source_entity_type": "cash_adjustment",
+      "columns": {
+        "AdjustmentID": {"source": "$export_id", "encoding": "text"},
+        "AdjustmentDate": {"source": "adjustment_date", "encoding": "date"},
+        "Direction": {"source": "direction", "encoding": "text"},
+        "Amount": {"source": "amount", "encoding": "decimal"},
+        "AdjustmentType": {"source": "adjustment_type", "encoding": "text"},
+        "AffectsInvestment": {"source": "affects_investment", "encoding": "boolean"},
+        "AffectsCashSnapshot": {"source": "affects_cash_snapshot", "encoding": "boolean"},
+        "LinkedAccount": {"source": "linked_account", "encoding": "text"},
+        "Description": {"source": "description", "encoding": "text"}
+      }
+    },
+    "Sportsbook Bets": {
+      "database_table": "sportsbook_bets",
+      "runtime_id": "sportsbook_bet_id",
+      "source_sheet": "Sportsbook Bets",
+      "source_entity_type": "sportsbook_bet",
+      "columns": {
+        "QualBetID": {"source": "$export_id", "encoding": "text"},
+        "DateSettling": {"source": "date_settled", "encoding": "datetime_or_empty"},
+        "EventName": {"source": "event_name", "encoding": "text"},
+        "Market": {"source": "market", "encoding": "text"},
+        "Offer": {"source": "offer_text", "encoding": "text"},
+        "Bookmaker": {"source": "bookmaker", "encoding": "text"},
+        "OfferType": {"source": "offer_type", "encoding": "text"},
+        "BetType": {"source": "bet_type", "encoding": "text"},
+        "OfferName": {"source": "offer_name", "encoding": "text"},
+        "FixtureType": {"source": "fixture_type", "encoding": "text"},
+        "Status": {"source": "status", "encoding": "text"},
+        "Result": {"source": "result", "encoding": "text"},
+        "BackStake": {"source": "back_stake", "encoding": "decimal_or_empty"},
+        "BackOdds": {"source": "back_odds", "encoding": "decimal_or_empty"},
+        "MatchStrategy": {"source": "match_strategy", "encoding": "text"},
+        "LayOdds1": {"source": "lay_odds_1", "encoding": "decimal_or_empty"},
+        "Exchange": {"source": "exchange_name", "encoding": "text"},
+        "Lay (Actual)": {"source": "lay_actual", "encoding": "decimal_or_empty"},
+        "LayMatchedStake1": {"source": "lay_matched_stake_1", "encoding": "decimal_or_empty"},
+        "LayOdds2": {"source": "$empty", "encoding": "decimal_or_empty"},
+        "LayOdds3": {"source": "$empty", "encoding": "decimal_or_empty"},
+        "FinalNetPnL": {"source": "manual_override_value", "encoding": "decimal_or_empty"},
+        "RelatedFreeBetID": {"source": "$linked_free_bet_export_id", "encoding": "text"},
+        "Offer Group ID": {"source": "$empty", "encoding": "text"},
+        "UserNotes": {"source": "user_notes", "encoding": "text"}
+      }
+    },
+    "Free Bets": {
+      "database_table": "free_bets",
+      "runtime_id": "free_bet_id",
+      "source_sheet": "Free Bets",
+      "source_entity_type": "free_bet",
+      "columns": {
+        "FreeBetID": {"source": "$export_id", "encoding": "text"},
+        "DateSettling": {"source": "date_settled", "encoding": "datetime_or_empty"},
+        "EventName": {"source": "event_name", "encoding": "text"},
+        "Offer": {"source": "offer_text", "encoding": "text"},
+        "Bookmaker": {"source": "bookmaker", "encoding": "text"},
+        "OfferType": {"source": "offer_type", "encoding": "text"},
+        "BetType": {"source": "bet_type", "encoding": "text"},
+        "OfferName": {"source": "offer_name", "encoding": "text"},
+        "FixtureType": {"source": "fixture_type", "encoding": "text"},
+        "Status": {"source": "status", "encoding": "text"},
+        "Result": {"source": "result", "encoding": "text"},
+        "ExpiryDateTime": {"source": "expiry_datetime", "encoding": "datetime_or_empty"},
+        "FreeBetRetentionMode": {"source": "retention_mode", "encoding": "text"},
+        "FreeBetValue": {"source": "free_bet_value", "encoding": "decimal_or_empty"},
+        "BackOdds": {"source": "back_odds", "encoding": "decimal_or_empty"},
+        "MatchStrategy": {"source": "match_strategy", "encoding": "text"},
+        "LayOdds1": {"source": "lay_odds_1", "encoding": "decimal_or_empty"},
+        "Exchange": {"source": "exchange_name", "encoding": "text"},
+        "Lay (Actual)": {"source": "lay_actual", "encoding": "decimal_or_empty"},
+        "LayMatchedStake1": {"source": "lay_matched_stake_1", "encoding": "decimal_or_empty"},
+        "FinalNetPnL": {"source": "manual_override_value", "encoding": "decimal_or_empty"},
+        "OriginQualBetID": {"source": "$linked_sportsbook_export_id", "encoding": "text"},
+        "OfferGroupID": {"source": "offer_group_id", "encoding": "text"},
+        "UserNotes": {"source": "user_notes", "encoding": "text"}
+      }
+    },
+    "Casino Offers": {
+      "database_table": "casino_offers",
+      "runtime_id": "casino_offer_id",
+      "source_sheet": "Casino Offers",
+      "source_entity_type": "casino_offer",
+      "columns": {
+        "CasinoOfferID": {"source": "$export_id", "encoding": "text"},
+        "OfferGroupID": {"source": "offer_group_id", "encoding": "text"},
+        "DateStarted": {"source": "date_started", "encoding": "datetime"},
+        "ExpiryDateTime": {"source": "expiry_datetime", "encoding": "datetime_or_empty"},
+        "Bookmaker": {"source": "bookmaker", "encoding": "text"},
+        "OfferType": {"source": "offer_type", "encoding": "text"},
+        "OfferName": {"source": "offer_name", "encoding": "text"},
+        "Game": {"source": "game", "encoding": "text"},
+        "CashStake": {"source": "cash_stake", "encoding": "decimal_or_empty"},
+        "CreditAmount": {"source": "credit_amount", "encoding": "decimal_or_empty"},
+        "BonusAmount": {"source": "bonus_amount", "encoding": "decimal_or_empty"},
+        "WagerMultiplier": {"source": "wager_multiplier", "encoding": "decimal_or_empty"},
+        "WagerTarget": {"source": "wager_target", "encoding": "decimal_or_empty"},
+        "SpinStake": {"source": "spin_stake", "encoding": "decimal_or_empty"},
+        "Free Spins Awarded": {"source": "free_spins_awarded", "encoding": "decimal_or_empty"},
+        "Free Spins Value": {"source": "free_spins_value", "encoding": "decimal_or_empty"},
+        "Status": {"source": "status", "encoding": "text"},
+        "Result": {"source": "result", "encoding": "text"},
+        "CalcNetPnL": {"source": "calc_net_pnl", "encoding": "decimal_or_empty"},
+        "FinalNetPnL": {"source": "final_net_pnl", "encoding": "decimal_or_empty"},
+        "UserNotes": {"source": "user_notes", "encoding": "text"}
+      }
+    }
+  },
+  "blocked_profile_state": {
+    "platform_native_or_incomplete_extra_places": "The approved template has no authoritative Extra Places write zone. Only complete imported_historical rows can return to their original Sportsbook ledger; platform-native or incomplete rows are blocked.",
+    "fee_periods": "Fee crystallisation history has no workbook authority zone.",
+    "fee_period_revisions": "Fee revision history has no workbook authority zone.",
+    "fee_corrections": "Fee corrections have no workbook authority zone.",
+    "fee_withdrawal_links": "Fee withdrawal linkage has no workbook authority zone.",
+    "sportsbook_manual_override_reason": "The approved Sportsbook table cannot retain a separate override reason.",
+    "free_bet_manual_override_reason": "The approved Free Bets table cannot retain a separate override reason.",
+    "sportsbook_multilay": "The current platform multilay branch state is richer than the approved workbook input columns.",
+    "casino_extended_calculation": "The current platform casino calculation inputs are richer than the approved workbook input columns.",
+    "account_restrictions": "Only one legacy Bonus Restricted or Soft Limited state can be represented by the approved Accounts Status column."
+  },
+  "intentionally_platform_only": {
+    "balance_snapshots": "Current point-in-time Account balances are exported; balance history remains in the portable Profile backup.",
+    "profile_lookup_values": "The template owns its Settings lists.",
+    "profile_quick_actions": "Quick Actions are not Reload Templates and are not flattened into them.",
+    "profile_quick_add_loadout_overrides": "Loadout configuration remains in the portable Profile backup.",
+    "profile_quick_add_loadout_favourites": "Loadout favourites remain in the portable Profile backup.",
+    "opportunity_links": "Opportunity authority remains in the platform and portable Profile backup.",
+    "account_signup_offer_status": "Pending Sign Up lifecycle remains representable; separate opportunity status does not exist in this workbook.",
+    "free_bet_award_and_reminder_state": "The workbook carries the operational Free Bet row, not platform workflow/audit state.",
+    "tracker_settings_not_in_controls": "Targets, display preferences, default factors and UI-only settings remain in the portable Profile backup."
+  },
+  "transformed_profile_state": {
+    "historical_extra_places": "Complete imported_historical Extra Places are projected from current Profile state back into the Sportsbook ledger with Extra Place semantics and authoritative imported P&L. Original source IDs are preserved when provenance supports them.",
+    "account_lifecycle_and_restrictions": "Lifecycle remains authoritative. One representable Active restriction is encoded through the legacy Status cell without changing the Profile domain."
+  },
+  "profile_domain_coverage": {
+    "profiles": "supported_controls",
+    "profile_tracker_settings": "supported_controls_and_intentionally_platform_only",
+    "profile_onboarding_settings": "supported_controls_and_intentionally_platform_only",
+    "profile_bookmaker_display_settings": "intentionally_platform_only",
+    "profile_exchange_commissions": "supported_settings_zone",
+    "accounts": "supported_and_transformed",
+    "balance_snapshots": "intentionally_platform_only",
+    "sportsbook_bets": "supported_with_blocked_extended_state",
+    "free_bets": "supported_with_blocked_override_state",
+    "casino_offers": "supported_with_blocked_extended_state",
+    "each_way_extra_places": "transformed_historical_or_blocked",
+    "cash_adjustments": "supported",
+    "fee_periods": "blocked",
+    "fee_period_revisions": "blocked",
+    "fee_corrections": "blocked",
+    "fee_withdrawal_links": "blocked",
+    "profile_lookup_values": "intentionally_platform_only",
+    "profile_quick_actions": "intentionally_platform_only",
+    "profile_quick_add_loadout_overrides": "intentionally_platform_only",
+    "profile_quick_add_loadout_favourites": "intentionally_platform_only",
+    "multi_profile_opportunity_targets": "intentionally_platform_only",
+    "import_source_records": "source_identity_only",
+    "profile_import_runs": "lineage_only",
+    "review_decisions": "lineage_only",
+    "reconciliation": "lineage_only"
+  }
+}

@@ -27,8 +27,13 @@ Source fingerprints:
   `7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a`
 - Helper script SHA-256:
   `9635a565f860e9927a2e01d4a8d5b4b5f796890b3612cb12ce8d8d5b38258122`
-- Deterministically generated hardened helper SHA-256:
-  `8d3b9757042f9857eaaf0ef95b15df140fd9aa117f09903b91ab59f25e2104c3`
+- Deterministically generated hardened helper SHA-256 for the current manifest:
+  `c9b17ac0be73a771912cfcc31df544575a32f89176ddec9ed339143d2237c14d`
+
+The previously recorded helper fingerprint
+`8d3b9757042f9857eaaf0ef95b15df140fd9aa117f09903b91ab59f25e2104c3` was reproduced before the
+defined-name growth authority was added. It is retained as historical evidence, not the current
+candidate fingerprint.
 
 ## Workbook identity
 
@@ -188,11 +193,12 @@ targets. `EP Catchers` has no current write zone.
 ## Disposable fallback prototype
 
 The prototype copied the authoritative package to a temporary directory, resolved each write zone
-through the workbook/table relationships, verified its header fingerprint, cloned the verified
-last table row, cleared input cells, wrote only synthetic data and IDs, translated explicit
-formulas, extended shared-formula ranges, and grew table/filter, validation, and conditional-format
-ranges. It used `openpyxl` only for individual formula translation; it did not perform a generic
-workbook load/save.
+through the workbook/table relationships, verified its header fingerprint, cloned the nearest
+structurally complete row, cleared input cells, wrote only synthetic data and IDs, translated
+normal/shared formulas into standalone formulas, and grew only manifest-authorized table/filter,
+validation, conditional-format, and defined-name ranges. Formula translation uses the repository's
+bounded token-aware translator; it does not use `openpyxl` and it rejects unsupported formula
+types instead of risking a generic workbook load/save.
 
 Three rows were added to each of Accounts, Cash Adjustments, Sportsbook Bets, Free Bets, and Casino
 Offers:
@@ -208,14 +214,20 @@ Offers:
   conditional-format column retained.
 
 All cloned cells retained their style IDs and row height metadata. Existing IDs remained unchanged.
-The template rows used by the prototype contain the full expected formula set. Formula-result and
-Dashboard/Reports/Profit Tracker recalculation were not claimed because no spreadsheet calculation
-engine was run.
+The template rows used by the prototype contain the full expected formula set. Quoted strings and
+quoted sheet names remain unchanged while relative A1 row references move; absolute and mixed
+references retain their anchors. The one array formula in the signed workbook is outside the five
+growth ledgers; cloning an array formula is rejected. Formula-result and Dashboard/Reports/Profit
+Tracker recalculation are not claimed because no spreadsheet calculation engine was run.
 
 ## ID continuity
 
 `Dashboard!B7` contains numeric `1.0`; the script's first-digit extraction resolves iteration `1`.
-All current IDs match their configured iteration/prefix, with no unmatched or duplicate values:
+All current IDs match their configured iteration/prefix, with no unmatched or duplicate values.
+The growth path reads and validates the workbook iteration rather than assuming iteration 1, scans
+the full applicable source ID set, preserves compatible current and historical-iteration source
+identities, and allocates under the current iteration after that iteration's highest sequence even
+when physical rows are sparse or out of order:
 
 - Accounts: 124 IDs, max `IT1-AC-0126`, next `IT1-AC-0127`.
 - Cash Adjustments: 24 IDs, max `IT1-CA-0025`, next `IT1-CA-0026`.
@@ -260,8 +272,10 @@ The source and output each contained 74 parts. Exactly 11 parts changed:
 - `xl/workbook.xml` for the corresponding filter defined-name extents and recalculation flags.
 
 The other 63 parts remained byte-identical. Formula cells increased from 20,056 to 20,221, exactly
-55 formula columns times three rows. All 36 defined names remained. The counts of validation rules
-and conditional-format blocks remained 82 and 79 while their applicable ranges were extended.
+55 formula columns times three rows. All 36 defined names remained. Nine manifest-authorized
+table/filter defined names reached their exact final row targets; the other 27 were unchanged. The
+counts of validation rules and conditional-format blocks remained 82 and 79 while only applicable
+table-owned ranges were extended.
 All 15 drawing package parts and all 17 relationship parts were byte-identical; the source contains
 no media parts. No package relationship, supporting sheet, report sheet, dashboard sheet, style,
 shared string, drawing, or content-type part changed.

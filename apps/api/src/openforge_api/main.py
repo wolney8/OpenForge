@@ -38,6 +38,7 @@ from openforge_api.profiles import router as profiles_router
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
 from openforge_api.tracker_summary_sources import router as tracker_summary_sources_router
+from openforge_api.workbook_template_export import router as workbook_template_export_router
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(ProfileLifecycleMiddleware)
@@ -54,6 +55,7 @@ app.include_router(profiles_router)
 app.include_router(profile_recovery_router)
 app.include_router(profile_portable_export_router)
 app.include_router(profile_portable_restore_router)
+app.include_router(workbook_template_export_router)
 app.include_router(auth_router)
 app.include_router(global_search_router)
 app.include_router(account_catalogue_source_router)

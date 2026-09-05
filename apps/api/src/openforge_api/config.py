@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     backup_directory: str = "data/private/backups"
     source_instance_id: str = "local-fund-manager"
     account_catalogue_source: str = "data/reference/master-account-catalogue.json"
+    workbook_template_source: str = "_input/WO_MB_Tracker_3Sept2026_1013AM.xlsx"
+    workbook_template_helper_source: str = "_input/MB Helpers.gs"
+    workbook_template_structure_manifest: str = (
+        "docs/contracts/workbook-template-export-v1-ledger-structure.json"
+    )
+    workbook_template_field_coverage: str = (
+        "docs/contracts/workbook-template-export-v1-field-coverage.json"
+    )
     cors_allow_origins: str = "http://localhost:3010,http://127.0.0.1:3010"
     cors_allow_origin_regex: str = ""
     auth_required: bool = False

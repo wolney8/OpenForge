@@ -22,6 +22,7 @@
       "script_owned_headers": ["AccountID", "LastBalanceUpdate"],
       "protected_headers": ["AccountID", "LastBalanceUpdate", "LastPromoUsed"],
       "required_headers": ["AccountID", "Account", "Type", "Counts In Cash Total", "Channel", "Status", "Stake Access", "Promo Access", "CurrentBalance", "PendingWithdrawalAmount", "LastBalanceUpdate", "LastPromoUsed", "Group", "Platform", "RiskTeam", "SignUpDate", "Notes"],
+      "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "7", "source_reference": "Accounts!$A$1:$Q$125"}, {"name": "Z_FF6E07D2_D981_42E8_AB46_8FA8E5669783_.wvu.FilterData", "local_sheet_id": "7", "source_reference": "Accounts!$A$1:$Q$125"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     },
     "Cash Adjustments": {
@@ -33,6 +34,7 @@
       "script_owned_headers": ["AdjustmentID"],
       "protected_headers": ["AdjustmentID", "SignedAmount", "Date Range Tag", "WeekLabel"],
       "required_headers": ["AdjustmentID", "AdjustmentDate", "Direction", "Amount", "AdjustmentType", "AffectsInvestment", "AffectsCashSnapshot", "LinkedAccount", "Description", "SignedAmount", "Date Range Tag", "WeekLabel"],
+      "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "8", "source_reference": "'Cash Adjustments'!$A$1:$L$25"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     },
     "Sportsbook Bets": {
@@ -44,6 +46,7 @@
       "script_owned_headers": ["QualBetID"],
       "protected_headers": ["QualBetID", "MatchRating%", "LayStake1", "LayStatus", "Liability1", "PnL If Bookie Wins / Outcome 1 Wins", "PnL If Bookie Loses / No Selection Wins", "CalcNetPnL", "NetPnL", "LayCommission1", "LayRemainingStake1", "BonusRetention%", "MaximumBonus", "UnderlayRefLayStake", "StandardRefLayStake", "OverlayRefLayStake", "CustomLayStake", "SelectedLayStake", "OutcomeCount", "LayStake2", "LayCommission2", "Liability2", "LayStake3", "LayCommission3", "Liability3", "PnL_IfLay2Wins / DD Result", "PnL_IfLay3Wins / HH Result", "CountsAsOpen", "IsOverdue", "Date Range Tag", "WeekLabel"],
       "required_headers": ["QualBetID", "DateSettling", "EventName", "Market", "Offer", "Bookmaker", "OfferType", "BetType", "OfferName", "FixtureType", "Status", "Result", "BackStake", "BackOdds", "MatchStrategy", "LayOdds1", "MatchRating%", "Exchange", "Lay (Actual)", "LayMatchedStake1", "LayStake1", "LayStatus", "Liability1", "PnL If Bookie Wins / Outcome 1 Wins", "PnL If Bookie Loses / No Selection Wins", "CalcNetPnL", "NetPnL", "LayCommission1", "LayRemainingStake1", "FinalNetPnL", "BonusRetention%", "MaximumBonus", "UnderlayRefLayStake", "StandardRefLayStake", "OverlayRefLayStake", "CustomLayStake", "SelectedLayStake", "OutcomeCount", "LayOdds2", "LayStake2", "LayCommission2", "Liability2", "LayOdds3", "LayStake3", "LayCommission3", "Liability3", "PnL_IfLay2Wins / DD Result", "PnL_IfLay3Wins / HH Result", "CountsAsOpen", "IsOverdue", "Date Range Tag", "WeekLabel", "RelatedFreeBetID", "Offer Group ID", "UserNotes"],
+      "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "9", "source_reference": "'Sportsbook Bets'!$A$1:$BC$530"}, {"name": "Z_CDCB28B3_BC6B_441A_A81B_7CB94D17E405_.wvu.FilterData", "local_sheet_id": "9", "source_reference": "'Sportsbook Bets'!$A$1:$BC$530"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     },
     "Free Bets": {
@@ -55,6 +58,7 @@
       "script_owned_headers": ["FreeBetID"],
       "protected_headers": ["FreeBetID", "BetRetention%", "LayStake1", "LayStatus", "Liability1", "PnL If Bookie Wins / Outcome 1 Wins", "PnL If Bookie Loses / No Selection Wins", "CalcNetPnL", "NetPnL", "LayRemainingStake1", "LayCommission1", "CountsAsOpen", "IsOverdue", "DateRangeTag", "WeekLabel"],
       "required_headers": ["FreeBetID", "DateSettling", "EventName", "Offer", "Bookmaker", "OfferType", "BetType", "OfferName", "FixtureType", "Status", "Result", "ExpiryDateTime", "FreeBetRetentionMode", "FreeBetValue", "BackOdds", "MatchStrategy", "LayOdds1", "BetRetention%", "Exchange", "Lay (Actual)", "LayMatchedStake1", "LayStake1", "LayStatus", "Liability1", "PnL If Bookie Wins / Outcome 1 Wins", "PnL If Bookie Loses / No Selection Wins", "CalcNetPnL", "NetPnL", "FinalNetPnL", "LayRemainingStake1", "LayCommission1", "CountsAsOpen", "IsOverdue", "DateRangeTag", "WeekLabel", "OriginQualBetID", "OfferGroupID", "UserNotes"],
+      "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "10", "source_reference": "'Free Bets'!$A$1:$AL$171"}, {"name": "Z_61A693B0_24CC_4BA8_8C2E_3A2E24A5AB80_.wvu.FilterData", "local_sheet_id": "10", "source_reference": "'Free Bets'!$A$1:$AL$171"}, {"name": "Z_ED738785_E81B_4DF3_973A_0B4EB5925F38_.wvu.FilterData", "local_sheet_id": "10", "source_reference": "'Free Bets'!$A$1:$AL$171"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     },
     "Casino Offers": {
@@ -66,6 +70,7 @@
       "script_owned_headers": ["CasinoOfferID"],
       "protected_headers": ["CasinoOfferID", "DateSettling", "Required Spins", "NetPnL", "CountsAsOpen", "IsOverdue", "DateRangeTag", "WeekLabel"],
       "required_headers": ["CasinoOfferID", "OfferGroupID", "DateStarted", "DateSettling", "ExpiryDateTime", "Bookmaker", "OfferType", "OfferName", "Game", "CashStake", "CreditAmount", "BonusAmount", "WagerMultiplier", "WagerTarget", "Required Spins", "SpinStake", "Free Spins Awarded", "Free Spins Value", "Status", "Result", "CalcNetPnL", "FinalNetPnL", "NetPnL", "CountsAsOpen", "IsOverdue", "DateRangeTag", "WeekLabel", "UserNotes"],
+      "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "11", "source_reference": "'Casino Offers'!$A$1:$AB$25"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     }
   },

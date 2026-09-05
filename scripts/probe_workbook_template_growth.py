@@ -10,11 +10,24 @@ import json
 from pathlib import Path
 import posixpath
 import re
+import sys
 from tempfile import TemporaryDirectory
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from workbook_template_structure import normalise_header, parse_range, split_cell
+
+API_SOURCE = Path(__file__).resolve().parents[1] / "apps" / "api" / "src"
+if str(API_SOURCE) not in sys.path:
+    sys.path.insert(0, str(API_SOURCE))
+
+from openforge_api.workbook_template_package import (  # noqa: E402
+    allocate_workbook_record_ids as package_allocate_workbook_record_ids,
+    extend_table_owned_sqref as package_extend_table_owned_sqref,
+    materialise_cloned_formula as package_materialise_cloned_formula,
+    parse_iteration as package_parse_iteration,
+    translate_formula_rows as package_translate_formula_rows,
+)
 
 
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -22,8 +35,8 @@ REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
 ET.register_namespace("", MAIN_NS)
 ET.register_namespace("r", REL_NS)
-FORMULA_CELL_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9_.])(\$?[A-Z]{1,3})(\$?)(\d+)(?![A-Za-z0-9_(])"
+WORKBOOK_ID_PATTERN = re.compile(
+    r"^IT(?P<iteration>[1-9]\d*)-(?P<prefix>[A-Z]{2})-(?P<sequence>\d{4,})$"
 )
 
 
@@ -87,11 +100,13 @@ def _rows_by_number(root: ET.Element) -> dict[int, ET.Element]:
     }
 
 
-def _table_map(archive: ZipFile) -> dict[str, tuple[str, str, ET.Element]]:
+def _table_map(
+    archive: ZipFile,
+) -> dict[str, list[tuple[str, str, ET.Element]]]:
     workbook = ET.fromstring(archive.read("xl/workbook.xml"))
     relationships = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
     workbook_targets = {entry.get("Id"): entry.get("Target") for entry in relationships}
-    result = {}
+    result: dict[str, list[tuple[str, str, ET.Element]]] = {}
     for sheet in workbook.findall(f".//{{{MAIN_NS}}}sheet"):
         worksheet = (
             "xl/" + workbook_targets[sheet.get(f"{{{REL_NS}}}id")].lstrip("/")
@@ -112,10 +127,13 @@ def _table_map(archive: ZipFile) -> dict[str, tuple[str, str, ET.Element]]:
         for table_part in sheet_root.findall(f".//{{{MAIN_NS}}}tablePart"):
             target = sheet_targets[table_part.get(f"{{{REL_NS}}}id")]
             table_path = posixpath.normpath(worksheet.rsplit("/", 1)[0] + "/" + target)
-            result[str(sheet.get("name"))] = (
-                worksheet,
-                table_path,
-                ET.fromstring(archive.read(table_path)),
+            sheet_name = str(sheet.get("name"))
+            result.setdefault(sheet_name, []).append(
+                (
+                    worksheet,
+                    table_path,
+                    ET.fromstring(archive.read(table_path)),
+                )
             )
     return result
 
@@ -128,13 +146,48 @@ def _extend_ending_row(value: str, old_end: int, new_end: int) -> str:
     )
 
 
-def _translate_formula_rows(formula: str, row_delta: int) -> str:
-    def replace(match: re.Match[str]) -> str:
-        column, absolute, row = match.groups()
-        translated_row = int(row) if absolute else int(row) + row_delta
-        return f"{column}{absolute}{translated_row}"
+def _shared_formula_masters(root: ET.Element) -> dict[str, tuple[str, str]]:
+    masters: dict[str, tuple[str, str]] = {}
+    for cell in root.findall(f".//{{{MAIN_NS}}}c"):
+        formula = cell.find(f"{{{MAIN_NS}}}f")
+        if formula is None or formula.get("t") != "shared" or not formula.text:
+            continue
+        shared_index = formula.get("si")
+        if not shared_index or shared_index in masters:
+            raise ValueError("Shared formula master identity is missing or duplicated")
+        masters[shared_index] = (str(cell.get("r")), formula.text)
+    return masters
 
-    return FORMULA_CELL_PATTERN.sub(replace, formula)
+
+# The production package writer owns the hardened primitives. These aliases keep the historical
+# disposable probe and its focused tests on exactly the same implementation path.
+_translate_formula_rows = package_translate_formula_rows
+_materialise_cloned_formula = package_materialise_cloned_formula
+_extend_table_owned_sqref = package_extend_table_owned_sqref
+parse_iteration = package_parse_iteration
+allocate_workbook_record_ids = package_allocate_workbook_record_ids
+
+
+def _workbook_iteration(archive: ZipFile, strings: list[str]) -> int:
+    workbook = ET.fromstring(archive.read("xl/workbook.xml"))
+    relationships = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+    targets = {entry.get("Id"): entry.get("Target") for entry in relationships}
+    dashboard = next(
+        (
+            sheet
+            for sheet in workbook.findall(f".//{{{MAIN_NS}}}sheet")
+            if sheet.get("name") == "Dashboard"
+        ),
+        None,
+    )
+    if dashboard is None:
+        raise ValueError("Dashboard sheet is unavailable")
+    worksheet = (
+        "xl/" + str(targets[dashboard.get(f"{{{REL_NS}}}id")]).lstrip("/")
+    ).replace("xl/xl/", "xl/")
+    root = ET.fromstring(archive.read(worksheet))
+    cell = root.find(f".//{{{MAIN_NS}}}c[@r='B7']")
+    return parse_iteration(_cell_value(cell, strings))
 
 
 def _formula_count(archive: ZipFile) -> int:
@@ -148,6 +201,8 @@ def _formula_count(archive: ZipFile) -> int:
 def run_probe(
     source: Path, manifest: dict[str, object], rows_to_add: int
 ) -> dict[str, object]:
+    if rows_to_add < 1:
+        raise ValueError("Growth probe must add at least one row")
     source_hash = sha256(source.read_bytes()).hexdigest()
     with TemporaryDirectory(prefix="workbook-template-export-v1-growth-") as directory:
         output = Path(directory) / "disposable-growth.xlsx"
@@ -155,11 +210,23 @@ def run_probe(
             payload = {name: archive.read(name) for name in archive.namelist()}
             strings = _shared_strings(archive)
             tables = _table_map(archive)
+            iteration = _workbook_iteration(archive, strings)
             expected_changed = {"xl/workbook.xml"}
             growth = {}
+            original_extents: dict[str, tuple[int, int, int, int]] = {}
 
             for sheet_name, ledger in manifest["ledgers"].items():
-                worksheet, table_path, table_root = tables[sheet_name]
+                table_candidates = [
+                    candidate
+                    for candidate in tables[sheet_name]
+                    if candidate[2].get("name") == ledger["table_name"]
+                ]
+                if len(table_candidates) != 1:
+                    raise ValueError(
+                        f"Expected one {ledger['table_name']} table for {sheet_name}; "
+                        f"found {len(table_candidates)}"
+                    )
+                worksheet, table_path, table_root = table_candidates[0]
                 if table_root.get("name") != ledger["table_name"]:
                     raise ValueError(f"Unexpected table identity for {sheet_name}")
                 expected_changed.update({worksheet, table_path})
@@ -173,7 +240,16 @@ def run_probe(
                     normalise_header(header): index
                     for index, header in enumerate(headers, start=1)
                 }
-                _, start_row, _, old_end = parse_range(str(table_root.get("ref")))
+                start_column, start_row, end_column, old_end = parse_range(
+                    str(table_root.get("ref"))
+                )
+                new_end = old_end + rows_to_add
+                original_extents[sheet_name] = (
+                    start_column,
+                    start_row,
+                    end_column,
+                    old_end,
+                )
                 formula_headers = ledger["formula_helper_headers"]
                 formula_columns = {
                     header_columns[normalise_header(header)]
@@ -202,25 +278,21 @@ def run_probe(
                     )
                 template = rows[template_row]
                 template_cells = _cells_by_column(template)
+                shared_masters = _shared_formula_masters(sheet_root)
 
                 prefix = ledger["id_prefix"]
-                pattern = re.compile(rf"^IT1-{re.escape(prefix)}-(\d{{4,}})$")
-                sequences = []
-                for row_number in range(start_row + 1, old_end + 1):
-                    value = _cell_value(
-                        _cells_by_column(rows[row_number]).get("A"), strings
-                    )
-                    if value and (match := pattern.match(value)):
-                        sequences.append(int(match.group(1)))
-                maximum = max(sequences, default=0)
+                existing_ids = [
+                    _cell_value(_cells_by_column(rows[row_number]).get("A"), strings)
+                    for row_number in range(start_row + 1, old_end + 1)
+                    if _cell_value(_cells_by_column(rows[row_number]).get("A"), strings)
+                ]
+                allocated_ids = allocate_workbook_record_ids(
+                    iteration=iteration,
+                    prefix=prefix,
+                    source_ids=[*existing_ids, *([None] * rows_to_add)],
+                )
+                new_ids = allocated_ids[len(existing_ids) :]
 
-                new_end = old_end + rows_to_add
-                for formula in sheet_root.findall(f".//{{{MAIN_NS}}}f"):
-                    if formula.get("ref"):
-                        formula.set(
-                            "ref",
-                            _extend_ending_row(formula.get("ref"), old_end, new_end),
-                        )
                 for node in list(
                     sheet_root.findall(f".//{{{MAIN_NS}}}dataValidation")
                 ) + [
@@ -231,7 +303,13 @@ def run_probe(
                     if node.get("sqref"):
                         node.set(
                             "sqref",
-                            _extend_ending_row(node.get("sqref"), old_end, new_end),
+                            _extend_table_owned_sqref(
+                                str(node.get("sqref")),
+                                table_start_column=start_column,
+                                table_end_column=end_column,
+                                old_end=old_end,
+                                new_end=new_end,
+                            ),
                         )
 
                 sheet_data = sheet_root.find(f".//{{{MAIN_NS}}}sheetData")
@@ -248,15 +326,17 @@ def run_probe(
                         if formula is None:
                             _clear_value(cell)
                         else:
-                            if formula.get("t") != "shared" and formula.text:
-                                formula.text = _translate_formula_rows(
-                                    formula.text, row_number - template_row
-                                )
+                            _materialise_cloned_formula(
+                                formula,
+                                template_reference=str(old_reference),
+                                target_reference=new_reference,
+                                shared_masters=shared_masters,
+                            )
                             _clear_value(cell)
                     id_cell = _cells_by_column(clone)["A"]
                     _set_inline_string(
                         id_cell,
-                        f"IT1-{prefix}-{maximum + offset:04d}",
+                        new_ids[offset - 1],
                     )
                     existing = rows.get(row_number)
                     if existing is not None:
@@ -293,21 +373,61 @@ def run_probe(
                     "template_row": template_row,
                     "old_end": old_end,
                     "new_end": new_end,
+                    "table_reference": str(table_root.get("ref")),
+                    "auto_filter_reference": (
+                        str(autofilter.get("ref")) if autofilter is not None else None
+                    ),
                     "formula_columns": len(formula_columns),
-                    "next_manual_sequence": maximum + rows_to_add + 1,
+                    "generated_ids": new_ids,
+                    "next_manual_sequence": int(
+                        WORKBOOK_ID_PATTERN.fullmatch(new_ids[-1]).group("sequence")
+                    )
+                    + 1,
                 }
 
             workbook = ET.fromstring(payload["xl/workbook.xml"])
-            for defined_name in workbook.findall(f".//{{{MAIN_NS}}}definedName"):
-                if not defined_name.text:
-                    continue
-                for sheet_name, ledger in manifest["ledgers"].items():
-                    _, _, table_root = tables[sheet_name]
-                    old_end = parse_range(str(table_root.get("ref")))[3]
-                    if f"'{sheet_name}'!" in defined_name.text:
-                        defined_name.text = _extend_ending_row(
-                            defined_name.text, old_end, old_end + rows_to_add
+            defined_names = {
+                (str(item.get("name")), str(item.get("localSheetId", ""))): item
+                for item in workbook.findall(f".//{{{MAIN_NS}}}definedName")
+                if item.text
+            }
+            source_defined_names = {
+                key: str(item.text) for key, item in defined_names.items()
+            }
+            authorized_defined_names: set[tuple[str, str]] = set()
+            for sheet_name, ledger in manifest["ledgers"].items():
+                _, _, _, old_end = original_extents[sheet_name]
+                new_end = old_end + rows_to_add
+                for name_spec in ledger.get("growth_defined_names", []):
+                    name = str(name_spec["name"])
+                    local_sheet_id = str(name_spec.get("local_sheet_id", ""))
+                    identity = (name, local_sheet_id)
+                    if identity in authorized_defined_names:
+                        raise ValueError(
+                            f"Duplicate defined-name growth authority for {name}"
                         )
+                    authorized_defined_names.add(identity)
+                    source_reference = str(name_spec["source_reference"])
+                    defined_name = defined_names.get(identity)
+                    if defined_name is None or defined_name.text != source_reference:
+                        raise ValueError(f"Defined-name source drift for {name}")
+                    defined_name.text = _extend_ending_row(
+                        source_reference, old_end, new_end
+                    )
+                    expected_reference = _extend_ending_row(
+                        source_reference, old_end, new_end
+                    )
+                    if defined_name.text != expected_reference:
+                        raise ValueError(f"Defined-name growth mismatch for {name}")
+            actual_defined_changes = {
+                identity
+                for identity, item in defined_names.items()
+                if str(item.text) != source_defined_names[identity]
+            }
+            if actual_defined_changes != authorized_defined_names:
+                raise ValueError(
+                    "Defined-name changes exceeded the signed growth authority"
+                )
             calculation = workbook.find(f"{{{MAIN_NS}}}calcPr")
             if calculation is not None:
                 calculation.set("fullCalcOnLoad", "1")
@@ -346,6 +466,14 @@ def run_probe(
                 "formulas_before": _formula_count(before),
                 "formulas_after": _formula_count(after),
                 "growth": growth,
+                "defined_name_targets": {
+                    f"{name}|{local_sheet_id}": str(
+                        defined_names[(name, local_sheet_id)].text
+                    )
+                    for name, local_sheet_id in sorted(authorized_defined_names)
+                },
+                "unchanged_defined_names": len(defined_names)
+                - len(actual_defined_changes),
                 "disposable_exists_during_probe": output.exists(),
             }
         temporary_path = Path(directory)
