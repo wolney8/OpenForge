@@ -170,9 +170,10 @@ Additional lessons-audit checks were intentionally kept separate from portabilit
   working catalogue returns no matching authority. The catalogue is an unrelated pre-existing
   change and was not altered by this tranche.
 - A combined working-workbook/Free-Bet-bridge Playwright run produced 2 working-workbook passes and
-  5 bridge failures because the expected editor dialog was not present. The clean scoped
-  working-workbook run above passed 2/2; the unrelated bridge failures are not hidden or treated as
-  portability evidence.
+  5 bridge failures because the expected editor dialog was not present. An isolated bridge rerun
+  against freshly started test-auth services also failed 0/5 at that same prerequisite. The clean
+  scoped working-workbook run above passed 2/2; the separate bridge failure is not hidden, is not
+  treated as working evidence, and did not exercise the portability endpoint.
 - A Prettier check could not run because no `prettier` command is installed in this workspace.
 
 The real browser gate is run with:
