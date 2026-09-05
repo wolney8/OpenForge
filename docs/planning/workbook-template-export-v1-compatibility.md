@@ -1,6 +1,6 @@
 # `workbook-template-export-v1` compatibility contract
 
-Status: **LOCAL STRUCTURAL VALIDATION COMPLETE — CURRENT SCRIPT/TEMPLATE DRIFT BLOCKS SIGN-OFF**
+Status: **LOCAL STRUCTURE HARDENED — READY FOR DISPOSABLE GOOGLE RUNTIME VALIDATION**
 
 Validation ID: `TEMPLATE-VALIDATION-002`
 
@@ -16,12 +16,19 @@ Script, use Google Drive, change Profile data, or certify formula results.
 The source workbook and script remain private, ignored inputs. Only structural findings,
 fingerprints, and synthetic probe data are recorded here.
 
+The authoritative machine-readable ledger definition is
+`docs/contracts/workbook-template-export-v1-ledger-structure.json`. The read-only validator, helper
+builder, and disposable growth probe consume that same file. The supplied helper is never edited
+in place; the builder produces an ignored private runtime candidate for the Google gate.
+
 Source fingerprints:
 
 - September workbook SHA-256:
   `7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a`
 - Helper script SHA-256:
   `9635a565f860e9927a2e01d4a8d5b4b5f796890b3612cb12ce8d8d5b38258122`
+- Deterministically generated hardened helper SHA-256:
+  `8d3b9757042f9857eaaf0ef95b15df140fd9aa117f09903b91ab59f25e2104c3`
 
 ## Workbook identity
 
@@ -105,40 +112,58 @@ like a hard-coded external resource ID. No property migration or external-ID reb
 is visible in this source. Google project configuration and installed triggers remain runtime
 concerns because they are not represented in the `.gs` file.
 
-## Current September drift
+## September drift resolution
 
-### Failures
+### Corrections
 
-1. **Missing `EP Catchers`.** The script config declares an EP ledger and `EP` ID prefix, but the
-   authoritative workbook has no sheet or table with this name. General bulk actions skip the
-   absent sheet rather than throwing, but EP row creation and ID continuity cannot be provided.
-2. **Sportsbook `OfferGroupID` mismatch.** The current Sportsbook header is `Offer Group ID`.
-   `normaliseHeader_()` lowercases and collapses whitespace; it does not remove whitespace.
-   Consequently the script lookup for `OfferGroupID` does not match. Reload creation silently omits
-   the group link, and Sportsbook -> Free Bets reads a blank group link.
-3. **Protected-format manifest is incomplete.** `MB_PROTECTED_FORMAT` omits formula column AF
-   (`MaximumBonus`) on Sportsbook Bets and formula column L (`LastPromoUsed`) on Accounts. Its
-   Accounts K entry is valid as a script-owned balance timestamp, but it is not the formula column.
-   The script does not create real Google protected ranges; this manifest only applies grey fill.
+1. **`EP Catchers` removed from the hardened helper configuration.** The September workbook stores
+   historical Extra Places source rows in Sportsbook; it has no current EP Catchers table. No
+   workflow-specific function uses the missing sheet. The old entry affected only generic ID and
+   formatting iteration, so it was obsolete rather than evidence that a sheet should be invented.
+2. **Header normalization strengthened and made fail-closed.** Unicode formatting, case, spaces,
+   underscores, and harmless punctuation are removed before matching. All 205 current row-one
+   headers were audited with zero normalized collisions. A collision now raises an explicit error
+   instead of overwriting a prior header-map entry. `Offer Group ID`, `OfferGroupID`, and
+   `offer_group-id` all resolve to `offergroupid`.
+3. **Protected formatting now derives from the ledger structure manifest by header.** Accounts L
+   (`LastPromoUsed`) and Sportsbook AF (`MaximumBonus`) are included. The former A1 range list is no
+   longer a separate source of truth.
+4. **Row formulas now use a complete-row strategy.** The helper searches outward for the nearest
+   row containing every manifest formula, copies format/validation/height from that row, and applies
+   missing formulas in R1C1 form. `onEdit` also fills missing formulas for newly entered rows.
 
-### Warnings
+### Protected-region reconciliation
+
+The pre-hardening script was compared with every September formula column plus explicit ID/system
+ownership:
+
+| Ledger | MATCH | MISSING_FROM_SCRIPT | SCRIPT_ONLY / STALE | Hardened result |
+| --- | --- | --- | --- | --- |
+| Accounts | A (`AccountID`), K (`LastBalanceUpdate`) | L (`LastPromoUsed`) | none | A, K, L match |
+| Cash Adjustments | A, J:L | none | none | match |
+| Sportsbook Bets | A, Q, U:AC, AE, AG:AL, AN:AP, AR:AZ | AF (`MaximumBonus`) | none | A, Q, U:AC, AE:AL, AN:AP, AR:AZ match |
+| Free Bets | A, R, V:AB, AD:AI | none | none | match |
+| Casino Offers | A, D, O, W:AA | none | none | match |
+
+The hardened helper no longer stores these as independent A1 ranges. It derives protected columns
+from the same header manifest used by the structural validator and formula-template logic.
+
+### Remaining local observations
 
 - Sportsbook formula columns AN and AR contain no formula at existing row 378 while the remaining
-  formula rows are populated. This may be intentional row-level history, but it proves that an
-  arbitrary preceding row is not a safe universal formula template.
-- `applyRowTemplateFromAbove_()` copies formatting, validation, and row height only. It does not
-  copy formulas or resize a table/filter. `onEdit()` also does not add formulas. Whether Google
-  Sheets table behaviour fills formulas for the first manually added row requires the Google
-  runtime gate.
-- `freeBetStatusRange = Y3:Y999` points at an account-audit list rather than the Free Bet status
-  list. It is currently unused; the active copy workflow correctly uses `AW3:AW1002`.
+  formula rows are populated. The hardened helper does not alter that historical row; it skips it
+  as a template authority.
+- Apps Script has no current table-object API for resizing imported tables. The helper no longer
+  depends on table autofill for formulas, while actual Google table/filter expansion remains an
+  explicit runtime assertion.
+- The unused `freeBetStatusRange = Y3:Y999` entry was removed. The active
+  `copyStatusRange = AW3:AW1002` remains unchanged.
 
 ### Re-evaluation of May-era candidates
 
-- Missing `EP Catchers`: **CURRENT DRIFT** — also absent in September.
-- Accounts K/L discrepancy: **CURRENT DRIFT** — K is the timestamp/system cell; L is the formula
-  and is omitted from the script's protected-format list.
-- Sportsbook AF discrepancy: **CURRENT DRIFT** — AF is a formula column and remains omitted.
+- Missing `EP Catchers`: **RESOLVED AS STALE SCRIPT CONFIGURATION**.
+- Accounts K/L discrepancy: **RESOLVED BY MANIFEST** — A, K, and L are protected.
+- Sportsbook AF discrepancy: **RESOLVED BY MANIFEST** — AF is protected.
 - Empty Settings ranges: **HISTORICAL-ONLY DIFFERENCE** — the five active September ranges are
   populated and have matching defined names.
 - Football fixed columns: **CURRENT MATCH**.
@@ -200,30 +225,30 @@ All current IDs match their configured iteration/prefix, with no unmatched or du
 
 The maximum sequence is not always on the last physical row, so the exporter must reproduce the
 script's full-column max scan. After the three-row probe, the statically reproduced first manual
-IDs are AC-0130, CA-0029, QB-0684, FB-0195, and CO-0033 under iteration 1. EP continuity is blocked
-by the missing sheet.
+IDs are AC-0130, CA-0029, QB-0684, FB-0195, and CO-0033 under iteration 1. EP is intentionally not
+an Apps Script workbook ledger in this template family.
 
 ## Workflow compatibility result
 
 - `onOpen`: **PASS — STRUCTURALLY COMPATIBLE**. The menu functions exist; actual menu execution is
   Google-runtime-only.
-- `onEdit`: **WARNING — CURRENTLY WORKS BUT FRAGILE**. Present-sheet dispatch, IDs, timestamps, and
-  defaults resolve, but protected-format drift and formula propagation remain.
-- ID generation: **PASS — STRUCTURALLY COMPATIBLE** for the five present ledgers; **FAIL —
-  WORKBOOK/SCRIPT DRIFT** for EP.
+- `onEdit`: **PASS — STRUCTURALLY COMPATIBLE**. Present-sheet dispatch, IDs, timestamps, defaults,
+  normalized header lookup, protected formatting, and formula fallback resolve statically.
+- ID generation: **PASS — STRUCTURALLY COMPATIBLE** for every workbook ledger in this template.
 - Account timestamping: **PASS — STRUCTURALLY COMPATIBLE**. CurrentBalance I,
   PendingWithdrawalAmount J, and LastBalanceUpdate K match.
 - Sportsbook defaults: **PASS — STRUCTURALLY COMPATIBLE**. All eight headers resolve.
-- Reload creation: **FAIL — WORKBOOK/SCRIPT DRIFT**. Positional A:O source fields match, but the
-  Sportsbook `OfferGroupID` target does not.
-- Sportsbook -> Free Bets: **FAIL — WORKBOOK/SCRIPT DRIFT**. All destination headers and Settings
-  lists resolve, but the Sportsbook group-link source does not.
+- Reload creation: **PASS — STRUCTURALLY COMPATIBLE**. Positional A:O fields match and normalized
+  `OfferGroupID` resolves the current `Offer Group ID` target.
+- Sportsbook -> Free Bets: **PASS — STRUCTURALLY COMPATIBLE**. Source linkage, destination headers,
+  and Settings lists resolve.
 - Football finish time: **PASS — STRUCTURALLY COMPATIBLE**. Both fixed-column layouts and
   `UserNotes` match.
-- Protected-cell formatting: **FAIL — WORKBOOK/SCRIPT DRIFT**. Accounts L and Sportsbook AF are
-  missing; no true protection is created.
-- First manual row formula propagation: **GOOGLE_RUNTIME_REQUIRED**. Static ID generation is safe,
-  but the helper itself does not copy formulas.
+- Protected-cell formatting: **PASS — STRUCTURALLY COMPATIBLE**. It derives from the signed header
+  manifest. This remains visual/system ownership marking rather than Google range protection.
+- First manual row formula propagation: **PASS — STRUCTURALLY COMPATIBLE**. The helper explicitly
+  restores missing formulas from the nearest complete R1C1 template row; runtime execution remains
+  part of the Google smoke.
 - Simple trigger execution and formula recalculation: **GOOGLE_RUNTIME_REQUIRED**.
 
 ## Package-preservation evidence
@@ -246,8 +271,7 @@ directory were deleted automatically.
 
 ## Remaining Google-only gate
 
-After the three current structural drifts are deliberately resolved, the remaining authorized,
-disposable Google gate is limited to:
+The remaining authorized, disposable Google gate is limited to:
 
 1. container copy and destination bound-script association/code presence;
 2. simple-trigger execution and any installable-trigger recreation;

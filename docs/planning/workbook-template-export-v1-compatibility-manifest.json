@@ -2,24 +2,25 @@
   "contract": "workbook-template-export-v1",
   "evidence": "local-structural-only",
   "source_fingerprints": {
+    "hardened_helper_sha256": "8d3b9757042f9857eaaf0ef95b15df140fd9aa117f09903b91ab59f25e2104c3",
     "helper_script_sha256": "9635a565f860e9927a2e01d4a8d5b4b5f796890b3612cb12ce8d8d5b38258122",
     "template_sha256": "7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a"
   },
   "checks": [
-    {"id": "REQUIRED_SHEETS_PRESENT", "status": "FAIL_WORKBOOK_SCRIPT_DRIFT", "detail": "EP Catchers is configured by the script but absent from the current template."},
+    {"id": "REQUIRED_SHEETS_PRESENT", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "The obsolete EP Catchers configuration is removed; every declared workbook sheet is present."},
     {"id": "FIXED_RANGE_VALID", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Dashboard B7, active Settings ranges, and Reload Templates A:O/O match."},
-    {"id": "REQUIRED_HEADER_PRESENT", "status": "FAIL_WORKBOOK_SCRIPT_DRIFT", "detail": "Sportsbook uses Offer Group ID while the script requests OfferGroupID."},
+    {"id": "REQUIRED_HEADER_PRESENT", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Collision-detecting normalization resolves Offer Group ID and OfferGroupID."},
     {"id": "FIXED_COLUMN_VALID", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Football finish-time columns match both current ledgers."},
-    {"id": "PROTECTED_ZONE_VALID", "status": "FAIL_WORKBOOK_SCRIPT_DRIFT", "detail": "Accounts L and Sportsbook AF formulas are omitted from MB_PROTECTED_FORMAT."},
-    {"id": "ID_GENERATION_SAFE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Iteration 1 and max-sequence scanning are collision-free for five present ledgers; EP is unavailable."},
+    {"id": "PROTECTED_ZONE_VALID", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Protected headers derive from the signed ledger manifest and include Accounts L and Sportsbook AF."},
+    {"id": "ID_GENERATION_SAFE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Iteration 1 and max-sequence scanning are collision-free for every declared workbook ledger."},
     {"id": "ACCOUNT_TIMESTAMP_STRUCTURALLY_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE"},
     {"id": "SPORTSBOOK_DEFAULTS_STRUCTURALLY_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE"},
-    {"id": "RELOAD_WORKFLOW_STRUCTURALLY_COMPATIBLE", "status": "FAIL_WORKBOOK_SCRIPT_DRIFT", "detail": "Offer-group target lookup does not resolve."},
-    {"id": "COPY_TO_FREE_BETS_STRUCTURALLY_COMPATIBLE", "status": "FAIL_WORKBOOK_SCRIPT_DRIFT", "detail": "Offer-group source lookup does not resolve; remaining fields and lists match."},
+    {"id": "RELOAD_WORKFLOW_STRUCTURALLY_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Positional source fields and normalized target headers resolve."},
+    {"id": "COPY_TO_FREE_BETS_STRUCTURALLY_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Offer-group source linkage, target fields, and Settings lists resolve."},
     {"id": "FOOTBALL_FINISH_TIME_STRUCTURALLY_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE"},
     {"id": "SETTINGS_LISTS_PRESENT", "status": "PASS_STRUCTURALLY_COMPATIBLE"},
-    {"id": "SIMPLE_TRIGGER_STRUCTURE_COMPATIBLE", "status": "WARNING_CURRENTLY_WORKS_BUT_FRAGILE", "detail": "Current ledgers dispatch, but formula propagation and protected-format coverage are incomplete."},
-    {"id": "FIRST_MANUAL_ROW_FORMULA_SAFE", "status": "GOOGLE_RUNTIME_REQUIRED", "detail": "The helper copies format, validation, and row height but not formulas."},
+    {"id": "SIMPLE_TRIGGER_STRUCTURE_COMPATIBLE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Current ledgers dispatch and formula/protected ownership is manifest-backed."},
+    {"id": "FIRST_MANUAL_ROW_FORMULA_SAFE", "status": "PASS_STRUCTURALLY_COMPATIBLE", "detail": "Missing formulas are copied in R1C1 form from the nearest structurally complete row."},
     {"id": "GOOGLE_SCRIPT_RUNTIME_VERIFIED", "status": "GOOGLE_RUNTIME_REQUIRED"}
   ],
   "prototype": {
@@ -30,5 +31,5 @@
     "rows_added_per_present_ledger": 3,
     "unchanged_package_parts": 63
   },
-  "result": "BLOCKED_BY_CURRENT_WORKBOOK_SCRIPT_DRIFT"
+  "result": "READY_FOR_GOOGLE_RUNTIME_VALIDATION"
 }
