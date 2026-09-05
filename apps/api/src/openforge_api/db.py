@@ -1250,6 +1250,145 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_profile_import_attempt_audit_profile
           ON profile_import_attempt_write_audit(profile_id, import_run_id, execution_id);
 
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_runs (
+          restore_run_id TEXT PRIMARY KEY,
+          owner_email TEXT NOT NULL,
+          source_filename TEXT NOT NULL,
+          source_byte_checksum TEXT NOT NULL,
+          source_logical_checksum TEXT NOT NULL,
+          format_version TEXT NOT NULL,
+          source_profile_id TEXT NOT NULL,
+          source_profile_display_name TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL DEFAULT '',
+          target_display_name TEXT NOT NULL,
+          target_profile_code TEXT NOT NULL,
+          status TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          review_summary_json TEXT NOT NULL DEFAULT '{}',
+          result_json TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_reviews (
+          restore_run_id TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          reference_domain TEXT NOT NULL,
+          reference_id TEXT NOT NULL,
+          source_version TEXT NOT NULL DEFAULT '',
+          source_fingerprint TEXT NOT NULL DEFAULT '',
+          current_version TEXT NOT NULL DEFAULT '',
+          current_fingerprint TEXT NOT NULL DEFAULT '',
+          reason TEXT NOT NULL,
+          allowed_resolutions_json TEXT NOT NULL,
+          resolution TEXT NOT NULL DEFAULT '',
+          resolved_by TEXT NOT NULL DEFAULT '',
+          resolved_at TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (restore_run_id, item_id),
+          FOREIGN KEY (restore_run_id)
+            REFERENCES profile_portable_restore_runs(restore_run_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_attempts (
+          execution_id TEXT PRIMARY KEY,
+          restore_run_id TEXT NOT NULL,
+          attempt_number INTEGER NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          actor_email TEXT NOT NULL,
+          checkpoint_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          stage TEXT NOT NULL,
+          error_json TEXT NOT NULL DEFAULT '{}',
+          financial_reconciliation_json TEXT NOT NULL DEFAULT '{}',
+          operational_reconciliation_json TEXT NOT NULL DEFAULT '{}',
+          parity_json TEXT NOT NULL DEFAULT '{}',
+          rollback_status TEXT NOT NULL DEFAULT '',
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          started_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          completed_at TEXT NOT NULL DEFAULT '',
+          UNIQUE (restore_run_id, attempt_number),
+          FOREIGN KEY (restore_run_id)
+            REFERENCES profile_portable_restore_runs(restore_run_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_checkpoints (
+          checkpoint_id TEXT PRIMARY KEY,
+          execution_id TEXT NOT NULL UNIQUE,
+          restore_run_id TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          pre_restore_state TEXT NOT NULL,
+          snapshot_json TEXT NOT NULL,
+          snapshot_checksum TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          restored_at TEXT NOT NULL DEFAULT '',
+          FOREIGN KEY (execution_id)
+            REFERENCES profile_portable_restore_attempts(execution_id) ON DELETE CASCADE,
+          FOREIGN KEY (restore_run_id)
+            REFERENCES profile_portable_restore_runs(restore_run_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_write_audit (
+          execution_id TEXT NOT NULL,
+          restore_run_id TEXT NOT NULL,
+          write_key TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          domain_name TEXT NOT NULL,
+          row_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          before_json TEXT NOT NULL,
+          after_json TEXT NOT NULL,
+          before_fingerprint TEXT NOT NULL,
+          after_fingerprint TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          rolled_back_at TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (execution_id, write_key),
+          FOREIGN KEY (execution_id)
+            REFERENCES profile_portable_restore_attempts(execution_id) ON DELETE CASCADE,
+          FOREIGN KEY (restore_run_id)
+            REFERENCES profile_portable_restore_runs(restore_run_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restore_identity_map (
+          restore_run_id TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          domain_name TEXT NOT NULL,
+          portable_id TEXT NOT NULL,
+          runtime_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (restore_run_id, domain_name, portable_id),
+          UNIQUE (target_profile_id, domain_name, runtime_id),
+          FOREIGN KEY (restore_run_id)
+            REFERENCES profile_portable_restore_runs(restore_run_id) ON DELETE CASCADE,
+          FOREIGN KEY (target_profile_id)
+            REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS profile_portable_restored_provenance (
+          target_profile_id TEXT NOT NULL,
+          sheet_name TEXT NOT NULL,
+          row_key TEXT NOT NULL,
+          row_json TEXT NOT NULL,
+          sort_order INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (target_profile_id, sheet_name, row_key),
+          FOREIGN KEY (target_profile_id)
+            REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_profile_portable_restore_runs_owner
+          ON profile_portable_restore_runs(owner_email, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_portable_restore_attempts_run
+          ON profile_portable_restore_attempts(restore_run_id, attempt_number DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_profile_portable_restore_audit_attempt
+          ON profile_portable_restore_write_audit(execution_id, target_profile_id);
+
         CREATE TABLE IF NOT EXISTS backup_snapshots (
           backup_snapshot_id TEXT PRIMARY KEY,
           created_at TEXT NOT NULL,
@@ -6122,6 +6261,8 @@ def delete_archived_profile(
             ("profile_import_attempt_write_audit", "profile_id"),
             ("profile_import_attempt_checkpoints", "profile_id"),
             ("profile_import_attempts", "profile_id"),
+            ("profile_portable_restore_identity_map", "target_profile_id"),
+            ("profile_portable_restored_provenance", "target_profile_id"),
         ),
         "audit_activity": (
             ("profile_audit", "profile_id"),

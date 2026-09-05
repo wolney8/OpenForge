@@ -4,8 +4,9 @@ Last updated: 2026-09-04
 
 ## Status
 
-Approved for read-only export. Restore, working-workbook generation, and workbook merge/update
-remain outside this contract.
+Approved for read-only export. Its fresh-Profile reverse path is governed separately by
+`profile-portable-restore-v1`. Working-workbook generation and workbook merge/update remain
+outside this contract.
 
 ## Purpose
 

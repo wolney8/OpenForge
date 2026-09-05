@@ -476,6 +476,41 @@ SHEET_SPECS = (
     ),
 )
 
+REVIEW_DECISIONS_SPEC = SheetSpec(
+    "Review Decisions",
+    "",
+    _fields(
+        "import_run_id item_id profile_id workbook_checksum mapping_version source_fingerprint "
+        "source_sheet source_row source_record_id category decision_json created_at updated_at"
+    ),
+    ("import_run_id", "item_id"),
+    json_fields=frozenset({"decision_json"}),
+    timestamp_fields=COMMON_TIMESTAMPS,
+    authority_role="business_provenance",
+)
+
+RECONCILIATION_SPEC = SheetSpec(
+    "Reconciliation",
+    "",
+    _fields(
+        "import_run_id profile_id mapping_version import_status run_reconciliation_json "
+        "latest_attempt_number latest_attempt_status financial_reconciliation_json "
+        "operational_reconciliation_json completed_at"
+    ),
+    ("import_run_id",),
+    json_fields=frozenset(
+        {
+            "run_reconciliation_json",
+            "financial_reconciliation_json",
+            "operational_reconciliation_json",
+        }
+    ),
+    timestamp_fields=COMMON_TIMESTAMPS,
+    authority_role="verification_provenance",
+)
+
+PORTABLE_PAYLOAD_SPECS = (*SHEET_SPECS, REVIEW_DECISIONS_SPEC, RECONCILIATION_SPEC)
+
 
 def _canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
@@ -560,7 +595,22 @@ def _select_rows(connection: Any, spec: SheetSpec, profile_id: str) -> list[dict
         f"SELECT {columns} FROM {spec.table} WHERE profile_id = ? ORDER BY {order_by}",
         (profile_id,),
     ).fetchall()
-    return [dict(row) for row in rows]
+    result = [dict(row) for row in rows]
+    if spec.name in {"Source Identities", "Workbook Lineage"}:
+        result.extend(_restored_provenance_rows(connection, profile_id, spec.name))
+        result.sort(key=lambda row: tuple(str(row.get(field) or "") for field in spec.order_by))
+    return result
+
+
+def _restored_provenance_rows(
+    connection: Any, profile_id: str, sheet_name: str
+) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        "SELECT row_json FROM profile_portable_restored_provenance "
+        "WHERE target_profile_id = ? AND sheet_name = ? ORDER BY sort_order, row_key",
+        (profile_id, sheet_name),
+    ).fetchall()
+    return [json.loads(str(row["row_json"])) for row in rows]
 
 
 def _load_catalogue_references(connection: Any) -> tuple[str, dict[str, str]]:
@@ -604,9 +654,7 @@ def _load_preset_references(connection: Any) -> dict[str, tuple[str, str]]:
     return references
 
 
-def _load_opportunity_references(
-    connection: Any, profile_id: str
-) -> dict[str, tuple[str, str]]:
+def _load_opportunity_references(connection: Any, profile_id: str) -> dict[str, tuple[str, str]]:
     rows = connection.execute(
         "SELECT opportunity.* FROM multi_profile_opportunities AS opportunity "
         "WHERE opportunity.opportunity_id IN ("
@@ -676,10 +724,6 @@ def _with_reference_columns(
 
 
 def _review_decisions(connection: Any, profile_id: str) -> tuple[SheetSpec, list[dict[str, Any]]]:
-    columns = _fields(
-        "import_run_id item_id profile_id workbook_checksum mapping_version source_fingerprint "
-        "source_sheet source_row source_record_id category decision_json created_at updated_at"
-    )
     rows = connection.execute(
         "SELECT decision.import_run_id, decision.item_id, decision.profile_id, "
         "decision.workbook_checksum, decision.mapping_version, decision.source_fingerprint, "
@@ -691,28 +735,17 @@ def _review_decisions(connection: Any, profile_id: str) -> tuple[SheetSpec, list
         "WHERE decision.profile_id = ? ORDER BY decision.import_run_id, decision.item_id",
         (profile_id,),
     ).fetchall()
-    return (
-        SheetSpec(
-            "Review Decisions",
-            "",
-            columns,
-            ("import_run_id", "item_id"),
-            json_fields=frozenset({"decision_json"}),
-            timestamp_fields=COMMON_TIMESTAMPS,
-            authority_role="business_provenance",
-        ),
-        [dict(row) for row in rows],
+    result = [dict(row) for row in rows]
+    result.extend(_restored_provenance_rows(connection, profile_id, "Review Decisions"))
+    result.sort(
+        key=lambda row: tuple(str(row.get(field) or "") for field in REVIEW_DECISIONS_SPEC.order_by)
     )
+    return REVIEW_DECISIONS_SPEC, result
 
 
 def _reconciliation_rows(
     connection: Any, profile_id: str
 ) -> tuple[SheetSpec, list[dict[str, Any]]]:
-    columns = _fields(
-        "import_run_id profile_id mapping_version import_status run_reconciliation_json "
-        "latest_attempt_number latest_attempt_status financial_reconciliation_json "
-        "operational_reconciliation_json completed_at"
-    )
     run_rows = connection.execute(
         "SELECT import_run_id, profile_id, mapping_version, status, reconciliation_json, "
         "completed_at, created_at FROM profile_import_runs WHERE profile_id = ? "
@@ -748,24 +781,11 @@ def _reconciliation_rows(
                 "completed_at": record["completed_at"],
             }
         )
-    return (
-        SheetSpec(
-            "Reconciliation",
-            "",
-            columns,
-            ("import_run_id",),
-            json_fields=frozenset(
-                {
-                    "run_reconciliation_json",
-                    "financial_reconciliation_json",
-                    "operational_reconciliation_json",
-                }
-            ),
-            timestamp_fields=COMMON_TIMESTAMPS,
-            authority_role="verification_provenance",
-        ),
-        rows,
+    rows.extend(_restored_provenance_rows(connection, profile_id, "Reconciliation"))
+    rows.sort(
+        key=lambda row: tuple(str(row.get(field) or "") for field in RECONCILIATION_SPEC.order_by)
     )
+    return RECONCILIATION_SPEC, rows
 
 
 def _portable_sheet(
@@ -838,7 +858,7 @@ def _worksheet_xml(sheet: PortableSheet) -> str:
         f'<dimension ref="A1:{last_column}{last_row}"/>'
         '<sheetViews><sheetView workbookViewId="0">'
         '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
-        '</sheetView></sheetViews>'
+        "</sheetView></sheetViews>"
         f"<sheetData>{''.join(rows)}</sheetData>"
         f'<autoFilter ref="A1:{last_column}{last_row}"/>'
         "</worksheet>"
@@ -855,8 +875,9 @@ def _zip_text(workbook: ZipFile, name: str, value: str) -> None:
 def _build_xlsx(sheets: Sequence[PortableSheet]) -> bytes:
     sheet_overrides = "".join(
         '<Override PartName="/xl/worksheets/sheet{index}.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        .format(index=index)
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.format(
+            index=index
+        )
         for index in range(1, len(sheets) + 1)
     )
     workbook_sheets = "".join(
@@ -925,12 +946,12 @@ def _build_xlsx(sheets: Sequence[PortableSheet]) -> bytes:
             '<fills count="2"><fill><patternFill patternType="none"/></fill>'
             '<fill><patternFill patternType="gray125"/></fill></fills>'
             '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/>'
-            '</border></borders>'
+            "</border></borders>"
             '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" '
             'borderId="0"/></cellStyleXfs>'
             '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
-            '</styleSheet>',
+            "</styleSheet>",
         )
         for index, sheet in enumerate(sheets, start=1):
             _zip_text(workbook, f"xl/worksheets/sheet{index}.xml", _worksheet_xml(sheet))
@@ -1076,9 +1097,7 @@ def build_profile_portable_export(
     safe_code = re.sub(r"[^A-Za-z0-9-]+", "-", str(profile["profile_code"])).strip("-")
     safe_profile_id = re.sub(r"[^A-Za-z0-9-]+", "-", profile_id).strip("-")
     timestamp_token = re.sub(r"[^A-Za-z0-9]+", "", export_timestamp)
-    filename = (
-        f"profile-portable-backup-{safe_code or safe_profile_id}-{timestamp_token}.xlsx"
-    )
+    filename = f"profile-portable-backup-{safe_code or safe_profile_id}-{timestamp_token}.xlsx"
     return PortableExport(
         content=content,
         filename=filename,

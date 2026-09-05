@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20260904_001_import_attempt_lineage"
+MIGRATION_ID = "20260905_002_portable_profile_restore"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """

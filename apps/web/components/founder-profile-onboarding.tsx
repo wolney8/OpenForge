@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FinancialTextInput } from "@/components/financial-text-input";
@@ -678,6 +679,12 @@ export function ProfileOnboarding() {
                 <small>Create the Profile, then use the existing dry-run and review workflow.</small>
               </label>
             </div>
+            <p className="field-hint">
+              Have a structured portable Profile backup?{" "}
+              <Link className="button-link compact-action" href="/profiles/restore">
+                Restore portable backup
+              </Link>
+            </p>
           </section>
           <div className="form-grid">
             <label className={`field-control${guidedTarget.field === "display-name" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="display-name"><span>Display Name</span><input autoComplete="name" autoFocus maxLength={120} onChange={(event) => setProfileValue("display_name", event.target.value)} value={profile.display_name} /></label>
