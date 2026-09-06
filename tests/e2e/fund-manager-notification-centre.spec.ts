@@ -2,6 +2,165 @@ import { expect, test } from "@playwright/test";
 
 const apiBaseUrl = "http://127.0.0.1:8010";
 
+async function mockAuthenticatedNotificationShell(
+  page: import("@playwright/test").Page,
+  profileId: string
+) {
+  await page.route("**/api/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") {
+      await route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          linked_profile_ids: [profileId],
+          name: "Synthetic Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/auth/activity") {
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    await route.fulfill({ json: [] });
+  });
+}
+
+test("a stale state response cannot resurrect a cleared notification", async ({ page }) => {
+  await mockAuthenticatedNotificationShell(page, "PROFILE-STALE");
+  const notificationId = "partial-lay:PROFILE-STALE:SB-STALE:2026-09-06T10:00:00Z";
+  let dismissedIds: string[] = [];
+  let delayNextState = false;
+  let releaseStaleState: (() => void) | undefined;
+  let staleStateRequested: (() => void) | undefined;
+  const staleStateStarted = new Promise<void>((resolve) => {
+    staleStateRequested = resolve;
+  });
+  const staleStateRelease = new Promise<void>((resolve) => {
+    releaseStaleState = resolve;
+  });
+  await page.route("**/fund-manager/notifications/state", async (route) => {
+    if (route.request().method() === "PUT") {
+      const payload = route.request().postDataJSON() as { dismissed_ids: string[] };
+      dismissedIds = [...new Set([...dismissedIds, ...payload.dismissed_ids])];
+      await route.fulfill({ json: { dismissed_ids: dismissedIds, read_keys: [] } });
+      return;
+    }
+    if (delayNextState) {
+      delayNextState = false;
+      staleStateRequested?.();
+      await staleStateRelease;
+      await route.fulfill({ json: { dismissed_ids: [], read_keys: [] } });
+      return;
+    }
+    await route.fulfill({ json: { dismissed_ids: dismissedIds, read_keys: [] } });
+  });
+  await page.route("**/fund-manager/notifications/preferences", (route) =>
+    route.fulfill({ json: { preferences: {} } })
+  );
+  await page.route("**/fund-manager/notifications", (route) =>
+    route.fulfill({
+      json: [
+        {
+          audience: "fund_manager",
+          security_tag: "fund_manager_only",
+          kind: "information",
+          task_state: "new",
+          notification_id: notificationId,
+          notification_type: "database_backup_reminder",
+          title: "Synthetic stale-state notification",
+          ledger_label: "Database Backups",
+          bookmaker_label: "Local database",
+          message: "Synthetic stale response test.",
+          profile_id: "PROFILE-STALE",
+          profile_name: "User 001",
+          record_id: "NOTICE-STALE",
+          due_at: "2099-09-06T10:00:00Z",
+          settles_at: "2099-09-06T10:00:00Z",
+          created_at: "2026-09-06T10:00:00Z",
+          href: "/settings#database",
+          completion_href: "",
+          tone: "warning",
+        },
+      ],
+    })
+  );
+
+  await page.goto("/profiles");
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  const card = page.locator('[data-pd-id="notifications.item.NOTICE-STALE"]');
+  await expect(card).toBeVisible();
+  delayNextState = true;
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("plum-duff:fund-manager-notifications-refresh"));
+  });
+  await staleStateStarted;
+  await card.getByRole("button", { name: "Clear notification for User 001" }).click();
+  await expect(card).toHaveCount(0);
+  releaseStaleState?.();
+  await page.waitForTimeout(100);
+  await expect(card).toHaveCount(0);
+});
+
+test("a failed clear remains visible and reports the persistence error", async ({ page }) => {
+  await mockAuthenticatedNotificationShell(page, "PROFILE-FAILURE");
+  await page.route("**/fund-manager/notifications/state", async (route) => {
+    if (route.request().method() === "PUT") {
+      await route.fulfill({ status: 503, json: { detail: "Synthetic failure" } });
+      return;
+    }
+    await route.fulfill({ json: { dismissed_ids: [], read_keys: [] } });
+  });
+  await page.route("**/fund-manager/notifications/preferences", (route) =>
+    route.fulfill({ json: { preferences: {} } })
+  );
+  await page.route("**/fund-manager/notifications", (route) =>
+    route.fulfill({
+      json: [
+        {
+          audience: "fund_manager",
+          security_tag: "fund_manager_only",
+          kind: "information",
+          task_state: "new",
+          notification_id: "NOTICE-FAILED-CLEAR",
+          notification_type: "database_backup_reminder",
+          title: "Synthetic failed-clear notification",
+          ledger_label: "Database Backups",
+          bookmaker_label: "Local database",
+          message: "Synthetic failure test.",
+          profile_id: "PROFILE-FAILURE",
+          profile_name: "User 001",
+          record_id: "NOTICE-FAILED-CLEAR",
+          due_at: "2099-09-06T10:00:00Z",
+          settles_at: "2099-09-06T10:00:00Z",
+          created_at: "2026-09-06T10:00:00Z",
+          href: "/settings#database",
+          completion_href: "",
+          tone: "warning",
+        },
+      ],
+    })
+  );
+
+  await page.goto("/profiles");
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  const card = page.locator(
+    '[data-pd-id="notifications.item.NOTICE-FAILED-CLEAR"]'
+  );
+  await card.getByRole("button", { name: "Clear notification for User 001" }).click();
+  await expect(card).toBeVisible();
+  await expect(page.locator(".notification-action-error")).toContainText(
+    "Unable to clear notifications. They have not been removed."
+  );
+});
+
 test("notification panel defaults to New and requires a deliberate hover to mark read", async ({
   page,
 }) => {

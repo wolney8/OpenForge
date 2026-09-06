@@ -191,6 +191,11 @@ request explicitly approves a redesign.
 
 Use the workflow in `docs/codex/task-cadence.md`.
 
+Lean working cadence: read only the instructions and source relevant to the active task; reuse
+accepted evidence for unchanged code; then reproduce, make the smallest correct fix, run focused
+regressions, and commit/push the isolated change. Expand investigation or testing only when a
+changed dependency or observed failure justifies it.
+
 Short version:
 
 1. Restate the objective.

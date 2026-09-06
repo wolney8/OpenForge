@@ -333,8 +333,6 @@ def revoke_fund_manager_session(*, session_id: str, now: int) -> None:
 
 
 def get_notification_user_state(email: str) -> dict[str, list[str]]:
-    if not postgres_runtime_enabled():
-        return {"read_keys": [], "dismissed_ids": []}
     with connect() as connection:
         rows = connection.execute(
             """
@@ -355,22 +353,21 @@ def get_notification_user_state(email: str) -> dict[str, list[str]]:
 def replace_notification_user_state(
     *, email: str, read_keys: list[str], dismissed_ids: list[str]
 ) -> dict[str, list[str]]:
+    """Merge durable read/clear tombstones for a notification viewer.
+
+    The public name is retained for API compatibility. Notification state is
+    intentionally monotonic: a stale browser snapshot must never erase a clear
+    recorded by another mounted consumer or session.
+    """
     normalized_read = sorted({value.strip() for value in read_keys if value.strip()})
     normalized_dismissed = sorted({value.strip() for value in dismissed_ids if value.strip()})
-    if not postgres_runtime_enabled():
-        return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
     timestamp = utc_now()
     with connect() as connection:
-        # Concurrent shell refreshes can replace the same user's notification state.
-        # Serialize those replacements so delete-and-reinsert remains atomic per user.
-        connection.execute(
-            "SELECT pg_advisory_xact_lock(hashtext(?))",
-            (f"notification-state:{email.casefold()}",),
-        )
-        connection.execute(
-            "DELETE FROM notification_user_state WHERE email = ?",
-            (email.casefold(),),
-        )
+        if postgres_runtime_enabled():
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(?))",
+                (f"notification-state:{email.casefold()}",),
+            )
         for key in normalized_read:
             connection.execute(
                 """
@@ -397,7 +394,22 @@ def replace_notification_user_state(
                 """,
                 (email.casefold(), f"clear:{notification_id}", timestamp, timestamp),
             )
-    return {"read_keys": normalized_read, "dismissed_ids": normalized_dismissed}
+        rows = connection.execute(
+            """
+            SELECT notification_id
+            FROM notification_user_state
+            WHERE email = ?
+            ORDER BY notification_id
+            """,
+            (email.casefold(),),
+        ).fetchall()
+    keys = [str(row["notification_id"]) for row in rows]
+    return {
+        "read_keys": [key.removeprefix("read:") for key in keys if key.startswith("read:")],
+        "dismissed_ids": [
+            key.removeprefix("clear:") for key in keys if key.startswith("clear:")
+        ],
+    }
 
 
 def get_notification_preferences(email: str) -> dict[str, bool]:
@@ -787,6 +799,24 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           bookmaker_display_mode TEXT NOT NULL DEFAULT 'Name',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS notification_user_state (
+          email TEXT NOT NULL,
+          notification_id TEXT NOT NULL,
+          read_at TEXT,
+          cleared_at TEXT,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (email, notification_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS fund_manager_profile_links (
+          email TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          is_primary INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (email, profile_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS profile_bookmaker_display_settings (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -50,11 +50,17 @@ export function NotificationHistoryPage() {
   const [status, setStatus] = useState<NotificationHistoryStatus>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [isPersistingState, setIsPersistingState] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [now, setNow] = useState(() => new Date());
+  const viewStateRef = useRef(viewState);
+  const stateRequestVersionRef = useRef(0);
+  const stateMutationPendingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     const refresh = async () => {
+      const stateRequestVersion = stateRequestVersionRef.current;
       setNow(new Date());
       try {
         const [response, persistedState, persistedPreferences] = await Promise.all([
@@ -68,7 +74,13 @@ export function NotificationHistoryPage() {
         if (!response.ok) throw new Error("Unable to load notifications");
         const remote = (await response.json()) as FundManagerNotification[];
         if (!active) return;
-        if (persistedState) setViewState(persistedState);
+        if (
+          persistedState &&
+          stateRequestVersion === stateRequestVersionRef.current
+        ) {
+          viewStateRef.current = persistedState;
+          setViewState(persistedState);
+        }
         setNotifications(
           filterFundManagerNotificationsForViewer(
             [...loadLocalFundManagerNotifications(), ...remote],
@@ -88,19 +100,67 @@ export function NotificationHistoryPage() {
         if (active) setIsLoading(false);
       }
     };
+    const handleRefresh = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        event.detail?.scope === "notification-state"
+      ) {
+        const persistedState = normalizeNotificationViewState(event.detail.state);
+        stateRequestVersionRef.current += 1;
+        viewStateRef.current = persistedState;
+        setViewState(persistedState);
+      }
+      void refresh();
+    };
     void refresh();
-    window.addEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, refresh);
+    window.addEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, handleRefresh);
     return () => {
       active = false;
-      window.removeEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, refresh);
+      window.removeEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, handleRefresh);
     };
   }, []);
 
-  const persistState = (next: NotificationViewState) => {
+  const applyViewState = (next: NotificationViewState) => {
+    viewStateRef.current = next;
     setViewState(next);
-    window.localStorage.setItem(FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(next));
-    void persistNotificationState(next);
-    window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+    try {
+      window.localStorage.setItem(
+        FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY,
+        JSON.stringify(next)
+      );
+    } catch {
+      // The in-memory state remains usable when browser storage is unavailable.
+    }
+  };
+  const persistState = async (
+    next: NotificationViewState,
+    failureMessage: string
+  ): Promise<boolean> => {
+    if (stateMutationPendingRef.current) return false;
+    stateMutationPendingRef.current = true;
+    setIsPersistingState(true);
+    setActionError("");
+    const mutationVersion = stateRequestVersionRef.current + 1;
+    stateRequestVersionRef.current = mutationVersion;
+    try {
+      const persistedState = await persistNotificationState(next);
+      if (!persistedState) {
+        setActionError(failureMessage);
+        return false;
+      }
+      if (mutationVersion === stateRequestVersionRef.current) {
+        applyViewState(persistedState);
+      }
+      window.dispatchEvent(
+        new CustomEvent(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, {
+          detail: { scope: "notification-state", state: persistedState },
+        })
+      );
+      return true;
+    } finally {
+      stateMutationPendingRef.current = false;
+      setIsPersistingState(false);
+    }
   };
   const types = useMemo(
     () => [...new Set(notifications.map((notification) => notification.notification_type))].sort(),
@@ -115,10 +175,23 @@ export function NotificationHistoryPage() {
   const unreadTotal = getUnreadNotificationCount(notifications, viewState, now);
 
   const markRead = (items: FundManagerNotification[]) => {
-    if (items.length) persistState(markNotificationsRead(viewState, items, now));
+    if (items.length) {
+      void persistState(
+        markNotificationsRead(viewStateRef.current, items, now),
+        "Unable to mark notifications as read."
+      );
+    }
   };
   const clear = (items: FundManagerNotification[]) => {
-    if (items.length) persistState(dismissNotificationIds(viewState, items.map((item) => item.notification_id)));
+    if (items.length) {
+      void persistState(
+        dismissNotificationIds(
+          viewStateRef.current,
+          items.map((item) => item.notification_id)
+        ),
+        "Unable to clear notifications. They have not been removed."
+      );
+    }
   };
 
   return (
@@ -177,7 +250,7 @@ export function NotificationHistoryPage() {
             <button
               className="button-link"
               data-pd-id="notifications.history.mark-read"
-              disabled={unread.length === 0}
+              disabled={unread.length === 0 || isPersistingState}
               onClick={() => markRead(unread)}
               type="button"
             >
@@ -187,7 +260,7 @@ export function NotificationHistoryPage() {
             <button
               className="button-link destructive-action"
               data-pd-id="notifications.history.clear"
-              disabled={filtered.length === 0}
+              disabled={filtered.length === 0 || isPersistingState}
               onClick={() => clear(filtered)}
               type="button"
             >
@@ -197,6 +270,9 @@ export function NotificationHistoryPage() {
           </div>
         </div>
 
+        {actionError ? (
+          <div className="notification-action-error" role="alert">{actionError}</div>
+        ) : null}
         {isLoading ? (
           <section
             aria-busy="true"
@@ -235,7 +311,9 @@ export function NotificationHistoryPage() {
                       </Link>
                       <button
                         aria-label={`Clear ${notification.title}`}
+                        aria-busy={isPersistingState}
                         className="icon-button notification-card-clear"
+                        disabled={isPersistingState}
                         onClick={() => clear([notification])}
                         type="button"
                       >

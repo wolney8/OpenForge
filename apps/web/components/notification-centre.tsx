@@ -55,12 +55,15 @@ export function NotificationCentre() {
   const [exitingId, setExitingId] = useState("");
   const [completionAnnouncement, setCompletionAnnouncement] = useState("");
   const [actionError, setActionError] = useState("");
+  const [isPersistingState, setIsPersistingState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attentionNow, setAttentionNow] = useState(() => Date.now());
   const shellRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const viewStateRef = useRef(viewState);
+  const stateRequestVersionRef = useRef(0);
+  const stateMutationPendingRef = useRef(false);
   const preferencesRef = useRef(loadFundManagerNotificationPreferences());
   const hoverReadTimersRef = useRef<Map<string, number>>(new Map());
 
@@ -68,6 +71,7 @@ export function NotificationCentre() {
     let isActive = true;
 
     const refreshNotifications = async (includeSettings: boolean) => {
+      const stateRequestVersion = stateRequestVersionRef.current;
       setAttentionNow(Date.now());
       setIsLoading(true);
       try {
@@ -91,7 +95,10 @@ export function NotificationCentre() {
         if (!response.ok) throw new Error("Unable to load notifications");
         const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
-        if (persistedState) {
+        if (
+          persistedState &&
+          stateRequestVersion === stateRequestVersionRef.current
+        ) {
           viewStateRef.current = persistedState;
           setViewState(persistedState);
         }
@@ -117,6 +124,17 @@ export function NotificationCentre() {
     };
 
     const handleRefresh = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        event.detail?.scope === "notification-state"
+      ) {
+        const persistedState = normalizeNotificationViewState(event.detail.state);
+        stateRequestVersionRef.current += 1;
+        viewStateRef.current = persistedState;
+        setViewState(persistedState);
+        void refreshNotifications(false);
+        return;
+      }
       const feedOnly = event instanceof CustomEvent && event.detail?.scope === "feed";
       void refreshNotifications(!feedOnly);
     };
@@ -188,7 +206,7 @@ export function NotificationCentre() {
     };
   }, [isOpen]);
 
-  const persistViewState = (nextState: NotificationViewState) => {
+  const applyViewState = (nextState: NotificationViewState) => {
     viewStateRef.current = nextState;
     setViewState(nextState);
     try {
@@ -199,7 +217,37 @@ export function NotificationCentre() {
     } catch {
       // The in-memory state remains usable when browser storage is unavailable.
     }
-    void persistNotificationState(nextState);
+  };
+
+  const persistViewState = async (
+    nextState: NotificationViewState,
+    failureMessage: string
+  ): Promise<boolean> => {
+    if (stateMutationPendingRef.current) return false;
+    stateMutationPendingRef.current = true;
+    setIsPersistingState(true);
+    setActionError("");
+    const mutationVersion = stateRequestVersionRef.current + 1;
+    stateRequestVersionRef.current = mutationVersion;
+    try {
+      const persistedState = await persistNotificationState(nextState);
+      if (!persistedState) {
+        setActionError(failureMessage);
+        return false;
+      }
+      if (mutationVersion === stateRequestVersionRef.current) {
+        applyViewState(persistedState);
+      }
+      window.dispatchEvent(
+        new CustomEvent(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, {
+          detail: { scope: "notification-state", state: persistedState },
+        })
+      );
+      return true;
+    } finally {
+      stateMutationPendingRef.current = false;
+      setIsPersistingState(false);
+    }
   };
 
   const visibleNotifications = getVisibleNotifications(notifications, viewState);
@@ -220,8 +268,9 @@ export function NotificationCentre() {
   const markRead = (notification: FundManagerNotification) => {
     const currentViewState = viewStateRef.current;
     if (!isNotificationUnread(notification, currentViewState, currentAttentionDate)) return;
-    persistViewState(
-      markNotificationsRead(currentViewState, [notification], currentAttentionDate)
+    void persistViewState(
+      markNotificationsRead(currentViewState, [notification], currentAttentionDate),
+      "Unable to save the notification as read."
     );
   };
 
@@ -247,20 +296,26 @@ export function NotificationCentre() {
   };
 
   const markAllRead = () => {
-    persistViewState(
+    void persistViewState(
       markNotificationsRead(
         viewStateRef.current,
         newNotifications,
         currentAttentionDate
-      )
+      ),
+      "Unable to mark notifications as read."
     );
     setIsActionsOpen(false);
   };
 
-  const clearNotifications = (notificationIds: string[]) => {
-    persistViewState(dismissNotificationIds(viewStateRef.current, notificationIds));
-    setConfirmClearId("");
-    setIsActionsOpen(false);
+  const clearNotifications = async (notificationIds: string[]) => {
+    const cleared = await persistViewState(
+      dismissNotificationIds(viewStateRef.current, notificationIds),
+      "Unable to clear notifications. They have not been removed."
+    );
+    if (cleared) {
+      setConfirmClearId("");
+      setIsActionsOpen(false);
+    }
   };
 
   const completeTask = async (notification: FundManagerNotification) => {
@@ -396,7 +451,7 @@ export function NotificationCentre() {
                 role="menu"
               >
                 <button
-                  disabled={unreadCount === 0}
+                  disabled={unreadCount === 0 || isPersistingState}
                   onClick={markAllRead}
                   role="menuitem"
                   type="button"
@@ -405,9 +460,9 @@ export function NotificationCentre() {
                   Mark all as read
                 </button>
                 <button
-                  disabled={visibleCount === 0}
+                  disabled={visibleCount === 0 || isPersistingState}
                   onClick={() =>
-                    clearNotifications(
+                    void clearNotifications(
                       visibleNotifications.map(
                         (notification) => notification.notification_id
                       )
@@ -501,8 +556,10 @@ export function NotificationCentre() {
                   className={`notification-card notification-card-${notification.tone}${isUnread ? " is-unread" : ""}${isExiting ? " is-exiting" : ""}`}
                   data-pd-id={`notifications.item.${notification.record_id}`}
                   key={notification.notification_id}
-                  onFocusCapture={() => {
-                    if (!isDone) markRead(notification);
+                  onFocusCapture={(event) => {
+                    if (!isDone && !(event.target instanceof HTMLButtonElement)) {
+                      markRead(notification);
+                    }
                   }}
                   onMouseEnter={() => {
                     if (!isDone) scheduleHoverRead(notification);
@@ -559,15 +616,18 @@ export function NotificationCentre() {
                       >
                         <span>Are you sure?</span>
                         <button
+                          aria-busy={isPersistingState}
                           className="notification-clear-confirm-action"
-                          onClick={() => clearNotifications([notification.notification_id])}
+                          disabled={isPersistingState}
+                          onClick={() => void clearNotifications([notification.notification_id])}
                           type="button"
                         >
-                          Clear
+                          {isPersistingState ? "Clearing..." : "Clear"}
                         </button>
                         <button
                           aria-label="Cancel clearing notification"
                           className="icon-button notification-clear-cancel"
+                          disabled={isPersistingState}
                           onClick={() => setConfirmClearId("")}
                           type="button"
                         >
@@ -578,10 +638,11 @@ export function NotificationCentre() {
                       <button
                         aria-label={`Clear notification for ${notification.profile_name}`}
                         className="icon-button notification-card-clear"
+                        disabled={isPersistingState}
                         onClick={() =>
                           notification.kind === "task"
                             ? setConfirmClearId(notification.notification_id)
-                            : clearNotifications([notification.notification_id])
+                            : void clearNotifications([notification.notification_id])
                         }
                         type="button"
                       >

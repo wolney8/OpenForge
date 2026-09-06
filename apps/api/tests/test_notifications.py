@@ -2,18 +2,77 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
 from openforge_api.config import settings
+from openforge_api.db import get_notification_user_state, replace_notification_user_state
 from openforge_api.main import app
 
 
 def configure_temp_database(tmp_path: Path) -> None:
+    settings.database_mode = "local"
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
 
 
+def authenticated_test_client() -> TestClient:
+    settings.auth_required = False
+    settings.auth_owner_emails = "notification-test@example.invalid"
+    settings.auth_session_secret = "synthetic-notification-test-secret"
+    token = create_session_token(
+        subject="notification-test",
+        email="notification-test@example.invalid",
+        name="Synthetic Notification Tester",
+    )
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE_NAME, token)
+    return client
+
+
+def test_notification_clear_state_is_durable_monotonic_and_viewer_scoped(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    viewer_email = "viewer-one@example.invalid"
+    other_viewer_email = "viewer-two@example.invalid"
+    cleared_id = "partial-lay:PROFILE-001:SB-001:2026-09-06T10:00:00Z"
+    later_event_id = "partial-lay:PROFILE-001:SB-001:2026-09-06T11:00:00Z"
+
+    first_write = replace_notification_user_state(
+        email=viewer_email,
+        read_keys=[],
+        dismissed_ids=[cleared_id],
+    )
+    assert first_write == {"read_keys": [], "dismissed_ids": [cleared_id]}
+
+    # A stale mounted consumer submits its older snapshot after the clear.
+    stale_write = replace_notification_user_state(
+        email=viewer_email,
+        read_keys=["database-backup:no-verified-backup:created"],
+        dismissed_ids=[],
+    )
+    assert stale_write == {
+        "read_keys": ["database-backup:no-verified-backup:created"],
+        "dismissed_ids": [cleared_id],
+    }
+    assert get_notification_user_state(viewer_email) == stale_write
+
+    # Repeating the clear is idempotent, a genuinely new event remains eligible,
+    # and another authenticated viewer has independent state.
+    assert replace_notification_user_state(
+        email=viewer_email,
+        read_keys=[],
+        dismissed_ids=[cleared_id],
+    ) == stale_write
+    assert later_event_id not in stale_write["dismissed_ids"]
+    assert get_notification_user_state(other_viewer_email) == {
+        "read_keys": [],
+        "dismissed_ids": [],
+    }
+
+
 def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
-    client = TestClient(app)
+    client = authenticated_test_client()
     client.put(
         "/profiles/profile-demo-001/exchange-commissions",
         json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
@@ -131,7 +190,7 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
 
 def test_resolved_partial_lay_notification_expires_after_settlement(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
-    client = TestClient(app)
+    client = authenticated_test_client()
     client.put(
         "/profiles/profile-demo-001/exchange-commissions",
         json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
@@ -191,7 +250,7 @@ def test_free_bet_follow_up_reminders_feed_and_complete_from_notifications(
     tmp_path: Path,
 ) -> None:
     configure_temp_database(tmp_path)
-    client = TestClient(app)
+    client = authenticated_test_client()
     client.put(
         "/profiles/profile-demo-001/exchange-commissions",
         json={"exchange_name": "Smarkets", "commission_rate": "0.02"},

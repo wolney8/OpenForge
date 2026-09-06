@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultFundManagerNotificationPreferences,
   canViewerReceiveNotification,
@@ -16,6 +16,7 @@ import {
   markNotificationsRead,
   normalizeFundManagerNotificationPreferences,
   normalizeNotificationViewState,
+  persistNotificationState,
   type FundManagerNotification,
 } from "./notifications";
 
@@ -65,6 +66,38 @@ const notifications: FundManagerNotification[] = [
 ];
 
 describe("fund manager notification view state", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("does not report durable notification state when persistence fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+
+    await expect(
+      persistNotificationState({ readKeys: [], dismissedIds: ["NOTICE-001"] })
+    ).resolves.toBeNull();
+  });
+
+  it("returns the canonical merged state accepted by the server", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          read_keys: ["NOTICE-002:created"],
+          dismissed_ids: ["NOTICE-001", "NOTICE-001"],
+        }),
+      })
+    );
+
+    await expect(
+      persistNotificationState({ readKeys: [], dismissedIds: ["NOTICE-001"] })
+    ).resolves.toEqual({
+      readKeys: ["NOTICE-002:created"],
+      dismissedIds: ["NOTICE-001"],
+    });
+  });
+
   it("keeps Fund Manager-only notices out of subscriber views", () => {
     expect(
       canViewerReceiveNotification(notifications[0], {
@@ -99,6 +132,21 @@ describe("fund manager notification view state", () => {
     const dismissedState = dismissNotificationIds(readState, ["NOTICE-002"]);
     expect(getVisibleNotifications(notifications, dismissedState)).toEqual([notifications[0]]);
     expect(getUnreadNotificationCount(notifications, dismissedState, now)).toBe(0);
+  });
+
+  it("keeps an unchanged cleared instance hidden while allowing a new source event", () => {
+    const clearedState = dismissNotificationIds(emptyNotificationViewState, [
+      notifications[0].notification_id,
+    ]);
+    const newSourceEvent = {
+      ...notifications[0],
+      notification_id: "NOTICE-001:2026-09-06T11:00:00Z",
+      created_at: "2026-09-06T11:00:00Z",
+    };
+
+    expect(
+      getVisibleNotifications([notifications[0], newSourceEvent], clearedState)
+    ).toEqual([newSourceEvent]);
   });
 
   it("normalizes duplicate and malformed stored values", () => {

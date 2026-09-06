@@ -882,3 +882,15 @@ cause, prevention rule and regression test.
   contract, and `tests/e2e/selected-range-async.spec.ts` covers keyboard submission, local pending
   state, stale-value suppression, duplicate-request rejection, failure rollback, light/dark themes,
   stable geometry, and narrow viewport containment.
+
+## 2026-09-06: Notification clears were replaced by stale state snapshots
+
+- Area: Fund Manager notification centre and history.
+- Root cause: notification state PUTs replaced the entire persisted snapshot, local SQLite did not
+  persist it, and clients treated failed writes as success. A late mounted consumer or state fetch
+  could therefore erase or visually overwrite a clear tombstone.
+- Prevention: read/clear state is a durable, user-scoped monotonic merge; only a confirmed server
+  response updates the UI; mutation versions prevent older reads from replacing newer state; one
+  state mutation runs at a time.
+- Test added: focused notification API/client tests, stale/failure Playwright coverage, and the
+  isolated `notification-persistence` browser/API acceptance path.

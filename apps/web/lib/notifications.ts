@@ -228,9 +228,9 @@ export async function loadPersistedNotificationState(): Promise<NotificationView
 
 export async function persistNotificationState(
   state: NotificationViewState
-): Promise<void> {
+): Promise<NotificationViewState | null> {
   try {
-    await fetch(`${apiBaseUrl}/fund-manager/notifications/state`, {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/notifications/state`, {
       body: JSON.stringify({
         dismissed_ids: state.dismissedIds,
         read_keys: state.readKeys,
@@ -239,8 +239,17 @@ export async function persistNotificationState(
       headers: { "Content-Type": "application/json" },
       method: "PUT",
     });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      dismissed_ids?: unknown;
+      read_keys?: unknown;
+    };
+    return normalizeNotificationViewState({
+      dismissedIds: payload.dismissed_ids,
+      readKeys: payload.read_keys,
+    });
   } catch {
-    // Local state remains available when the durable service is offline.
+    return null;
   }
 }
 
