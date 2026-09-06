@@ -20,6 +20,8 @@ safe use, `P1` should be addressed before production-quality sign-off, and `P2` 
 | P2 | Navigation/menu iconography | Some controls still use text glyphs such as `≡` rather than Material Symbols | Replace during shared AppBar/Menu primitive pass with labelled Material icon buttons | M3, accessible names |
 | P2 | Historical OpenForge documentation | Many workbook/planning files retain the former name for traceability; not public UI | Add historical headers when files are next revised rather than bulk rewriting evidence | Naming, traceability |
 | P2 | Automated accessibility tooling | No axe dependency is installed | Evaluate `@axe-core/playwright` under dependency approval; do not add silently | WCAG testing |
+| P2 | Shared application header | The redundant `Tracker platform` brand subtitle adds copy noise | Remove it in a separate bounded visual batch while preserving brand/control alignment and header geometry | Copy, layout |
+| P2 | Existing pages and panels | Some surfaces may repeat headings, control labels or explanatory subtext | Review in bounded route batches; retain financial, error, security and accessibility meaning and reuse canonical shells | Copy, consistency |
 
 ## Completed during initial hardening pass
 

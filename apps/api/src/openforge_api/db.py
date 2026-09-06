@@ -19,8 +19,6 @@ from openforge_api.config import settings
 from openforge_api.postgres_runtime import connect_postgres, connect_postgres_read_only
 
 database_operation_lock = threading.RLock()
-local_fund_manager_sessions: dict[str, dict[str, Any]] = {}
-local_fund_manager_security_preferences: dict[str, dict[str, Any]] = {}
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 SUPPORTED_POSTGRES_RUNTIME_MODES = {"neon", "postgres", "postgresql"}
 
@@ -112,16 +110,6 @@ def list_fund_manager_profile_links(email: str) -> list[str]:
 
 
 def get_fund_manager_security_preference(email: str) -> dict[str, Any]:
-    if not postgres_runtime_enabled():
-        return local_fund_manager_security_preferences.get(
-            email.casefold(),
-            {
-                "auto_logout_enabled": False,
-                "timeout_minutes": 30,
-                "updated_at": "",
-                "configured": False,
-            },
-        )
     with connect() as connection:
         row = connection.execute(
             """
@@ -151,15 +139,6 @@ def upsert_fund_manager_security_preference(
 ) -> dict[str, Any]:
     if timeout_minutes not in {15, 30, 60, 120, 240}:
         raise ValueError("Unsupported inactivity timeout")
-    if not postgres_runtime_enabled():
-        preference = {
-            "auto_logout_enabled": auto_logout_enabled,
-            "timeout_minutes": timeout_minutes,
-            "updated_at": utc_now(),
-            "configured": True,
-        }
-        local_fund_manager_security_preferences[email.casefold()] = preference
-        return preference
     timestamp = utc_now()
     with connect() as connection:
         connection.execute(
@@ -194,10 +173,6 @@ def create_fund_manager_session(
         "created_at": utc_now(),
         "updated_at": utc_now(),
     }
-    if not postgres_runtime_enabled():
-        with database_operation_lock:
-            local_fund_manager_sessions[session_id] = record
-        return
     with connect() as connection:
         connection.execute(
             """
@@ -224,19 +199,15 @@ def create_fund_manager_session(
 
 
 def validate_fund_manager_session(*, session_id: str, email: str, now: int) -> bool:
-    if not postgres_runtime_enabled():
-        with database_operation_lock:
-            row = local_fund_manager_sessions.get(session_id)
-    else:
-        with connect() as connection:
-            row = connection.execute(
-                """
-                SELECT email, last_activity_at, absolute_expires_at, revoked_at
-                FROM fund_manager_sessions
-                WHERE session_id = ?
-                """,
-                (session_id,),
-            ).fetchone()
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT email, last_activity_at, absolute_expires_at, revoked_at
+            FROM fund_manager_sessions
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
     if row is None or str(row["email"]).casefold() != email.casefold():
         return False
     if row["revoked_at"] is not None or int(row["absolute_expires_at"]) <= now:
@@ -253,18 +224,14 @@ def validate_fund_manager_session(*, session_id: str, email: str, now: int) -> b
 def get_fund_manager_session_status(
     *, session_id: str, email: str, now: int
 ) -> dict[str, Any] | None:
-    if not postgres_runtime_enabled():
-        with database_operation_lock:
-            row = local_fund_manager_sessions.get(session_id)
-    else:
-        with connect() as connection:
-            row = connection.execute(
-                """
-                SELECT email, last_activity_at, absolute_expires_at, revoked_at, updated_at
-                FROM fund_manager_sessions WHERE session_id = ?
-                """,
-                (session_id,),
-            ).fetchone()
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT email, last_activity_at, absolute_expires_at, revoked_at, updated_at
+            FROM fund_manager_sessions WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
     if row is None or str(row["email"]).casefold() != email.casefold():
         return None
     preference = get_fund_manager_security_preference(email)
@@ -280,7 +247,7 @@ def get_fund_manager_session_status(
         else int(row["absolute_expires_at"]),
     )
     return {
-        "server_persisted": postgres_runtime_enabled(),
+        "server_persisted": True,
         "auto_logout_enabled": bool(preference["auto_logout_enabled"]),
         "timeout_minutes": int(preference["timeout_minutes"]),
         "preference_configured": bool(preference["configured"]),
@@ -296,11 +263,6 @@ def get_fund_manager_session_status(
 def touch_fund_manager_session(*, session_id: str, email: str, now: int) -> bool:
     if not validate_fund_manager_session(session_id=session_id, email=email, now=now):
         return False
-    if not postgres_runtime_enabled():
-        with database_operation_lock:
-            local_fund_manager_sessions[session_id]["last_activity_at"] = now
-            local_fund_manager_sessions[session_id]["updated_at"] = utc_now()
-        return True
     with connect() as connection:
         connection.execute(
             """
@@ -314,13 +276,6 @@ def touch_fund_manager_session(*, session_id: str, email: str, now: int) -> bool
 
 
 def revoke_fund_manager_session(*, session_id: str, now: int) -> None:
-    if not postgres_runtime_enabled():
-        with database_operation_lock:
-            row = local_fund_manager_sessions.get(session_id)
-            if row is not None:
-                row["revoked_at"] = now
-                row["updated_at"] = utc_now()
-        return
     with connect() as connection:
         connection.execute(
             """
@@ -800,6 +755,26 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS fund_manager_security_preferences (
+          email TEXT PRIMARY KEY,
+          auto_logout_enabled INTEGER NOT NULL DEFAULT 0,
+          timeout_minutes INTEGER NOT NULL DEFAULT 30,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS fund_manager_sessions (
+          session_id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          last_activity_at INTEGER NOT NULL,
+          absolute_expires_at INTEGER NOT NULL,
+          revoked_at INTEGER,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_fund_manager_sessions_email
+          ON fund_manager_sessions(email);
 
         CREATE TABLE IF NOT EXISTS notification_user_state (
           email TEXT NOT NULL,

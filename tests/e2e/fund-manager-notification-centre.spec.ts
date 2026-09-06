@@ -6,6 +6,20 @@ async function mockAuthenticatedNotificationShell(
   page: import("@playwright/test").Page,
   profileId: string
 ) {
+  let persistedState = { dismissed_ids: [] as string[], read_keys: [] as string[] };
+  await page.route("**/fund-manager/notifications/state", async (route) => {
+    if (route.request().method() === "PUT") {
+      const payload = route.request().postDataJSON() as typeof persistedState;
+      persistedState = {
+        dismissed_ids: [...new Set([...persistedState.dismissed_ids, ...payload.dismissed_ids])],
+        read_keys: [...new Set([...persistedState.read_keys, ...payload.read_keys])],
+      };
+    }
+    await route.fulfill({ json: persistedState });
+  });
+  await page.route("**/fund-manager/notifications/preferences", (route) =>
+    route.fulfill({ json: { preferences: {} } })
+  );
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === "/api/auth/session") {
@@ -27,6 +41,21 @@ async function mockAuthenticatedNotificationShell(
     }
     if (pathname === "/api/auth/activity") {
       await route.fulfill({ status: 204 });
+      return;
+    }
+    if (pathname === "/api/fund-manager/notifications/state") {
+      if (route.request().method() === "PUT") {
+        const payload = route.request().postDataJSON() as typeof persistedState;
+        persistedState = {
+          dismissed_ids: [...new Set([...persistedState.dismissed_ids, ...payload.dismissed_ids])],
+          read_keys: [...new Set([...persistedState.read_keys, ...payload.read_keys])],
+        };
+      }
+      await route.fulfill({ json: persistedState });
+      return;
+    }
+    if (pathname === "/api/fund-manager/notifications/preferences") {
+      await route.fulfill({ json: { preferences: {} } });
       return;
     }
     await route.fulfill({ json: [] });
@@ -164,8 +193,10 @@ test("a failed clear remains visible and reports the persistence error", async (
 test("notification panel defaults to New and requires a deliberate hover to mark read", async ({
   page,
 }) => {
+  await mockAuthenticatedNotificationShell(page, "profile-demo-001");
   await page.addInitScript(() => {
     window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
+    window.localStorage.setItem("openforge-theme", "dark");
   });
   await page.route("**/fund-manager/notifications", async (route) => {
     await route.fulfill({
@@ -222,9 +253,11 @@ test("notification panel defaults to New and requires a deliberate hover to mark
   await expect(trigger.locator(".notification-count-badge")).toHaveCount(0);
 });
 
-test("notification history retains read notifications until an explicit clear", async ({ page }) => {
+test("dropdown clear hides attention while retained history shows the cleared source", async ({ page }) => {
+  await mockAuthenticatedNotificationShell(page, "profile-demo-001");
   await page.addInitScript(() => {
     window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
+    window.localStorage.setItem("openforge-theme", "dark");
   });
   await page.route("**/fund-manager/notifications", async (route) => {
     await route.fulfill({
@@ -274,25 +307,51 @@ test("notification history retains read notifications until an explicit clear", 
 
   await page.goto("/profiles");
   await page.locator('[data-pd-id="notifications.trigger"]').click();
+  const attentionItem = page.locator('[data-pd-id="notifications.item.SB-HISTORY"]');
+  await attentionItem.getByRole("button", { name: "Clear notification for Subscriber Alpha" }).click();
+  await page.locator('[data-pd-id="notifications.clear-confirmation"]')
+    .getByRole("button", { name: "Clear", exact: true })
+    .click();
+  await expect(attentionItem).toHaveCount(0);
   await page.locator('[data-pd-id="notifications.view-all"]').click();
   await expect(page).toHaveURL(/\/notifications$/);
 
   const history = page.locator('[data-pd-id="notifications.history"]');
   const partialLay = page.locator('[data-pd-id="notifications.history.item.SB-HISTORY"]');
   await expect(history).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(partialLay).toBeVisible();
+  const clearedChip = partialLay.getByText("Cleared", { exact: true });
+  await expect(clearedChip).toBeVisible();
+  const canonicalChip = page.locator('[data-pd-id="fund-manager-identity.trigger"] .table-chip');
+  const [clearedGeometry, canonicalGeometry] = await Promise.all(
+    [clearedChip, canonicalChip].map((chip) => chip.evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return {
+        borderRadius: styles.borderRadius,
+        boxSizing: styles.boxSizing,
+        flexShrink: styles.flexShrink,
+        lineHeight: styles.lineHeight,
+        minHeight: styles.minHeight,
+        padding: styles.padding,
+      };
+    }))
+  );
+  expect(clearedGeometry).toEqual(canonicalGeometry);
+  expect(await clearedChip.getAttribute("tabindex")).toBeNull();
 
   await page.locator('[data-pd-id="notifications.history.search"]').fill("Partial lay");
   await expect(page.locator('[data-pd-id^="notifications.history.item."]')).toHaveCount(1);
   await page.locator('[data-pd-id="notifications.history.type"]').selectOption(
     "partial_lay_reminder"
   );
-  await page.locator('[data-pd-id="notifications.history.mark-read"]').click();
-  await expect(partialLay).not.toHaveClass(/is-unread/);
+  await page.locator('[data-pd-id="notifications.history.status"]').selectOption("cleared");
   await expect(partialLay).toBeVisible();
-
-  await page.locator('[data-pd-id="notifications.history.clear"]').click();
-  await expect(partialLay).toHaveCount(0);
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(clearedChip).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test("Fund Manager notification centre exposes and locally manages active reminders", async ({

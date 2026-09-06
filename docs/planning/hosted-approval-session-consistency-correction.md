@@ -15,6 +15,8 @@ import or any Profile-data mutation.
 | PD-FIX-222 | Import tables | Restore canonical cell padding, stacked primary/secondary spacing, chip minimum geometry, wrapping, and row alignment | Shared `data-table`, `table-cell-stack`, and `table-chip` primitives | COMPLETE |
 | PD-FIX-223 | Import shells/dialogs | Reuse canonical page/panel alignment and modal body/footer spacing at desktop and narrow widths | Existing content shell and `ConfirmationDialog` | COMPLETE |
 | PD-FIX-224 | Consistency prevention | Make table action, action gap, stacked-cell, chip, table-padding, modal-spacing, and shared-shell rules permanent | Plum Duff consistency enforcer and known-pitfalls register | COMPLETE |
+| PD-FIX-229 | Local session durability | Persist Fund Manager sessions and inactivity preferences in the configured local SQLite database so API reloads do not invalidate an otherwise valid session | Existing PostgreSQL session-store contract, applied consistently to SQLite | COMPLETE locally; hosted behavior requires targeted acceptance |
+| PD-FIX-230 | Session race safety | Revalidate current authoritative session state before stale protected-request or cross-tab logout signals can end a newer valid session; avoid rebroadcast loops | Existing authoritative session bootstrap and expiry redirect | COMPLETE locally; hosted behavior requires targeted acceptance |
 
 ## Production evidence captured before changes
 

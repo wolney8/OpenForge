@@ -88,7 +88,7 @@ export function NotificationCentre() {
           }),
           settingsRequest,
         ]);
-        if (redirectExpiredSession(response)) {
+        if (await redirectExpiredSession(response)) {
           isActive = false;
           return;
         }

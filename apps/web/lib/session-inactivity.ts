@@ -8,9 +8,25 @@ export const MEANINGFUL_SESSION_ACTIVITY_EVENTS = [
 ] as const;
 
 let sessionExpiryRedirectStarted = false;
+let authoritativeSessionCheck: Promise<boolean> | null = null;
 
-export function redirectExpiredSession(response: Response): boolean {
+async function sessionIsAuthoritativelyUnavailable(): Promise<boolean> {
+  if (authoritativeSessionCheck) return authoritativeSessionCheck;
+  authoritativeSessionCheck = fetch("/api/auth/session", {
+    cache: "no-store",
+    credentials: "include",
+  })
+    .then((response) => response.status === 401)
+    .catch(() => false)
+    .finally(() => {
+      authoritativeSessionCheck = null;
+    });
+  return authoritativeSessionCheck;
+}
+
+export async function redirectExpiredSession(response: Response): Promise<boolean> {
   if (response.status !== 401 || typeof window === "undefined") return false;
+  if (!(await sessionIsAuthoritativelyUnavailable())) return false;
   if (!sessionExpiryRedirectStarted) {
     sessionExpiryRedirectStarted = true;
     window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));

@@ -84,6 +84,9 @@ test.describe("pre-auth privacy and session controls", () => {
   });
 
   test("stores the optional inactivity preference and warns before logout", async ({ page }) => {
+    let autoLogoutEnabled = false;
+    let timeoutMinutes = 30;
+    let effectiveExpiresAt = Math.floor(Date.now() / 1000) + 3600;
     await page.route("**/api/auth/session", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -93,8 +96,50 @@ test.describe("pre-auth privacy and session controls", () => {
           expires_at: Math.floor(Date.now() / 1000) + 3600,
           name: "Demo Founder",
           role: "fund_manager",
+          session_policy: {
+            absolute_expires_at: Math.floor(Date.now() / 1000) + 3600,
+            auto_logout_enabled: autoLogoutEnabled,
+            effective_expires_at: effectiveExpiresAt,
+            inactivity_expires_at: autoLogoutEnabled ? effectiveExpiresAt : null,
+            last_activity_at: Math.floor(Date.now() / 1000),
+            preference_configured: true,
+            timeout_minutes: timeoutMinutes,
+            valid_now: true,
+          },
         },
         status: 200,
+      });
+    });
+    await page.route("**/api/auth/security-preference", async (route) => {
+      const payload = route.request().postDataJSON() as {
+        auto_logout_enabled: boolean;
+        timeout_minutes: number;
+      };
+      autoLogoutEnabled = payload.auto_logout_enabled;
+      timeoutMinutes = payload.timeout_minutes;
+      await route.fulfill({
+        json: {
+          ...payload,
+          configured: true,
+          updated_at: "2026-09-06T12:00:00Z",
+        },
+      });
+    });
+    await page.route("**/api/auth/activity", async (route) => {
+      effectiveExpiresAt = Math.floor(Date.now() / 1000) + timeoutMinutes * 60;
+      await route.fulfill({
+        json: {
+          session_policy: {
+            absolute_expires_at: Math.floor(Date.now() / 1000) + 3600,
+            auto_logout_enabled: autoLogoutEnabled,
+            effective_expires_at: effectiveExpiresAt,
+            inactivity_expires_at: effectiveExpiresAt,
+            last_activity_at: Math.floor(Date.now() / 1000),
+            preference_configured: true,
+            timeout_minutes: timeoutMinutes,
+            valid_now: true,
+          },
+        },
       });
     });
     await page.goto("/account");
@@ -108,8 +153,9 @@ test.describe("pre-auth privacy and session controls", () => {
     await page.locator('[data-pd-id="fund-manager-account.auto-logout-timeout"]').selectOption("15");
     await expect.poll(() => page.evaluate(() => window.localStorage.getItem("pd-session-security:founder@example.invalid"))).toContain('"timeoutMinutes":15');
 
+    effectiveExpiresAt = Math.floor(Date.now() / 1000) + 30;
     await page.evaluate(() => {
-      window.localStorage.setItem("pd-session-activity", String(Date.now() - 14.5 * 60_000));
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
     });
     await expect(page.getByRole("dialog", { name: "Your session is about to expire" })).toBeVisible({ timeout: 3_000 });
     await page.getByRole("button", { name: "Stay signed in" }).click();
@@ -122,14 +168,22 @@ test.describe("pre-auth privacy and session controls", () => {
       .click();
 
     await page.route("**/api/auth/logout", async (route) => route.fulfill({ status: 204 }));
+    effectiveExpiresAt = Math.floor(Date.now() / 1000) - 1;
     await page.evaluate(() => {
-      window.localStorage.setItem("pd-session-activity", String(Date.now() - 16 * 60_000));
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
     });
     await expect(page).toHaveURL(/\/login\?error=session_expired$/, { timeout: 3_000 });
   });
 
   test("broadcasts logout to another authenticated tab", async ({ context }) => {
+    let sessionValid = true;
+    let sessionChecks = 0;
     await context.route("**/api/auth/session", async (route) => {
+      sessionChecks += 1;
+      if (!sessionValid) {
+        await route.fulfill({ json: { authenticated: false }, status: 401 });
+        return;
+      }
       await route.fulfill({
         contentType: "application/json",
         json: {
@@ -138,6 +192,11 @@ test.describe("pre-auth privacy and session controls", () => {
           expires_at: Math.floor(Date.now() / 1000) + 3600,
           name: "Demo Founder",
           role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
         },
         status: 200,
       });
@@ -148,9 +207,82 @@ test.describe("pre-auth privacy and session controls", () => {
     await Promise.all([firstTab.goto("/account"), secondTab.goto("/account")]);
     await expect(secondTab.locator('[data-pd-id="fund-manager-account.auto-logout"]')).toBeVisible();
 
+    sessionValid = false;
+    const checksBeforeEvent = sessionChecks;
     await firstTab.evaluate(() => {
-      window.localStorage.setItem("pd-session-logout", String(Date.now()));
+      window.localStorage.removeItem("pd-session-logout");
+      window.localStorage.setItem("pd-session-logout", `expired-${Date.now()}`);
     });
-    await expect(secondTab).toHaveURL(/\/login\?error=session_expired$/, { timeout: 3_000 });
+    await expect.poll(() => sessionChecks).toBeGreaterThan(checksBeforeEvent);
+    await expect(secondTab.getByText("Your session ended. Sign in to continue.")).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(secondTab.url()).toMatch(/\/login\?error=session_expired$/);
+  });
+
+  test("ignores a stale logout event when the current session remains valid", async ({ context }) => {
+    let sessionChecks = 0;
+    await context.route("**/api/auth/session", async (route) => {
+      sessionChecks += 1;
+      await route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          name: "Demo Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+        status: 200,
+      });
+    });
+
+    const firstTab = await context.newPage();
+    const secondTab = await context.newPage();
+    await Promise.all([firstTab.goto("/account"), secondTab.goto("/account")]);
+    const checksBeforeEvent = sessionChecks;
+    await firstTab.evaluate(() => {
+      window.localStorage.removeItem("pd-session-logout");
+      window.localStorage.setItem("pd-session-logout", `stale-${Date.now()}`);
+    });
+    await expect.poll(() => sessionChecks).toBeGreaterThan(checksBeforeEvent);
+    await expect(secondTab).toHaveURL(/\/account$/);
+    await expect(secondTab.getByRole("heading", { name: "My Account" })).toBeVisible();
+  });
+
+  test("ignores a stale protected-request 401 when the authoritative session is valid", async ({ page }) => {
+    let sessionChecks = 0;
+    await page.route("**/api/auth/session", async (route) => {
+      sessionChecks += 1;
+      await route.fulfill({
+        json: {
+          authenticated: true,
+          email: "founder@example.invalid",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          name: "Demo Founder",
+          role: "fund_manager",
+          session_policy: {
+            auto_logout_enabled: false,
+            preference_configured: true,
+            timeout_minutes: 30,
+          },
+        },
+        status: 200,
+      });
+    });
+    await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
+    await page.route(/\/search\?query=/, (route) =>
+      route.fulfill({ json: { detail: "Stale request" }, status: 401 })
+    );
+
+    await page.goto("/profiles");
+    const checksBeforeSearch = sessionChecks;
+    await page.locator('[data-pd-id="global-search.input"]').fill("demo");
+    await expect.poll(() => sessionChecks).toBeGreaterThan(checksBeforeSearch);
+    await expect(page).toHaveURL(/\/profiles$/);
   });
 });

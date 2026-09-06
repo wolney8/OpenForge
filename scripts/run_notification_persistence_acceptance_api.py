@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 import uvicorn
@@ -23,9 +24,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--runtime-directory", type=Path, required=True)
+    parser.add_argument("--seed-only", action="store_true")
     arguments = parser.parse_args()
     runtime = arguments.runtime_directory.resolve()
-    runtime.mkdir(parents=True, exist_ok=False)
+    if arguments.seed_only:
+        if not runtime.is_dir():
+            raise RuntimeError("Acceptance runtime must exist before seeding")
+    else:
+        runtime.mkdir(parents=True, exist_ok=False)
 
     os.environ.update(
         {
@@ -41,6 +47,25 @@ def main() -> None:
     )
     sys.path.insert(0, str(API_SOURCE))
 
+    if not arguments.seed_only:
+        subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--port",
+                str(arguments.port),
+                "--runtime-directory",
+                str(runtime),
+                "--seed-only",
+            ],
+            check=True,
+            env=os.environ.copy(),
+        )
+        from openforge_api.main import app  # noqa: PLC0415
+
+        uvicorn.run(app, host="127.0.0.1", port=arguments.port, log_level="warning")
+        return
+
     from openforge_api.auth import create_session_token  # noqa: PLC0415
     from openforge_api.db import (  # noqa: PLC0415
         connect,
@@ -49,8 +74,6 @@ def main() -> None:
         get_sportsbook_bet,
         update_sportsbook_partial_lay_reminder,
     )
-    from openforge_api.main import app  # noqa: PLC0415
-
     create_profile_with_onboarding(
         {
             "profile_id": PROFILE_ID,
@@ -130,7 +153,6 @@ def main() -> None:
         ),
         encoding="utf-8",
     )
-    uvicorn.run(app, host="127.0.0.1", port=arguments.port, log_level="warning")
 
 
 if __name__ == "__main__":

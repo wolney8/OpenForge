@@ -1,6 +1,6 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-08-28_
+_Last updated: 2026-09-06_
 
 ## 1. Workflow name
 
@@ -27,8 +27,8 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
   notifications have been read
 - unread badge: exact count from `1` to `9`, then `9+`
 - panel: bounded non-modal popover with a fixed header and independently scrollable notification list
-- notification history: `/notifications` retains read and completed cards until an explicit clear;
-  it supports filtering by notification type/state and search across notification context
+- notification history: `/notifications` retains current source-derived read, cleared and completed
+  cards; it supports filtering by notification type/state and search across notification context
 - profile context: notifications may span all profiles managed by the local Fund Manager
 
 ## 4. Notification lifecycle
@@ -44,13 +44,18 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
 | Reminder reaches two hours before due | Re-enters unread state if its two-hour stage was not already read | Remains `Active` |
 | Mark all as read | All visible notifications marked read | Remain `Active` |
 | Mark task done | Moved to `Done` until related settlement time passes | Becomes `Resolved` with an audit note |
-| Clear one task notification | Inline `Are you sure?` confirmation, then hidden locally | Source state is unchanged |
-| Clear notifications | All visible notifications hidden locally | Remain `Active` |
+| Clear one task notification | Inline `Are you sure?` confirmation, then hidden from the attention popover and marked `Cleared` in current source history | Source state is unchanged |
+| Clear notifications | All visible notifications hidden from the attention popover and marked `Cleared` in current source history | Remain `Active` |
 | Resolve reminder in its ledger workflow | Moved to `Done` until the related lifecycle cutoff passes | Becomes `Resolved` with audit note |
 | Dismiss reminder in its ledger workflow | Removed from the notification centre | Becomes `Dismissed` with audit note |
 
-Read and cleared state is local view state for the single local Fund Manager MVP. Resolving or
-dismissing the source reminder remains a profile-scoped, audited sportsbook action.
+Read and cleared state is persisted Fund Manager view state, scoped by authenticated email and
+stable notification identity in both SQLite and PostgreSQL runtimes. Resolving or dismissing the
+source reminder remains a profile-scoped, audited sportsbook action.
+
+The current history route can show a cleared item only while its source generator still returns
+that stable notification identity. A complete durable history after a source lifecycle cutoff needs
+an explicit event store and migration; that separate extension must not invent missing past events.
 
 Notification source preferences are also local-first Fund Manager view state in the MVP. The global
 Fund Manager settings route must expose an enabled/disabled control for each approved notification
@@ -154,7 +159,8 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
 - task completion resolves the source reminder and moves the card to `Done`
 - completed cards disappear after the related bet settlement time
 - task clear requires inline confirmation
-- clear hides notifications without resolving the source reminder
+- clear hides notifications from the attention popover, preserves current source history as
+  `Cleared`, and does not resolve the source reminder
 - Escape closes the panel and restores trigger focus
 - disabling a known notification source hides that source from the bell feed
 - unknown notification source types remain visible by default
@@ -163,6 +169,10 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
   the shared Fund Manager feed
 
 ## 9. Deferred extensions
+
+A durable notification event store is deferred. It would retain read, cleared and completed events
+after their source generator stops emitting them, with user/Profile authorization and migration
+rules defined before implementation.
 
 Future approved Fund Manager notification sources may include automatic free-bet expiry, overdue
 settlement, account-health actions, cash-adjustment follow-ups and fee-review blockers. Each source

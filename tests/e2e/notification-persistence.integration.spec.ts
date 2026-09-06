@@ -59,6 +59,12 @@ test("clear remains durable through regeneration, reload, and a fresh browser se
   await page.locator('[data-pd-id="notifications.trigger"]').click();
   await expect(card).toHaveCount(0);
   expect(stateMutationCount).toBe(1);
+  await page.goto("/notifications");
+  const retainedHistory = page.locator(
+    `[data-pd-id="notifications.history.item.${recordId}"]`,
+  );
+  await expect(retainedHistory).toBeVisible();
+  await expect(retainedHistory.getByText("Cleared", { exact: true })).toBeVisible();
 
   const feedResponse = await context.request.get(
     `${apiBaseURL}/fund-manager/notifications`,
@@ -94,6 +100,10 @@ test("clear remains durable through regeneration, reload, and a fresh browser se
     await expect(
       freshPage.locator(`[data-pd-id="notifications.item.${recordId}"]`),
     ).toHaveCount(0);
+    await freshPage.goto("http://127.0.0.1:3120/notifications");
+    await expect(
+      freshPage.locator(`[data-pd-id="notifications.history.item.${recordId}"]`),
+    ).toContainText("Cleared");
   } finally {
     await freshContext.close();
   }

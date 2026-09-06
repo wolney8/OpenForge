@@ -13,6 +13,7 @@ import {
   FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT,
   FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY,
   getUnreadNotificationCount,
+  isNotificationCleared,
   isNotificationUnread,
   loadFundManagerNotificationPreferences,
   loadPersistedNotificationPreferences,
@@ -171,7 +172,14 @@ export function NotificationHistoryPage() {
     notificationType,
     status,
   });
-  const unread = filtered.filter((notification) => isNotificationUnread(notification, viewState, now));
+  const unread = filtered.filter(
+    (notification) =>
+      !isNotificationCleared(notification, viewState) &&
+      isNotificationUnread(notification, viewState, now)
+  );
+  const clearable = filtered.filter(
+    (notification) => !isNotificationCleared(notification, viewState)
+  );
   const unreadTotal = getUnreadNotificationCount(notifications, viewState, now);
 
   const markRead = (items: FundManagerNotification[]) => {
@@ -200,7 +208,7 @@ export function NotificationHistoryPage() {
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
           <h1>Notifications</h1>
-          <p>Read notifications remain here until you clear them.</p>
+          <p>Read, cleared and completed source notifications remain available here.</p>
         </div>
         <aside className="shell-note stack" aria-label="Notification summary">
           <span className="eyebrow">Unread</span>
@@ -244,6 +252,7 @@ export function NotificationHistoryPage() {
               <option value="all">All retained</option>
               <option value="new">New</option>
               <option value="done">Done</option>
+              <option value="cleared">Cleared</option>
             </select>
           </label>
           <div className="notification-history-actions">
@@ -260,8 +269,8 @@ export function NotificationHistoryPage() {
             <button
               className="button-link destructive-action"
               data-pd-id="notifications.history.clear"
-              disabled={filtered.length === 0 || isPersistingState}
-              onClick={() => clear(filtered)}
+              disabled={clearable.length === 0 || isPersistingState}
+              onClick={() => clear(clearable)}
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
@@ -296,7 +305,9 @@ export function NotificationHistoryPage() {
             ) : (
               <div className="notification-history-list" data-pd-id="notifications.history.list">
                 {filtered.map((notification) => {
-                  const isUnread = isNotificationUnread(notification, viewState, now);
+                  const isCleared = isNotificationCleared(notification, viewState);
+                  const isUnread =
+                    !isCleared && isNotificationUnread(notification, viewState, now);
                   return (
                     <article
                       className={`notification-card notification-card-${notification.tone}${isUnread ? " is-unread" : ""}`}
@@ -309,16 +320,20 @@ export function NotificationHistoryPage() {
                         <span>{notification.ledger_label} · {notification.bookmaker_label} · {notification.message}</span>
                         <span className="notification-card-meta">{notification.profile_name} · {notificationTypeLabel(notification.notification_type)} · {formatNotificationDue(notification.due_at)}</span>
                       </Link>
-                      <button
-                        aria-label={`Clear ${notification.title}`}
-                        aria-busy={isPersistingState}
-                        className="icon-button notification-card-clear"
-                        disabled={isPersistingState}
-                        onClick={() => clear([notification])}
-                        type="button"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
-                      </button>
+                      {isCleared ? (
+                        <span className="table-chip table-chip-neutral">Cleared</span>
+                      ) : (
+                        <button
+                          aria-label={`Clear ${notification.title}`}
+                          aria-busy={isPersistingState}
+                          className="icon-button notification-card-clear"
+                          disabled={isPersistingState}
+                          onClick={() => clear([notification])}
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                        </button>
+                      )}
                     </article>
                   );
                 })}

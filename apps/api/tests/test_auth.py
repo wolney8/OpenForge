@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 from typing import Iterator
 from urllib.parse import parse_qs, urlparse
 
@@ -17,8 +18,7 @@ from openforge_api.auth import (
 )
 from openforge_api.config import settings
 from openforge_api.db import (
-    local_fund_manager_security_preferences,
-    local_fund_manager_sessions,
+    get_fund_manager_session_status,
     touch_fund_manager_session,
     upsert_fund_manager_security_preference,
 )
@@ -34,22 +34,23 @@ def configured_auth() -> Iterator[None]:
         "auth_owner_emails": settings.auth_owner_emails,
         "google_oauth_client_id": settings.google_oauth_client_id,
         "google_oauth_client_secret": settings.google_oauth_client_secret,
+        "database_mode": settings.database_mode,
+        "database_url": settings.database_url,
     }
-    settings.auth_required = True
-    settings.auth_public_base_url = "http://localhost:3010"
-    settings.auth_session_secret = "synthetic-session-secret-at-least-32-bytes"
-    settings.auth_owner_emails = "founder@example.invalid"
-    settings.google_oauth_client_id = "synthetic-client-id"
-    settings.google_oauth_client_secret = "synthetic-client-secret"
-    try:
-        local_fund_manager_sessions.clear()
-        local_fund_manager_security_preferences.clear()
-        yield
-    finally:
-        local_fund_manager_sessions.clear()
-        local_fund_manager_security_preferences.clear()
-        for field, value in previous.items():
-            setattr(settings, field, value)
+    with TemporaryDirectory(prefix="auth-test-") as runtime:
+        settings.auth_required = True
+        settings.auth_public_base_url = "http://localhost:3010"
+        settings.auth_session_secret = "synthetic-session-secret-at-least-32-bytes"
+        settings.auth_owner_emails = "founder@example.invalid"
+        settings.google_oauth_client_id = "synthetic-client-id"
+        settings.google_oauth_client_secret = "synthetic-client-secret"
+        settings.database_mode = "local"
+        settings.database_url = f"sqlite:///{runtime}/auth.sqlite3"
+        try:
+            yield
+        finally:
+            for field, value in previous.items():
+                setattr(settings, field, value)
 
 
 def test_session_tokens_reject_tampering_expiry_and_non_owner_access() -> None:
@@ -88,7 +89,7 @@ def test_session_tokens_reject_tampering_expiry_and_non_owner_access() -> None:
 
         session_response = client.get("/auth/session")
         assert session_response.status_code == 200
-        assert session_response.json()["session_policy"]["server_persisted"] is False
+        assert session_response.json()["session_policy"]["server_persisted"] is True
         assert (
             session_response.json()["session_policy"]["effective_expires_at"]
             == 2_000_000_000 + settings.auth_session_ttl_seconds
@@ -199,7 +200,13 @@ def test_configured_session_expires_after_twelve_hours_without_meaningful_activi
         assert validate_request_session(token, now=start + 1_799) is not None
         expired_at = start + 12 * 60 * 60 - 1
         assert validate_request_session(token, now=expired_at) is None
-        assert local_fund_manager_sessions[session.session_id]["revoked_at"] == expired_at
+        status = get_fund_manager_session_status(
+            session_id=session.session_id,
+            email=session.email,
+            now=expired_at,
+        )
+        assert status is not None
+        assert status["revoked"] is True
 
 
 def test_activity_endpoint_returns_the_refreshed_server_deadline(monkeypatch) -> None:
@@ -244,7 +251,15 @@ def test_auto_logout_off_uses_absolute_session_expiry() -> None:
             timeout_minutes=15,
         )
 
-        assert validate_request_session(token, now=start + 3_600) is not None
+        assert validate_request_session(token, now=start + 5 * 60) is not None
+        assert validate_request_session(token, now=start + 4 * 60 * 60) is not None
+        assert (
+            validate_request_session(
+                token,
+                now=start + settings.auth_session_ttl_seconds - 1,
+            )
+            is not None
+        )
         assert (
             validate_request_session(
                 token,

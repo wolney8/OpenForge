@@ -30,19 +30,21 @@ export function SessionInactivityGuard({
   const resumeValidationRef = useRef<Promise<boolean> | null>(null);
   const wasInactiveRef = useRef(false);
 
-  const expireClientSession = useCallback(() => {
-    window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+  const expireClientSession = useCallback((broadcast = true) => {
+    if (broadcast) {
+      window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
+    }
     window.location.replace("/login?error=session_expired");
   }, []);
 
-  const validateResumedSession = useCallback(() => {
+  const validateResumedSession = useCallback((broadcastExpiry = true) => {
     if (resumeValidationRef.current) return resumeValidationRef.current;
     const validation = fetch("/api/auth/session", {
       cache: "no-store",
       credentials: "include",
     }).then(async (response) => {
       if (response.status === 401) {
-        expireClientSession();
+        expireClientSession(broadcastExpiry);
         return false;
       }
       if (!response.ok) return false;
@@ -68,7 +70,7 @@ export function SessionInactivityGuard({
       method: "POST",
     }).then(async (response) => {
       if (response.status === 401) {
-        expireClientSession();
+        await validateResumedSession();
         return;
       }
       if (!response.ok) return;
@@ -78,7 +80,7 @@ export function SessionInactivityGuard({
       if (!payload.session_policy) return;
       setSession((current) => current ? { ...current, session_policy: payload.session_policy } : current);
     }).catch(() => undefined);
-  }, [expireClientSession]);
+  }, [validateResumedSession]);
 
   const logout = useCallback(async (reason: "expired" | "manual") => {
     if (logoutStartedRef.current) return;
@@ -171,7 +173,7 @@ export function SessionInactivityGuard({
     const refreshPreference = () => setPreference(loadSessionSecurityPreference(session.email));
     const handleStorage = (event: StorageEvent) => {
       if (event.key === SESSION_LOGOUT_STORAGE_KEY && event.newValue) {
-        window.location.replace("/login?error=session_expired");
+        void validateResumedSession(false);
         return;
       }
       if (event.key === SESSION_ACTIVITY_STORAGE_KEY) {
@@ -191,7 +193,7 @@ export function SessionInactivityGuard({
       window.removeEventListener(SESSION_SECURITY_PREFERENCE_EVENT, refreshPreference);
       window.removeEventListener("storage", handleStorage);
     };
-  }, [session]);
+  }, [session, validateResumedSession]);
 
   useEffect(() => {
     if (!session || !preference?.autoLogoutEnabled) {

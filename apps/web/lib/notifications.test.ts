@@ -306,6 +306,27 @@ describe("fund manager notification view state", () => {
     ).toEqual([doneNotification]);
   });
 
+  it("keeps cleared source notifications available to retained history", () => {
+    const cleared = dismissNotificationIds(emptyNotificationViewState, [
+      notifications[0].notification_id,
+    ]);
+    expect(getVisibleNotifications(notifications, cleared)).toEqual([notifications[1]]);
+    expect(
+      filterNotificationHistory(notifications, cleared, {
+        query: "",
+        notificationType: "all",
+        status: "all",
+      })
+    ).toEqual(notifications);
+    expect(
+      filterNotificationHistory(notifications, cleared, {
+        query: "",
+        notificationType: "all",
+        status: "cleared",
+      })
+    ).toEqual([notifications[0]]);
+  });
+
   it("documents timing and Fund Manager-only delivery for every approved source", () => {
     expect(fundManagerNotificationTypes).toHaveLength(5);
     for (const notificationType of fundManagerNotificationTypes) {

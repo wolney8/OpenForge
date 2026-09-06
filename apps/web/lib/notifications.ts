@@ -1,4 +1,5 @@
 import { apiBaseUrl } from "./api";
+import { redirectExpiredSession } from "./session-inactivity";
 
 export const FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT =
   "plum-duff:fund-manager-notifications-refresh";
@@ -212,7 +213,10 @@ export async function loadPersistedNotificationState(): Promise<NotificationView
       cache: "no-store",
       credentials: "include",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      await redirectExpiredSession(response);
+      return null;
+    }
     const payload = (await response.json()) as {
       dismissed_ids?: unknown;
       read_keys?: unknown;
@@ -239,7 +243,10 @@ export async function persistNotificationState(
       headers: { "Content-Type": "application/json" },
       method: "PUT",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      await redirectExpiredSession(response);
+      return null;
+    }
     const payload = (await response.json()) as {
       dismissed_ids?: unknown;
       read_keys?: unknown;
@@ -376,7 +383,14 @@ export function getVisibleNotifications(
   return notifications.filter((notification) => !dismissed.has(notification.notification_id));
 }
 
-export type NotificationHistoryStatus = "all" | "new" | "done";
+export type NotificationHistoryStatus = "all" | "new" | "done" | "cleared";
+
+export function isNotificationCleared(
+  notification: FundManagerNotification,
+  viewState: NotificationViewState
+): boolean {
+  return new Set(viewState.dismissedIds).has(notification.notification_id);
+}
 
 export function filterNotificationHistory(
   notifications: FundManagerNotification[],
@@ -388,8 +402,11 @@ export function filterNotificationHistory(
   }
 ): FundManagerNotification[] {
   const normalizedQuery = options.query.trim().toLocaleLowerCase();
-  return getVisibleNotifications(notifications, viewState).filter((notification) => {
-    if (options.status !== "all" && notification.task_state !== options.status) return false;
+  return notifications.filter((notification) => {
+    const isCleared = isNotificationCleared(notification, viewState);
+    if (options.status === "cleared" && !isCleared) return false;
+    if (options.status === "new" && (isCleared || notification.task_state !== "new")) return false;
+    if (options.status === "done" && (isCleared || notification.task_state !== "done")) return false;
     if (
       options.notificationType !== "all" &&
       notification.notification_type !== options.notificationType

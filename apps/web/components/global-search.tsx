@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition } from "@/lib/shell-loading";
+import { redirectExpiredSession } from "@/lib/session-inactivity";
 import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
 
 type SearchResult = {
@@ -41,7 +42,7 @@ export function GlobalSearch() {
       })
         .then(async (response) => {
           if (response.status === 401) {
-            router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+            await redirectExpiredSession(response);
             return [];
           }
           if (!response.ok) throw new Error("Search unavailable");

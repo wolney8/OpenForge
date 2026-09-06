@@ -49,7 +49,7 @@ export async function fetchJsonAndCache<T>(
   const request = async () => {
     const response = await fetch(url, { cache: "no-store", signal: options.signal });
     if (!response.ok) {
-      redirectExpiredSession(response);
+      await redirectExpiredSession(response);
       throw new JsonRequestError(response.status);
     }
     return writeCachedJson(url, (await response.json()) as T);

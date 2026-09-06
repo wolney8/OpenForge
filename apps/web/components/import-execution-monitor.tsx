@@ -36,7 +36,7 @@ export function ImportExecutionMonitor() {
           cache: "no-store",
           credentials: "include",
         });
-        if (redirectExpiredSession(response)) {
+        if (await redirectExpiredSession(response)) {
           stopped = true;
           endShellLoading();
           return;
@@ -55,7 +55,7 @@ export function ImportExecutionMonitor() {
             `${apiBaseUrl}/fund-manager/import-executions/${execution.import_run_id}/advance`,
             { method: "POST", credentials: "include" }
           );
-          if (redirectExpiredSession(advanceResponse)) {
+          if (await redirectExpiredSession(advanceResponse)) {
             stopped = true;
             endShellLoading();
             return;
