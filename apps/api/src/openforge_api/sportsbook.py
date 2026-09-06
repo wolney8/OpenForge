@@ -5,7 +5,8 @@ from decimal import Decimal
 from typing import Any, Callable, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from openforge_api.calculations.profit_boost import (
     ProfitBoostInput,
@@ -39,6 +40,10 @@ from openforge_api.multi_profile_entry import (
     MultiProfileTargetEligibility,
     evaluate_multi_profile_target,
     strategy_requires_exchange,
+)
+from openforge_api.sportsbook_odds_input import (
+    validate_nested_sportsbook_odds,
+    validate_sportsbook_odds,
 )
 
 router = APIRouter(prefix="/profiles/{profile_id}/sportsbook-bets", tags=["sportsbook"])
@@ -79,7 +84,7 @@ MatchStrategyValue = Literal[
 ]
 
 
-class SportsbookBetPayload(BaseModel):
+class SportsbookBetFields(BaseModel):
     sportsbook_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(min_length=1, max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -116,6 +121,54 @@ class SportsbookBetPayload(BaseModel):
     manual_override_value: str = Field(default="", max_length=40)
     manual_override_reason: str = Field(default="", max_length=500)
 
+
+class SportsbookBetPayload(SportsbookBetFields):
+    @field_validator(
+        "back_odds",
+        "base_back_odds",
+        "actual_accepted_back_odds",
+        "lay_odds_1",
+        mode="before",
+    )
+    @classmethod
+    def validate_entered_odds(cls, value: Any) -> str:
+        return validate_sportsbook_odds(value)
+
+    @field_validator("multi_lay_outcomes_json", mode="before")
+    @classmethod
+    def validate_entered_nested_odds(cls, value: Any) -> str:
+        return validate_nested_sportsbook_odds(value)
+
+    @model_validator(mode="after")
+    def validate_required_placement_odds(self) -> "SportsbookBetPayload":
+        requires_placement = (
+            self.status in {"Placed", "Settled", "Free Bet Awarded"}
+            or self.result != "Pending"
+        )
+        if not requires_placement:
+            return self
+
+        required_fields: list[tuple[str, str]] = []
+        if self.offer_type == "Profit Boost" and self.profit_boost_mode == "percentage":
+            required_fields.append(("base_back_odds", self.base_back_odds))
+        else:
+            required_fields.append(("back_odds", self.back_odds))
+        if self.match_strategy != "No Lay":
+            required_fields.append(("lay_odds_1", self.lay_odds_1))
+
+        errors: list[InitErrorDetails] = [
+            {
+                "type": PydanticCustomError("sportsbook_odds_required", "Enter odds."),
+                "loc": (field_name,),
+                "input": value,
+            }
+            for field_name, value in required_fields
+            if value == ""
+        ]
+        if errors:
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+        return self
+
     @model_validator(mode="after")
     def validate_override_reason(self) -> "SportsbookBetPayload":
         if self.manual_override_value and not self.manual_override_reason.strip():
@@ -124,7 +177,7 @@ class SportsbookBetPayload(BaseModel):
         return self
 
 
-class SportsbookBetResponse(SportsbookBetPayload):
+class SportsbookBetResponse(SportsbookBetFields):
     sportsbook_bet_id: str
     profile_id: str
     created_at: str

@@ -1,6 +1,6 @@
 # Workflow Contract: Sportsbook Bet Lifecycle
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-09-06_
 
 ## 1. Workflow name
 
@@ -149,7 +149,26 @@ Retain:
 - profile isolation tests
 - dashboard/report aggregation cases that consume sportsbook `NetPnL`
 
-## 13. Playwright path
+## 13. User-entered odds input contract
+
+The product-neutral `sportsbook-odds-input-v1` boundary applies to Sportsbook request entry only;
+historical response hydration and import/restore contracts remain unchanged.
+
+- The complete submitted string must match ASCII digits followed optionally by a full stop and one
+  or more ASCII digits: `[0-9]+(\.[0-9]+)?`.
+- Do not trim, partially parse, repair, clamp, or replace invalid odds with zero.
+- Empty optional odds stay empty. A placed, settled, awarded, or otherwise resolved row requires
+  displayed back odds (or base odds for a percentage Profit Boost) and primary lay odds unless the
+  signed-off strategy is `No Lay`; draft rows may keep those fields empty.
+- A non-empty ordinary Sportsbook odds value must be finite and at least `1.01`. No lower-price
+  Sportsbook exception is currently approved, and no arbitrary upper limit is introduced.
+- The same rule covers back odds, Profit Boost base/accepted odds, primary lay odds, multi-lay
+  outcome odds, placed multi-lay odds, and partial-lay leg odds.
+- Invalid active odds suppress preview, placement/apply actions, and save. The original text remains
+  editable and receives the associated error: `Enter decimal odds using a full stop, for example
+  8.5.`
+
+## 14. Playwright path
 
 Draft UI path:
 

@@ -894,3 +894,15 @@ cause, prevention rule and regression test.
   state mutation runs at a time.
 - Test added: focused notification API/client tests, stale/failure Playwright coverage, and the
   isolated `notification-persistence` browser/API acceptance path.
+
+## 2026-09-06: Numeric input filtering hid malformed Sportsbook odds
+
+- Area: Sportsbook editor and calculation preview.
+- Root cause: an edit-time character filter refused malformed text while the request model accepted
+  unconstrained strings, so a pasted invalid value could leave an older valid value and preview in
+  place without an actionable field error.
+- Prevention: preserve the complete odds string, validate it at both active UI and request-model
+  boundaries, clear/abort stale preview presentation, and keep stricter request rules separate from
+  historical response hydration. Money and rate fields require their own later contracts.
+- Regression tests: shared `sportsbook-odds-input-v1` fixtures, focused request-boundary tests, and
+  the Sportsbook editor malformed-paste Playwright path.

@@ -464,3 +464,140 @@ test("Sportsbook Matching calculator supports simple, advanced, copy, and multi-
     await deleteSportsbookFixture(request, profileId, createdRow.sportsbook_bet_id);
   }
 });
+
+test("Sportsbook odds preserve malformed text and suppress stale preview and save", async ({
+  page,
+  request,
+}) => {
+  const profileId = "profile-demo-001";
+  const eventName = `Strict odds ${Date.now()}`;
+  const previewBackOdds: string[] = [];
+  await page.setViewportSize({ width: 760, height: 900 });
+  page.on("request", (pendingRequest) => {
+    if (
+      pendingRequest.method() === "POST" &&
+      pendingRequest.url().endsWith(`/profiles/${profileId}/sportsbook-bets/preview`)
+    ) {
+      previewBackOdds.push((pendingRequest.postDataJSON() as { back_odds: string }).back_odds);
+    }
+  });
+  await page.route("**/auth/session**", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        email: "founder@example.invalid",
+        expires_at: 2_100_000_000,
+        linked_profile_ids: [profileId],
+        name: "Synthetic Founder",
+        role: "fund_manager",
+      },
+    })
+  );
+  await page.route("**/auth/activity**", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference**", (route) =>
+    route.fulfill({ json: { configured: false } })
+  );
+  await page.route("**/fund-manager/import-executions**", (route) =>
+    route.fulfill({ json: [] })
+  );
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      json: pathname.endsWith("/state")
+        ? { dismissed_ids: [], read_keys: [] }
+        : pathname.endsWith("/preferences")
+          ? { preferences: {} }
+          : [],
+    });
+  });
+  const createResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
+    data: {
+      event_name: eventName,
+      bookmaker: "Bookmaker A",
+      offer_type: "Bet & Get",
+      bet_type: "Single",
+      fixture_type: "Football",
+      status: "Prospecting",
+      result: "Pending",
+      back_stake: "10.00",
+      back_odds: "2.10",
+      match_strategy: "Standard",
+      lay_odds_1: "2.20",
+      exchange_name: "Matchbook",
+      date_settled: "2026-09-06T15:00",
+    },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const createdRow = await createResponse.json();
+
+  try {
+    await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
+    await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+    const row = page.locator(".data-table tbody tr").filter({ hasText: eventName });
+    await expect(row).toHaveCount(1);
+    await row.click();
+    const editor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await expect(editor).toBeVisible();
+    await editor.getByRole("tab", { name: /Matching/ }).click();
+
+    const backOdds = editor.getByLabel("Back odds", { exact: true });
+    const resultCards = editor.locator('[data-pd-id="sportsbook.matching.result-cards"]');
+    const applyBackPlacement = editor.getByRole("button", { name: "Back Bet Placed" });
+    const save = editor.getByRole("button", { name: "Save", exact: true });
+    await expect(resultCards).toBeVisible();
+    const initialDialogWidth = (await editor.boundingBox())?.width;
+
+    await backOdds.focus();
+    await backOdds.press("ControlOrMeta+A");
+    await backOdds.pressSequentially("8.5abc");
+    await expect(backOdds).toHaveValue("8.5abc");
+    await expect(backOdds).toHaveAttribute("aria-invalid", "true");
+    const oddsError = editor.getByText(
+      "Enter decimal odds using a full stop, for example 8.5.",
+      { exact: true }
+    );
+    await expect(oddsError).toBeVisible();
+    await expect(oddsError).toHaveAttribute("role", "alert");
+    await expect(backOdds).toHaveAttribute("aria-describedby", /sportsbook-back-odds-error/);
+    await expect(resultCards).toHaveCount(0);
+    await expect(applyBackPlacement).toBeDisabled();
+    await expect(save).toBeDisabled();
+    await expect(editor).toHaveCSS("max-width", /.+/);
+    expect((await editor.boundingBox())?.width).toBe(initialDialogWidth);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+    ).toBe(true);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page
+      .getByRole("button", { name: "Switch to light mode" })
+      .evaluate((button: HTMLButtonElement) => button.click());
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(oddsError).toBeVisible();
+    await page.waitForTimeout(350);
+    expect(previewBackOdds).not.toContain("8.5abc");
+
+    await backOdds.focus();
+    await backOdds.press("ControlOrMeta+A");
+    await backOdds.pressSequentially("8.5");
+    await expect(backOdds).toHaveAttribute("aria-invalid", "false");
+    await expect(resultCards).toBeVisible();
+    await expect(applyBackPlacement).toBeEnabled();
+    await expect(save).toBeEnabled();
+    await expect
+      .poll(() => previewBackOdds.filter((value) => value === "8.5").length)
+      .toBe(1);
+
+    const updateResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(
+          `/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
+        ) && response.request().method() === "PUT"
+    );
+    await save.click();
+    const updateResponse = await updateResponsePromise;
+    expect(updateResponse.ok()).toBeTruthy();
+    expect((await updateResponse.json()).back_odds).toBe("8.5");
+  } finally {
+    await deleteSportsbookFixture(request, profileId, createdRow.sportsbook_bet_id);
+  }
+});

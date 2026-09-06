@@ -49,6 +49,10 @@ import { MultiProfileSportsbookCopyDialog } from "@/components/multi-profile-spo
 import { FeeReviewResolutionBanner } from "@/components/fee-review-resolution-banner";
 import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } from "@/lib/fee-review-session";
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
+import {
+  getSportsbookOddsInputError,
+  parseSportsbookOddsInput,
+} from "@/lib/sportsbook-odds-input";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -389,6 +393,39 @@ type PartialLayLegInput = {
   matchedStake: string;
   isFinal: boolean;
 };
+
+type SportsbookOddsIssue = {
+  key: string;
+  message: string;
+};
+
+function getSportsbookOddsIssues(
+  formState: SportsbookFormState,
+  extraOutcomes: MultiLayOutcomeInput[],
+  primaryPlacement: MultiLayPrimaryPlacementState,
+  partialLayLegs: PartialLayLegInput[]
+): SportsbookOddsIssue[] {
+  const values: Array<{ key: string; value: string }> = [
+    { key: "back_odds", value: formState.back_odds },
+    { key: "base_back_odds", value: formState.base_back_odds },
+    { key: "actual_accepted_back_odds", value: formState.actual_accepted_back_odds },
+    { key: "lay_odds_1", value: formState.lay_odds_1 },
+    { key: "multi_lay_primary_placed_odds", value: primaryPlacement.placedLayOdds },
+    ...extraOutcomes.flatMap((outcome) => [
+      { key: `multi_lay_${outcome.id}_odds`, value: outcome.layOdds },
+      { key: `multi_lay_${outcome.id}_placed_odds`, value: outcome.placedLayOdds ?? "" },
+    ]),
+    ...partialLayLegs.map((leg) => ({
+      key: `partial_lay_${leg.id}_odds`,
+      value: leg.layOdds,
+    })),
+  ];
+
+  return values.flatMap(({ key, value }) => {
+    const message = getSportsbookOddsInputError(value);
+    return message ? [{ key, message }] : [];
+  });
+}
 
 type MultiLayPlannerLeg = {
   key: string;
@@ -2027,8 +2064,8 @@ function getLayStakePreview(
   resolvedCommission: string
 ): LayStakePreview | null {
   const backStake = parseNumericInput(formState.back_stake);
-  const backOdds = parseNumericInput(formState.back_odds);
-  const layOdds = parseNumericInput(formState.lay_odds_1);
+  const backOdds = parseSportsbookOddsInput(formState.back_odds);
+  const layOdds = parseSportsbookOddsInput(formState.lay_odds_1);
   const commission = parseNumericInput(resolvedCommission);
 
   if (formState.match_strategy === "No Lay") {
@@ -2101,9 +2138,9 @@ function hasPreviewInputsReady(
 ): boolean {
   const hasProfitBoostInputs =
     formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage"
-      ? parseNumericInput(formState.base_back_odds) !== null &&
+      ? parseSportsbookOddsInput(formState.base_back_odds) !== null &&
         parseNumericInput(formState.profit_boost_percent) !== null
-      : parseNumericInput(formState.back_odds) !== null;
+      : parseSportsbookOddsInput(formState.back_odds) !== null;
   const hasBackInputs =
     parseNumericInput(formState.back_stake) !== null && hasProfitBoostInputs;
 
@@ -2119,7 +2156,7 @@ function hasPreviewInputsReady(
     return false;
   }
 
-  if (parseNumericInput(formState.lay_odds_1) === null) {
+  if (parseSportsbookOddsInput(formState.lay_odds_1) === null) {
     return false;
   }
 
@@ -2144,13 +2181,13 @@ function getCalculatorMissingFields(
     missing.push("Back stake");
   }
   if (formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage") {
-    if (parseNumericInput(formState.base_back_odds) === null) {
+    if (formState.base_back_odds === "") {
       missing.push("Base back odds");
     }
     if (parseNumericInput(formState.profit_boost_percent) === null) {
       missing.push("Profit boost %");
     }
-  } else if (parseNumericInput(formState.back_odds) === null) {
+  } else if (formState.back_odds === "") {
     missing.push(formState.offer_type === "Profit Boost" ? "Boosted back odds" : "Back odds");
   }
 
@@ -2164,7 +2201,7 @@ function getCalculatorMissingFields(
   if (!resolvedCommission.trim()) {
     missing.push("Exchange commission in Settings");
   }
-  if (parseNumericInput(formState.lay_odds_1) === null) {
+  if (formState.lay_odds_1 === "") {
     missing.push("Lay odds 1");
   }
   if (
@@ -2189,8 +2226,8 @@ function getCalculatorMissingFields(
   }
 
   if (isMultiLayStrategy(formState.match_strategy)) {
-    const hasSecondLeg = extraOutcomes.some((outcome) => parseNumericInput(outcome.layOdds) !== null);
-    if (!hasSecondLeg) {
+    const hasSecondLegInput = extraOutcomes.some((outcome) => outcome.layOdds !== "");
+    if (!hasSecondLegInput) {
       missing.push("Outcome 2 lay odds");
     }
   }
@@ -2204,7 +2241,7 @@ function getCalculatorGuidance(
 ): string {
   if (
     parseNumericInput(formState.back_stake) === null ||
-    parseNumericInput(formState.back_odds) === null
+    parseSportsbookOddsInput(formState.back_odds) === null
   ) {
     return "Enter back stake and back odds to unlock the workbook-style calculation preview.";
   }
@@ -2221,7 +2258,7 @@ function getCalculatorGuidance(
     return "Add this exchange commission in Settings before relying on contract-backed sportsbook money values.";
   }
 
-  if (parseNumericInput(formState.lay_odds_1) === null) {
+  if (parseSportsbookOddsInput(formState.lay_odds_1) === null) {
     return "Enter the first lay odds to see the workbook-style lay suggestion and current-value preview.";
   }
 
@@ -2293,8 +2330,8 @@ function getMultiLayPlannerSummary(
   }
 
   const backStake = parseNumericInput(formState.back_stake);
-  const backOdds = parseNumericInput(formState.back_odds);
-  const layOdds1 = parseNumericInput(formState.lay_odds_1);
+  const backOdds = parseSportsbookOddsInput(formState.back_odds);
+  const layOdds1 = parseSportsbookOddsInput(formState.lay_odds_1);
 
   if (backStake === null || backOdds === null || layOdds1 === null) {
     return null;
@@ -2319,7 +2356,7 @@ function getMultiLayPlannerSummary(
         key: outcome.id,
         label: outcome.label.trim() || outcome.id.replace("outcome", "Outcome "),
         exchangeName: outcome.placedExchange || formState.exchange_name,
-        layOdds: parseNumericInput(outcome.layOdds),
+        layOdds: parseSportsbookOddsInput(outcome.layOdds),
       }))
       .filter((outcome) => outcome.layOdds !== null)
       .map((outcome) => ({
@@ -2546,7 +2583,7 @@ function getMultiLayResultsGridRows(
   }
 
   const backStake = parseNumericInput(formState.back_stake);
-  const backOdds = parseNumericInput(formState.back_odds);
+  const backOdds = parseSportsbookOddsInput(formState.back_odds);
   if (backStake === null || backOdds === null) {
     return [];
   }
@@ -2728,6 +2765,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewCalculation, setPreviewCalculation] = useState<SportsbookCalculationPreview | null>(null);
+  const [previewCalculationKey, setPreviewCalculationKey] = useState("");
   const [multiLayOutcomes, setMultiLayOutcomes] = useState<MultiLayOutcomeInput[]>(
     createDefaultMultiLayOutcomes
   );
@@ -3397,6 +3435,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
   const isProfitBoostOffer = formState.offer_type === "Profit Boost";
   const isFreeBetAwardableRow = isFreeBetAwardingOffer(formState.offer_type);
+  const oddsIssues = useMemo(
+    () =>
+      getSportsbookOddsIssues(
+        formState,
+        multiLayOutcomes,
+        multiLayPrimaryPlacement,
+        partialLayLegs
+      ),
+    [formState, multiLayOutcomes, multiLayPrimaryPlacement, partialLayLegs]
+  );
+  const oddsIssueMap = useMemo(
+    () => new Map(oddsIssues.map((issue) => [issue.key, issue.message])),
+    [oddsIssues]
+  );
+  const hasInvalidOddsInput = oddsIssues.length > 0;
   const betSetupComplete = useMemo(() => getBetSetupComplete(formState), [formState]);
   const missingBetSetupFields = useMemo(() => getMissingBetSetupFields(formState), [formState]);
   const hasPersistedDraft = Boolean(formState.sportsbook_bet_id ?? selectedId);
@@ -3472,10 +3525,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         label: "Matching",
         requiredIssueCount:
           missingCalculatorFields.length +
-          (placementPlanRequired ? missingPlacementFields.length : 0),
+          (placementPlanRequired ? missingPlacementFields.length : 0) +
+          oddsIssues.length,
         status: !calculatorUnlocked
           ? "locked"
-          : missingCalculatorFields.length > 0 ||
+          : oddsIssues.length > 0 ||
+              missingCalculatorFields.length > 0 ||
               (placementPlanRequired && missingPlacementFields.length > 0)
             ? "invalid"
             : isPreviewReady
@@ -3539,6 +3594,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       missingBetSetupFields.length,
       missingCalculatorFields.length,
       missingPlacementFields.length,
+      oddsIssues.length,
       placementPlanRequired,
       selectedSportsbookRow?.lay_status,
       showsPlacementSection,
@@ -3585,6 +3641,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       resolvedCommission,
     ]
   );
+  const previewFormKey = useMemo(() => JSON.stringify(previewFormState), [previewFormState]);
   const calculatorGuidance = useMemo(
     () => getCalculatorGuidance(formState, resolvedCommission),
     [formState, resolvedCommission]
@@ -3922,7 +3979,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       multiLayOutcomes,
     ]
   );
-  const activePreviewCalculation = betSetupComplete ? previewCalculation : null;
+  const activePreviewCalculation =
+    betSetupComplete &&
+    !hasInvalidOddsInput &&
+    previewCalculationKey === previewFormKey
+      ? previewCalculation
+      : null;
   const multiLayPlannerSummary = useMemo(
     () =>
       getMultiLayPlannerSummary(
@@ -4080,14 +4142,16 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [editorHeaderFullTitle]
   );
   const backPlacementReady =
-    parseNumericInput(formState.back_stake) !== null && parseNumericInput(formState.back_odds) !== null;
+    parseNumericInput(formState.back_stake) !== null &&
+    parseSportsbookOddsInput(formState.back_odds) !== null;
   const backPlacementConfirmed = ["Placed", "Settled", "Free Bet Awarded"].includes(
     formState.status
   );
   const sourceBackPlacementRecorded =
     ["Placed", "Settled"].includes(formState.status) ||
     (formState.status === "Free Bet Awarded" &&
-      (parseNumericInput(formState.back_stake) !== null || parseNumericInput(formState.back_odds) !== null));
+      (parseNumericInput(formState.back_stake) !== null ||
+        parseSportsbookOddsInput(formState.back_odds) !== null));
   const layPartiallyConfirmed =
     partialLayExecutionSummary.matchedTotal > 0 &&
     !partialLayExecutionSummary.hasReachedTarget;
@@ -4106,7 +4170,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
-    (usesMultiLayStrategy || parseNumericInput(formState.lay_odds_1) !== null);
+    (usesMultiLayStrategy || parseSportsbookOddsInput(formState.lay_odds_1) !== null);
 
   const layWorkflowMode = selectedLayWorkflowMode;
   const singleLayCalculatorMode = getCalculatorModeForLayWorkflowMode(layWorkflowMode);
@@ -4115,6 +4179,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (!isDecimalCalculatorInput(value)) {
       return;
     }
+    setFormState((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateOddsFormField(field: keyof SportsbookFormState, value: string) {
     setFormState((current) => ({ ...current, [field]: value }));
   }
 
@@ -4158,7 +4226,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const effectiveBackOdds = parseNumericInput(
       activePreviewCalculation?.effective_back_odds ?? formState.back_odds
     );
-    const layOdds = parseNumericInput(formState.lay_odds_1);
+    const layOdds = parseSportsbookOddsInput(formState.lay_odds_1);
     const commission = parseNumericInput(resolvedCommission) ?? 0;
     const stakeByMode: Record<SingleLayResultMode, string | null | undefined> = {
       Underlay:
@@ -4220,16 +4288,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }, [calculatorCopyFeedback]);
 
   useEffect(() => {
-    if (!betSetupComplete) {
+    if (!betSetupComplete || hasInvalidOddsInput) {
       return;
     }
 
+    const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
       void fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/preview`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           ...previewFormState,
           lay_commission_1: "",
@@ -4242,12 +4312,25 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           }
           return (await response.json()) as SportsbookCalculationPreview;
         })
-        .then((payload) => setPreviewCalculation(payload))
-        .catch(() => setPreviewCalculation(null));
+        .then((payload) => {
+          if (!controller.signal.aborted) {
+            setPreviewCalculation(payload);
+            setPreviewCalculationKey(previewFormKey);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setPreviewCalculation(null);
+            setPreviewCalculationKey("");
+          }
+        });
     }, 250);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [betSetupComplete, previewFormState, profileId]);
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId]);
 
   const reviewRows = useMemo(() => {
     const nextRows =
@@ -4732,10 +4815,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setStatusMessage("");
   }
 
-  function canPersistForm(nextFormState: SportsbookFormState): boolean {
+  function canPersistForm(
+    nextFormState: SportsbookFormState,
+    nextMultiLayOutcomes = multiLayOutcomes,
+    nextMultiLayPrimaryPlacement = multiLayPrimaryPlacement,
+    nextPartialLayLegs = partialLayLegs
+  ): boolean {
     return (
       getBetSetupComplete(nextFormState) &&
-      getMissingPlacementFields(nextFormState, resolvedCommission, multiLayOutcomes).length === 0
+      getMissingPlacementFields(nextFormState, resolvedCommission, nextMultiLayOutcomes).length ===
+        0 &&
+      getSportsbookOddsIssues(
+        nextFormState,
+        nextMultiLayOutcomes,
+        nextMultiLayPrimaryPlacement,
+        nextPartialLayLegs
+      ).length === 0
     );
   }
 
@@ -4768,7 +4863,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       primaryPlacement: resolvedMultiLayPrimaryPlacement,
     });
 
-    if (!canPersistForm(persistableFormState)) {
+    if (
+      !canPersistForm(
+        persistableFormState,
+        resolvedMultiLayOutcomes,
+        resolvedMultiLayPrimaryPlacement,
+        resolvedPartialLayLegs
+      )
+    ) {
       setShowBetSetupValidation(true);
       if (!options?.suppressMissingRequiredMessage) {
         const missingFields = [
@@ -4780,7 +4882,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ),
         ];
         setStatusMessage(
-          `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
+          missingFields.length > 0
+            ? `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
+            : "Correct invalid odds before saving."
         );
       }
       return false;
@@ -7608,10 +7712,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             {!isProfitBoostOffer || formState.profit_boost_mode === "displayed_odds" ? (
                               <label
                                 className={`${getGuidedFieldClass("back_odds")}${
-                                  calculatorUnlocked &&
-                                  missingCalculatorFields.some((field) =>
-                                    field === "Back odds" || field === "Boosted back odds"
-                                  )
+                                  oddsIssueMap.has("back_odds") ||
+                                  (calculatorUnlocked &&
+                                    missingCalculatorFields.some((field) =>
+                                      field === "Back odds" || field === "Boosted back odds"
+                                    ))
                                     ? " is-invalid"
                                     : ""
                                 }`}
@@ -7619,22 +7724,33 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               >
                                 <span>{isProfitBoostOffer ? "Boosted back odds" : "Back odds"}</span>
                                 <input
-                                  aria-describedby={getGuidedDescribedBy("back_odds")}
+	                              aria-label={isProfitBoostOffer ? "Boosted back odds" : "Back odds"}
+                                  aria-describedby={[
+                                    getGuidedDescribedBy("back_odds"),
+                                    oddsIssueMap.has("back_odds") ? "sportsbook-back-odds-error" : "",
+                                  ].filter(Boolean).join(" ") || undefined}
                                   aria-invalid={
-                                    calculatorUnlocked &&
-                                    missingCalculatorFields.some((field) =>
-                                      field === "Back odds" || field === "Boosted back odds"
-                                    )
+                                    oddsIssueMap.has("back_odds") ||
+                                    (calculatorUnlocked &&
+                                      missingCalculatorFields.some((field) =>
+                                        field === "Back odds" || field === "Boosted back odds"
+                                      ))
                                   }
 	                                  inputMode="decimal"
-	                                  onChange={(event) => updateDecimalFormField("back_odds", event.target.value)}
+	                                  onChange={(event) => updateOddsFormField("back_odds", event.target.value)}
 	                                  value={formState.back_odds}
 	                                />
+	                                {oddsIssueMap.has("back_odds") ? (
+	                                  <span className="field-validation-text" id="sportsbook-back-odds-error" role="alert">
+	                                    {oddsIssueMap.get("back_odds")}
+	                                  </span>
+	                                ) : null}
                               </label>
                             ) : (
                               <>
                                 <label
                                   className={`field-control${
+                                    oddsIssueMap.has("base_back_odds") ||
                                     missingCalculatorFields.includes("Base back odds")
                                       ? " is-invalid"
                                       : ""
@@ -7642,10 +7758,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 >
                                   <span>Base back odds</span>
                                   <input
+	                                aria-label="Base back odds"
+	                                    aria-describedby={oddsIssueMap.has("base_back_odds") ? "sportsbook-base-back-odds-error" : undefined}
+	                                    aria-invalid={oddsIssueMap.has("base_back_odds")}
 	                                    inputMode="decimal"
-	                                    onChange={(event) => updateDecimalFormField("base_back_odds", event.target.value)}
+	                                    onChange={(event) => updateOddsFormField("base_back_odds", event.target.value)}
 	                                    value={formState.base_back_odds}
 	                                  />
+	                                  {oddsIssueMap.has("base_back_odds") ? (
+	                                    <span className="field-validation-text" id="sportsbook-base-back-odds-error" role="alert">
+	                                      {oddsIssueMap.get("base_back_odds")}
+	                                    </span>
+	                                  ) : null}
                                 </label>
                                 <label
                                   className={`field-control${
@@ -7672,23 +7796,31 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               </>
                             )}
                             {isProfitBoostOffer ? (
-                              <label className="field-control">
+                              <label className={`field-control${oddsIssueMap.has("actual_accepted_back_odds") ? " is-invalid" : ""}`}>
                                 <span>Actual accepted back odds</span>
                                 <input
+	                              aria-label="Actual accepted back odds"
+	                                  aria-describedby={oddsIssueMap.has("actual_accepted_back_odds") ? "sportsbook-accepted-back-odds-error" : undefined}
+	                                  aria-invalid={oddsIssueMap.has("actual_accepted_back_odds")}
 	                                  inputMode="decimal"
-	                                  onChange={(event) => updateDecimalFormField("actual_accepted_back_odds", event.target.value)}
+	                                  onChange={(event) => updateOddsFormField("actual_accepted_back_odds", event.target.value)}
 	                                  value={formState.actual_accepted_back_odds}
 	                                />
+	                                {oddsIssueMap.has("actual_accepted_back_odds") ? (
+	                                  <span className="field-validation-text" id="sportsbook-accepted-back-odds-error" role="alert">
+	                                    {oddsIssueMap.get("actual_accepted_back_odds")}
+	                                  </span>
+	                                ) : null}
                               </label>
                             ) : null}
-                            {isProfitBoostOffer && previewCalculation?.effective_back_odds ? (
+                            {isProfitBoostOffer && activePreviewCalculation?.effective_back_odds ? (
                               <div className="field-control" role="status">
                                 <span>Effective boosted odds</span>
-                                <strong>{previewCalculation.effective_back_odds}</strong>
+                                <strong>{activePreviewCalculation.effective_back_odds}</strong>
                                 <small>
-                                  {previewCalculation.profit_boost_source === "calculated"
+                                  {activePreviewCalculation.profit_boost_source === "calculated"
                                     ? "Reference calculation"
-                                    : previewCalculation.profit_boost_source === "accepted"
+                                    : activePreviewCalculation.profit_boost_source === "accepted"
                                       ? "Accepted by bookmaker"
                                       : "Displayed by bookmaker"}
                                 </small>
@@ -7826,7 +7958,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
                               <label
                                 className={`${getGuidedFieldClass("lay_odds_1")}${
-                                  calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")
+                                  oddsIssueMap.has("lay_odds_1") ||
+                                  (calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1"))
                                     ? " is-invalid"
                                     : ""
                                 }`}
@@ -7834,12 +7967,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               >
                                 <span>Lay odds 1</span>
                                 <input
-                                  aria-describedby={getGuidedDescribedBy("lay_odds_1")}
-                                  aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
+	                              aria-label="Lay odds 1"
+                                  aria-describedby={[
+                                    getGuidedDescribedBy("lay_odds_1"),
+                                    oddsIssueMap.has("lay_odds_1") ? "sportsbook-lay-odds-error" : "",
+                                  ].filter(Boolean).join(" ") || undefined}
+	                                  aria-invalid={oddsIssueMap.has("lay_odds_1") || (calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1"))}
 	                                  inputMode="decimal"
-	                                  onChange={(event) => updateDecimalFormField("lay_odds_1", event.target.value)}
+	                                  onChange={(event) => updateOddsFormField("lay_odds_1", event.target.value)}
 	                                  value={formState.lay_odds_1}
 	                                />
+	                                {oddsIssueMap.has("lay_odds_1") ? (
+	                                  <span className="field-validation-text" id="sportsbook-lay-odds-error" role="alert">
+	                                    {oddsIssueMap.get("lay_odds_1")}
+	                                  </span>
+	                                ) : null}
                               </label>
                             ) : null}
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
@@ -8026,15 +8168,24 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                         ))}
                                       </select>
                                     </label>
-                                    <label className="field-control">
-                                      <span>Lay odds</span>
-                                      <input
-                                        onChange={(event) =>
-                                          updatePartialLayLeg(leg.id, "layOdds", event.target.value)
-                                        }
-                                        value={leg.layOdds}
-                                      />
-                                    </label>
+                                      <label className="field-control">
+                                        <span>Lay odds</span>
+                                        <input
+	                                      aria-label={`${leg.isFinal ? `Final leg ${index + 1}` : `Partial leg ${index + 1}`} lay odds`}
+	                                        aria-describedby={oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? `sportsbook-partial-lay-odds-error-${index}` : undefined}
+	                                        aria-invalid={oddsIssueMap.has(`partial_lay_${leg.id}_odds`)}
+	                                        inputMode="decimal"
+                                          onChange={(event) =>
+                                            updatePartialLayLeg(leg.id, "layOdds", event.target.value)
+                                          }
+                                          value={leg.layOdds}
+                                        />
+	                                      {oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? (
+	                                        <span className="field-validation-text" id={`sportsbook-partial-lay-odds-error-${index}`} role="alert">
+	                                          {oddsIssueMap.get(`partial_lay_${leg.id}_odds`)}
+	                                        </span>
+	                                      ) : null}
+                                      </label>
                                     <label className="field-control">
                                       <span>{leg.isFinal ? "Final matched stake" : "Matched stake"}</span>
                                       <div className="inline-field-action">
@@ -8401,12 +8552,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                       <label className="field-control">
                                         <span className="sr-only">Outcome 1 lay odds</span>
                                         <input
+	                                      aria-label="Outcome 1 lay odds"
                                           placeholder="Odds for outcome 1"
+	                                      aria-describedby={oddsIssueMap.has("lay_odds_1") ? "sportsbook-multi-lay-primary-odds-error" : undefined}
                                           aria-invalid={
-                                            calculatorUnlocked &&
-                                            missingCalculatorFields.includes("Outcome 2 lay odds") &&
-                                            !multiLayOutcomes.some((outcome) => parseNumericInput(outcome.layOdds) !== null)
+	                                            oddsIssueMap.has("lay_odds_1") ||
+	                                            (calculatorUnlocked && parseSportsbookOddsInput(formState.lay_odds_1) === null)
                                           }
+	                                      inputMode="decimal"
                                           onChange={(event) =>
                                             setFormState((current) => ({
                                               ...current,
@@ -8415,6 +8568,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                           }
                                           value={formState.lay_odds_1}
                                         />
+	                                    {oddsIssueMap.has("lay_odds_1") ? (
+	                                      <span className="field-validation-text" id="sportsbook-multi-lay-primary-odds-error" role="alert">
+	                                        {oddsIssueMap.get("lay_odds_1")}
+	                                      </span>
+	                                    ) : null}
                                       </label>
                                     </td>
                                     <td>
@@ -8560,13 +8718,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                           <label className="field-control">
                                             <span className="sr-only">{`Outcome ${index + 2} lay odds`}</span>
                                             <input
+	                                          aria-label={`Outcome ${index + 2} lay odds`}
                                               placeholder={`Odds for outcome ${index + 2}`}
+	                                          aria-describedby={oddsIssueMap.has(`multi_lay_${outcome.id}_odds`) ? `sportsbook-multi-lay-odds-error-${index}` : undefined}
                                               aria-invalid={
-                                                calculatorUnlocked &&
-                                                missingCalculatorFields.includes("Outcome 2 lay odds") &&
-                                                index === 0 &&
-                                                parseNumericInput(outcome.layOdds) === null
+	                                                oddsIssueMap.has(`multi_lay_${outcome.id}_odds`) ||
+	                                                (calculatorUnlocked &&
+	                                                  missingCalculatorFields.includes("Outcome 2 lay odds") &&
+	                                                  index === 0 &&
+	                                                  parseSportsbookOddsInput(outcome.layOdds) === null)
                                               }
+	                                          inputMode="decimal"
                                               onChange={(event) =>
                                                 setMultiLayOutcomes((current) =>
                                                   current.map((entry) =>
@@ -8576,8 +8738,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                                   )
                                                 )
                                               }
-                                            value={outcome.layOdds}
-                                          />
+	                                        value={outcome.layOdds}
+	                                      />
+	                                      {oddsIssueMap.has(`multi_lay_${outcome.id}_odds`) ? (
+	                                        <span className="field-validation-text" id={`sportsbook-multi-lay-odds-error-${index}`} role="alert">
+	                                          {oddsIssueMap.get(`multi_lay_${outcome.id}_odds`)}
+	                                        </span>
+	                                      ) : null}
                                         </label>
                                       </td>
                                         <td>
@@ -8777,7 +8944,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           </tr>
                         </thead>
                         <tbody>
-                          {multiLayPlacementRows.map((row) => (
+	                          {multiLayPlacementRows.map((row, placementIndex) => (
                             <tr key={`placement-${row.key}`}>
                               <td>{row.label}</td>
                               <td>
@@ -8802,11 +8969,20 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <label className="field-control">
                                   <span className="sr-only">{`${row.label} placed lay odds`}</span>
                                   <input
+	                                aria-label={`${row.label} placed lay odds`}
+	                                aria-describedby={oddsIssueMap.has(row.key === "outcome1" ? "multi_lay_primary_placed_odds" : `multi_lay_${row.key}_placed_odds`) ? `sportsbook-multi-lay-placed-odds-error-${placementIndex}` : undefined}
+	                                aria-invalid={oddsIssueMap.has(row.key === "outcome1" ? "multi_lay_primary_placed_odds" : `multi_lay_${row.key}_placed_odds`)}
+	                                inputMode="decimal"
                                     onChange={(event) =>
                                       updateMultiLayPlacementField(row.key, "placedLayOdds", event.target.value)
                                     }
                                     value={row.placedLayOdds}
                                   />
+	                                {oddsIssueMap.has(row.key === "outcome1" ? "multi_lay_primary_placed_odds" : `multi_lay_${row.key}_placed_odds`) ? (
+	                                  <span className="field-validation-text" id={`sportsbook-multi-lay-placed-odds-error-${placementIndex}`} role="alert">
+	                                    {oddsIssueMap.get(row.key === "outcome1" ? "multi_lay_primary_placed_odds" : `multi_lay_${row.key}_placed_odds`)}
+	                                  </span>
+	                                ) : null}
                                 </label>
                               </td>
                               <td>
@@ -9843,7 +10019,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                  <>
 	                    <button
 	                      className="review-chip review-chip-copy"
-	                      disabled={isInitialLoading || isPersisting || !isDirty}
+	                      disabled={isInitialLoading || isPersisting || !isDirty || hasInvalidOddsInput}
 	                      type="submit"
 	                    >
 	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
