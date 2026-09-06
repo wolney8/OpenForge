@@ -2,7 +2,11 @@ export const SPORTSBOOK_ODDS_FORMAT_MESSAGE =
   "Enter decimal odds using a full stop, for example 8.5.";
 export const SPORTSBOOK_ODDS_MINIMUM_MESSAGE = "Enter odds of 1.01 or higher.";
 
-const sportsbookOddsPattern = /^[0-9]+(?:\.[0-9]+)?$/;
+const completeDecimalInputPattern = /^[0-9]+(?:\.[0-9]+)?$/;
+
+export function hasCompleteDecimalInputSyntax(value: string): boolean {
+  return completeDecimalInputPattern.test(value);
+}
 
 export function getSportsbookOddsInputError(
   value: string,
@@ -11,7 +15,7 @@ export function getSportsbookOddsInputError(
   if (value === "") {
     return options.required ? "Enter odds." : null;
   }
-  if (!sportsbookOddsPattern.test(value)) {
+  if (!hasCompleteDecimalInputSyntax(value)) {
     return SPORTSBOOK_ODDS_FORMAT_MESSAGE;
   }
   const parsed = Number(value);

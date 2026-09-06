@@ -1,6 +1,6 @@
 # Calculation Contract: Sportsbook Profit Boost
 
-_Last updated: 2026-07-20_
+_Last updated: 2026-09-06_
 
 ## 0. Contract status
 
@@ -69,6 +69,27 @@ effective_back_odds = actual_accepted_back_odds ?? boosted_back_odds ?? referenc
 cash-first current-value and settlement formulas. Original odds, boost percentage, calculated odds
 and accepted odds remain separate and auditable.
 
+### Payout-to-odds entry helper
+
+`sportsbook-payout-odds-helper-v1` is an entry-only helper for cash-stake total returns:
+
+```text
+raw_odds = total_potential_return / cash_back_stake
+effective_odds = floor(raw_odds * 100) / 100
+```
+
+- Inputs are complete unsigned decimal strings; stake and return must be positive, and total return
+  must include returned stake and be at least the stake.
+- The ratio and floor use exact decimal/rational arithmetic. A truncated raw display is approximate
+  only and never feeds the floor.
+- The two-decimal floor belongs only to this helper. It does not change percentage, entered, accepted,
+  settlement, liability, or P&L precision rules.
+- Applying writes the result into the existing explicit final-odds entry path and switches the
+  compatibility mode `displayed_odds` to that path, so percentage/cap logic is not applied again.
+- Actual accepted odds retain precedence and block application. A computed `1.00` is shown but is
+  not raised to `1.01` or applied.
+- Total-return input and derivation history are temporary editor state and are not persisted.
+
 ## 6. Cash-first and settlement behaviour
 
 - An unplaced percentage-only row exposes calculated odds as a reference value, not an accepted price.
@@ -82,7 +103,8 @@ and accepted odds remain separate and auditable.
 ## 7. Rounding and precision
 
 - Parse inputs as decimal values; do not use binary floating-point arithmetic.
-- Store/reference effective odds to four decimal places using half-up rounding.
+- Store/reference ordinary effective odds to four decimal places using half-up rounding; the payout
+  helper's applied result is instead the explicit two-decimal floor defined above.
 - Round stake, liability and P&L to two decimal places using half-up rounding.
 - Display ordinary odds to at least two decimals while preserving meaningful extra precision.
 - Never silently infer commission or a boost cap.
@@ -108,4 +130,3 @@ and accepted odds remain separate and auditable.
 - Identify calculated odds as `Reference`; never present them as bookmaker-confirmed.
 - Keep current/projected value separate from final/settled value.
 - Use Plum Duff Material 3 field, status and financial-value primitives with WCAG 2.2 AA contrast.
-

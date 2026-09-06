@@ -1,6 +1,6 @@
 # Fixture Spec: Sportsbook Profit Boost
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-09-06_
 
 ## Purpose
 
@@ -56,6 +56,12 @@ Workflow authority remains:
 - missing boosted odds in displayed mode
 - invalid numeric entry
 - zero/empty cap
+
+### 7. Payout-to-odds helper
+
+Use `tests/fixtures/sportsbook-payout-odds-helper-fixtures.json` for exact quotient/floor cases,
+including fractional-penny returns, a repeating raw quotient, malformed complete strings, return
+below stake, `1.00` non-application, accepted-odds precedence, and read-only preview behaviour.
 
 ## Required fixture fields
 

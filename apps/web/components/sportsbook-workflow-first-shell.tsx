@@ -53,6 +53,10 @@ import {
   getSportsbookOddsInputError,
   parseSportsbookOddsInput,
 } from "@/lib/sportsbook-odds-input";
+import {
+  getPayoutReturnInputError,
+  getPayoutStakeInputError,
+} from "@/lib/sportsbook-payout-odds-helper";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -502,6 +506,19 @@ type SportsbookCalculationPreview = {
   reference_boosted_odds: string | null;
   effective_back_odds: string | null;
   profit_boost_source: string | null;
+};
+
+type PayoutOddsPreview = {
+  raw_implied_odds: string;
+  raw_is_approximate: boolean;
+  effective_odds: string;
+  application_allowed: boolean;
+  application_block_reason: string;
+};
+
+type AppliedPayoutOdds = {
+  inputKey: string;
+  odds: string;
 };
 
 type OutcomeModalState = {
@@ -2766,6 +2783,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [errorMessage, setErrorMessage] = useState("");
   const [previewCalculation, setPreviewCalculation] = useState<SportsbookCalculationPreview | null>(null);
   const [previewCalculationKey, setPreviewCalculationKey] = useState("");
+  const [payoutTotalReturn, setPayoutTotalReturn] = useState("");
+  const [payoutReturnTouched, setPayoutReturnTouched] = useState(false);
+  const [payoutStakeStrictValidation, setPayoutStakeStrictValidation] = useState(false);
+  const [payoutPreview, setPayoutPreview] = useState<PayoutOddsPreview | null>(null);
+  const [payoutPreviewKey, setPayoutPreviewKey] = useState("");
+  const [payoutPreviewError, setPayoutPreviewError] = useState("");
+  const [isPayoutPreviewLoading, setIsPayoutPreviewLoading] = useState(false);
+  const [appliedPayoutOdds, setAppliedPayoutOdds] = useState<AppliedPayoutOdds | null>(null);
   const [multiLayOutcomes, setMultiLayOutcomes] = useState<MultiLayOutcomeInput[]>(
     createDefaultMultiLayOutcomes
   );
@@ -3435,6 +3460,36 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
   const isProfitBoostOffer = formState.offer_type === "Profit Boost";
   const isFreeBetAwardableRow = isFreeBetAwardingOffer(formState.offer_type);
+  const payoutStakeError =
+    isProfitBoostOffer &&
+    (payoutReturnTouched || formState.back_stake !== "" || payoutStakeStrictValidation)
+      ? getPayoutStakeInputError(formState.back_stake)
+      : null;
+  const payoutReturnError =
+    isProfitBoostOffer && payoutReturnTouched
+      ? getPayoutReturnInputError(payoutTotalReturn, formState.back_stake)
+      : null;
+  const payoutAcceptedOddsError = getSportsbookOddsInputError(
+    formState.actual_accepted_back_odds
+  );
+  const payoutInputKey = JSON.stringify([
+    formState.back_stake,
+    payoutTotalReturn,
+    formState.actual_accepted_back_odds,
+  ]);
+  const activePayoutPreview =
+    isProfitBoostOffer &&
+    payoutStakeError === null &&
+    payoutReturnError === null &&
+    payoutAcceptedOddsError === null &&
+    payoutPreviewKey === payoutInputKey
+      ? payoutPreview
+      : null;
+  const payoutAssociationActive = Boolean(
+    appliedPayoutOdds &&
+      appliedPayoutOdds.inputKey === payoutInputKey &&
+      appliedPayoutOdds.odds === formState.back_odds
+  );
   const oddsIssues = useMemo(
     () =>
       getSportsbookOddsIssues(
@@ -4175,6 +4230,33 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const layWorkflowMode = selectedLayWorkflowMode;
   const singleLayCalculatorMode = getCalculatorModeForLayWorkflowMode(layWorkflowMode);
 
+  function resetPayoutOddsHelper() {
+    setPayoutTotalReturn("");
+    setPayoutReturnTouched(false);
+    setPayoutStakeStrictValidation(false);
+    setPayoutPreview(null);
+    setPayoutPreviewKey("");
+    setPayoutPreviewError("");
+    setIsPayoutPreviewLoading(false);
+    setAppliedPayoutOdds(null);
+  }
+
+  function setPayoutPreviewPendingIfValid(
+    cashBackStake: string,
+    totalPotentialReturn: string,
+    acceptedBackOdds: string,
+    returnTouched: boolean
+  ) {
+    const isValid =
+      isProfitBoostOffer &&
+      returnTouched &&
+      getPayoutStakeInputError(cashBackStake) === null &&
+      getPayoutReturnInputError(totalPotentialReturn, cashBackStake) === null &&
+      getSportsbookOddsInputError(acceptedBackOdds) === null;
+    setIsPayoutPreviewLoading(isValid);
+    setPayoutPreviewError("");
+  }
+
   function updateDecimalFormField(field: keyof SportsbookFormState, value: string) {
     if (!isDecimalCalculatorInput(value)) {
       return;
@@ -4183,7 +4265,66 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   function updateOddsFormField(field: keyof SportsbookFormState, value: string) {
+    if (field === "back_odds") {
+      setAppliedPayoutOdds(null);
+    }
+    if (field === "actual_accepted_back_odds") {
+      setPayoutPreviewKey("");
+      setAppliedPayoutOdds(null);
+      setPayoutPreviewPendingIfValid(
+        formState.back_stake,
+        payoutTotalReturn,
+        value,
+        payoutReturnTouched
+      );
+    }
     setFormState((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateBackStakeField(value: string) {
+    if (!isProfitBoostOffer && !isDecimalCalculatorInput(value)) {
+      return;
+    }
+    if (isProfitBoostOffer) {
+      setPayoutStakeStrictValidation(true);
+      setPayoutPreviewPendingIfValid(
+        value,
+        payoutTotalReturn,
+        formState.actual_accepted_back_odds,
+        payoutReturnTouched
+      );
+    }
+    setPayoutPreviewKey("");
+    setAppliedPayoutOdds(null);
+    setFormState((current) => ({ ...current, back_stake: value }));
+  }
+
+  function updatePayoutTotalReturn(value: string) {
+    setPayoutReturnTouched(true);
+    setPayoutTotalReturn(value);
+    setPayoutPreviewKey("");
+    setAppliedPayoutOdds(null);
+    setPayoutPreviewPendingIfValid(
+      formState.back_stake,
+      value,
+      formState.actual_accepted_back_odds,
+      true
+    );
+  }
+
+  function applyPayoutOdds() {
+    if (!activePayoutPreview?.application_allowed || formState.actual_accepted_back_odds) {
+      return;
+    }
+    setFormState((current) => ({
+      ...current,
+      profit_boost_mode: "displayed_odds",
+      back_odds: activePayoutPreview.effective_odds,
+    }));
+    setAppliedPayoutOdds({
+      inputKey: payoutInputKey,
+      odds: activePayoutPreview.effective_odds,
+    });
   }
 
   function applyLayWorkflowMode(mode: LayWorkflowMode) {
@@ -4286,6 +4427,75 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     return () => window.clearTimeout(timeoutId);
   }, [calculatorCopyFeedback]);
+
+  useEffect(() => {
+    if (
+      !isProfitBoostOffer ||
+      !payoutReturnTouched ||
+      payoutStakeError !== null ||
+      payoutReturnError !== null ||
+      payoutAcceptedOddsError !== null
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      void fetch(
+        `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/payout-odds-preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            back_stake: formState.back_stake,
+            total_potential_return: payoutTotalReturn,
+            actual_accepted_back_odds: formState.actual_accepted_back_odds,
+          }),
+        }
+      )
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          return (await response.json()) as PayoutOddsPreview;
+        })
+        .then((payload) => {
+          if (!controller.signal.aborted) {
+            setPayoutPreview(payload);
+            setPayoutPreviewKey(payoutInputKey);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setPayoutPreview(null);
+            setPayoutPreviewKey("");
+            setPayoutPreviewError("Unable to calculate odds from this payout.");
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsPayoutPreviewLoading(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [
+    formState.actual_accepted_back_odds,
+    formState.back_stake,
+    isProfitBoostOffer,
+    payoutReturnTouched,
+    payoutInputKey,
+    payoutAcceptedOddsError,
+    payoutReturnError,
+    payoutStakeError,
+    payoutTotalReturn,
+    profileId,
+  ]);
 
   useEffect(() => {
     if (!betSetupComplete || hasInvalidOddsInput) {
@@ -4727,6 +4937,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (!record) {
       return;
     }
+    resetPayoutOddsHelper();
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
     setPreviewCalculation(null);
@@ -4774,6 +4985,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
+    resetPayoutOddsHelper();
     setSelectedId(null);
     selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
@@ -4804,6 +5016,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
+    resetPayoutOddsHelper();
     setWorkflowVisible(false);
     setSelectedId(null);
     selectedIdRef.current = null;
@@ -4823,6 +5036,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   ): boolean {
     return (
       getBetSetupComplete(nextFormState) &&
+      (nextFormState.offer_type !== "Profit Boost" ||
+        !payoutStakeStrictValidation ||
+        getPayoutStakeInputError(nextFormState.back_stake) === null) &&
       getMissingPlacementFields(nextFormState, resolvedCommission, nextMultiLayOutcomes).length ===
         0 &&
       getSportsbookOddsIssues(
@@ -4884,7 +5100,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setStatusMessage(
           missingFields.length > 0
             ? `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
-            : "Correct invalid odds before saving."
+            : persistableFormState.offer_type === "Profit Boost" &&
+                payoutStakeStrictValidation &&
+                getPayoutStakeInputError(persistableFormState.back_stake)
+              ? "Correct the invalid cash back stake before saving."
+              : "Correct invalid odds before saving."
         );
       }
       return false;
@@ -5023,6 +5243,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     nextFormState: SportsbookFormState,
     options?: { markPristine?: boolean }
   ) {
+    resetPayoutOddsHelper();
     const parsedMultiLay = parseMultiLayOutcomes(nextFormState.multi_lay_outcomes_json, {
       outcome1Label: nextFormState.multi_lay_outcome_1_name,
       layOdds1: nextFormState.lay_odds_1,
@@ -7458,17 +7679,18 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   <select
                     aria-describedby={getGuidedDescribedBy("offer_type")}
                     aria-invalid={betSetupValidationActive && !formState.offer_type.trim()}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      resetPayoutOddsHelper();
                       void applyDropdownChange(
                         (current) =>
                           applyOfferTypeDefaults(
                             current,
                             event.target.value,
                             defaultBonusRetentionRate
-                          ),
+                        ),
                         "Offer type change"
-                      )
-                    }
+                      );
+                    }}
                     value={formState.offer_type}
                   >
                     <option value="">Select offer type</option>
@@ -7677,24 +7899,26 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           <div className="calculator-segment-grid calculator-segment-grid-back">
                             {isProfitBoostOffer ? (
                               <label className="field-control">
-                                <span>Bookmaker display</span>
+                                <span>Profit Boost entry</span>
                                 <select
-                                  onChange={(event) =>
+                                  onChange={(event) => {
+                                    setAppliedPayoutOdds(null);
                                     setFormState((current) => ({
                                       ...current,
                                       profit_boost_mode: event.target.value,
-                                    }))
-                                  }
+                                    }));
+                                  }}
                                   value={formState.profit_boost_mode}
                                 >
-                                  <option value="displayed_odds">Boosted odds shown</option>
-                                  <option value="percentage">Percentage shown</option>
+                                  <option value="displayed_odds">Enter final boosted odds</option>
+                                  <option value="percentage">Bookmaker provides percentage</option>
                                 </select>
                               </label>
                             ) : null}
                             <label
                               className={`${getGuidedFieldClass("back_stake")}${
-                                calculatorUnlocked && missingCalculatorFields.includes("Back stake")
+                                payoutStakeError ||
+                                (calculatorUnlocked && missingCalculatorFields.includes("Back stake"))
                                   ? " is-invalid"
                                   : ""
                               }`}
@@ -7702,12 +7926,28 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             >
                               <span>Back stake</span>
                               <input
-                                aria-describedby={getGuidedDescribedBy("back_stake")}
-	                                aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back stake")}
+                                aria-describedby={[
+                                  getGuidedDescribedBy("back_stake"),
+                                  payoutStakeError ? "sportsbook-payout-stake-error" : "",
+                                ].filter(Boolean).join(" ") || undefined}
+	                                aria-invalid={Boolean(
+                                  payoutStakeError ||
+                                    (calculatorUnlocked &&
+                                      missingCalculatorFields.includes("Back stake"))
+                                )}
 	                                inputMode="decimal"
-	                                onChange={(event) => updateDecimalFormField("back_stake", event.target.value)}
+	                                onChange={(event) => updateBackStakeField(event.target.value)}
 	                                value={formState.back_stake}
 	                              />
+                              {payoutStakeError ? (
+                                <span
+                                  className="field-validation-text"
+                                  id="sportsbook-payout-stake-error"
+                                  role="alert"
+                                >
+                                  {payoutStakeError}
+                                </span>
+                              ) : null}
                             </label>
                             {!isProfitBoostOffer || formState.profit_boost_mode === "displayed_odds" ? (
                               <label
@@ -7722,9 +7962,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 }`}
                                 {...getGuidedFieldData("back_odds")}
                               >
-                                <span>{isProfitBoostOffer ? "Boosted back odds" : "Back odds"}</span>
+                                <span>{isProfitBoostOffer ? "Entered boosted odds" : "Back odds"}</span>
                                 <input
-	                              aria-label={isProfitBoostOffer ? "Boosted back odds" : "Back odds"}
+	                              aria-label={isProfitBoostOffer ? "Entered boosted odds" : "Back odds"}
                                   aria-describedby={[
                                     getGuidedDescribedBy("back_odds"),
                                     oddsIssueMap.has("back_odds") ? "sportsbook-back-odds-error" : "",
@@ -7813,6 +8053,93 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                ) : null}
                               </label>
                             ) : null}
+                            {isProfitBoostOffer ? (
+                              <section
+                                aria-labelledby="sportsbook-payout-odds-title"
+                                className="content-subpanel stack field-span-2"
+                                data-pd-id="sportsbook.profit-boost.payout-odds-helper"
+                              >
+                                <div>
+                                  <span className="eyebrow">Payout helper</span>
+                                  <strong id="sportsbook-payout-odds-title">
+                                    Calculate odds from total return
+                                  </strong>
+                                  <p className="field-support-text">
+                                    Uses the cash back stake above. Enter the total potential return,
+                                    including returned stake. Profit-only winnings and stake-not-returned
+                                    free-bet payouts are not valid here.
+                                  </p>
+                                </div>
+                                <label className={`field-control${payoutReturnError ? " is-invalid" : ""}`}>
+                                  <span>Total potential return</span>
+                                  <input
+                                    aria-describedby={[
+                                      "sportsbook-payout-return-help",
+                                      payoutReturnError ? "sportsbook-payout-return-error" : "",
+                                    ].filter(Boolean).join(" ")}
+                                    aria-invalid={Boolean(payoutReturnError)}
+                                    inputMode="decimal"
+                                    onChange={(event) => updatePayoutTotalReturn(event.target.value)}
+                                    value={payoutTotalReturn}
+                                  />
+                                  <small id="sportsbook-payout-return-help">
+                                    Temporary helper input; it is not saved with the row.
+                                  </small>
+                                  {payoutReturnError ? (
+                                    <span
+                                      className="field-validation-text"
+                                      id="sportsbook-payout-return-error"
+                                      role="alert"
+                                    >
+                                      {payoutReturnError}
+                                    </span>
+                                  ) : null}
+                                </label>
+                                {isPayoutPreviewLoading ? (
+                                  <p aria-busy="true" aria-live="polite" role="status">
+                                    Calculating odds from payout…
+                                  </p>
+                                ) : null}
+                                {payoutPreviewError ? (
+                                  <p className="field-validation-text" role="alert">
+                                    {payoutPreviewError}
+                                  </p>
+                                ) : null}
+                                {activePayoutPreview ? (
+                                  <div aria-live="polite" className="stack-tight" role="status">
+                                    <span>
+                                      Raw implied odds{activePayoutPreview.raw_is_approximate ? " (approx.)" : ""}
+                                    </span>
+                                    <strong>{activePayoutPreview.raw_implied_odds}</strong>
+                                    <span>Conservative effective odds</span>
+                                    <strong>{activePayoutPreview.effective_odds}</strong>
+                                    {activePayoutPreview.application_block_reason ? (
+                                      <span>{activePayoutPreview.application_block_reason}</span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                {payoutAssociationActive ? (
+                                  <p role="status">
+                                    Calculated from payout and applied to Entered boosted odds.
+                                  </p>
+                                ) : null}
+                                <div className="tracker-nav">
+                                  <button
+                                    className="button-link"
+                                    data-pd-id="sportsbook.profit-boost.use-payout-odds"
+                                    disabled={
+                                      isPayoutPreviewLoading ||
+                                      !activePayoutPreview?.application_allowed ||
+                                      Boolean(formState.actual_accepted_back_odds)
+                                    }
+                                    onClick={applyPayoutOdds}
+                                    type="button"
+                                  >
+                                    Use calculated odds
+                                  </button>
+                                </div>
+                              </section>
+                            ) : null}
                             {isProfitBoostOffer && activePreviewCalculation?.effective_back_odds ? (
                               <div className="field-control" role="status">
                                 <span>Effective boosted odds</span>
@@ -7822,7 +8149,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                     ? "Reference calculation"
                                     : activePreviewCalculation.profit_boost_source === "accepted"
                                       ? "Accepted by bookmaker"
-                                      : "Displayed by bookmaker"}
+                                      : payoutAssociationActive
+                                        ? "Calculated from payout"
+                                        : "Entered boosted odds"}
                                 </small>
                               </div>
                             ) : null}

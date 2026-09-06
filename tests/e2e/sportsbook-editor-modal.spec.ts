@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 const apiBaseUrl = "http://127.0.0.1:8010";
 
@@ -14,6 +14,38 @@ async function deleteSportsbookFixture(
   } catch {
     // Cleanup is best-effort; the UI regression assertion must not be masked by a slow DELETE.
   }
+}
+
+async function mockFundManagerShell(page: Page, profileId: string) {
+  await page.route("**/auth/session**", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        email: "founder@example.invalid",
+        expires_at: 2_100_000_000,
+        linked_profile_ids: [profileId],
+        name: "Synthetic Founder",
+        role: "fund_manager",
+      },
+    })
+  );
+  await page.route("**/auth/activity**", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference**", (route) =>
+    route.fulfill({ json: { configured: false } })
+  );
+  await page.route("**/fund-manager/import-executions**", (route) =>
+    route.fulfill({ json: [] })
+  );
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      json: pathname.endsWith("/state")
+        ? { dismissed_ids: [], read_keys: [] }
+        : pathname.endsWith("/preferences")
+          ? { preferences: {} }
+          : [],
+    });
+  });
 }
 
 test("Sportsbook row click opens the editor as a modal dialog", async ({ page }) => {
@@ -481,35 +513,7 @@ test("Sportsbook odds preserve malformed text and suppress stale preview and sav
       previewBackOdds.push((pendingRequest.postDataJSON() as { back_odds: string }).back_odds);
     }
   });
-  await page.route("**/auth/session**", (route) =>
-    route.fulfill({
-      json: {
-        authenticated: true,
-        email: "founder@example.invalid",
-        expires_at: 2_100_000_000,
-        linked_profile_ids: [profileId],
-        name: "Synthetic Founder",
-        role: "fund_manager",
-      },
-    })
-  );
-  await page.route("**/auth/activity**", (route) => route.fulfill({ status: 204 }));
-  await page.route("**/auth/security-preference**", (route) =>
-    route.fulfill({ json: { configured: false } })
-  );
-  await page.route("**/fund-manager/import-executions**", (route) =>
-    route.fulfill({ json: [] })
-  );
-  await page.route("**/fund-manager/notifications**", (route) => {
-    const pathname = new URL(route.request().url()).pathname;
-    return route.fulfill({
-      json: pathname.endsWith("/state")
-        ? { dismissed_ids: [], read_keys: [] }
-        : pathname.endsWith("/preferences")
-          ? { preferences: {} }
-          : [],
-    });
-  });
+  await mockFundManagerShell(page, profileId);
   const createResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
     data: {
       event_name: eventName,
@@ -597,6 +601,158 @@ test("Sportsbook odds preserve malformed text and suppress stale preview and sav
     const updateResponse = await updateResponsePromise;
     expect(updateResponse.ok()).toBeTruthy();
     expect((await updateResponse.json()).back_odds).toBe("8.5");
+  } finally {
+    await deleteSportsbookFixture(request, profileId, createdRow.sportsbook_bet_id);
+  }
+});
+
+test("Profit Boost payout helper floors, applies, persists, and preserves precedence", async ({
+  page,
+  request,
+}) => {
+  const profileId = "profile-demo-001";
+  const eventName = `Payout odds ${Date.now()}`;
+  const payoutRequests: string[] = [];
+  const sportsbookPreviews: Array<{ back_odds: string; profit_boost_mode: string }> = [];
+  await page.setViewportSize({ width: 760, height: 900 });
+  await mockFundManagerShell(page, profileId);
+  page.on("request", (pendingRequest) => {
+    if (pendingRequest.method() !== "POST") {
+      return;
+    }
+    if (pendingRequest.url().endsWith("/sportsbook-bets/payout-odds-preview")) {
+      payoutRequests.push(
+        (pendingRequest.postDataJSON() as { total_potential_return: string })
+          .total_potential_return
+      );
+    } else if (pendingRequest.url().endsWith("/sportsbook-bets/preview")) {
+      const payload = pendingRequest.postDataJSON() as {
+        back_odds: string;
+        profit_boost_mode: string;
+      };
+      sportsbookPreviews.push({
+        back_odds: payload.back_odds,
+        profit_boost_mode: payload.profit_boost_mode,
+      });
+    }
+  });
+
+  const createResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, {
+    data: {
+      event_name: eventName,
+      bookmaker: "Bookmaker A",
+      offer_type: "Profit Boost",
+      bet_type: "Single",
+      fixture_type: "Football",
+      status: "Prospecting",
+      result: "Pending",
+      back_stake: "10",
+      back_odds: "2.50",
+      profit_boost_mode: "displayed_odds",
+      match_strategy: "Standard",
+      lay_odds_1: "2.90",
+      exchange_name: "Matchbook",
+      date_settled: "2026-09-06T15:00",
+    },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const createdRow = await createResponse.json();
+
+  try {
+    await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
+    await expect(page.getByText("Loading sportsbook ledger")).toBeHidden({ timeout: 90_000 });
+    const row = page.locator(".data-table tbody tr").filter({ hasText: eventName });
+    await expect(row).toHaveCount(1);
+    await row.click();
+    const editor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await expect(editor).toBeVisible();
+    await editor.getByRole("tab", { name: /Matching/ }).click();
+
+    const helper = editor.locator(
+      '[data-pd-id="sportsbook.profit-boost.payout-odds-helper"]'
+    );
+    const totalReturn = helper.getByLabel("Total potential return");
+    const useCalculatedOdds = helper.getByRole("button", { name: "Use calculated odds" });
+    const enteredOdds = editor.getByLabel("Entered boosted odds");
+    await expect(helper).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+    ).toBe(true);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+    await totalReturn.fill("£27.86");
+    await expect(totalReturn).toHaveValue("£27.86");
+    await expect(totalReturn).toHaveAttribute("aria-invalid", "true");
+    const amountError = helper.getByText(
+      "Enter a decimal amount using a full stop, for example 10.50."
+    );
+    await expect(amountError).toBeVisible();
+    await expect(amountError).toHaveAttribute("role", "alert");
+    await expect(totalReturn).toHaveAttribute("aria-describedby", /sportsbook-payout-return-error/);
+    await expect(useCalculatedOdds).toBeDisabled();
+    expect(payoutRequests).not.toContain("£27.86");
+
+    await totalReturn.focus();
+    await totalReturn.press("ControlOrMeta+A");
+    await totalReturn.pressSequentially("27.86");
+    await expect(helper.getByText("2.786", { exact: true })).toBeVisible();
+    await expect(helper.getByText("2.78", { exact: true })).toBeVisible();
+    await expect(useCalculatedOdds).toBeEnabled();
+
+    await useCalculatedOdds.click();
+    await expect(enteredOdds).toHaveValue("2.78");
+    await expect(editor.getByLabel("Profit Boost entry")).toHaveValue("displayed_odds");
+    await expect(helper.getByText(/Calculated from payout and applied/)).toBeVisible();
+    await expect
+      .poll(() => sportsbookPreviews.filter((value) => value.back_odds === "2.78").length)
+      .toBe(1);
+    expect(sportsbookPreviews.find((value) => value.back_odds === "2.78")).toEqual({
+      back_odds: "2.78",
+      profit_boost_mode: "displayed_odds",
+    });
+    await totalReturn.fill("29.00");
+    await expect(helper.getByText(/Calculated from payout and applied/)).toHaveCount(0);
+    await expect(enteredOdds).toHaveValue("2.78");
+    await expect(helper.getByText("2.90", { exact: true })).toBeVisible();
+    await expect(useCalculatedOdds).toBeEnabled();
+    await totalReturn.fill("27.86");
+    await expect(helper.getByText("2.78", { exact: true })).toBeVisible();
+    await useCalculatedOdds.click();
+    await page
+      .getByRole("button", { name: "Switch to light mode" })
+      .evaluate((button: HTMLButtonElement) => button.click());
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(helper).toBeVisible();
+
+    const acceptedOdds = editor.getByLabel("Actual accepted back odds");
+    await acceptedOdds.fill("2.75");
+    await expect(helper.getByText(/Actual accepted odds already take precedence/)).toBeVisible();
+    await expect(useCalculatedOdds).toBeDisabled();
+    await acceptedOdds.fill("");
+    await expect(helper.getByText("2.78", { exact: true })).toBeVisible();
+    await useCalculatedOdds.click();
+
+    const updateResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(
+          `/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
+        ) && response.request().method() === "PUT"
+    );
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    const updateResponse = await updateResponsePromise;
+    expect(updateResponse.ok()).toBeTruthy();
+    const saved = await updateResponse.json();
+    expect(saved.back_odds).toBe("2.78");
+    expect(saved.profit_boost_mode).toBe("displayed_odds");
+    expect(saved.actual_accepted_back_odds).toBe("");
+
+    const savedRow = page.locator(".data-table tbody tr").filter({ hasText: eventName });
+    await savedRow.click();
+    const reopened = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await reopened.getByRole("tab", { name: /Matching/ }).click();
+    await expect(reopened.getByLabel("Entered boosted odds")).toHaveValue("2.78");
+    await expect(reopened.getByLabel("Total potential return")).toHaveValue("");
+    expect(payoutRequests.filter((value) => value === "27.86")).toHaveLength(4);
   } finally {
     await deleteSportsbookFixture(request, profileId, createdRow.sportsbook_bet_id);
   }

@@ -8,6 +8,10 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
+from openforge_api.calculations.payout_odds import (
+    PAYOUT_ODDS_MINIMUM,
+    calculate_payout_odds,
+)
 from openforge_api.calculations.profit_boost import (
     ProfitBoostInput,
     ProfitBoostResult,
@@ -42,6 +46,7 @@ from openforge_api.multi_profile_entry import (
     strategy_requires_exchange,
 )
 from openforge_api.sportsbook_odds_input import (
+    validate_complete_decimal_string,
     validate_nested_sportsbook_odds,
     validate_sportsbook_odds,
 )
@@ -234,6 +239,80 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     reference_boosted_odds: str | None
     effective_back_odds: str | None
     profit_boost_source: str | None
+
+
+PAYOUT_AMOUNT_FORMAT_MESSAGE = (
+    "Enter a decimal amount using a full stop, for example 10.50."
+)
+
+
+class PayoutOddsPreviewPayload(BaseModel):
+    back_stake: str = Field(max_length=40)
+    total_potential_return: str = Field(max_length=40)
+    actual_accepted_back_odds: str = Field(default="", max_length=40)
+
+    @field_validator("back_stake", "total_potential_return", mode="before")
+    @classmethod
+    def validate_entered_amount(cls, value: Any) -> str:
+        return validate_complete_decimal_string(
+            value,
+            message=PAYOUT_AMOUNT_FORMAT_MESSAGE,
+        )
+
+    @field_validator("actual_accepted_back_odds", mode="before")
+    @classmethod
+    def validate_entered_accepted_odds(cls, value: Any) -> str:
+        return validate_sportsbook_odds(value)
+
+    @model_validator(mode="after")
+    def validate_amounts(self) -> "PayoutOddsPreviewPayload":
+        stake = Decimal(self.back_stake)
+        total_return = Decimal(self.total_potential_return)
+        errors: list[InitErrorDetails] = []
+        if stake <= 0:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "payout_stake_positive",
+                        "Enter a cash back stake greater than zero.",
+                    ),
+                    "loc": ("back_stake",),
+                    "input": self.back_stake,
+                }
+            )
+        if total_return <= 0:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "payout_return_positive",
+                        "Enter a total potential return greater than zero.",
+                    ),
+                    "loc": ("total_potential_return",),
+                    "input": self.total_potential_return,
+                }
+            )
+        elif total_return < stake:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "payout_return_below_stake",
+                        "Total potential return must include and be at least the cash back stake.",
+                    ),
+                    "loc": ("total_potential_return",),
+                    "input": self.total_potential_return,
+                }
+            )
+        if errors:
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+        return self
+
+
+class PayoutOddsPreviewResponse(BaseModel):
+    raw_implied_odds: str
+    raw_is_approximate: bool
+    effective_odds: str
+    application_allowed: bool
+    application_block_reason: str
 
 
 class PartialLayReminderPayload(BaseModel):
@@ -673,6 +752,36 @@ def preview_profile_sportsbook_bet(
             **serialize_calculation(calculation),
             **serialize_profit_boost(profit_boost),
         }
+    )
+
+
+@router.post("/payout-odds-preview", response_model=PayoutOddsPreviewResponse)
+def preview_payout_odds(
+    profile_id: str,
+    payload: PayoutOddsPreviewPayload,
+) -> PayoutOddsPreviewResponse:
+    del profile_id
+    result = calculate_payout_odds(
+        cash_back_stake=Decimal(payload.back_stake),
+        total_potential_return=Decimal(payload.total_potential_return),
+    )
+    block_reason = ""
+    if payload.actual_accepted_back_odds:
+        block_reason = (
+            "Actual accepted odds already take precedence. Clear them before using this "
+            "calculated reference."
+        )
+    elif result.effective_odds < PAYOUT_ODDS_MINIMUM:
+        block_reason = (
+            "Calculated odds are below the Sportsbook minimum of 1.01 and cannot be applied."
+        )
+
+    return PayoutOddsPreviewResponse(
+        raw_implied_odds=result.raw_implied_odds,
+        raw_is_approximate=result.raw_is_approximate,
+        effective_odds=f"{result.effective_odds:.2f}",
+        application_allowed=not block_reason,
+        application_block_reason=block_reason,
     )
 
 

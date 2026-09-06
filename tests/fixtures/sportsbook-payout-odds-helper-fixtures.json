@@ -1,0 +1,49 @@
+{
+  "contract_id": "sportsbook-payout-odds-helper-v1",
+  "resolved": [
+    {
+      "stake": "10",
+      "total_return": "27.86",
+      "raw_odds": "2.786",
+      "effective_odds": "2.78"
+    },
+    {
+      "stake": "5",
+      "total_return": "16.495",
+      "raw_odds": "3.299",
+      "effective_odds": "3.29"
+    },
+    {
+      "stake": "10",
+      "total_return": "25.00",
+      "raw_odds": "2.5",
+      "effective_odds": "2.50"
+    },
+    {
+      "stake": "10",
+      "total_return": "27.99",
+      "raw_odds": "2.799",
+      "effective_odds": "2.79"
+    },
+    {
+      "stake": "10",
+      "total_return": "29.00",
+      "raw_odds": "2.9",
+      "effective_odds": "2.90"
+    }
+  ],
+  "invalid_format": [
+    "8,5",
+    "£8.5",
+    "8.5abc",
+    "8 5",
+    "8..5",
+    " 8.5",
+    "8.5 ",
+    "",
+    "1e3",
+    "NaN",
+    "Infinity",
+    "+8.5"
+  ]
+}

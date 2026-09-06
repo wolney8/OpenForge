@@ -15,6 +15,14 @@ _DECIMAL_ODDS_PATTERN = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
 _NESTED_ODDS_KEYS = ("layOdds", "placedLayOdds")
 
 
+def validate_complete_decimal_string(value: Any, *, message: str) -> str:
+    """Validate an unsigned base-10 input without trimming or numeric coercion."""
+
+    if not isinstance(value, str) or not _DECIMAL_ODDS_PATTERN.fullmatch(value):
+        raise PydanticCustomError("decimal_input_format", message)
+    return value
+
+
 def validate_sportsbook_odds(value: Any, *, allow_empty: bool = True) -> str:
     """Validate the complete request value without normalising or repairing it."""
 
@@ -24,8 +32,12 @@ def validate_sportsbook_odds(value: Any, *, allow_empty: bool = True) -> str:
         if allow_empty:
             return value
         raise PydanticCustomError("sportsbook_odds_required", "Odds are required.")
-    if not _DECIMAL_ODDS_PATTERN.fullmatch(value):
-        raise PydanticCustomError("sportsbook_odds_format", SPORTSBOOK_ODDS_FORMAT_MESSAGE)
+    try:
+        validate_complete_decimal_string(value, message=SPORTSBOOK_ODDS_FORMAT_MESSAGE)
+    except PydanticCustomError as exc:
+        raise PydanticCustomError(
+            "sportsbook_odds_format", SPORTSBOOK_ODDS_FORMAT_MESSAGE
+        ) from exc
 
     decimal_value = Decimal(value)
     if not decimal_value.is_finite():

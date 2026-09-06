@@ -1,6 +1,6 @@
 # Contract: Sportsbook Profit Boost Workflow
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-09-06_
 
 ## Purpose
 
@@ -37,6 +37,20 @@ Required user inputs:
 Optional:
 
 - actual accepted back odds if the placed price differs
+
+The compatibility value `displayed_odds` now means the explicit final boosted-odds entry path. Its
+UI label is `Entered boosted odds`: a user may type bookmaker-provided odds or explicitly apply the
+temporary payout helper. The persisted identifier is unchanged.
+
+### Payout-to-odds helper
+
+- Uses the existing cash back stake and a temporary total-potential-return input.
+- Supports cash-stake returns including returned stake only; profit-only winnings and
+  stake-not-returned free-bet payouts are invalid.
+- Shows raw implied odds and the conservative two-decimal floored odds, then requires an explicit
+  `Use calculated odds` action.
+- Never overwrites actual accepted odds, never reapplies boost percentage/cap, and never persists
+  payout inputs or helper provenance.
 
 ### Percentage-only boost
 
