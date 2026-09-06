@@ -8,6 +8,9 @@ reporting rules and cash-first financial calculations.
 The application is currently a functional workbook-first MVP. It is not yet a
 production SaaS product.
 
+See [Project status](PROJECT_STATUS.md) for the current blocker, plan links,
+request status, recent changes, and the active manual smoke checklist.
+
 ## How it works
 
 The main journey is:

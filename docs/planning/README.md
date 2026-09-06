@@ -16,6 +16,9 @@ Keep these documents practical and current. When a planning note becomes superse
 
 Current profile-scoped OpenForge planning documents take precedence over older archived references.
 
+Use the repository [project status](../../PROJECT_STATUS.md) as the short entry point, then follow
+its links here for the authoritative detail.
+
 Suggested phase grouping:
 
 - `Phase 1`: workbook deconstruction, parity findings, and contract drafting

@@ -1,6 +1,9 @@
 # OpenForge Milestone Contract and Fixture Readiness
 
-_Last verified against public GitHub milestones: 2026-07-14_
+_Last verified against live GitHub milestones: 2026-09-06_
+
+Start with the concise [project status](../../PROJECT_STATUS.md) for the active blocker and manual
+acceptance checklist. This document remains the canonical milestone and sequencing map.
 
 ## Purpose
 
@@ -138,7 +141,8 @@ Readiness: ready for workflow review after Settings authority ownership is confi
 Readiness: bridge workflow is ready for review. Standard sportsbook, free-bet
 SNR, odds conversion, and sportsbook Profit Boost have contract/fixture coverage, but still use
 their owning Plum Duff contracts. The standalone workspace itself is not implemented yet and is
-tracked by issues `#35`, `#36`, `#37`, `#38`, and Profit Boost issue `#83`. The first implementation
+tracked by issues `#35`, `#36`, `#37`, `#38`, and Profit Boost issue `#83` (now assigned to M14).
+The first implementation
 slice should reuse the Sportsbook calculator shell for Standard, Underlay, Overlay, Custom Lay,
 Multi Lay, and Profit Boost displayed/percentage modes. Refund/bonus lock-in has a reproducible
 draft equation pending human approval. Each-way remains research-only. Extra-place, sequential-lay,

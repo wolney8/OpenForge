@@ -273,6 +273,22 @@ implementation tranche must finish with all of the following:
   Missing `gh` is not missing GitHub. Never request or print credentials. Record a concise
   pending-sync note when live mutation is unavailable and reconcile it when access returns.
 
+## Durable request capture
+
+- Capture every distinct user idea, defect, and requested outcome in the existing canonical
+  request register before claiming it is tracked. Keep user requirements separate from assistant
+  recommendations, and retain unclear requests provisionally instead of silently omitting them.
+- Request capture is not implementation approval. Reuse existing IDs; new identifiers must be
+  product-neutral.
+- Do not delete, cancel, archive, supersede, consolidate away, narrow, or close a request without
+  the user's explicit approval. Similar items may be linked, but their original requirements must
+  remain visible.
+- Partial delivery leaves remaining scope visible. A recurrence reopens verification without
+  erasing earlier evidence. Report the IDs updated and their actual GitHub sync state in the final
+  receipt.
+- Future tasks should start from the project-status entry point and the relevant register items,
+  not by rereading every planning document.
+
 ## Corrective change cadence
 
 - Treat every user-supplied bug, UX correction, or feature adjustment list as a tracked work batch.
