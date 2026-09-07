@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 07:34 BST_
+_Last updated: 2026-09-07 09:29 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,13 @@ durable requirements.
 
 ## Current state
 
-- Tested code revision: `f2db33a85cb06ba93419fd871da0262e0094b43e` on `main`.
-- Current blocker: Notification History overlap [#100](https://github.com/wolney8/OpenForge/issues/100)
-  is fixed with focused local automated and rendered synthetic evidence; Will's visual acceptance
-  and the prior normal-use session/notification checks remain `NOT RUN`.
+- Tested implementation revision: `630bde854a76ef8551a677690a060c3cf167a55a` on `main`.
+- Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
+  with focused local automated and rendered synthetic evidence; Will's recheck remains `NOT RUN`.
+- Notification clearing acceptance [#99](https://github.com/wolney8/OpenForge/issues/99) is `BLOCKED`:
+  no actionable notification exists. The established isolated persistence runner is self-cleaning
+  and cannot leave a manual fixture alongside the canonical Next development server without a
+  separate runtime/build handoff, which is outside this bounded correction.
 - Login initiation is restored: **PROVEN locally**, the real control reaches Google's authorization
   flow. The Google callback/session and Will's renewed acceptance remain **UNVERIFIED**.
 - Local runtime: web `http://localhost:3010`; API `http://127.0.0.1:8010`; local SQLite; required
@@ -26,9 +29,10 @@ durable requirements.
 
 ## Project plan
 
-- Current: Notification History filter containment is complete locally; local service handoff and
-  manual acceptance remain open.
-- Next selected work: Will runs the two checks below; any failure is reproduced before further work.
+- Current: Notification History containment and peer-row alignment are complete locally; visual
+  acceptance remains open and notification-clearing acceptance remains blocked by fixture access.
+- Next selected work: Will checks the corrected toolbar; #99 resumes only after a safe actionable
+  fixture can be made manually reachable without disturbing normal services.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
   remaining numerical validation [#91](https://github.com/wolney8/OpenForge/issues/91), Google and
   hosted workbook acceptance [#94](https://github.com/wolney8/OpenForge/issues/94), stale-workbook
@@ -39,19 +43,19 @@ durable requirements.
 
 - Login/session: [#62](https://github.com/wolney8/OpenForge/issues/62) — implementation evidence is
   separate from the pending manual result.
-- Notification clearing: `NOTIFICATION-FIX-001` is locally verified with manual/hosted acceptance
-  tracked in [#99](https://github.com/wolney8/OpenForge/issues/99); source-independent history is
-  still outstanding as [#90](https://github.com/wolney8/OpenForge/issues/90).
-- Notification filter overlap: `NOTIFICATION-LAYOUT-001` is locally complete at `f2db33a`; [#100](https://github.com/wolney8/OpenForge/issues/100)
-  stays open pending Will's approval and is related, not folded into, [#92](https://github.com/wolney8/OpenForge/issues/92).
+- Notification clearing: `NOTIFICATION-FIX-001` retains prior local automated evidence, but manual
+  acceptance is `BLOCKED` by the missing actionable fixture in [#99](https://github.com/wolney8/OpenForge/issues/99);
+  source-independent history remains [#90](https://github.com/wolney8/OpenForge/issues/90).
+- Notification filter layout: `NOTIFICATION-LAYOUT-001` is locally corrected at `630bde8`; [#100](https://github.com/wolney8/OpenForge/issues/100)
+  stays open pending Will's recheck and remains related, not folded into, [#92](https://github.com/wolney8/OpenForge/issues/92).
 - Profit Boost and strict input: [#83](https://github.com/wolney8/OpenForge/issues/83) retains its
   full scope and is now assigned to M14; remaining cross-surface validation is [#91](https://github.com/wolney8/OpenForge/issues/91).
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).
 
 ## What changed
 
-- [`f2db33a`](https://github.com/wolney8/OpenForge/commit/f2db33a85cb06ba93419fd871da0262e0094b43e): contains Notification History controls using the
-  signed-off settings toolbar and adds sibling/focus/reflow regression coverage.
+- [`630bde8`](https://github.com/wolney8/OpenForge/commit/630bde854a76ef8551a677690a060c3cf167a55a): separates peer fields from the action row so Search,
+  Type and Status align while actions wrap independently; prior containment/focus coverage remains.
 - Tracking now includes local runtime handoff [#101](https://github.com/wolney8/OpenForge/issues/101),
   request-coverage recovery [#102](https://github.com/wolney8/OpenForge/issues/102), and deferred
   rebranding decision [#103](https://github.com/wolney8/OpenForge/issues/103). The previously
@@ -61,14 +65,14 @@ durable requirements.
 
 ## What Will should test
 
-Environment/revision: local `http://localhost:3010`, `f2db33a`. Manual status: `NOT RUN`.
+Environment/revision: local `http://localhost:3010`, `630bde8`. Manual status: visual `NOT RUN`;
+notification clearing `BLOCKED`.
 
-1. Open `http://localhost:3010/notifications`. Tab through **Type** and **Status**; resize and switch
-   themes. Expect separated fields and unobscured focus indicators.
-2. Repeat the Auto Logout **OFF** check after more than five minutes, then clear one non-critical
-   notification and verify it stays absent after navigation/reload while appearing as **Cleared** in
-   `/notifications`. Sign out/in and recheck the same instance. Keep these results separate from the
-   visual fix; source-independent history remains deferred in [#90](https://github.com/wolney8/OpenForge/issues/90).
+1. Open `http://localhost:3010/notifications`. Confirm **Search Notifications**, **Type**, and
+   **Status** share one aligned field row in both themes; tab through them and resize the page.
+2. Notification clear/reload/sign-in acceptance is `BLOCKED`: no actionable test notification is
+   currently available. Do not manufacture business activity; resume [#99](https://github.com/wolney8/OpenForge/issues/99)
+   after a safe, persistent, isolated manual fixture is available.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.
