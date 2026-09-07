@@ -19,6 +19,7 @@ _Last reconciled: 2026-08-27_
 | EWP-SETTLEMENT-001 | API calculation regression | Extra Place settlement and Void/NR final-value branches. |
 | EWP-POSITION-001 | API calculation regression | Explicit bookmaker/exchange paid-place gap derives Win, Standard Place, Extra Place, and Unplaced boundaries. |
 | EWP-WORKFLOW-001 | Profile-scoped API workflow | Create, list isolation, settlement, settled-row deletion reason guard, and deletion. |
+| EWP-ACCOUNT-001 | Account-authority unit and focused browser regression | Profile bookmaker/exchange choices, preferred-exchange defaulting, saved account provenance, and a settled Extra Place submission. |
 
 ## Deliberately Deferred Branches
 

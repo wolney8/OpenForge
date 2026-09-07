@@ -47,6 +47,11 @@ actual lay stakes. Preferred exchanges and commissions come from profile account
   or the each-way payout fraction.
 - Commission is resolved from the selected profile exchange/account. The normal entry flow has
   no manual commission fields.
+- New-row bookmaker and exchange choices come from the selected Profile's Account authority.
+  The Profile's configured default exchange preselects both lay legs only when it resolves to an
+  available exchange Account. Saved historical account names remain selectable when editing old
+  rows. Quick Add loadouts come from the existing Fund Manager/Profile authority; the client must
+  not invent fallback loadouts.
 
 ## Derived calculation
 

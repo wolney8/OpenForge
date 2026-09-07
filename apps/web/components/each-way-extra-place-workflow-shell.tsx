@@ -27,6 +27,11 @@ import { formatLedgerDateTime } from "@/lib/ledger-date-display";
 import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
 import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
 import { getExtraPlaceLossBudgetState } from "@/lib/extra-place-loss-budget";
+import {
+  resolveExtraPlaceAccountOptions,
+  resolveExtraPlacePreferredExchange,
+} from "@/lib/extra-place-account-options";
+import type { AccountAuthorityRecord } from "@/lib/account-authorities";
 import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
@@ -175,40 +180,6 @@ const numeric = new Set<keyof Form>([
   "actual_place_lay_stake",
   "imported_historical_pnl",
 ]);
-const bookmakers = ["Betfred", "Unibet", "Sky Bet", "William Hill"];
-const exchanges = ["Smarkets", "Matchbook", "Betfair Exchange"];
-const fallbackLoadouts: QuickAddLoadout[] = [
-  {
-    preset_id: "extra-place-default-betfred",
-    label: "Betfred 1/5 Extra Place £5 EW",
-    bookmaker: "Betfred",
-    availability: "eligible",
-    availability_reason: "",
-    defaults: {
-      bookmaker: "Betfred",
-      eachWayStake: "5",
-      placeTermDenominator: "5",
-      bookmakerPlaces: "5",
-      exchangePlaces: "4",
-      mode: "Extra Place",
-    },
-  },
-  {
-    preset_id: "extra-place-default-unibet",
-    label: "Unibet 1/4 Extra Place £5 EW",
-    bookmaker: "Unibet",
-    availability: "eligible",
-    availability_reason: "",
-    defaults: {
-      bookmaker: "Unibet",
-      eachWayStake: "5",
-      placeTermDenominator: "4",
-      bookmakerPlaces: "5",
-      exchangePlaces: "4",
-      mode: "Extra Place",
-    },
-  },
-];
 const emptyTableFilters: ExtraPlaceTableFilters = {
   view: "all",
   mode: "",
@@ -383,12 +354,15 @@ export function EachWayExtraPlaceWorkflowShell({
   const [visibleColumns, setVisibleColumns] =
     useState<ExtraPlaceVisibleColumns>(defaultVisibleColumns);
   const [guideDismissed, setGuideDismissed] = useState(false);
-  const [loadouts, setLoadouts] = useState<QuickAddLoadout[]>(fallbackLoadouts);
+  const [loadouts, setLoadouts] = useState<QuickAddLoadout[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [deletionReason, setDeletionReason] = useState("");
   const [tableTheme, setTableTheme] = useState<"ep" | "back-lay">("ep");
   const [trackerSettings, setTrackerSettings] =
     useState<TrackerSettingsClientRecord | null>(null);
+  const [accountAuthorities, setAccountAuthorities] = useState<
+    AccountAuthorityRecord[]
+  >([]);
   const [savingRange, setSavingRange] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const parserOwnedDateRef = useRef<string | null>(null);
@@ -442,6 +416,19 @@ export function EachWayExtraPlaceWorkflowShell({
         setTrackerSettings(
           (await response.json()) as TrackerSettingsClientRecord,
         );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
+      cache: "no-store",
+    }).then(async (response) => {
+      if (response.ok && !cancelled) {
+        setAccountAuthorities((await response.json()) as AccountAuthorityRecord[]);
+      }
     });
     return () => {
       cancelled = true;
@@ -528,7 +515,27 @@ export function EachWayExtraPlaceWorkflowShell({
     setGuideDismissed(false);
     setOpen(true);
   };
-  const openNew = () => resetEditor(newForm(), null);
+  const accountOptions = useMemo(
+    () =>
+      resolveExtraPlaceAccountOptions({
+        accounts: accountAuthorities,
+        currentBookmaker: form.bookmaker,
+        currentPlaceExchange: form.place_exchange,
+        currentWinExchange: form.win_exchange,
+        rows,
+      }),
+    [accountAuthorities, form.bookmaker, form.place_exchange, form.win_exchange, rows],
+  );
+  const openNew = () => {
+    const next = newForm();
+    const preferredExchange = resolveExtraPlacePreferredExchange(
+      trackerSettings?.default_exchange_name,
+      accountOptions.exchanges,
+    );
+    next.win_exchange = preferredExchange;
+    next.place_exchange = preferredExchange;
+    resetEditor(next, null);
+  };
   const openRow = (row: Row) => {
     const next = newForm();
     (Object.keys(next) as Array<keyof Form>).forEach((key) => {
@@ -1044,6 +1051,8 @@ export function EachWayExtraPlaceWorkflowShell({
                   ...current,
                   bookmaker:
                     loadout.bookmaker || loadout.defaults.bookmaker || "",
+                  bookmaker_account:
+                    loadout.bookmaker || loadout.defaults.bookmaker || "",
                   each_way_stake:
                     loadout.defaults.eachWayStake ??
                     loadout.defaults.default_back_stake ??
@@ -1054,6 +1063,10 @@ export function EachWayExtraPlaceWorkflowShell({
                     loadout.defaults.bookmakerPlaces ?? "5",
                   exchange_places:
                     loadout.defaults.exchangePlaces ?? "4",
+                  win_exchange:
+                    loadout.defaults.winExchange ?? current.win_exchange,
+                  place_exchange:
+                    loadout.defaults.placeExchange ?? current.place_exchange,
                   mode:
                     loadout.defaults.mode === "Each Way"
                       ? "Each Way"
@@ -1239,6 +1252,8 @@ export function EachWayExtraPlaceWorkflowShell({
                     <LedgerEditorTabPanel activeTabId={step} tabId="calculate">
                       <Calculate
                         bookmakerCatalogue={bookmakerCatalogue}
+                        bookmakerOptions={accountOptions.bookmakers}
+                        exchangeOptions={accountOptions.exchanges}
                         form={form}
                         onCopy={copy}
                         onRaceDatePick={applyRaceDate}
@@ -2231,6 +2246,8 @@ function BookmakerChips({
 }
 function Calculate({
   bookmakerCatalogue,
+  bookmakerOptions,
+  exchangeOptions,
   form,
   onUpdate,
   onRaceUpdate,
@@ -2240,6 +2257,8 @@ function Calculate({
   onCopy,
 }: {
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
+  bookmakerOptions: string[];
+  exchangeOptions: string[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
   onRaceUpdate: (value: string) => void;
@@ -2314,14 +2333,20 @@ function Calculate({
           <div className="extra-place-field-with-chips">
             <ChoiceField
               label="Bookmaker"
-              onChange={(next) => onUpdate("bookmaker", next)}
-              options={bookmakers}
+              onChange={(next) => {
+                onUpdate("bookmaker", next);
+                onUpdate("bookmaker_account", next);
+              }}
+              options={bookmakerOptions}
               value={form.bookmaker}
             />
             <BookmakerChips
               catalogue={bookmakerCatalogue}
-              labels={bookmakers}
-              onPick={(next) => onUpdate("bookmaker", next)}
+              labels={bookmakerOptions}
+              onPick={(next) => {
+                onUpdate("bookmaker", next);
+                onUpdate("bookmaker_account", next);
+              }}
             />
           </div>
           <div className="extra-place-field-with-chips">
@@ -2418,6 +2443,7 @@ function Calculate({
       </section>
       <LaySegment
         exchange="win_exchange"
+        exchangeOptions={exchangeOptions}
         kind="win"
         label="Lay The Win"
         odds="win_lay_odds"
@@ -2429,6 +2455,7 @@ function Calculate({
       />
       <LaySegment
         exchange="place_exchange"
+        exchangeOptions={exchangeOptions}
         kind="place"
         label="Lay The Place"
         odds="place_lay_odds"
@@ -2446,6 +2473,7 @@ function LaySegment({
   label,
   kind,
   exchange,
+  exchangeOptions,
   odds,
   form,
   onUpdate,
@@ -2456,6 +2484,7 @@ function LaySegment({
   label: string;
   kind: "win" | "place";
   exchange: keyof Form;
+  exchangeOptions: string[];
   odds: keyof Form;
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
@@ -2472,7 +2501,7 @@ function LaySegment({
         <ChoiceField
           label="Exchange"
           onChange={(next) => onUpdate(exchange, next)}
-          options={exchanges}
+          options={exchangeOptions}
           value={form[exchange] as string}
         />
         <Field
@@ -2482,7 +2511,10 @@ function LaySegment({
           value={form[odds] as string}
         />
       </div>
-      <Chips labels={exchanges} onPick={(next) => onUpdate(exchange, next)} />
+      <Chips
+        labels={exchangeOptions}
+        onPick={(next) => onUpdate(exchange, next)}
+      />
       <div className="extra-place-calculated-stake">
         <span>Calculated Lay Stake</span>
         <strong>{neutralValue(stake)}</strong>

@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 09:48 BST_
+_Last updated: 2026-09-07 10:47 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,7 +9,15 @@ durable requirements.
 
 ## Current state
 
-- Tested implementation revision: `630bde854a76ef8551a677690a060c3cf167a55a` on `main`.
+- Current feature: [#88 Extra Places](https://github.com/wolney8/OpenForge/issues/88). The selected
+  tranche adds Profile Account-backed bookmaker/exchange choices and preferred-exchange defaulting
+  to the existing ledger/editor/calculator/settlement workflow.
+- Tested implementation base: `a43c435ea761cd66775ff2ced1389e134bde100e` on `main`; the #88
+  delivery checkpoint and evidence are recorded in this batch's commit and issue comment.
+- Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
+  captured visual work remain tracked, but are not the active feature.
+- Return point: #88 remains selected until its approved tranche is complete; incidental fixes return
+  here unless they block normal use or #88 itself.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -30,17 +38,15 @@ durable requirements.
 
 ## Project plan
 
-- Current: Notification History containment and peer-row alignment are complete locally; visual
-  acceptance remains open and notification-clearing acceptance remains blocked by fixture access.
-- Next selected work: Will checks the corrected toolbar; #99 resumes only after a safe actionable
-  fixture can be made manually reachable without disturbing normal services.
+- Current: complete and verify the bounded Profile Account/default-exchange slice of #88 without
+  changing its signed financial calculation contract.
+- Next queue: #88 remaining approved scope; then #35-#38 standalone calculators, #83 Profit Boost
+  parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
   remaining numerical validation [#91](https://github.com/wolney8/OpenForge/issues/91), Google and
   hosted workbook acceptance [#94](https://github.com/wolney8/OpenForge/issues/94), stale-workbook
   merge design [#95](https://github.com/wolney8/OpenForge/issues/95), and secret rotation
   [#96](https://github.com/wolney8/OpenForge/issues/96).
-- Next functional batch for review: shared-component correction for destination-sign financial
-  digit rolling [#105](https://github.com/wolney8/OpenForge/issues/105), before bounded surface adoption.
 
 ## Features and issues
 
@@ -72,14 +78,13 @@ durable requirements.
 
 ## What Will should test
 
-Environment/revision: local `http://localhost:3010`, `630bde8`. Manual status: visual `NOT RUN`;
-notification clearing `BLOCKED`.
+Environment: local `http://localhost:3010`; #88 delivery revision is recorded in the current
+checkpoint. Manual status: `NOT RUN`.
 
-1. Open `http://localhost:3010/notifications`. Confirm **Search Notifications**, **Type**, and
-   **Status** share one aligned field row in both themes; tab through them and resize the page.
-2. Notification clear/reload/sign-in acceptance is `BLOCKED`: no actionable test notification is
-   currently available. Do not manufacture business activity; resume [#99](https://github.com/wolney8/OpenForge/issues/99)
-   after a safe, persistent, isolated manual fixture is available.
+1. Open a test Profile's **Tracker → Extra Place**, then select **Add Extra Place row**.
+2. Confirm Bookmaker/Exchange choices come from that Profile's Accounts, both exchange fields use
+   its available preferred exchange, then enter a synthetic 6-pays-4 row and settle it as **5th**.
+3. Save and reopen it. Expect **Extra Place**, the same account choices and a calculated final value.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

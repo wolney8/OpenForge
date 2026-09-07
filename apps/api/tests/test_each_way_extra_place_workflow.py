@@ -1,6 +1,22 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
+from openforge_api.config import settings
 from openforge_api.main import app
+
+
+@pytest.fixture(autouse=True)
+def isolated_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "environment", "local")
+    monkeypatch.setattr(settings, "auth_required", False)
+    monkeypatch.setattr(settings, "database_mode", "local")
+    monkeypatch.setattr(
+        settings,
+        "database_url",
+        f"sqlite:///{tmp_path / 'extra-place-workflow.sqlite3'}",
+    )
 
 
 def payload(**overrides: str) -> dict[str, str]:
@@ -9,6 +25,7 @@ def payload(**overrides: str) -> dict[str, str]:
         "runner": "Synthetic Runner",
         "race": "Synthetic 14:30",
         "bookmaker": "Bookmaker A",
+        "bookmaker_account": "Bookmaker A",
         "mode": "Extra Place",
         "each_way_stake": "10.00",
         "back_odds": "6.00",
@@ -31,6 +48,7 @@ def test_each_way_extra_place_crud_is_profile_scoped() -> None:
     created = client.post("/profiles/profile-demo-001/each-way-extra-places", json=payload())
     assert created.status_code == 201
     row = created.json()
+    assert row["bookmaker_account"] == "Bookmaker A"
     assert row["win_lay_stake"] == "26.09"
     assert row["extra_place_pnl"] == "30.53"
 

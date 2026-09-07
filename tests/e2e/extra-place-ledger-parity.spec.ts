@@ -38,6 +38,174 @@ function rgbLuminance(color: string) {
 }
 
 test.describe("Extra Place ledger parity", () => {
+  test("uses profile account choices and the configured preferred exchange for a saved settlement", async ({ page }) => {
+    const accountRows = [
+      {
+        account_id: "account-synthetic-bookie",
+        profile_id: profileId,
+        account: "Synthetic Extra Place Bookmaker",
+        type: "Bookie",
+        counts_in_cash_total: true,
+        channel: "Online",
+        status: "Active",
+        lifecycle_status: "Active",
+        current_balance: "0.00",
+        pending_withdrawal_amount: "0.00",
+        last_balance_update: "",
+        group_name: "Synthetic Group",
+        platform: "Synthetic Platform",
+        created_at: "2026-09-07T12:00:00Z",
+        updated_at: "2026-09-07T12:00:00Z",
+      },
+      {
+        account_id: "account-synthetic-exchange",
+        profile_id: profileId,
+        account: "Synthetic Preferred Exchange",
+        type: "Exchange",
+        counts_in_cash_total: true,
+        channel: "Online",
+        status: "Active",
+        lifecycle_status: "Active",
+        current_balance: "0.00",
+        pending_withdrawal_amount: "0.00",
+        last_balance_update: "",
+        group_name: "Synthetic Group",
+        platform: "Synthetic Platform",
+        created_at: "2026-09-07T12:00:00Z",
+        updated_at: "2026-09-07T12:00:00Z",
+      },
+    ];
+    let savedPayload: Record<string, string> | null = null;
+    await page.route("**/auth/session", (route) =>
+      route.fulfill({
+        json: {
+          authenticated: true,
+          email: "extra-place-test@example.invalid",
+          name: "Synthetic Fund Manager",
+          role: "fund_manager",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          linked_profile_ids: [profileId],
+          session_policy: {
+            auto_logout_enabled: false,
+            timeout_minutes: 15,
+            preference_configured: true,
+            effective_expires_at: Math.floor(Date.now() / 1000) + 3600,
+          },
+        },
+      }),
+    );
+    await page.route(`**/profiles/${profileId}/accounts`, (route) =>
+      route.fulfill({ json: accountRows }),
+    );
+    await page.route(`**/profiles/${profileId}/tracker-settings`, (route) =>
+      route.fulfill({
+        json: {
+          active_date_preset: "All Time",
+          default_exchange_name: "Synthetic Preferred Exchange",
+          extra_place_weekly_loss_budget: "15.00",
+        },
+      }),
+    );
+    await page.route("**/fund-manager/common-bet-combos/profile-overrides/**", (route) =>
+      route.fulfill({ json: [] }),
+    );
+    await page.route(`**/profiles/${profileId}/each-way-extra-places/preview`, async (route) => {
+      const form = route.request().postDataJSON() as Record<string, string>;
+      await route.fulfill({
+        json: {
+          ...form,
+          calculation_state: "resolved",
+          calculation_notes: [],
+          rating_percent: "95.00",
+          implied_odds: "3.00",
+          current_value: "-1.00",
+          final_value: form.status === "Settled" ? "12.34" : null,
+        },
+      });
+    });
+    await page.route(`**/profiles/${profileId}/each-way-extra-places`, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      savedPayload = route.request().postDataJSON() as Record<string, string>;
+      await route.fulfill({
+        status: 201,
+        json: {
+          ...savedPayload,
+          each_way_extra_place_id: "extra-place-synthetic-account-default",
+          calculation_state: "resolved",
+          calculation_notes: [],
+          current_value: "12.34",
+          final_value: "12.34",
+        },
+      });
+    });
+
+    const accountsLoaded = page.waitForResponse((response) =>
+      response.url().endsWith(`/profiles/${profileId}/accounts`),
+    );
+    const settingsLoaded = page.waitForResponse((response) =>
+      response.url().endsWith(`/profiles/${profileId}/tracker-settings`),
+    );
+    await page.goto(route);
+    await Promise.all([accountsLoaded, settingsLoaded]);
+    await page.getByRole("button", { name: "Add Extra Place row" }).click();
+    const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
+    const bookmaker = dialog.getByLabel("BookmakerSelect");
+    await expect(bookmaker.locator("option")).toHaveText([
+      "Select bookmaker",
+      "Synthetic Extra Place Bookmaker",
+    ]);
+    await expect(dialog.locator(".extra-place-lay-win select")).toHaveValue(
+      "Synthetic Preferred Exchange",
+    );
+    await expect(dialog.locator(".extra-place-lay-place select")).toHaveValue(
+      "Synthetic Preferred Exchange",
+    );
+
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    });
+    await expect(bookmaker).toBeVisible();
+    await page.setViewportSize({ width: 720, height: 820 });
+    const [dialogBox, bookmakerBox] = await Promise.all([
+      dialog.boundingBox(),
+      bookmaker.boundingBox(),
+    ]);
+    expect(dialogBox).not.toBeNull();
+    expect(bookmakerBox).not.toBeNull();
+    expect(bookmakerBox!.x).toBeGreaterThanOrEqual(dialogBox!.x);
+    expect(bookmakerBox!.x + bookmakerBox!.width).toBeLessThanOrEqual(
+      dialogBox!.x + dialogBox!.width + 1,
+    );
+
+    await bookmaker.focus();
+    await expect(bookmaker).toBeFocused();
+    await bookmaker.selectOption("Synthetic Extra Place Bookmaker");
+    await dialog.getByLabel("Runner / Horse").fill("Synthetic Runner");
+    await dialog.getByLabel("Race").fill("Synthetic Race 14:10");
+    await dialog.getByLabel("Date / Time").fill("2026-09-07T14:10");
+    await dialog.getByLabel("E/W Stake (each way)").fill("5");
+    await dialog.getByLabel("Back Odds").fill("6");
+    await dialog.getByLabel("Lay Odds").first().fill("2.3");
+    await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await dialog.getByRole("tab", { name: /Settlement/ }).click();
+    await dialog.getByRole("button", { name: "5th", exact: true }).click();
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+
+    expect(savedPayload).toMatchObject({
+      bookmaker: "Synthetic Extra Place Bookmaker",
+      bookmaker_account: "Synthetic Extra Place Bookmaker",
+      win_exchange: "Synthetic Preferred Exchange",
+      place_exchange: "Synthetic Preferred Exchange",
+      status: "Settled",
+      result: "Extra Place",
+      finishing_position: "5th",
+    });
+  });
+
   test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {
     await page.goto(route);
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });

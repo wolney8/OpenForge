@@ -521,11 +521,15 @@ Add a dedicated Each Way / Extra Places ledger flow, calculator and settlement v
 
 ## Scope
 
-- Implemented on `feature/casino-quick-add` on 2026-08-24: profile-scoped API, SQLite persistence,
-  three-step ledger editor, calculation engine and deterministic MBB/EP Catcher fixtures.
-- Remaining: account-authority defaults, historical importer mapping, authentication-gated hosted
-  persistence and a dedicated standalone calculator workspace. Selected-range reporting, dashboards,
-  formal reports, bookmaker breakdowns and cross-profile reporting were integrated on 2026-08-24.
+- Implemented: profile-scoped API/persistence, two-step row editor, cash-first calculation engine,
+  deterministic MBB/EP Catcher fixtures, historical import handling, selected-range reporting,
+  dashboards, formal reports, bookmaker breakdowns and cross-profile reporting.
+- Current tranche: account-authority bookmaker/exchange choices, configured preferred-exchange
+  defaulting for both lay legs, and existing `bookmaker_account` provenance are implemented locally;
+  focused automated evidence is recorded under GitHub #88.
+- Remaining: Account Health Intelligence integration and the explicitly deferred Rule 4, dead heat
+  and changed-terms settlement branches. Standalone calculator work remains separately queued under
+  #35-#38 and is not folded into #88.
 
 ## Contract and fixtures
 
