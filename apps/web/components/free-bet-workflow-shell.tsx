@@ -376,7 +376,6 @@ function renderPreviewFinancialValue(value: number | string | null | undefined) 
     </span>
   ) : (
     <FinancialValue
-      animate={false}
       className="projected-outcome-financial-value"
       value={parsed}
       zeroTone="neutral"
@@ -4013,7 +4012,6 @@ export function FreeBetWorkflowShell({
                 </span>
               ) : (
                 <FinancialValue
-                  animate={false}
                   className="ledger-financial-value editor-summary-financial-value"
                   label={activeDisplayedValueLabel}
                   value={activeDisplayedNumericValue}

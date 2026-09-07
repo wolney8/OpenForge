@@ -24,3 +24,4 @@ _Last updated: 2026-09-07_
 | FVP-014 | Zero, unavailable or loading | Neutral/static treatment; no fabricated zero or intermediate money |
 | FVP-015 | Rapid successive updates | Stale motion is cancelled and the newest accessible final value wins |
 | FVP-016 | User clicks an unchanged non-zero read-only value | Current digit roll replays once; punctuation remains static |
+| FVP-017 | Animated and plain equivalents for `£ 61.12`, `£ (14.01)` and `£ 3,450.50` at table and KPI sizes | Same inherited typography, line height and baseline; width/height differ by no more than rendering tolerance; spaces and punctuation remain natural width |

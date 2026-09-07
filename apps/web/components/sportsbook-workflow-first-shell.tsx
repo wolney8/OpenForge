@@ -1118,7 +1118,6 @@ function renderPreviewFinancialValue(value: number | string | null | undefined) 
     </span>
   ) : (
     <FinancialValue
-      animate={false}
       className="projected-outcome-financial-value"
       value={parsed}
       zeroTone="neutral"
@@ -1138,9 +1137,7 @@ function renderNeutralPreviewFinancialValue(value: number | string | null | unde
       £ -
     </span>
   ) : (
-    <span className="projected-outcome-financial-value financial-value financial-value-neutral">
-      {formatFinancialValue(parsed)}
-    </span>
+    <FinancialValue className="projected-outcome-financial-value" tone="neutral" value={parsed} />
   );
 }
 
@@ -7258,7 +7255,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     </span>
                   ) : (
                     <FinancialValue
-                      animate={false}
                       className="ledger-financial-value editor-summary-financial-value"
                       label={activeDisplayedValueLabel}
                       value={activeDisplayedNumericValue}

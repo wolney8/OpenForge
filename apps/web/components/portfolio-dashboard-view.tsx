@@ -230,7 +230,7 @@ export function PortfolioDashboardView({
                 {dashboardTrend.slice(-5).map((point) => (
                   <span key={point.key}>
                     <small>{point.label}</small>
-                    <FinancialValue animate={false} value={point.cumulativeValue} />
+                    <FinancialValue value={point.cumulativeValue} />
                   </span>
                 ))}
               </div>
@@ -272,23 +272,23 @@ export function PortfolioDashboardView({
             label="Current open"
             moneyValue={summary.profitQuickView.openCurrentValue}
           >
-            <span>Settled final {formatMoney(summary.profitQuickView.settledFinalValue)}</span>
+            <span>Settled final <FinancialValue value={summary.profitQuickView.settledFinalValue} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
             eyebrow="Liability"
             label="Current liability"
             moneyValue={summary.betsQuickView.currentLiability}
           >
-            <span>Pending withdrawals {formatMoney(summary.accountQuickView.pendingWithdrawals)}</span>
+            <span>Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
             eyebrow="Current Account Cash"
             label="Cash snapshot"
             moneyValue={summary.accountQuickView.cashSnapshot}
           >
-            <span>Bookie {formatMoney(summary.accountQuickView.bookieBalance)}</span>
-            <span>Exchange {formatMoney(summary.accountQuickView.exchangeBalance)}</span>
-            <span>Bank {formatMoney(summary.accountQuickView.bankBalance)}</span>
+            <span>Bookie <FinancialValue value={summary.accountQuickView.bookieBalance} /></span>
+            <span>Exchange <FinancialValue value={summary.accountQuickView.exchangeBalance} /></span>
+            <span>Bank <FinancialValue value={summary.accountQuickView.bankBalance} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
             actionHref={alertHref}
@@ -324,8 +324,8 @@ export function PortfolioDashboardView({
             label="Range cash"
             moneyValue={summary.betsQuickView.selectedRangeCashAdjustments}
           >
-            <span>Withdrawals {formatMoney(summary.cashAdjustmentBreakdown.withdrawals)}</span>
-            <span>Costs {formatMoney(summary.cashAdjustmentBreakdown.deductionsAndSubscriptions)}</span>
+            <span>Withdrawals <FinancialValue value={summary.cashAdjustmentBreakdown.withdrawals} /></span>
+            <span>Costs <FinancialValue value={summary.cashAdjustmentBreakdown.deductionsAndSubscriptions} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
             actionHref={summary.betsQuickView.accountsNeedingMugReview > 0 ? accountHref : undefined}
@@ -357,18 +357,17 @@ export function PortfolioDashboardView({
         <dl className="dashboard-focus-list">
           <div>
             <dt>Current</dt>
-            <dd><FinancialValue animate={false} value={targetProgress.currentValue} /></dd>
+            <dd><FinancialValue value={targetProgress.currentValue} /></dd>
           </div>
           <div>
             <dt>Target</dt>
-            <dd>{targetProgress.targetValue === null ? "Set target" : formatMoney(targetProgress.targetValue)}</dd>
+            <dd>{targetProgress.targetValue === null ? "Set target" : <FinancialValue value={targetProgress.targetValue} />}</dd>
           </div>
           <div>
             <dt>{targetProgress.isExceeded ? "Exceeded By" : "Remaining"}</dt>
             <dd>
               {targetProgress.remainingValue === null ? "Unset" : (
                 <FinancialValue
-                  animate={false}
                   value={targetProgress.isExceeded ? targetProgress.currentValue - (targetProgress.targetValue ?? 0) : targetProgress.remainingValue}
                 />
               )}
@@ -391,7 +390,7 @@ export function PortfolioDashboardView({
               <div className="dashboard-module-row" key={row.moduleKey}>
                 <div className="dashboard-module-row-header">
                   <span>{row.label}</span>
-                  <FinancialValue animate={false} value={row.reportingValue} />
+                  <FinancialValue value={row.reportingValue} />
                 </div>
                 <div className="dashboard-module-track" aria-hidden="true">
                   <span
@@ -456,7 +455,7 @@ export function PortfolioDashboardView({
           {summary.bookmakerBreakdown.slice(0, 6).map((row) => (
             <div className="dashboard-bookmaker-row" key={row.bookmaker}>
               <span>{row.bookmaker}</span>
-              <FinancialValue animate={false} value={row.totalPnl} />
+              <FinancialValue value={row.totalPnl} />
               <small>{row.openRowCount} open</small>
             </div>
           ))}
@@ -477,7 +476,7 @@ export function PortfolioDashboardView({
                 <strong>{row.label}</strong>
                 <small>{row.bookmakerOrAccount} • {formatHumanDisplayDate(row.date, true)}</small>
               </span>
-              <FinancialValue animate={false} value={row.value} />
+              <FinancialValue value={row.value} />
             </div>
           ))}
           {summary.recentActivity.length === 0 ? <span className="muted-text">No activity in this range.</span> : null}
@@ -494,12 +493,12 @@ export function PortfolioDashboardView({
         <div className="dashboard-peer-bars" aria-label="Internal peer comparison status">
           <div className="dashboard-peer-row">
             <span>Selected range P&amp;L</span>
-            <FinancialValue animate={false} value={summary.profitQuickView.overallPnl} />
+            <FinancialValue value={summary.profitQuickView.overallPnl} />
             <i style={{ width: `${Math.max(6, currentPeerBarWidth)}%` }} />
           </div>
           <div className="dashboard-peer-row">
             <span>Open current value</span>
-            <FinancialValue animate={false} value={summary.profitQuickView.openCurrentValue} />
+            <FinancialValue value={summary.profitQuickView.openCurrentValue} />
             <i style={{ width: `${Math.max(6, openPeerBarWidth)}%` }} />
           </div>
           <div className="dashboard-peer-row dashboard-peer-row-muted">
@@ -529,15 +528,15 @@ export function PortfolioDashboardView({
           <dl className="dashboard-fee-grid">
             <div>
               <dt>Fees earned</dt>
-              <dd><FinancialValue animate={false} value={feePosition?.feesEarned ?? 0} /></dd>
+              <dd><FinancialValue value={feePosition?.feesEarned ?? 0} /></dd>
             </div>
             <div>
               <dt>Available to withdraw</dt>
-              <dd><FinancialValue animate={false} value={feePosition?.availableToWithdraw ?? 0} /></dd>
+              <dd><FinancialValue value={feePosition?.availableToWithdraw ?? 0} /></dd>
             </div>
             <div>
               <dt>Withdrawn</dt>
-              <dd><FinancialValue animate={false} value={feePosition?.feesWithdrawn ?? 0} /></dd>
+              <dd><FinancialValue value={feePosition?.feesWithdrawn ?? 0} /></dd>
             </div>
             <div>
               <dt>Awaiting review</dt>

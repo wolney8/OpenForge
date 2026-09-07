@@ -692,7 +692,6 @@ function AppChromeContent({
                         <>
                           <span aria-hidden="true" className="summary-menu-separator">•</span>
                           <FinancialValue
-                            animate={false}
                             className="summary-menu-financial-value"
                             label={`Total P&L for ${profileRangeLabel}`}
                             value={profileOverallPnl}

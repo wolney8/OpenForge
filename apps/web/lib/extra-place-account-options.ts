@@ -51,13 +51,80 @@ export function resolveExtraPlacePreferredExchange(
 export function prioritiseExtraPlaceAccountOptions(
   labels: string[],
   current = "",
-  usage: Record<string, number> = {},
+  accounts: AccountAuthorityRecord[] = [],
+  sameWorkflowUsage: Array<{ provider: string; usedAt: string }> = [],
+  otherWorkflowUsage: Array<{ provider: string; usedAt: string }> = [],
 ) {
+  const normalize = (value: string) => value.trim().toLocaleLowerCase();
+  const latestUse = (events: Array<{ provider: string; usedAt: string }>) => {
+    const result = new Map<string, number>();
+    events.forEach(({ provider, usedAt }) => {
+      const timestamp = Date.parse(usedAt);
+      if (!provider.trim() || !Number.isFinite(timestamp)) return;
+      const key = normalize(provider);
+      result.set(key, Math.max(result.get(key) ?? Number.NEGATIVE_INFINITY, timestamp));
+    });
+    return result;
+  };
+  const sameWorkflow = latestUse(sameWorkflowUsage);
+  const otherWorkflow = latestUse(otherWorkflowUsage);
+  const accountByName = new Map(accounts.map((account) => [normalize(account.account), account]));
   return [...new Set(labels)].sort((left, right) => {
     if (left === current) return -1;
     if (right === current) return 1;
-    const usageDifference = (usage[right] ?? 0) - (usage[left] ?? 0);
-    return usageDifference || left.localeCompare(right);
+    const leftKey = normalize(left);
+    const rightKey = normalize(right);
+    const sameDifference = (sameWorkflow.get(rightKey) ?? -1) - (sameWorkflow.get(leftKey) ?? -1);
+    if (sameDifference) return sameDifference;
+    const otherDifference = (otherWorkflow.get(rightKey) ?? -1) - (otherWorkflow.get(leftKey) ?? -1);
+    if (otherDifference) return otherDifference;
+    const positiveBalance = (label: string) => {
+      const balance = Number(accountByName.get(normalize(label))?.current_balance);
+      return Number.isFinite(balance) && balance > 0 ? 1 : 0;
+    };
+    const balanceDifference = positiveBalance(right) - positiveBalance(left);
+    return balanceDifference || left.localeCompare(right, "en-GB", { sensitivity: "base" });
+  });
+}
+
+export function filterExtraPlaceQuickAccountOptions(
+  labels: string[],
+  accounts: AccountAuthorityRecord[],
+  current = "",
+) {
+  const normalize = (value: string) => value.trim().toLocaleLowerCase();
+  const accountByName = new Map(accounts.map((account) => [normalize(account.account), account]));
+  return labels.filter((label) => {
+    if (normalize(label) === normalize(current)) return true;
+    return accountByName.get(normalize(label))?.extra_places_allows_planning !== false;
+  });
+}
+
+export function prioritiseExtraPlaceTerms(
+  labels: string[],
+  rows: Array<Record<string, string | null | undefined>>,
+  current = "",
+) {
+  const usage = new Map<string, { count: number; latest: number }>();
+  rows.forEach((row) => {
+    if (row.status === "Prospecting") return;
+    const bookmakerPlaces = row.bookmaker_places?.trim();
+    const exchangePlaces = row.exchange_places?.trim();
+    if (!bookmakerPlaces || !exchangePlaces) return;
+    const label = `Paying ${bookmakerPlaces} instead of ${exchangePlaces}`;
+    const timestamp = Date.parse(row.placed_at ?? "");
+    const existing = usage.get(label) ?? { count: 0, latest: -1 };
+    usage.set(label, {
+      count: existing.count + 1,
+      latest: Number.isFinite(timestamp) ? Math.max(existing.latest, timestamp) : existing.latest,
+    });
+  });
+  return [...new Set(labels)].sort((left, right) => {
+    if (left === current) return -1;
+    if (right === current) return 1;
+    const leftUsage = usage.get(left) ?? { count: 0, latest: -1 };
+    const rightUsage = usage.get(right) ?? { count: 0, latest: -1 };
+    return rightUsage.latest - leftUsage.latest || rightUsage.count - leftUsage.count || labels.indexOf(left) - labels.indexOf(right);
   });
 }
 

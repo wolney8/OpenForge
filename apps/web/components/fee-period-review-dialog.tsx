@@ -608,7 +608,7 @@ export function FeePeriodReviewDialog({
                       value={managementWithdrawalValue}
                     />
                     <small id="fee-period-management-outstanding">
-                      {formatMoney(managementOutstanding)} outstanding
+                      <FinancialValue value={managementOutstanding} /> outstanding
                     </small>
                   </label>
                   <label className="field-control">
@@ -624,7 +624,7 @@ export function FeePeriodReviewDialog({
                       value={investmentWithdrawalValue}
                     />
                     <small id="fee-period-investment-outstanding">
-                      {formatMoney(investmentOutstanding)} outstanding
+                      <FinancialValue value={investmentOutstanding} /> outstanding
                     </small>
                   </label>
                   <label className="field-control">

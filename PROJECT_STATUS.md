@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 13:00 BST_
+_Last updated: 2026-09-07 14:01 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#107](https://github.com/wolney8/OpenForge/issues/107) synthetic Account
-  authority cleanup, [#108](https://github.com/wolney8/OpenForge/issues/108) bounded Extra Places
-  Account rails, and the shared-primitive slice of [#105](https://github.com/wolney8/OpenForge/issues/105).
-- Tested implementation base: `c5e1f307bb0e8fd8d4379fbbadfbf4e0d3f157e3` on `main`; this
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) financial odometer
+  geometry/targeted read-only-money rollout and [#108](https://github.com/wolney8/OpenForge/issues/108)
+  persisted-ranking, maximum-three Extra Places quick-select rails.
+- Tested implementation base: `557e8992af94c415267325fc8e710cc8d9331433` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -38,7 +38,7 @@ durable requirements.
 
 ## Project plan
 
-- Current: finish the bounded #107/#108/#105 correction and document the #109 import gap.
+- Current: finish the bounded #105/#108 visual correction without reopening #88.
 - Next queue: #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
@@ -58,10 +58,12 @@ durable requirements.
   stays open pending Will's recheck and remains related, not folded into, [#92](https://github.com/wolney8/OpenForge/issues/92).
 - Retrospective composed-layout work remains partial under `UI-CONSISTENCY-001`; the visible
   unchecked surface list is in the [UI audit backlog](docs/agent-contracts/plum-duff-ui-audit-backlog.md).
-- `FINANCIAL-MOTION-001` [#105](https://github.com/wolney8/OpenForge/issues/105) has its shared
-  odometer primitive locally; wider surface rollout remains open. Account fixture isolation [#107](https://github.com/wolney8/OpenForge/issues/107),
-  bounded Account rails [#108](https://github.com/wolney8/OpenForge/issues/108), and import access semantics [#109](https://github.com/wolney8/OpenForge/issues/109)
-  remain separately tracked.
+- `FINANCIAL-MOTION-001` [#105](https://github.com/wolney8/OpenForge/issues/105) retains one shared
+  odometer with static-equivalent geometry across the targeted active dashboard, ledger, report,
+  calculator, Account and dialog paths; future/new-surface adoption and user acceptance remain open.
+  Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
+  positive Account balances and deterministic ordering with maximum-three paging. Import access
+  semantics [#109](https://github.com/wolney8/OpenForge/issues/109) remains untouched.
 - Profit Boost and strict input: [#83](https://github.com/wolney8/OpenForge/issues/83) retains its
   full scope and is now assigned to M14; remaining cross-surface validation is [#91](https://github.com/wolney8/OpenForge/issues/91).
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).
@@ -82,11 +84,12 @@ durable requirements.
 Environment: local `http://localhost:3010`; this correction's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open a normal Profile's **Tracker → Extra Place**, then select **Add Extra Place row**. Confirm
-   bookmaker/exchange rails show a few options at once, `+N` scrolls through the rest, and the full
-   selects retain every legitimate Profile Account without timestamped test names.
-2. Click a non-zero read-only financial value. Confirm digits cascade vertically while currency,
-   punctuation and layout remain fixed; enable reduced motion and confirm the value stays static.
+1. Open a normal Profile's **Tracker → Extra Place**, then **Add Extra Place row**. Confirm Account
+   and Place Terms rails show no more than three choices, omit arrows when all fit, and page through
+   every remaining option without removing it from the full select.
+2. Check dashboard, Combined Analytics and an Account/ledger summary, then click a non-zero value.
+   Confirm digits cascade without squashing the original typography; switch themes/narrow width and
+   enable reduced motion to confirm stable geometry and static values.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

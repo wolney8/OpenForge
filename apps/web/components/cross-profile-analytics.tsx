@@ -19,7 +19,6 @@ import {
 } from "@/lib/operational-actions";
 import {
   formatHumanDisplayDate,
-  formatMoney,
   formatTrackingTenure,
   getDatePresetOptions,
   countTrueOpenPositions,
@@ -282,7 +281,7 @@ function ReportTable({
                       <small className="formal-report-fee-note">Informational until month-end</small>
                     ) : feeValue?.readyPeriodCount && feeValue.crystallisedPeriodCount ? (
                       <small className="formal-report-fee-note">
-                        {formatMoney(feeValue.awaitingConfirmation)} awaiting confirmation
+                        <FinancialValue value={feeValue.awaitingConfirmation} /> awaiting confirmation
                       </small>
                     ) : null}
                   </td>
@@ -1122,15 +1121,15 @@ export function CrossProfileAnalytics({
               </span>
               <span>
                 <small>Retained Profit</small>
-                <FinancialValue animate={false} value={combined.totals.retainedProfit} />
+                <FinancialValue value={combined.totals.retainedProfit} />
               </span>
               <span>
                 <small>Cash Snapshot</small>
-                <FinancialValue animate={false} value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />
+                <FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />
               </span>
               <span>
                 <small>Fee Position</small>
-                <FinancialValue animate={false} value={allProfilesFeePosition.availableToWithdraw} />
+                <FinancialValue value={allProfilesFeePosition.availableToWithdraw} />
               </span>
             </div>
           </article>
@@ -1569,7 +1568,7 @@ export function CrossProfileAnalytics({
               {isLoading
                 ? "Loading fee position"
                 : allProfilesFeePosition.crystallisedPeriodCount > 0
-                ? `${formatMoney(allProfilesFeePosition.feesEarned)} earned · ${formatMoney(allProfilesFeePosition.feesWithdrawn)} withdrawn`
+                ? <><FinancialValue value={allProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={allProfilesFeePosition.feesWithdrawn} /> withdrawn</>
                 : "No crystallised fee periods in this range"}
             </span>
           </article>

@@ -969,7 +969,6 @@ function renderCasinoFinancialValue(
     </span>
   ) : (
     <FinancialValue
-      animate={false}
       className="projected-outcome-financial-value"
       value={parsed}
       zeroTone="neutral"
@@ -987,7 +986,7 @@ function renderCasinoPlanningAmount(value: number | string | null | undefined) {
 
   return (
     <span className="casino-planning-money-value">
-      {parsed === null ? "£ -" : `£ ${Math.abs(parsed).toFixed(2)}`}
+      {parsed === null ? "£ -" : <FinancialValue tone="neutral" value={Math.abs(parsed)} />}
     </span>
   );
 }
@@ -4253,7 +4252,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 </span>
               ) : (
                 <FinancialValue
-                  animate={false}
                   className="ledger-financial-value editor-summary-financial-value"
                   label={displayedValueLabel}
                   value={displayedNumericValue}

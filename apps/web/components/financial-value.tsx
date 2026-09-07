@@ -119,9 +119,9 @@ export function FinancialValue({
               key={`${key}-${motionCycle}`}
               style={{
                 "--financial-digit-index": digitIndex,
-                "--financial-digit-position": `${-(Number(character) + 1)}em`,
-                "--financial-digit-up-start": `${-(Number(character) + 2)}em`,
-                "--financial-digit-down-start": `${-Number(character)}em`,
+                "--financial-digit-position": `${-(Number(character) + 1)}lh`,
+                "--financial-digit-up-start": `${-(Number(character) + 2)}lh`,
+                "--financial-digit-down-start": `${-Number(character)}lh`,
               } as CSSProperties}
             >
               <span className="financial-value-digit-strip">

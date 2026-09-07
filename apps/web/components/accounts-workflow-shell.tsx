@@ -1249,7 +1249,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                                   ))}
                                 </span>
                               ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
-                                <span className="table-chip accounts-financial-chip"><FinancialValue animate={false} value={String(row[column.key] || "0")} /></span>
+                                <span className="table-chip accounts-financial-chip"><FinancialValue value={String(row[column.key] || "0")} /></span>
                               ) : column.key === "actions" ? (
                                 <button
                                   aria-label={`Edit ${String(row.account ?? "account")}`}
@@ -1383,9 +1383,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Current balance</span>
-                  <strong><FinancialValue animate={false} value={selectedRow.current_balance || "0"} /></strong>
+                  <strong><FinancialValue value={selectedRow.current_balance || "0"} /></strong>
                   <p className="lede">
-                    Pending withdrawal: <FinancialValue animate={false} value={selectedRow.pending_withdrawal_amount || "0"} />
+                    Pending withdrawal: <FinancialValue value={selectedRow.pending_withdrawal_amount || "0"} />
                   </p>
                 </article>
                 <article className="stat-card">

@@ -11,6 +11,7 @@ import {
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
 import {
   LedgerEditorTabPanel,
   LedgerEditorTabRail,
@@ -31,7 +32,9 @@ import {
   resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
+  filterExtraPlaceQuickAccountOptions,
   prioritiseExtraPlaceAccountOptions,
+  prioritiseExtraPlaceTerms,
   type ExtraPlaceAccountAccess,
 } from "@/lib/extra-place-account-options";
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -139,6 +142,7 @@ type ExtraPlaceVisibleColumn =
   | "rating"
   | "implied_odds";
 type ExtraPlaceVisibleColumns = Record<ExtraPlaceVisibleColumn, boolean>;
+type ProviderUsageEvent = { provider: string; usedAt: string };
 
 const newForm = (): Form => ({
   placed_at: "",
@@ -225,7 +229,6 @@ function value(value: string | null | undefined) {
     </span>
   ) : (
     <FinancialValue
-      animate={false}
       className="ledger-financial-value"
       label="Financial value"
       value={number}
@@ -236,7 +239,7 @@ function neutralValue(value: string | null | undefined) {
   const number = asNumber(value);
   return (
     <span className="extra-place-stake-value">
-      {number === null ? "£ -" : formatFinancialValue(number)}
+      {number === null ? "£ -" : <FinancialValue tone="neutral" value={number} />}
     </span>
   );
 }
@@ -301,17 +304,9 @@ function resultChoices(
 }
 function matrixValue(value: string | null | undefined) {
   const number = asNumber(value);
-  const tone =
-    number === null || number === 0
-      ? "neutral"
-      : number > 0
-        ? "positive"
-        : "negative";
   return (
-    <span
-      className={`extra-place-matrix-value extra-place-matrix-value-${tone}`}
-    >
-      {number === null ? "£ -" : formatFinancialValue(number)}
+    <span className="extra-place-matrix-value">
+      {number === null ? "£ -" : <FinancialValue value={number} />}
     </span>
   );
 }
@@ -366,6 +361,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [accountAuthorities, setAccountAuthorities] = useState<
     AccountAuthorityRecord[]
   >([]);
+  const [otherProviderUsage, setOtherProviderUsage] = useState<ProviderUsageEvent[]>([]);
   const [savingRange, setSavingRange] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const parserOwnedDateRef = useRef<string | null>(null);
@@ -405,6 +401,34 @@ export function EachWayExtraPlaceWorkflowShell({
       if (eligible.length) setLoadouts(resolveVisibleQuickActions(eligible, "Extra Place"));
     }, 0);
     return () => window.clearTimeout(timeout);
+  }, [profileId]);
+  useEffect(() => {
+    let cancelled = false;
+    const endpoints = ["sportsbook-bets", "free-bets", "casino-offers"];
+    void Promise.allSettled(
+      endpoints.map(async (endpoint) => {
+        const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/${endpoint}`, {
+          cache: "no-store",
+        });
+        return response.ok ? (await response.json()) as Array<Record<string, unknown>> : [];
+      }),
+    ).then((results) => {
+      if (cancelled) return;
+      const groups = results.map((result) =>
+        result.status === "fulfilled" ? result.value : [],
+      );
+      const planningStatuses = new Set(["", "Prospecting", "Not Placed", "Available", "Not Yet Awarded"]);
+      setOtherProviderUsage(groups.flatMap((records) => records.filter(
+        (record) => !planningStatuses.has(String(record.status ?? "")),
+      ).flatMap((record) => {
+        const usedAt = String(record.date_settled || record.date_started || record.updated_at || record.created_at || "");
+        return [record.bookmaker, record.exchange_name]
+          .map((provider) => String(provider ?? "").trim())
+          .filter(Boolean)
+          .map((provider) => ({ provider, usedAt }));
+      })));
+    });
+    return () => { cancelled = true; };
   }, [profileId]);
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
@@ -528,6 +552,37 @@ export function EachWayExtraPlaceWorkflowShell({
         rows,
       }),
     [accountAuthorities, form.bookmaker, form.place_exchange, form.win_exchange, rows],
+  );
+  const sameBookmakerUsage = useMemo(
+    () => rows.filter((row) => row.status !== "Prospecting")
+      .map((row) => ({ provider: row.bookmaker ?? "", usedAt: row.placed_at ?? "" })),
+    [rows],
+  );
+  const sameExchangeUsage = useMemo(
+    () => rows.filter((row) => row.status !== "Prospecting")
+      .flatMap((row) => [row.win_exchange, row.place_exchange]
+      .map((provider) => ({ provider: provider ?? "", usedAt: row.placed_at ?? "" }))),
+    [rows],
+  );
+  const bookmakerQuickOptions = useMemo(
+    () => prioritiseExtraPlaceAccountOptions(
+      filterExtraPlaceQuickAccountOptions(accountOptions.bookmakers, accountAuthorities, form.bookmaker),
+      form.bookmaker,
+      accountAuthorities,
+      sameBookmakerUsage,
+      otherProviderUsage,
+    ),
+    [accountAuthorities, accountOptions.bookmakers, form.bookmaker, otherProviderUsage, sameBookmakerUsage],
+  );
+  const exchangeQuickOptions = useMemo(
+    () => prioritiseExtraPlaceAccountOptions(
+      filterExtraPlaceQuickAccountOptions(accountOptions.exchanges, accountAuthorities),
+      "",
+      accountAuthorities,
+      sameExchangeUsage,
+      otherProviderUsage,
+    ),
+    [accountAuthorities, accountOptions.exchanges, otherProviderUsage, sameExchangeUsage],
   );
   const openNew = () => {
     const next = newForm();
@@ -978,7 +1033,7 @@ export function EachWayExtraPlaceWorkflowShell({
             <span aria-hidden="true" className="material-symbols-outlined">
               trending_down
             </span>
-            <FinancialValue animate={false} value={qualifyingLoss} />
+            <FinancialValue value={qualifyingLoss} />
           </span>
           <span
             aria-label="Weekly qualifying loss spend against weekly loss budget"
@@ -990,10 +1045,10 @@ export function EachWayExtraPlaceWorkflowShell({
               savings
             </span>
             <span className="extra-place-budget-current">
-              {formatFinancialValue(lossBudget.spent)}
+              <FinancialValue value={lossBudget.spent} />
             </span>
             <span aria-hidden="true">/</span>
-            <span>{formatFinancialValue(lossBudget.budget)}</span>
+            <span><FinancialValue value={lossBudget.budget} /></span>
           </span>
         </article>
       </section>
@@ -1276,7 +1331,9 @@ export function EachWayExtraPlaceWorkflowShell({
                         accountAccess={selectedAccountAccess}
                         bookmakerCatalogue={bookmakerCatalogue}
                         bookmakerOptions={accountOptions.bookmakers}
+                        bookmakerQuickOptions={bookmakerQuickOptions}
                         exchangeOptions={accountOptions.exchanges}
+                        exchangeQuickOptions={exchangeQuickOptions}
                         form={form}
                         onCopy={copy}
                         onRaceDatePick={applyRaceDate}
@@ -1284,6 +1341,7 @@ export function EachWayExtraPlaceWorkflowShell({
                         onRaceUpdate={updateRace}
                         onUpdate={update}
                         preview={preview}
+                        rows={rows}
                       />
                     </LedgerEditorTabPanel>
                     <LedgerEditorTabPanel activeTabId={step} tabId="settlement">
@@ -1950,7 +2008,7 @@ function EpProfit({ row }: { row: Row }) {
   const profit = asNumber(row.extra_place_profit);
   return (
     <span className={`extra-place-profit-value${hit ? " is-hit" : ""}${missed ? " is-missed" : ""}`}>
-      {profit === null ? "£ -" : formatFinancialValue(profit)}
+      {profit === null ? "£ -" : <FinancialValue value={profit} />}
     </span>
   );
 }
@@ -2199,142 +2257,54 @@ function Chips({
   selected?: string[];
   className?: string;
 }) {
-  return (
-    <div className={className}>
-      {labels.map((label) => (
-        <button
-          aria-pressed={selected.includes(label)}
-          className={`review-chip${selected.includes(label) ? " review-chip-action-positive" : ""}`}
-          key={label}
-          onClick={() => onPick(label)}
-          type="button"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+  return <div className={className}><QuickSelectRail ariaLabel="quick choices" choices={labels.map((label) => ({ label, value: label }))} onSelect={onPick} selectedValues={selected} /></div>;
 }
 function BookmakerChips({
   catalogue,
   labels,
   onPick,
   selected,
-  rows = [],
 }: {
   catalogue: MasterAccountCatalogueRecord[];
   labels: string[];
   onPick: (value: string) => void;
   selected: string;
-  rows?: Row[];
 }) {
-  const rankedLabels = useMemo(() => {
-    const counts = new Map<string, number>();
-    rows.forEach((row) => {
-      if (row.bookmaker)
-        counts.set(row.bookmaker, (counts.get(row.bookmaker) ?? 0) + 1);
-    });
-    return prioritiseExtraPlaceAccountOptions(
-      labels,
-      selected,
-      Object.fromEntries(counts),
-    );
-  }, [labels, rows, selected]);
-  return (
-    <AccountOptionRail
-      labels={rankedLabels}
-      onPick={onPick}
-      selected={selected}
-      renderLabel={(label) => {
+  const choices: QuickSelectChoice[] = labels.map((label) => {
         const entry = findMasterAccountCatalogueEntry(catalogue, { accountName: label });
-        return { label: entry?.brand_name ?? label, entry: entry ?? undefined };
-      }}
-    />
-  );
-}
-
-function AccountOptionRail({
-  labels,
-  onPick,
-  renderLabel,
-  selected,
-}: {
-  labels: string[];
-  onPick: (value: string) => void;
-  renderLabel?: (value: string) => { label: string; entry?: MasterAccountCatalogueRecord };
-  selected: string;
-}) {
-  const railRef = useRef<HTMLDivElement>(null);
-  const [remaining, setRemaining] = useState(Math.max(0, labels.length - 4));
-  const updateRemaining = useCallback(() => {
-    const rail = railRef.current;
-    if (!rail) return;
-    const right = rail.getBoundingClientRect().right + 1;
-    setRemaining(Array.from(rail.children).filter((child) => child.getBoundingClientRect().right > right).length);
-  }, []);
-  useEffect(() => {
-    updateRemaining();
-    const rail = railRef.current;
-    if (!rail) return;
-    const observer = new ResizeObserver(updateRemaining);
-    observer.observe(rail);
-    rail.addEventListener("scroll", updateRemaining, { passive: true });
-    return () => {
-      observer.disconnect();
-      rail.removeEventListener("scroll", updateRemaining);
-    };
-  }, [labels, updateRemaining]);
-  return (
-    <div className="import-review-loadout-shell extra-place-account-option-rail">
-      <button aria-label="Show previous Account options" className="icon-button compact-action" onClick={() => railRef.current?.scrollBy({ left: -280, behavior: "smooth" })} type="button">
-        <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
-      </button>
-      <div aria-label="Account quick selections" className="tracker-nav import-review-loadouts" ref={railRef}>
-        {labels.map((value) => {
-          const rendered = renderLabel?.(value) ?? { label: value };
-          return (
-            <button
-              aria-pressed={selected === value}
-              className={`review-chip${rendered.entry ? " extra-place-bookmaker-chip" : ""}${selected === value ? " review-chip-action-positive" : ""}`}
-              key={value}
-              onClick={() => onPick(value)}
-              style={rendered.entry ? { backgroundColor: rendered.entry.background_colour, color: rendered.entry.foreground_colour } : undefined}
-              type="button"
-            >
-              {rendered.label}
-            </button>
-          );
-        })}
-      </div>
-      <button aria-label={remaining ? `Show ${remaining} more Account options` : "Show next Account options"} className="icon-button compact-action" onClick={() => railRef.current?.scrollBy({ left: 280, behavior: "smooth" })} type="button">
-        {remaining ? <span aria-hidden="true">+{remaining}</span> : <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>}
-      </button>
-    </div>
-  );
+        return { label: entry?.brand_name ?? label, value: label, style: entry ? { backgroundColor: entry.background_colour, color: entry.foreground_colour } : undefined };
+  });
+  return <div className="extra-place-account-option-rail"><QuickSelectRail ariaLabel="Account quick selections" choices={choices} onSelect={onPick} selectedValues={[selected]} /></div>;
 }
 function Calculate({
   accountAccess,
   bookmakerCatalogue,
   bookmakerOptions,
+  bookmakerQuickOptions,
   exchangeOptions,
+  exchangeQuickOptions,
   form,
   onUpdate,
   onRaceUpdate,
   onRaceDatePick,
   onRacePaste,
   preview,
+  rows,
   onCopy,
 }: {
   accountAccess: ExtraPlaceAccountAccess | null;
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
   bookmakerOptions: string[];
+  bookmakerQuickOptions: string[];
   exchangeOptions: string[];
+  exchangeQuickOptions: string[];
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
   onRaceUpdate: (value: string) => void;
   onRaceDatePick: (value: string) => void;
   onRacePaste: (value: string) => boolean;
   preview: Row | null;
+  rows: Row[];
   onCopy: (value: string | null | undefined) => void;
 }) {
   const raceDates = getRaceDateSuggestions(form.race);
@@ -2412,7 +2382,7 @@ function Calculate({
             />
             <BookmakerChips
               catalogue={bookmakerCatalogue}
-              labels={bookmakerOptions}
+              labels={bookmakerQuickOptions}
               onPick={(next) => {
                 onUpdate("bookmaker", next);
                 onUpdate("bookmaker_account", next);
@@ -2505,14 +2475,14 @@ function Calculate({
               : `Paying ${form.bookmaker_places || "—"} places.`}
           </p>
           <Chips
-            labels={[
+            labels={prioritiseExtraPlaceTerms([
               "Paying 4 instead of 3",
               "Paying 5 instead of 4",
               "Paying 6 instead of 4",
               "Paying 6 instead of 5",
               "Paying 8 instead of 5",
               "Paying 10 instead of 8",
-            ]}
+            ], rows, `Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`)}
             onPick={(next) => {
               const match = next.match(/Paying (\d+) instead of (\d+)/);
               if (!match) return;
@@ -2528,6 +2498,7 @@ function Calculate({
       <LaySegment
         exchange="win_exchange"
         exchangeOptions={exchangeOptions}
+        exchangeQuickOptions={exchangeQuickOptions}
         kind="win"
         label="Lay The Win"
         odds="win_lay_odds"
@@ -2540,6 +2511,7 @@ function Calculate({
       <LaySegment
         exchange="place_exchange"
         exchangeOptions={exchangeOptions}
+        exchangeQuickOptions={exchangeQuickOptions}
         kind="place"
         label="Lay The Place"
         odds="place_lay_odds"
@@ -2558,6 +2530,7 @@ function LaySegment({
   kind,
   exchange,
   exchangeOptions,
+  exchangeQuickOptions,
   odds,
   form,
   onUpdate,
@@ -2569,6 +2542,7 @@ function LaySegment({
   kind: "win" | "place";
   exchange: keyof Form;
   exchangeOptions: string[];
+  exchangeQuickOptions: string[];
   odds: keyof Form;
   form: Form;
   onUpdate: (key: keyof Form, value: string) => void;
@@ -2595,11 +2569,7 @@ function LaySegment({
           value={form[odds] as string}
         />
       </div>
-      <AccountOptionRail
-        labels={prioritiseExtraPlaceAccountOptions(exchangeOptions, form[exchange] as string)}
-        onPick={(next) => onUpdate(exchange, next)}
-        selected={form[exchange] as string}
-      />
+      <div className="extra-place-account-option-rail"><QuickSelectRail ariaLabel={`${label} Account quick selections`} choices={[...new Set([form[exchange] as string, ...exchangeQuickOptions])].filter(Boolean).map((value) => ({ label: value, value }))} onSelect={(next) => onUpdate(exchange, next)} selectedValues={[form[exchange] as string]} /></div>
       <div className="extra-place-calculated-stake">
         <span>Calculated Lay Stake</span>
         <strong>{neutralValue(stake)}</strong>

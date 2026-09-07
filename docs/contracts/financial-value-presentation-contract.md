@@ -76,6 +76,9 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
   decrease rolls down. Identical values do not replay automatically.
 - Each digit owns a fixed-height clipped viewport over a vertical `0`–`9` strip. Digit transforms
   are staggered by 70ms; currency, sign, grouping and decimal punctuation stay static.
+- Each digit viewport inherits the surrounding value's font family, size, weight, line height and
+  baseline, and sizes itself from a tabular numeral glyph. Animation must not compress the value;
+  currency spaces and punctuation retain their natural static width.
 - Directly clicking the shared read-only value replays the current value once, following its sign.
 - Zero, unavailable and loading states remain neutral and static. Loading must never fabricate a
   temporary zero or random intermediate monetary value.
@@ -121,13 +124,17 @@ All items remain pending until implemented and verified in bounded batches. Exte
 component alone does not establish complete surface coverage.
 
 - [x] Shared `FinancialValue` digit-roll correction and focused helper/rendered fixtures.
-- [ ] Dashboards and summary cards.
-- [ ] Read-only ledger values and financial badges.
-- [ ] Calculator and calculation-preview results.
-- [ ] Reports and Profit Tracker values.
-- [ ] Account summaries.
-- [ ] Relevant read-only dialog results.
+- [x] Dashboards and summary cards: Profile dashboard, portfolio point/command rails, Combined
+  Analytics and Tracker summary paths use the shared component.
+- [x] Read-only ledger values and financial badges across the active Sportsbook, Free Bets, Casino,
+  Cash Adjustments, Accounts and Extra Places paths.
+- [x] Calculator and calculation-preview results in those active ledger workflows.
+- [x] Reports, Profit Tracker and Account summaries reached through the shared tracker/report paths.
+- [x] Relevant existing read-only side-panel, drawer and fee-review values.
 - [ ] Future read-only signed-money displays adopt the shared component by default.
+
+Remaining static exceptions are editable/read-only form controls, accessible narrative strings,
+file/export output and legacy/non-active shells. New surfaces still require bounded adoption evidence.
 
 Editable money fields and file/print exports remain static. Adoption must preserve exact final
 values, precision, copy behaviour, calculations, accounting punctuation, current/final indicators,

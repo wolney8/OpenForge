@@ -9188,21 +9188,37 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
   gap: 0.5rem;
 }
 
-.extra-place-account-option-rail {
+.extra-place-account-option-rail,
+.quick-select-rail {
   max-width: min(100%, 34rem);
 }
 
-.extra-place-account-option-rail .import-review-loadouts {
+.quick-select-rail .import-review-loadouts {
   align-items: center;
   gap: 0.5rem;
   padding: 0.15rem 0;
 }
 
-.extra-place-account-option-rail .review-chip {
-  flex: 0 0 auto;
+.quick-select-rail-page {
+  display: grid;
+  min-width: 0;
+  overflow: visible;
 }
 
-.extra-place-account-option-rail .icon-button {
+.quick-select-rail .review-chip {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.quick-select-rail-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-select-rail .icon-button {
   flex: 0 0 auto;
 }
 
@@ -10599,6 +10615,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .financial-value {
   display: inline-flex;
+  align-items: baseline;
   justify-content: center;
   min-width: 5.2ch;
   font-variant-numeric: tabular-nums;
@@ -10607,27 +10624,41 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .financial-value-visual {
   display: inline-flex;
+  align-items: baseline;
   justify-content: center;
   min-width: inherit;
+  font: inherit;
+  line-height: inherit;
 }
 
 .financial-value-character {
   display: inline-block;
-  min-width: 0.55ch;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre;
 }
 
 .financial-value-digit-window {
-  display: inline-block;
-  width: 0.62ch;
-  height: 1em;
+  position: relative;
+  display: inline-grid;
   overflow: hidden;
-  line-height: 1;
-  vertical-align: -0.08em;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+.financial-value-digit-window::before {
+  content: "0";
+  grid-area: 1 / 1;
+  visibility: hidden;
 }
 
 .financial-value-digit-strip {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
   width: 100%;
   transform: translateY(var(--financial-digit-position));
   will-change: transform;
@@ -10635,10 +10666,11 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .financial-value-digit-strip > span {
   display: block;
-  flex: 0 0 1em;
+  flex: 0 0 1lh;
   width: 100%;
-  height: 1em;
-  line-height: 1;
+  height: 1lh;
+  font: inherit;
+  line-height: inherit;
   text-align: center;
 }
 

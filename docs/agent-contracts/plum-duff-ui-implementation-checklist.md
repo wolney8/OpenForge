@@ -67,6 +67,10 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Unit/Playwright/accessibility tests added or updated.
 - [ ] Geometry and computed-style parity asserted where the task fixes layout/style divergence.
 - [ ] Dialog/page top, bottom, left and right visibility asserted where geometry changed.
+- [ ] Paged quick-select rails show at most three choices, hide redundant controls and retain all
+  choices through working keyboard-accessible boundaries and the authoritative select.
+- [ ] Animated financial values match equivalent static typography, baseline and geometry; digit
+  slots do not compress currency spacing or punctuation.
 - [ ] Action/icon dimensions, alignment and semantic destructive styling asserted where actions changed.
 - [ ] Light/dark contrast regression updated where colours changed.
 - [ ] Known-mistakes register updated if this fixes a repeated issue.

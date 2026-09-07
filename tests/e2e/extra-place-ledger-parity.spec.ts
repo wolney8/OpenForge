@@ -131,6 +131,7 @@ test.describe("Extra Place ledger parity", () => {
         ...accountRows[0],
         account_id: `account-synthetic-bookie-${index + 2}`,
         account: `Synthetic Long Bookmaker Choice ${index + 2}`,
+        current_balance: index === 0 ? "25.00" : "0.00",
       })),
       ...Array.from({ length: 6 }, (_, index) => ({
         ...accountRows[3],
@@ -172,6 +173,11 @@ test.describe("Extra Place ledger parity", () => {
     await page.route("**/fund-manager/common-bet-combos/profile-overrides/**", (route) =>
       route.fulfill({ json: [] }),
     );
+    await page.route(`**/profiles/${profileId}/sportsbook-bets`, (route) =>
+      route.fulfill({ json: [{ bookmaker: "Synthetic Long Bookmaker Choice 3", exchange_name: "Synthetic Long Exchange Choice 3", status: "Placed", updated_at: "2026-09-07T12:30:00Z" }] }),
+    );
+    await page.route(`**/profiles/${profileId}/free-bets`, (route) => route.fulfill({ json: [] }));
+    await page.route(`**/profiles/${profileId}/casino-offers`, (route) => route.fulfill({ json: [] }));
     await page.route(`**/profiles/${profileId}/each-way-extra-places/preview`, async (route) => {
       const form = route.request().postDataJSON() as Record<string, string>;
       await route.fulfill({
@@ -190,14 +196,16 @@ test.describe("Extra Place ledger parity", () => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           json: savedPayload
-            ? [{
+            ? ["61.12", "-14.01", "3450.50"].map((qualifyingLoss, index) => ({
                 ...savedPayload,
-                each_way_extra_place_id: "extra-place-synthetic-account-default",
+                each_way_extra_place_id: `extra-place-synthetic-account-default-${index}`,
+                runner: `Synthetic Geometry Runner ${index + 1}`,
                 calculation_state: "resolved",
                 calculation_notes: [],
                 current_value: "12.34",
                 final_value: "12.34",
-              }]
+                qualifying_loss: qualifyingLoss,
+              }))
             : [],
         });
         return;
@@ -238,20 +246,37 @@ test.describe("Extra Place ledger parity", () => {
     const accountRails = dialog.locator(".extra-place-account-option-rail");
     await expect(accountRails).toHaveCount(3);
     const bookmakerRail = accountRails.first();
-    await expect(bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ })).toBeVisible();
-    expect(
-      await bookmakerRail.locator(".import-review-loadouts").evaluate(
-        (element) => element.scrollWidth > element.clientWidth,
-      ),
-    ).toBeTruthy();
+    await expect(bookmakerRail.locator(".quick-select-rail-page .review-chip")).toHaveCount(3);
+    await expect(bookmakerRail.locator(".quick-select-rail-page .review-chip").first()).toContainText("Synthetic Long Bookmaker Choice 3");
+    await expect(bookmakerRail.locator(".quick-select-rail-page .review-chip").nth(1)).toContainText("Synthetic Long Bookmaker Choice 2");
+    const nextBookmakers = bookmakerRail.getByRole("button", { name: /Show next Account quick selections/ });
+    const previousBookmakers = bookmakerRail.getByRole("button", { name: /Show previous Account quick selections/ });
+    await expect(previousBookmakers).toBeDisabled();
+    await expect(nextBookmakers).toBeEnabled();
     expect(
       await bookmakerRail.locator(".import-review-loadouts").evaluate(
         (element) => element.scrollHeight <= element.clientHeight + 2,
       ),
     ).toBeTruthy();
-    await bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ }).focus();
-    await expect(bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ })).toBeFocused();
+    await nextBookmakers.focus();
+    await expect(nextBookmakers).toBeFocused();
     await page.keyboard.press("Enter");
+    await expect(previousBookmakers).toBeEnabled();
+    await expect(bookmakerRail.locator(".quick-select-rail-page .review-chip")).toHaveCount(3);
+    await nextBookmakers.click();
+    await expect(nextBookmakers).toBeDisabled();
+    await expect(bookmakerRail.locator(".quick-select-rail-page")).toContainText(
+      "Synthetic Long Bookmaker Choice 7",
+    );
+    await previousBookmakers.click();
+    await previousBookmakers.click();
+    await expect(previousBookmakers).toBeDisabled();
+    const eachWayTermsRail = dialog.locator(".extra-place-field-with-chips", { hasText: "Each-Way Terms" }).locator('[data-pd-id="quick-select.rail"]');
+    await expect(eachWayTermsRail.locator(".review-chip")).toHaveCount(3);
+    await expect(eachWayTermsRail.locator(".icon-button")).toHaveCount(0);
+    const placeTermsRail = dialog.locator(".extra-place-place-terms").locator('[data-pd-id="quick-select.rail"]');
+    await expect(placeTermsRail.locator(".review-chip")).toHaveCount(3);
+    await expect(placeTermsRail.locator(".icon-button")).toHaveCount(2);
     await bookmaker.selectOption("Synthetic Stake Limited Bookmaker");
     await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toBeVisible();
     await bookmaker.selectOption("Synthetic Extra Place Bookmaker");
@@ -303,7 +328,11 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
     await dialog.getByRole("tab", { name: /Settlement/ }).click();
-    await dialog.getByRole("button", { name: "5th", exact: true }).click();
+    const finishingPositionGroup = dialog.getByLabel("Finishing Position").locator("../..");
+    await finishingPositionGroup
+      .getByRole("button", { name: /Show next quick choices/ })
+      .click();
+    await finishingPositionGroup.getByRole("button", { name: "5th", exact: true }).click();
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
     expect(savedPayload).toMatchObject({
@@ -317,7 +346,10 @@ test.describe("Extra Place ledger parity", () => {
     });
 
     const resolvedValue = page.locator('[data-pd-id="extra-place.ledger"] .stat-card .financial-value').first();
-    await expect(resolvedValue).toHaveAttribute("aria-label", "£ 12.34");
+    await expect(resolvedValue).toHaveAttribute("aria-label", "£ 37.02");
+    await expect(
+      page.locator('[data-pd-id="extra-place.ledger"] .financial-value[aria-label$="£ (14.01)"]'),
+    ).toHaveAttribute("data-money-motion", "down");
     await expect(resolvedValue.locator(".financial-value-digit-window")).toHaveCount(4);
     await expect(resolvedValue.locator(".financial-value-digit-window").first()).toHaveCSS("overflow", "hidden");
     const cycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
@@ -328,6 +360,44 @@ test.describe("Extra Place ledger parity", () => {
       strips.slice(0, 2).map((strip) => getComputedStyle(strip).animationDelay),
     );
     expect(delays).toEqual(["0s", "0.07s"]);
+    const financialGeometry = await page.locator('[data-pd-id="extra-place.ledger"] .financial-value').evaluateAll((values) =>
+      values.filter((value) => ["£ 37.02", "£ 61.12", "£ (14.01)", "£ 3,450.50"].includes(value.getAttribute("aria-label")?.replace("Financial value: ", "") ?? "")).map((value) => {
+        const display = value.getAttribute("aria-label")?.replace("Financial value: ", "") ?? "";
+        const clone = value.cloneNode(false) as HTMLElement;
+        clone.removeAttribute("aria-label");
+        clone.style.position = "absolute";
+        clone.style.visibility = "hidden";
+        clone.textContent = display;
+        value.parentElement?.appendChild(clone);
+        const animated = value.getBoundingClientRect();
+        const staticValue = clone.getBoundingClientRect();
+        const valueStyle = getComputedStyle(value);
+        const digitStyle = getComputedStyle(value.querySelector(".financial-value-digit-window")!);
+        const result = {
+          display,
+          animatedWidth: animated.width,
+          staticWidth: staticValue.width,
+          animatedHeight: animated.height,
+          staticHeight: staticValue.height,
+          fontFamily: valueStyle.fontFamily === digitStyle.fontFamily,
+          fontSize: valueStyle.fontSize === digitStyle.fontSize,
+          fontWeight: valueStyle.fontWeight === digitStyle.fontWeight,
+          lineHeight: valueStyle.lineHeight === digitStyle.lineHeight,
+        };
+        clone.remove();
+        return result;
+      }),
+    );
+    expect(financialGeometry).toHaveLength(4);
+    financialGeometry.forEach((geometry) => {
+      expect(Math.abs(geometry.animatedWidth - geometry.staticWidth), JSON.stringify(geometry)).toBeLessThanOrEqual(1.5);
+      expect(Math.abs(geometry.animatedHeight - geometry.staticHeight), JSON.stringify(geometry)).toBeLessThanOrEqual(1.5);
+      expect(geometry.fontFamily && geometry.fontSize && geometry.fontWeight && geometry.lineHeight, JSON.stringify(geometry)).toBeTruthy();
+    });
+    await expect(resolvedValue).toHaveAttribute("data-money-motion", "none");
+    const settledCycle = await resolvedValue.getAttribute("data-money-motion-cycle");
+    await page.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
+    await expect(resolvedValue).toHaveAttribute("data-money-motion-cycle", settledCycle ?? "0");
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect(resolvedValue).toHaveAttribute("data-money-motion", "none", { timeout: 2_000 });
     const reducedCycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));

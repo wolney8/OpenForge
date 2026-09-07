@@ -31,7 +31,6 @@ import {
 } from "@/lib/tracker-data-events";
 import {
   formatHumanDisplayDate,
-  formatMoney,
   formatResolvedDateRange,
   formatResolvedDateRangeContext,
   resolveDateRange,
@@ -653,7 +652,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span>
                   {isReports
                     ? `${summary.reportingModel.formalReports.yearlyPeriods}Y formal periods`
-                    : `Pending withdrawals ${formatMoney(summary.accountQuickView.pendingWithdrawals)}`}
+                    : <>Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} /></>}
                 </span>
               </article>
             </>
@@ -703,16 +702,16 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span className="eyebrow">Sportsbook</span>
                 <strong><FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
                 <span>
-                  Open/current {formatMoney(summary.profitQuickView.sportsbook.currentValue)} • Final{" "}
-                  {formatMoney(summary.profitQuickView.sportsbook.finalValue)}
+                  Open/current <FinancialValue value={summary.profitQuickView.sportsbook.currentValue} /> • Final{" "}
+                  <FinancialValue value={summary.profitQuickView.sportsbook.finalValue} />
                 </span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Free Bets</span>
                 <strong><FinancialValue value={summary.profitQuickView.freeBets.reportingValue} /></strong>
                 <span>
-                  Open/current {formatMoney(summary.profitQuickView.freeBets.currentValue)} • Final{" "}
-                  {formatMoney(summary.profitQuickView.freeBets.finalValue)}
+                  Open/current <FinancialValue value={summary.profitQuickView.freeBets.currentValue} /> • Final{" "}
+                  <FinancialValue value={summary.profitQuickView.freeBets.finalValue} />
                 </span>
               </article>
               <article className="stat-card">
@@ -724,8 +723,8 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span className="eyebrow">Cash Adjustments</span>
                 <strong><FinancialValue value={summary.betsQuickView.selectedRangeCashAdjustments} /></strong>
                 <span>
-                  Withdrawals {formatMoney(summary.cashAdjustmentBreakdown.withdrawals)} • Costs{" "}
-                  {formatMoney(summary.cashAdjustmentBreakdown.deductionsAndSubscriptions)}
+                  Withdrawals <FinancialValue value={summary.cashAdjustmentBreakdown.withdrawals} /> • Costs{" "}
+                  <FinancialValue value={summary.cashAdjustmentBreakdown.deductionsAndSubscriptions} />
                 </span>
               </article>
             </section>
@@ -737,25 +736,25 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span className="eyebrow">Current Account Cash</span>
                 <strong><FinancialValue value={summary.accountQuickView.cashSnapshot} /></strong>
                 <span>
-                  Bookie {formatMoney(summary.accountQuickView.bookieBalance)} • Exchange{" "}
-                  {formatMoney(summary.accountQuickView.exchangeBalance)} • Bank{" "}
-                  {formatMoney(summary.accountQuickView.bankBalance)}
+                  Bookie <FinancialValue value={summary.accountQuickView.bookieBalance} /> • Exchange{" "}
+                  <FinancialValue value={summary.accountQuickView.exchangeBalance} /> • Bank{" "}
+                  <FinancialValue value={summary.accountQuickView.bankBalance} />
                 </span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
                 <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
                 <span>
-                  Sportsbook {formatMoney(summary.profitQuickView.sportsbook.reportingValue)} •
-                  Free Bets {formatMoney(summary.profitQuickView.freeBets.reportingValue)} • Casino{" "}
-                  {formatMoney(summary.profitQuickView.casino.reportingValue)}
+                  Sportsbook <FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /> •
+                  Free Bets <FinancialValue value={summary.profitQuickView.freeBets.reportingValue} /> • Casino{" "}
+                  <FinancialValue value={summary.profitQuickView.casino.reportingValue} />
                 </span>
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Retained profit</span>
                 <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                 <span>
-                  Cash adjustments {formatMoney(summary.reportingModel.selectedRange.cashAdjustments)}
+                  Cash adjustments <FinancialValue value={summary.reportingModel.selectedRange.cashAdjustments} />
                 </span>
               </article>
               <article className="stat-card">
@@ -780,7 +779,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <span className="eyebrow">Liability</span>
                 <strong><FinancialValue value={summary.betsQuickView.currentLiability} /></strong>
                 <span>
-                  Pending withdrawals {formatMoney(summary.accountQuickView.pendingWithdrawals)}
+                  Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} />
                 </span>
               </article>
               <article className="stat-card">

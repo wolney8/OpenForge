@@ -918,3 +918,13 @@ cause, prevention rule and regression test.
 - Regression test: `tests/e2e/notification-history-layout.spec.ts` checks child containment,
   pairwise sibling separation, focus clearance, theme switching, text scaling, breakpoint-adjacent
   widths, narrow layout, and a representative Account Catalogue consumer.
+## 2026-09-07: Odometer digit slots compressed financial typography
+
+- Area: shared `FinancialValue` and bounded quick-select rails.
+- Root cause: fixed narrow digit widths and collapsed isolated whitespace changed the original
+  accounting-value geometry; a scrollable chip row bounded overflow without limiting visible choices.
+- Prevention: size rolling digits from inherited tabular glyphs, preserve static punctuation and
+  compare against plain-text geometry. Quick-select rails page at most three choices and suppress
+  paging controls when all choices fit.
+- Test: `tests/e2e/extra-place-ledger-parity.spec.ts` covers representative values, cascade/replay,
+  reduced motion, ranking, three/many-choice boundaries, keyboard paging, themes and narrow containment.

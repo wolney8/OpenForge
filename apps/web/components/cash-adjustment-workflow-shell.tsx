@@ -2198,7 +2198,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   </span>
                 ) : (
                   <FinancialValue
-                    animate={false}
                     className="ledger-financial-value editor-summary-financial-value"
                     label="Signed preview"
                     value={signedAmountNumericPreview}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AccountAuthorityRecord } from "./account-authorities";
 import {
+  filterExtraPlaceQuickAccountOptions,
+  prioritiseExtraPlaceTerms,
   resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
@@ -10,6 +12,7 @@ import {
 function account(
   accountName: string,
   type: AccountAuthorityRecord["type"],
+  currentBalance = "0.00",
 ): AccountAuthorityRecord {
   return {
     account_id: `account-${accountName}`,
@@ -20,7 +23,7 @@ function account(
     channel: "Online",
     status: "Active",
     lifecycle_status: "Active",
-    current_balance: "0.00",
+    current_balance: currentBalance,
     pending_withdrawal_amount: "0.00",
     last_balance_update: "",
     group_name: "Synthetic Group",
@@ -74,14 +77,35 @@ describe("Extra Place account choices", () => {
     ).toBe("");
   });
 
-  it("prioritises the current Account, then frequently used Profile choices without dropping options", () => {
+  it("prioritises saved selection, same-workflow recency, other recency, positive balances and canonical ties", () => {
     expect(
       prioritiseExtraPlaceAccountOptions(
-        ["Bookmaker A", "Bookmaker B", "Bookmaker C", "Bookmaker D", "Bookmaker E"],
-        "Bookmaker E",
-        { "Bookmaker B": 3, "Bookmaker C": 1 },
+        ["Bookmaker Zero", "Bookmaker Other", "Bookmaker Same Old", "Bookmaker Same New", "Bookmaker Current", "Bookmaker Positive"],
+        "Bookmaker Current",
+        [account("Bookmaker Positive", "Bookie", "12.50"), account("Bookmaker Zero", "Bookie")],
+        [
+          { provider: "Bookmaker Same Old", usedAt: "2026-09-01T12:00:00Z" },
+          { provider: "Bookmaker Same New", usedAt: "2026-09-06T12:00:00Z" },
+        ],
+        [{ provider: "Bookmaker Other", usedAt: "2026-09-07T12:00:00Z" }],
       ),
-    ).toEqual(["Bookmaker E", "Bookmaker B", "Bookmaker C", "Bookmaker A", "Bookmaker D"]);
+    ).toEqual(["Bookmaker Current", "Bookmaker Same New", "Bookmaker Same Old", "Bookmaker Other", "Bookmaker Positive", "Bookmaker Zero"]);
+  });
+
+  it("keeps a blocked saved selection but removes blocked Accounts from convenience choices", () => {
+    const blocked = { ...account("Blocked Bookmaker", "Bookie"), extra_places_allows_planning: false };
+    expect(filterExtraPlaceQuickAccountOptions(["Blocked Bookmaker", "Bookmaker A"], [blocked, account("Bookmaker A", "Bookie")])).toEqual(["Bookmaker A"]);
+    expect(filterExtraPlaceQuickAccountOptions(["Blocked Bookmaker", "Bookmaker A"], [blocked, account("Bookmaker A", "Bookie")], "Blocked Bookmaker")).toEqual(["Blocked Bookmaker", "Bookmaker A"]);
+  });
+
+  it("uses persisted Extra Place term recency then canonical order", () => {
+    expect(prioritiseExtraPlaceTerms(
+      ["Paying 4 instead of 3", "Paying 5 instead of 4", "Paying 6 instead of 4"],
+      [
+        { bookmaker_places: "6", exchange_places: "4", placed_at: "2026-09-07T12:00:00Z", status: "Prospecting" },
+        { bookmaker_places: "5", exchange_places: "4", placed_at: "2026-09-06T12:00:00Z", status: "Placed" },
+      ],
+    )).toEqual(["Paying 5 instead of 4", "Paying 4 instead of 3", "Paying 6 instead of 4"]);
   });
 
   it.each([

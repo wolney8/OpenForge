@@ -69,6 +69,24 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   page,
 }) => {
   test.setTimeout(120_000);
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        email: "financial-motion-test@example.invalid",
+        name: "Synthetic Fund Manager",
+        role: "fund_manager",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        linked_profile_ids: [primaryProfileId, secondaryProfileId],
+        session_policy: {
+          auto_logout_enabled: false,
+          timeout_minutes: 15,
+          preference_configured: true,
+          effective_expires_at: Math.floor(Date.now() / 1000) + 3600,
+        },
+      },
+    }),
+  );
   await page.goto(`/profiles/${primaryProfileId}/tracker/dashboard`);
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();

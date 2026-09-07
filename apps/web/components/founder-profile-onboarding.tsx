@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FinancialTextInput } from "@/components/financial-text-input";
+import { FinancialValue } from "@/components/financial-value";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -812,7 +813,7 @@ export function ProfileOnboarding() {
               <article className="stat-card"><span className="eyebrow">Modules</span><strong>{enabledModules.length}</strong><span>{enabledModules.join(" · ")}</span></article>
               <article className="stat-card"><span className="eyebrow">Accounts</span><strong>{selectedRecords.length}</strong><span>{selectedBanks.length ? `${selectedBanks.length} bank selected` : "No bank selected"}</span></article>
               <article className="stat-card"><span className="eyebrow">Quick Actions</span><strong>{Object.keys(selectedQuickActions).length}</strong><span>Optional favourites selected</span></article>
-              <article className="stat-card"><span className="eyebrow">Opening Account Cash</span><strong>£ {selectedCash.toFixed(2)}</strong><span>Starting bankroll: £ {parseAmount(profile.starting_bankroll).toFixed(2)}</span></article>
+              <article className="stat-card"><span className="eyebrow">Opening Account Cash</span><strong><FinancialValue value={selectedCash} /></strong><span>Starting bankroll: <FinancialValue value={parseAmount(profile.starting_bankroll)} /></span></article>
             </> : null}
           </div>
           <p className="field-hint">{setupPath === "import" ? "The workbook dry run can populate tracking settings, iteration, bankroll, main bank, Profile Accounts, balances and supported ledgers. Profile name and fee terms remain the Fund Manager's explicit choices; effective timestamp, review decisions and final import still require confirmation." : "Provider identity comes from the Fund Manager Account Catalogue. Statuses, balances, restrictions, and preferences belong only to this Profile."}</p>

@@ -132,6 +132,11 @@ use the canonical primitive and computed styling.
 - Long loadout or review-chip sets must remain inside a bounded horizontal rail with the established
   scroll/arrow treatment. Every action must remain keyboard reachable; never clip chips at the
   viewport edge or allow the rail to create page-level horizontal overflow.
+- Quick-select rails show at most three choices per page. Hide paging controls for zero to three
+  choices; for four or more, expose working previous/next boundaries while the authoritative select
+  retains every choice. Verify long-label truncation and focus in both themes and narrow layouts.
+- Animated financial digits must inherit the static value's typography, line height and baseline;
+  compare animated and plain geometry. Keep currency spaces and punctuation at their natural width.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
   search, and account/theme/notification actions. At reduced widths these regions reflow without
   changing control semantics, hiding the search, or creating page-level horizontal overflow.
