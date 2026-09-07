@@ -54,7 +54,8 @@ durable requirements.
   signed-off settings toolbar and adds sibling/focus/reflow regression coverage.
 - Tracking now includes local runtime handoff [#101](https://github.com/wolney8/OpenForge/issues/101),
   request-coverage recovery [#102](https://github.com/wolney8/OpenForge/issues/102), and deferred
-  rebranding decision [#103](https://github.com/wolney8/OpenForge/issues/103).
+  rebranding decision [#103](https://github.com/wolney8/OpenForge/issues/103). The previously
+  unlinked Founder import baseline is preserved in [#104](https://github.com/wolney8/OpenForge/issues/104).
 - This page is the navigation summary; Git commits and linked contracts/registers retain detailed
   history.
 
