@@ -524,12 +524,14 @@ Add a dedicated Each Way / Extra Places ledger flow, calculator and settlement v
 - Implemented: profile-scoped API/persistence, two-step row editor, cash-first calculation engine,
   deterministic MBB/EP Catcher fixtures, historical import handling, selected-range reporting,
   dashboards, formal reports, bookmaker breakdowns and cross-profile reporting.
-- Current tranche: account-authority bookmaker/exchange choices, configured preferred-exchange
-  defaulting for both lay legs, and existing `bookmaker_account` provenance are implemented locally;
-  focused automated evidence is recorded under GitHub #88.
-- Remaining: Account Health Intelligence integration and the explicitly deferred Rule 4, dead heat
-  and changed-terms settlement branches. Standalone calculator work remains separately queued under
-  #35-#38 and is not folded into #88.
+- Implemented locally: account-authority bookmaker/exchange choices, configured preferred-exchange
+  defaulting, and a bounded account-health adapter. New use blocks hard access states, keeps Pending
+  Sign Up planning-only, warns without blocking Soft Limited, allows Bonus Restricted, and retains
+  explicit Extra Places capability as `NotChecked`. Existing imported historical rows remain
+  accessible; focused automated evidence is recorded under GitHub #88.
+- Remaining: the full capability/evidence engine remains [#82](https://github.com/wolney8/OpenForge/issues/82). Rule 4, dead heat and changed-terms
+  settlement branches remain explicitly deferred. Standalone calculator work remains separately
+  queued under #35-#38 and is not folded into #88.
 
 ## Contract and fixtures
 

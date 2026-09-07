@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AccountAuthorityRecord } from "./account-authorities";
 import {
+  resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
 } from "./extra-place-account-options";
@@ -70,5 +71,39 @@ describe("Extra Place account choices", () => {
     expect(
       resolveExtraPlacePreferredExchange("Missing Exchange", ["Exchange A"]),
     ).toBe("");
+  });
+
+  it.each([
+    ["not_checked", true, true],
+    ["warning", true, true],
+    ["planning", true, false],
+    ["blocked", false, false],
+  ] as const)(
+    "uses server-authored %s access without inventing capability",
+    (state, allowsPlanning, allowsOperationalUse) => {
+      const row = {
+        ...account("Bookmaker A", "Bookie"),
+        extra_places_access_state: state,
+        extra_places_capability_state: "NotChecked" as const,
+        extra_places_access_reason: `Synthetic ${state} reason`,
+        extra_places_allows_planning: allowsPlanning,
+        extra_places_allows_operational_use: allowsOperationalUse,
+      };
+
+      expect(resolveExtraPlaceAccountAccess([row], "bookmaker a")).toEqual({
+        state,
+        reason: `Synthetic ${state} reason`,
+        allowsPlanning,
+        allowsOperationalUse,
+      });
+    },
+  );
+
+  it("blocks a new bookmaker that is not a configured Profile Account", () => {
+    expect(resolveExtraPlaceAccountAccess([], "Bookmaker A")).toMatchObject({
+      state: "blocked",
+      allowsPlanning: false,
+      allowsOperationalUse: false,
+    });
   });
 });

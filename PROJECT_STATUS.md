@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 10:47 BST_
+_Last updated: 2026-09-07 11:20 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -10,10 +10,10 @@ durable requirements.
 ## Current state
 
 - Current feature: [#88 Extra Places](https://github.com/wolney8/OpenForge/issues/88). The selected
-  tranche adds Profile Account-backed bookmaker/exchange choices and preferred-exchange defaulting
-  to the existing ledger/editor/calculator/settlement workflow.
-- Tested implementation base: `a43c435ea761cd66775ff2ced1389e134bde100e` on `main`; the #88
-  delivery checkpoint and evidence are recorded in this batch's commit and issue comment.
+  tranche applies known Profile Account lifecycle/restriction health to new Extra Places activity
+  without claiming unobserved Extra Places capability.
+- Tested implementation base: `f62b31eb3014db72282403393ae0c9f9c8624817` on `main`; this
+  tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #88 remains selected until its approved tranche is complete; incidental fixes return
@@ -38,8 +38,8 @@ durable requirements.
 
 ## Project plan
 
-- Current: complete and verify the bounded Profile Account/default-exchange slice of #88 without
-  changing its signed financial calculation contract.
+- Current: complete and verify the bounded Extra Places account-health slice of #88 without
+  implementing the broader #82 capability engine or changing signed calculations.
 - Next queue: #88 remaining approved scope; then #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
@@ -82,9 +82,10 @@ Environment: local `http://localhost:3010`; #88 delivery revision is recorded in
 checkpoint. Manual status: `NOT RUN`.
 
 1. Open a test Profile's **Tracker → Extra Place**, then select **Add Extra Place row**.
-2. Confirm Bookmaker/Exchange choices come from that Profile's Accounts, both exchange fields use
-   its available preferred exchange, then enter a synthetic 6-pays-4 row and settle it as **5th**.
-3. Save and reopen it. Expect **Extra Place**, the same account choices and a calculated final value.
+2. Choose an Active, Bonus Restricted, Soft Limited, Pending Sign Up and hard-blocked bookmaker in
+   turn. Expect `Not checked` information, Bonus Restricted availability, a Soft Limited warning,
+   planning-only Pending Sign Up, and disabled new use with the hard-block reason.
+3. Reopen an imported historical Extra Place row and confirm it remains accessible.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

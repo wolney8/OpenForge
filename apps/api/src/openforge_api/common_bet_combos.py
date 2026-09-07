@@ -32,6 +32,7 @@ from openforge_api.db import (
     update_profile_quick_action,
     upsert_profile_quick_add_loadout_override,
 )
+from openforge_api.extra_place_account_health import resolve_extra_place_account_health
 
 router = APIRouter(prefix="/fund-manager/common-bet-combos", tags=["common-bet-combos"])
 
@@ -625,7 +626,20 @@ def _loadout_status_for_account(
     status: str,
     lifecycle_status: str,
     restrictions_json: str,
+    ledger_type: str = "",
 ) -> tuple[Literal["eligible", "limited", "blocked"], str]:
+    if ledger_type == "Extra Place":
+        health = resolve_extra_place_account_health(
+            status=status,
+            lifecycle_status=lifecycle_status,
+            restrictions_json=restrictions_json,
+        )
+        if health.access_state == "blocked":
+            return "blocked", health.reason
+        # The current model has no explicit Extra Places capability evidence.
+        # Keep the loadout visible with its warning/informational reason rather
+        # than claiming the account is known to be capable.
+        return "limited", health.reason
     normalized = f"{status} {lifecycle_status} {restrictions_json}".casefold()
     if any(value in normalized for value in ("blocked", "gubbed", "closed", "kyc blocked", "risk blocked", "bonus restricted")):
         return "blocked", "This account is not eligible for this quick add loadout."
@@ -719,10 +733,17 @@ def list_profile_quick_add_loadouts(
         reason = override.availability_reason if override else ""
         if bookmaker and account is None:
             availability, reason = "blocked", "This profile has not configured the selected bookmaker."
-        elif account is not None:
-            availability, account_reason = _loadout_status_for_account(account.status, account.lifecycle_status, account.restrictions_json)
-            reason = reason or account_reason
         for ledger in config.supported_ledgers:
+            ledger_availability = availability
+            ledger_reason = reason
+            if account is not None:
+                ledger_availability, account_reason = _loadout_status_for_account(
+                    account.status,
+                    account.lifecycle_status,
+                    account.restrictions_json,
+                    ledger,
+                )
+                ledger_reason = reason or account_reason
             favourite = favourites.get((record.preset_id, ledger))
             response.append(ProfileQuickAddLoadoutResponse(
                 preset_id=record.preset_id,
@@ -730,8 +751,8 @@ def list_profile_quick_add_loadouts(
                 ledger_type=ledger,
                 defaults={key: str(value) for key, value in defaults.items()},
                 enabled=is_enabled,
-                availability=availability,
-                availability_reason=reason,
+                availability=ledger_availability,
+                availability_reason=ledger_reason,
                 bookmaker=bookmaker,
                 archived=combo.status == "Archived",
                 sort_order=record.sort_order,
@@ -793,8 +814,16 @@ def update_profile_quick_add_loadout(
         )
         if account is None:
             raise HTTPException(status_code=422, detail="This bookmaker is not configured for the profile")
+        ledger_type = (
+            "Extra Place"
+            if set(combo.quick_add.supported_ledgers) == {"Extra Place"}
+            else ""
+        )
         availability, _ = _loadout_status_for_account(
-            account.status, account.lifecycle_status, account.restrictions_json
+            account.status,
+            account.lifecycle_status,
+            account.restrictions_json,
+            ledger_type,
         )
         if availability == "blocked":
             raise HTTPException(status_code=422, detail="This bookmaker cannot be used for a Quick Add loadout")

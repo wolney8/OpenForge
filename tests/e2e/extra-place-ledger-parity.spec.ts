@@ -49,6 +49,57 @@ test.describe("Extra Place ledger parity", () => {
         channel: "Online",
         status: "Active",
         lifecycle_status: "Active",
+        extra_places_access_state: "not_checked",
+        extra_places_capability_state: "NotChecked",
+        extra_places_access_reason: "Extra Places capability has not been checked for this account.",
+        extra_places_allows_planning: true,
+        extra_places_allows_operational_use: true,
+        current_balance: "0.00",
+        pending_withdrawal_amount: "0.00",
+        last_balance_update: "",
+        group_name: "Synthetic Group",
+        platform: "Synthetic Platform",
+        created_at: "2026-09-07T12:00:00Z",
+        updated_at: "2026-09-07T12:00:00Z",
+      },
+      {
+        account_id: "account-synthetic-warned-bookie",
+        profile_id: profileId,
+        account: "Synthetic Stake Limited Bookmaker",
+        type: "Bookie",
+        counts_in_cash_total: true,
+        channel: "Online",
+        status: "Stake Restricted",
+        lifecycle_status: "Active",
+        restrictions: ["Soft Limited"],
+        extra_places_access_state: "warning",
+        extra_places_capability_state: "NotChecked",
+        extra_places_access_reason: "Stake restrictions recorded. Extra Places remains available, but check the accepted stake.",
+        extra_places_allows_planning: true,
+        extra_places_allows_operational_use: true,
+        current_balance: "0.00",
+        pending_withdrawal_amount: "0.00",
+        last_balance_update: "",
+        group_name: "Synthetic Group",
+        platform: "Synthetic Platform",
+        created_at: "2026-09-07T12:00:00Z",
+        updated_at: "2026-09-07T12:00:00Z",
+      },
+      {
+        account_id: "account-synthetic-blocked-bookie",
+        profile_id: profileId,
+        account: "Synthetic Login Restricted Bookmaker",
+        type: "Bookie",
+        counts_in_cash_total: true,
+        channel: "Online",
+        status: "Active",
+        lifecycle_status: "Active",
+        restrictions: ["Login Restricted"],
+        extra_places_access_state: "blocked",
+        extra_places_capability_state: "NotChecked",
+        extra_places_access_reason: "Login restricted: this account cannot be used for new Extra Places activity.",
+        extra_places_allows_planning: false,
+        extra_places_allows_operational_use: false,
         current_balance: "0.00",
         pending_withdrawal_amount: "0.00",
         last_balance_update: "",
@@ -156,6 +207,8 @@ test.describe("Extra Place ledger parity", () => {
     await expect(bookmaker.locator("option")).toHaveText([
       "Select bookmaker",
       "Synthetic Extra Place Bookmaker",
+      "Synthetic Login Restricted Bookmaker",
+      "Synthetic Stake Limited Bookmaker",
     ]);
     await expect(dialog.locator(".extra-place-lay-win select")).toHaveValue(
       "Synthetic Preferred Exchange",
@@ -163,6 +216,9 @@ test.describe("Extra Place ledger parity", () => {
     await expect(dialog.locator(".extra-place-lay-place select")).toHaveValue(
       "Synthetic Preferred Exchange",
     );
+    await bookmaker.selectOption("Synthetic Stake Limited Bookmaker");
+    await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toBeVisible();
+    await bookmaker.selectOption("Synthetic Extra Place Bookmaker");
 
     await page.evaluate(() => {
       document.documentElement.dataset.theme = "dark";
@@ -183,7 +239,20 @@ test.describe("Extra Place ledger parity", () => {
 
     await bookmaker.focus();
     await expect(bookmaker).toBeFocused();
+    await bookmaker.selectOption("Synthetic Stake Limited Bookmaker");
+    await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toContainText(
+      "Stake restrictions recorded",
+    );
+    await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
+    await bookmaker.selectOption("Synthetic Login Restricted Bookmaker");
+    await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toContainText(
+      "cannot be used for new Extra Places activity",
+    );
+    await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
     await bookmaker.selectOption("Synthetic Extra Place Bookmaker");
+    await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toContainText(
+      "capability has not been checked",
+    );
     await dialog.getByLabel("Runner / Horse").fill("Synthetic Runner");
     await dialog.getByLabel("Race").fill("Synthetic Race 14:10");
     await dialog.getByLabel("Date / Time").fill("2026-09-07T14:10");

@@ -14,9 +14,14 @@ from openforge_api.db import (
     get_each_way_extra_place,
     get_profile_exchange_commission,
     get_profile_exchange_commission_map,
+    list_accounts,
     list_each_way_extra_places,
     profile_module_enabled,
     update_each_way_extra_place,
+)
+from openforge_api.extra_place_account_health import (
+    ExtraPlaceAccountHealth,
+    resolve_extra_place_account_health,
 )
 
 router = APIRouter(
@@ -99,6 +104,51 @@ def _with_profile_commissions(
         "win_commission": commission_for(str(payload["win_exchange"])),
         "place_commission": commission_for(str(payload["place_exchange"])),
     }
+
+
+def _extra_place_account_health(
+    profile_id: str, bookmaker_account: str
+) -> ExtraPlaceAccountHealth | None:
+    normalized = bookmaker_account.strip().casefold()
+    if not normalized:
+        return None
+    account = next(
+        (
+            row
+            for row in list_accounts(profile_id)
+            if row.type == "Bookie" and row.account.strip().casefold() == normalized
+        ),
+        None,
+    )
+    if account is None:
+        return None
+    return resolve_extra_place_account_health(
+        status=account.status,
+        lifecycle_status=account.lifecycle_status,
+        restrictions_json=account.restrictions_json,
+    )
+
+
+def _validate_new_extra_place_account_use(
+    profile_id: str,
+    values: dict[str, object],
+) -> None:
+    health = _extra_place_account_health(
+        profile_id,
+        str(values.get("bookmaker_account") or values.get("bookmaker") or ""),
+    )
+    if health is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Select a configured Profile bookmaker account before creating "
+                "Extra Places activity."
+            ),
+        )
+    if not health.allows_planning:
+        raise HTTPException(status_code=409, detail=health.reason)
+    if values.get("status") != "Prospecting" and not health.allows_operational_use:
+        raise HTTPException(status_code=409, detail=health.reason)
 
 
 def build_calculation(
@@ -222,6 +272,8 @@ def create_profile_each_way_extra_place(
     if not profile_module_enabled(profile_id, "each-way-extra-places"):
         raise HTTPException(status_code=403, detail="Extra Places is disabled for this Profile")
     values = _with_profile_commissions(profile_id, payload.model_dump())
+    if payload.calculation_provenance != "imported_historical":
+        _validate_new_extra_place_account_use(profile_id, values)
     return build_response(create_each_way_extra_place(profile_id, values))
 
 
@@ -230,6 +282,17 @@ def update_profile_each_way_extra_place(
     profile_id: str, each_way_extra_place_id: str, payload: EachWayExtraPlacePayload
 ) -> dict[str, object]:
     values = _with_profile_commissions(profile_id, payload.model_dump())
+    existing = get_each_way_extra_place(profile_id, each_way_extra_place_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Each Way / Extra Place row not found")
+    is_existing_historical = existing.calculation_provenance == "imported_historical"
+    changes_operational_use = (
+        payload.bookmaker_account.strip().casefold()
+        != existing.bookmaker_account.strip().casefold()
+        or (existing.status == "Prospecting" and payload.status != "Prospecting")
+    )
+    if not is_existing_historical and changes_operational_use:
+        _validate_new_extra_place_account_use(profile_id, values)
     record = update_each_way_extra_place(profile_id, each_way_extra_place_id, values)
     if record is None:
         raise HTTPException(status_code=404, detail="Each Way / Extra Place row not found")

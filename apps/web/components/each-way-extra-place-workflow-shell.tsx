@@ -28,8 +28,10 @@ import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
 import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
 import { getExtraPlaceLossBudgetState } from "@/lib/extra-place-loss-budget";
 import {
+  resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
+  type ExtraPlaceAccountAccess,
 } from "@/lib/extra-place-account-options";
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
 import { formatFinancialValue } from "@/lib/financial-display";
@@ -875,6 +877,25 @@ export function EachWayExtraPlaceWorkflowShell({
   const selectedRow = selectedId
     ? (rows.find((row) => row.each_way_extra_place_id === selectedId) ?? null)
     : null;
+  const selectedAccountAccess = useMemo(
+    () => resolveExtraPlaceAccountAccess(accountAuthorities, form.bookmaker_account),
+    [accountAuthorities, form.bookmaker_account],
+  );
+  const isHistoricalEdit =
+    selectedRow?.calculation_provenance === "imported_historical";
+  const changesOperationalUse =
+    !selectedRow ||
+    selectedRow.bookmaker_account?.trim().toLocaleLowerCase() !==
+      form.bookmaker_account.trim().toLocaleLowerCase() ||
+    (selectedRow.status === "Prospecting" && form.status !== "Prospecting");
+  const accountUseBlocked = Boolean(
+    selectedAccountAccess &&
+      !isHistoricalEdit &&
+      changesOperationalUse &&
+      (!selectedAccountAccess.allowsPlanning ||
+        (form.status !== "Prospecting" &&
+          !selectedAccountAccess.allowsOperationalUse)),
+  );
   const openCount = rangeRows.filter((row) => row.status === "Placed").length;
   const issueCount = rangeRows.filter(hasIssue).length;
   const settledCount = rangeRows.filter(
@@ -1251,6 +1272,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   <div className="form-grid">
                     <LedgerEditorTabPanel activeTabId={step} tabId="calculate">
                       <Calculate
+                        accountAccess={selectedAccountAccess}
                         bookmakerCatalogue={bookmakerCatalogue}
                         bookmakerOptions={accountOptions.bookmakers}
                         exchangeOptions={accountOptions.exchanges}
@@ -1280,7 +1302,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   <div className="tracker-nav workflow-editor-footer-primary">
                     <button
                       className="modal-primary-button"
-                      disabled={saving}
+                      disabled={saving || accountUseBlocked}
                       onClick={() => void save()}
                       type="button"
                     >
@@ -2245,6 +2267,7 @@ function BookmakerChips({
   );
 }
 function Calculate({
+  accountAccess,
   bookmakerCatalogue,
   bookmakerOptions,
   exchangeOptions,
@@ -2256,6 +2279,7 @@ function Calculate({
   preview,
   onCopy,
 }: {
+  accountAccess: ExtraPlaceAccountAccess | null;
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
   bookmakerOptions: string[];
   exchangeOptions: string[];
@@ -2348,6 +2372,19 @@ function Calculate({
                 onUpdate("bookmaker_account", next);
               }}
             />
+            {accountAccess ? (
+              <p
+                className={
+                  accountAccess.state === "blocked"
+                    ? "field-validation-text"
+                    : "field-help-text"
+                }
+                data-pd-id="extra-place.account-health"
+                role="status"
+              >
+                {accountAccess.reason}
+              </p>
+            ) : null}
           </div>
           <div className="extra-place-field-with-chips">
             <Field

@@ -9,6 +9,11 @@ export type AccountAuthorityRecord = {
   lifecycle_status?: string;
   restrictions_json?: string;
   restrictions?: string[];
+  extra_places_access_state?: "not_checked" | "warning" | "planning" | "blocked";
+  extra_places_capability_state?: "NotChecked";
+  extra_places_access_reason?: string;
+  extra_places_allows_planning?: boolean;
+  extra_places_allows_operational_use?: boolean;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;

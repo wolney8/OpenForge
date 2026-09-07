@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from openforge_api.common_bet_combos import _loadout_status_for_account
 from openforge_api.config import settings
 from openforge_api.main import app
 
@@ -9,6 +10,24 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'common-bet-combos.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+
+
+def test_extra_place_loadout_uses_ledger_specific_account_health() -> None:
+    bonus_restricted = '["Bonus Restricted"]'
+    assert _loadout_status_for_account(
+        "Bonus Restricted", "Active", bonus_restricted, "Casino"
+    )[0] == "blocked"
+    extra_place = _loadout_status_for_account(
+        "Bonus Restricted", "Active", bonus_restricted, "Extra Place"
+    )
+    assert extra_place[0] == "limited"
+    assert "not been checked" in extra_place[1]
+
+    soft_limited = _loadout_status_for_account(
+        "Stake Restricted", "Active", '["Soft Limited"]', "Extra Place"
+    )
+    assert soft_limited[0] == "limited"
+    assert "accepted stake" in soft_limited[1]
 
 
 def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:

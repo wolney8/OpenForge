@@ -47,3 +47,39 @@ export function resolveExtraPlacePreferredExchange(
     ) ?? ""
   );
 }
+
+export type ExtraPlaceAccountAccess = {
+  state: "not_checked" | "warning" | "planning" | "blocked";
+  reason: string;
+  allowsPlanning: boolean;
+  allowsOperationalUse: boolean;
+};
+
+export function resolveExtraPlaceAccountAccess(
+  accounts: AccountAuthorityRecord[],
+  bookmaker: string,
+): ExtraPlaceAccountAccess | null {
+  const normalized = bookmaker.trim().toLocaleLowerCase();
+  if (!normalized) return null;
+  const account = accounts.find(
+    (row) =>
+      row.type === "Bookie" &&
+      row.account.trim().toLocaleLowerCase() === normalized,
+  );
+  if (!account) {
+    return {
+      state: "blocked",
+      reason: "This bookmaker is not configured as a Profile Account.",
+      allowsPlanning: false,
+      allowsOperationalUse: false,
+    };
+  }
+  return {
+    state: account.extra_places_access_state ?? "not_checked",
+    reason:
+      account.extra_places_access_reason ??
+      "Extra Places capability has not been checked for this account.",
+    allowsPlanning: account.extra_places_allows_planning ?? true,
+    allowsOperationalUse: account.extra_places_allows_operational_use ?? true,
+  };
+}

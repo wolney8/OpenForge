@@ -439,6 +439,13 @@ Bet-slip tests must not create fake sportsbook rows. A tested-but-not-placed acc
 
 Do not infer Extra Places profitability merely because normal horse-racing bets are accepted, enhanced places are visible or the account is active. Once Extra Places tooling exists, actual rows may feed capability evidence without duplicating P&L.
 
+The current Extra Places integration is a bounded access adapter, not the full capability engine.
+It applies known lifecycle and restriction evidence to new activity, while reporting explicit
+Extra Places capability as `NotChecked`: hard login/KYC/risk/access blocks prevent new use,
+`Pending Sign Up` is planning-only, `Soft Limited` warns without blocking, and `Bonus Restricted`
+does not by itself block Extra Places. Existing imported historical rows remain accessible. No
+adapter outcome may be presented as `Working` capability evidence.
+
 ### Dashboard and detail views
 
 Account detail should show a capability matrix with state, last evidence, max/limit, recent value and review schedule.

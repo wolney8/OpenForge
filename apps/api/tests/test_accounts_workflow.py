@@ -271,6 +271,9 @@ def test_account_lifecycle_and_restrictions_are_profile_scoped(tmp_path: Path) -
     assert response.status_code == 201
     assert response.json()["lifecycle_status"] == "Active"
     assert response.json()["restrictions"] == ["Bonus Restricted", "Soft Limited"]
+    assert response.json()["extra_places_access_state"] == "warning"
+    assert response.json()["extra_places_capability_state"] == "NotChecked"
+    assert response.json()["extra_places_allows_operational_use"] is True
     other_profile = client.get("/profiles/profile-demo-002/accounts").json()
     assert all(row["account_id"] != response.json()["account_id"] for row in other_profile)
 

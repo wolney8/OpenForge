@@ -22,6 +22,7 @@ from openforge_api.db import (
     update_account,
     upsert_profile_exchange_commission,
 )
+from openforge_api.extra_place_account_health import resolve_extra_place_account_health
 
 router = APIRouter(prefix="/profiles/{profile_id}/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -63,6 +64,7 @@ RestrictionValue = Literal[
     "Risk Blocked",
     "Deposit Restricted",
     "Withdrawal Restricted",
+    "Login Restricted",
 ]
 
 LEGACY_ACCOUNT_STATES: dict[str, tuple[LifecycleValue, list[RestrictionValue]]] = {
@@ -103,6 +105,7 @@ RESTRICTION_STATUSES = frozenset(
         "Risk Blocked",
         "Deposit Restricted",
         "Withdrawal Restricted",
+        "Login Restricted",
     }
 )
 _RESTRICTION_ALIASES = {
@@ -149,6 +152,11 @@ class AccountResponse(AccountPayload):
     profile_id: str
     created_at: str
     updated_at: str
+    extra_places_access_state: Literal["not_checked", "warning", "planning", "blocked"]
+    extra_places_capability_state: Literal["NotChecked"]
+    extra_places_access_reason: str
+    extra_places_allows_planning: bool
+    extra_places_allows_operational_use: bool
 
 
 class AccountCreatePayload(AccountPayload):
@@ -258,6 +266,18 @@ def build_account_response(record: object) -> AccountResponse:
     except json.JSONDecodeError:
         restrictions = []
     values["restrictions"] = restrictions if isinstance(restrictions, list) else []
+    extra_places_health = resolve_extra_place_account_health(
+        status=str(values.get("status", "")),
+        lifecycle_status=str(values.get("lifecycle_status", "")),
+        restrictions_json=json.dumps(values["restrictions"]),
+    )
+    values.update(
+        extra_places_access_state=extra_places_health.access_state,
+        extra_places_capability_state=extra_places_health.capability_state,
+        extra_places_access_reason=extra_places_health.reason,
+        extra_places_allows_planning=extra_places_health.allows_planning,
+        extra_places_allows_operational_use=extra_places_health.allows_operational_use,
+    )
     return AccountResponse.model_validate(values)
 
 
