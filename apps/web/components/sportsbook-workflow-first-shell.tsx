@@ -35,7 +35,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -6814,7 +6814,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         ? sortIssueBadgesByPriority(getSportsbookIssueBadges(sourceRow))
                         : [];
                       return (
-                        <tr
+                        <FinancialValueReplayRow
                           className={[isSelected ? "is-selected-row" : "", rowStateClassName]
                             .filter(Boolean)
                             .join(" ") || undefined}
@@ -6852,7 +6852,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               {renderTableCell(row, column)}
                             </td>
                           ))}
-                        </tr>
+                        </FinancialValueReplayRow>
                       );
                     })
                   )}

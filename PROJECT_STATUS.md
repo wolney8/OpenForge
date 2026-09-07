@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 15:41 BST_
+_Last updated: 2026-09-07 16:15 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) persisted motion
-  control, group replay, neutral zero, deterministic settling, clipboard safety and layout-neutral
-  geometry. Chart motion [#110](https://github.com/wolney8/OpenForge/issues/110) remains separate.
-- Tested implementation base: `e2d893888ea11aa671654e58c6441fe37a5b2cb5` on `main`; this
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) replay cooldown,
+  `£ 0.00` animation origin and whole-row financial replay from any table cell. Chart motion
+  [#110](https://github.com/wolney8/OpenForge/issues/110) remains separate.
+- Tested implementation base: `432eca0ba1ece2d01fde8045af3aae82d55f589c` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -62,7 +62,9 @@ durable requirements.
   odometer with static-equivalent geometry and canonical clipboard text. It now has persisted
   default-On Fund Manager control, reduced-motion override, neutral-zero replay and coordinated
   card/row replay across targeted active dashboard, ledger, report, Account, drawer and dialog
-  paths. Future/new-surface adoption and user acceptance remain open. Chart motion is separately
+  paths. The current correction adds a 2.5-second replay cooldown, a `£ 0.00` motion origin and
+  row-wide replay when entering financial or non-financial cells. Future/new-surface adoption and
+  user acceptance remain open. Chart motion is separately
   tracked as `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110).
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access

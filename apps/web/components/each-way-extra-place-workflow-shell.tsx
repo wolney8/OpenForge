@@ -1887,6 +1887,7 @@ function LedgerRow({
   const displayIssues = raceReady?.tone === "due" ? ["Result Needed", ...rowIssues] : rowIssues;
   const visibleIssues = displayIssues.slice(0, 4);
   return (
+    <FinancialValueReplayGroup>
     <tr
       className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
       onClick={onEdit}
@@ -1990,6 +1991,7 @@ function LedgerRow({
         </div>
       </td>
     </tr>
+    </FinancialValueReplayGroup>
   );
 }
 function RatingPill({ rating }: { rating: string | null | undefined }) {

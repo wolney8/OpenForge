@@ -76,11 +76,20 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
   decrease rolls down. Identical values do not replay automatically.
 - Each digit owns a fixed-height clipped viewport over a vertical `0`–`9` strip. Digit transforms
   are staggered by 70ms; currency, sign, grouping and decimal punctuation stay static.
+- Every resolved positive, negative or neutral animation begins from the presentation-only origin
+  `£ 0.00` before settling on the exact canonical destination. The accessible and selectable text
+  remains the destination value throughout; the origin never enters copied or announced content.
 - Each digit viewport inherits the surrounding value's font family, size, weight, line height and
   baseline, and sizes itself from a tabular numeral glyph. Animation must not compress the value;
   currency spaces and punctuation retain their natural static width.
 - Pointer-enter or click on a shared read-only value replays it once. A replay group coordinates
   every financial value in the same card or row without removing each value's digit cascade.
+- Automatic or explicit motion starts a 2.5-second replay cooldown. Pointer movement, hover and
+  click during that window cannot restart the animation; a genuine authoritative value change may
+  still replace it and settle on the newest value.
+- Every active data-table row containing financial values uses the shared row replay group. Entering
+  the row through a text, numeric, status or action cell replays that row's financial values only;
+  non-financial cell content is not converted into or misrepresented as money.
 - Zero remains neutral and displays exactly `£ -`, but its placeholder uses the same clipped motion
   language and participates in explicit replay. Unavailable and loading states remain static.
   Loading must never fabricate a temporary zero or random intermediate monetary value.
@@ -120,6 +129,9 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - destination-sign direction independent of delta, including `20 → 10` up and `-20 → -10` down
 - positive/negative sign transitions, equal refetch, animated neutral zero, unavailable/loading and rapid updates
 - pointer-enter/click replay and coordinated card/row replay
+- 2.5-second replay cooldown after automatic and explicit triggers
+- `£ 0.00` visual origin for positive, negative and neutral destinations
+- row replay initiated from financial and non-financial cells
 - persisted motion On/Off preference with reduced-motion override
 - standalone and surrounding-sentence selection/clipboard output
 - pill, badge, KPI and inline geometry parity with static formatted text

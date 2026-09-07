@@ -11,7 +11,7 @@ import {
 } from "@/lib/client-json-cache";
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
@@ -1932,7 +1932,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                         ? sortIssueBadgesByPriority(getCashAdjustmentIssueBadges(sourceRow))
                         : [];
                       return (
-                        <tr
+                        <FinancialValueReplayRow
                           className={[
                             selectedId === rowId ? "is-selected-row" : "",
                             rowIssueBadges.length > 0 ? "row-state-issue-warning" : "",
@@ -1957,7 +1957,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                               {renderTableCell(row, column)}
                             </td>
                           ))}
-                        </tr>
+                        </FinancialValueReplayRow>
                       );
                     })
                   )}

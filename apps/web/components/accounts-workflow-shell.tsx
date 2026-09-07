@@ -6,7 +6,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -1222,7 +1222,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                         accountName: String(row.account ?? ""),
                       });
                       return (
-                        <tr
+                        <FinancialValueReplayRow
                           className={selectedId === rowId ? "is-selected-row" : undefined}
                           key={rowId}
                           onClick={() => void selectRow(rowId)}
@@ -1266,7 +1266,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                               ) : (row[column.key] || "—")}
                             </td>
                           ))}
-                        </tr>
+                        </FinancialValueReplayRow>
                       );
                     })
                   )}

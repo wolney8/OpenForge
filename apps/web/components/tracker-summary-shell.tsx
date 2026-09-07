@@ -10,7 +10,7 @@ import {
   catalogueIdForBookmaker,
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
-import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -170,8 +170,7 @@ function renderReportTable({
               </tr>
             ) : (
               rows.slice(0, 12).map((row) => (
-                <FinancialValueReplayGroup key={row.periodKey}>
-                <tr>
+                <FinancialValueReplayRow key={row.periodKey}>
                   <td>{row.periodLabel}</td>
                   <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                   <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
@@ -181,8 +180,7 @@ function renderReportTable({
                   <td className="align-end"><FinancialValue value={row.withdrawals} /></td>
                   <td className="align-end"><FinancialValue value={row.costs} /></td>
                   <td className="align-end"><FinancialValue value={row.retainedProfit} /></td>
-                </tr>
-                </FinancialValueReplayGroup>
+                </FinancialValueReplayRow>
               ))
             )}
           </tbody>
@@ -850,11 +848,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   </tr>
                 ) : (
                   summary.moduleBreakdown.map((row) => (
-                    <tr key={row.moduleKey}>
+                    <FinancialValueReplayRow key={row.moduleKey}>
                       <td>{row.label}</td>
                       <td className="align-end">{row.rowCount}</td>
                       <td className="align-end"><FinancialValue value={row.reportingValue} /></td>
-                    </tr>
+                    </FinancialValueReplayRow>
                   ))
                 ),
             })}
@@ -878,7 +876,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   </tr>
                 ) : (
                   summary.bookmakerBreakdown.map((row) => (
-                    <tr key={row.bookmaker}>
+                    <FinancialValueReplayRow key={row.bookmaker}>
                       <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                       <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                       <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
@@ -904,7 +902,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                           </span>
                         ) : row.openRowCount}
                       </td>
-                    </tr>
+                    </FinancialValueReplayRow>
                   ))
                 ),
             })}
@@ -919,7 +917,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               rows:
                 openAttentionRows.length === 0 ? null : (
                   openAttentionRows.map((row) => (
-                    <tr key={row.key}>
+                    <FinancialValueReplayRow key={row.key}>
                       <td>{getActivityModuleLabel(row.module)}</td>
                       <td>{row.reference}</td>
                       <td>{row.owner}</td>
@@ -927,7 +925,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
-                    </tr>
+                    </FinancialValueReplayRow>
                   ))
                 ),
             })}
@@ -942,7 +940,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               rows:
                 overdueAttentionRows.length === 0 ? null : (
                   overdueAttentionRows.map((row) => (
-                    <tr key={row.key}>
+                    <FinancialValueReplayRow key={row.key}>
                       <td>{getActivityModuleLabel(row.module)}</td>
                       <td>{row.reference}</td>
                       <td>{row.owner}</td>
@@ -950,7 +948,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
-                    </tr>
+                    </FinancialValueReplayRow>
                   ))
                 ),
             })}
@@ -1009,13 +1007,13 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         </tr>
                       ) : (
                         summary.expiringFreeBets.map((row) => (
-                          <tr key={row.free_bet_id}>
+                          <FinancialValueReplayRow key={row.free_bet_id}>
                             <td>{row.free_bet_id}</td>
                             <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
                             <td>{row.status}</td>
                             <td>{formatHumanDisplayDate(row.expiry_datetime, true)}</td>
                             <td className="align-end"><FinancialValue value={Number(row.reporting_value ?? 0)} /></td>
-                          </tr>
+                          </FinancialValueReplayRow>
                         ))
                       )}
                     </tbody>
@@ -1118,14 +1116,14 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       </tr>
                     ) : (
                       summary.recentActivity.map((row) => (
-                        <tr key={`${row.module}-${row.id}`}>
+                        <FinancialValueReplayRow key={`${row.module}-${row.id}`}>
                           <td>{getActivityModuleLabel(row.module)}</td>
                           <td>{row.label}</td>
                           <td>{row.bookmakerOrAccount}</td>
                           <td>{row.status}</td>
                           <td>{formatHumanDisplayDate(row.date, true)}</td>
                           <td className="align-end"><FinancialValue value={row.value} /></td>
-                        </tr>
+                        </FinancialValueReplayRow>
                       ))
                     )}
                   </tbody>
@@ -1228,7 +1226,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 rows:
                   openAttentionRows.length === 0 ? null : (
                     openAttentionRows.map((row) => (
-                      <tr key={row.key}>
+                      <FinancialValueReplayRow key={row.key}>
                         <td>{getActivityModuleLabel(row.module)}</td>
                         <td>{row.reference}</td>
                         <td>{row.owner}</td>
@@ -1236,7 +1234,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
-                      </tr>
+                      </FinancialValueReplayRow>
                     ))
                   ),
               })}
@@ -1250,7 +1248,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 rows:
                   overdueAttentionRows.length === 0 ? null : (
                     overdueAttentionRows.map((row) => (
-                      <tr key={row.key}>
+                      <FinancialValueReplayRow key={row.key}>
                         <td>{getActivityModuleLabel(row.module)}</td>
                         <td>{row.reference}</td>
                         <td>{row.owner}</td>
@@ -1258,7 +1256,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
                       <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
-                      </tr>
+                      </FinancialValueReplayRow>
                     ))
                   ),
               })}
@@ -1272,13 +1270,13 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   summary.recentBalanceSnapshots.length === 0
                     ? null
                     : summary.recentBalanceSnapshots.map((row) => (
-                        <tr key={row.balance_snapshot_id}>
+                        <FinancialValueReplayRow key={row.balance_snapshot_id}>
                           <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
                           <td>{row.snapshot_type}</td>
                           <td>{row.account_id ?? "Profile total"}</td>
                           <td className="align-end"><FinancialValue value={Number(row.balance_amount)} /></td>
                           <td>{row.notes || "—"}</td>
-                        </tr>
+                        </FinancialValueReplayRow>
                       )),
               })}
 

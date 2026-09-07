@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
@@ -1013,7 +1013,7 @@ export function MultiProfileOpportunityDialog({
                           ? null
                           : Number(row.scenario_pnl_if_lay_wins);
                       return (
-                        <tr key={target.target_id}>
+                        <FinancialValueReplayRow key={target.target_id}>
                           <td><input aria-label={`Select ${target.display_name} ${target.bookmaker} for placement`} checked={selectedPlacementIds.includes(target.target_id)} className="opportunity-placement-checkbox" disabled={!isEditable || !canInline} onChange={(event) => setSelectedPlacementIds((current) => event.target.checked ? [...current, target.target_id] : current.filter((id) => id !== target.target_id))} type="checkbox" /></td>
                           <th scope="row"><strong>{target.display_name}</strong><small><span>{target.workflow_state}</span><span>{saveStates[target.target_id] ?? "Draft saved"}</span></small>{target.workflow_reasons.length ? <span className="field-validation-text">{target.workflow_reasons.join(" · ")}</span> : null}</th>
                           <td><select aria-describedby={target.eligibility_warnings.length ? `bookmaker-warning-${target.target_id}` : undefined} aria-label={`${target.display_name} ${target.bookmaker} bookmaker`} className="opportunity-table-control" disabled={!isEditable} onChange={(event) => void saveTarget(target.target_id, {}, event.target.value)} value={target.bookmaker}>{!profileBookmakerOptions.some((option) => option.name === target.bookmaker) ? <option>{target.bookmaker}</option> : null}{profileBookmakerOptions.map((option) => <option disabled={!bookmakerOptionIsUsable(option.status, opportunity.offer_type)} key={option.name} value={option.name}>{bookmakerOptionLabel(option)}</option>)}</select>{target.eligibility_warnings.length ? <small className="field-warning-text visually-hidden" id={`bookmaker-warning-${target.target_id}`}>{target.eligibility_warnings.join(" · ")}</small> : null}</td>
@@ -1027,7 +1027,7 @@ export function MultiProfileOpportunityDialog({
                           <td>{backWin === null ? <PendingMetric label={`${target.display_name} back-win value`} /> : <FinancialValue label={`${target.display_name} back-win value`} showPositiveSign value={backWin} />}</td>
                           <td>{layWin === null ? <PendingMetric label={`${target.display_name} lay-win value`} /> : <FinancialValue label={`${target.display_name} lay-win value`} showPositiveSign value={layWin} />}</td>
                           <td><div className="opportunity-row-actions">{index === 0 && isEditable && activePlacementTargets.length > 1 ? <button aria-describedby={!copyDownAvailable ? `copy-down-help-${target.target_id}` : undefined} aria-label={`Copy ${target.display_name} placement values down`} className="icon-action" disabled={!copyDownAvailable || isSubmitting} onClick={() => void copyFirstTargetDown(target)} title={!copyDownAvailable ? "Enter valid stake and odds, plus exchange and lay odds when laying." : undefined} type="button"><span aria-hidden="true" className="material-symbols-outlined">copy_all</span></button> : <span aria-hidden="true" className="opportunity-action-placeholder" />}<span className="visually-hidden" id={`copy-down-help-${target.target_id}`}>Enter valid stake and odds, plus exchange and lay odds when laying, before copying this row down.</span><Link aria-label={`Open ${target.display_name} sportsbook row in full editor`} className="directory-nav-action" href={`/profiles/${target.profile_id}/tracker/sportsbook-bets?record=${row.sportsbook_bet_id}`}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link>{isEditable ? <button aria-label={`Manage ${target.display_name} ${target.bookmaker} opportunity row`} className="icon-action danger-icon-action" disabled={isSubmitting} onClick={() => setTargetDecisionId(target.target_id)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button> : <span aria-hidden="true" className="opportunity-action-placeholder" />}</div></td>
-                        </tr>
+                        </FinancialValueReplayRow>
                       );
                     })}
                   </tbody>

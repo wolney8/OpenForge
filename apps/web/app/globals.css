@@ -10634,13 +10634,31 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .financial-value-visual {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
+  display: grid;
+  place-items: baseline center;
   font: inherit;
   line-height: inherit;
   pointer-events: none;
   user-select: none;
+}
+
+.financial-value-motion-origin,
+.financial-value-motion-target {
+  grid-area: 1 / 1;
+  align-items: baseline;
+  justify-content: center;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre;
+}
+
+.financial-value-motion-origin {
+  display: flex;
+  visibility: hidden;
+}
+
+.financial-value-motion-target {
+  display: flex;
 }
 
 .financial-value-character {
@@ -10713,6 +10731,27 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   animation-delay: calc(var(--financial-digit-index) * 70ms);
 }
 
+.financial-value-motion-up .financial-value-motion-origin,
+.financial-value-motion-down .financial-value-motion-origin {
+  visibility: visible;
+  animation: financial-value-origin-out 160ms ease-out both;
+}
+
+.financial-value-motion-up .financial-value-motion-target,
+.financial-value-motion-down .financial-value-motion-target {
+  animation: financial-value-target-in 160ms ease-out both;
+}
+
+@keyframes financial-value-origin-out {
+  0%, 35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes financial-value-target-in {
+  0%, 35% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @keyframes financial-value-roll-up {
   from {
     transform: translateY(var(--financial-digit-up-start));
@@ -10733,8 +10772,16 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 @media (prefers-reduced-motion: reduce) {
   .financial-value-motion-up .financial-value-digit-strip,
-  .financial-value-motion-down .financial-value-digit-strip {
+  .financial-value-motion-down .financial-value-digit-strip,
+  .financial-value-motion-up .financial-value-motion-origin,
+  .financial-value-motion-down .financial-value-motion-origin,
+  .financial-value-motion-up .financial-value-motion-target,
+  .financial-value-motion-down .financial-value-motion-target {
     animation: none;
+  }
+
+  .financial-value-motion-origin {
+    visibility: hidden;
   }
 }
 

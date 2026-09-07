@@ -30,3 +30,6 @@ _Last updated: 2026-09-07_
 | FVP-020 | Rapid replay/update or lost completion event | Previous work is cancelled; bounded fallback settles the newest exact value with no stale motion state |
 | FVP-021 | Select/copy standalone value or surrounding sentence | Canonical formatted values appear exactly once; hidden digit strips never enter copied text |
 | FVP-022 | Small pill, ledger badge, large KPI and inline sentence | Animated value remains within the existing line box and matches static geometry within rendering tolerance |
+| FVP-023 | Hover/click occurs within 2.5 seconds of automatic or explicit motion | No replay; the cycle remains unchanged until the cooldown expires |
+| FVP-024 | Positive, negative or neutral animation begins | Presentation starts at `£ 0.00`; canonical accessible/selectable text remains the exact destination |
+| FVP-025 | Pointer enters a text/non-money cell in a table row containing financial values | Every financial value in that row replays together; adjacent rows and non-money content remain unchanged |

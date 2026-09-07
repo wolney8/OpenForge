@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { FinancialValue } from "./financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "./financial-value";
 
 export type FeeReportQueueEntry = {
   key: string;
@@ -96,7 +96,7 @@ export function FeeReportReviewQueueDialog({
                       ? "Confirm Fees"
                       : "Review Fees";
                 return (
-                  <tr key={entry.key}>
+                  <FinancialValueReplayRow key={entry.key}>
                     <td>{entry.profileName}</td>
                     <td>{entry.monthLabel}</td>
                     <td><span className="table-status">{stateLabels[entry.state]}</span></td>
@@ -116,7 +116,7 @@ export function FeeReportReviewQueueDialog({
                         {actionLabel}
                       </button>
                     </td>
-                  </tr>
+                  </FinancialValueReplayRow>
                 );
               })}
             </tbody>

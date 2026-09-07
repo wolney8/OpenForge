@@ -387,7 +387,8 @@ test.describe("Extra Place ledger parity", () => {
     const groupedCycles = await groupedValues.evaluateAll((values) =>
       values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
     );
-    await selectedOutcomeRow.hover();
+    await page.waitForTimeout(2_600);
+    await selectedOutcomeRow.locator("strong").first().hover();
     await expect.poll(async () => {
       const next = await groupedValues.evaluateAll((values) =>
         values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
@@ -422,14 +423,29 @@ test.describe("Extra Place ledger parity", () => {
     });
     await page.keyboard.press(process.platform === "darwin" ? "Meta+C" : "Control+C");
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("£ 37.02");
+    await page.waitForTimeout(2_600);
     const cycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
+    const pauseMotion = await page.addStyleTag({ content: `
+      .financial-value-motion-origin,
+      .financial-value-motion-target,
+      .financial-value-digit-strip { animation-play-state: paused !important; }
+    ` });
     await resolvedValue.hover();
     await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(cycle);
     await expect(resolvedValue).toHaveAttribute("data-money-motion", "up");
+    await expect(resolvedValue.locator(".financial-value-motion-origin")).toHaveText("£ 0.00");
+    await expect(resolvedValue.locator(".financial-value-motion-origin")).toHaveCSS("opacity", "1");
+    await expect(resolvedValue.locator(".financial-value-motion-target")).toHaveCSS("opacity", "0");
+    await expect(page.locator('.financial-value[data-money-tone="negative"] .financial-value-motion-origin').first()).toHaveText("£ 0.00");
+    await expect(page.locator('.financial-value[data-money-tone="neutral"] .financial-value-motion-origin').first()).toHaveText("£ 0.00");
+    await pauseMotion.evaluate((element) => element.remove());
     const hoverCycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
     await resolvedValue.click();
     await resolvedValue.click();
-    await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(hoverCycle + 1);
+    await expect(resolvedValue).toHaveAttribute("data-money-motion-cycle", String(hoverCycle));
+    await page.waitForTimeout(2_600);
+    await resolvedValue.click();
+    await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(hoverCycle);
     await expect(resolvedValue).toHaveAttribute("data-money-motion", "up");
     const delays = await resolvedValue.locator(".financial-value-digit-strip").evaluateAll((strips) =>
       strips.slice(0, 2).map((strip) => getComputedStyle(strip).animationDelay),
@@ -469,6 +485,20 @@ test.describe("Extra Place ledger parity", () => {
       expect(Math.abs(geometry.animatedHeight - geometry.staticHeight), JSON.stringify(geometry)).toBeLessThanOrEqual(1.5);
       expect(geometry.fontFamily && geometry.fontSize && geometry.fontWeight && geometry.lineHeight, JSON.stringify(geometry)).toBeTruthy();
     });
+    const ledgerRow = page.locator('[data-pd-id="extra-place.ledger"] tbody tr').filter({
+      hasText: "Synthetic Geometry Runner 1",
+    });
+    const rowValues = ledgerRow.locator(".financial-value");
+    const rowCycles = await rowValues.evaluateAll((values) =>
+      values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+    );
+    await ledgerRow.locator("td").nth(1).hover();
+    await expect.poll(async () => {
+      const next = await rowValues.evaluateAll((values) =>
+        values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+      );
+      return next.every((cycle, index) => cycle > rowCycles[index]);
+    }).toBe(true);
     const zeroValue = page.locator('[data-pd-id="extra-place.ledger"] .financial-value[aria-label="Financial value: £ -"]').first();
     await expect(zeroValue).toHaveAttribute("data-money-tone", "neutral");
     const zeroCycle = Number(await zeroValue.getAttribute("data-money-motion-cycle"));

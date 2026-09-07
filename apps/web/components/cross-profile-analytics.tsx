@@ -6,7 +6,7 @@ import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { AccessScopeBadge } from "./access-scope-badge";
-import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup } from "./financial-value";
+import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "./financial-value";
 import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
 import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
@@ -257,8 +257,7 @@ function ReportTable({
                         ? "Awaiting Confirmation"
                         : "Review Required";
                 return (
-                <FinancialValueReplayGroup key={row.periodKey}>
-                <tr>
+                <FinancialValueReplayRow key={row.periodKey}>
                   <td>{row.periodLabel}</td>
                   <td><FinancialValue value={row.sportsbookPnl} /></td>
                   <td><FinancialValue value={row.freeBetPnl} /></td>
@@ -286,8 +285,7 @@ function ReportTable({
                       </small>
                     ) : null}
                   </td>
-                </tr>
-                </FinancialValueReplayGroup>
+                </FinancialValueReplayRow>
                 );
               })
             )}
@@ -1262,7 +1260,7 @@ export function CrossProfileAnalytics({
                               ? "Record Withdrawal"
                               : "View Details";
                         return (
-                          <tr
+                          <FinancialValueReplayRow
                             aria-label={`Open fee breakdown for ${profile.displayName}`}
                             className="fee-centre-row"
                             data-pd-id={`fees.${profile.profileId}.row`}
@@ -1302,7 +1300,7 @@ export function CrossProfileAnalytics({
                                 {actionLabel}
                               </button>
                             </td>
-                          </tr>
+                          </FinancialValueReplayRow>
                         );
                       })}
                     </tbody>
@@ -1351,13 +1349,13 @@ export function CrossProfileAnalytics({
                     </thead>
                     <tbody>
                       {combined.profileRows.map((row) => (
-                        <tr key={row.profileId}>
+                        <FinancialValueReplayRow key={row.profileId}>
                           <td>{row.displayName}</td>
                           <td>{row.openBets}</td>
                           <td>{row.expiringFreeBetCount}</td>
                           <td><FinancialValue value={row.currentLiability} /></td>
                           <td><FinancialValue value={row.openCurrentValue} /></td>
-                        </tr>
+                        </FinancialValueReplayRow>
                       ))}
                     </tbody>
                   </table>
@@ -1387,11 +1385,11 @@ export function CrossProfileAnalytics({
                   </thead>
                   <tbody>
                     {combined.moduleBreakdown.map((row) => (
-                      <tr key={row.moduleKey}>
+                      <FinancialValueReplayRow key={row.moduleKey}>
                         <td>{row.label}</td>
                         <td>{row.rowCount}</td>
                         <td><FinancialValue value={row.reportingValue} /></td>
-                      </tr>
+                      </FinancialValueReplayRow>
                     ))}
                   </tbody>
                 </table>
@@ -1415,11 +1413,11 @@ export function CrossProfileAnalytics({
                       </tr>
                     ) : (
                       combined.bookmakerBreakdown.slice(0, 12).map((row) => (
-                        <tr key={row.bookmaker}>
+                        <FinancialValueReplayRow key={row.bookmaker}>
                           <td>{row.bookmaker}</td>
                           <td><FinancialValue value={row.totalPnl} /></td>
                           <td>{row.openRowCount}</td>
-                        </tr>
+                        </FinancialValueReplayRow>
                       ))
                     )}
                   </tbody>
@@ -1519,13 +1517,13 @@ export function CrossProfileAnalytics({
                     </tr>
                   ) : (
                     balanceSnapshots.map((row) => (
-                      <tr key={`${row.profile_id}-${row.balance_snapshot_id}`}>
+                      <FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}>
                         <td>{row.displayName}</td>
                         <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
                         <td>{row.snapshot_type}</td>
                         <td>{row.account_id ?? "Profile total"}</td>
                         <td><FinancialValue value={Number(row.balance_amount)} /></td>
-                      </tr>
+                      </FinancialValueReplayRow>
                     ))
                   )}
                 </tbody>
@@ -1636,7 +1634,7 @@ export function CrossProfileAnalytics({
               ) : visibleDirectoryProfiles.map((profile) => {
                 const isPinned = pinnedProfileIds.includes(profile.profileId);
                 return (
-                  <tr
+                  <FinancialValueReplayRow
                     aria-label={`Open details for ${profile.displayName}`}
                     className="profile-directory-row"
                     data-pd-id={`profiles.directory.row.${profile.profileId}`}
@@ -1730,7 +1728,7 @@ export function CrossProfileAnalytics({
                         </span>
                       </div>
                     </td>
-                  </tr>
+                  </FinancialValueReplayRow>
                 );
               })}
             </tbody>

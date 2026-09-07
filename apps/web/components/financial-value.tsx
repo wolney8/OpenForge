@@ -3,14 +3,19 @@
 import {
   Children, cloneElement, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type AnimationEvent, type CSSProperties, type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent, type ReactElement,
+  type PointerEvent as ReactPointerEvent, type ReactElement, type ComponentPropsWithoutRef,
 } from "react";
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
 import {
   financialMotionDirection, formatFinancialValue, moneyTone, type MoneyMotionDirection,
 } from "@/lib/financial-display";
 
-type ReplayRegistration = (direction?: Exclude<MoneyMotionDirection, "none">) => void;
+const REPLAY_COOLDOWN_MS = 2_500;
+
+type ReplayRegistration = {
+  blockedUntil: () => number;
+  replay: () => void;
+};
 type ReplayGroupContextValue = { register: (replay: ReplayRegistration) => () => void };
 const FinancialValueReplayContext = createContext<ReplayGroupContextValue | null>(null);
 const replayHandledKey = Symbol("financial-value-replay-handled");
@@ -30,7 +35,9 @@ export function FinancialValueReplayGroup({ children }: { children: ReactElement
     const nativeEvent = event.nativeEvent as Event & { [replayHandledKey]?: boolean };
     if (nativeEvent[replayHandledKey]) return;
     nativeEvent[replayHandledKey] = true;
-    members.forEach((replay) => replay());
+    const now = performance.now();
+    if ([...members].some((member) => member.blockedUntil() > now)) return;
+    members.forEach((member) => member.replay());
   }, [members]);
   const onlyChild = Children.only(children);
 
@@ -47,6 +54,14 @@ export function FinancialValueReplayGroup({ children }: { children: ReactElement
         },
       })}
     </FinancialValueReplayContext.Provider>
+  );
+}
+
+export function FinancialValueReplayRow(props: ComponentPropsWithoutRef<"tr">) {
+  return (
+    <FinancialValueReplayGroup>
+      <tr {...props} />
+    </FinancialValueReplayGroup>
   );
 }
 
@@ -80,6 +95,7 @@ export function FinancialValue({
   const timeoutRef = useRef<number | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const motionCycleRef = useRef(0);
+  const replayBlockedUntilRef = useRef(0);
   const motionAllowed = animate && preferenceReady && preferenceEnabled && !prefersReducedMotion;
 
   const settleMotion = useCallback((cycle?: number) => {
@@ -95,6 +111,7 @@ export function FinancialValue({
     if (!motionAllowed || !isValid) return;
     settleMotion();
     const direction = requestedDirection ?? (numericValue < 0 ? "down" : "up");
+    replayBlockedUntilRef.current = performance.now() + REPLAY_COOLDOWN_MS;
     const cycle = motionCycleRef.current + 1;
     motionCycleRef.current = cycle;
     setMotionCycle(cycle);
@@ -106,6 +123,11 @@ export function FinancialValue({
     });
     timeoutRef.current = window.setTimeout(() => settleMotion(cycle), 1_250);
   }, [isValid, motionAllowed, numericValue, settleMotion]);
+
+  const requestReplay = useCallback(() => {
+    if (performance.now() < replayBlockedUntilRef.current) return;
+    startMotion();
+  }, [startMotion]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -133,7 +155,10 @@ export function FinancialValue({
     startMotion(direction);
   }, [isValid, motionAllowed, numericValue, preferenceEnabled, preferenceReady, prefersReducedMotion, settleMotion, startMotion]);
 
-  useEffect(() => group?.register(startMotion), [group, startMotion]);
+  useEffect(() => group?.register({
+    blockedUntil: () => replayBlockedUntilRef.current,
+    replay: () => startMotion(),
+  }), [group, startMotion]);
   useEffect(() => () => settleMotion(), [settleMotion]);
 
   const motionCharacters = useMemo(
@@ -156,11 +181,13 @@ export function FinancialValue({
       data-money-motion={motion}
       data-money-motion-cycle={motionCycle}
       data-money-tone={tone}
-      onClick={group ? undefined : () => startMotion()}
-      onPointerEnter={group ? undefined : () => startMotion()}
+      onClick={group ? undefined : requestReplay}
+      onPointerEnter={group ? undefined : requestReplay}
       title={title}
     >
       <span aria-hidden="true" className="financial-value-visual">
+        <span className="financial-value-motion-origin">£ 0.00</span>
+        <span className="financial-value-motion-target">
         {motionCharacters.map(({ character, key }, characterIndex) => {
           const isDigit = /^\d$/.test(character);
           const isPlaceholder = character === "-" && numericValue === 0;
@@ -178,8 +205,8 @@ export function FinancialValue({
               style={{
                 "--financial-digit-index": digitIndex,
                 "--financial-digit-position": isPlaceholder ? "-1lh" : `${-(numericDigit + 1)}lh`,
-                "--financial-digit-up-start": isPlaceholder ? "-2lh" : `${-(numericDigit + 2)}lh`,
-                "--financial-digit-down-start": isPlaceholder ? "0lh" : `${-numericDigit}lh`,
+                "--financial-digit-up-start": isPlaceholder ? "0lh" : "-1lh",
+                "--financial-digit-down-start": isPlaceholder ? "-2lh" : "-11lh",
               } as CSSProperties}
             >
               <span
@@ -187,13 +214,14 @@ export function FinancialValue({
                 data-financial-motion-order={digitIndex}
                 onAnimationEnd={onAnimationEnd}
               >
-                {(isPlaceholder ? ["−", "-", "−"] : [9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]).map((digit, index) => (
+                {(isPlaceholder ? ["0", "-", "0"] : [9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]).map((digit, index) => (
                   <span key={`${digit}-${index}`}>{digit}</span>
                 ))}
               </span>
             </span>
           );
         })}
+        </span>
       </span><span aria-hidden="true" className="financial-value-canonical-text">{display}</span>
     </span>
   );

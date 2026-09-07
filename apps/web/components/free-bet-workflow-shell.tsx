@@ -19,7 +19,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { formatFinancialValue } from "@/lib/financial-display";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
@@ -3558,7 +3558,7 @@ export function FreeBetWorkflowShell({
                         ? sortIssueBadgesByPriority(getFreeBetIssueBadges(sourceRow))
                         : [];
                       return (
-                        <tr
+                        <FinancialValueReplayRow
                           className={[
                             selectedId === rowId ? "is-selected-row" : "",
                             issueTone === "danger"
@@ -3602,7 +3602,7 @@ export function FreeBetWorkflowShell({
                               {renderTableCell(row, column)}
                             </td>
                           ))}
-                        </tr>
+                        </FinancialValueReplayRow>
                       );
                     })
                   )}
