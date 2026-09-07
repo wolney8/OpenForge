@@ -753,6 +753,9 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           fund_manager_id TEXT PRIMARY KEY,
           bookmaker_display_mode TEXT NOT NULL DEFAULT 'Name',
           financial_motion_enabled INTEGER NOT NULL DEFAULT 1,
+          financial_motion_replay_delay_ms INTEGER NOT NULL DEFAULT 1500,
+          financial_motion_duration_ms INTEGER NOT NULL DEFAULT 520,
+          financial_motion_stagger_ms INTEGER NOT NULL DEFAULT 80,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
@@ -1848,6 +1851,24 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "fund_manager_settings",
         "financial_motion_enabled",
         "INTEGER NOT NULL DEFAULT 1",
+    )
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "financial_motion_replay_delay_ms",
+        "INTEGER NOT NULL DEFAULT 1500",
+    )
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "financial_motion_duration_ms",
+        "INTEGER NOT NULL DEFAULT 520",
+    )
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "financial_motion_stagger_ms",
+        "INTEGER NOT NULL DEFAULT 80",
     )
     ensure_column(connection, "sportsbook_bets", "lay_commission_1", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -6150,34 +6171,73 @@ def update_global_bookmaker_display_mode(mode: str) -> None:
         )
 
 
-def get_financial_motion_preference() -> bool:
+def get_financial_motion_preference() -> dict[str, bool | int]:
     with connect() as connection:
         row = connection.execute(
             """
-            SELECT financial_motion_enabled
+            SELECT
+              financial_motion_enabled,
+              financial_motion_replay_delay_ms,
+              financial_motion_duration_ms,
+              financial_motion_stagger_ms
             FROM fund_manager_settings
             WHERE fund_manager_id = 'fund-manager-local'
             """
         ).fetchone()
-    return True if row is None else bool(row["financial_motion_enabled"])
+    if row is None:
+        return {
+            "enabled": True,
+            "replay_delay_ms": 1500,
+            "duration_ms": 520,
+            "stagger_ms": 80,
+        }
+    return {
+        "enabled": bool(row["financial_motion_enabled"]),
+        "replay_delay_ms": int(row["financial_motion_replay_delay_ms"]),
+        "duration_ms": int(row["financial_motion_duration_ms"]),
+        "stagger_ms": int(row["financial_motion_stagger_ms"]),
+    }
 
 
-def update_financial_motion_preference(enabled: bool) -> bool:
+def update_financial_motion_preference(
+    *,
+    enabled: bool,
+    replay_delay_ms: int,
+    duration_ms: int,
+    stagger_ms: int,
+) -> dict[str, bool | int]:
     timestamp = utc_now()
     with connect() as connection:
         connection.execute(
             """
             INSERT INTO fund_manager_settings (
               fund_manager_id, bookmaker_display_mode, financial_motion_enabled,
+              financial_motion_replay_delay_ms, financial_motion_duration_ms,
+              financial_motion_stagger_ms,
               created_at, updated_at
-            ) VALUES ('fund-manager-local', 'Name', ?, ?, ?)
+            ) VALUES ('fund-manager-local', 'Name', ?, ?, ?, ?, ?, ?)
             ON CONFLICT(fund_manager_id) DO UPDATE SET
               financial_motion_enabled = excluded.financial_motion_enabled,
+              financial_motion_replay_delay_ms = excluded.financial_motion_replay_delay_ms,
+              financial_motion_duration_ms = excluded.financial_motion_duration_ms,
+              financial_motion_stagger_ms = excluded.financial_motion_stagger_ms,
               updated_at = excluded.updated_at
             """,
-            (int(enabled), timestamp, timestamp),
+            (
+                int(enabled),
+                replay_delay_ms,
+                duration_ms,
+                stagger_ms,
+                timestamp,
+                timestamp,
+            ),
         )
-    return enabled
+    return {
+        "enabled": enabled,
+        "replay_delay_ms": replay_delay_ms,
+        "duration_ms": duration_ms,
+        "stagger_ms": stagger_ms,
+    }
 
 
 def update_profile_bookmaker_display_mode(profile_id: str, mode: str) -> None:

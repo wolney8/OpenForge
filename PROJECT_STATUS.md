@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 16:15 BST_
+_Last updated: 2026-09-07 19:30 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) replay cooldown,
-  `£ 0.00` animation origin and whole-row financial replay from any table cell. Chart motion
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) sign/width-stable
+  digit origins, configurable motion timing and compact Site Settings composition. Chart motion
   [#110](https://github.com/wolney8/OpenForge/issues/110) remains separate.
-- Tested implementation base: `432eca0ba1ece2d01fde8045af3aae82d55f589c` on `main`; this
+- Tested implementation base: `1113b69755b446283700198a0f6b01fd4a71503e` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -62,9 +62,10 @@ durable requirements.
   odometer with static-equivalent geometry and canonical clipboard text. It now has persisted
   default-On Fund Manager control, reduced-motion override, neutral-zero replay and coordinated
   card/row replay across targeted active dashboard, ledger, report, Account, drawer and dialog
-  paths. The current correction adds a 2.5-second replay cooldown, a `£ 0.00` motion origin and
-  row-wide replay when entering financial or non-financial cells. Future/new-surface adoption and
-  user acceptance remain open. Chart motion is separately
+  paths. The current correction retains sign and width while digits roll from zero, leaves neutral
+  `£ -` static, and adds persisted replay-pause, roll-duration and digit-cascade controls with
+  1.5-second/520ms/80ms defaults. Future/new-surface adoption and user acceptance remain open.
+  Chart motion is separately
   tracked as `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110).
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access
@@ -89,12 +90,12 @@ durable requirements.
 Environment: local `http://localhost:3010`; this correction's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager Settings → Site Settings**. Turn **Financial motion** Off, reload a dashboard,
-   and confirm values are static; turn it On and confirm hover/click replay returns. Reduced-motion
-   system preference must remain static regardless.
-2. In **Tracker → Extra Place**, check the compact header value and stake sentence, including `£ -`.
-   Hover/click a card or row, then copy the value and sentence: geometry must remain unchanged and
-   copied text must contain each canonical amount exactly once.
+1. Open **Fund Manager Settings → Site Settings → Financial motion**. Change Replay pause, Roll
+   duration and Digit cascade, reload, and confirm the choices persist. Turn motion Off and confirm
+   dashboard values stay static; reduced-motion must remain static regardless of the toggle.
+2. In **Tracker → Extra Place**, hover a positive and negative value. Digits should roll from zero
+   without changing the value's width or accounting sign; `£ -` remains static. Re-enter within the
+   configured pause and confirm it does not immediately replay.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

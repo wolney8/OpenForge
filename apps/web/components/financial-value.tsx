@@ -10,8 +10,6 @@ import {
   financialMotionDirection, formatFinancialValue, moneyTone, type MoneyMotionDirection,
 } from "@/lib/financial-display";
 
-const REPLAY_COOLDOWN_MS = 2_500;
-
 type ReplayRegistration = {
   blockedUntil: () => number;
   replay: () => void;
@@ -86,7 +84,9 @@ export function FinancialValue({
     ? tonePreference === "auto" ? moneyTone(numericValue, { zeroTone }) : tonePreference
     : "neutral";
   const display = isValid ? formatFinancialValue(numericValue, { showPositiveSign }) : "Unavailable";
-  const { enabled: preferenceEnabled, ready: preferenceReady } = useFinancialMotionPreference();
+  const {
+    durationMs, enabled: preferenceEnabled, ready: preferenceReady, replayDelayMs, staggerMs,
+  } = useFinancialMotionPreference();
   const group = useContext(FinancialValueReplayContext);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [motion, setMotion] = useState<MoneyMotionDirection>("none");
@@ -96,7 +96,12 @@ export function FinancialValue({
   const animationFrameRef = useRef<number | null>(null);
   const motionCycleRef = useRef(0);
   const replayBlockedUntilRef = useRef(0);
-  const motionAllowed = animate && preferenceReady && preferenceEnabled && !prefersReducedMotion;
+  const motionAllowed = animate && preferenceReady && preferenceEnabled && !prefersReducedMotion && numericValue !== 0;
+  const motionCharacters = useMemo(
+    () => display.split("").map((character, index) => ({ character, key: `${index}-${character}` })),
+    [display]
+  );
+  const movingCharacterCount = motionCharacters.filter(({ character }) => /^\d$/.test(character)).length;
 
   const settleMotion = useCallback((cycle?: number) => {
     if (cycle !== undefined && cycle !== motionCycleRef.current) return;
@@ -111,7 +116,7 @@ export function FinancialValue({
     if (!motionAllowed || !isValid) return;
     settleMotion();
     const direction = requestedDirection ?? (numericValue < 0 ? "down" : "up");
-    replayBlockedUntilRef.current = performance.now() + REPLAY_COOLDOWN_MS;
+    replayBlockedUntilRef.current = performance.now() + replayDelayMs;
     const cycle = motionCycleRef.current + 1;
     motionCycleRef.current = cycle;
     setMotionCycle(cycle);
@@ -121,8 +126,12 @@ export function FinancialValue({
         if (cycle === motionCycleRef.current) setMotion(direction);
       });
     });
-    timeoutRef.current = window.setTimeout(() => settleMotion(cycle), 1_250);
-  }, [isValid, motionAllowed, numericValue, settleMotion]);
+    const finalDigitDelay = Math.max(0, movingCharacterCount - 1) * staggerMs;
+    timeoutRef.current = window.setTimeout(
+      () => settleMotion(cycle),
+      durationMs + finalDigitDelay + 400
+    );
+  }, [durationMs, isValid, motionAllowed, movingCharacterCount, numericValue, replayDelayMs, settleMotion, staggerMs]);
 
   const requestReplay = useCallback(() => {
     if (performance.now() < replayBlockedUntilRef.current) return;
@@ -145,7 +154,7 @@ export function FinancialValue({
       return;
     }
     const direction = numericValue === 0
-      ? previousValueRef.current === 0 ? "none" : "up"
+      ? "none"
       : financialMotionDirection(previousValueRef.current, numericValue, false);
     previousValueRef.current = numericValue;
     if (direction === "none") {
@@ -161,14 +170,6 @@ export function FinancialValue({
   }), [group, startMotion]);
   useEffect(() => () => settleMotion(), [settleMotion]);
 
-  const motionCharacters = useMemo(
-    () => display.split("").map((character, index) => ({ character, key: `${index}-${character}` })),
-    [display]
-  );
-  const movingCharacterCount = motionCharacters.filter(
-    ({ character }) => /^\d$/.test(character) || (character === "-" && numericValue === 0)
-  ).length;
-
   function onAnimationEnd(event: AnimationEvent<HTMLSpanElement>) {
     const order = Number((event.target as HTMLElement).dataset.financialMotionOrder);
     if (Number.isFinite(order) && order === movingCharacterCount - 1) settleMotion(motionCycle);
@@ -183,30 +184,31 @@ export function FinancialValue({
       data-money-tone={tone}
       onClick={group ? undefined : requestReplay}
       onPointerEnter={group ? undefined : requestReplay}
+      style={{
+        "--financial-motion-duration": `${durationMs}ms`,
+        "--financial-motion-stagger": `${staggerMs}ms`,
+      } as CSSProperties}
       title={title}
     >
       <span aria-hidden="true" className="financial-value-visual">
-        <span className="financial-value-motion-origin">£ 0.00</span>
-        <span className="financial-value-motion-target">
         {motionCharacters.map(({ character, key }, characterIndex) => {
           const isDigit = /^\d$/.test(character);
-          const isPlaceholder = character === "-" && numericValue === 0;
-          if (!isDigit && !isPlaceholder) {
+          if (!isDigit) {
             return <span className="financial-value-character" key={key}>{character}</span>;
           }
           const digitIndex = motionCharacters.slice(0, characterIndex).filter(
-            (entry) => /^\d$/.test(entry.character) || (entry.character === "-" && numericValue === 0)
+            (entry) => /^\d$/.test(entry.character)
           ).length;
-          const numericDigit = isDigit ? Number(character) : 0;
+          const numericDigit = Number(character);
           return (
             <span
-              className={`financial-value-digit-window${isPlaceholder ? " financial-value-placeholder-window" : ""}`}
+              className="financial-value-digit-window"
               key={`${key}-${motionCycle}`}
               style={{
                 "--financial-digit-index": digitIndex,
-                "--financial-digit-position": isPlaceholder ? "-1lh" : `${-(numericDigit + 1)}lh`,
-                "--financial-digit-up-start": isPlaceholder ? "0lh" : "-1lh",
-                "--financial-digit-down-start": isPlaceholder ? "-2lh" : "-11lh",
+                "--financial-digit-position": `${-(numericDigit + 1)}lh`,
+                "--financial-digit-up-start": "-1lh",
+                "--financial-digit-down-start": "-11lh",
               } as CSSProperties}
             >
               <span
@@ -214,14 +216,13 @@ export function FinancialValue({
                 data-financial-motion-order={digitIndex}
                 onAnimationEnd={onAnimationEnd}
               >
-                {(isPlaceholder ? ["0", "-", "0"] : [9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]).map((digit, index) => (
+                {[9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit, index) => (
                   <span key={`${digit}-${index}`}>{digit}</span>
                 ))}
               </span>
             </span>
           );
         })}
-        </span>
       </span><span aria-hidden="true" className="financial-value-canonical-text">{display}</span>
     </span>
   );

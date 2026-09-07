@@ -56,26 +56,95 @@ test("Fund Manager settings sections render proper summary cards", async ({ page
   }
 });
 
-test("Financial motion preference persists through the canonical Site Settings toggle", async ({ page }) => {
-  let enabled = true;
+test("Financial motion settings persist through the canonical Site Settings controls", async ({ page }) => {
+  let preference = {
+    duration_ms: 520,
+    enabled: true,
+    replay_delay_ms: 1500,
+    stagger_ms: 80,
+  };
   let writes = 0;
+  let failNextWrite = false;
   await page.route("**/fund-manager/preferences/financial-motion", async (route) => {
     if (route.request().method() === "PUT") {
-      enabled = Boolean((route.request().postDataJSON() as { enabled?: boolean }).enabled);
+      if (failNextWrite) {
+        failNextWrite = false;
+        await route.fulfill({ json: { detail: "Synthetic persistence failure" }, status: 500 });
+        return;
+      }
+      preference = {
+        ...preference,
+        ...(route.request().postDataJSON() as Partial<typeof preference>),
+      };
       writes += 1;
     }
-    await route.fulfill({ json: { enabled } });
+    await route.fulfill({ json: preference });
   });
 
   await page.goto("/settings#site-settings");
+  const section = page.locator('[data-pd-id="fund-manager-site-settings.financial-motion-section"]');
   const toggle = page.getByRole("button", { name: "Financial motion" });
+  const replayPause = page.getByRole("combobox", { name: "Financial motion replay pause" });
+  const rollDuration = page.getByRole("combobox", { name: "Financial motion roll duration" });
+  const digitCascade = page.getByRole("combobox", { name: "Financial motion digit cascade" });
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(replayPause).toHaveValue("1500");
+  await expect(rollDuration).toHaveValue("520");
+  await expect(digitCascade).toHaveValue("80");
+  const desktopGeometry = await section.evaluate((element) => {
+    const controls = [...element.querySelectorAll<HTMLElement>(".field-control select")].map((control) => ({
+      parent: control.parentElement!.getBoundingClientRect(),
+      rect: control.getBoundingClientRect(),
+    }));
+    return {
+      aligned: controls.every(({ rect }) => Math.abs(rect.top - controls[0].rect.top) <= 1),
+      contained: controls.every(({ parent, rect }) => {
+        return rect.left >= parent.left && rect.right <= parent.right;
+      }),
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(desktopGeometry.aligned).toBe(true);
+  expect(desktopGeometry.contained).toBe(true);
+  expect(desktopGeometry.pageOverflow).toBeLessThanOrEqual(1);
+  await replayPause.focus();
+  await expect(replayPause).toBeFocused();
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  await page.getByRole("button", { name: /Switch to (light|dark) mode/ }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", initialTheme ?? "");
+  await expect(section).toBeVisible();
+  await replayPause.selectOption("2000");
+  await expect(rollDuration).toBeEnabled();
+  await rollDuration.selectOption("700");
+  await expect(digitCascade).toBeEnabled();
+  await digitCascade.selectOption("100");
+  await expect(toggle).toBeEnabled();
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  expect(writes).toBe(1);
+  expect(writes).toBe(4);
 
   await page.reload();
   await expect(page.getByRole("button", { name: "Financial motion" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("combobox", { name: "Financial motion replay pause" })).toHaveValue("2000");
+  await expect(page.getByRole("combobox", { name: "Financial motion roll duration" })).toHaveValue("700");
+  await expect(page.getByRole("combobox", { name: "Financial motion digit cascade" })).toHaveValue("100");
+  failNextWrite = true;
+  await page.getByRole("combobox", { name: "Financial motion replay pause" }).selectOption("2500");
+  await expect(section.getByRole("alert")).toHaveText("Financial motion settings could not be saved.");
+  await expect(page.getByRole("combobox", { name: "Financial motion replay pause" })).toHaveValue("2000");
+
+  await page.setViewportSize({ width: 430, height: 820 });
+  const narrowGeometry = await section.evaluate((element) => {
+    const fields = [...element.querySelectorAll<HTMLElement>(".field-control")].map((field) => field.getBoundingClientRect());
+    return {
+      inReadingOrder: fields.every((field, index) => index === 0 || field.top > fields[index - 1].bottom),
+      contained: fields.every((field) => field.left >= element.getBoundingClientRect().left && field.right <= element.getBoundingClientRect().right),
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(narrowGeometry.inReadingOrder).toBe(true);
+  expect(narrowGeometry.contained).toBe(true);
+  expect(narrowGeometry.pageOverflow).toBeLessThanOrEqual(1);
 });
 
 test("Fund Manager data tabs share panel and search-filter geometry", async ({ page }) => {

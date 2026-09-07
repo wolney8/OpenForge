@@ -30,6 +30,8 @@ _Last updated: 2026-09-07_
 | FVP-020 | Rapid replay/update or lost completion event | Previous work is cancelled; bounded fallback settles the newest exact value with no stale motion state |
 | FVP-021 | Select/copy standalone value or surrounding sentence | Canonical formatted values appear exactly once; hidden digit strips never enter copied text |
 | FVP-022 | Small pill, ledger badge, large KPI and inline sentence | Animated value remains within the existing line box and matches static geometry within rendering tolerance |
-| FVP-023 | Hover/click occurs within 2.5 seconds of automatic or explicit motion | No replay; the cycle remains unchanged until the cooldown expires |
-| FVP-024 | Positive, negative or neutral animation begins | Presentation starts at `£ 0.00`; canonical accessible/selectable text remains the exact destination |
+| FVP-023 | Hover/click occurs within the configured replay pause (default 1.5 seconds) after automatic or explicit motion | No replay; the cycle remains unchanged until the cooldown expires |
+| FVP-024 | Positive or negative animation begins | Currency, accounting sign, punctuation and digit count remain fixed while every digit starts at zero; canonical accessible/selectable text remains the exact destination |
 | FVP-025 | Pointer enters a text/non-money cell in a table row containing financial values | Every financial value in that row replays together; adjacent rows and non-money content remain unchanged |
+| FVP-026 | Neutral `£ -` is loaded, hovered or clicked | Value remains neutral and static; no monetary origin or replay cycle is invented |
+| FVP-027 | Fund Manager changes replay pause, roll duration or digit cascade | Bounded values persist, affect the shared odometer and survive a fresh authenticated read |

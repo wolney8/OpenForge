@@ -3,6 +3,19 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-07: Financial motion changed accounting shape and stretched its Settings control
+
+- Area: shared `FinancialValue` animation and Fund Manager Site Settings.
+- Root cause: a whole-value `£ 0.00` overlay temporarily replaced destination punctuation and digit
+  count, while the persisted switch occupied the value track of the generic account-details grid
+  and stretched across it.
+- Prevention: roll digit windows from zero without replacing static currency, grouping or
+  accounting-sign characters; neutral `£ -` stays static. Motion preferences use the canonical
+  Settings subpanel, heading row and labelled field grid with bounded server-validated choices.
+- Regression tests: the focused Extra Places browser path inspects positive/negative zero-digit
+  starts, stable geometry, static neutral values and cooldown; Fund Manager Settings coverage
+  checks persistence, peer-field alignment, containment, focus, theme switching and narrow reflow.
+
 ## 2026-09-04: Protected shell mounted before authoritative session hydration
 
 - Area: authenticated application entry and session inactivity handling.

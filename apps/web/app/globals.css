@@ -10634,31 +10634,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .financial-value-visual {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: baseline center;
-  font: inherit;
-  line-height: inherit;
-  pointer-events: none;
-  user-select: none;
-}
-
-.financial-value-motion-origin,
-.financial-value-motion-target {
-  grid-area: 1 / 1;
+  display: flex;
   align-items: baseline;
   justify-content: center;
   font: inherit;
   line-height: inherit;
-  white-space: pre;
-}
-
-.financial-value-motion-origin {
-  display: flex;
-  visibility: hidden;
-}
-
-.financial-value-motion-target {
-  display: flex;
+  pointer-events: none;
+  user-select: none;
 }
 
 .financial-value-character {
@@ -10722,34 +10704,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .financial-value-motion-up .financial-value-digit-strip {
-  animation: financial-value-roll-up 360ms cubic-bezier(0.16, 0.84, 0.32, 1.08) both;
-  animation-delay: calc(var(--financial-digit-index) * 70ms);
+  animation: financial-value-roll-up var(--financial-motion-duration, 520ms) cubic-bezier(0.16, 0.84, 0.32, 1.08) both;
+  animation-delay: calc(var(--financial-digit-index) * var(--financial-motion-stagger, 80ms));
 }
 
 .financial-value-motion-down .financial-value-digit-strip {
-  animation: financial-value-roll-down 360ms cubic-bezier(0.16, 0.84, 0.32, 1.08) both;
-  animation-delay: calc(var(--financial-digit-index) * 70ms);
-}
-
-.financial-value-motion-up .financial-value-motion-origin,
-.financial-value-motion-down .financial-value-motion-origin {
-  visibility: visible;
-  animation: financial-value-origin-out 160ms ease-out both;
-}
-
-.financial-value-motion-up .financial-value-motion-target,
-.financial-value-motion-down .financial-value-motion-target {
-  animation: financial-value-target-in 160ms ease-out both;
-}
-
-@keyframes financial-value-origin-out {
-  0%, 35% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes financial-value-target-in {
-  0%, 35% { opacity: 0; }
-  100% { opacity: 1; }
+  animation: financial-value-roll-down var(--financial-motion-duration, 520ms) cubic-bezier(0.16, 0.84, 0.32, 1.08) both;
+  animation-delay: calc(var(--financial-digit-index) * var(--financial-motion-stagger, 80ms));
 }
 
 @keyframes financial-value-roll-up {
@@ -10772,16 +10733,8 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 @media (prefers-reduced-motion: reduce) {
   .financial-value-motion-up .financial-value-digit-strip,
-  .financial-value-motion-down .financial-value-digit-strip,
-  .financial-value-motion-up .financial-value-motion-origin,
-  .financial-value-motion-down .financial-value-motion-origin,
-  .financial-value-motion-up .financial-value-motion-target,
-  .financial-value-motion-down .financial-value-motion-target {
+  .financial-value-motion-down .financial-value-digit-strip {
     animation: none;
-  }
-
-  .financial-value-motion-origin {
-    visibility: hidden;
   }
 }
 
@@ -11474,6 +11427,20 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.financial-motion-settings-grid {
+  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.financial-motion-settings-grid .field-control {
+  min-width: 0;
+}
+
+.financial-motion-settings-grid .field-control small {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .settings-action-card {
