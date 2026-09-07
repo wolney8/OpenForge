@@ -19,7 +19,7 @@ import {
   buildOperationalLedgerHref,
   type OperationalActionCounts,
 } from "@/lib/operational-actions";
-import { FinancialValue } from "./financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "./financial-value";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 
 type FeePeriodPreview = {
@@ -488,13 +488,13 @@ export function FeePeriodReviewDialog({
         {preview && !isLoading ? (
           <>
             <section className="stat-strip fee-period-stat-strip" aria-label="Monthly settled fee totals">
-              <article className="stat-card"><span>Sportsbook</span><strong>{money(preview.sportsbook_total)}</strong><small>{preview.sportsbook_count} settled rows</small></article>
-              <article className="stat-card"><span>Free Bets</span><strong>{money(preview.free_bet_total)}</strong><small>{preview.free_bet_count} settled rows</small></article>
-              <article className="stat-card"><span>Casino</span><strong>{money(preview.casino_total)}</strong><small>{preview.casino_count} settled rows</small></article>
-              <article className="stat-card"><span>Settled Profit</span><strong>{money(preview.eligible_period_profit, preview.blockers.length ? "Blocked" : "Unavailable")}</strong><small>Before loss recovery</small></article>
+              <FinancialValueReplayGroup><article className="stat-card"><span>Sportsbook</span><strong>{money(preview.sportsbook_total)}</strong><small>{preview.sportsbook_count} settled rows</small></article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card"><span>Free Bets</span><strong>{money(preview.free_bet_total)}</strong><small>{preview.free_bet_count} settled rows</small></article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card"><span>Casino</span><strong>{money(preview.casino_total)}</strong><small>{preview.casino_count} settled rows</small></article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card"><span>Settled Profit</span><strong>{money(preview.eligible_period_profit, preview.blockers.length ? "Blocked" : "Unavailable")}</strong><small>Before loss recovery</small></article></FinancialValueReplayGroup>
             </section>
 
-            <section className="content-subpanel stack-tight" data-pd-id="fee-period-review.calculation">
+            <FinancialValueReplayGroup><section className="content-subpanel stack-tight" data-pd-id="fee-period-review.calculation">
               <h3>Fee Calculation</h3>
               <dl className="profile-detail-list">
                 <div><dt>Opening Loss Carryforward</dt><dd>{money(preview.opening_loss_carryforward, preview.blockers.length ? "Blocked" : "Unavailable")}</dd></div>
@@ -503,7 +503,7 @@ export function FeePeriodReviewDialog({
                 <div><dt>Investment Fee ({preview.investment_fee_percent}%)</dt><dd>{money(preview.investment_fee_amount, preview.blockers.length ? "Blocked" : "Unavailable")}</dd></div>
                 <div><dt>Total Fee Due</dt><dd><strong>{money(preview.total_fee_due, preview.blockers.length ? "Blocked" : "Unavailable")}</strong></dd></div>
               </dl>
-            </section>
+            </section></FinancialValueReplayGroup>
 
             {isReopenedReview ? (
               <section
@@ -549,7 +549,8 @@ export function FeePeriodReviewDialog({
                       {revisions.map((revision) => {
                         const isCurrent = revision.revision_number === currentRevisionNumber;
                         return (
-                          <li className={isCurrent ? "is-current" : ""} key={revision.fee_revision_id}>
+                          <FinancialValueReplayGroup key={revision.fee_revision_id}>
+                          <li className={isCurrent ? "is-current" : ""}>
                             <div className="fee-revision-heading">
                               <div>
                                 <strong>Revision {revision.revision_number}</strong>
@@ -565,6 +566,7 @@ export function FeePeriodReviewDialog({
                             <p><strong>Reason:</strong> {revision.change_reason || "Initial monthly fee review"}</p>
                             <small>Recorded by {revision.created_by}</small>
                           </li>
+                          </FinancialValueReplayGroup>
                         );
                       })}
                     </ol>
@@ -573,11 +575,11 @@ export function FeePeriodReviewDialog({
                         <h4 id="fee-correction-audit-title">Post-Withdrawal Corrections</h4>
                         <ul className="fee-correction-list" aria-label="Recorded fee corrections">
                           {(existingPeriod.corrections ?? []).map((correction) => (
-                            <li key={correction.fee_correction_id}>
+                            <FinancialValueReplayGroup key={correction.fee_correction_id}><li>
                               <strong>{correction.adjustment_type === "fee_credit" ? "Fee Credit" : "Fee Debit"}</strong>
                               <span><FinancialValue value={Number(correction.amount)} /> · {correction.state}</span>
                               <small>{correction.reason}</small>
-                            </li>
+                            </li></FinancialValueReplayGroup>
                           ))}
                         </ul>
                       </section>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
-import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
+import { ReplayableGraph, ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
   buildDashboardTrend,
@@ -443,6 +443,7 @@ export function PortfolioDashboardView({
       </section>
 
       <section className="dashboard-tertiary-grid" aria-label="Portfolio detail dashboard cards">
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card dashboard-bookmaker-card" data-pd-id="dashboard.bookmaker-breakdown">
         <div className="dashboard-visual-header">
           <div>
@@ -466,7 +467,9 @@ export function PortfolioDashboardView({
           {summary.bookmakerBreakdown.length === 0 ? <span className="muted-text">No bookmaker rows in range.</span> : null}
         </div>
         </article>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card" data-pd-id="dashboard.recent-activity">
         <div className="dashboard-visual-header">
           <div>
@@ -486,7 +489,9 @@ export function PortfolioDashboardView({
           {summary.recentActivity.length === 0 ? <span className="muted-text">No activity in this range.</span> : null}
         </div>
         </article>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card" data-pd-id="dashboard.peer-comparison">
         <div className="dashboard-visual-header">
           <div>
@@ -498,17 +503,17 @@ export function PortfolioDashboardView({
           <div className="dashboard-peer-row">
             <span>Selected range P&amp;L</span>
             <FinancialValue value={summary.profitQuickView.overallPnl} />
-            <i style={{ width: `${Math.max(6, currentPeerBarWidth)}%` }} />
+            <ReplayableProgressFill className="dashboard-peer-progress" minimum="0.65rem" value={Math.max(6, currentPeerBarWidth)} />
           </div>
           <div className="dashboard-peer-row">
             <span>Open current value</span>
             <FinancialValue value={summary.profitQuickView.openCurrentValue} />
-            <i style={{ width: `${Math.max(6, openPeerBarWidth)}%` }} />
+            <ReplayableProgressFill className="dashboard-peer-progress" minimum="0.65rem" staggerIndex={1} value={Math.max(6, openPeerBarWidth)} />
           </div>
           <div className="dashboard-peer-row dashboard-peer-row-muted">
             <span>Peer comparison</span>
             <strong>Fund Manager dashboard</strong>
-            <i style={{ width: "52%" }} />
+            <ReplayableProgressFill className="dashboard-peer-progress" minimum="0.65rem" staggerIndex={2} value={52} />
           </div>
         </div>
         <Link className="dashboard-card-action" href="/profiles">
@@ -516,9 +521,11 @@ export function PortfolioDashboardView({
           <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
         </Link>
         </article>
+        </FinancialValueReplayGroup>
       </section>
 
       <section className="dashboard-fee-section" aria-label="Fund Manager selected range fee position">
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card dashboard-fee-card" data-pd-id="dashboard.fund-manager-fees">
           <div className="dashboard-visual-header">
             <div>
@@ -551,6 +558,7 @@ export function PortfolioDashboardView({
             Informational here; review and withdrawal actions stay in the Fund Manager Fees tab.
           </small>
         </article>
+        </FinancialValueReplayGroup>
       </section>
     </section>
   );
@@ -616,16 +624,17 @@ function DashboardChartSurface({
       : points.map((point) => `${point.label}: ${formatMoney(point.cumulativeValue ?? point.value)}`).join("; ");
   return (
     <figure className="dashboard-chart-figure">
-      <svg
+      <ReplayableGraph
         aria-label={`${label}. ${accessibleSummary}`}
         className="dashboard-sparkline"
         preserveAspectRatio="none"
         role="img"
+        valueKey={`${area}|${line}`}
         viewBox="0 0 100 42"
       >
         <polygon className="dashboard-sparkline-area" points={area} />
-        <polyline className="dashboard-sparkline-line" points={line} />
-      </svg>
+        <polyline className="dashboard-sparkline-line" pathLength="1" points={line} />
+      </ReplayableGraph>
     </figure>
   );
 }

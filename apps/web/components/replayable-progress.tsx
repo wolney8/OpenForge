@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback, useEffect, useRef, useState,
+  type CSSProperties, type ReactNode, type SVGProps,
+} from "react";
 
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
 import { useMotionReplayRegistration } from "@/components/motion-replay-group";
@@ -9,7 +12,7 @@ function clampPercent(value: number) {
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 }
 
-function useReplayableProgress(value: number) {
+function useReplayableProgress(valueKey: number | string) {
   const { durationMs, enabled, ready, staggerMs } = useFinancialMotionPreference();
   const [reduced, setReduced] = useState(false);
   const [cycle, setCycle] = useState(0);
@@ -17,6 +20,7 @@ function useReplayableProgress(value: number) {
   const frameRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const allowed = ready && enabled && !reduced;
+  const chartDurationMs = durationMs + 500;
 
   const settle = useCallback(() => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
@@ -35,8 +39,8 @@ function useReplayableProgress(value: number) {
         setReplaying(true);
       });
     });
-    timeoutRef.current = window.setTimeout(settle, durationMs + staggerMs * 5 + 400);
-  }, [allowed, durationMs, settle, staggerMs]);
+    timeoutRef.current = window.setTimeout(settle, chartDurationMs + staggerMs * 5 + 400);
+  }, [allowed, chartDurationMs, settle, staggerMs]);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -51,10 +55,10 @@ function useReplayableProgress(value: number) {
       else settle();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [allowed, replay, settle, value]);
+  }, [allowed, replay, settle, valueKey]);
   useEffect(() => settle, [settle]);
-  useMotionReplayRegistration(replay);
-  return { cycle, durationMs, replaying, settle, staggerMs };
+  useMotionReplayRegistration(replay, cycle);
+  return { chartDurationMs, cycle, replaying, settle, staggerMs };
 }
 
 export function ReplayableProgressFill({
@@ -79,7 +83,7 @@ export function ReplayableProgressFill({
       onAnimationEnd={motion.settle}
       style={{
         "--progress-motion-delay": `${staggerIndex * motion.staggerMs}ms`,
-        "--progress-motion-duration": `${motion.durationMs}ms`,
+        "--progress-motion-duration": `${motion.chartDurationMs}ms`,
         "--progress-motion-target": target,
         width: target,
       } as CSSProperties}
@@ -108,12 +112,35 @@ export function ReplayableProgressRing({
       onAnimationEnd={motion.settle}
       role="img"
       style={{
-        "--progress-motion-duration": `${motion.durationMs}ms`,
+        "--progress-motion-duration": `${motion.chartDurationMs}ms`,
         "--progress-motion-target": `${clampPercent(value)}%`,
         "--progress-motion-visible": `${clampPercent(value)}%`,
       } as CSSProperties}
     >
       {children}
     </div>
+  );
+}
+
+export function ReplayableGraph({
+  children,
+  className = "",
+  valueKey,
+  ...props
+}: SVGProps<SVGSVGElement> & { valueKey: string }) {
+  const motion = useReplayableProgress(valueKey);
+  return (
+    <svg
+      {...props}
+      className={`${className}${motion.replaying ? " is-progress-replaying" : ""}`}
+      data-chart-motion={motion.replaying ? "running" : "settled"}
+      data-chart-motion-cycle={motion.cycle}
+      style={{
+        ...props.style,
+        "--progress-motion-duration": `${motion.chartDurationMs}ms`,
+      } as CSSProperties}
+    >
+      {children}
+    </svg>
   );
 }

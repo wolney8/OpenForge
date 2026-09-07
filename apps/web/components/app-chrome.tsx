@@ -6,7 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { FinancialMotionPreferenceProvider } from "@/components/financial-motion-preference";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
@@ -662,6 +662,7 @@ function AppChromeContent({
           <div className="top-bar-actions">
             {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
+                <FinancialValueReplayGroup>
                 <button
                   aria-busy={profileSummaryLoading}
                   aria-expanded={trackerMenuOpen}
@@ -709,6 +710,7 @@ function AppChromeContent({
                     <span className="material-symbols-outlined">unfold_more</span>
                   </span>
                 </button>
+                </FinancialValueReplayGroup>
                 <div
                   className={`app-menu-panel app-menu-panel-right profile-summary-menu-panel ${trackerMenuOpen ? "is-open" : ""}`}
                   aria-label="Profile navigation"

@@ -91,9 +91,11 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 - Every active data-table row containing financial values uses the shared row replay group. Entering
   the row through a text, numeric, status or action cell replays that row's financial values only;
   non-financial cell content is not converted into or misrepresented as money. The same nearest-group
-  rule applies to semantic cards and drawers: pointer entry replays once, leaving and re-entering
-  replays again, and every appropriate container click restarts all registered values without a
-  click limit. Nested groups do not replay an outer page or parent container.
+  rule applies to semantic cards and drawers: pointer entry replays once, then further entry is
+  suppressed until the persisted replay delay has elapsed even if the pointer leaves and re-enters.
+  Every appropriate container click restarts all registered values during or after that delay and
+  starts the delay again, without a click limit. Nested groups do not replay an outer page or parent
+  container.
 - Zero remains neutral, static and displays exactly `£ -`; it does not temporarily become a
   monetary amount or participate in replay. Unavailable and loading states remain static.
   Loading must never fabricate a temporary zero or random intermediate monetary value.
@@ -155,6 +157,11 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
   settled. Their accessible labels always state the final value; animation does not alter data.
 - Multiple bars in one card begin together with a short configured stagger. Rapid replay cancels
   prior presentation work and settles at the current target.
+- Chart/progress travel uses the persisted roll duration plus a 500ms presentation allowance, so it
+  remains adjustable with the shared setting without making longer-distance visual travel abrupt.
+- Shared line/area graphs reveal from their origin to the exact final plot and use the same nearest
+  card replay and motion-preference rules. The settled graph geometry and accessible summary remain
+  unchanged.
 - Financial motion Off and `prefers-reduced-motion: reduce` render exact final bar/ring states
   immediately, without a reveal, highlight or layout change.
 

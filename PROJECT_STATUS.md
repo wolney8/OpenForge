@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 19:56 BST_
+_Last updated: 2026-09-07 21:05 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) nearest-container
-  financial replay plus the first shared Dashboard progress/ring slice of
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) delayed hover re-entry
+  plus slower, complete Dashboard chart/progress replay under
   [#110](https://github.com/wolney8/OpenForge/issues/110).
-- Tested implementation base: `39f18b32f5bb2cb5da0216cd009620ec6203dce4` on `main`; this
+- Tested implementation base: `9ffe3f6f9692a083a389fb7f36c02cf327045edb` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -65,9 +65,11 @@ durable requirements.
   paths. The current correction retains sign and width while digits roll from zero, leaves neutral
   `£ -` static, and adds persisted replay-pause, roll-duration and digit-cascade controls with
   1.5-second/520ms/80ms defaults. Future/new-surface adoption and user acceptance remain open.
-  Nearest card/row entry and every appropriate container click now replay contained values together.
+  Nearest card/row entry replays contained values together, with early re-entry suppressed by the
+  configured delay while every appropriate container click remains an immediate replay.
   `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110) now has its
-  first shared slice on Target Progress, Module Mix bars and Operational Focus ring; broader chart
+  shared Dashboard slice on Target Progress, Module Mix and peer bars, Operational Focus ring and
+  the selected-range line/area graph. Chart travel is slower than digit rolling; broader chart
   rollout and user/hosted acceptance remain open.
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access

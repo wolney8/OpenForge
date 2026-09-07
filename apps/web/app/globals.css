@@ -2479,6 +2479,29 @@ html[data-theme="dark"] .notification-count-badge {
   filter: drop-shadow(0 0 12px color-mix(in srgb, var(--primary) 42%, transparent));
 }
 
+.dashboard-sparkline.is-progress-replaying .dashboard-sparkline-area {
+  animation: dashboard-graph-area-reveal var(--progress-motion-duration, 1020ms)
+    cubic-bezier(0.25, 1.35, 0.5, 1) both;
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+.dashboard-sparkline.is-progress-replaying .dashboard-sparkline-line {
+  animation: dashboard-graph-line-reveal var(--progress-motion-duration, 1020ms)
+    cubic-bezier(0.25, 1.35, 0.5, 1) both;
+  stroke-dasharray: 1;
+}
+
+@keyframes dashboard-graph-area-reveal {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes dashboard-graph-line-reveal {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
 .dashboard-trend-footer {
   display: grid;
   gap: 0.65rem;
@@ -2770,14 +2793,16 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .dashboard-module-fill.is-progress-replaying,
-.dashboard-target-meter > .is-progress-replaying {
+.dashboard-target-meter > .is-progress-replaying,
+.dashboard-peer-progress.is-progress-replaying {
   animation: dashboard-progress-reveal var(--progress-motion-duration, 520ms)
     cubic-bezier(0.25, 1.35, 0.5, 1) both;
   animation-delay: var(--progress-motion-delay, 0ms);
 }
 
 .dashboard-module-fill.is-progress-replaying::after,
-.dashboard-target-meter > .is-progress-replaying::after {
+.dashboard-target-meter > .is-progress-replaying::after,
+.dashboard-peer-progress.is-progress-replaying::after {
   position: absolute;
   inset: 0 0 0 auto;
   width: 0.7rem;
@@ -2884,12 +2909,16 @@ html[data-theme="dark"] .notification-count-badge {
 @media (prefers-reduced-motion: reduce) {
   .dashboard-module-fill.is-progress-replaying,
   .dashboard-target-meter > .is-progress-replaying,
-  .dashboard-focus-meter.is-progress-replaying {
+  .dashboard-focus-meter.is-progress-replaying,
+  .dashboard-peer-progress.is-progress-replaying,
+  .dashboard-sparkline.is-progress-replaying .dashboard-sparkline-area,
+  .dashboard-sparkline.is-progress-replaying .dashboard-sparkline-line {
     animation: none;
   }
 
   .dashboard-module-fill.is-progress-replaying::after,
-  .dashboard-target-meter > .is-progress-replaying::after {
+  .dashboard-target-meter > .is-progress-replaying::after,
+  .dashboard-peer-progress.is-progress-replaying::after {
     display: none;
   }
 }
@@ -2956,7 +2985,8 @@ html[data-theme="dark"] .notification-count-badge {
   justify-self: end;
 }
 
-.dashboard-peer-row > i {
+.dashboard-peer-progress {
+  position: relative;
   display: block;
   grid-column: 1 / -1;
   height: 0.78rem;
@@ -2968,7 +2998,7 @@ html[data-theme="dark"] .notification-count-badge {
   box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
-.dashboard-peer-row-muted > i {
+.dashboard-peer-row-muted > .dashboard-peer-progress {
   background: color-mix(in srgb, var(--outline) 58%, transparent);
   box-shadow: none;
 }

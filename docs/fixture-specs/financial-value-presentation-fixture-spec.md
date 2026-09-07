@@ -35,8 +35,9 @@ _Last updated: 2026-09-07_
 | FVP-025 | Pointer enters a text/non-money cell in a table row containing financial values | Every financial value in that row replays together; adjacent rows and non-money content remain unchanged |
 | FVP-026 | Neutral `£ -` is loaded, hovered or clicked | Value remains neutral and static; no monetary origin or replay cycle is invented |
 | FVP-027 | Fund Manager changes replay pause, roll duration or digit cascade | Bounded values persist, affect the shared odometer and survive a fresh authenticated read |
-| FVP-028 | Pointer enters, stays within, leaves and re-enters a semantic replay group | All registered values/charts replay once per entry; movement between descendants does not restart; re-entry does |
-| FVP-029 | A semantic replay group is clicked repeatedly | Every click cancels/restarts all nearest-group values/charts; no cooldown limits explicit container clicks |
+| FVP-028 | Pointer enters, stays within, leaves and re-enters a semantic replay group before/after the configured delay | All registered values/charts replay on first entry; movement and early re-entry do not restart; re-entry after the delay does |
+| FVP-029 | A semantic replay group is clicked repeatedly during its hover delay | Every click cancels/restarts all nearest-group values/charts and restarts the hover delay; no cooldown limits explicit container clicks |
 | FVP-030 | Target and Module Mix progress bars resolve/replay | Each reveals from zero to its exact width; grouped bars use a short stagger; the leading highlight stops at settlement |
 | FVP-031 | Progress ring resolves/replays | Arc sweeps from zero to the exact percentage and is static after settlement; accessible final label is unchanged |
 | FVP-032 | Financial motion Off or reduced motion applies to progress charts | Exact final bar/ring state appears immediately with no reveal and no geometry change |
+| FVP-033 | A resolved line/area graph loads or its nearest card is replayed | Plot reveals to the exact final points using the slower chart duration, then remains static with the same accessible summary |

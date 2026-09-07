@@ -120,7 +120,7 @@ export function FinancialValue({
     startMotion(direction);
   }, [isValid, motionAllowed, numericValue, preferenceEnabled, preferenceReady, prefersReducedMotion, settleMotion, startMotion]);
 
-  const grouped = useMotionReplayRegistration(startMotion);
+  const grouped = useMotionReplayRegistration(startMotion, motionCycle);
   useEffect(() => () => settleMotion(), [settleMotion]);
 
   function onAnimationEnd(event: AnimationEvent<HTMLSpanElement>) {

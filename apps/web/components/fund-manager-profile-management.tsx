@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
 import { StatusToast } from "@/components/status-toast";
@@ -288,10 +288,10 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
           </div>
           <div className="settings-action-row"><button className="modal-primary-button" disabled={isSaving || isArchived} onClick={() => void saveOverview()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save overview"}</span></button></div>
           {isArchived ? <p className="field-hint">Archived Profiles are read-only. Restore this Profile to change its settings.</p> : null}
-          <dl className="fund-manager-account-details">
+          <FinancialValueReplayGroup><dl className="fund-manager-account-details">
             <div><dt>Status</dt><dd>{profile.status}</dd></div>
             <div><dt>Current cash snapshot</dt><dd><FinancialValue value={profile.current_cash_snapshot} /></dd></div>
-          </dl>
+          </dl></FinancialValueReplayGroup>
         </section>
 
         <section aria-labelledby="profile-management-tab-access" className="analytics-tab-panel stack" hidden={activeSection !== "access"} id="profile-management-panel-access" role="tabpanel">
@@ -316,12 +316,12 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
 
         <section aria-labelledby="profile-management-tab-accounts" className="analytics-tab-panel stack" hidden={activeSection !== "accounts"} id="profile-management-panel-accounts" role="tabpanel">
           <div><span className="eyebrow">Accounts</span><h2>Account health</h2></div>
-          <dl className="fund-manager-account-details">
+          <FinancialValueReplayGroup><dl className="fund-manager-account-details">
             <div><dt>Active Profile Accounts</dt><dd>{activeAccounts.length}</dd></div>
             <div><dt>Bookmaker balance</dt><dd><FinancialValue value={accountTotals.Bookie} /></dd></div>
             <div><dt>Exchange balance</dt><dd><FinancialValue value={accountTotals.Exchange} /></dd></div>
             <div><dt>Bank balance</dt><dd><FinancialValue value={accountTotals.Bank} /></dd></div>
-          </dl>
+          </dl></FinancialValueReplayGroup>
           <div className="settings-action-row"><Link className="button-link" href={`/profiles/${profileId}/tracker/accounts`}>Open Accounts</Link></div>
         </section>
 

@@ -77,17 +77,25 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const targetCard = page.locator('[data-pd-id="dashboard.target-progress"]');
   const targetBar = targetCard.locator('[data-progress-motion]');
   const targetValue = targetCard.locator(".financial-value").first();
+  const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
+  const performanceGraph = performanceCard.locator('[data-chart-motion]');
+  const performanceValue = performanceCard.locator(".financial-value").first();
   const moduleCard = page.locator('[data-pd-id="dashboard.module-mix"]');
   const moduleBars = moduleCard.locator('[data-progress-motion]');
   const focusCard = page.locator('[data-pd-id="dashboard.action-load"]');
   const focusRing = focusCard.locator('[data-progress-motion]');
   await expect(targetBar).toHaveAttribute("data-progress-motion", "settled", { timeout: 5_000 });
+  await page.waitForTimeout(1_600);
 
   await targetCard.hover();
   await expect(targetBar).toHaveAttribute("data-progress-motion", "running");
   const hoverBarCycle = Number(await targetBar.getAttribute("data-progress-motion-cycle"));
   const hoverValueCycle = Number(await targetValue.getAttribute("data-money-motion-cycle"));
   await targetCard.locator("h3").hover();
+  expect(Number(await targetBar.getAttribute("data-progress-motion-cycle"))).toBe(hoverBarCycle);
+
+  await page.locator(".dashboard-primary-row").hover();
+  await targetCard.hover();
   expect(Number(await targetBar.getAttribute("data-progress-motion-cycle"))).toBe(hoverBarCycle);
 
   await targetCard.click({ position: { x: 18, y: 18 } });
@@ -98,9 +106,29 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const secondClickCycle = Number(await targetBar.getAttribute("data-progress-motion-cycle"));
   expect(secondClickCycle).toBeGreaterThan(firstClickCycle);
 
+  await page.waitForTimeout(1_600);
   await page.locator(".dashboard-primary-row").hover();
   await targetCard.hover();
   expect(Number(await targetBar.getAttribute("data-progress-motion-cycle"))).toBeGreaterThan(secondClickCycle);
+
+  const chartDuration = Number.parseFloat(await targetBar.evaluate((bar) => getComputedStyle(bar).animationDuration));
+  expect(chartDuration).toBeGreaterThanOrEqual(1);
+
+  await performanceCard.click({ position: { x: 18, y: 18 } });
+  await expect(performanceGraph).toHaveAttribute("data-chart-motion", "running");
+  await expect(performanceGraph.locator(".dashboard-sparkline-line")).toHaveCSS(
+    "animation-name",
+    "dashboard-graph-line-reveal",
+  );
+  expect(Number(await performanceValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(0);
+
+  const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
+    cards
+      .filter((card) => card.querySelector(".financial-value, [data-progress-motion], [data-chart-motion]"))
+      .filter((card) => card.getAttribute("data-motion-replay-group") !== "true")
+      .map((card) => card.getAttribute("data-pd-id") ?? card.className),
+  );
+  expect(uncoveredMotionCards).toEqual([]);
 
   const miniCard = page.locator(".dashboard-mini-card", { hasText: "Open Current Value" });
   const miniValue = miniCard.locator('.financial-value[aria-label="£ 100.00"]');
@@ -138,15 +166,26 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
   const reportRow = page.locator("table tbody tr", { has: page.locator(".financial-value") }).first();
   const reportValues = reportRow.locator(".financial-value");
+  await page.waitForTimeout(1_600);
   const reportCycles = await reportValues.evaluateAll((values) =>
     values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
   );
+  await reportRow.hover();
+  const hoveredReportCycles = await reportValues.evaluateAll((values) =>
+    values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+  );
+  expect(hoveredReportCycles.some((cycle, index) => cycle > reportCycles[index])).toBe(true);
+  await page.mouse.move(0, 0);
+  await reportRow.hover();
+  expect(await reportValues.evaluateAll((values) =>
+    values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+  )).toEqual(hoveredReportCycles);
   await reportRow.locator("td").first().click();
   await expect.poll(async () => {
     const next = await reportValues.evaluateAll((values) =>
       values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
     );
-    return next.some((cycle, index) => cycle > reportCycles[index]);
+    return next.some((cycle, index) => cycle > hoveredReportCycles[index]);
   }).toBe(true);
 });
 
