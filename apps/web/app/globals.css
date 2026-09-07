@@ -1956,7 +1956,7 @@ html[data-theme="dark"] .notification-count-badge {
 
 .notification-history-actions {
   display: flex;
-  flex: 1 1 auto;
+  grid-column: 1 / -1;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--action-group-gap);

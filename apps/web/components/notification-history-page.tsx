@@ -256,28 +256,28 @@ export function NotificationHistoryPage() {
                 <option value="cleared">Cleared</option>
               </select>
             </label>
-            <div className="notification-history-actions">
-              <button
-                className="button-link"
-                data-pd-id="notifications.history.mark-read"
-                disabled={unread.length === 0 || isPersistingState}
-                onClick={() => markRead(unread)}
-                type="button"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
-                Mark filtered as read
-              </button>
-              <button
-                className="button-link destructive-action"
-                data-pd-id="notifications.history.clear"
-                disabled={clearable.length === 0 || isPersistingState}
-                onClick={() => clear(clearable)}
-                type="button"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
-                Clear filtered
-              </button>
-            </div>
+          </div>
+          <div className="notification-history-actions">
+            <button
+              className="button-link"
+              data-pd-id="notifications.history.mark-read"
+              disabled={unread.length === 0 || isPersistingState}
+              onClick={() => markRead(unread)}
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
+              Mark filtered as read
+            </button>
+            <button
+              className="button-link destructive-action"
+              data-pd-id="notifications.history.clear"
+              disabled={clearable.length === 0 || isPersistingState}
+              onClick={() => clear(clearable)}
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
+              Clear filtered
+            </button>
           </div>
         </div>
 

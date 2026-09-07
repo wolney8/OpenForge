@@ -78,6 +78,83 @@ function intersects(first: Rect, second: Rect): boolean {
   );
 }
 
+async function readPeerFieldLayout(page: Page) {
+  return page.evaluate(() => {
+    const selectors = [
+      "[data-pd-id='notifications.history.search']",
+      "[data-pd-id='notifications.history.type']",
+      "[data-pd-id='notifications.history.status']",
+    ];
+    const fields = selectors.map((selector) => {
+      const control = document.querySelector<HTMLElement>(selector);
+      const label = control?.closest<HTMLElement>("label.field-control");
+      const labelText = label?.querySelector<HTMLElement>(":scope > span");
+      if (!control || !label || !labelText) throw new Error(`Missing peer field ${selector}`);
+      const controlRect = control.getBoundingClientRect();
+      const labelRect = labelText.getBoundingClientRect();
+      return {
+        controlBottom: controlRect.bottom,
+        controlTop: controlRect.top,
+        labelTop: labelRect.top,
+        selector,
+      };
+    });
+    const actions = document.querySelector<HTMLElement>(".notification-history-actions");
+    if (!actions) throw new Error("Missing notification actions");
+    const actionRect = actions.getBoundingClientRect();
+    const actionButtons = [...actions.querySelectorAll<HTMLElement>("button")].map((button) => {
+      const rect = button.getBoundingClientRect();
+      return { bottom: rect.bottom, top: rect.top };
+    });
+    return {
+      actionButtons,
+      actionTop: actionRect.top,
+      fields,
+      rootFontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+    };
+  });
+}
+
+function expectDesktopPeerAlignment(layout: Awaited<ReturnType<typeof readPeerFieldLayout>>) {
+  const labelTops = layout.fields.map((field) => field.labelTop);
+  const controlTops = layout.fields.map((field) => field.controlTop);
+  expect(Math.max(...labelTops) - Math.min(...labelTops), "peer label top alignment").toBeLessThanOrEqual(1);
+  expect(Math.max(...controlTops) - Math.min(...controlTops), "peer control top alignment").toBeLessThanOrEqual(1);
+  expect(layout.actionTop, "actions remain below the complete peer field row").toBeGreaterThanOrEqual(
+    Math.max(...layout.fields.map((field) => field.controlBottom)) + layout.rootFontSize * 0.75 - 1,
+  );
+}
+
+test("Notification History keeps peer fields aligned independently of its action row", async ({ page }) => {
+  await installSyntheticNotificationHistory(page);
+  await page.setViewportSize({ width: 1180, height: 900 });
+  await page.goto("/notifications");
+  await expect(page.locator('[data-pd-id="notifications.history.item.NOTICE-001"]')).toBeVisible();
+
+  expectDesktopPeerAlignment(await readPeerFieldLayout(page));
+
+  await page.locator(".notification-history-actions").evaluate((actions) => {
+    actions.style.maxWidth = "18rem";
+  });
+  const wrappedLayout = await readPeerFieldLayout(page);
+  expect(new Set(wrappedLayout.actionButtons.map((button) => Math.round(button.top))).size).toBe(2);
+  expectDesktopPeerAlignment(wrappedLayout);
+
+  await page.locator('[data-pd-id="notifications.history.status"]').selectOption("cleared");
+  await expect(page.locator('[data-pd-id="notifications.history.mark-read"]')).toBeDisabled();
+  await expect(page.locator('[data-pd-id="notifications.history.clear"]')).toBeDisabled();
+  expectDesktopPeerAlignment(await readPeerFieldLayout(page));
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  const narrowLayout = await readPeerFieldLayout(page);
+  for (let index = 1; index < narrowLayout.fields.length; index += 1) {
+    expect(narrowLayout.fields[index].controlTop).toBeGreaterThan(narrowLayout.fields[index - 1].controlTop);
+  }
+  expect(narrowLayout.actionTop).toBeGreaterThan(
+    narrowLayout.fields[narrowLayout.fields.length - 1].controlBottom,
+  );
+});
+
 test("Notification History controls remain contained and separated through reflow", async ({ page }) => {
   await installSyntheticNotificationHistory(page);
   await page.setViewportSize({ width: 1180, height: 900 });

@@ -46,6 +46,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Responsive layout checked at desktop and reduced viewport widths.
 - [ ] Field children remain within their containers; adjacent visible sibling controls do not
       intersect, preserve canonical row gaps, and keep focus indicators unobscured through reflow.
+- [ ] Peer-row labels and control top edges align, and secondary/action-row wrapping cannot shift
+      only one peer field out of alignment.
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
 - [ ] Flex/grid ancestors around wide content use `min-width: 0` where required.

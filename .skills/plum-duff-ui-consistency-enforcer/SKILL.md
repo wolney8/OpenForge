@@ -228,6 +228,8 @@ For controls and icons, assert:
 - every input/select stays within its allocated field container; adjacent visible sibling control
   rectangles do not intersect, retain the canonical gap when sharing a row, and reflow without
   covered or clipped focus indicators at breakpoint-adjacent widths;
+- peer fields intended to share a row align their labels and control top edges; verify grouping and
+  row independence rather than treating absence of overlap or overflow as sufficient alignment;
 - destructive controls resolve to the semantic danger colour;
 - Material Symbol text renders as an icon, not visible fallback wording;
 - accessible names are contextual and unique.
