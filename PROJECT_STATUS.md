@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 21:05 BST_
+_Last updated: 2026-09-07 22:15 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,15 +9,13 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) delayed hover re-entry
-  plus slower, complete Dashboard chart/progress replay under
-  [#110](https://github.com/wolney8/OpenForge/issues/110).
-- Tested implementation base: `9ffe3f6f9692a083a389fb7f36c02cf327045edb` on `main`; this
-  tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
+- Current planning capture: [#111](https://github.com/wolney8/OpenForge/issues/111) records the
+  future Financial Analytics Explorer; no application implementation is active in this tranche.
+- Current implementation base: `505db4c545510fd200fb58dd969d7b31142d1f4d` on `main`.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
-- Return point: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35)
-  after this bounded correction. #88 is not reopened by this work.
+- Return point: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
+  Planning #111 does not delay it, and #88 is not reopened by this work.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -38,9 +36,13 @@ durable requirements.
 
 ## Project plan
 
-- Current: finish the bounded #105/#110 shared motion correction without reopening #88.
+- Current: documentation-only capture of #111; implementation remains deliberately deferred.
 - Next queue: #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
+- Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
+  interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
+  a reusable metric/granularity/filter model. Account balance charts remain dependent on the
+  separate observation source in [#106](https://github.com/wolney8/OpenForge/issues/106).
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
   remaining numerical validation [#91](https://github.com/wolney8/OpenForge/issues/91), Google and
   hosted workbook acceptance [#94](https://github.com/wolney8/OpenForge/issues/94), stale-workbook
@@ -74,6 +76,10 @@ durable requirements.
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access
   semantics [#109](https://github.com/wolney8/OpenForge/issues/109) remains untouched.
+- `FINANCIAL-ANALYTICS-EXPLORER-001` [#111](https://github.com/wolney8/OpenForge/issues/111) is
+  captured for a point-aware Dashboard time series and reusable Reports explorer. It remains
+  planned only; [#106](https://github.com/wolney8/OpenForge/issues/106) separately owns persisted
+  Account balance observations and freshness.
 - Profit Boost and strict input: [#83](https://github.com/wolney8/OpenForge/issues/83) retains its
   full scope and is now assigned to M14; remaining cross-surface validation is [#91](https://github.com/wolney8/OpenForge/issues/91).
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).

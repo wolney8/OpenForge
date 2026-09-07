@@ -74,6 +74,16 @@ Existing reporting contracts:
 - `docs/contracts/retained-profit-reporting-contract.md`
 - `docs/contracts/cash-adjustment-aggregation-contract.md`
 
+Planned reporting evolution is tracked by
+[`FINANCIAL-ANALYTICS-EXPLORER-001`](https://github.com/wolney8/OpenForge/issues/111): first make the
+existing Profile Dashboard P&L series point-aware and accessible, then add one period-P&L Reports
+preset before generalising a canonical metric/granularity/filter query model. Existing settled-date
+P&L and retained-profit definitions remain authoritative; withdrawals, top-ups, costs and Account
+balance observations are separate measures. Account balance history remains the distinct data-source
+scope of [#106](https://github.com/wolney8/OpenForge/issues/106), not a prerequisite for the first
+slice. Saved user explorer presets require a later decision after evaluating existing loadout/filter
+persistence.
+
 New round-trip evidence:
 
 - `docs/contracts/spreadsheet-import-export-roundtrip-contract.md`
