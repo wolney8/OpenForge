@@ -27,6 +27,8 @@ boundary as the other issue #12 ledgers.
 | `Counts In Cash Total` | `counts_in_cash_total` | Entered | Controls dashboard cash totals |
 | `Channel` | `channel` | Entered | Controlled `Online`, `Retail`, or `Unknown` |
 | `Status` | `status` | Entered | Controlled profile account-health status |
+| `Stake Access` | not mapped in `accounts-v1` | Decision required | Must not alter lifecycle; target separate stake-access/restriction evidence after source vocabulary and provenance are approved |
+| `Promo Access` | not mapped in `accounts-v1` | Decision required | Must not alter lifecycle; target separate promotion-access/restriction evidence after source vocabulary and provenance are approved |
 | `CurrentBalance` | `current_balance` | Entered financial authority | Blank means not recorded; otherwise require a valid decimal and preserve precision/sign without rounding |
 | `PendingWithdrawalAmount` | `pending_withdrawal_amount` | Entered financial authority | Optional valid decimal; preserve precision and sign without rounding |
 | `LastBalanceUpdate` | `last_balance_update` | Entered audit value | Optional date/date-time text from workbook |
@@ -60,6 +62,10 @@ boundary as the other issue #12 ledgers.
 - `PendingWithdrawalAmount` is not converted into a cash adjustment.
 - No silent rounding, currency conversion, or sign correction.
 - `LastPromoUsed` is never persisted from the workbook.
+- The current September Accounts shape includes `Stake Access` and `Promo Access`, but
+  `ACCOUNT_SOURCE_MAP` does not consume them. Until the focused #109 mapping decision is approved,
+  import must not collapse either value into `Status`/`lifecycle_status` or silently claim it was
+  preserved.
 - Notes must remain profile-scoped and must not contain passwords, tokens, bank credentials or card
   details.
 - Existing unchanged source identities are no-ops; changed rows remain blocked until the separate

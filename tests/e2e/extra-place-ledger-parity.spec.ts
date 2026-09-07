@@ -39,7 +39,7 @@ function rgbLuminance(color: string) {
 
 test.describe("Extra Place ledger parity", () => {
   test("uses profile account choices and the configured preferred exchange for a saved settlement", async ({ page }) => {
-    const accountRows = [
+    const accountRows: Array<Record<string, unknown>> = [
       {
         account_id: "account-synthetic-bookie",
         profile_id: profileId,
@@ -126,6 +126,18 @@ test.describe("Extra Place ledger parity", () => {
         updated_at: "2026-09-07T12:00:00Z",
       },
     ];
+    accountRows.push(
+      ...Array.from({ length: 6 }, (_, index) => ({
+        ...accountRows[0],
+        account_id: `account-synthetic-bookie-${index + 2}`,
+        account: `Synthetic Long Bookmaker Choice ${index + 2}`,
+      })),
+      ...Array.from({ length: 6 }, (_, index) => ({
+        ...accountRows[3],
+        account_id: `account-synthetic-exchange-${index + 2}`,
+        account: `Synthetic Long Exchange Choice ${index + 2}`,
+      })),
+    );
     let savedPayload: Record<string, string> | null = null;
     await page.route("**/auth/session", (route) =>
       route.fulfill({
@@ -176,7 +188,18 @@ test.describe("Extra Place ledger parity", () => {
     });
     await page.route(`**/profiles/${profileId}/each-way-extra-places`, async (route) => {
       if (route.request().method() === "GET") {
-        await route.fulfill({ json: [] });
+        await route.fulfill({
+          json: savedPayload
+            ? [{
+                ...savedPayload,
+                each_way_extra_place_id: "extra-place-synthetic-account-default",
+                calculation_state: "resolved",
+                calculation_notes: [],
+                current_value: "12.34",
+                final_value: "12.34",
+              }]
+            : [],
+        });
         return;
       }
       savedPayload = route.request().postDataJSON() as Record<string, string>;
@@ -204,18 +227,31 @@ test.describe("Extra Place ledger parity", () => {
     await page.getByRole("button", { name: "Add Extra Place row" }).click();
     const dialog = page.getByRole("dialog", { name: "Create Extra Place row" });
     const bookmaker = dialog.getByLabel("BookmakerSelect");
-    await expect(bookmaker.locator("option")).toHaveText([
-      "Select bookmaker",
-      "Synthetic Extra Place Bookmaker",
-      "Synthetic Login Restricted Bookmaker",
-      "Synthetic Stake Limited Bookmaker",
-    ]);
+    await expect(bookmaker.locator("option")).toHaveCount(10);
+    await expect(bookmaker.locator("option", { hasText: "Synthetic Long Bookmaker Choice 6" })).toHaveCount(1);
     await expect(dialog.locator(".extra-place-lay-win select")).toHaveValue(
       "Synthetic Preferred Exchange",
     );
     await expect(dialog.locator(".extra-place-lay-place select")).toHaveValue(
       "Synthetic Preferred Exchange",
     );
+    const accountRails = dialog.locator(".extra-place-account-option-rail");
+    await expect(accountRails).toHaveCount(3);
+    const bookmakerRail = accountRails.first();
+    await expect(bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ })).toBeVisible();
+    expect(
+      await bookmakerRail.locator(".import-review-loadouts").evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBeTruthy();
+    expect(
+      await bookmakerRail.locator(".import-review-loadouts").evaluate(
+        (element) => element.scrollHeight <= element.clientHeight + 2,
+      ),
+    ).toBeTruthy();
+    await bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ }).focus();
+    await expect(bookmakerRail.getByRole("button", { name: /Show \d+ more Account options/ })).toBeFocused();
+    await page.keyboard.press("Enter");
     await bookmaker.selectOption("Synthetic Stake Limited Bookmaker");
     await expect(dialog.locator('[data-pd-id="extra-place.account-health"]')).toBeVisible();
     await bookmaker.selectOption("Synthetic Extra Place Bookmaker");
@@ -236,6 +272,12 @@ test.describe("Extra Place ledger parity", () => {
     expect(bookmakerBox!.x + bookmakerBox!.width).toBeLessThanOrEqual(
       dialogBox!.x + dialogBox!.width + 1,
     );
+    for (const rail of await accountRails.all()) {
+      const railBox = await rail.boundingBox();
+      expect(railBox).not.toBeNull();
+      expect(railBox!.x).toBeGreaterThanOrEqual(dialogBox!.x);
+      expect(railBox!.x + railBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width + 1);
+    }
 
     await bookmaker.focus();
     await expect(bookmaker).toBeFocused();
@@ -273,6 +315,25 @@ test.describe("Extra Place ledger parity", () => {
       result: "Extra Place",
       finishing_position: "5th",
     });
+
+    const resolvedValue = page.locator('[data-pd-id="extra-place.ledger"] .stat-card .financial-value').first();
+    await expect(resolvedValue).toHaveAttribute("aria-label", "£ 12.34");
+    await expect(resolvedValue.locator(".financial-value-digit-window")).toHaveCount(4);
+    await expect(resolvedValue.locator(".financial-value-digit-window").first()).toHaveCSS("overflow", "hidden");
+    const cycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
+    await resolvedValue.click();
+    await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(cycle);
+    await expect(resolvedValue).toHaveAttribute("data-money-motion", "up");
+    const delays = await resolvedValue.locator(".financial-value-digit-strip").evaluateAll((strips) =>
+      strips.slice(0, 2).map((strip) => getComputedStyle(strip).animationDelay),
+    );
+    expect(delays).toEqual(["0s", "0.07s"]);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(resolvedValue).toHaveAttribute("data-money-motion", "none", { timeout: 2_000 });
+    const reducedCycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
+    await resolvedValue.click();
+    await expect(resolvedValue).toHaveAttribute("data-money-motion-cycle", String(reducedCycle));
+    await expect(resolvedValue.locator(".financial-value-digit-strip").first()).toHaveCSS("animation-name", "none");
   });
 
   test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {

@@ -167,9 +167,9 @@ values are not financial approval.
 Readiness: ready for contract review. Currency defaults to Fund Manager/application GBP; per-profile currency override is `To confirm`. Shared animated value implementation must wait for contract approval.
 
 Current financial-motion direction is tracked as `FINANCIAL-MOTION-001` in
-[#105](https://github.com/wolney8/OpenForge/issues/105): initial resolved and changed read-only
-signed-money values roll by destination sign. Shared-component correction comes first, followed by
-bounded surface adoption; editable fields and file/print exports remain static.
+[#105](https://github.com/wolney8/OpenForge/issues/105): initial resolved values roll by destination
+sign, while later changes roll by increase/decrease. The shared-component correction is implemented
+locally; bounded surface adoption remains incomplete. Editable fields and file/print exports remain static.
 
 Branding issue #65 is approved for implementation. Supplied source assets are held in
 `assets/source-logo/`; the current implementation intentionally defers favicon/compact

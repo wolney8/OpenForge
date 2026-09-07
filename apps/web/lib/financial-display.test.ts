@@ -20,11 +20,15 @@ describe("financial display", () => {
   });
 
   it("derives restrained motion direction without implying profit semantics", () => {
-    expect(financialMotionDirection(null, 10)).toBe("none");
+    expect(financialMotionDirection(null, 10)).toBe("up");
+    expect(financialMotionDirection(null, -10)).toBe("down");
+    expect(financialMotionDirection(null, 0)).toBe("none");
     expect(financialMotionDirection(8, 10)).toBe("up");
     expect(financialMotionDirection(10, 8)).toBe("down");
     expect(financialMotionDirection(-1, 2)).toBe("up");
     expect(financialMotionDirection(2, -1)).toBe("down");
+    expect(financialMotionDirection(20, 10)).toBe("down");
+    expect(financialMotionDirection(-20, -10)).toBe("up");
     expect(financialMotionDirection(10, 10)).toBe("none");
     expect(financialMotionDirection(8, 10, true)).toBe("none");
   });

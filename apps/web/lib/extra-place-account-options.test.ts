@@ -4,6 +4,7 @@ import {
   resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
+  prioritiseExtraPlaceAccountOptions,
 } from "./extra-place-account-options";
 
 function account(
@@ -71,6 +72,16 @@ describe("Extra Place account choices", () => {
     expect(
       resolveExtraPlacePreferredExchange("Missing Exchange", ["Exchange A"]),
     ).toBe("");
+  });
+
+  it("prioritises the current Account, then frequently used Profile choices without dropping options", () => {
+    expect(
+      prioritiseExtraPlaceAccountOptions(
+        ["Bookmaker A", "Bookmaker B", "Bookmaker C", "Bookmaker D", "Bookmaker E"],
+        "Bookmaker E",
+        { "Bookmaker B": 3, "Bookmaker C": 1 },
+      ),
+    ).toEqual(["Bookmaker E", "Bookmaker B", "Bookmaker C", "Bookmaker A", "Bookmaker D"]);
   });
 
   it.each([

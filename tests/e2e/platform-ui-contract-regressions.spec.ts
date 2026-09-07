@@ -3,6 +3,24 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 const profileId = "profile-demo-001";
 const apiBaseUrl = "http://127.0.0.1:8010";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/session**", (route) => route.fulfill({
+    json: {
+      authenticated: true,
+      email: "ui-contract@example.invalid",
+      name: "Synthetic Fund Manager",
+      role: "fund_manager",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      linked_profile_ids: ["profile-demo-001", "profile-demo-002"],
+      session_policy: { auto_logout_enabled: false, timeout_minutes: 15 },
+    },
+  }));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference", (route) =>
+    route.fulfill({ json: { configured: false } })
+  );
+});
+
 function sportsbookImportBatch() {
   return {
     import_batch_id: "IMPORT-UI-CONTRACT",
@@ -198,7 +216,7 @@ test.describe("Plum Duff UI contract regressions", () => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1366, height: 768 });
     const profileIds = ["profile-demo-001", "profile-demo-002"];
-    const bookmaker = `UI Contract Bookmaker ${Date.now()}`;
+    const bookmaker = "247Bet";
     const offer = `UI contract opportunity ${Date.now()}`;
 
     try {
@@ -207,18 +225,6 @@ test.describe("Plum Duff UI contract regressions", () => {
           data: { status: "Active" },
         });
         expect(profileResponse.ok()).toBeTruthy();
-        const accountResponse = await request.post(
-          `${apiBaseUrl}/profiles/${targetProfileId}/accounts`,
-          {
-            data: {
-              account: bookmaker,
-              type: "Bookie",
-              status: "Active",
-              channel: "Online",
-            },
-          }
-        );
-        expect(accountResponse.ok()).toBeTruthy();
       }
 
       await page.goto("/profiles");
@@ -301,18 +307,6 @@ test.describe("Plum Duff UI contract regressions", () => {
           }
         }
 
-        const accountResponse = await request.get(
-          `${apiBaseUrl}/profiles/${targetProfileId}/accounts`
-        );
-        if (accountResponse.ok()) {
-          const accounts = (await accountResponse.json()) as Array<Record<string, string>>;
-          for (const account of accounts.filter((record) => record.account === bookmaker)) {
-            await request.put(
-              `${apiBaseUrl}/profiles/${targetProfileId}/accounts/${account.account_id}`,
-              { data: { ...account, status: "Archived" } }
-            );
-          }
-        }
       }
     }
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   financialMotionDirection,
   formatFinancialValue,
@@ -41,7 +41,20 @@ export function FinancialValue({
     : "Unavailable";
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [motion, setMotion] = useState<MoneyMotionDirection>("none");
+  const [motionCycle, setMotionCycle] = useState(0);
   const previousValueRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  const startMotion = useCallback((direction: Exclude<MoneyMotionDirection, "none">) => {
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    setMotion("none");
+    setMotionCycle((current) => current + 1);
+    window.requestAnimationFrame(() => setMotion(direction));
+    timeoutRef.current = window.setTimeout(() => {
+      setMotion("none");
+      timeoutRef.current = null;
+    }, 900);
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -63,32 +76,62 @@ export function FinancialValue({
       prefersReducedMotion
     );
     previousValueRef.current = numericValue;
-    if (direction === "none") return;
+    if (direction === "none") {
+      setMotion("none");
+      return;
+    }
 
-    setMotion(direction);
-    const timeoutId = window.setTimeout(() => setMotion("none"), 320);
-    return () => window.clearTimeout(timeoutId);
-  }, [animate, isValid, numericValue, prefersReducedMotion]);
+    startMotion(direction);
+    return () => {
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    };
+  }, [animate, isValid, numericValue, prefersReducedMotion, startMotion]);
 
   const motionCharacters = useMemo(
-    () => display.split("").map((character, index) => ({ character, key: `${display}-${index}` })),
+    () => display.split("").map((character, index) => ({ character, key: `${index}-${character}` })),
     [display]
   );
 
   return (
     <span
-      aria-label={label ? `${label}: ${display}` : undefined}
+      aria-label={label ? `${label}: ${display}` : display}
       className={`financial-value financial-value-${tone} financial-value-motion-${motion}${className ? ` ${className}` : ""}`}
       data-money-motion={motion}
+      data-money-motion-cycle={motionCycle}
       data-money-tone={tone}
+      onClick={() => {
+        if (!animate || !isValid || numericValue === 0 || prefersReducedMotion) return;
+        startMotion(numericValue > 0 ? "up" : "down");
+      }}
       title={title}
     >
       <span aria-hidden="true" className="financial-value-visual">
-        {motionCharacters.map(({ character, key }) => (
-          <span className="financial-value-character" key={key}>
-            {character}
-          </span>
-        ))}
+        {motionCharacters.map(({ character, key }, characterIndex) => {
+          if (!/^\d$/.test(character)) {
+            return <span className="financial-value-character" key={key}>{character}</span>;
+          }
+          const digitIndex = motionCharacters
+            .slice(0, characterIndex)
+            .filter((entry) => /^\d$/.test(entry.character)).length;
+          return (
+            <span
+              className="financial-value-digit-window"
+              key={`${key}-${motionCycle}`}
+              style={{
+                "--financial-digit-index": digitIndex,
+                "--financial-digit-position": `${-(Number(character) + 1)}em`,
+                "--financial-digit-up-start": `${-(Number(character) + 2)}em`,
+                "--financial-digit-down-start": `${-Number(character)}em`,
+              } as CSSProperties}
+            >
+              <span className="financial-value-digit-strip">
+                {[9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit, index) => (
+                  <span key={`${digit}-${index}`}>{digit}</span>
+                ))}
+              </span>
+            </span>
+          );
+        })}
       </span>
     </span>
   );

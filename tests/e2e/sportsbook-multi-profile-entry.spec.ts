@@ -1,23 +1,6 @@
 import { expect, test } from "@playwright/test";
-import type { APIRequestContext } from "@playwright/test";
 
 const apiBaseUrl = "http://127.0.0.1:8010";
-
-async function archiveTemporaryAccount(
-  request: APIRequestContext,
-  profileId: string,
-  accountName: string
-) {
-  const response = await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`);
-  if (!response.ok()) return;
-  const account = ((await response.json()) as Array<Record<string, unknown>>).find(
-    (row) => row.account === accountName && row.status !== "Archived"
-  );
-  if (!account) return;
-  await request.put(`${apiBaseUrl}/profiles/${profileId}/accounts/${account.account_id}`, {
-    data: { ...account, status: "Archived" },
-  });
-}
 
 test("Fund Manager reviews and submits a sportsbook copy one profile at a time", async ({
   page,
@@ -26,8 +9,22 @@ test("Fund Manager reviews and submits a sportsbook copy one profile at a time",
   const sourceProfileId = "profile-demo-001";
   const targetProfileId = "profile-demo-002";
   const nonce = Date.now();
-  const bookmaker = `Copy Profile Bookmaker ${nonce}`;
+  const bookmaker = "247Bet";
+  const exchange = "Smarkets";
   const eventName = `Copy Profile Match ${nonce}`;
+  await page.route("**/auth/session", (route) => route.fulfill({
+    json: {
+      authenticated: true,
+      email: "account-isolation@example.invalid",
+      name: "Synthetic Fund Manager",
+      role: "fund_manager",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      linked_profile_ids: [sourceProfileId, targetProfileId],
+      session_policy: { auto_logout_enabled: false, timeout_minutes: 15 },
+    },
+  }));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference", (route) => route.fulfill({ json: { configured: false } }));
 
   expect(
     (
@@ -38,35 +35,18 @@ test("Fund Manager reviews and submits a sportsbook copy one profile at a time",
   ).toBeTruthy();
   expect(
     (
-      await request.post(`http://127.0.0.1:8010/profiles/${targetProfileId}/accounts`, {
-        data: {
-          account: bookmaker,
-          type: "Bookie",
-          status: "Active",
-          channel: "Online",
-        },
-      })
-    ).ok()
-  ).toBeTruthy();
-  expect(
-    (
-      await request.post(`http://127.0.0.1:8010/profiles/${targetProfileId}/accounts`, {
-        data: {
-          account: `Copy Exchange ${nonce}`,
-          type: "Exchange",
-          status: "Active",
-          channel: "Online",
-        },
-      })
-    ).ok()
-  ).toBeTruthy();
-  expect(
-    (
       await request.put(
         `http://127.0.0.1:8010/profiles/${targetProfileId}/exchange-commissions`,
-        { data: { exchange_name: `Copy Exchange ${nonce}`, commission_rate: "0.03" } }
+        { data: { exchange_name: exchange, commission_rate: "0.03" } }
       )
     ).ok()
+  ).toBeTruthy();
+  expect(
+    (
+      await request.post(`${apiBaseUrl}/profiles/${targetProfileId}/accounts`, {
+        data: { account: exchange, type: "Exchange", status: "Active", channel: "Online", commission_rate: "0.03" },
+      })
+    ).ok(),
   ).toBeTruthy();
 
   const sourceResponse = await request.post(
@@ -91,7 +71,7 @@ test("Fund Manager reviews and submits a sportsbook copy one profile at a time",
         lay_matched_stake_1: "",
         lay_commission_1: "",
         exchange_name: "",
-        date_settled: "2026-07-22T18:00:00",
+        date_settled: "2026-09-07T18:00:00",
         user_notes: "",
         manual_override_value: "",
         manual_override_reason: "",
@@ -117,7 +97,7 @@ test("Fund Manager reviews and submits a sportsbook copy one profile at a time",
 
   await expect(dialog.getByText("Profile 1 of 1")).toBeVisible();
   await dialog.getByLabel("Back odds").fill("2.14");
-  await dialog.getByLabel("Exchange").selectOption(`Copy Exchange ${nonce}`);
+  await dialog.getByLabel("Exchange").selectOption(exchange);
   await dialog.getByLabel("Lay odds").fill("2.24");
   await dialog.getByLabel("Actual lay stake").fill("9.55");
   await dialog.getByLabel("Status").selectOption("Placed");
@@ -133,9 +113,7 @@ test("Fund Manager reviews and submits a sportsbook copy one profile at a time",
   const copied = targetRows.find((entry: Record<string, string>) => entry.event_name === eventName);
   expect(copied).toBeTruthy();
   expect(copied.back_odds).toBe("2.14");
-  expect(copied.exchange_name).toBe(`Copy Exchange ${nonce}`);
+  expect(copied.exchange_name).toBe(exchange);
   expect(copied.lay_commission_1).toBe("0.03");
 
-  await archiveTemporaryAccount(request, targetProfileId, bookmaker);
-  await archiveTemporaryAccount(request, targetProfileId, `Copy Exchange ${nonce}`);
 });

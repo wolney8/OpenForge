@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 11:20 BST_
+_Last updated: 2026-09-07 13:00 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,15 +9,15 @@ durable requirements.
 
 ## Current state
 
-- Current feature: [#88 Extra Places](https://github.com/wolney8/OpenForge/issues/88). The selected
-  tranche applies known Profile Account lifecycle/restriction health to new Extra Places activity
-  without claiming unobserved Extra Places capability.
-- Tested implementation base: `f62b31eb3014db72282403393ae0c9f9c8624817` on `main`; this
+- Current correction: [#107](https://github.com/wolney8/OpenForge/issues/107) synthetic Account
+  authority cleanup, [#108](https://github.com/wolney8/OpenForge/issues/108) bounded Extra Places
+  Account rails, and the shared-primitive slice of [#105](https://github.com/wolney8/OpenForge/issues/105).
+- Tested implementation base: `c5e1f307bb0e8fd8d4379fbbadfbf4e0d3f157e3` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
-- Return point: #88 remains selected until its approved tranche is complete; incidental fixes return
-  here unless they block normal use or #88 itself.
+- Return point: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35)
+  after this bounded correction. #88 is not reopened by this work.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -38,9 +38,8 @@ durable requirements.
 
 ## Project plan
 
-- Current: complete and verify the bounded Extra Places account-health slice of #88 without
-  implementing the broader #82 capability engine or changing signed calculations.
-- Next queue: #88 remaining approved scope; then #35-#38 standalone calculators, #83 Profit Boost
+- Current: finish the bounded #107/#108/#105 correction and document the #109 import gap.
+- Next queue: #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
   remaining numerical validation [#91](https://github.com/wolney8/OpenForge/issues/91), Google and
@@ -59,8 +58,10 @@ durable requirements.
   stays open pending Will's recheck and remains related, not folded into, [#92](https://github.com/wolney8/OpenForge/issues/92).
 - Retrospective composed-layout work remains partial under `UI-CONSISTENCY-001`; the visible
   unchecked surface list is in the [UI audit backlog](docs/agent-contracts/plum-duff-ui-audit-backlog.md).
-- `FINANCIAL-MOTION-001` is captured in [#105](https://github.com/wolney8/OpenForge/issues/105):
-  implementation and rollout coverage remain pending verification.
+- `FINANCIAL-MOTION-001` [#105](https://github.com/wolney8/OpenForge/issues/105) has its shared
+  odometer primitive locally; wider surface rollout remains open. Account fixture isolation [#107](https://github.com/wolney8/OpenForge/issues/107),
+  bounded Account rails [#108](https://github.com/wolney8/OpenForge/issues/108), and import access semantics [#109](https://github.com/wolney8/OpenForge/issues/109)
+  remain separately tracked.
 - Profit Boost and strict input: [#83](https://github.com/wolney8/OpenForge/issues/83) retains its
   full scope and is now assigned to M14; remaining cross-surface validation is [#91](https://github.com/wolney8/OpenForge/issues/91).
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).
@@ -78,14 +79,14 @@ durable requirements.
 
 ## What Will should test
 
-Environment: local `http://localhost:3010`; #88 delivery revision is recorded in the current
-checkpoint. Manual status: `NOT RUN`.
+Environment: local `http://localhost:3010`; this correction's delivery revision is recorded in its
+commit. Manual status: `NOT RUN`.
 
-1. Open a test Profile's **Tracker → Extra Place**, then select **Add Extra Place row**.
-2. Choose an Active, Bonus Restricted, Soft Limited, Pending Sign Up and hard-blocked bookmaker in
-   turn. Expect `Not checked` information, Bonus Restricted availability, a Soft Limited warning,
-   planning-only Pending Sign Up, and disabled new use with the hard-block reason.
-3. Reopen an imported historical Extra Place row and confirm it remains accessible.
+1. Open a normal Profile's **Tracker → Extra Place**, then select **Add Extra Place row**. Confirm
+   bookmaker/exchange rails show a few options at once, `+N` scrolls through the rest, and the full
+   selects retain every legitimate Profile Account without timestamped test names.
+2. Click a non-zero read-only financial value. Confirm digits cascade vertically while currency,
+   punctuation and layout remain fixed; enable reduced motion and confirm the value stays static.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

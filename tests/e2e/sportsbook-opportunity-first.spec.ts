@@ -4,6 +4,24 @@ const apiBaseUrl = "http://127.0.0.1:8010";
 const temporaryAccounts: Array<{ account: string; profileId: string }> = [];
 const temporaryOffers = new Set<string>();
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/session**", (route) => route.fulfill({
+    json: {
+      authenticated: true,
+      email: "account-isolation@example.invalid",
+      name: "Synthetic Fund Manager",
+      role: "fund_manager",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      linked_profile_ids: ["profile-demo-001", "profile-demo-002"],
+      session_policy: { auto_logout_enabled: false, timeout_minutes: 15 },
+    },
+  }));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference", (route) =>
+    route.fulfill({ json: { configured: false } })
+  );
+});
+
 test.afterEach(async ({ request }) => {
   const offers = [...temporaryOffers];
   temporaryOffers.clear();
@@ -325,39 +343,13 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
       return response.json() as Promise<{ profile_id: string; display_name: string }>;
     })
   );
-  const exchange = `Opportunity Exchange ${Date.now()}`;
-  const bookmaker = `Opportunity Bookmaker ${Date.now()}`;
-
+  const exchange = "Smarkets";
+  const bookmaker = "247Bet";
   for (const [profileIndex, profileId] of profileIds.entries()) {
-    temporaryAccounts.push({ account: bookmaker, profileId }, { account: exchange, profileId });
     expect(
       (
         await request.patch(`http://127.0.0.1:8010/profiles/${profileId}`, {
           data: { status: "Active" },
-        })
-      ).ok()
-    ).toBeTruthy();
-    expect(
-      (
-        await request.post(`http://127.0.0.1:8010/profiles/${profileId}/accounts`, {
-          data: {
-            account: bookmaker,
-            type: "Bookie",
-            status: profileIndex === 1 ? "Limited" : "Active",
-            channel: "Online",
-          },
-        })
-      ).ok()
-    ).toBeTruthy();
-    expect(
-      (
-        await request.post(`http://127.0.0.1:8010/profiles/${profileId}/accounts`, {
-          data: {
-            account: exchange,
-            type: "Exchange",
-            status: "Active",
-            channel: "Online",
-          },
         })
       ).ok()
     ).toBeTruthy();
@@ -369,6 +361,25 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
         )
       ).ok()
     ).toBeTruthy();
+    const existingAccounts = await (
+      await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`)
+    ).json() as Array<Record<string, unknown>>;
+    const existingBookmaker = existingAccounts.find((account) => account.account === bookmaker);
+    expect(existingBookmaker).toBeTruthy();
+    expect((await request.put(
+      `${apiBaseUrl}/profiles/${profileId}/accounts/${String(existingBookmaker?.account_id)}`,
+      { data: { ...existingBookmaker, status: profileIndex === 1 ? "Limited" : "Active" } },
+    )).ok()).toBeTruthy();
+    const existingExchange = existingAccounts.find((account) => account.account === exchange);
+    const exchangeResponse = existingExchange
+      ? await request.put(
+          `${apiBaseUrl}/profiles/${profileId}/accounts/${String(existingExchange.account_id)}`,
+          { data: { ...existingExchange, status: "Active", commission_rate: "0.02" } },
+        )
+      : await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
+          data: { account: exchange, type: "Exchange", status: "Active", channel: "Online", commission_rate: "0.02" },
+        });
+    expect(exchangeResponse.ok()).toBeTruthy();
   }
 
   const offer = `World Cup cross-profile offer ${Date.now()}`;
@@ -527,15 +538,16 @@ test("Fund Manager creates and records one opportunity across eligible profiles"
   expect(await financialValues.count()).toBeGreaterThanOrEqual(4);
   const financialSemantics = await financialValues.evaluateAll((elements) =>
     elements.map((element) => ({
-      text: element.textContent?.trim() ?? "",
+      text: element.getAttribute("aria-label") ?? "",
       tone: element.getAttribute("data-money-tone"),
     }))
   );
   expect(
     financialSemantics.every(({ text, tone }) => {
-      if (tone === "positive") return /^(\+)?£ \d+\.\d{2}$/.test(text);
-      if (tone === "negative") return /^\(\s*£ \d+\.\d{2}\s*\)$/.test(text);
-      return text === "Unavailable";
+      const valueText = text.includes(": ") ? text.slice(text.lastIndexOf(": ") + 2) : text;
+      if (tone === "positive") return /^£ [\d,]+\.\d{2}$/.test(valueText);
+      if (tone === "negative") return /^£ \([\d,]+\.\d{2}\)$/.test(valueText);
+      return valueText === "Unavailable" || valueText === "£ -";
     })
   ).toBeTruthy();
   expect(financialSemantics.some(({ tone }) => tone === "positive" || tone === "negative")).toBeTruthy();
@@ -592,8 +604,8 @@ test("Fund Manager creates and deletes a multi-bookmaker mug-bet opportunity", a
   const profileResponse = await request.get(`http://127.0.0.1:8010/profiles/${profileId}`);
   expect(profileResponse.ok()).toBeTruthy();
   const profile = (await profileResponse.json()) as { display_name: string };
-  const bookmakerOne = `Mug Bookmaker A ${Date.now()}`;
-  const bookmakerTwo = `Mug Bookmaker B ${Date.now()}`;
+  const bookmakerOne = "247Bet";
+  const bookmakerTwo = "32Red";
 
   expect(
     (
@@ -602,21 +614,6 @@ test("Fund Manager creates and deletes a multi-bookmaker mug-bet opportunity", a
       })
     ).ok()
   ).toBeTruthy();
-  for (const bookmaker of [bookmakerOne, bookmakerTwo]) {
-    temporaryAccounts.push({ account: bookmaker, profileId });
-    expect(
-      (
-        await request.post(`http://127.0.0.1:8010/profiles/${profileId}/accounts`, {
-          data: {
-            account: bookmaker,
-            type: "Bookie",
-            status: "Active",
-            channel: "Online",
-          },
-        })
-      ).ok()
-    ).toBeTruthy();
-  }
 
   const offer = `Two-bookmaker mug opportunity ${Date.now()}`;
   temporaryOffers.add(offer);
@@ -674,15 +671,10 @@ test("Fund Manager removes and restores an unplaced opportunity target", async (
   const profileResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}`);
   expect(profileResponse.ok()).toBeTruthy();
   const profile = (await profileResponse.json()) as { display_name: string };
-  const bookmaker = `Restore Bookmaker ${Date.now()}`;
+  const bookmaker = "247Bet";
   const offer = `Restore target opportunity ${Date.now()}`;
-  temporaryAccounts.push({ account: bookmaker, profileId });
   temporaryOffers.add(offer);
   await request.patch(`${apiBaseUrl}/profiles/${profileId}`, { data: { status: "Active" } });
-  const accountResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
-    data: { account: bookmaker, type: "Bookie", status: "Active", channel: "Online" },
-  });
-  expect(accountResponse.ok()).toBeTruthy();
   const opportunityResponse = await request.post(`${apiBaseUrl}/multi-profile-opportunities`, {
     data: {
       preset: "Offer",
@@ -748,16 +740,12 @@ test("Fund Manager resume list shows the two most recent opportunities first", a
       })
     ).ok()
   ).toBeTruthy();
-  const resumeBookmaker = `Resume Bookmaker ${Date.now()}`;
-  temporaryAccounts.push({ account: resumeBookmaker, profileId });
-  await request.post(`http://127.0.0.1:8010/profiles/${profileId}/accounts`, {
-    data: { account: resumeBookmaker, type: "Bookie", status: "Active", channel: "Online" },
-  });
+  const resumeBookmaker = "247Bet";
 
   const offers = [1, 2, 3].map((index) => `Resume ordering ${index} ${Date.now()}`);
   offers.forEach((offer) => temporaryOffers.add(offer));
   const opportunityIds: string[] = [];
-  for (const offer of offers) {
+  for (const [offerIndex, offer] of offers.entries()) {
     const response = await request.post("http://127.0.0.1:8010/multi-profile-opportunities", {
       data: {
         preset: "Offer",
@@ -770,6 +758,7 @@ test("Fund Manager resume list shows the two most recent opportunities first", a
     });
     expect(response.ok()).toBeTruthy();
     opportunityIds.push(((await response.json()) as { opportunity_id: string }).opportunity_id);
+    if (offerIndex < offers.length - 1) await page.waitForTimeout(10);
   }
 
   await page.goto("/profiles");

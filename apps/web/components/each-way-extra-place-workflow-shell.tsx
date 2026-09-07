@@ -31,6 +31,7 @@ import {
   resolveExtraPlaceAccountAccess,
   resolveExtraPlaceAccountOptions,
   resolveExtraPlacePreferredExchange,
+  prioritiseExtraPlaceAccountOptions,
   type ExtraPlaceAccountAccess,
 } from "@/lib/extra-place-account-options";
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -2218,11 +2219,13 @@ function BookmakerChips({
   catalogue,
   labels,
   onPick,
+  selected,
   rows = [],
 }: {
   catalogue: MasterAccountCatalogueRecord[];
   labels: string[];
   onPick: (value: string) => void;
+  selected: string;
   rows?: Row[];
 }) {
   const rankedLabels = useMemo(() => {
@@ -2231,38 +2234,81 @@ function BookmakerChips({
       if (row.bookmaker)
         counts.set(row.bookmaker, (counts.get(row.bookmaker) ?? 0) + 1);
     });
-    return [
-      ...new Set([
-        ...Array.from(counts.entries())
-          .sort(([, left], [, right]) => right - left)
-          .map(([bookmaker]) => bookmaker),
-        ...labels,
-      ]),
-    ].slice(0, 4);
-  }, [labels, rows]);
+    return prioritiseExtraPlaceAccountOptions(
+      labels,
+      selected,
+      Object.fromEntries(counts),
+    );
+  }, [labels, rows, selected]);
   return (
-    <div className="extra-place-quick-choice-row">
-      {rankedLabels.map((label) => {
+    <AccountOptionRail
+      labels={rankedLabels}
+      onPick={onPick}
+      selected={selected}
+      renderLabel={(label) => {
         const entry = findMasterAccountCatalogueEntry(catalogue, { accountName: label });
-        return (
-          <button
-            className="review-chip extra-place-bookmaker-chip"
-            key={label}
-            onClick={() => onPick(label)}
-            style={
-              entry
-                ? {
-                    backgroundColor: entry.background_colour,
-                    color: entry.foreground_colour,
-                  }
-                : undefined
-            }
-            type="button"
-          >
-            {entry?.brand_name ?? label}
-          </button>
-        );
-      })}
+        return { label: entry?.brand_name ?? label, entry: entry ?? undefined };
+      }}
+    />
+  );
+}
+
+function AccountOptionRail({
+  labels,
+  onPick,
+  renderLabel,
+  selected,
+}: {
+  labels: string[];
+  onPick: (value: string) => void;
+  renderLabel?: (value: string) => { label: string; entry?: MasterAccountCatalogueRecord };
+  selected: string;
+}) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [remaining, setRemaining] = useState(Math.max(0, labels.length - 4));
+  const updateRemaining = useCallback(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const right = rail.getBoundingClientRect().right + 1;
+    setRemaining(Array.from(rail.children).filter((child) => child.getBoundingClientRect().right > right).length);
+  }, []);
+  useEffect(() => {
+    updateRemaining();
+    const rail = railRef.current;
+    if (!rail) return;
+    const observer = new ResizeObserver(updateRemaining);
+    observer.observe(rail);
+    rail.addEventListener("scroll", updateRemaining, { passive: true });
+    return () => {
+      observer.disconnect();
+      rail.removeEventListener("scroll", updateRemaining);
+    };
+  }, [labels, updateRemaining]);
+  return (
+    <div className="import-review-loadout-shell extra-place-account-option-rail">
+      <button aria-label="Show previous Account options" className="icon-button compact-action" onClick={() => railRef.current?.scrollBy({ left: -280, behavior: "smooth" })} type="button">
+        <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
+      </button>
+      <div aria-label="Account quick selections" className="tracker-nav import-review-loadouts" ref={railRef}>
+        {labels.map((value) => {
+          const rendered = renderLabel?.(value) ?? { label: value };
+          return (
+            <button
+              aria-pressed={selected === value}
+              className={`review-chip${rendered.entry ? " extra-place-bookmaker-chip" : ""}${selected === value ? " review-chip-action-positive" : ""}`}
+              key={value}
+              onClick={() => onPick(value)}
+              style={rendered.entry ? { backgroundColor: rendered.entry.background_colour, color: rendered.entry.foreground_colour } : undefined}
+              type="button"
+            >
+              {rendered.label}
+            </button>
+          );
+        })}
+      </div>
+      <button aria-label={remaining ? `Show ${remaining} more Account options` : "Show next Account options"} className="icon-button compact-action" onClick={() => railRef.current?.scrollBy({ left: 280, behavior: "smooth" })} type="button">
+        {remaining ? <span aria-hidden="true">+{remaining}</span> : <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>}
+      </button>
     </div>
   );
 }
@@ -2371,6 +2417,7 @@ function Calculate({
                 onUpdate("bookmaker", next);
                 onUpdate("bookmaker_account", next);
               }}
+              selected={form.bookmaker}
             />
             {accountAccess ? (
               <p
@@ -2548,9 +2595,10 @@ function LaySegment({
           value={form[odds] as string}
         />
       </div>
-      <Chips
-        labels={exchangeOptions}
+      <AccountOptionRail
+        labels={prioritiseExtraPlaceAccountOptions(exchangeOptions, form[exchange] as string)}
         onPick={(next) => onUpdate(exchange, next)}
+        selected={form[exchange] as string}
       />
       <div className="extra-place-calculated-stake">
         <span>Calculated Lay Stake</span>

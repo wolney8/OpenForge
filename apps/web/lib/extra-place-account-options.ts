@@ -48,6 +48,19 @@ export function resolveExtraPlacePreferredExchange(
   );
 }
 
+export function prioritiseExtraPlaceAccountOptions(
+  labels: string[],
+  current = "",
+  usage: Record<string, number> = {},
+) {
+  return [...new Set(labels)].sort((left, right) => {
+    if (left === current) return -1;
+    if (right === current) return 1;
+    const usageDifference = (usage[right] ?? 0) - (usage[left] ?? 0);
+    return usageDifference || left.localeCompare(right);
+  });
+}
+
 export type ExtraPlaceAccountAccess = {
   state: "not_checked" | "warning" | "planning" | "blocked";
   reason: string;

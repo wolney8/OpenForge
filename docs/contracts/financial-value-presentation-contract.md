@@ -4,7 +4,7 @@ _Last updated: 2026-09-07_
 
 ## Status and scope
 
-- Status: Amendment captured; implementation and rollout coverage pending verification
+- Status: Shared odometer implemented locally; wider rollout coverage pending verification
 - Milestone: M15 Platform Experience: Financial Motion, Accessibility and Guided Entry
 - Related issues: historical contract [#58](https://github.com/wolney8/OpenForge/issues/58),
   historical implementation [#59](https://github.com/wolney8/OpenForge/issues/59), and current
@@ -71,13 +71,16 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 
 - Read-only signed-money values use a brief vertical digit roll on their first resolved display and
   when the authoritative displayed value changes.
-- Direction is determined by the destination value's sign, not by its delta: a positive/green
-  destination rolls up and a negative/red destination rolls down. Therefore `20 → 10` rolls up and
-  `-20 → -10` rolls down.
+- On first resolved display, direction follows the destination sign: positive rolls up and negative
+  rolls down. On a later value change, direction follows the numeric change: increase rolls up and
+  decrease rolls down. Identical values do not replay automatically.
+- Each digit owns a fixed-height clipped viewport over a vertical `0`–`9` strip. Digit transforms
+  are staggered by 70ms; currency, sign, grouping and decimal punctuation stay static.
+- Directly clicking the shared read-only value replays the current value once, following its sign.
 - Zero, unavailable and loading states remain neutral and static. Loading must never fabricate a
   temporary zero or random intermediate monetary value.
 - Identical refetches, theme changes, ordinary rerenders and list reordering must not replay motion.
-- Default duration target: `180–320ms`, with no looping, shimmer or celebratory flashing.
+- Each digit transition lasts 360ms, with no looping, shimmer or celebratory flashing.
 - Large changes may group digit transitions; they must not animate every intermediate penny.
 - `prefers-reduced-motion: reduce` disables rolling and uses an immediate value replacement or brief opacity change.
 - Any platform motion-off setting available to the surface must disable non-essential animation
@@ -117,7 +120,7 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 All items remain pending until implemented and verified in bounded batches. Extending the shared
 component alone does not establish complete surface coverage.
 
-- [ ] Shared `FinancialValue` digit-roll correction and deterministic component fixtures.
+- [x] Shared `FinancialValue` digit-roll correction and focused helper/rendered fixtures.
 - [ ] Dashboards and summary cards.
 - [ ] Read-only ledger values and financial badges.
 - [ ] Calculator and calculation-preview results.

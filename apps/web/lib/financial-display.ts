@@ -25,9 +25,10 @@ export function financialMotionDirection(
   nextValue: number,
   prefersReducedMotion = false
 ): MoneyMotionDirection {
-  if (prefersReducedMotion || previousValue === null || previousValue === nextValue) {
+  if (prefersReducedMotion || previousValue === nextValue || nextValue === 0) {
     return "none";
   }
+  if (previousValue === null) return nextValue > 0 ? "up" : "down";
   return nextValue > previousValue ? "up" : "down";
 }
 
