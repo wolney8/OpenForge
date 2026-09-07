@@ -217,7 +217,7 @@ export function NotificationHistoryPage() {
       </section>
 
       <section aria-label="Notification history" className="content-panel stack" data-pd-id="notifications.history">
-        <div className="notification-history-toolbar">
+        <div className="table-toolbar settings-table-toolbar notification-history-toolbar">
           <label className="field-control table-search-field">
             <span>Search notifications</span>
             <input
@@ -229,53 +229,55 @@ export function NotificationHistoryPage() {
               value={query}
             />
           </label>
-          <label className="field-control table-filter-field">
-            <span>Type</span>
-            <select
-              aria-label="Filter notifications by type"
-              data-pd-id="notifications.history.type"
-              onChange={(event) => setNotificationType(event.target.value)}
-              value={notificationType}
-            >
-              <option value="all">All types</option>
-              {types.map((type) => <option key={type} value={type}>{notificationTypeLabel(type)}</option>)}
-            </select>
-          </label>
-          <label className="field-control table-filter-field">
-            <span>Status</span>
-            <select
-              aria-label="Filter notifications by status"
-              data-pd-id="notifications.history.status"
-              onChange={(event) => setStatus(event.target.value as NotificationHistoryStatus)}
-              value={status}
-            >
-              <option value="all">All retained</option>
-              <option value="new">New</option>
-              <option value="done">Done</option>
-              <option value="cleared">Cleared</option>
-            </select>
-          </label>
-          <div className="notification-history-actions">
-            <button
-              className="button-link"
-              data-pd-id="notifications.history.mark-read"
-              disabled={unread.length === 0 || isPersistingState}
-              onClick={() => markRead(unread)}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
-              Mark filtered as read
-            </button>
-            <button
-              className="button-link destructive-action"
-              data-pd-id="notifications.history.clear"
-              disabled={clearable.length === 0 || isPersistingState}
-              onClick={() => clear(clearable)}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
-              Clear filtered
-            </button>
+          <div className="settings-table-filter-group notification-history-filter-group">
+            <label className="field-control table-filter-field">
+              <span>Type</span>
+              <select
+                aria-label="Filter notifications by type"
+                data-pd-id="notifications.history.type"
+                onChange={(event) => setNotificationType(event.target.value)}
+                value={notificationType}
+              >
+                <option value="all">All types</option>
+                {types.map((type) => <option key={type} value={type}>{notificationTypeLabel(type)}</option>)}
+              </select>
+            </label>
+            <label className="field-control table-filter-field">
+              <span>Status</span>
+              <select
+                aria-label="Filter notifications by status"
+                data-pd-id="notifications.history.status"
+                onChange={(event) => setStatus(event.target.value as NotificationHistoryStatus)}
+                value={status}
+              >
+                <option value="all">All retained</option>
+                <option value="new">New</option>
+                <option value="done">Done</option>
+                <option value="cleared">Cleared</option>
+              </select>
+            </label>
+            <div className="notification-history-actions">
+              <button
+                className="button-link"
+                data-pd-id="notifications.history.mark-read"
+                disabled={unread.length === 0 || isPersistingState}
+                onClick={() => markRead(unread)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
+                Mark filtered as read
+              </button>
+              <button
+                className="button-link destructive-action"
+                data-pd-id="notifications.history.clear"
+                disabled={clearable.length === 0 || isPersistingState}
+                onClick={() => clear(clearable)}
+                type="button"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
+                Clear filtered
+              </button>
+            </div>
           </div>
         </div>
 

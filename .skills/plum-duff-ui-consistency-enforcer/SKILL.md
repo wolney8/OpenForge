@@ -225,6 +225,9 @@ For tables and rows, assert:
 For controls and icons, assert:
 
 - equivalent computed heights, radii, borders, surfaces, typography and focus treatment;
+- every input/select stays within its allocated field container; adjacent visible sibling control
+  rectangles do not intersect, retain the canonical gap when sharing a row, and reflow without
+  covered or clipped focus indicators at breakpoint-adjacent widths;
 - destructive controls resolve to the semantic danger colour;
 - Material Symbol text renders as an icon, not visible fallback wording;
 - accessible names are contextual and unique.

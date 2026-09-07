@@ -906,3 +906,15 @@ cause, prevention rule and regression test.
   historical response hydration. Money and rate fields require their own later contracts.
 - Regression tests: shared `sportsbook-odds-input-v1` fixtures, focused request-boundary tests, and
   the Sportsbook editor malformed-paste Playwright path.
+
+## 2026-09-07: A native select exceeded its filter-grid allocation
+
+- Area: Notification History filters and shared settings filter fields.
+- Root cause: the Type select retained its longest option's intrinsic width while its grid field
+  shrank, so the select and focus outline extended beneath Status.
+- Prevention: table search/select children fill and may shrink within their allocated field, and
+  Notification History reuses the signed-off settings toolbar/filter group for canonical gaps and
+  breakpoint reflow.
+- Regression test: `tests/e2e/notification-history-layout.spec.ts` checks child containment,
+  pairwise sibling separation, focus clearance, theme switching, text scaling, breakpoint-adjacent
+  widths, narrow layout, and a representative Account Catalogue consumer.

@@ -249,7 +249,8 @@ implementation tranche must finish with all of the following:
 - Mark an item `COMPLETE` only after implementation, applicable automated checks, and focused
   nearby/shared-pattern verification. Reconcile every supplied ID in a concise final table.
 - Use shared Plum Duff primitives and check all affected equivalents before adding a local CSS
-  correction. Create GitHub tracking only for durable product scope or meaningful deferred bugs.
+  correction. Every distinct user-reported defect or request, including minor visual and
+  operational-delivery defects, must have a local ID and verified GitHub issue or checklist link.
 
 ## Retrospective UI consistency audit
 
@@ -297,8 +298,9 @@ implementation tranche must finish with all of the following:
 - Reconcile every identifier before reporting a batch complete. An item is only done after its
   requested behaviour, relevant tests/checks, and nearby shared-pattern regression check pass.
   Use `NEEDS-INFO` or `BLOCKED` rather than silently skipping unclear or unsafe work.
-- Create GitHub coverage only for durable product scope or meaningful defects. Small visual fixes
-  remain in the active register unless they reveal a broader maintained issue.
+- Link every distinct request to an open GitHub issue or explicit checklist item whose scope
+  genuinely covers it. Do not hide an unresolved defect behind a closed historical issue or an
+  unrelated umbrella issue.
 
 ## Branch baseline rule
 
