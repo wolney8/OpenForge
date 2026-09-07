@@ -111,6 +111,11 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
       { key: "description", label: "Description" },
     ],
   },
+  calculators: {
+    href: "calculators",
+    title: "Calculators",
+    summary: "Profile-scoped reference calculators that do not create tracker rows.",
+  },
   settings: {
     href: "settings",
     title: "Settings",
@@ -146,7 +151,7 @@ export const primaryProfileModules = trackerModuleCards.filter((module) =>
 );
 
 export const profileOverflowModules = trackerModuleCards.filter((module) =>
-  ["dashboard", "accounts", "settings", "reports"].includes(module.href)
+  ["dashboard", "accounts", "calculators", "settings", "reports"].includes(module.href)
 );
 
 export const trackerTableModules = new Set<TrackerModuleKey>([

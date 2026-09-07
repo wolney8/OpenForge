@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AccountsWorkflowShell } from "@/components/accounts-workflow-shell";
 import { CashAdjustmentWorkflowShell } from "@/components/cash-adjustment-workflow-shell";
+import { CalculatorWorkspace } from "@/components/calculator-workspace";
 import { CasinoOfferWorkflowShell } from "@/components/casino-offer-workflow-shell";
 import { FreeBetWorkflowShell } from "@/components/free-bet-workflow-shell";
 import { EachWayExtraPlaceWorkflowShell } from "@/components/each-way-extra-place-workflow-shell";
@@ -88,6 +89,7 @@ export default async function TrackerModulePage({
     "casino-offers",
     "each-way-extra-places",
     "cash-adjustments",
+    "calculators",
     "settings",
     "reports",
   ]);
@@ -119,6 +121,8 @@ export default async function TrackerModulePage({
         <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
+      ) : module === "calculators" ? (
+        <CalculatorWorkspace profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" />
       ) : module === "reports" ? (

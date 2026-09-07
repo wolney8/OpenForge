@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 22:15 BST_
+_Last updated: 2026-09-07 22:38 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,13 +9,14 @@ durable requirements.
 
 ## Current state
 
-- Current planning capture: [#111](https://github.com/wolney8/OpenForge/issues/111) records the
-  future Financial Analytics Explorer; no application implementation is active in this tranche.
-- Current implementation base: `505db4c545510fd200fb58dd969d7b31142d1f4d` on `main`.
-- Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
+- Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
+  Standard Qualifying is the implemented first family; calculation is reference-only and creates
+  no ledger row. Free Bet SNR/SR, Refund / Bonus Lock-In, and Cashback remain.
+- Current implementation base before this tranche: `8f9339c7a0b521f30de16d9f11a743adaf1ed705` on `main`.
+- Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
-- Return point: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  Planning #111 does not delay it, and #88 is not reopened by this work.
+- Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
+  ledger bridge remains later work under [#36](https://github.com/wolney8/OpenForge/issues/36).
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -36,8 +37,8 @@ durable requirements.
 
 ## Project plan
 
-- Current: documentation-only capture of #111; implementation remains deliberately deferred.
-- Next queue: #35-#38 standalone calculators, #83 Profit Boost
+- Current: #35 Standard Qualifying first functional slice.
+- Next queue: continue #35 with Free Bet SNR, then the remaining approved calculator families; #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
@@ -86,6 +87,10 @@ durable requirements.
 
 ## What changed
 
+- #35 now exposes **Profile → Calculators → Standard Qualifying**, backed by the existing Sportsbook
+  current-value calculation and strict numeric validation. Results are reference-only, Copy Lay
+  Stake copies the displayed canonical value, and focused API/browser checks prove no Sportsbook
+  row is created.
 - [`630bde8`](https://github.com/wolney8/OpenForge/commit/630bde854a76ef8551a677690a060c3cf167a55a): separates peer fields from the action row so Search,
   Type and Status align while actions wrap independently; prior containment/focus coverage remains.
 - Tracking now includes local runtime handoff [#101](https://github.com/wolney8/OpenForge/issues/101),
@@ -97,15 +102,14 @@ durable requirements.
 
 ## What Will should test
 
-Environment: local `http://localhost:3010`; this correction's delivery revision is recorded in its
+Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager Settings → Site Settings → Financial motion**. Change Replay pause, Roll
-   duration and Digit cascade, reload, and confirm the choices persist. Turn motion Off and confirm
-   dashboard values stay static; reduced-motion must remain static regardless of the toggle.
-2. In **Tracker → Extra Place**, hover a positive and negative value. Digits should roll from zero
-   without changing the value's width or accounting sign; `£ -` remains static. Re-enter within the
-   configured pause and confirm it does not immediately replay.
+1. Open **Profile → Calculators → Standard Qualifying**. Enter Back stake `10.00`, Back odds `2.00`,
+   Lay odds `2.10`, and Exchange commission `0.02`; calculate and expect lay stake `£ 9.62`,
+   liability `£ 10.58`, and matched result `£ (0.58)`.
+2. Use **Copy Lay Stake** and expect clipboard text `9.62`. Change Lay odds to `8,5` and expect a
+   visible format error, no stale result, and a disabled Calculate action.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

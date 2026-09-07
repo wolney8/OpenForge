@@ -100,6 +100,7 @@ const profileTrackerMenuRoutes = [
   { href: "each-way-extra-places", title: "Extra Places", icon: "chess_knight" },
   { href: "cash-adjustments", title: "Cash Adjustments", icon: "payments" },
   { href: "accounts", title: "Accounts", icon: "account_balance_wallet" },
+  { href: "calculators", title: "Calculators", icon: "calculate" },
   { href: "reports", title: "Reports", icon: "summarize" },
   { href: "settings", title: "Settings", icon: "settings" },
 ] as const;

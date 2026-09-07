@@ -1,6 +1,6 @@
 # Workflow Contract: Calculator Workspace and Ledger Bridge
 
-_Last updated: 2026-08-16_
+_Last updated: 2026-09-07_
 
 ## Status and scope
 
@@ -8,6 +8,9 @@ _Last updated: 2026-08-16_
 - Milestone: M14 Calculator Workspace and Ledger Bridge
 - Plum Duff issue coverage: GitHub issues `#35`, `#36`, `#37`, `#38`, and `#83`
 - Oddsmatcher integration: Deferred
+- Implemented family: profile-scoped Standard Qualifying reference calculator
+- Remaining first-family rollout: Free Bet SNR, Free Bet SR, Refund / Bonus Lock-In, and Cashback
+- Ledger draft bridge: Later scope under `#36`; standalone calculation creates no business record
 
 ## User goal
 

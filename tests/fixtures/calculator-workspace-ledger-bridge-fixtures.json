@@ -3,7 +3,7 @@
     {
       "case_id": "CALC-001",
       "inputs": {"calculator_family": "standard_qualifying", "calculator_contract": "sportsbook-current-value-contract", "back_stake": "10.00", "back_odds": "4.00", "lay_odds": "4.20", "commission": "0.02"},
-      "expected": {"result_kind": "reference", "ledger_row_created": false, "reporting_changed": false}
+      "expected": {"result_kind": "reference", "reference_lay_stake": "9.57", "liability": "30.62", "pnl_if_back_wins": "-0.62", "pnl_if_lay_wins": "-0.62", "matched_result": "-0.62", "clipboard_text": "9.57", "ledger_row_created": false, "reporting_changed": false}
     },
     {
       "case_id": "CALC-002",
