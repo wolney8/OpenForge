@@ -79,15 +79,18 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 - Each digit viewport inherits the surrounding value's font family, size, weight, line height and
   baseline, and sizes itself from a tabular numeral glyph. Animation must not compress the value;
   currency spaces and punctuation retain their natural static width.
-- Directly clicking the shared read-only value replays the current value once, following its sign.
-- Zero, unavailable and loading states remain neutral and static. Loading must never fabricate a
-  temporary zero or random intermediate monetary value.
+- Pointer-enter or click on a shared read-only value replays it once. A replay group coordinates
+  every financial value in the same card or row without removing each value's digit cascade.
+- Zero remains neutral and displays exactly `£ -`, but its placeholder uses the same clipped motion
+  language and participates in explicit replay. Unavailable and loading states remain static.
+  Loading must never fabricate a temporary zero or random intermediate monetary value.
 - Identical refetches, theme changes, ordinary rerenders and list reordering must not replay motion.
 - Each digit transition lasts 360ms, with no looping, shimmer or celebratory flashing.
 - Large changes may group digit transitions; they must not animate every intermediate penny.
 - `prefers-reduced-motion: reduce` disables rolling and uses an immediate value replacement or brief opacity change.
-- Any platform motion-off setting available to the surface must disable non-essential animation
-  independently; current shared-component support for such a setting must be verified before rollout.
+- The persisted Fund Manager `Financial motion` setting defaults to On and disables all
+  non-essential shared-value animation when Off. `prefers-reduced-motion: reduce` always overrides
+  that setting and presents the exact value statically.
 - Rapid updates must cancel stale motion and settle on the newest authoritative formatted value;
   hidden, unmounted and dense offscreen displays must not retain or perform unnecessary work.
 - Lottie/Rive are not required for numeric motion and must not be added without dependency review.
@@ -98,6 +101,9 @@ Reference: [WCAG animation from interactions](https://www.w3.org/WAI/WCAG22/Unde
 
 - The complete formatted value remains available as one accessible text value during animation.
 - Do not make each rolling digit separately focusable or announced.
+- Visual digit strips are presentation-only and cannot enter text selection or clipboard output.
+  One canonical text representation owns layout and selection, so copying a value or a surrounding
+  sentence produces each formatted value exactly once.
 - Routine calculation updates should not create an assertive live-region storm.
 - Important save/error/result statuses use an appropriate programmatic status message without moving focus unnecessarily.
 
@@ -112,7 +118,11 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - manual override indicator
 - first resolved positive/up and negative/down motion
 - destination-sign direction independent of delta, including `20 → 10` up and `-20 → -10` down
-- positive/negative sign transitions, equal refetch, neutral zero, unavailable/loading and rapid updates
+- positive/negative sign transitions, equal refetch, animated neutral zero, unavailable/loading and rapid updates
+- pointer-enter/click replay and coordinated card/row replay
+- persisted motion On/Off preference with reduced-motion override
+- standalone and surrounding-sentence selection/clipboard output
+- pill, badge, KPI and inline geometry parity with static formatted text
 - reduced-motion replacement
 - currency setting change without delayed theme/state mismatch
 - mixed-currency aggregation blocked

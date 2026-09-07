@@ -21,7 +21,12 @@ _Last updated: 2026-09-07_
 | FVP-011 | Negative value changes `-20 → -10` | Digits roll up because the value increased |
 | FVP-012 | Positive/negative sign transitions | After initial resolution, direction follows numeric increase/decrease |
 | FVP-013 | Identical refetch, theme switch or ordinary rerender | No replay; exact final formatted value remains stable |
-| FVP-014 | Zero, unavailable or loading | Neutral/static treatment; no fabricated zero or intermediate money |
+| FVP-014 | Zero | Neutral `£ -`; clipped placeholder may animate/replay without changing copied or accessible text |
 | FVP-015 | Rapid successive updates | Stale motion is cancelled and the newest accessible final value wins |
-| FVP-016 | User clicks an unchanged non-zero read-only value | Current digit roll replays once; punctuation remains static |
+| FVP-016 | User hovers or clicks an unchanged read-only value, including zero | Current digit/placeholder roll replays once; punctuation remains static |
 | FVP-017 | Animated and plain equivalents for `£ 61.12`, `£ (14.01)` and `£ 3,450.50` at table and KPI sizes | Same inherited typography, line height and baseline; width/height differ by no more than rendering tolerance; spaces and punctuation remain natural width |
+| FVP-018 | Fund Manager turns Financial motion Off | Preference survives a fresh read; all shared values remain exact and static |
+| FVP-019 | Card or row contains multiple financial values | Pointer-enter/click replays every value in that group once; digit cascades remain internal |
+| FVP-020 | Rapid replay/update or lost completion event | Previous work is cancelled; bounded fallback settles the newest exact value with no stale motion state |
+| FVP-021 | Select/copy standalone value or surrounding sentence | Canonical formatted values appear exactly once; hidden digit strips never enter copied text |
+| FVP-022 | Small pill, ledger badge, large KPI and inline sentence | Animated value remains within the existing line box and matches static geometry within rendering tolerance |

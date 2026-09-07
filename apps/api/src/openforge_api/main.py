@@ -21,6 +21,7 @@ from openforge_api.founder_import_review import router as founder_import_review_
 from openforge_api.free_bets import router as free_bets_router
 from openforge_api.fund_manager_fee_periods import router as fund_manager_fee_periods_router
 from openforge_api.fund_manager_lookup_values import router as fund_manager_lookup_values_router
+from openforge_api.fund_manager_preferences import router as fund_manager_preferences_router
 from openforge_api.global_search import router as global_search_router
 from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
@@ -71,6 +72,7 @@ app.include_router(founder_import_review_router)
 app.include_router(profile_workbook_imports_router)
 app.include_router(profile_import_executions_router)
 app.include_router(fund_manager_lookup_values_router)
+app.include_router(fund_manager_preferences_router)
 app.include_router(fund_manager_fee_periods_router)
 app.include_router(imports_router)
 app.include_router(cash_adjustments_router)

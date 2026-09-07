@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
+import { PersistedToggle } from "@/components/persisted-toggle";
 import { apiBaseUrl } from "@/lib/api";
 
 type PersistenceStatus = {
@@ -16,6 +18,7 @@ type PersistenceStatus = {
 export function FundManagerSiteSettings() {
   const [status, setStatus] = useState<PersistenceStatus | null>(null);
   const [error, setError] = useState("");
+  const financialMotion = useFinancialMotionPreference();
 
   useEffect(() => {
     let active = true;
@@ -37,6 +40,21 @@ export function FundManagerSiteSettings() {
       </div>
       {!status && !error ? <LedgerLoadingIndicator label="Loading persistence status" /> : null}
       {error ? <p className="error-text" role="alert">{error}</p> : null}
+      <div className="fund-manager-account-details fund-manager-site-preferences">
+        <div>
+          <span>
+            <strong>Financial motion</strong>
+            <small>Animate read-only financial values on load, change, hover and click.</small>
+          </span>
+          <PersistedToggle
+            checked={financialMotion.enabled}
+            dataPdId="fund-manager-site-settings.financial-motion"
+            disabled={!financialMotion.ready}
+            label="Financial motion"
+            onChange={financialMotion.save}
+          />
+        </div>
+      </div>
       {status ? <>
         <section aria-label="Production persistence status" className="stat-strip settings-stat-strip">
           <article className="stat-card"><span className="eyebrow">Database</span><strong>{status.database}</strong><span>{status.connected ? "Connected" : "Unavailable"}</span></article>

@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (sessionToken) {
+    await page.context().addCookies([{
+      domain: "127.0.0.1",
+      httpOnly: true,
+      name: "pd_session",
+      path: "/",
+      sameSite: "Lax",
+      secure: false,
+      value: sessionToken,
+    }]);
+  }
   await page.route("**/auth/session**", (route) =>
     route.fulfill({
       body: JSON.stringify({
@@ -42,6 +54,28 @@ test("Fund Manager settings sections render proper summary cards", async ({ page
     await expect(summary.locator(".stat-card")).toHaveCount(4);
     for (const cardName of cardNames) await expect(summary.getByText(cardName, { exact: true })).toBeVisible();
   }
+});
+
+test("Financial motion preference persists through the canonical Site Settings toggle", async ({ page }) => {
+  let enabled = true;
+  let writes = 0;
+  await page.route("**/fund-manager/preferences/financial-motion", async (route) => {
+    if (route.request().method() === "PUT") {
+      enabled = Boolean((route.request().postDataJSON() as { enabled?: boolean }).enabled);
+      writes += 1;
+    }
+    await route.fulfill({ json: { enabled } });
+  });
+
+  await page.goto("/settings#site-settings");
+  const toggle = page.getByRole("button", { name: "Financial motion" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  expect(writes).toBe(1);
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Financial motion" })).toHaveAttribute("aria-pressed", "false");
 });
 
 test("Fund Manager data tabs share panel and search-filter geometry", async ({ page }) => {

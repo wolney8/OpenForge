@@ -752,6 +752,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS fund_manager_settings (
           fund_manager_id TEXT PRIMARY KEY,
           bookmaker_display_mode TEXT NOT NULL DEFAULT 'Name',
+          financial_motion_enabled INTEGER NOT NULL DEFAULT 1,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
@@ -1841,6 +1842,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
         """
+    )
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "financial_motion_enabled",
+        "INTEGER NOT NULL DEFAULT 1",
     )
     ensure_column(connection, "sportsbook_bets", "lay_commission_1", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -6141,6 +6148,36 @@ def update_global_bookmaker_display_mode(mode: str) -> None:
             """,
             (mode, timestamp, timestamp),
         )
+
+
+def get_financial_motion_preference() -> bool:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT financial_motion_enabled
+            FROM fund_manager_settings
+            WHERE fund_manager_id = 'fund-manager-local'
+            """
+        ).fetchone()
+    return True if row is None else bool(row["financial_motion_enabled"])
+
+
+def update_financial_motion_preference(enabled: bool) -> bool:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_settings (
+              fund_manager_id, bookmaker_display_mode, financial_motion_enabled,
+              created_at, updated_at
+            ) VALUES ('fund-manager-local', 'Name', ?, ?, ?)
+            ON CONFLICT(fund_manager_id) DO UPDATE SET
+              financial_motion_enabled = excluded.financial_motion_enabled,
+              updated_at = excluded.updated_at
+            """,
+            (int(enabled), timestamp, timestamp),
+        )
+    return enabled
 
 
 def update_profile_bookmaker_display_mode(profile_id: str, mode: str) -> None:

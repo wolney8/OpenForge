@@ -6,7 +6,7 @@ import {
   feeCentreStateLabels,
   type FeeCentreRow,
 } from "@/lib/fee-centre-status";
-import { FinancialValue } from "./financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "./financial-value";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 
 type FeePreview = {
@@ -177,6 +177,7 @@ export function FeeCentreBreakdownDrawer({
         ) : null}
         {error ? <div className="validation-message" role="alert">{error}</div> : null}
 
+        <FinancialValueReplayGroup>
         <section className="profile-drawer-section stack-tight">
           <h3>Monthly Performance</h3>
           <dl className="profile-detail-list">
@@ -190,7 +191,9 @@ export function FeeCentreBreakdownDrawer({
             <div><dt>Settled Profit</dt><dd><strong>{optionalMoney(settledProfit)}</strong></dd></div>
           </dl>
         </section>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <section className="profile-drawer-section stack-tight">
           <h3>Fee Calculation</h3>
           <dl className="profile-detail-list">
@@ -201,7 +204,9 @@ export function FeeCentreBreakdownDrawer({
             <div><dt>Total Fee</dt><dd><strong>{optionalMoney(totalFee)}</strong></dd></div>
           </dl>
         </section>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <section className="profile-drawer-section stack-tight">
           <h3>Withdrawal Position</h3>
           <dl className="profile-detail-list">
@@ -210,6 +215,7 @@ export function FeeCentreBreakdownDrawer({
             <div><dt>Available to Withdraw</dt><dd><strong>{result.period?.state === "crystallised" ? <FinancialValue value={result.availableToWithdraw} /> : "—"}</strong></dd></div>
           </dl>
         </section>
+        </FinancialValueReplayGroup>
 
         <footer className="profile-drawer-icon-actions fee-centre-breakdown-actions">
           <button className="button-link" onClick={onClose} type="button">Close</button>

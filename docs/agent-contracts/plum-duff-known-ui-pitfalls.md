@@ -918,13 +918,17 @@ cause, prevention rule and regression test.
 - Regression test: `tests/e2e/notification-history-layout.spec.ts` checks child containment,
   pairwise sibling separation, focus clearance, theme switching, text scaling, breakpoint-adjacent
   widths, narrow layout, and a representative Account Catalogue consumer.
-## 2026-09-07: Odometer digit slots compressed financial typography
+## 2026-09-07: Odometer digit slots compressed financial typography and polluted copied text
 
 - Area: shared `FinancialValue` and bounded quick-select rails.
 - Root cause: fixed narrow digit widths and collapsed isolated whitespace changed the original
-  accounting-value geometry; a scrollable chip row bounded overflow without limiting visible choices.
-- Prevention: size rolling digits from inherited tabular glyphs, preserve static punctuation and
-  compare against plain-text geometry. Quick-select rails page at most three choices and suppress
-  paging controls when all choices fit.
-- Test: `tests/e2e/extra-place-ledger-parity.spec.ts` covers representative values, cascade/replay,
-  reduced motion, ranking, three/many-choice boundaries, keyboard paging, themes and narrow containment.
+  accounting-value geometry. Selectable visual 0–9 strips entered clipboard text, timer-only replay
+  could leave interrupted motion stale, and a scrollable chip row bounded overflow without limiting
+  visible choices.
+- Prevention: canonical formatted text owns layout and selection while an absolute, non-selectable
+  visual layer owns motion; compare against plain-text geometry in pills, rows, KPIs and sentences.
+  Replays cancel prior frames/timers and have a bounded settlement guard. Quick-select rails page at
+  most three choices and suppress paging controls when all choices fit.
+- Test: `tests/e2e/extra-place-ledger-parity.spec.ts` covers geometry, real selection/clipboard,
+  neutral-zero and grouped cascade/replay, rapid restarts, persisted motion-off UI, reduced motion,
+  ranking, three/many-choice boundaries, keyboard paging, themes and narrow containment.

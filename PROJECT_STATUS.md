@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 14:01 BST_
+_Last updated: 2026-09-07 15:41 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) financial odometer
-  geometry/targeted read-only-money rollout and [#108](https://github.com/wolney8/OpenForge/issues/108)
-  persisted-ranking, maximum-three Extra Places quick-select rails.
-- Tested implementation base: `557e8992af94c415267325fc8e710cc8d9331433` on `main`; this
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) persisted motion
+  control, group replay, neutral zero, deterministic settling, clipboard safety and layout-neutral
+  geometry. Chart motion [#110](https://github.com/wolney8/OpenForge/issues/110) remains separate.
+- Tested implementation base: `e2d893888ea11aa671654e58c6441fe37a5b2cb5` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -38,7 +38,7 @@ durable requirements.
 
 ## Project plan
 
-- Current: finish the bounded #105/#108 visual correction without reopening #88.
+- Current: finish the bounded #105 shared-value correction without reopening #88.
 - Next queue: #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
@@ -59,8 +59,11 @@ durable requirements.
 - Retrospective composed-layout work remains partial under `UI-CONSISTENCY-001`; the visible
   unchecked surface list is in the [UI audit backlog](docs/agent-contracts/plum-duff-ui-audit-backlog.md).
 - `FINANCIAL-MOTION-001` [#105](https://github.com/wolney8/OpenForge/issues/105) retains one shared
-  odometer with static-equivalent geometry across the targeted active dashboard, ledger, report,
-  calculator, Account and dialog paths; future/new-surface adoption and user acceptance remain open.
+  odometer with static-equivalent geometry and canonical clipboard text. It now has persisted
+  default-On Fund Manager control, reduced-motion override, neutral-zero replay and coordinated
+  card/row replay across targeted active dashboard, ledger, report, Account, drawer and dialog
+  paths. Future/new-surface adoption and user acceptance remain open. Chart motion is separately
+  tracked as `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110).
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access
   semantics [#109](https://github.com/wolney8/OpenForge/issues/109) remains untouched.
@@ -84,12 +87,12 @@ durable requirements.
 Environment: local `http://localhost:3010`; this correction's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open a normal Profile's **Tracker → Extra Place**, then **Add Extra Place row**. Confirm Account
-   and Place Terms rails show no more than three choices, omit arrows when all fit, and page through
-   every remaining option without removing it from the full select.
-2. Check dashboard, Combined Analytics and an Account/ledger summary, then click a non-zero value.
-   Confirm digits cascade without squashing the original typography; switch themes/narrow width and
-   enable reduced motion to confirm stable geometry and static values.
+1. Open **Fund Manager Settings → Site Settings**. Turn **Financial motion** Off, reload a dashboard,
+   and confirm values are static; turn it On and confirm hover/click replay returns. Reduced-motion
+   system preference must remain static regardless.
+2. In **Tracker → Extra Place**, check the compact header value and stake sentence, including `£ -`.
+   Hover/click a card or row, then copy the value and sentence: geometry must remain unchanged and
+   copied text must contain each canonical amount exactly once.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

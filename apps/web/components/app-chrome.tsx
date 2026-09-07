@@ -7,6 +7,7 @@ import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue } from "@/components/financial-value";
+import { FinancialMotionPreferenceProvider } from "@/components/financial-motion-preference";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import { FundManagerIdentityMenu } from "@/components/fund-manager-identity-menu";
 import { GlobalSearch } from "@/components/global-search";
@@ -126,7 +127,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   if (isPublicAuthRoute) return <AppChromeContent>{children}</AppChromeContent>;
   return (
     <SessionBootstrapGate>
-      {(session) => <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
+      {(session) => (
+        <FinancialMotionPreferenceProvider>
+          <AppChromeContent initialSession={session}>{children}</AppChromeContent>
+        </FinancialMotionPreferenceProvider>
+      )}
     </SessionBootstrapGate>
   );
 }

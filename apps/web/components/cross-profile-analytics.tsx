@@ -6,7 +6,7 @@ import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { AccessScopeBadge } from "./access-scope-badge";
-import { FinancialValue as PlatformFinancialValue } from "./financial-value";
+import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup } from "./financial-value";
 import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
 import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
@@ -257,7 +257,8 @@ function ReportTable({
                         ? "Awaiting Confirmation"
                         : "Review Required";
                 return (
-                <tr key={row.periodKey}>
+                <FinancialValueReplayGroup key={row.periodKey}>
+                <tr>
                   <td>{row.periodLabel}</td>
                   <td><FinancialValue value={row.sportsbookPnl} /></td>
                   <td><FinancialValue value={row.freeBetPnl} /></td>
@@ -286,6 +287,7 @@ function ReportTable({
                     ) : null}
                   </td>
                 </tr>
+                </FinancialValueReplayGroup>
                 );
               })
             )}
@@ -1100,6 +1102,7 @@ export function CrossProfileAnalytics({
           className="portfolio-dashboard-view portfolio-dashboard-compact profiles-visual-header"
           data-pd-id="profiles.visual-summary"
         >
+          <FinancialValueReplayGroup>
           <article className="dashboard-visual-card dashboard-performance-card">
             <div className="dashboard-visual-header">
               <div>
@@ -1133,6 +1136,7 @@ export function CrossProfileAnalytics({
               </span>
             </div>
           </article>
+          </FinancialValueReplayGroup>
           <article className="dashboard-visual-card dashboard-focus-card">
             <div className="dashboard-visual-header">
               <div>

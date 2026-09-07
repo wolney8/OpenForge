@@ -10,7 +10,7 @@ import {
   catalogueIdForBookmaker,
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -170,7 +170,8 @@ function renderReportTable({
               </tr>
             ) : (
               rows.slice(0, 12).map((row) => (
-                <tr key={row.periodKey}>
+                <FinancialValueReplayGroup key={row.periodKey}>
+                <tr>
                   <td>{row.periodLabel}</td>
                   <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
                   <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
@@ -181,6 +182,7 @@ function renderReportTable({
                   <td className="align-end"><FinancialValue value={row.costs} /></td>
                   <td className="align-end"><FinancialValue value={row.retainedProfit} /></td>
                 </tr>
+                </FinancialValueReplayGroup>
               ))
             )}
           </tbody>

@@ -39,6 +39,18 @@ function rgbLuminance(color: string) {
 
 test.describe("Extra Place ledger parity", () => {
   test("uses profile account choices and the configured preferred exchange for a saved settlement", async ({ page }) => {
+    const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+    if (sessionToken) {
+      await page.context().addCookies([{
+        domain: "127.0.0.1",
+        httpOnly: true,
+        name: "pd_session",
+        path: "/",
+        sameSite: "Lax",
+        secure: false,
+        value: sessionToken,
+      }]);
+    }
     const accountRows: Array<Record<string, unknown>> = [
       {
         account_id: "account-synthetic-bookie",
@@ -158,6 +170,15 @@ test.describe("Extra Place ledger parity", () => {
         },
       }),
     );
+    let financialMotionEnabled = true;
+    await page.route("**/fund-manager/preferences/financial-motion", async (route) => {
+      if (route.request().method() === "PUT") {
+        financialMotionEnabled = Boolean(
+          (route.request().postDataJSON() as { enabled?: boolean }).enabled,
+        );
+      }
+      await route.fulfill({ json: { enabled: financialMotionEnabled } });
+    });
     await page.route(`**/profiles/${profileId}/accounts`, (route) =>
       route.fulfill({ json: accountRows }),
     );
@@ -196,14 +217,14 @@ test.describe("Extra Place ledger parity", () => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           json: savedPayload
-            ? ["61.12", "-14.01", "3450.50"].map((qualifyingLoss, index) => ({
+            ? ["61.12", "-14.01", "3450.50", "0"].map((qualifyingLoss, index) => ({
                 ...savedPayload,
                 each_way_extra_place_id: `extra-place-synthetic-account-default-${index}`,
                 runner: `Synthetic Geometry Runner ${index + 1}`,
                 calculation_state: "resolved",
                 calculation_notes: [],
-                current_value: "12.34",
-                final_value: "12.34",
+                current_value: index === 3 ? "0" : "12.34",
+                final_value: index === 3 ? "0" : "12.34",
                 qualifying_loss: qualifyingLoss,
               }))
             : [],
@@ -327,12 +348,52 @@ test.describe("Extra Place ledger parity", () => {
     await dialog.getByLabel("Back Odds").fill("6");
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: new URL(page.url()).origin,
+    });
+    const stakeSentence = dialog.locator(".extra-place-stake-explainer").filter({
+      hasText: "Total bookmaker stake",
+    });
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((nextTheme) => {
+        document.documentElement.dataset.theme = nextTheme;
+        document.documentElement.style.colorScheme = nextTheme;
+      }, theme);
+      const colours = await stakeSentence.evaluate((element) => ({
+        sentence: getComputedStyle(element).color,
+        values: Array.from(element.querySelectorAll<HTMLElement>(".financial-value"))
+          .map((value) => getComputedStyle(value).color),
+      }));
+      expect(colours.values).toEqual([colours.sentence, colours.sentence]);
+    }
+    await stakeSentence.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+C" : "Control+C");
+    await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\s+/g, " ").trim())
+      .toBe("£ 5.00 each way. Total bookmaker stake: £ 10.00.");
     await dialog.getByRole("tab", { name: /Settlement/ }).click();
     const finishingPositionGroup = dialog.getByLabel("Finishing Position").locator("../..");
     await finishingPositionGroup
       .getByRole("button", { name: /Show next quick choices/ })
       .click();
     await finishingPositionGroup.getByRole("button", { name: "5th", exact: true }).click();
+    const selectedOutcomeRow = dialog.locator(".extra-place-outcome-row.is-selected:visible");
+    const groupedValues = selectedOutcomeRow.locator(".financial-value");
+    const groupedCycles = await groupedValues.evaluateAll((values) =>
+      values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+    );
+    await selectedOutcomeRow.hover();
+    await expect.poll(async () => {
+      const next = await groupedValues.evaluateAll((values) =>
+        values.map((value) => Number(value.getAttribute("data-money-motion-cycle"))),
+      );
+      return next.every((cycle, index) => cycle > groupedCycles[index]);
+    }).toBe(true);
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
     expect(savedPayload).toMatchObject({
@@ -349,12 +410,26 @@ test.describe("Extra Place ledger parity", () => {
     await expect(resolvedValue).toHaveAttribute("aria-label", "£ 37.02");
     await expect(
       page.locator('[data-pd-id="extra-place.ledger"] .financial-value[aria-label$="£ (14.01)"]'),
-    ).toHaveAttribute("data-money-motion", "down");
+    ).toHaveAttribute("data-money-tone", "negative");
     await expect(resolvedValue.locator(".financial-value-digit-window")).toHaveCount(4);
     await expect(resolvedValue.locator(".financial-value-digit-window").first()).toHaveCSS("overflow", "hidden");
+    await resolvedValue.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+C" : "Control+C");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("£ 37.02");
     const cycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
-    await resolvedValue.click();
+    await resolvedValue.hover();
     await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(cycle);
+    await expect(resolvedValue).toHaveAttribute("data-money-motion", "up");
+    const hoverCycle = Number(await resolvedValue.getAttribute("data-money-motion-cycle"));
+    await resolvedValue.click();
+    await resolvedValue.click();
+    await expect.poll(async () => Number(await resolvedValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(hoverCycle + 1);
     await expect(resolvedValue).toHaveAttribute("data-money-motion", "up");
     const delays = await resolvedValue.locator(".financial-value-digit-strip").evaluateAll((strips) =>
       strips.slice(0, 2).map((strip) => getComputedStyle(strip).animationDelay),
@@ -394,6 +469,16 @@ test.describe("Extra Place ledger parity", () => {
       expect(Math.abs(geometry.animatedHeight - geometry.staticHeight), JSON.stringify(geometry)).toBeLessThanOrEqual(1.5);
       expect(geometry.fontFamily && geometry.fontSize && geometry.fontWeight && geometry.lineHeight, JSON.stringify(geometry)).toBeTruthy();
     });
+    const zeroValue = page.locator('[data-pd-id="extra-place.ledger"] .financial-value[aria-label="Financial value: £ -"]').first();
+    await expect(zeroValue).toHaveAttribute("data-money-tone", "neutral");
+    const zeroCycle = Number(await zeroValue.getAttribute("data-money-motion-cycle"));
+    await zeroValue.click();
+    await expect.poll(async () => Number(await zeroValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(zeroCycle);
+    await expect(zeroValue.locator(".financial-value-placeholder-window")).toHaveCount(1);
+    const reopenedDialog = page.getByRole("dialog", { name: "Edit Extra Place row" });
+    if (await reopenedDialog.isVisible()) {
+      await reopenedDialog.getByRole("button", { name: "Close Extra Place editor" }).click();
+    }
     await expect(resolvedValue).toHaveAttribute("data-money-motion", "none");
     const settledCycle = await resolvedValue.getAttribute("data-money-motion-cycle");
     await page.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
@@ -404,6 +489,18 @@ test.describe("Extra Place ledger parity", () => {
     await resolvedValue.click();
     await expect(resolvedValue).toHaveAttribute("data-money-motion-cycle", String(reducedCycle));
     await expect(resolvedValue.locator(".financial-value-digit-strip").first()).toHaveCSS("animation-name", "none");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/settings#site-settings");
+    await page.getByRole("button", { name: "Financial motion" }).click();
+    await expect(page.getByRole("button", { name: "Financial motion" })).toHaveAttribute("aria-pressed", "false");
+    await page.goto(route);
+    await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
+    const staticValue = page.locator('[data-pd-id="extra-place.ledger"] .stat-card .financial-value').first();
+    const staticCycle = await staticValue.getAttribute("data-money-motion-cycle");
+    await staticValue.hover();
+    await staticValue.click();
+    await expect(staticValue).toHaveAttribute("data-money-motion", "none");
+    await expect(staticValue).toHaveAttribute("data-money-motion-cycle", staticCycle ?? "0");
   });
 
   test("uses the range card, grouped headers, theme switch and filter-owned detail-column controls", async ({ page }) => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import {
   BookmakerIdentity,
   catalogueIdForBookmaker,
@@ -239,7 +239,7 @@ function neutralValue(value: string | null | undefined) {
   const number = asNumber(value);
   return (
     <span className="extra-place-stake-value">
-      {number === null ? "£ -" : <FinancialValue tone="neutral" value={number} />}
+      {number === null ? "£ -" : <FinancialValue tone="inherit" value={number} />}
     </span>
   );
 }
@@ -2787,10 +2787,10 @@ function Outcome({
       </div>
       <div className="extra-place-outcome-table" role="table">
         {outcomes.map((outcome) => (
+          <FinancialValueReplayGroup key={outcome.key}>
           <div
             aria-label={`${outcome.label}: bookmaker ${formatFinancialValue(asNumber(outcome.bookie[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.bookie[1]) ?? 0)}; exchange ${formatFinancialValue(asNumber(outcome.exchange[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.exchange[1]) ?? 0)}; total ${formatFinancialValue(asNumber(outcome.total) ?? 0)}`}
             className={`extra-place-outcome-row extra-place-outcome-${outcome.key}${result === outcome.result ? " is-selected" : ""}`}
-            key={outcome.key}
             role="row"
           >
             <strong>{outcome.label}</strong>
@@ -2804,6 +2804,7 @@ function Outcome({
             </span>
             <strong>{matrixValue(outcome.total)}</strong>
           </div>
+          </FinancialValueReplayGroup>
         ))}
       </div>
       <div className="extra-place-outcome-summary">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import {
   buildDashboardTargetProgress,
@@ -171,6 +171,7 @@ export function PortfolioDashboardView({
       data-pd-id="dashboard.portfolio-view"
     >
       <div className="dashboard-primary-row">
+        <FinancialValueReplayGroup>
         <article
           aria-busy={isRangeSaving}
           className="dashboard-visual-card dashboard-performance-card portfolio-hero-card"
@@ -252,6 +253,7 @@ export function PortfolioDashboardView({
             </p>
           ) : null}
         </article>
+        </FinancialValueReplayGroup>
 
         <section className="dashboard-health-grid" aria-label="Profile operational dashboard cards">
           <DashboardMetricCard
@@ -574,6 +576,7 @@ function DashboardMetricCard({
   value?: number;
 }) {
   return (
+    <FinancialValueReplayGroup>
     <article className={`dashboard-mini-card dashboard-mini-card-${badgeTone}`}>
       <div className="dashboard-mini-card-header">
         <span className="eyebrow">{eyebrow}</span>
@@ -590,6 +593,7 @@ function DashboardMetricCard({
         </Link>
       ) : null}
     </article>
+    </FinancialValueReplayGroup>
   );
 }
 

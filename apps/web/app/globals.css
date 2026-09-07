@@ -9065,7 +9065,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .extra-place-stake-value {
-  color: var(--on-surface);
+  color: inherit;
   font-weight: 760;
   white-space: nowrap;
 }
@@ -10614,21 +10614,33 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .financial-value {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
+  position: relative;
+  display: inline-block;
   min-width: 5.2ch;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+.financial-value-canonical-text {
+  display: inline;
+  color: transparent;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre;
 }
 
 .financial-value-visual {
-  display: inline-flex;
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: baseline;
   justify-content: center;
-  min-width: inherit;
   font: inherit;
   line-height: inherit;
+  pointer-events: none;
+  user-select: none;
 }
 
 .financial-value-character {
@@ -10659,9 +10671,10 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   display: flex;
   flex-direction: column;
   width: 100%;
-  width: 100%;
   transform: translateY(var(--financial-digit-position));
   will-change: transform;
+  pointer-events: none;
+  user-select: none;
 }
 
 .financial-value-digit-strip > span {
@@ -10684,6 +10697,10 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .financial-value-neutral {
   color: var(--muted);
+}
+
+.financial-value-inherit {
+  color: inherit;
 }
 
 .financial-value-motion-up .financial-value-digit-strip {
