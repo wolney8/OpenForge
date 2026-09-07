@@ -86,6 +86,10 @@ test("Notification History controls remain contained and separated through reflo
     page.locator('[data-pd-id="notifications.history.item.NOTICE-001"]'),
   ).toBeVisible();
 
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  await page.getByRole("button", { name: /Switch to (light|dark) mode/ }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", initialTheme ?? "");
+
   const viewportCases = [
     { name: "normal desktop", width: 1440 },
     { name: "reported-layout reproduction", width: 1180 },
