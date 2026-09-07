@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 19:30 BST_
+_Last updated: 2026-09-07 19:56 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,10 +9,10 @@ durable requirements.
 
 ## Current state
 
-- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) sign/width-stable
-  digit origins, configurable motion timing and compact Site Settings composition. Chart motion
-  [#110](https://github.com/wolney8/OpenForge/issues/110) remains separate.
-- Tested implementation base: `1113b69755b446283700198a0f6b01fd4a71503e` on `main`; this
+- Current correction: [#105](https://github.com/wolney8/OpenForge/issues/105) nearest-container
+  financial replay plus the first shared Dashboard progress/ring slice of
+  [#110](https://github.com/wolney8/OpenForge/issues/110).
+- Tested implementation base: `39f18b32f5bb2cb5da0216cd009620ec6203dce4` on `main`; this
   tranche's delivery checkpoint and evidence are recorded in its commit and issue comment.
 - Interruptions: no open defect currently blocks #88. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -38,7 +38,7 @@ durable requirements.
 
 ## Project plan
 
-- Current: finish the bounded #105 shared-value correction without reopening #88.
+- Current: finish the bounded #105/#110 shared motion correction without reopening #88.
 - Next queue: #35-#38 standalone calculators, #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Deferred: durable notification history [#90](https://github.com/wolney8/OpenForge/issues/90),
@@ -65,8 +65,10 @@ durable requirements.
   paths. The current correction retains sign and width while digits roll from zero, leaves neutral
   `£ -` static, and adds persisted replay-pause, roll-duration and digit-cascade controls with
   1.5-second/520ms/80ms defaults. Future/new-surface adoption and user acceptance remain open.
-  Chart motion is separately
-  tracked as `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110).
+  Nearest card/row entry and every appropriate container click now replay contained values together.
+  `FINANCIAL-CHART-MOTION-001` [#110](https://github.com/wolney8/OpenForge/issues/110) now has its
+  first shared slice on Target Progress, Module Mix bars and Operational Focus ring; broader chart
+  rollout and user/hosted acceptance remain open.
   Extra Places rails [#108](https://github.com/wolney8/OpenForge/issues/108) now use persisted activity,
   positive Account balances and deterministic ordering with maximum-three paging. Import access
   semantics [#109](https://github.com/wolney8/OpenForge/issues/109) remains untouched.

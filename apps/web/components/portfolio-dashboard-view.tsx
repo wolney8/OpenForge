@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
   buildDashboardTrend,
@@ -114,12 +115,6 @@ export function PortfolioDashboardView({
       )) *
       100
   );
-  const targetStyle = {
-    "--dashboard-target-progress": `${targetProgress.progressPercent}%`,
-  } as CSSProperties;
-  const focusStyle = {
-    "--dashboard-focus-progress": `${attentionScore}%`,
-  } as CSSProperties;
   const openUnflaggedBets = Math.max(
     0,
     summary.betsQuickView.openBets -
@@ -343,6 +338,7 @@ export function PortfolioDashboardView({
       </div>
 
       <section className="dashboard-secondary-grid" aria-label="Portfolio supporting dashboard cards">
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card dashboard-target-card" data-pd-id="dashboard.target-progress">
         <div className="dashboard-visual-header">
           <div>
@@ -353,8 +349,8 @@ export function PortfolioDashboardView({
             {displayMode}
           </span>
         </div>
-        <div className="dashboard-target-meter" style={targetStyle}>
-          <span />
+        <div className="dashboard-target-meter">
+          <ReplayableProgressFill minimum="0.65rem" value={targetProgress.progressPercent} />
         </div>
         <dl className="dashboard-focus-list">
           <div>
@@ -377,7 +373,9 @@ export function PortfolioDashboardView({
           </div>
         </dl>
         </article>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card" data-pd-id="dashboard.module-mix">
         <div className="dashboard-visual-header">
           <div>
@@ -386,7 +384,7 @@ export function PortfolioDashboardView({
           </div>
         </div>
         <div className="dashboard-module-bars">
-          {summary.moduleBreakdown.map((row) => {
+          {summary.moduleBreakdown.map((row, index) => {
             const width = clampPercent((Math.abs(row.reportingValue) / moduleAbsoluteTotal) * 100);
             return (
               <div className="dashboard-module-row" key={row.moduleKey}>
@@ -395,9 +393,11 @@ export function PortfolioDashboardView({
                   <FinancialValue value={row.reportingValue} />
                 </div>
                 <div className="dashboard-module-track" aria-hidden="true">
-                  <span
+                  <ReplayableProgressFill
                     className={`dashboard-module-fill ${getModuleVisualClass(row.moduleKey)}`}
-                    style={{ width: `${Math.max(4, width)}%` }}
+                    minimum="0.55rem"
+                    staggerIndex={index}
+                    value={Math.max(4, width)}
                   />
                 </div>
               </div>
@@ -405,7 +405,9 @@ export function PortfolioDashboardView({
           })}
         </div>
         </article>
+        </FinancialValueReplayGroup>
 
+        <FinancialValueReplayGroup>
         <article className="dashboard-visual-card dashboard-focus-card" data-pd-id="dashboard.action-load">
         <div className="dashboard-visual-header">
           <div>
@@ -414,14 +416,13 @@ export function PortfolioDashboardView({
           </div>
         </div>
         <div className="dashboard-focus-body">
-          <div
-            aria-label={`${Math.round(attentionScore)} percent of tracked open attention items need action`}
+          <ReplayableProgressRing
             className="dashboard-focus-meter"
-            role="img"
-            style={focusStyle}
+            label={`${Math.round(attentionScore)} percent of tracked open attention items need action`}
+            value={attentionScore}
           >
             <strong>{Math.round(attentionScore)}%</strong>
-          </div>
+          </ReplayableProgressRing>
           <dl className="dashboard-focus-list">
             <div>
               <dt>Open</dt>
@@ -438,6 +439,7 @@ export function PortfolioDashboardView({
           </dl>
         </div>
         </article>
+        </FinancialValueReplayGroup>
       </section>
 
       <section className="dashboard-tertiary-grid" aria-label="Portfolio detail dashboard cards">

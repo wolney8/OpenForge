@@ -1815,6 +1815,7 @@ export function CrossProfileAnalytics({
                 <div><dt>Investment fee</dt><dd>{detailProfile.investmentFeePercent}%</dd></div>
               </dl>
             </section>
+            <FinancialValueReplayGroup>
             <section className="profile-drawer-section stack-tight">
               <h3>Selected Range Performance</h3>
               <dl className="profile-detail-list">
@@ -1825,12 +1826,16 @@ export function CrossProfileAnalytics({
                 <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.reportingModel.selectedRange.grossBettingPnl} /> : isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
+            </FinancialValueReplayGroup>
+            <FinancialValueReplayGroup>
             <section className="profile-drawer-section stack-tight">
               <h3>Current Cash</h3>
               <dl className="profile-detail-list">
                 <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
+            </FinancialValueReplayGroup>
+            <FinancialValueReplayGroup>
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
@@ -1851,6 +1856,7 @@ export function CrossProfileAnalytics({
                 Review Monthly Fees
               </button>
             </section>
+            </FinancialValueReplayGroup>
             <nav className="profile-drawer-actions" aria-label="Profile quick navigation">
               {detailComparisonRow ? <OperationalActionLinks row={detailComparisonRow} /> : null}
               <Link

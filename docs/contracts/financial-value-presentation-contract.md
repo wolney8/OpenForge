@@ -75,7 +75,8 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
   rolls down. On a later value change, direction follows the numeric change: increase rolls up and
   decrease rolls down. Identical values do not replay automatically.
 - Each digit owns a fixed-height clipped viewport over a vertical `0`–`9` strip. Digit transforms
-  are staggered by 70ms; currency, sign, grouping and decimal punctuation stay static.
+  are staggered by the persisted setting (80ms by default); currency, sign, grouping and decimal
+  punctuation stay static.
 - A rolling value retains its destination width, currency and sign punctuation throughout motion.
   Its digit windows begin on zero, so `£ 20.00` starts as `£ 00.00` and `£ (20.00)` starts as
   `£ (00.00)` rather than changing sign or width. The accessible and selectable text remains the
@@ -83,15 +84,16 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 - Each digit viewport inherits the surrounding value's font family, size, weight, line height and
   baseline, and sizes itself from a tabular numeral glyph. Animation must not compress the value;
   currency spaces and punctuation retain their natural static width.
-- Pointer-enter or click on a shared read-only value replays it once. A replay group coordinates
-  every financial value in the same card or row without removing each value's digit cascade.
-- Automatic or explicit motion starts a configurable replay cooldown, defaulting to 1.5 seconds.
-  Pointer movement, hover and
-  click during that window cannot restart the animation; a genuine authoritative value change may
-  still replace it and settle on the newest value.
+- Pointer-enter or click directly on an ungrouped shared read-only value replays it once. Its
+  automatic/direct replay starts a configurable cooldown, defaulting to 1.5 seconds, so incidental
+  repeated pointer movement cannot restart it during that window. A genuine authoritative value
+  change may still replace it and settle on the newest value.
 - Every active data-table row containing financial values uses the shared row replay group. Entering
   the row through a text, numeric, status or action cell replays that row's financial values only;
-  non-financial cell content is not converted into or misrepresented as money.
+  non-financial cell content is not converted into or misrepresented as money. The same nearest-group
+  rule applies to semantic cards and drawers: pointer entry replays once, leaving and re-entering
+  replays again, and every appropriate container click restarts all registered values without a
+  click limit. Nested groups do not replay an outer page or parent container.
 - Zero remains neutral, static and displays exactly `£ -`; it does not temporarily become a
   monetary amount or participate in replay. Unavailable and loading states remain static.
   Loading must never fabricate a temporary zero or random intermediate monetary value.
@@ -131,7 +133,7 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - first resolved positive/up and negative/down motion
 - destination-sign direction independent of delta, including `20 → 10` up and `-20 → -10` down
 - positive/negative sign transitions, equal refetch, static neutral zero, unavailable/loading and rapid updates
-- pointer-enter/click replay and coordinated card/row replay
+- pointer-enter, leave/re-enter and unlimited explicit click replay coordinated at the nearest card/row
 - configurable replay cooldown with a 1.5-second default after automatic and explicit triggers
 - sign- and width-stable zero-digit origins for positive and negative destinations
 - row replay initiated from financial and non-financial cells
@@ -142,6 +144,19 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - currency setting change without delayed theme/state mismatch
 - mixed-currency aggregation blocked
 - light/dark contrast checks
+
+## Chart and progress motion
+
+- The same nearest-container replay group coordinates financial values with registered progress
+  bars and progress rings.
+- Resolved progress bars reveal from zero to their exact bounded percentage with a restrained
+  elastic settle. A short leading-edge highlight exists only while the bar is moving.
+- Registered progress rings sweep from zero to the exact final arc and become fully static when
+  settled. Their accessible labels always state the final value; animation does not alter data.
+- Multiple bars in one card begin together with a short configured stagger. Rapid replay cancels
+  prior presentation work and settles at the current target.
+- Financial motion Off and `prefers-reduced-motion: reduce` render exact final bar/ring states
+  immediately, without a reveal, highlight or layout change.
 
 ## Rollout coverage
 

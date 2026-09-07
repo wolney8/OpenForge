@@ -1,59 +1,16 @@
 "use client";
 
 import {
-  Children, cloneElement, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
-  type AnimationEvent, type CSSProperties, type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent, type ReactElement, type ComponentPropsWithoutRef,
+  useCallback, useEffect, useMemo, useRef, useState,
+  type AnimationEvent, type CSSProperties, type ComponentPropsWithoutRef,
 } from "react";
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
+import { MotionReplayGroup, useMotionReplayRegistration } from "@/components/motion-replay-group";
 import {
   financialMotionDirection, formatFinancialValue, moneyTone, type MoneyMotionDirection,
 } from "@/lib/financial-display";
 
-type ReplayRegistration = {
-  blockedUntil: () => number;
-  replay: () => void;
-};
-type ReplayGroupContextValue = { register: (replay: ReplayRegistration) => () => void };
-const FinancialValueReplayContext = createContext<ReplayGroupContextValue | null>(null);
-const replayHandledKey = Symbol("financial-value-replay-handled");
-
-type ReplayGroupChildProps = {
-  onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
-  onPointerEnter?: (event: ReactPointerEvent<HTMLElement>) => void;
-};
-
-export function FinancialValueReplayGroup({ children }: { children: ReactElement<ReplayGroupChildProps> }) {
-  const [members] = useState(() => new Set<ReplayRegistration>());
-  const register = useCallback((replay: ReplayRegistration) => {
-    members.add(replay);
-    return () => { members.delete(replay); };
-  }, [members]);
-  const replayAll = useCallback((event: ReactMouseEvent<HTMLElement> | ReactPointerEvent<HTMLElement>) => {
-    const nativeEvent = event.nativeEvent as Event & { [replayHandledKey]?: boolean };
-    if (nativeEvent[replayHandledKey]) return;
-    nativeEvent[replayHandledKey] = true;
-    const now = performance.now();
-    if ([...members].some((member) => member.blockedUntil() > now)) return;
-    members.forEach((member) => member.replay());
-  }, [members]);
-  const onlyChild = Children.only(children);
-
-  return (
-    <FinancialValueReplayContext.Provider value={{ register }}>
-      {cloneElement(onlyChild, {
-        onClick: (event) => {
-          onlyChild.props.onClick?.(event);
-          if (!event.defaultPrevented) replayAll(event);
-        },
-        onPointerEnter: (event) => {
-          onlyChild.props.onPointerEnter?.(event);
-          if (!event.defaultPrevented) replayAll(event);
-        },
-      })}
-    </FinancialValueReplayContext.Provider>
-  );
-}
+export const FinancialValueReplayGroup = MotionReplayGroup;
 
 export function FinancialValueReplayRow(props: ComponentPropsWithoutRef<"tr">) {
   return (
@@ -87,7 +44,6 @@ export function FinancialValue({
   const {
     durationMs, enabled: preferenceEnabled, ready: preferenceReady, replayDelayMs, staggerMs,
   } = useFinancialMotionPreference();
-  const group = useContext(FinancialValueReplayContext);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [motion, setMotion] = useState<MoneyMotionDirection>("none");
   const [motionCycle, setMotionCycle] = useState(0);
@@ -164,10 +120,7 @@ export function FinancialValue({
     startMotion(direction);
   }, [isValid, motionAllowed, numericValue, preferenceEnabled, preferenceReady, prefersReducedMotion, settleMotion, startMotion]);
 
-  useEffect(() => group?.register({
-    blockedUntil: () => replayBlockedUntilRef.current,
-    replay: () => startMotion(),
-  }), [group, startMotion]);
+  const grouped = useMotionReplayRegistration(startMotion);
   useEffect(() => () => settleMotion(), [settleMotion]);
 
   function onAnimationEnd(event: AnimationEvent<HTMLSpanElement>) {
@@ -182,8 +135,8 @@ export function FinancialValue({
       data-money-motion={motion}
       data-money-motion-cycle={motionCycle}
       data-money-tone={tone}
-      onClick={group ? undefined : requestReplay}
-      onPointerEnter={group ? undefined : requestReplay}
+      onClick={grouped ? undefined : requestReplay}
+      onPointerEnter={grouped ? undefined : requestReplay}
       style={{
         "--financial-motion-duration": `${durationMs}ms`,
         "--financial-motion-stagger": `${staggerMs}ms`,
