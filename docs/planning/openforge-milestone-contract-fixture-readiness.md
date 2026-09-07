@@ -29,7 +29,7 @@ Map the live GitHub roadmap to durable local contracts and deterministic fixture
 | M12 Target Decision Engine | Target progress and advisory offer decisions | Open: issues #25-#31 | Target maths/safety fixtures drafted; recommendation scoring remains unapproved |
 | M13 Common Bet Combos | Settings-owned quick-entry templates | Open: issue #32 | Implemented across Settings, Fund Manager opportunity entry, and direct sportsbook drafts; smoke review pending |
 | M14 Calculator Workspace | Standalone calculators and ledger bridge | Open: issues #35-#40 | Bridge and evidence governance drafted; advanced families are classified by readiness |
-| M15 Platform Experience | Financial motion, accessibility, density, guided entry and approved platform branding | Open: issues #58-#61, #64-#65 | Financial presentation, UX, guidance and Plum Duff branding contracts drafted |
+| M15 Platform Experience | Financial motion, accessibility, density, guided entry and approved platform branding | Open: issues #58-#61, #64-#65, #105 | Financial presentation amendment captured; implementation and rollout coverage pending |
 
 ## New M5 scope
 
@@ -165,6 +165,11 @@ values are not financial approval.
 - `docs/reference/plum-duff-brand-audit.md`
 
 Readiness: ready for contract review. Currency defaults to Fund Manager/application GBP; per-profile currency override is `To confirm`. Shared animated value implementation must wait for contract approval.
+
+Current financial-motion direction is tracked as `FINANCIAL-MOTION-001` in
+[#105](https://github.com/wolney8/OpenForge/issues/105): initial resolved and changed read-only
+signed-money values roll by destination sign. Shared-component correction comes first, followed by
+bounded surface adoption; editable fields and file/print exports remain static.
 
 Branding issue #65 is approved for implementation. Supplied source assets are held in
 `assets/source-logo/`; the current implementation intentionally defers favicon/compact

@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 09:29 BST_
+_Last updated: 2026-09-07 09:48 BST_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -11,7 +11,8 @@ durable requirements.
 
 - Tested implementation revision: `630bde854a76ef8551a677690a060c3cf167a55a` on `main`.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
-  with focused local automated and rendered synthetic evidence; Will's recheck remains `NOT RUN`.
+  with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
+  while #100 remains open and no session/notification acceptance is inferred.
 - Notification clearing acceptance [#99](https://github.com/wolney8/OpenForge/issues/99) is `BLOCKED`:
   no actionable notification exists. The established isolated persistence runner is self-cleaning
   and cannot leave a manual fixture alongside the canonical Next development server without a
@@ -38,6 +39,8 @@ durable requirements.
   hosted workbook acceptance [#94](https://github.com/wolney8/OpenForge/issues/94), stale-workbook
   merge design [#95](https://github.com/wolney8/OpenForge/issues/95), and secret rotation
   [#96](https://github.com/wolney8/OpenForge/issues/96).
+- Next functional batch for review: shared-component correction for destination-sign financial
+  digit rolling [#105](https://github.com/wolney8/OpenForge/issues/105), before bounded surface adoption.
 
 ## Features and issues
 
@@ -48,6 +51,10 @@ durable requirements.
   source-independent history remains [#90](https://github.com/wolney8/OpenForge/issues/90).
 - Notification filter layout: `NOTIFICATION-LAYOUT-001` is locally corrected at `630bde8`; [#100](https://github.com/wolney8/OpenForge/issues/100)
   stays open pending Will's recheck and remains related, not folded into, [#92](https://github.com/wolney8/OpenForge/issues/92).
+- Retrospective composed-layout work remains partial under `UI-CONSISTENCY-001`; the visible
+  unchecked surface list is in the [UI audit backlog](docs/agent-contracts/plum-duff-ui-audit-backlog.md).
+- `FINANCIAL-MOTION-001` is captured in [#105](https://github.com/wolney8/OpenForge/issues/105):
+  implementation and rollout coverage remain pending verification.
 - Profit Boost and strict input: [#83](https://github.com/wolney8/OpenForge/issues/83) retains its
   full scope and is now assigned to M14; remaining cross-surface validation is [#91](https://github.com/wolney8/OpenForge/issues/91).
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).

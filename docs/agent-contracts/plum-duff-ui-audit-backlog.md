@@ -23,6 +23,22 @@ safe use, `P1` should be addressed before production-quality sign-off, and `P2` 
 | P2 | Shared application header | The redundant `Tracker platform` brand subtitle adds copy noise | Remove it in a separate bounded visual batch while preserving brand/control alignment and header geometry | Copy, layout |
 | P2 | Existing pages and panels | Some surfaces may repeat headings, control labels or explanatory subtext | Review in bounded route batches; retain financial, error, security and accessibility meaning and reuse canonical shells | Copy, consistency |
 
+## UI-CONSISTENCY-001 retrospective checklist
+
+This is the visible bounded checklist for [GitHub #92](https://github.com/wolney8/OpenForge/issues/92).
+Passing one surface does not establish application-wide compliance. Each batch must retain unchecked
+surfaces and record actual composed-layout, theme, focus, scaling and responsive evidence.
+
+- [x] Notification History search/filter/action toolbar: containment and peer-row composition checked;
+      Will reports the corrected layout “looks better”; [#100](https://github.com/wolney8/OpenForge/issues/100)
+      remains open.
+- [ ] Remaining search/filter/action toolbars: catalogue, ledgers, Profile directory and Settings
+      authority surfaces, reviewed in bounded batches.
+- [ ] Repeated form layouts: peer labels/control edges, validation/help text, action grouping and
+      breakpoint reflow.
+- [ ] Repeated page/panel headers: title/action alignment, wrapping, copy density and narrow-layout
+      order.
+
 ## Completed during initial hardening pass
 
 - Durable UI/accessibility contract, checklist and known-pitfall register.

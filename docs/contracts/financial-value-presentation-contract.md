@@ -1,12 +1,14 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-09-07_
 
 ## Status and scope
 
-- Status: Draft, ready for human review
+- Status: Amendment captured; implementation and rollout coverage pending verification
 - Milestone: M15 Platform Experience: Financial Motion, Accessibility and Guided Entry
-- Related issue: Define Currency and Animated Financial Value Contract
+- Related issues: historical contract [#58](https://github.com/wolney8/OpenForge/issues/58),
+  historical implementation [#59](https://github.com/wolney8/OpenForge/issues/59), and current
+  requirement [#105](https://github.com/wolney8/OpenForge/issues/105)
 - Changes financial calculations: No
 
 ## Purpose
@@ -67,12 +69,21 @@ Reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
 
 ## Motion behaviour
 
-- Digit rolling may occur only when a visible numeric value changes.
-- Direction should correspond to numeric change; it must not imply profit/loss beyond the signed value.
+- Read-only signed-money values use a brief vertical digit roll on their first resolved display and
+  when the authoritative displayed value changes.
+- Direction is determined by the destination value's sign, not by its delta: a positive/green
+  destination rolls up and a negative/red destination rolls down. Therefore `20 → 10` rolls up and
+  `-20 → -10` rolls down.
+- Zero, unavailable and loading states remain neutral and static. Loading must never fabricate a
+  temporary zero or random intermediate monetary value.
+- Identical refetches, theme changes, ordinary rerenders and list reordering must not replay motion.
 - Default duration target: `180–320ms`, with no looping, shimmer or celebratory flashing.
 - Large changes may group digit transitions; they must not animate every intermediate penny.
 - `prefers-reduced-motion: reduce` disables rolling and uses an immediate value replacement or brief opacity change.
-- A platform motion setting may disable non-essential animation independently.
+- Any platform motion-off setting available to the surface must disable non-essential animation
+  independently; current shared-component support for such a setting must be verified before rollout.
+- Rapid updates must cancel stale motion and settle on the newest authoritative formatted value;
+  hidden, unmounted and dense offscreen displays must not retain or perform unnecessary work.
 - Lottie/Rive are not required for numeric motion and must not be added without dependency review.
 
 Reference: [WCAG animation from interactions](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions).
@@ -93,11 +104,31 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - ledger badge treatment for positive, negative and zero values
 - ledger current/final Material Symbol indicator rendering
 - manual override indicator
-- value increase/decrease motion direction
+- first resolved positive/up and negative/down motion
+- destination-sign direction independent of delta, including `20 → 10` up and `-20 → -10` down
+- positive/negative sign transitions, equal refetch, neutral zero, unavailable/loading and rapid updates
 - reduced-motion replacement
 - currency setting change without delayed theme/state mismatch
 - mixed-currency aggregation blocked
 - light/dark contrast checks
+
+## Rollout coverage
+
+All items remain pending until implemented and verified in bounded batches. Extending the shared
+component alone does not establish complete surface coverage.
+
+- [ ] Shared `FinancialValue` digit-roll correction and deterministic component fixtures.
+- [ ] Dashboards and summary cards.
+- [ ] Read-only ledger values and financial badges.
+- [ ] Calculator and calculation-preview results.
+- [ ] Reports and Profit Tracker values.
+- [ ] Account summaries.
+- [ ] Relevant read-only dialog results.
+- [ ] Future read-only signed-money displays adopt the shared component by default.
+
+Editable money fields and file/print exports remain static. Adoption must preserve exact final
+values, precision, copy behaviour, calculations, accounting punctuation, current/final indicators,
+font metrics, baseline, padding and badge geometry.
 
 ## Acceptance
 
