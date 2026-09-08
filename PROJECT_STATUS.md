@@ -15,7 +15,7 @@ durable requirements.
   Dutching, Odds / Probability and Blackjack Strategy. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `4ad0af10e73739c4a4f3c4a6f2ab8eec86a61f6a` on `main`.
+- Current implementation base before this tranche: `dfa67dd9f7f54e57dbf68423d783812badbf4be8` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -94,6 +94,12 @@ durable requirements.
 
 ## What changed
 
+- Blackjack Strategy now follows the current Outplayed 4–8 deck hard/soft/pair matrices with
+  Surrender and H17/S17 controls. The table interaction records legal actions, Hit follow-up cards,
+  Double and one independently played split, exact reference stake commitments and expandable
+  browser-tab session history. Representative public-calculator parity is proven locally; DAS is
+  the published matrix assumption, while resplitting and casino outcome/P&L simulation are not
+  inferred.
 - Odds / Probability now converts exact decimal, fractional, American and implied-probability
   sources without Profile or ledger writes, retains unrounded source precision through conversion,
   rejects malformed input and preserves current state when opened in a new tab. Multiples,
@@ -126,10 +132,10 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Odds / Probability**. Convert `5/2`, `3.75` and `62.5%`;
-   expect `3.50`, `11/4` and `3/5` respectively, then verify Reset and Open in new tab.
-2. In Standard, Sequential Lay, Extra Place and Early Payout, inspect and use one calculated-stake
-   Copy control; expect both copy/check glyphs centred without target movement.
+1. Open **Fund Manager → Calculators → Blackjack Strategy**. With Surrender enabled, enter dealer
+   `10` and player `10, 5`; expect **Surrender**, record it, and inspect the retained history row.
+2. Deal again with `£5`, enter dealer `9` and player `6, 5`, choose the recommended Double, add `9`,
+   and expect Hard 20 with `£10` committed. Reload to confirm history remains in this browser tab.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

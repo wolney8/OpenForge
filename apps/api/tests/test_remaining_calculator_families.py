@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from openforge_api.calculations.blackjack_strategy import calculate_blackjack_strategy
 from openforge_api.config import settings
 from openforge_api.db import list_sportsbook_bets
 from openforge_api.main import app
@@ -77,6 +78,7 @@ def test_dutching_source_fixtures_are_reference_only(tmp_path: Path) -> None:
 
 def test_blackjack_published_matrix_fixtures(tmp_path: Path) -> None:
     client = configure_temp_database(tmp_path)
+    before = len(list_sportsbook_bets("profile-demo-001"))
     for case in fixtures()["blackjack"]:
         response = client.post(
             "/fund-manager/calculators/blackjack/preview",
@@ -90,6 +92,27 @@ def test_blackjack_published_matrix_fixtures(tmp_path: Path) -> None:
         assert response.status_code == 200, (case["id"], response.text)
         assert response.json()["action"] == case["action"]
         assert response.json()["fallback_action"] == case["fallback"]
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
+def test_blackjack_published_conditional_fallbacks() -> None:
+    double_fallback = calculate_blackjack_strategy(
+        dealer_card="9",
+        player_cards=["6", "5"],
+        surrender_allowed=False,
+        dealer_hits_soft_17=False,
+        double_allowed=False,
+    )
+    assert (double_fallback.action, double_fallback.fallback_action) == ("Hit", None)
+
+    split_fallback = calculate_blackjack_strategy(
+        dealer_card="2",
+        player_cards=["2", "2"],
+        surrender_allowed=False,
+        dealer_hits_soft_17=False,
+        double_after_split_allowed=False,
+    )
+    assert (split_fallback.action, split_fallback.fallback_action) == ("Hit", None)
 
 
 def test_remaining_calculators_reject_malformed_inputs_and_require_auth(tmp_path: Path) -> None:

@@ -69,18 +69,17 @@ test("uses the source-backed accumulator, Dutching and Blackjack families withou
   await expect(page.getByLabel("First stake")).toHaveValue("");
 
   await page.goto("/fund-manager/calculators?family=blackjack");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Stand");
   await page.getByLabel("Dealer up-card").selectOption("10");
   await page.getByLabel("Player card 1").selectOption("8");
   await page.getByLabel("Player card 2").selectOption("8");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Split");
-  await page.getByRole("switch", { name: "Surrender allowed" }).click();
-  await page.getByRole("button", { name: "Add player card" }).click();
+  await page.getByRole("button", { name: "Hit", exact: true }).click();
   await expect(page.getByLabel("Player card 3")).toBeVisible();
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toBeVisible();
+  await page.getByLabel("Player card 3").selectOption("2");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: STAND");
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.locator('[data-pd-id="calculators.blackjack"]').screenshot({ path: `${process.env.CALCULATOR_E2E_SCREENSHOT_PATH}-blackjack.png` });
-  await page.locator('[data-pd-id="calculators.blackjack.reset"]').click();
-  await expect(page.getByLabel("Dealer up-card")).toHaveValue("2");
+  await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
+  await expect(page.getByLabel("Dealer up-card")).toHaveValue("");
 
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", /light|dark/);

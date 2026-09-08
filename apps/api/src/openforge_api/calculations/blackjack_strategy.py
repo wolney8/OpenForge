@@ -6,7 +6,8 @@ from typing import Literal
 Action = Literal["Hit", "Stand", "Double", "Split", "Surrender", "Bust"]
 Card = Literal["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 
-# Published Outplayed 4-8 deck table. Columns are dealer 2..10,A.
+# Published Outplayed 4-8 deck table, reverified against the public calculator on 2026-09-08.
+# Columns are dealer 2..10,A. The public UI exposes Surrender and H17/S17; DAS is implicit.
 H = "H"
 S = "S"
 P = "P"

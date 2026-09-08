@@ -1,5 +1,6 @@
 {
   "contract": "standalone-calculator-families-v1",
+  "source_verified": "2026-09-08",
   "accumulator": [
     {"id": "ACC-CORE-001", "stake": "10", "odds": ["2.00", "3.00", "1.50"], "states": ["winner", "winner", "winner"], "combined_odds": "9.0000", "return": "90.00", "profit": "80.00"},
     {"id": "ACC-VOID-001", "stake": "10", "odds": ["2.00", "3.00", "1.50"], "states": ["winner", "void", "winner"], "return": "30.00", "profit": "20.00"},
@@ -13,11 +14,17 @@
     {"id": "DUTCH-ROUND-10", "bet_type": "normal", "stake": "10", "odds": ["2.00", "3.00"], "commission": ["0", "0"], "rounding": "10", "stakes": ["10.00", "10.00"], "profits": ["0.00", "10.00"]}
   ],
   "blackjack": [
-    {"id": "BJ-HARD-16", "dealer": "10", "cards": ["10", "6"], "surrender": true, "h17": false, "action": "Surrender", "fallback": "Hit"},
+    {"id": "BJ-HARD-11-VS-9", "dealer": "9", "cards": ["6", "5"], "surrender": false, "h17": false, "action": "Double", "fallback": "Hit"},
+    {"id": "BJ-HARD-15-SURRENDER", "dealer": "10", "cards": ["10", "5"], "surrender": true, "h17": false, "action": "Surrender", "fallback": "Hit"},
+    {"id": "BJ-SURRENDER-FALLBACK", "dealer": "10", "cards": ["10", "5"], "surrender": false, "h17": false, "action": "Hit", "fallback": null},
+    {"id": "BJ-HARD-17", "dealer": "9", "cards": ["10", "7"], "surrender": false, "h17": false, "action": "Stand", "fallback": null},
     {"id": "BJ-SOFT-18", "dealer": "6", "cards": ["A", "7"], "surrender": false, "h17": false, "action": "Double", "fallback": "Stand"},
+    {"id": "BJ-S17-HARD-11-VS-A", "dealer": "A", "cards": ["6", "5"], "surrender": false, "h17": false, "action": "Hit", "fallback": null},
+    {"id": "BJ-H17-HARD-11-VS-A", "dealer": "A", "cards": ["6", "5"], "surrender": false, "h17": true, "action": "Double", "fallback": "Hit"},
     {"id": "BJ-PAIR-8", "dealer": "A", "cards": ["8", "8"], "surrender": true, "h17": true, "action": "Surrender", "fallback": "Hit"},
     {"id": "BJ-FURTHER-CARD", "dealer": "10", "cards": ["5", "5", "7"], "surrender": true, "h17": false, "action": "Stand", "fallback": null},
     {"id": "BJ-HIT", "dealer": "10", "cards": ["10", "2"], "surrender": false, "h17": false, "action": "Hit", "fallback": null},
+    {"id": "BJ-HIT-THEN-CARD", "dealer": "10", "cards": ["10", "2", "5"], "surrender": false, "h17": false, "action": "Stand", "fallback": null},
     {"id": "BJ-SPLIT", "dealer": "7", "cards": ["8", "8"], "surrender": false, "h17": false, "action": "Split", "fallback": null}
   ]
 }

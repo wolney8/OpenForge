@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
+import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 
@@ -28,9 +29,12 @@ function neutralValue(value: string | null | undefined) {
 }
 
 export function EachWayModeToggle({ mode, onChange }: { mode: EachWayPresentationMode; onChange: (mode: EachWayPresentationMode) => void }) {
-  return <div aria-label="Each Way calculator mode" className="extra-place-bet-type-toggle" role="group">
-    {(["Extra Place", "Each Way"] as const).map((option) => <button aria-pressed={mode === option} className="extra-place-bet-type-toggle-option" key={option} onClick={() => onChange(option)} type="button">{option}</button>)}
-  </div>;
+  return <CalculatorSegmentedControl
+    ariaLabel="Each Way calculator mode"
+    onChange={onChange}
+    options={(["Extra Place", "Each Way"] as const).map((option) => ({ label: option, value: option }))}
+    value={mode}
+  />;
 }
 
 export function EachWayBackBetSection({ children, placeTerms }: { children: ReactNode; placeTerms: ReactNode }) {
