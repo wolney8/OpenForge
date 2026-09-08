@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import fixture from "../../../tests/fixtures/sportsbook-odds-input-fixtures.json";
+import calculatorFixture from "../../../tests/fixtures/calculator-odds-normalization-fixtures.json";
 
 import {
   getSportsbookOddsInputError,
+  normalizeCalculatorOddsInput,
   parseSportsbookOddsInput,
   SPORTSBOOK_ODDS_FORMAT_MESSAGE,
   SPORTSBOOK_ODDS_MINIMUM_MESSAGE,
@@ -31,4 +33,16 @@ describe("Sportsbook odds input", () => {
     expect(getSportsbookOddsInputError("")).toBeNull();
     expect(getSportsbookOddsInputError("", { required: true })).toBe("Enter odds.");
   });
+});
+
+describe("Calculator odds normalization", () => {
+  it.each(calculatorFixture.valid)(
+    "normalizes $input to $canonical",
+    ({ input, canonical }) => expect(normalizeCalculatorOddsInput(input)).toMatchObject({ canonicalValue: canonical, error: null })
+  );
+
+  it.each(calculatorFixture.invalid)(
+    "rejects ambiguous or malformed %s",
+    (input) => expect(normalizeCalculatorOddsInput(input).error).not.toBeNull()
+  );
 });

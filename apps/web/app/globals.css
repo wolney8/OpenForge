@@ -8295,6 +8295,11 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.9rem;
 }
 
+.calculator-segment-grid > .field-control {
+  align-content: start;
+  min-width: 0;
+}
+
 .calculator-segment-grid-back {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

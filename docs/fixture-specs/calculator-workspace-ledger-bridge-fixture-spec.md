@@ -19,3 +19,7 @@ _Last updated: 2026-08-16_
 | CALC-008 | Profit Boost percentage-only calculator | Reference boosted odds calculated from base odds, stake and percentage |
 | CALC-009 | Profit Boost displayed-odds calculator | Displayed boosted odds become effective reference odds |
 | CALC-010 | Multi-lay standalone calculator | Outcome branches render reference stakes and results; no placement state |
+
+Shared calculator odds-entry cases are maintained in
+`tests/fixtures/calculator-odds-normalization-fixtures.json`. They cover decimal, fractional and
+unambiguous decimal-comma input plus ambiguous separators, malformed fractions and non-finite text.

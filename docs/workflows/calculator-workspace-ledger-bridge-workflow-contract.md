@@ -1,6 +1,6 @@
 # Workflow Contract: Calculator Workspace and Ledger Bridge
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-08_
 
 ## Status and scope
 
@@ -8,8 +8,9 @@ _Last updated: 2026-09-07_
 - Milestone: M14 Calculator Workspace and Ledger Bridge
 - Plum Duff issue coverage: GitHub issues `#35`, `#36`, `#37`, `#38`, and `#83`
 - Oddsmatcher integration: Deferred
-- Implemented family: profile-scoped Standard Qualifying reference calculator
-- Remaining first-family rollout: Free Bet SNR, Free Bet SR, Refund / Bonus Lock-In, and Cashback
+- Implemented family: Fund Manager-owned Matched Betting reference calculator with Qualifying,
+  Free Bet SNR/SR, Money Back, Cashback and contracted single-lay strategies
+- Canonical route: `/fund-manager/calculators`; the retired Profile route redirects safely
 - Ledger draft bridge: Later scope under `#36`; standalone calculation creates no business record
 
 ## User goal
@@ -86,13 +87,32 @@ Standalone calculators must use the same calculator shell rules as ledger modal 
 
 - Outplayed-inspired back/lay/result structure;
 - Plum Duff financial formatting and positive/negative/zero semantics;
-- numeric-only decimal inputs with no comma coercion;
+- canonical decimal calculation/storage; calculator entry also accepts exact fractional odds and
+  an unambiguous one- or two-decimal comma, normalising visibly to decimal before calculation;
 - bounded tables and result cards with no page-level horizontal scroll;
 - copy actions with inline feedback, not editor-modal toasts;
 - accessible names and stable `data-pd-id` identifiers.
 
 Any visual change made to the Sportsbook Matching calculator must be assessed for standalone
 calculator reuse before handoff.
+
+## Calculator odds entry (`calculator-odds-normalization-v1`)
+
+- Decimal input remains unchanged (`3`, `3.1`, `3.75`).
+- Fractional `a/b` becomes `1 + a/b`, rounded half-up to the approved two-decimal odds display
+  (`11/4 -> 3.75`, `5/2 -> 3.50`, `10/11 -> 1.91`).
+- A complete `digits,digit` or `digits,digits` value uses a decimal comma and becomes a full stop.
+- Three or more digits after a comma remain ambiguous (`1,000`) and are rejected, as are mixed
+  separators, whitespace, currency, scientific notation, non-finite values and zero denominators.
+- This narrowly supersedes the earlier blanket comma rejection for calculator entry only. Existing
+  ledger API payloads remain strict decimal until they deliberately adopt the shared normaliser.
+
+## Current calculation boundary
+
+The existing contracts resolve Standard, Underlay, Overlay, Custom and one explicit Partial Lay.
+Multiple partial-lay executions remain blocked by the source fixture evidence and must not be
+aggregated using invented maths. Back commission is likewise not present in the current canonical
+Sportsbook/Free Bet calculation engines.
 
 ## Tests and Playwright path
 

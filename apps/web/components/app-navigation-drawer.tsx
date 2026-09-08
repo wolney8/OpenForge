@@ -47,6 +47,7 @@ const navigationItems = [
     icon: "account_balance",
   },
   { id: "reports", href: "/reports", label: "Reports", icon: "summarize" },
+  { id: "calculators", href: "/fund-manager/calculators", label: "Calculators", icon: "calculate" },
 ] as const;
 
 export function AppNavigationDrawer({
@@ -133,6 +134,7 @@ export function AppNavigationDrawer({
       return pathname === "/settings" && locationHash === "#catalogue";
     }
     if (id === "reports") return pathname === "/reports";
+    if (id === "calculators") return pathname === "/fund-manager/calculators";
     return false;
   };
 

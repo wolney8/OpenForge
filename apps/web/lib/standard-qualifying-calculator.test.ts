@@ -15,7 +15,7 @@ describe("standard qualifying calculator input validation", () => {
     expect(getStandardQualifyingErrors({ ...valid, exchangeCommission: "0" }).exchangeCommission).toBeNull();
   });
 
-  it.each(["8,5", "£8.5", "8.5abc", "NaN", "Infinity", "1e3", "+8.5", " 8.5"])(
+  it.each(["1,000", "£8.5", "8.5abc", "NaN", "Infinity", "1e3", "+8.5", " 8.5"])(
     "rejects malformed odds %s without partial parsing",
     (layOdds) => expect(getStandardQualifyingErrors({ ...valid, layOdds }).layOdds).not.toBeNull()
   );

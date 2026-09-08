@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AccountsWorkflowShell } from "@/components/accounts-workflow-shell";
 import { CashAdjustmentWorkflowShell } from "@/components/cash-adjustment-workflow-shell";
-import { CalculatorWorkspace } from "@/components/calculator-workspace";
 import { CasinoOfferWorkflowShell } from "@/components/casino-offer-workflow-shell";
 import { FreeBetWorkflowShell } from "@/components/free-bet-workflow-shell";
 import { EachWayExtraPlaceWorkflowShell } from "@/components/each-way-extra-place-workflow-shell";
@@ -32,6 +31,13 @@ export default async function TrackerModulePage({
 }: TrackerModulePageProps) {
   const { profileId, module } = await params;
   const query = await searchParams;
+  if (module === "calculators") {
+    const preserved = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (typeof value === "string") preserved.set(key, value);
+    }
+    redirect(`/fund-manager/calculators${preserved.size ? `?${preserved.toString()}` : ""}`);
+  }
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
   const requestedRecord = typeof query.record === "string" ? query.record : undefined;
@@ -121,8 +127,6 @@ export default async function TrackerModulePage({
         <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} />
-      ) : module === "calculators" ? (
-        <CalculatorWorkspace profileId={profile.profileId} />
       ) : module === "profit-tracker" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" />
       ) : module === "reports" ? (

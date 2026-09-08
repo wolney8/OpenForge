@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-07 22:38 BST_
+_Last updated: 2026-09-08_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -10,9 +10,9 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  Standard Qualifying is the implemented first family; calculation is reference-only and creates
-  no ledger row. Free Bet SNR/SR, Refund / Bonus Lock-In, and Cashback remain.
-- Current implementation base before this tranche: `8f9339c7a0b521f30de16d9f11a743adaf1ed705` on `main`.
+  The Fund Manager Matched Betting family is the active tranche, covering Qualifying, Free Bet
+  SNR/SR, Money Back, Cashback and contracted single-lay strategies without ledger writes.
+- Current implementation base before this tranche: `2ac1d30d3f2e01bef9e3d8663a68a47c7ec5e695` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -37,8 +37,10 @@ durable requirements.
 
 ## Project plan
 
-- Current: #35 Standard Qualifying first functional slice.
-- Next queue: continue #35 with Free Bet SNR, then the remaining approved calculator families; #83 Profit Boost
+- Current: #35 Fund Manager Calculator Workspace and main Matched Betting family.
+- Next queue: #35 advanced families (Multi-Lay; Each Way / Extra Place; Sequential Lay; Early
+  Payout / 2UP; Accumulator / Multiples; Dutching; Odds Converter / Probability; Blackjack), then
+  #36 calculator-to-Opportunity bridge; #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
@@ -87,10 +89,9 @@ durable requirements.
 
 ## What changed
 
-- #35 now exposes **Profile → Calculators → Standard Qualifying**, backed by the existing Sportsbook
-  current-value calculation and strict numeric validation. Results are reference-only, Copy Lay
-  Stake copies the displayed canonical value, and focused API/browser checks prove no Sportsbook
-  row is created.
+- #35 now uses **Fund Manager → Calculators → Matched Betting**. The old Profile URL redirects;
+  calculator state can open in a separate tab without persistence. #112 adds fractional and
+  unambiguous decimal-comma entry while keeping canonical server-validated decimal odds.
 - [`630bde8`](https://github.com/wolney8/OpenForge/commit/630bde854a76ef8551a677690a060c3cf167a55a): separates peer fields from the action row so Search,
   Type and Status align while actions wrap independently; prior containment/focus coverage remains.
 - Tracking now includes local runtime handoff [#101](https://github.com/wolney8/OpenForge/issues/101),
@@ -105,11 +106,10 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Profile → Calculators → Standard Qualifying**. Enter Back stake `10.00`, Back odds `2.00`,
-   Lay odds `2.10`, and Exchange commission `0.02`; calculate and expect lay stake `£ 9.62`,
-   liability `£ 10.58`, and matched result `£ (0.58)`.
-2. Use **Copy Lay Stake** and expect clipboard text `9.62`. Change Lay odds to `8,5` and expect a
-   visible format error, no stale result, and a disabled Calculate action.
+1. Open **Fund Manager → Calculators → Matched Betting**. Enter Back stake `10.00`, Back odds
+   `11/4`, Lay odds `4.2`, and commission `0.02`; leave Back odds and expect visible `3.75`, then calculate.
+2. Switch Qualifying / Free Bet / Money Back, copy the lay stake, and use **Open in new tab**. Expect
+   the selected mode and inputs in an independent reference-only calculator session.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

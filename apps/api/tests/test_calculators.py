@@ -102,7 +102,7 @@ def test_standard_qualifying_validates_inputs_and_profile_scope(tmp_path: Path) 
 
     for field, value in [
         ("back_stake", "£10"),
-        ("back_odds", "8,5"),
+        ("back_odds", "1,000"),
         ("lay_odds", "8.5abc"),
         ("lay_odds", "NaN"),
         ("lay_odds", "Infinity"),
@@ -116,3 +116,84 @@ def test_standard_qualifying_validates_inputs_and_profile_scope(tmp_path: Path) 
         "/profiles/profile-missing/calculators/standard-qualifying/preview", json=base
     )
     assert missing_profile.status_code == 404
+
+
+def test_fund_manager_matched_betting_modes_are_reference_only(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    base = {
+        "back_stake": "10.00",
+        "back_odds": "4.00",
+        "lay_odds": "4.20",
+        "exchange_commission": "0.02",
+        "strategy": "Standard",
+    }
+    cases = [
+        {"bet_type": "qualifying"},
+        {"bet_type": "free_bet", "free_bet_mode": "SNR"},
+        {"bet_type": "free_bet", "free_bet_mode": "SR"},
+        {"bet_type": "money_back", "promotion_value": "10.00", "retention_percent": "70"},
+        {"bet_type": "qualifying", "promotion_mode": "cashback", "promotion_value": "5.00"},
+        {"bet_type": "qualifying", "strategy": "Underlay"},
+        {"bet_type": "qualifying", "strategy": "Overlay"},
+        {"bet_type": "qualifying", "strategy": "Custom", "manual_lay_stake": "9.00"},
+        {"bet_type": "qualifying", "strategy": "Partial Lay", "manual_lay_stake": "4.00"},
+    ]
+    for extra in cases:
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview", json={**base, **extra}
+        )
+        assert response.status_code == 200, (extra, response.text)
+        assert response.json()["result_kind"] == "reference"
+        assert response.json()["calculation_state"] == "resolved"
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
+def test_calculator_odds_normalization_and_rejection(tmp_path: Path, monkeypatch) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    endpoint = "/fund-manager/calculators/matched-betting/preview"
+    base = {"back_stake": "10.00", "back_odds": "3", "lay_odds": "3.1", "exchange_commission": "0"}
+    fixture = json.loads(
+        (
+            Path(__file__).parents[3] / "tests/fixtures/calculator-odds-normalization-fixtures.json"
+        ).read_text()
+    )
+    for case in fixture["valid"]:
+        response = client.post(endpoint, json={**base, "back_odds": case["input"]})
+        assert response.status_code == 200, response.text
+        assert response.json()["canonical_back_odds"] == case["canonical"]
+    calculation_calls = 0
+
+    def fail_if_calculated(*_args, **_kwargs):
+        nonlocal calculation_calls
+        calculation_calls += 1
+        raise AssertionError("malformed odds reached financial calculation")
+
+    monkeypatch.setattr(
+        "openforge_api.calculators.calculate_sportsbook_current_value", fail_if_calculated
+    )
+    for invalid in fixture["invalid"]:
+        assert client.post(endpoint, json={**base, "back_odds": invalid}).status_code == 422
+    assert calculation_calls == 0
+
+
+def test_fund_manager_calculator_is_protected_when_authentication_is_required(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    settings.auth_required = True
+    try:
+        response = TestClient(app).post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={
+                "back_stake": "10",
+                "back_odds": "3",
+                "lay_odds": "3.1",
+                "exchange_commission": "0",
+            },
+        )
+        assert response.status_code == 401
+    finally:
+        settings.auth_required = False
