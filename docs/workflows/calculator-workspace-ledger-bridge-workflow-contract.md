@@ -123,7 +123,13 @@ Multi-Lay accepts two or three mutually exclusive outcomes, matching the current
 contract fields. Its standalone response exposes the canonical engine's stake, liability and
 scenario value per branch plus the no-selection and conservative matched results. Each Way / Extra
 Place delegates to `each-way-extra-place-ledger-contract`; place fraction and explicit place counts
-remain separate inputs. Both adapters are reference-only and perform no business writes.
+remain separate inputs. Its reference response exposes the canonical bookmaker-win/bookmaker-place
+and exchange-win/exchange-place components needed by the shared family outcome matrix. Both
+adapters are reference-only and perform no business writes.
+
+Every standalone family reuses or extracts its nearest same-family ledger presentation. The Each
+Way / Extra Place wrappers share Back Bet, Place Terms, Lay Win, Lay Place and Outcomes primitives;
+Profile accounts, capability warnings and persistence remain ledger-wrapper responsibilities.
 
 ## Tests and Playwright path
 

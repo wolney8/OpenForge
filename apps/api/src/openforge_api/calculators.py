@@ -268,6 +268,22 @@ class EachWayResponse(BaseModel):
     extra_place_pnl: str | None
     unplaced_pnl: str
     current_value: str
+    first_place_bookie_win_pnl: str
+    first_place_bookie_place_pnl: str
+    first_place_exchange_win_pnl: str
+    first_place_exchange_place_pnl: str
+    standard_place_bookie_win_pnl: str
+    standard_place_bookie_place_pnl: str
+    standard_place_exchange_win_pnl: str
+    standard_place_exchange_place_pnl: str
+    extra_place_bookie_win_pnl: str | None
+    extra_place_bookie_place_pnl: str | None
+    extra_place_exchange_win_pnl: str | None
+    extra_place_exchange_place_pnl: str | None
+    unplaced_bookie_win_pnl: str
+    unplaced_bookie_place_pnl: str
+    unplaced_exchange_win_pnl: str
+    unplaced_exchange_place_pnl: str
 
 
 class StandardQualifyingResponse(BaseModel):
@@ -470,6 +486,30 @@ def preview_each_way(payload: EachWayPayload) -> EachWayResponse:
         extra_place_pnl=_money(result.extra_place_pnl) if payload.mode == "Extra Place" else None,
         unplaced_pnl=_money(result.unplaced_pnl),
         current_value=_money(result.current_value),
+        first_place_bookie_win_pnl=_money(result.first_place_bookie_win_pnl),
+        first_place_bookie_place_pnl=_money(result.first_place_bookie_place_pnl),
+        first_place_exchange_win_pnl=_money(result.first_place_exchange_win_pnl),
+        first_place_exchange_place_pnl=_money(result.first_place_exchange_place_pnl),
+        standard_place_bookie_win_pnl=_money(result.standard_place_bookie_win_pnl),
+        standard_place_bookie_place_pnl=_money(result.standard_place_bookie_place_pnl),
+        standard_place_exchange_win_pnl=_money(result.standard_place_exchange_win_pnl),
+        standard_place_exchange_place_pnl=_money(result.standard_place_exchange_place_pnl),
+        extra_place_bookie_win_pnl=_money(result.extra_place_bookie_win_pnl)
+        if payload.mode == "Extra Place"
+        else None,
+        extra_place_bookie_place_pnl=_money(result.extra_place_bookie_place_pnl)
+        if payload.mode == "Extra Place"
+        else None,
+        extra_place_exchange_win_pnl=_money(result.extra_place_exchange_win_pnl)
+        if payload.mode == "Extra Place"
+        else None,
+        extra_place_exchange_place_pnl=_money(result.extra_place_exchange_place_pnl)
+        if payload.mode == "Extra Place"
+        else None,
+        unplaced_bookie_win_pnl=_money(result.unplaced_bookie_win_pnl),
+        unplaced_bookie_place_pnl=_money(result.unplaced_bookie_place_pnl),
+        unplaced_exchange_win_pnl=_money(result.unplaced_exchange_win_pnl),
+        unplaced_exchange_place_pnl=_money(result.unplaced_exchange_place_pnl),
     )
 
 

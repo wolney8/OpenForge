@@ -155,37 +155,48 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.getByLabel("Back odds")).toHaveValue("3.75");
   await expect(page.locator('[data-pd-id="calculators.multi-outcome-1-odds"]')).toHaveValue("5.9");
   await page.getByRole("button", { name: "Calculate Multi-Lay" }).click();
-  await expect(page.getByText("Multi-Lay reference")).toBeVisible();
-  await page.getByRole("button", { name: "Copy stake" }).first().click();
+  await expect(page.getByText("Result Table")).toBeVisible();
+  await page.getByRole("button", { name: /Copy stake for Outcome 1/ }).click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
 
   await rail.getByRole("button", { name: "Each Way" }).click();
-  await page.getByLabel("E/W stake per leg").fill("10");
+  await page.getByLabel("E/W Stake (each way)").fill("10");
   await page.getByLabel("Back odds").fill("6");
-  await page.getByLabel("Win lay odds").fill("2.3");
-  await page.getByLabel("Place lay odds").fill("4.5");
+  await page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]').fill("2.3");
+  await page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]').fill("4.5");
   await page.getByRole("button", { name: "Calculate Each Way" }).click();
-  await expect(page.getByText("Each Way reference")).toBeVisible();
-  await page.locator('[data-pd-id="calculators.each-way-mode"]').selectOption("Extra Place");
-  await expect(page.getByText("Each Way reference")).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toBeVisible();
+  await expect(page.getByText("Calculated Lay Stake")).toHaveCount(2);
+  await page.getByRole("button", { name: "Extra Place", exact: true }).click();
+  await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]').getByText("Extra Place", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Calculate Extra Place" }).click();
-  await expect(page.getByText("Extra Place reference")).toBeVisible();
-  await page.getByRole("button", { name: "Copy win stake" }).click();
+  await page.getByRole("button", { name: "Copy stake" }).first().click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
 
-  const inputHeights = await Promise.all(["E/W stake per leg", "Back odds", "Win lay odds", "Place lay odds"].map((label) => page.getByLabel(label).boundingBox()));
-  expect(new Set(inputHeights.map((box) => Math.round(box?.height ?? 0))).size).toBe(1);
+  const inputHeights = await Promise.all([page.locator('[data-pd-id="calculators.each-way-stake"]'), page.locator('[data-pd-id="calculators.each-way-back-odds"]'), page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]'), page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]')].map((locator) => locator.boundingBox()));
+  expect(inputHeights.map((box) => Math.round(box?.height ?? 0))).toEqual([44, 44, 44, 44]);
   expect(inputHeights[0]!.y).toBeCloseTo(inputHeights[1]!.y, 0);
-  expect(inputHeights[2]!.y).toBeCloseTo(inputHeights[3]!.y, 0);
+  const winCommission = await page.locator('[data-pd-id="calculators.each-way-win-commission"]').boundingBox();
+  const placeCommission = await page.locator('[data-pd-id="calculators.each-way-place-commission"]').boundingBox();
+  expect(inputHeights[2]!.y).toBeCloseTo(winCommission!.y, 0);
+  expect(inputHeights[3]!.y).toBeCloseTo(placeCommission!.y, 0);
   const beforeTheme = await page.locator("html").getAttribute("data-theme");
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   await expect.poll(() => page.locator("html").getAttribute("data-theme")).not.toBe(beforeTheme);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
   await page.evaluate(() => { document.documentElement.style.fontSize = "20px"; });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
-  await page.locator('[data-pd-id="calculators.each-way-mode"]').focus();
-  await expect(page.locator('[data-pd-id="calculators.each-way-mode"]')).toBeFocused();
+  const scaledOverflow = await page.locator('[data-pd-id="calculators.workspace"]').evaluate((workspace) => ({
+    fits: workspace.scrollWidth <= workspace.clientWidth + 1,
+    dimensions: `${workspace.getBoundingClientRect().left}/${workspace.getBoundingClientRect().right}/${workspace.clientWidth}/${workspace.scrollWidth}`,
+    offenders: Array.from(workspace.querySelectorAll<HTMLElement>("*"))
+      .filter((element) => element.getBoundingClientRect().right > workspace.getBoundingClientRect().right + 1)
+      .slice(0, 8)
+      .map((element) => `${element.tagName}.${element.className}`),
+  }));
+  expect(scaledOverflow.fits, `${scaledOverflow.dimensions}\n${scaledOverflow.offenders.join("\n")}`).toBe(true);
+  await page.getByRole("button", { name: "Extra Place", exact: true }).focus();
+  await expect(page.getByRole("button", { name: "Extra Place", exact: true })).toBeFocused();
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(2000);
@@ -298,10 +309,141 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
     expect(hubGeometry.resultButton).toEqual(ledgerGeometry.resultButton);
     expect(hubGeometry.panel.padding).toBe(ledgerGeometry.panel.padding);
     expect(hubGeometry.panel.radius).toBe(ledgerGeometry.panel.radius);
+
+    await editor.getByLabel("Sportsbook lay workflow mode").selectOption("Multilay");
+    await expect(editor.getByText("Multi-Lay Calculator")).toBeVisible();
+    const readMultiLayGeometry = async (root: import("@playwright/test").Locator) => root.evaluate((element) => {
+      const pick = (selector: string) => {
+        const target = element.querySelector<HTMLElement>(selector);
+        if (!target) throw new Error(`Missing Multi-Lay parity element: ${selector}`);
+        const style = getComputedStyle(target);
+        return { padding: style.padding, radius: style.borderRadius, background: style.backgroundColor };
+      };
+      const field = element.querySelector<HTMLElement>(".multi-lay-planner-grid input");
+      if (!field) throw new Error("Missing Multi-Lay outcome field");
+      return {
+        band: pick(".calculator-band-multilay"),
+        panel: pick(".calculator-panel-card-multilay"),
+        heading: pick(".multi-lay-calculator-title-row"),
+        toolbar: pick(".multi-lay-planner-toolbar"),
+        grid: pick(".multi-lay-planner-grid"),
+        field: { height: field.getBoundingClientRect().height, radius: getComputedStyle(field).borderRadius, padding: getComputedStyle(field).padding },
+      };
+    });
+    const ledgerMultiLayGeometry = await readMultiLayGeometry(editor);
+    await page.goto("/fund-manager/calculators?family=multi-lay");
+    const standaloneMultiLay = page.locator('[data-pd-id="calculators.multi-lay.presentation"]');
+    await expect(standaloneMultiLay.getByText("Multi-Lay Calculator")).toBeVisible();
+    expect(await readMultiLayGeometry(standaloneMultiLay)).toEqual(ledgerMultiLayGeometry);
   } finally {
     await request.delete(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${recordId}`);
     await request.put(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
       data: { exchange_name: "Exchange A", commission_rate: originalCommission },
+    });
+  }
+});
+
+test("matches the Extra Places calculator presentation for the same family", async ({ page, request }) => {
+  test.setTimeout(60_000);
+  await mockSession(page);
+  const profileId = "profile-demo-001";
+  const accountsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`);
+  const accounts = await accountsResponse.json() as Array<{ account: string; bookmaker_id: string; type: string }>;
+  const bookmaker = accounts.find((account) => account.type === "Bookie");
+  expect(bookmaker).toBeTruthy();
+  const accountBase = { counts_in_cash_total: true, channel: "Online", status: "Active", current_balance: "25.00", pending_withdrawal_amount: "", last_balance_update: "", group_name: "Synthetic Group", platform: "Synthetic Platform" };
+  let exchange = accounts.find((account) => account.type === "Exchange");
+  if (!exchange) {
+    const exchangeResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, { data: { ...accountBase, catalogue_id: "EXCHANGE-BETCONNECT", account: "BetConnect", type: "Exchange", commission_rate: "0" } });
+    expect(exchangeResponse.ok()).toBeTruthy();
+    exchange = await exchangeResponse.json() as { account: string; bookmaker_id: string; type: string };
+  }
+  const created = await request.post(`${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`, { data: {
+    placed_at: "2026-09-08T12:00:00Z",
+    runner: "Synthetic family parity runner",
+    race: "Synthetic 14:30",
+    bookmaker: bookmaker!.account,
+    bookmaker_account: bookmaker!.account,
+    mode: "Extra Place",
+    each_way_stake: "10.00",
+    back_odds: "6.00",
+    place_term_numerator: "1",
+    place_term_denominator: "5",
+    bookmaker_places: "5",
+    exchange_places: "4",
+    win_exchange: exchange!.account,
+    win_lay_odds: "2.30",
+    win_commission: "0",
+    place_exchange: exchange!.account,
+    place_lay_odds: "4.50",
+    place_commission: "0",
+    status: "Placed",
+    result: "Pending",
+  }});
+  expect(created.ok()).toBeTruthy();
+  const { each_way_extra_place_id: recordId } = await created.json() as { each_way_extra_place_id: string };
+
+  const readFamilyGeometry = async (root: import("@playwright/test").Locator) => root.evaluate((element) => {
+    const pick = (selector: string) => {
+      const target = element.querySelector<HTMLElement>(selector);
+      if (!target) throw new Error(`Missing Each Way parity element: ${selector}`);
+      const style = getComputedStyle(target);
+      const box = target.getBoundingClientRect();
+      return { height: box.height, padding: style.padding, radius: style.borderRadius };
+    };
+    const surface = (selector: string) => {
+      const target = element.querySelector<HTMLElement>(selector);
+      if (!target) throw new Error(`Missing Each Way parity surface: ${selector}`);
+      const style = getComputedStyle(target);
+      return { padding: style.padding, radius: style.borderRadius, background: style.backgroundColor };
+    };
+    return {
+      headings: Array.from(element.querySelectorAll<HTMLElement>(".calculator-segment > h3, .calculator-result-card-heading > h3")).filter((heading) => heading.getClientRects().length > 0).map((heading) => heading.textContent?.trim()),
+      back: surface(".extra-place-back-segment"),
+      backField: pick(".extra-place-back-segment input"),
+      placeTerms: surface(".extra-place-place-terms"),
+      winLay: surface(".extra-place-lay-win"),
+      layField: pick(".extra-place-lay-win input"),
+      calculated: pick(".extra-place-lay-win .extra-place-calculated-stake"),
+      copy: pick(".extra-place-lay-win .extra-place-copy-button"),
+      outcome: surface(".extra-place-outcome-matrix"),
+      outcomeHeading: pick(".extra-place-outcome-matrix .calculator-result-card-heading"),
+      outcomeRow: pick(".extra-place-outcome-row"),
+    };
+  });
+
+  try {
+    await page.goto("/fund-manager/calculators?family=each-way");
+    await page.getByRole("button", { name: "Extra Place", exact: true }).click();
+    await page.getByLabel("E/W Stake (each way)").fill("10.00");
+    await page.getByLabel("Back odds").fill("6.00");
+    await page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]').fill("2.30");
+    await page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]').fill("4.50");
+    await page.getByRole("button", { name: "Calculate Extra Place" }).click();
+    await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toContainText("Extra Place");
+    const standalone = page.locator('[data-pd-id="calculators.each-way.presentation"]');
+    const standaloneGeometry = await readFamilyGeometry(standalone);
+    if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
+      await standalone.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-standalone-extra-place.png") });
+    }
+
+    await page.goto(`/profiles/${profileId}/tracker/each-way-extra-places`);
+    await page.getByText("Synthetic family parity runner", { exact: true }).click();
+    const editor = page.getByRole("dialog", { name: "Edit Extra Place row" });
+    await expect(editor).toBeVisible();
+    const ledgerGeometry = await readFamilyGeometry(editor);
+    if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
+      await editor.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-ledger-extra-place.png") });
+    }
+
+    expect(standaloneGeometry).toEqual(ledgerGeometry);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(editor.locator(".financial-value").first()).toHaveAttribute("data-money-motion", "none");
+  } finally {
+    await request.delete(`${apiBaseUrl}/profiles/${profileId}/each-way-extra-places/${recordId}`, {
+      data: { deletion_reason: "Synthetic calculator family parity cleanup" },
     });
   }
 });

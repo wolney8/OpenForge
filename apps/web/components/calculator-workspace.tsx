@@ -4,6 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import {
+  EachWayBackBetSection,
+  EachWayLaySection,
+  EachWayModeToggle,
+  EachWayOutcomeMatrix,
+  EachWayPlaceTermsSection,
+  EachWayStakeSummary,
+  EachWayTermField,
+  type EachWayOutcomeRow,
+} from "@/components/each-way-calculator-presentation";
+import { QuickSelectRail } from "@/components/quick-select-rail";
 import { apiBaseUrl } from "@/lib/api";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { hasCompleteDecimalInputSyntax, getSportsbookOddsInputError, normalizeCalculatorOddsInput } from "@/lib/sportsbook-odds-input";
@@ -313,22 +324,66 @@ function MultiLayCalculator({ onState, search }: { onState: (params: URLSearchPa
     } catch (caught) { if (version === requestVersion.current) setError(caught instanceof Error ? caught.message : "Unable to calculate Multi-Lay."); }
     finally { if (version === requestVersion.current) setBusy(false); }
   }
-  return <div className="calculator-panel-shell"><div className="calculator-shell">
-    <div className="calculator-band calculator-band-primary stack">
-      <div className="ledger-calculator-mode-bar"><SelectField id="multi-allocation" label="Matching mode" value={inputs.allocation} onChange={(value) => update({ ...inputs, allocation: value as MultiLayInputs["allocation"] })} options={[["standard", "Standard"], ["underlay", "Underlay"]]} /></div>
-      <div className="calculator-segment calculator-segment-back"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} /></div></div>
-      <div className="calculator-segment calculator-segment-lay stack"><div className="calculator-segment-heading"><h3>Mutually exclusive lay outcomes</h3><button className="button-link icon-text-action" disabled={inputs.outcomes.length >= 3} onClick={() => update({ ...inputs, outcomes: [...inputs.outcomes, { label: `Outcome ${inputs.outcomes.length + 1}`, layOdds: "" }] })} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add outcome</span></button></div>
-        {inputs.outcomes.map((outcome, index) => <div className="calculator-segment-grid calculator-segment-grid-lay" data-pd-id={`calculators.multi-lay.outcome-${index + 1}`} key={index}><Field error={outcome.label.trim() ? null : "Enter an outcome name."} id={`multi-outcome-${index + 1}-label`} inputMode="text" label={`Outcome ${index + 1}`} onChange={(value) => updateOutcome(index, "label", value)} value={outcome.label} /><Field error={getSportsbookOddsInputError(outcome.layOdds, { required: false })} id={`multi-outcome-${index + 1}-odds`} label="Lay odds" onBlur={() => normalizeOutcome(index)} onChange={(value) => updateOutcome(index, "layOdds", value)} value={outcome.layOdds} />{index >= 2 ? <button aria-label={`Remove ${outcome.label || `outcome ${index + 1}`}`} className="icon-button compact-action" onClick={() => update({ ...inputs, outcomes: inputs.outcomes.filter((_, at) => at !== index) })} type="button"><span aria-hidden="true" className="material-symbols-outlined">remove</span></button> : <span aria-hidden="true" />}</div>)}
-        <Field error={commissionError(inputs.commission)} id="multi-commission" label="Exchange commission" onChange={(value) => update({ ...inputs, commission: value })} value={inputs.commission} />
+  return <div className="calculator-panel-shell" data-pd-id="calculators.multi-lay.presentation"><div className="calculator-shell">
+    <div className="calculator-band calculator-band-primary"><div className="calculator-segment calculator-segment-back"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} /></div></div></div>
+    <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
+      <div className="calculator-panel-card calculator-panel-card-multilay">
+        <div className="multi-lay-calculator-title-row"><span className="eyebrow">Multi-Lay Calculator</span></div>
+        <div className="stack">
+          <div className="multi-lay-planner-toolbar">
+            <button aria-checked={inputs.allocation === "underlay"} className={`material-switch${inputs.allocation === "underlay" ? " is-selected" : ""}`} onClick={() => update({ ...inputs, allocation: inputs.allocation === "underlay" ? "standard" : "underlay" })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Underlay</span></button>
+            <Field error={commissionError(inputs.commission)} id="multi-commission" label="Exchange commission" onChange={(value) => update({ ...inputs, commission: value })} value={inputs.commission} />
+          </div>
+          <div className="multi-lay-grid-wrap"><div className="multi-lay-table-heading">Outcome Table</div><table className="data-table multi-lay-planner-grid"><thead><tr><th>#</th><th>Outcome</th><th>Odds</th><th>{inputs.allocation === "underlay" ? "Underlay Stake" : "Lay Stake"}</th><th>Liability</th><th>Actions</th></tr></thead><tbody>
+            {inputs.outcomes.map((outcome, index) => { const branch = result?.branches[index]; return <tr data-pd-id={`calculators.multi-lay.outcome-${index + 1}`} key={index}>
+              <td>{index + 1}</td><td><label className="field-control"><span className="sr-only">Outcome {index + 1} name</span><input aria-invalid={!outcome.label.trim()} data-pd-id={`calculators.multi-outcome-${index + 1}-label`} onChange={(event) => updateOutcome(index, "label", event.target.value)} value={outcome.label} /></label></td>
+              <td><label className="field-control"><span className="sr-only">Outcome {index + 1} lay odds</span><input aria-invalid={Boolean(getSportsbookOddsInputError(outcome.layOdds, { required: false }))} data-pd-id={`calculators.multi-outcome-${index + 1}-odds`} inputMode="decimal" onBlur={() => normalizeOutcome(index)} onChange={(event) => updateOutcome(index, "layOdds", event.target.value)} value={outcome.layOdds} /></label></td>
+              <td>{branch ? <FinancialValue label={`${branch.label} lay stake`} tone="inherit" value={branch.lay_stake} /> : <span>£ -</span>}</td><td>{branch ? <FinancialValue label={`${branch.label} liability`} tone="inherit" value={branch.liability} /> : <span>£ -</span>}</td>
+              <td><div className="multi-lay-row-actions"><button aria-label={`Copy stake for ${outcome.label || `outcome ${index + 1}`}`} className="icon-button multi-lay-action-button" disabled={!branch} onClick={() => { if (branch) void copyCalculatorValue(branch.lay_stake, setCopyFeedback); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">copy_all</span></button>{index >= 2 ? <button aria-label={`Remove ${outcome.label || `outcome ${index + 1}`}`} className="icon-button icon-button-destructive multi-lay-action-button" onClick={() => update({ ...inputs, outcomes: inputs.outcomes.filter((_, at) => at !== index) })} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button> : <span aria-hidden="true" className="multi-lay-action-placeholder" />}</div></td>
+            </tr>; })}
+          </tbody></table></div>
+          <div className="tracker-nav multi-lay-add-row"><button className="button-link" disabled={inputs.outcomes.length >= 3} onClick={() => update({ ...inputs, outcomes: [...inputs.outcomes, { label: `Outcome ${inputs.outcomes.length + 1}`, layOdds: "" }] })} type="button">Add outcome</button></div>
+          {result ? <div className="multi-lay-grid-wrap"><div className="multi-lay-table-heading">Result Table</div><table className="data-table multi-lay-results-grid"><thead><tr><th>Outcome</th><th>Profit</th></tr></thead><tbody>{result.branches.map((branch) => <FinancialValueReplayGroup key={branch.label}><tr><td>{branch.label}</td><td><FinancialValue label={`${branch.label} outcome value`} value={branch.outcome_value} /></td></tr></FinancialValueReplayGroup>)}<tr><td>No selection wins</td><td><FinancialValue label="No selection wins" value={result.no_selection_value} /></td></tr></tbody><tfoot><tr><td>Total liability</td><td><FinancialValue label="Total liability" value={result.total_liability} /></td></tr><tr><td>Matched result</td><td><FinancialValue label="Matched result" value={result.matched_result} /></td></tr></tfoot></table></div> : null}
+          <div className="tracker-nav"><button className="modal-primary-button icon-text-action" disabled={invalid || busy} onClick={() => void calculate()} type="button">{busy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">calculate</span>}<span>{busy ? "Calculating..." : "Calculate Multi-Lay"}</span></button></div>
+          {error ? <p className="error-text" role="alert">{error}</p> : null}{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
+        </div>
       </div>
-      <div className="tracker-nav"><button className="modal-primary-button icon-text-action" disabled={invalid || busy} onClick={() => void calculate()} type="button">{busy ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">calculate</span>}<span>{busy ? "Calculating..." : "Calculate Multi-Lay"}</span></button></div>{error ? <p className="error-text" role="alert">{error}</p> : null}
     </div>
-    {result ? <div className="calculator-band calculator-band-secondary"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>Multi-Lay reference</strong></div><dl className="calculator-result-card-values">{result.branches.map((branch) => <div key={branch.label}><dt>{branch.label} lay stake</dt><dd><FinancialValue label={`${branch.label} lay stake`} value={branch.lay_stake} /></dd><dt>Liability</dt><dd><FinancialValue label={`${branch.label} liability`} value={branch.liability} /></dd><dt>Outcome value</dt><dd><FinancialValue label={`${branch.label} outcome value`} value={branch.outcome_value} /></dd><button className="review-chip review-chip-copy" onClick={() => void copyCalculatorValue(branch.lay_stake, setCopyFeedback)} type="button">Copy stake</button></div>)}<ResultValue label="No selection wins" value={result.no_selection_value} /><ResultValue label="Total liability" value={result.total_liability} /><ResultValue label="Matched result" value={result.matched_result} /></dl>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div></div> : null}
   </div></div>;
 }
 
 type EachWayInputs = { mode: "Each Way" | "Extra Place"; stake: string; backOdds: string; term: string; bookmakerPlaces: string; exchangePlaces: string; winLayOdds: string; placeLayOdds: string; winCommission: string; placeCommission: string };
-type EachWayResult = { mode: EachWayInputs["mode"]; place_back_odds: string; win_lay_stake: string; place_lay_stake: string; win_liability: string; place_liability: string; qualifying_loss: string; extra_place_profit: string | null; first_place_pnl: string; standard_place_pnl: string; extra_place_pnl: string | null; unplaced_pnl: string; current_value: string };
+type EachWayResult = {
+  mode: EachWayInputs["mode"];
+  place_back_odds: string;
+  win_lay_stake: string;
+  place_lay_stake: string;
+  win_liability: string;
+  place_liability: string;
+  qualifying_loss: string;
+  extra_place_profit: string | null;
+  first_place_pnl: string;
+  standard_place_pnl: string;
+  extra_place_pnl: string | null;
+  unplaced_pnl: string;
+  current_value: string;
+  first_place_bookie_win_pnl: string;
+  first_place_bookie_place_pnl: string;
+  first_place_exchange_win_pnl: string;
+  first_place_exchange_place_pnl: string;
+  standard_place_bookie_win_pnl: string;
+  standard_place_bookie_place_pnl: string;
+  standard_place_exchange_win_pnl: string;
+  standard_place_exchange_place_pnl: string;
+  extra_place_bookie_win_pnl: string | null;
+  extra_place_bookie_place_pnl: string | null;
+  extra_place_exchange_win_pnl: string | null;
+  extra_place_exchange_place_pnl: string | null;
+  unplaced_bookie_win_pnl: string;
+  unplaced_bookie_place_pnl: string;
+  unplaced_exchange_win_pnl: string;
+  unplaced_exchange_place_pnl: string;
+};
 const eachWayDefaults: EachWayInputs = { mode: "Each Way", stake: "", backOdds: "", term: "5", bookmakerPlaces: "4", exchangePlaces: "4", winLayOdds: "", placeLayOdds: "", winCommission: "0", placeCommission: "0" };
 function readEachWay(search: URLSearchParams): EachWayInputs { try { return { ...eachWayDefaults, ...(JSON.parse(search.get("eachWay") ?? "null") ?? {}) }; } catch { return eachWayDefaults; } }
 function EachWayCalculator({ onState, search }: { onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
@@ -341,7 +396,45 @@ function EachWayCalculator({ onState, search }: { onState: (params: URLSearchPar
   function switchMode(mode: EachWayInputs["mode"]) { update(mode === "Each Way" ? { mode, exchangePlaces: inputs.bookmakerPlaces } : { mode, bookmakerPlaces: Number(inputs.bookmakerPlaces) > Number(inputs.exchangePlaces) ? inputs.bookmakerPlaces : String(Number(inputs.exchangePlaces || "4") + 1) }); }
   function normalize(field: "backOdds" | "winLayOdds" | "placeLayOdds") { const normalized = normalizeCalculatorOddsInput(inputs[field]); if (normalized.converted) update({ [field]: normalized.canonicalValue }); }
   async function calculate() { if (invalid || busy) return; const version = ++requestVersion.current; setBusy(true); setError(""); try { const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/each-way/preview`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: inputs.mode, each_way_stake: inputs.stake, back_odds: inputs.backOdds, place_term_numerator: "1", place_term_denominator: inputs.term, bookmaker_places: Number(inputs.bookmakerPlaces), exchange_places: Number(inputs.exchangePlaces), win_lay_odds: inputs.winLayOdds, place_lay_odds: inputs.placeLayOdds, win_commission: inputs.winCommission, place_commission: inputs.placeCommission }) }); if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Unable to calculate Each Way.")); const next = await response.json() as EachWayResult; if (version === requestVersion.current) setResult(next); } catch (caught) { if (version === requestVersion.current) setError(caught instanceof Error ? caught.message : "Unable to calculate Each Way."); } finally { if (version === requestVersion.current) setBusy(false); } }
-  return <div className="calculator-panel-shell"><div className="calculator-shell"><div className="calculator-band calculator-band-primary stack"><div className="ledger-calculator-mode-bar"><SelectField id="each-way-mode" label="Mode" onChange={(value) => switchMode(value as EachWayInputs["mode"])} options={[["Each Way", "Each Way"], ["Extra Place", "Extra Place"]]} value={inputs.mode} /></div><div className="form-grid"><section className="calculator-segment calculator-segment-back"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="each-way-stake" label="E/W stake per leg" onChange={(value) => update({ stake: value })} value={inputs.stake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="each-way-back-odds" label="Back odds" onBlur={() => normalize("backOdds")} onChange={(value) => update({ backOdds: value })} value={inputs.backOdds} /><Field error={null} id="each-way-term" inputMode="numeric" label="Each-way terms (1 /)" onChange={(value) => update({ term: value })} value={inputs.term} /></div></section><section className="calculator-segment calculator-segment-lay"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={getSportsbookOddsInputError(inputs.winLayOdds, { required: false })} id="each-way-win-lay-odds" label="Win lay odds" onBlur={() => normalize("winLayOdds")} onChange={(value) => update({ winLayOdds: value })} value={inputs.winLayOdds} /><Field error={getSportsbookOddsInputError(inputs.placeLayOdds, { required: false })} id="each-way-place-lay-odds" label="Place lay odds" onBlur={() => normalize("placeLayOdds")} onChange={(value) => update({ placeLayOdds: value })} value={inputs.placeLayOdds} /><Field error={commissionError(inputs.winCommission)} id="each-way-win-commission" label="Win commission" onChange={(value) => update({ winCommission: value })} value={inputs.winCommission} /><Field error={commissionError(inputs.placeCommission)} id="each-way-place-commission" label="Place commission" onChange={(value) => update({ placeCommission: value })} value={inputs.placeCommission} /></div></section></div><div className="form-grid"><Field error={null} id="each-way-bookmaker-places" inputMode="numeric" label="Bookmaker pays" onChange={(value) => update({ bookmakerPlaces: value, ...(inputs.mode === "Each Way" ? { exchangePlaces: value } : {}) })} value={inputs.bookmakerPlaces} /><Field error={null} id="each-way-exchange-places" inputMode="numeric" label="Exchange pays" onChange={(value) => update({ exchangePlaces: value, ...(inputs.mode === "Each Way" ? { bookmakerPlaces: value } : {}) })} value={inputs.exchangePlaces} /></div><div className="tracker-nav"><button className="modal-primary-button icon-text-action" disabled={invalid || busy} onClick={() => void calculate()} type="button"><span aria-hidden="true" className={busy ? "button-spinner" : "material-symbols-outlined"}>{busy ? "" : "calculate"}</span><span>{busy ? "Calculating..." : `Calculate ${inputs.mode}`}</span></button></div>{error ? <p className="error-text" role="alert">{error}</p> : null}</div>{result ? <div className="calculator-band calculator-band-secondary"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{result.mode} reference</strong></div><dl className="calculator-result-card-values"><ResultValue label="Win lay stake" value={result.win_lay_stake} /><ResultValue label="Place lay stake" value={result.place_lay_stake} /><ResultValue label="Win liability" value={result.win_liability} /><ResultValue label="Place liability" value={result.place_liability} /><ResultValue label="First place" value={result.first_place_pnl} /><ResultValue label="Standard place" value={result.standard_place_pnl} />{result.extra_place_pnl ? <ResultValue label="Extra place" value={result.extra_place_pnl} /> : null}<ResultValue label="Unplaced" value={result.unplaced_pnl} /><ResultValue label="Current value" value={result.current_value} /></dl><div className="tracker-nav"><button className="review-chip review-chip-copy" onClick={() => void copyCalculatorValue(result.win_lay_stake, setCopyFeedback)} type="button">Copy win stake</button><button className="review-chip review-chip-copy" onClick={() => void copyCalculatorValue(result.place_lay_stake, setCopyFeedback)} type="button">Copy place stake</button></div>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div></div> : null}</div></div>;
+  const outcomes: EachWayOutcomeRow[] = [
+    { key: "win", label: "First Place", bookmaker: [result?.first_place_bookie_win_pnl, result?.first_place_bookie_place_pnl], exchange: [result?.first_place_exchange_win_pnl, result?.first_place_exchange_place_pnl], total: result?.first_place_pnl, result: "Win" },
+    { key: "standard", label: "Standard Place", bookmaker: [result?.standard_place_bookie_win_pnl, result?.standard_place_bookie_place_pnl], exchange: [result?.standard_place_exchange_win_pnl, result?.standard_place_exchange_place_pnl], total: result?.standard_place_pnl, result: "Standard Place" },
+    ...(inputs.mode === "Extra Place" ? [{ key: "extra", label: "Extra Place", bookmaker: [result?.extra_place_bookie_win_pnl, result?.extra_place_bookie_place_pnl], exchange: [result?.extra_place_exchange_win_pnl, result?.extra_place_exchange_place_pnl], total: result?.extra_place_pnl, result: "Extra Place" }] : []),
+    { key: "unplaced", label: "Doesn't Place", bookmaker: [result?.unplaced_bookie_win_pnl, result?.unplaced_bookie_place_pnl], exchange: [result?.unplaced_exchange_win_pnl, result?.unplaced_exchange_place_pnl], total: result?.unplaced_pnl, result: "Unplaced" },
+  ];
+  const stakeChoices = ["£ 2.50", "£ 5.00", "£ 10.00"];
+  const termChoices = ["1/4", "1/5", "1/6"];
+  const placeChoices = ["Paying 4 instead of 3", "Paying 5 instead of 4", "Paying 6 instead of 4", "Paying 6 instead of 5", "Paying 8 instead of 5", "Paying 10 instead of 8"];
+  return <div className="calculator-panel-shell extra-place-calculator-presentation extra-place-theme-ep" data-pd-id="calculators.each-way.presentation"><div className="calculator-shell"><div className="calculator-band calculator-band-primary stack">
+    <EachWayModeToggle mode={inputs.mode} onChange={switchMode} />
+    <EachWayBackBetSection placeTerms={<EachWayPlaceTermsSection
+      summary={inputs.mode === "Extra Place" ? `Paying ${inputs.bookmakerPlaces || "—"} instead of ${inputs.exchangePlaces || "—"}.` : `Paying ${inputs.bookmakerPlaces || "—"} places.`}
+      quickChoices={<div className="extra-place-quick-choice-row"><QuickSelectRail ariaLabel="Place terms quick choices" choices={placeChoices.map((label) => ({ label, value: label }))} onSelect={(choice) => { const match = choice.match(/Paying (\d+) instead of (\d+)/); if (match) update({ bookmakerPlaces: match[1], exchangePlaces: match[2] }); }} selectedValues={[`Paying ${inputs.bookmakerPlaces} instead of ${inputs.exchangePlaces}`]} /></div>}
+    >
+      <Field error={null} id="each-way-bookmaker-places" inputMode="numeric" label="Bookmaker Pays" onChange={(value) => update({ bookmakerPlaces: value, ...(inputs.mode === "Each Way" ? { exchangePlaces: value } : {}) })} value={inputs.bookmakerPlaces} />
+      <Field error={null} id="each-way-exchange-places" inputMode="numeric" label="Exchange Pays" onChange={(value) => update({ exchangePlaces: value, ...(inputs.mode === "Each Way" ? { bookmakerPlaces: value } : {}) })} value={inputs.exchangePlaces} />
+    </EachWayPlaceTermsSection>}>
+      <div className="extra-place-field-with-chips">
+        <Field error={null} id="each-way-stake" label="E/W Stake (each way)" onChange={(value) => update({ stake: value })} value={inputs.stake} />
+        <EachWayStakeSummary stake={inputs.stake} />
+        <div className="extra-place-quick-choice-row"><QuickSelectRail ariaLabel="Each-way stake quick choices" choices={stakeChoices.map((label) => ({ label, value: label }))} onSelect={(choice) => update({ stake: choice.replace(/[^\d.]/g, "") })} selectedValues={[]} /></div>
+      </div>
+      <Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="each-way-back-odds" label="Back Odds" onBlur={() => normalize("backOdds")} onChange={(value) => update({ backOdds: value })} value={inputs.backOdds} />
+      <EachWayTermField dataPdId="calculators.each-way-term" inputId="calculator-each-way-term" onChange={(value) => update({ term: value })} quickChoices={<div className="extra-place-quick-choice-row"><QuickSelectRail ariaLabel="Each-way terms quick choices" choices={termChoices.map((label) => ({ label, value: label }))} onSelect={(choice) => update({ term: choice.split("/")[1] })} selectedValues={[`1/${inputs.term}`]} /></div>} value={inputs.term} />
+    </EachWayBackBetSection>
+    <EachWayLaySection kind="win" label="Lay The Win" liability={result?.win_liability} onCopy={(value) => { if (value) void copyCalculatorValue(value, setCopyFeedback); }} stake={result?.win_lay_stake}>
+      <Field error={getSportsbookOddsInputError(inputs.winLayOdds, { required: false })} id="each-way-win-lay-odds" label="Lay Odds" onBlur={() => normalize("winLayOdds")} onChange={(value) => update({ winLayOdds: value })} value={inputs.winLayOdds} />
+      <Field error={commissionError(inputs.winCommission)} id="each-way-win-commission" label="Win Commission" onChange={(value) => update({ winCommission: value })} value={inputs.winCommission} />
+    </EachWayLaySection>
+    <EachWayLaySection kind="place" label="Lay The Place" liability={result?.place_liability} onCopy={(value) => { if (value) void copyCalculatorValue(value, setCopyFeedback); }} stake={result?.place_lay_stake}>
+      <Field error={getSportsbookOddsInputError(inputs.placeLayOdds, { required: false })} id="each-way-place-lay-odds" label="Lay Odds" onBlur={() => normalize("placeLayOdds")} onChange={(value) => update({ placeLayOdds: value })} value={inputs.placeLayOdds} />
+      <Field error={commissionError(inputs.placeCommission)} id="each-way-place-commission" label="Place Commission" onChange={(value) => update({ placeCommission: value })} value={inputs.placeCommission} />
+    </EachWayLaySection>
+    <div className="tracker-nav"><button className="modal-primary-button icon-text-action" disabled={invalid || busy} onClick={() => void calculate()} type="button"><span aria-hidden="true" className={busy ? "button-spinner" : "material-symbols-outlined"}>{busy ? "" : "calculate"}</span><span>{busy ? "Calculating..." : `Calculate ${inputs.mode}`}</span></button></div>
+    {error ? <p className="error-text" role="alert">{error}</p> : null}
+    {copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
+    <EachWayOutcomeMatrix inspectionId="calculators.each-way.outcomes" outcomes={outcomes} qualifyingLoss={result?.qualifying_loss} selectedResult="" />
+  </div></div></div>;
 }
 
 async function copyCalculatorValue(value: string, setFeedback: (value: string) => void) {

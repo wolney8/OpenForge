@@ -4,6 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import {
+  EachWayBackBetSection,
+  EachWayLaySection,
+  EachWayModeToggle,
+  EachWayOutcomeMatrix,
+  EachWayPlaceTermsSection,
+  EachWayStakeSummary,
+  EachWayTermField,
+  type EachWayOutcomeRow,
+} from "@/components/each-way-calculator-presentation";
+import {
   BookmakerIdentity,
   catalogueIdForBookmaker,
   useBookmakerCatalogue,
@@ -38,7 +48,6 @@ import {
   type ExtraPlaceAccountAccess,
 } from "@/lib/extra-place-account-options";
 import type { AccountAuthorityRecord } from "@/lib/account-authorities";
-import { formatFinancialValue } from "@/lib/financial-display";
 import {
   extraPlacePositionChoices,
   extraPlacePositionForResult,
@@ -301,14 +310,6 @@ function resultChoices(
     result,
     result === "Void/NR" ? "Void / NR" : result,
   ]);
-}
-function matrixValue(value: string | null | undefined) {
-  const number = asNumber(value);
-  return (
-    <span className="extra-place-matrix-value">
-      {number === null ? "£ -" : <FinancialValue value={number} />}
-    </span>
-  );
 }
 function parseRowDate(value: string | null | undefined) {
   if (!value) return null;
@@ -2351,27 +2352,36 @@ function Calculate({
           </div>
         </div>
       </section>
-      <div className="extra-place-bet-type-toggle" role="group">
-        <button
-          aria-pressed={form.mode === "Each Way"}
-          className="extra-place-bet-type-toggle-option"
-          onClick={() => onUpdate("mode", "Each Way")}
-          type="button"
-        >
-          Each Way
-        </button>
-        <button
-          aria-pressed={form.mode === "Extra Place"}
-          className="extra-place-bet-type-toggle-option"
-          onClick={() => onUpdate("mode", "Extra Place")}
-          type="button"
-        >
-          Extra Place
-        </button>
-      </div>
-      <section className="calculator-segment calculator-segment-back">
-        <h3>Back Bet</h3>
-        <div className="form-grid">
+      <EachWayModeToggle mode={form.mode} onChange={(mode) => onUpdate("mode", mode)} />
+      <EachWayBackBetSection
+        placeTerms={
+          <EachWayPlaceTermsSection
+            summary={form.mode === "Extra Place"
+              ? `Paying ${form.bookmaker_places || "—"} instead of ${form.exchange_places || "—"}.`
+              : `Paying ${form.bookmaker_places || "—"} places.`}
+            quickChoices={<Chips
+              labels={prioritiseExtraPlaceTerms([
+                "Paying 4 instead of 3",
+                "Paying 5 instead of 4",
+                "Paying 6 instead of 4",
+                "Paying 6 instead of 5",
+                "Paying 8 instead of 5",
+                "Paying 10 instead of 8",
+              ], rows, `Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`)}
+              onPick={(next) => {
+                const match = next.match(/Paying (\d+) instead of (\d+)/);
+                if (!match) return;
+                onUpdate("bookmaker_places", match[1]);
+                onUpdate("exchange_places", match[2]);
+              }}
+              selected={[`Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`]}
+            />}
+          >
+            <Field label="Bookmaker Pays" onChange={(next) => onUpdate("bookmaker_places", next)} type="number" value={form.bookmaker_places} />
+            <Field label="Exchange Pays" onChange={(next) => onUpdate("exchange_places", next)} type="number" value={form.exchange_places} />
+          </EachWayPlaceTermsSection>
+        }
+      >
           <div className="extra-place-field-with-chips">
             <ChoiceField
               label="Bookmaker"
@@ -2412,10 +2422,7 @@ function Calculate({
               type="number"
               value={form.each_way_stake}
             />
-            <p className="extra-place-stake-explainer">
-              {neutralValue(form.each_way_stake)} each way. Total bookmaker stake: {" "}
-              {neutralValue(String((asNumber(form.each_way_stake) ?? 0) * 2))}.
-            </p>
+            <EachWayStakeSummary stake={form.each_way_stake} />
             <Chips
               labels={["£ 2.50", "£ 5.00", "£ 10.00"]}
               onPick={(next) =>
@@ -2429,74 +2436,18 @@ function Calculate({
             type="number"
             value={form.back_odds}
           />
-          <div className="extra-place-field-with-chips">
-            <label className="field-control">
-              <span>Each-Way Terms</span>
-              <div className="extra-place-term-input">
-                <span>1 /</span>
-                <input
-                  aria-label="Each-way term denominator"
-                  inputMode="numeric"
-                  onChange={(event) =>
-                    onUpdate(
-                      "place_term_denominator",
-                      event.target.value.replace(/[^0-9]/g, ""),
-                    )
-                  }
-                  value={form.place_term_denominator}
-                />
-              </div>
-            </label>
-            <Chips
+          <EachWayTermField
+            inputId="extra-place-term-denominator"
+            onChange={(next) => onUpdate("place_term_denominator", next)}
+            quickChoices={<Chips
               labels={["1/4", "1/5", "1/6"]}
               onPick={(next) =>
                 onUpdate("place_term_denominator", next.split("/")[1])
               }
-            />
-          </div>
-        </div>
-        <div className="extra-place-place-terms">
-          <strong className="extra-place-place-terms-title">Place Terms</strong>
-          <div className="extra-place-place-terms-inputs">
-            <Field
-              label="Bookmaker Pays"
-              onChange={(next) => onUpdate("bookmaker_places", next)}
-              type="number"
-              value={form.bookmaker_places}
-            />
-            <Field
-              label="Exchange Pays"
-              onChange={(next) => onUpdate("exchange_places", next)}
-              type="number"
-              value={form.exchange_places}
-            />
-          </div>
-          <p className="extra-place-stake-explainer">
-            {form.mode === "Extra Place"
-              ? `Paying ${form.bookmaker_places || "—"} instead of ${form.exchange_places || "—"}.`
-              : `Paying ${form.bookmaker_places || "—"} places.`}
-          </p>
-          <Chips
-            labels={prioritiseExtraPlaceTerms([
-              "Paying 4 instead of 3",
-              "Paying 5 instead of 4",
-              "Paying 6 instead of 4",
-              "Paying 6 instead of 5",
-              "Paying 8 instead of 5",
-              "Paying 10 instead of 8",
-            ], rows, `Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`)}
-            onPick={(next) => {
-              const match = next.match(/Paying (\d+) instead of (\d+)/);
-              if (!match) return;
-              onUpdate("bookmaker_places", match[1]);
-              onUpdate("exchange_places", match[2]);
-            }}
-            selected={[
-              `Paying ${form.bookmaker_places || ""} instead of ${form.exchange_places || ""}`,
-            ]}
+            />}
+            value={form.place_term_denominator}
           />
-        </div>
-      </section>
+      </EachWayBackBetSection>
       <LaySegment
         exchange="win_exchange"
         exchangeOptions={exchangeOptions}
@@ -2553,11 +2504,14 @@ function LaySegment({
   onCopy: (value: string | null | undefined) => void;
 }) {
   return (
-    <section
-      className={`calculator-segment calculator-segment-lay extra-place-lay-segment extra-place-lay-${kind}`}
+    <EachWayLaySection
+      kind={kind}
+      label={label}
+      liability={liability}
+      onCopy={onCopy}
+      quickChoices={<div className="extra-place-account-option-rail"><QuickSelectRail ariaLabel={`${label} Account quick selections`} choices={[...new Set([form[exchange] as string, ...exchangeQuickOptions])].filter(Boolean).map((value) => ({ label: value, value }))} onSelect={(next) => onUpdate(exchange, next)} selectedValues={[form[exchange] as string]} /></div>}
+      stake={stake}
     >
-      <h3>{label}</h3>
-      <div className="form-grid">
         <ChoiceField
           label="Exchange"
           onChange={(next) => onUpdate(exchange, next)}
@@ -2570,25 +2524,7 @@ function LaySegment({
           type="number"
           value={form[odds] as string}
         />
-      </div>
-      <div className="extra-place-account-option-rail"><QuickSelectRail ariaLabel={`${label} Account quick selections`} choices={[...new Set([form[exchange] as string, ...exchangeQuickOptions])].filter(Boolean).map((value) => ({ label: value, value }))} onSelect={(next) => onUpdate(exchange, next)} selectedValues={[form[exchange] as string]} /></div>
-      <div className="extra-place-calculated-stake">
-        <span>Calculated Lay Stake</span>
-        <strong>{neutralValue(stake)}</strong>
-        <span>Liability {neutralValue(liability)}</span>
-        <button
-          className="review-chip extra-place-copy-button"
-          disabled={!stake}
-          onClick={() => void onCopy(stake)}
-          type="button"
-        >
-          <span aria-hidden="true" className="material-symbols-outlined">
-            content_copy
-          </span>
-          <span>Copy stake</span>
-        </button>
-      </div>
-    </section>
+    </EachWayLaySection>
   );
 }
 function Settlement({
@@ -2709,18 +2645,11 @@ function Outcome({
   mode: "Each Way" | "Extra Place";
   result: string;
 }) {
-  const outcomes: Array<{
-    key: string;
-    label: string;
-    bookie: Array<string | null | undefined>;
-    exchange: Array<string | null | undefined>;
-    total: string | null | undefined;
-    result: string;
-  }> = [
+  const outcomes: EachWayOutcomeRow[] = [
     {
       key: "win",
       label: "First Place",
-      bookie: [
+      bookmaker: [
         preview?.first_place_bookie_win_pnl,
         preview?.first_place_bookie_place_pnl,
       ],
@@ -2734,7 +2663,7 @@ function Outcome({
     {
       key: "standard",
       label: "Standard Place",
-      bookie: [
+      bookmaker: [
         preview?.standard_place_bookie_win_pnl,
         preview?.standard_place_bookie_place_pnl,
       ],
@@ -2750,7 +2679,7 @@ function Outcome({
           {
             key: "extra",
             label: "Extra Place",
-            bookie: [
+            bookmaker: [
               preview?.extra_place_bookie_win_pnl,
               preview?.extra_place_bookie_place_pnl,
             ],
@@ -2766,7 +2695,7 @@ function Outcome({
     {
       key: "unplaced",
       label: "Doesn't Place",
-      bookie: [
+      bookmaker: [
         preview?.unplaced_bookie_win_pnl,
         preview?.unplaced_bookie_place_pnl,
       ],
@@ -2778,46 +2707,5 @@ function Outcome({
       result: "Unplaced",
     },
   ];
-  const selected = outcomes.find((outcome) => outcome.result === result);
-  return (
-    <section
-      className="extra-place-outcome-matrix calculator-result-card"
-      data-pd-id="extra-place.outcome-matrix"
-    >
-      <div className="calculator-result-card-heading">
-        <h3>Outcomes</h3>
-      </div>
-      <div className="extra-place-outcome-table" role="table">
-        {outcomes.map((outcome) => (
-          <FinancialValueReplayGroup key={outcome.key}>
-          <div
-            aria-label={`${outcome.label}: bookmaker ${formatFinancialValue(asNumber(outcome.bookie[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.bookie[1]) ?? 0)}; exchange ${formatFinancialValue(asNumber(outcome.exchange[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.exchange[1]) ?? 0)}; total ${formatFinancialValue(asNumber(outcome.total) ?? 0)}`}
-            className={`extra-place-outcome-row extra-place-outcome-${outcome.key}${result === outcome.result ? " is-selected" : ""}`}
-            role="row"
-          >
-            <strong>{outcome.label}</strong>
-            <span>
-              {matrixValue(outcome.bookie[0])} <b>+</b>{" "}
-              {matrixValue(outcome.bookie[1])}
-            </span>
-            <span>
-              {matrixValue(outcome.exchange[0])} <b>+</b>{" "}
-              {matrixValue(outcome.exchange[1])}
-            </span>
-            <strong>{matrixValue(outcome.total)}</strong>
-          </div>
-          </FinancialValueReplayGroup>
-        ))}
-      </div>
-      <div className="extra-place-outcome-summary">
-        <span>
-          Outcome{" "}
-          {selected
-            ? matrixValue(selected.total)
-            : "Select a finishing position"}
-        </span>
-        <span>Qualifying Loss {matrixValue(preview?.qualifying_loss)}</span>
-      </div>
-    </section>
-  );
+  return <EachWayOutcomeMatrix outcomes={outcomes} qualifyingLoss={preview?.qualifying_loss} selectedResult={result} />;
 }

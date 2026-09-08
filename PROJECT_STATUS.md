@@ -11,9 +11,10 @@ durable requirements.
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager calculator hub now includes STANDARD Calculator (the matched-betting engine),
-  Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Calculator Hub visual acceptance is `PENDING RECHECK`
-  after aligning it with the signed-off ledger calculator system.
-- Current implementation base before this tranche: `6bbfdc9c577509c8f4fcb51edb6c573b53fc537f` on `main`.
+  Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
+  Place now shares its Back Bet, Place Terms, Lay Win, Lay Place and Outcomes presentation directly
+  with the ledger workflow; user visual acceptance is `PENDING RECHECK`.
+- Current implementation base before this tranche: `614e92c4f851c34add5cfae5ead793d3485d9747` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -90,9 +91,9 @@ durable requirements.
 
 ## What changed
 
-- #35 now presents **Fund Manager → Calculators → STANDARD Calculator**, reuses the ledger calculator
-  heading/field/result/action primitives, and provides distinct previous, next and all-family controls
-  without a native scrollbar. User visual acceptance remains pending.
+- #35 now presents **Fund Manager → Calculators → STANDARD Calculator**. Each Way / Extra Place uses
+  shared same-family ledger presentation sections and Multi-Lay uses the ledger planner/table
+  composition; focused family-specific visual acceptance remains pending Will's recheck.
 - #35 uses the Fund Manager calculator route. The old Profile URL redirects;
   calculator state can open in a separate tab without persistence. #112 adds fractional and
   unambiguous decimal-comma entry while keeping canonical server-validated decimal odds.

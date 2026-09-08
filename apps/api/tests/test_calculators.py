@@ -284,6 +284,16 @@ def test_each_way_modes_match_canonical_engine_without_writes(tmp_path: Path) ->
         assert actual["win_lay_stake"] == f"{canonical.win_lay_stake:.2f}"
         assert actual["place_lay_stake"] == f"{canonical.place_lay_stake:.2f}"
         assert actual["current_value"] == f"{canonical.current_value:.2f}"
+        assert actual["first_place_bookie_win_pnl"] == f"{canonical.first_place_bookie_win_pnl:.2f}"
+        assert actual["first_place_exchange_place_pnl"] == (
+            f"{canonical.first_place_exchange_place_pnl:.2f}"
+        )
+        assert actual["unplaced_bookie_place_pnl"] == (
+            f"{canonical.unplaced_bookie_place_pnl:.2f}"
+        )
+        assert actual["unplaced_exchange_win_pnl"] == (
+            f"{canonical.unplaced_exchange_win_pnl:.2f}"
+        )
         assert (actual["extra_place_pnl"] is not None) is (mode == "Extra Place")
     assert len(list_each_way_extra_places("profile-demo-001")) == before
 

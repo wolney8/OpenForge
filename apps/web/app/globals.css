@@ -8104,7 +8104,10 @@ html[data-theme="dark"] .ledger-editor-tab-button-matching {
 .calculator-shell {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
+
+.calculator-band { min-width: 0; }
 
 .calculator-panel-shell {
   display: grid;
@@ -9319,6 +9322,14 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
   width: 100%;
 }
 
+[data-pd-id="calculators.workspace"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-pd-id="calculators.workspace"] > * {
+  min-width: 0;
+}
+
 .calculator-family-selector.is-static {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -9380,6 +9391,11 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
   .calculator-family-page {
     grid-area: families;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calculator-family-page .review-chip {
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .calculator-family-selector > .calculator-family-page-action:nth-of-type(2) {
@@ -9566,6 +9582,7 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 /* Extra Place has two deliberate, page-scoped presentation schemes. The ledger keeps
    operational cells neutral while the related calculator sections inherit the same scheme. */
 .extra-place-theme-ep {
+  --extra-place-calculator-on-surface: #142533;
   --extra-place-back-surface: #d4e6ff;
   --extra-place-win-lay-surface: #fab6c2;
   --extra-place-place-lay-surface: #fde4e1;
@@ -9575,6 +9592,7 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 }
 
 html[data-theme="dark"] .extra-place-theme-ep {
+  --extra-place-calculator-on-surface: #0e1720;
   --extra-place-back-surface: #7daae8;
   --extra-place-win-lay-surface: #e18494;
   --extra-place-place-lay-surface: #e18e84;
@@ -9584,6 +9602,7 @@ html[data-theme="dark"] .extra-place-theme-ep {
 }
 
 .extra-place-theme-back-lay {
+  --extra-place-calculator-on-surface: var(--on-surface);
   --extra-place-back-surface: var(--back-panel-bg);
   --extra-place-win-lay-surface: var(--lay-panel-bg);
   --extra-place-place-lay-surface: color-mix(in srgb, var(--lay-panel-bg) 66%, var(--surface-container));
@@ -10046,6 +10065,40 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay)
 .extra-place-editor-modal .calculator-segment-back { background: var(--extra-place-back-surface); }
 .extra-place-editor-modal .extra-place-lay-win { background: var(--extra-place-win-lay-surface); }
 .extra-place-editor-modal .extra-place-lay-place { background: var(--extra-place-place-lay-surface); }
+
+/* Standalone Each Way deliberately consumes the same family presentation as the ledger editor. */
+.extra-place-calculator-presentation .calculator-segment-back { background: var(--extra-place-back-surface); }
+.extra-place-calculator-presentation .extra-place-lay-win { background: var(--extra-place-win-lay-surface); }
+.extra-place-calculator-presentation .extra-place-lay-place { background: var(--extra-place-place-lay-surface); }
+
+.extra-place-calculator-presentation .calculator-segment {
+  gap: 0.85rem;
+  overflow: visible;
+  padding: 0.5rem;
+}
+
+.extra-place-calculator-presentation .calculator-segment h3 { margin: 0; }
+
+/* Quick-value/helper content must not stretch peer controls beyond the canonical field height. */
+.extra-place-back-segment > .form-grid { align-items: start; }
+
+.extra-place-calculator-presentation .calculator-segment-back,
+.extra-place-calculator-presentation .extra-place-lay-win,
+.extra-place-calculator-presentation .extra-place-lay-place {
+  border-color: color-mix(in srgb, var(--outline) 62%, transparent);
+  color: var(--extra-place-calculator-on-surface);
+}
+
+.extra-place-calculator-presentation :is(
+  .calculator-segment-back,
+  .extra-place-lay-win,
+  .extra-place-lay-place
+) :is(h3, .field-control > span, .extra-place-calculated-stake > span, .extra-place-calculated-stake > strong, .extra-place-stake-explainer, .extra-place-place-terms-title) {
+  color: var(--extra-place-calculator-on-surface);
+}
+
+.extra-place-calculator-presentation .extra-place-lay-segment { margin-top: 0.45rem; }
+.extra-place-calculator-presentation .extra-place-outcome-matrix { margin-top: 0.35rem; }
 
 .extra-place-editor-modal .extra-place-lay-segment {
   margin-top: 0.45rem;

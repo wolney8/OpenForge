@@ -3,6 +3,16 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-08: Standalone calculator matched generic geometry but not its ledger family
+
+- Area: Fund Manager Each Way / Extra Place calculator.
+- Root cause: the standalone route reused calculator-wide fields and result cards but flattened the
+  Extra Places workflow's family-specific Back Bet, Place Terms, paired lay and Outcomes structure.
+- Prevention: standalone families reuse or extract their nearest same-family ledger presentation;
+  generic Sportsbook geometry is not evidence for another calculator family.
+- Regression test: focused Playwright compares the standalone Each Way / Extra Place presentation
+  with the Extra Places editor using equivalent synthetic values and family-specific selectors.
+
 ## 2026-09-07: Financial motion changed accounting shape and stretched its Settings control
 
 - Area: shared `FinancialValue` animation and Fund Manager Site Settings.

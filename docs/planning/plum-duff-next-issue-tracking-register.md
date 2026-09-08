@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-08_
 
 ## Purpose
 
@@ -18,7 +18,7 @@ states. Partial delivery does not remove the remaining scope.
 
 | ID | Intended outcome / type | Current status and remaining scope | Source / GitHub |
 |---|---|---|---|
-| `CALCULATOR-WORKSPACE-001` | Feature / Fund Manager standalone calculator workspace | `IN PROGRESS locally; visual acceptance PENDING RECHECK`: the visible Matched Betting family is now `STANDARD Calculator`; the hub reuses ledger calculator fields/results and has distinct previous, next and +N family controls with an all-family menu. Multi-Lay and combined Each Way / Extra Place remain implemented. Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Dutching, Odds / Probability and Blackjack remain. The calculator-to-ledger draft bridge is separate later scope | Calculator workspace workflow/fixtures; [#35](https://github.com/wolney8/OpenForge/issues/35), contracts/fixtures [#37](https://github.com/wolney8/OpenForge/issues/37), advanced catalogue [#38](https://github.com/wolney8/OpenForge/issues/38), later bridge [#36](https://github.com/wolney8/OpenForge/issues/36) |
+| `CALCULATOR-WORKSPACE-001` | Feature / Fund Manager standalone calculator workspace | `IN PROGRESS locally; Each Way / Extra Place user acceptance PENDING RECHECK`: STANDARD Calculator retains the Sportsbook ledger field/result system; Multi-Lay uses the ledger planner/table composition; Each Way / Extra Place now shares the ledger workflow's Back Bet, Place Terms, Lay Win, Lay Place and Outcomes primitives rather than a generic result panel. Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Dutching, Odds / Probability and Blackjack remain. The calculator-to-ledger draft bridge is separate later scope | Calculator workspace workflow/fixtures; [#35](https://github.com/wolney8/OpenForge/issues/35), contracts/fixtures [#37](https://github.com/wolney8/OpenForge/issues/37), advanced catalogue [#38](https://github.com/wolney8/OpenForge/issues/38), later bridge [#36](https://github.com/wolney8/OpenForge/issues/36) |
 | `CALCULATOR-ODDS-NORMALIZATION-001` | Input / shared calculator odds normalisation with canonical decimal output | `IMPLEMENTED and focused checks PASS locally`: exact fractions and simple decimal comma normalise visibly; ambiguous/malformed forms remain rejected; ledger API adoption is deliberately separate | `calculator-odds-normalization-v1`; [#112](https://github.com/wolney8/OpenForge/issues/112) |
 | `LOGIN-RELIABILITY-001` | Fix / Google sign-in must visibly initiate from the canonical local origin | `NEEDS VERIFICATION`: real initiation reaches Google after the stopped web service was restored; callback/session and Will acceptance remain not run | Current recovery request; [#62](https://github.com/wolney8/OpenForge/issues/62) |
 | `PD-FIX-229`, `PD-FIX-230` | Fix / durable local sessions and stale-session race protection | `COMPLETE locally`; prior automated evidence retained at `f65eb689`; local sign-in initiation is restored, while callback/session and Will acceptance remain `NOT RUN` | [Correction register](hosted-approval-session-consistency-correction.md); [#62](https://github.com/wolney8/OpenForge/issues/62) |
