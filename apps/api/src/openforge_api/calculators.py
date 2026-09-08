@@ -11,6 +11,15 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
+from openforge_api.calculations.accumulator_reference import (
+    AccumulatorSelectionInput,
+    calculate_accumulator_reference,
+)
+from openforge_api.calculations.blackjack_strategy import calculate_blackjack_strategy
+from openforge_api.calculations.dutching_reference import (
+    DutchingSelectionInput,
+    calculate_simple_dutching_reference,
+)
 from openforge_api.calculations.each_way_extra_place import (
     EachWayCalculationInput,
     calculate_each_way_extra_place,
@@ -637,6 +646,113 @@ class OddsProbabilityResponse(BaseModel):
     implied_probability: str
 
 
+class AccumulatorSelectionPayload(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    odds: str = Field(max_length=40)
+    state: Literal["winner", "loser", "void"] = "winner"
+
+    @field_validator("odds", mode="before")
+    @classmethod
+    def validate_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+
+class AccumulatorPayload(BaseModel):
+    stake: str = Field(max_length=40)
+    selections: list[AccumulatorSelectionPayload] = Field(min_length=2, max_length=20)
+
+    @field_validator("stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+
+class AccumulatorResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    combined_odds: str
+    total_stake: str
+    total_return: str
+    total_profit: str
+    all_win_return: str
+    all_win_profit: str
+    any_loss_profit: str
+
+
+class DutchingSelectionPayload(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    odds: str = Field(max_length=40)
+    commission: str = Field(default="0", max_length=40)
+
+    @field_validator("odds", mode="before")
+    @classmethod
+    def validate_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+    @field_validator("commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) < Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+
+class DutchingPayload(BaseModel):
+    bet_type: Literal["normal", "free_bet"] = "normal"
+    first_stake: str = Field(max_length=40)
+    rounding_increment: Literal["0", "1", "5", "10"] = "0"
+    selections: list[DutchingSelectionPayload] = Field(min_length=2, max_length=3)
+
+    @field_validator("first_stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+
+class DutchingSelectionResponse(BaseModel):
+    label: str
+    odds: str
+    stake: str
+    return_value: str
+    profit: str
+
+
+class DutchingResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    bet_type: Literal["normal", "free_bet"]
+    selections: list[DutchingSelectionResponse]
+    total_stake: str
+    reference_result: str
+
+
+BlackjackCard = Literal["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+
+
+class BlackjackPayload(BaseModel):
+    dealer_card: BlackjackCard
+    player_cards: list[BlackjackCard] = Field(min_length=2, max_length=12)
+    surrender_allowed: bool = False
+    dealer_hits_soft_17: bool = False
+
+
+class BlackjackResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    total: int
+    hand_kind: Literal["hard", "soft", "pair", "bust"]
+    action: Literal["Hit", "Stand", "Double", "Split", "Surrender", "Bust"]
+    fallback_action: Literal["Hit", "Stand", "Double", "Split", "Surrender", "Bust"] | None
+
+
 class StandardQualifyingResponse(BaseModel):
     profile_id: str
     result_kind: str
@@ -1137,6 +1253,79 @@ def preview_odds_probability(payload: OddsProbabilityPayload) -> OddsProbability
         fractional_odds=result.fractional_odds,
         american_odds=result.american_odds,
         implied_probability=result.implied_probability,
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/accumulator/preview",
+    response_model=AccumulatorResponse,
+)
+def preview_accumulator(payload: AccumulatorPayload) -> AccumulatorResponse:
+    result = calculate_accumulator_reference(
+        stake=Decimal(payload.stake),
+        selections=[
+            AccumulatorSelectionInput(odds=Decimal(item.odds), state=item.state)
+            for item in payload.selections
+        ],
+    )
+    return AccumulatorResponse(
+        combined_odds=f"{result.combined_odds:.4f}",
+        total_stake=_money(result.total_stake),
+        total_return=_money(result.total_return),
+        total_profit=_money(result.total_profit),
+        all_win_return=_money(result.all_win_return),
+        all_win_profit=_money(result.all_win_profit),
+        any_loss_profit=_money(result.any_loss_profit),
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/dutching/preview",
+    response_model=DutchingResponse,
+)
+def preview_dutching(payload: DutchingPayload) -> DutchingResponse:
+    result = calculate_simple_dutching_reference(
+        first_stake=Decimal(payload.first_stake),
+        selections=[
+            DutchingSelectionInput(odds=Decimal(item.odds), commission=Decimal(item.commission))
+            for item in payload.selections
+        ],
+        bet_type=payload.bet_type,
+        rounding_increment=Decimal(payload.rounding_increment),
+    )
+    return DutchingResponse(
+        bet_type=payload.bet_type,
+        selections=[
+            DutchingSelectionResponse(
+                label=source.label,
+                odds=source.odds,
+                stake=_money(calculated.stake),
+                return_value=_money(calculated.return_value),
+                profit=_money(calculated.profit),
+            )
+            for source, calculated in zip(payload.selections, result.selections, strict=True)
+        ],
+        total_stake=_money(result.total_stake),
+        reference_result=_money(result.reference_result),
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/blackjack/preview",
+    response_model=BlackjackResponse,
+)
+def preview_blackjack(payload: BlackjackPayload) -> BlackjackResponse:
+    result = calculate_blackjack_strategy(
+        dealer_card=payload.dealer_card,
+        player_cards=payload.player_cards,
+        surrender_allowed=payload.surrender_allowed,
+        dealer_hits_soft_17=payload.dealer_hits_soft_17,
+    )
+    return BlackjackResponse(
+        total=result.total,
+        hand_kind=result.hand_kind,
+        action=result.action,
+        fallback_action=result.fallback_action,
     )
 
 

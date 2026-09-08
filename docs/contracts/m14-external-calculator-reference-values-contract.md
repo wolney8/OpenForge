@@ -60,8 +60,12 @@ financial review.
   authority.
 - MatchedBettingBlog Sequential Lay: accepted external reference under the dedicated
   `sequential-lay-calculation-v1` contract after current live implementation verification.
-- MatchedBettingBlog comparison, extra-place, early-payout, and accumulator packets:
-  `research-only` or `blocked` as recorded in the review matrix and fixture manifest.
+- MatchedBettingBlog comparison, extra-place, and early-payout packets: `research-only` or
+  `blocked` as recorded in the review matrix and fixture manifest.
+- The current reactive MatchedBettingBlog accumulator implementation, Outplayed Dutching guide,
+  current Dutching calculation bundle, and Outplayed Blackjack implementation/tables are accepted
+  external references only for the bounded core in `standalone-calculator-families-v1`. The older
+  frozen non-reactive accumulator capture remains blocked and is not retroactively promoted.
 
 ## 5. Inputs and outputs
 

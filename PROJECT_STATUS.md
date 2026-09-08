@@ -10,19 +10,18 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  Standard, Multi-Lay, Extra Place / Each Way, Sequential Lay, Early Payout / 2UP and the exact
-  Odds / Probability utility are locally implemented as Fund Manager reference-only families.
-  Current copyable stakes share one geometrically centred 44px copy/check action. Multiples /
-  Accumulator is blocked by non-reactive source evidence and no approved calculation/rounding
-  contract; standalone Dutching has no family contract beyond the Early Payout-specific two-way
-  branch; Blackjack has no approved rule matrix or deterministic action fixtures. These are
-  explicit contract blockers rather than implemented families. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `89dc57740543e7218f4651d169d1b75433f2bf2e` on `main`.
+  The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
+  Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
+  Dutching, Odds / Probability and Blackjack Strategy. Copy/check glyphs use one geometrically
+  centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
+  Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
+- Current implementation base before this tranche: `4ad0af10e73739c4a4f3c4a6f2ab8eec86a61f6a` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
-- Return point: resolve the three family-contract blockers under #35/#38/#40; the next independently
-  implementable roadmap tranche is the calculator-to-ledger bridge under [#36](https://github.com/wolney8/OpenForge/issues/36).
+- Return point: the next roadmap tranche is the calculator-to-ledger bridge under
+  [#36](https://github.com/wolney8/OpenForge/issues/36); unresolved optional family extensions
+  remain visible under #35/#38.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -43,14 +42,10 @@ durable requirements.
 
 ## Project plan
 
-- Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
-  Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
-  Each Way / Extra Place and Sequential Lay also calculate automatically. Sequential Lay's exact
-  directional penny placement is pinned to the verified current source implementation. Odds /
-  Probability is implemented from the approved exact-conversion contract; the remaining three
-  families retain explicit contract blockers.
-- Next queue: #36 calculator-to-Opportunity bridge while the Multiples, general Dutching and
-  Blackjack contract blockers remain visible under #35/#38/#40; then #85 + #106 Account
+- Current: #35 Fund Manager Calculator Workspace. Core standalone family coverage is locally
+  implemented with deterministic contracts/fixtures and reference-only APIs; specialised
+  Accumulator and Advanced Dutching extensions remain explicitly pending.
+- Next queue: #36 calculator-to-Opportunity bridge; then #85 + #106 Account
   reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
