@@ -159,6 +159,94 @@ def test_fund_manager_matched_betting_modes_are_reference_only(tmp_path: Path) -
     assert len(list_sportsbook_bets("profile-demo-001")) == before
 
 
+def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    base = {
+        "back_stake": "10.00",
+        "back_odds": "4.00",
+        "lay_odds": "4.20",
+        "exchange_commission": "0",
+        "strategy": "Standard",
+    }
+    for trigger in ("Lay Wins", "Back Wins"):
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={
+                **base,
+                "bet_type": "bonus_lock_in",
+                "bonus_trigger": trigger,
+                "promotion_value": "10",
+                "retention_percent": "70",
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        outcomes = body["outcomes"]
+        assert len(outcomes) == 2
+        triggered = next(row for row in outcomes if row["promotion_component"] is not None)
+        assert triggered["promotion_component"] == "7.00"
+        assert "bonus triggers" in triggered["label"].lower()
+        assert triggered["total"] == body["promotion_trigger_result"]
+        ordinary = next(row for row in outcomes if row["promotion_component"] is None)
+        ordinary_key = "pnl_if_back_wins" if ordinary["key"] == "back-wins" else "pnl_if_lay_wins"
+        assert ordinary["total"] == body[ordinary_key]
+
+    cashback = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**base, "bet_type": "cashback", "promotion_value": "5"},
+    )
+    assert cashback.status_code == 200
+    assert cashback.json()["outcomes"][1]["promotion_component"] == "5.00"
+
+    profit_modes = [
+        ({"profit_boost_mode": "displayed_odds", "boosted_back_odds": "3.20"}, "3.2000"),
+        ({"profit_boost_mode": "total_return", "total_potential_return": "27.86"}, "2.7800"),
+        ({"profit_boost_mode": "profit_only", "potential_profit": "22.00"}, "3.2000"),
+        ({"profit_boost_mode": "percentage", "base_back_odds": "3", "profit_boost_percent": "10"}, "3.2000"),
+    ]
+    for fields, expected in profit_modes:
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={
+                **base,
+                "bet_type": "profit_boost",
+                "back_odds": "",
+                **fields,
+            },
+        )
+        assert response.status_code == 200, (fields, response.text)
+        assert response.json()["effective_back_odds"] == expected
+    accepted = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={
+            **base,
+            "bet_type": "profit_boost",
+            "back_odds": "",
+            "profit_boost_mode": "percentage",
+            "actual_accepted_back_odds": "3.18",
+        },
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["effective_back_odds"] == "3.1800"
+    assert accepted.json()["profit_boost_source"] == "accepted"
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
+def test_calculator_exchange_default_uses_master_catalogue(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    response = client.get("/fund-manager/calculators/exchanges")
+    assert response.status_code == 200
+    smarkets = next(row for row in response.json() if row["catalogue_id"] == "EXCHANGE-SMARKETS")
+    assert smarkets == {
+        "catalogue_id": "EXCHANGE-SMARKETS",
+        "name": "Smarkets",
+        "default_commission_rate": "0",
+    }
+
+
 def test_calculator_odds_normalization_and_rejection(tmp_path: Path, monkeypatch) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)

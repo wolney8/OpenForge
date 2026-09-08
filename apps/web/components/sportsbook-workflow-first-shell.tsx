@@ -28,6 +28,7 @@ import {
 } from "@/lib/guided-entry-focus";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
 import {
   BookmakerIdentity,
   catalogueIdForBookmaker,
@@ -8662,77 +8663,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                      </div>
 	                                    </dl>
 	                                    {card.mode === "Custom" ? (
-	                                      <div className="custom-slider-card-controls">
-	                                        <div className="custom-slider-row">
-	                                          <label className="field-control custom-slider-range-label">
-	                                            <span>Min</span>
-	                                            <input
-	                                              inputMode="decimal"
-	                                              min="0.01"
-	                                              onChange={(event) => {
-	                                                if (isDecimalCalculatorInput(event.target.value)) {
-	                                                  setCustomSliderMin(event.target.value);
-	                                                }
-	                                              }}
-	                                              step="0.01"
-	                                              type="number"
-	                                              value={customSliderMin || formatPreviewMoney(customSliderEffectiveMin)}
-	                                            />
-	                                          </label>
-	                                          <div className="custom-slider-track-wrap">
-	                                            <input
-	                                              aria-label="Custom lay stake slider"
-	                                              aria-valuemax={customSliderBoundedMax}
-	                                              aria-valuemin={customSliderEffectiveMin}
-	                                              aria-valuenow={customSliderCurrentFloat}
-	                                              className="custom-slider-track"
-	                                              max={customSliderBoundedMax}
-	                                              min={customSliderEffectiveMin}
-	                                              onBlur={(event) => commitCustomSliderValue(event.target.value)}
-	                                              onChange={(event) => {
-	                                                setCustomSliderDraftValue(
-	                                                  formatPreviewMoney(Number(event.target.value))
-	                                                );
-	                                              }}
-	                                              onKeyUp={(event) => {
-	                                                if (
-	                                                  [
-	                                                    "ArrowLeft",
-	                                                    "ArrowRight",
-	                                                    "Home",
-	                                                    "End",
-	                                                    "PageUp",
-	                                                    "PageDown",
-	                                                  ].includes(event.key)
-	                                                ) {
-	                                                  commitCustomSliderValue(event.currentTarget.value);
-	                                                }
-	                                              }}
-	                                              onPointerUp={(event) =>
-	                                                commitCustomSliderValue(event.currentTarget.value)
-	                                              }
-	                                              step="0.01"
-	                                              type="range"
-	                                              value={customSliderCurrentFloat}
-	                                            />
-	                                          </div>
-	                                          <label className="field-control custom-slider-range-label">
-	                                            <span>Max</span>
-	                                            <input
-	                                              inputMode="decimal"
-	                                              min="0.01"
-	                                              onChange={(event) => {
-	                                                if (isDecimalCalculatorInput(event.target.value)) {
-	                                                  setCustomSliderMax(event.target.value);
-	                                                }
-	                                              }}
-	                                              step="0.01"
-	                                              type="number"
-	                                              value={customSliderMax || formatPreviewMoney(customSliderBoundedMax)}
-	                                            />
-	                                          </label>
-	                                        </div>
-	                                      </div>
+	                                      <SingleLayCustomSlider
+	                                        current={customSliderCurrentFloat}
+	                                        maximum={customSliderBoundedMax}
+	                                        maximumText={customSliderMax || formatPreviewMoney(customSliderBoundedMax)}
+	                                        minimum={customSliderEffectiveMin}
+	                                        minimumText={customSliderMin || formatPreviewMoney(customSliderEffectiveMin)}
+	                                        onCommit={commitCustomSliderValue}
+	                                        onDraft={(value) => setCustomSliderDraftValue(formatPreviewMoney(Number(value)))}
+	                                        onMaximumChange={(value) => { if (isDecimalCalculatorInput(value)) setCustomSliderMax(value); }}
+	                                        onMinimumChange={(value) => { if (isDecimalCalculatorInput(value)) setCustomSliderMin(value); }}
+	                                      />
 	                                    ) : null}
 	                                    <button
 	                                      className="review-chip review-chip-copy calculator-result-copy"

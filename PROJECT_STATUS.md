@@ -10,11 +10,11 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  The Fund Manager calculator hub now includes STANDARD Calculator (the matched-betting engine),
+  The Fund Manager calculator hub now includes Standard (the matched-betting engine),
   Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
   Place now shares its Back Bet, Place Terms, Lay Win, Lay Place and Outcomes presentation directly
   with the ledger workflow; user visual acceptance is `PENDING RECHECK`.
-- Current implementation base before this tranche: `614e92c4f851c34add5cfae5ead793d3485d9747` on `main`.
+- Current implementation base before this tranche: `e55b46399675f59422c2c3a49e0cf5e04e36186d` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -39,11 +39,13 @@ durable requirements.
 
 ## Project plan
 
-- Current: #35 Fund Manager Calculator Workspace through Multi-Lay and Each Way / Extra Place.
+- Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
+  Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
+  and Each Way / Extra Place also calculate automatically.
 - Next queue: #35 advanced families (Sequential Lay; Early Payout / 2UP; Accumulator / Multiples;
   Dutching; Odds Converter / Probability; Blackjack), then
-  #36 calculator-to-Opportunity bridge; #83 Profit Boost
-  parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
+  #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
+  Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
   a reusable metric/granularity/filter model. Account balance charts remain dependent on the
@@ -91,7 +93,10 @@ durable requirements.
 
 ## What changed
 
-- #35 now presents **Fund Manager → Calculators → STANDARD Calculator**. Each Way / Extra Place uses
+- #35 now presents **Fund Manager → Calculators → Standard**. Standard reuses the Sportsbook
+  custom lay slider, resolves Smarkets/0% from the system exchange authority, calculates valid
+  inputs automatically and exposes contract-backed Outcomes for Bonus Lock-In, Cashback and all
+  four Profit Boost price sources. Each Way / Extra Place uses
   shared same-family ledger presentation sections and Multi-Lay uses the ledger planner/table
   composition; focused family-specific visual acceptance remains pending Will's recheck.
 - #35 uses the Fund Manager calculator route. The old Profile URL redirects;

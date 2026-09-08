@@ -104,6 +104,11 @@ class SportsbookCalculationResult:
     scenario_pnl_if_outcome_2_wins: MoneyOrNone = None
     scenario_pnl_if_outcome_3_wins: MoneyOrNone = None
     multi_lay_branches: tuple[MultiLayBranchResult, ...] = ()
+    bookmaker_component_if_back_wins: MoneyOrNone = None
+    exchange_component_if_back_wins: MoneyOrNone = None
+    bookmaker_component_if_lay_wins: MoneyOrNone = None
+    exchange_component_if_lay_wins: MoneyOrNone = None
+    promotion_component: MoneyOrNone = None
 
 
 def _manual_override_fallback(
@@ -902,6 +907,13 @@ def calculate_sportsbook_current_value(
         is_overdue=is_overdue,
         scenario_pnl_if_outcome_2_wins=scenario_outcome_2_wins,
         scenario_pnl_if_outcome_3_wins=scenario_outcome_3_wins,
+        bookmaker_component_if_back_wins=quantize_money(
+            back_stake * (back_odds - Decimal("1"))
+        ),
+        exchange_component_if_back_wins=quantize_money(-liability_1),
+        bookmaker_component_if_lay_wins=quantize_money(-back_stake),
+        exchange_component_if_lay_wins=quantize_money(lay_returns_after_commission),
+        promotion_component=retained_bonus_value if calculation_input.offer_type in {"Cashback", "Refund", "Bonus Lock-In"} else None,
     )
 
 

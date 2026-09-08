@@ -1,6 +1,6 @@
 # Calculation Contract: Sportsbook Profit Boost
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-08_
 
 ## 0. Contract status
 
@@ -22,10 +22,12 @@ _Last updated: 2026-09-06_
 
 ## 2. Purpose and workflow
 
-Calculate a Profit Boost bet when either:
+Calculate a Profit Boost bet when:
 
-1. the bookmaker displays the final boosted decimal odds; or
-2. the bookmaker displays base decimal odds and a percentage boost.
+1. the bookmaker displays the final boosted decimal odds;
+2. total cash-stake return is known;
+3. potential profit/winnings excluding returned stake is known; or
+4. base decimal odds and a percentage boost are known.
 
 The calculation supplies calculator/reference values during entry, conservative cash-first value
 while placed, and the selected final branch after settlement. It never places or confirms a bet.
@@ -43,10 +45,12 @@ manual override and reporting rules remain authoritative.
 |---|---|---:|---|---|
 | `profile_id` | string | Yes | Row | Mandatory profile scope |
 | `record_id` | string | Yes | Row | Audit identity |
-| `profit_boost_mode` | enum | Yes | User | `displayed_odds` or `percentage` |
+| `profit_boost_mode` | enum | Yes | User | `displayed_odds`, `total_return`, `profit_only` or `percentage` |
 | `base_back_odds` | decimal | Percentage mode | User | Decimal odds before boost |
 | `profit_boost_percent` | decimal | Percentage mode | User | Percentage points; `15` means 15% |
 | `boosted_back_odds` | decimal | Displayed mode | User | Actual bookmaker-displayed odds |
+| `total_potential_return` | money | Total-return mode | User | Includes returned cash stake |
+| `potential_profit` | money | Profit-only mode | User | Excludes returned cash stake |
 | `actual_accepted_back_odds` | decimal | No | User | Overrides reference odds after placement |
 | `maximum_boost_winnings` | money | No | User | Caps extra profit added by the boost |
 | standard sportsbook inputs | mixed | Yes | Row/profile | Stake, lay odds, actual lay, commission, status and result |
@@ -63,6 +67,12 @@ extra_profit = min(uncapped_extra_profit, maximum_boost_winnings) when a cap exi
 reference_boosted_profit = back_stake * base_profit_per_unit + extra_profit
 reference_boosted_odds = 1 + (reference_boosted_profit / back_stake)
 effective_back_odds = actual_accepted_back_odds ?? boosted_back_odds ?? reference_boosted_odds
+```
+
+Profit-only mode derives its exact quotient before the ordinary four-decimal odds rule:
+
+```text
+reference_boosted_odds = 1 + (potential_profit / cash_back_stake)
 ```
 
 `effective_back_odds` then enters the existing sportsbook lay-stake, liability, back-win, lay-win,
@@ -115,6 +125,9 @@ effective_odds = floor(raw_odds * 100) / 100
 - percentage-only boost without cap
 - percentage-only boost where the cap applies
 - actual accepted odds overriding calculated odds
+- total-return derivation `27.86 / 10 -> 2.78` using the helper floor
+- profit-only derivation `1 + (11.495 / 5) -> 3.2990`
+- percentage derivation `3.00 + 10% -> 3.2000`
 - standard, underlay and overlay strategy paths
 - void and manual override
 - missing/invalid boost inputs

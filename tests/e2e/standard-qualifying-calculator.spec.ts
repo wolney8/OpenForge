@@ -4,7 +4,7 @@ const webBaseUrl = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010"
 const apiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
 
 async function mockSession(page: import("@playwright/test").Page) {
-  await page.context().route("**/auth/session", (route) => route.fulfill({ json: {
+  await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
     authenticated: true, email: "calculator-test@example.invalid", name: "Synthetic Fund Manager",
     role: "fund_manager", expires_at: Math.floor(Date.now() / 1000) + 3600, linked_profile_ids: [],
     session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
@@ -25,7 +25,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator('[data-pd-id="calculators.workspace"]').getByText("Fund Manager", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Calculators" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "STANDARD Calculator" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Standard" })).toBeVisible();
   await expect(page.getByText("Reference only", { exact: true })).not.toHaveAttribute("role", "button");
 
   const boxes = await Promise.all(["Back stake", "Back odds", "Lay odds", "Exchange commission"].map((label) => page.getByLabel(label).boundingBox()));
@@ -47,8 +47,15 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByLabel("Exchange commission").focus();
   await expect(page.getByLabel("Back odds")).toHaveValue("3.75");
   await expect(page.getByLabel("Lay odds")).toHaveValue("3.8");
-  await page.getByRole("button", { name: "Calculate" }).click();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.exchange"]')).toHaveValue("Smarkets");
+  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await page.locator('[data-pd-id="calculators.matched-betting.exchange"]').selectOption("Matchbook");
+  await page.getByLabel("Exchange commission").fill("0.02");
+  await page.getByLabel("Lay odds").fill("3.81");
+  await expect(page.getByLabel("Exchange commission")).toHaveValue("0.02");
+  await page.locator('[data-pd-id="calculators.matched-betting.exchange"]').selectOption("Smarkets");
+  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
   const headerActions = page.locator('[data-pd-id="calculators.header-actions"]');
   const referenceStatus = page.locator('[data-pd-id="calculators.reference-status"]');
   const openAction = page.locator('[data-pd-id="calculators.open-new-tab"]');
@@ -70,23 +77,36 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
 
   await page.getByLabel("Bet type").selectOption("free_bet");
   await page.locator('[data-pd-id="calculators.matched-betting.free-bet-mode"]').selectOption("SR");
-  await page.getByRole("button", { name: "Calculate" }).click();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
-  await page.getByLabel("Bet type").selectOption("money_back");
-  await page.getByLabel("Maximum refund").fill("10.00");
-  await page.getByRole("button", { name: "Calculate" }).click();
-  await expect(page.getByText("If refund triggers")).toBeVisible();
+  await page.getByLabel("Strategy").selectOption("Custom");
+  const customSlider = page.getByRole("slider", { name: "Custom lay stake slider" });
+  await expect(customSlider).toBeVisible();
+  expect(Number(await customSlider.getAttribute("aria-valuemin"))).toBeLessThan(Number(await customSlider.getAttribute("aria-valuenow")));
+  expect(Number(await customSlider.getAttribute("aria-valuemax"))).toBeGreaterThan(Number(await customSlider.getAttribute("aria-valuenow")));
+  await customSlider.press("ArrowLeft");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
+  await page.getByLabel("Bet type").selectOption("bonus_lock_in");
+  await page.getByLabel("Bonus / refund value").fill("10.00");
+  await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("bonus triggers");
+  await page.getByLabel("Award trigger").selectOption("Back Wins");
+  await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("Back wins / bonus triggers");
+  await page.getByLabel("Bet type").selectOption("profit_boost");
+  await page.getByLabel("Boosted price source").selectOption("percentage");
+  await page.getByLabel("Original / base odds").fill("3.00");
+  await page.getByLabel("Profit Boost (%)").fill("10");
+  await expect(page.getByText("3.2000", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("Back bet wins");
 
   const popupPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Open in new tab" }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState();
   await expect(popup.getByLabel("Back stake")).toHaveValue("10.00");
-  await expect(popup.getByLabel("Bet type")).toHaveValue("money_back");
+  await expect(popup.getByLabel("Bet type")).toHaveValue("profit_boost");
   await popup.close();
 
-  await page.getByLabel("Back odds").fill("1,000");
-  await expect(page.getByRole("button", { name: "Calculate" })).toBeDisabled();
+  await page.getByLabel("Original / base odds").fill("1,000");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-light-desktop.png"), fullPage: true });
   }
@@ -95,8 +115,8 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect.poll(() => page.locator("html").getAttribute("data-theme")).not.toBe(themeBeforeSwitch);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
-  await page.getByLabel("Back odds").focus();
-  await expect(page.getByLabel("Back odds")).toBeFocused();
+  await page.getByLabel("Original / base odds").focus();
+  await expect(page.getByLabel("Original / base odds")).toBeFocused();
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(300);
@@ -119,7 +139,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   const previous = rail.getByRole("button", { name: "Show previous calculator families" });
   const next = rail.getByRole("button", { name: "Show next calculator families" });
   const more = rail.getByRole("button", { name: /Show all calculators/ });
-  await expect(rail.getByRole("button", { name: "STANDARD Calculator" })).toBeVisible();
+  await expect(rail.getByRole("button", { name: "Standard" })).toBeVisible();
   expect(await familyPage.locator("button").count()).toBe(3);
   expect(await rail.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   expect(await familyPage.evaluate((element) => getComputedStyle(element).overflowX)).toBe("visible");
@@ -134,7 +154,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   for (const chip of await familyPage.locator("button").all()) {
     expect(await chip.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   }
-  await rail.getByRole("button", { name: "STANDARD Calculator" }).focus();
+  await rail.getByRole("button", { name: "Standard" }).focus();
   await page.keyboard.press("Tab");
   await expect(rail.getByRole("button", { name: "Multi-Lay" })).toBeFocused();
   await next.click();
@@ -143,8 +163,8 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await next.click();
   await expect(next).toBeDisabled();
   await more.click();
-  await expect(page.locator("#calculator-family-menu").getByRole("menuitem", { name: "STANDARD Calculator" })).toBeVisible();
-  await page.getByRole("menuitem", { name: "STANDARD Calculator" }).click();
+  await expect(page.locator("#calculator-family-menu").getByRole("menuitem", { name: "Standard" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Standard" }).click();
 
   await rail.getByRole("button", { name: "Multi-Lay" }).click();
   await page.getByLabel("Back stake").fill("10.00");
@@ -154,8 +174,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.getByLabel("Exchange commission").focus();
   await expect(page.getByLabel("Back odds")).toHaveValue("3.75");
   await expect(page.locator('[data-pd-id="calculators.multi-outcome-1-odds"]')).toHaveValue("5.9");
-  await page.getByRole("button", { name: "Calculate Multi-Lay" }).click();
-  await expect(page.getByText("Result Table")).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
   await page.getByRole("button", { name: /Copy stake for Outcome 1/ }).click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
 
@@ -164,12 +183,11 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.getByLabel("Back odds").fill("6");
   await page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]').fill("2.3");
   await page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]').fill("4.5");
-  await page.getByRole("button", { name: "Calculate Each Way" }).click();
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toBeVisible();
   await expect(page.getByText("Calculated Lay Stake")).toHaveCount(2);
   await page.getByRole("button", { name: "Extra Place", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]').getByText("Extra Place", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Calculate Extra Place" }).click();
+  await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toContainText("Extra Place");
   await page.getByRole("button", { name: "Copy stake" }).first().click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
 
@@ -249,7 +267,6 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
     await page.getByLabel("Back stake").fill("10.00");
     await page.getByLabel("Back odds").fill("3.75");
     await page.getByLabel("Lay odds").fill("3.80");
-    await page.getByRole("button", { name: "Calculate" }).click();
     await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
 
     const hub = page.locator('[data-pd-id="calculators.workspace"]');
@@ -419,7 +436,6 @@ test("matches the Extra Places calculator presentation for the same family", asy
     await page.getByLabel("Back odds").fill("6.00");
     await page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]').fill("2.30");
     await page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]').fill("4.50");
-    await page.getByRole("button", { name: "Calculate Extra Place" }).click();
     await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toContainText("Extra Place");
     const standalone = page.locator('[data-pd-id="calculators.each-way.presentation"]');
     const standaloneGeometry = await readFamilyGeometry(standalone);

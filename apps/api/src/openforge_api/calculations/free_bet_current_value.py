@@ -97,6 +97,10 @@ class FreeBetCalculationResult:
     lay_status: str
     counts_as_open: bool
     is_overdue: bool
+    bookmaker_component_if_back_wins: MoneyOrNone = None
+    exchange_component_if_back_wins: MoneyOrNone = None
+    bookmaker_component_if_lay_wins: MoneyOrNone = None
+    exchange_component_if_lay_wins: MoneyOrNone = None
 
 
 def _lay_status(
@@ -540,6 +544,12 @@ def calculate_free_bet_current_value(
         ),
         counts_as_open=counts_as_open,
         is_overdue=is_overdue,
+        bookmaker_component_if_back_wins=quantize_money(back_win_base),
+        exchange_component_if_back_wins=quantize_money(-(liability_1 or Decimal("0"))),
+        bookmaker_component_if_lay_wins=Decimal("0.00"),
+        exchange_component_if_lay_wins=quantize_money(
+            actual_lay_stake * (Decimal("1") - commission_1)
+        ) if not no_lay_mode and actual_lay_stake is not None and commission_1 is not None else Decimal("0.00"),
     )
 
 

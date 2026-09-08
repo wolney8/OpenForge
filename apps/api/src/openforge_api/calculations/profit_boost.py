@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Literal
 
-ProfitBoostMode = Literal["displayed_odds", "percentage"]
+from openforge_api.calculations.payout_odds import calculate_payout_odds
+
+ProfitBoostMode = Literal["displayed_odds", "total_return", "profit_only", "percentage"]
 
 
 def _parse_decimal(value: str | Decimal | None) -> Decimal | None:
@@ -32,6 +34,8 @@ class ProfitBoostInput:
     base_back_odds: str = ""
     profit_boost_percent: str = ""
     boosted_back_odds: str = ""
+    total_potential_return: str = ""
+    potential_profit: str = ""
     actual_accepted_back_odds: str = ""
     maximum_boost_winnings: str = ""
 
@@ -72,6 +76,30 @@ def calculate_profit_boost(values: ProfitBoostInput) -> ProfitBoostResult:
         resolved_odds = _odds(displayed_odds)
         return ProfitBoostResult(
             "resolved", (), resolved_odds, resolved_odds, None, None, "displayed"
+        )
+
+    if values.mode == "total_return":
+        total_return = _parse_decimal(values.total_potential_return)
+        if total_return is None or total_return < stake:
+            return _incomplete(
+                "Total potential return must include the returned stake and be at least the stake."
+            )
+        resolved_odds = calculate_payout_odds(
+            cash_back_stake=stake, total_potential_return=total_return
+        ).effective_odds
+        if resolved_odds <= 1:
+            return _incomplete("Derived boosted odds must be greater than 1.00.")
+        return ProfitBoostResult(
+            "resolved", (), resolved_odds, resolved_odds, None, None, "calculated"
+        )
+
+    if values.mode == "profit_only":
+        potential_profit = _parse_decimal(values.potential_profit)
+        if potential_profit is None or potential_profit <= 0:
+            return _incomplete("Potential profit must be greater than zero.")
+        resolved_odds = _odds(Decimal("1") + (potential_profit / stake))
+        return ProfitBoostResult(
+            "resolved", (), resolved_odds, resolved_odds, None, None, "calculated"
         )
 
     base_odds = _parse_decimal(values.base_back_odds)

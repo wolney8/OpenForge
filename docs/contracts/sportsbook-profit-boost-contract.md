@@ -1,6 +1,6 @@
 # Contract: Sportsbook Profit Boost Workflow
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-08_
 
 ## Purpose
 
@@ -18,7 +18,7 @@ This contract is workflow-facing. The formula source remains:
 - profile-scoped sportsbook rows only
 - fund manager entry and later subscriber-safe read visibility
 - ledger modal matching calculator
-- standalone calculator workspace reuse later
+- Fund Manager standalone calculator workspace
 
 ## Modes
 
@@ -70,12 +70,21 @@ Optional:
 - maximum boost winnings cap
 - actual accepted back odds
 
+### Standalone derived-price sources
+
+The standalone Standard calculator additionally accepts either total return (including returned
+cash stake) or profit/winnings (excluding returned stake). Total return retains the existing
+two-decimal conservative payout-helper floor; profit-only uses exact `1 + profit / stake` before
+the ordinary four-decimal odds rule. These temporary inputs are not written to Sportsbook rows.
+The ledger's existing payout helper remains total-return-only and still requires explicit apply.
+
 ## Required UX behaviour
 
 - Offer Type must expose `Profit Boost` as a first-class sportsbook offer type.
 - Matching calculator must clearly show whether it is using:
   - displayed boosted odds
   - calculated boosted odds from percentage
+  - calculated boosted odds from total return or profit-only input in standalone mode
 - Calculated boosted odds must be labelled as a reference value, not a confirmed bookmaker value.
 - Copying a lay suggestion must use the same Outplayed-style result cards and copy interaction as the standard sportsbook calculator.
 - Advanced calculator mode must continue to support:

@@ -1,6 +1,6 @@
 # Fixture Spec: Sportsbook Profit Boost
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-08_
 
 ## Purpose
 
@@ -35,6 +35,13 @@ Workflow authority remains:
 
 - placed price differs from displayed/calculated boosted price
 - current value and settlement use accepted odds
+
+### 3a. Standalone derived-price inputs
+
+- total return includes returned stake: `27.86 / 10 -> 2.78` (two-decimal floor)
+- profit-only excludes returned stake: `1 + (11.495 / 5) -> 3.2990`
+- percentage applies to profit only: base `3.00` plus `10% -> 3.2000`
+- accepted odds override each derived source without applying boost logic twice
 
 ### 4. Open-state current value
 

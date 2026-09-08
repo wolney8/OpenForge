@@ -8,7 +8,7 @@ _Last updated: 2026-09-08_
 - Milestone: M14 Calculator Workspace and Ledger Bridge
 - Plum Duff issue coverage: GitHub issues `#35`, `#36`, `#37`, `#38`, and `#83`
 - Oddsmatcher integration: Deferred
-- Implemented families: Fund Manager-owned `STANDARD Calculator` (the existing matched-betting
+- Implemented families: Fund Manager-owned `Standard` (the existing matched-betting
   contract/API), Multi-Lay, and combined Each Way / Extra Place reference calculators
 - Canonical route: `/fund-manager/calculators`; the retired Profile route redirects safely
 - Ledger draft bridge: Later scope under `#36`; standalone calculation creates no business record
@@ -44,7 +44,7 @@ The workspace may expose a calculator only when its financial contract and deter
 Sequential lay, dutching, blackjack and other future calculators remain unavailable until their own contracts and fixtures are approved.
 
 Top-level navigation represents distinct calculation models, not every variation. The user-facing
-`STANDARD Calculator` keeps its matched-betting bet and matching modes internally; Each Way contains the Standard Each Way and Extra
+`Standard` keeps its matched-betting bet and matching modes internally; Each Way contains the Standard Each Way and Extra
 Place modes; Multi-Lay contains its Standard and Underlay allocation modes. The family rail pages
 through at most three choices without a native scrollbar and retains every family for keyboard use.
 
@@ -63,6 +63,13 @@ reward conversion and RTP/EV planning use different contracts and are not lay ca
   placed.
 - Profit Boost standalone mode must clearly label calculated boosted odds as `Reference`, not
   bookmaker-confirmed odds.
+- Every implemented family recalculates automatically once its active required inputs are valid.
+  Invalid/incomplete edits remove stale results, and superseded requests cannot restore them.
+- Matching families resolve active Exchanges from the master Account Catalogue. Smarkets is the
+  system default with `0` suggested commission; a user-entered commission remains an ephemeral
+  override until the Exchange itself changes.
+- Every family ends with its contract-backed `Outcomes` presentation; rows vary by economic branch
+  rather than being forced into a generic two-outcome shape.
 
 ## Ledger bridge
 

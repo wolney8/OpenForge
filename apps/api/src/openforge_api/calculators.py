@@ -17,10 +17,13 @@ from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
 )
+from openforge_api.calculations.profit_boost import ProfitBoostInput, calculate_profit_boost
 from openforge_api.calculations.sportsbook_current_value import (
     SportsbookCalculationInput,
     calculate_sportsbook_current_value,
+    quantize_money,
 )
+from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import get_profile
 from openforge_api.sportsbook_odds_input import (
     normalize_calculator_odds,
@@ -34,19 +37,32 @@ PERCENT_MESSAGE = "Enter a percentage from 0 to 100."
 
 
 class MatchedBettingPayload(BaseModel):
-    bet_type: Literal["qualifying", "free_bet", "money_back"] = "qualifying"
+    bet_type: Literal[
+        "qualifying", "free_bet", "money_back", "bonus_lock_in", "cashback", "profit_boost"
+    ] = "qualifying"
     free_bet_mode: Literal["SNR", "SR"] = "SNR"
     promotion_mode: Literal["standard", "cashback"] = "standard"
     strategy: Literal["Standard", "Underlay", "Overlay", "Custom", "Partial Lay"] = "Standard"
     back_stake: str = Field(max_length=40)
-    back_odds: str = Field(max_length=40)
+    back_odds: str = Field(default="", max_length=40)
     lay_odds: str = Field(max_length=40)
     exchange_commission: str = Field(max_length=40)
     manual_lay_stake: str = Field(default="", max_length=40)
     promotion_value: str = Field(default="", max_length=40)
+    bonus_trigger: Literal["Lay Wins", "Back Wins"] = "Lay Wins"
     retention_percent: str = Field(default="70", max_length=40)
     underlay_factor: str = Field(default="0.928", max_length=40)
     overlay_factor: str = Field(default="1.300", max_length=40)
+    profit_boost_mode: Literal[
+        "displayed_odds", "total_return", "profit_only", "percentage"
+    ] = "displayed_odds"
+    boosted_back_odds: str = Field(default="", max_length=40)
+    total_potential_return: str = Field(default="", max_length=40)
+    potential_profit: str = Field(default="", max_length=40)
+    base_back_odds: str = Field(default="", max_length=40)
+    profit_boost_percent: str = Field(default="", max_length=40)
+    actual_accepted_back_odds: str = Field(default="", max_length=40)
+    maximum_boost_winnings: str = Field(default="", max_length=40)
 
     @field_validator("back_stake", mode="before")
     @classmethod
@@ -58,10 +74,18 @@ class MatchedBettingPayload(BaseModel):
             )
         return parsed
 
-    @field_validator("back_odds", "lay_odds", mode="before")
+    @field_validator("lay_odds", mode="before")
     @classmethod
     def validate_odds(cls, value: Any) -> str:
         return normalize_calculator_odds(value)
+
+    @field_validator(
+        "back_odds", "boosted_back_odds", "base_back_odds", "actual_accepted_back_odds",
+        mode="before",
+    )
+    @classmethod
+    def validate_optional_odds(cls, value: Any) -> str:
+        return "" if value == "" else normalize_calculator_odds(value)
 
     @field_validator("exchange_commission", mode="before")
     @classmethod
@@ -72,7 +96,10 @@ class MatchedBettingPayload(BaseModel):
             raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
         return parsed
 
-    @field_validator("manual_lay_stake", "promotion_value", mode="before")
+    @field_validator(
+        "manual_lay_stake", "promotion_value", "total_potential_return", "potential_profit",
+        "maximum_boost_winnings", mode="before",
+    )
     @classmethod
     def validate_optional_money(cls, value: Any) -> str:
         if value == "":
@@ -92,6 +119,16 @@ class MatchedBettingPayload(BaseModel):
             raise PydanticCustomError("calculator_percentage_range", PERCENT_MESSAGE)
         return parsed
 
+    @field_validator("profit_boost_percent", mode="before")
+    @classmethod
+    def validate_optional_percentage(cls, value: Any) -> str:
+        if value == "":
+            return ""
+        parsed = validate_complete_decimal_string(value, message=PERCENT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError("calculator_percentage_positive", PERCENT_MESSAGE)
+        return parsed
+
     @field_validator("underlay_factor", "overlay_factor", mode="before")
     @classmethod
     def validate_factor(cls, value: Any) -> str:
@@ -104,7 +141,7 @@ class MatchedBettingPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_fields(self) -> "MatchedBettingPayload":
-        if self.strategy in {"Custom", "Partial Lay"} and not self.manual_lay_stake:
+        if self.strategy == "Partial Lay" and not self.manual_lay_stake:
             raise PydanticCustomError(
                 "calculator_manual_lay_required", "Enter the explicit lay stake for this strategy."
             )
@@ -115,7 +152,34 @@ class MatchedBettingPayload(BaseModel):
             raise PydanticCustomError(
                 "calculator_promotion_value_required", "Enter the cashback or refund value."
             )
+        if self.bet_type in {"bonus_lock_in", "cashback"} and not self.promotion_value:
+            raise PydanticCustomError(
+                "calculator_promotion_value_required", "Enter the cashback or refund value."
+            )
+        if self.bet_type != "profit_boost" and not self.back_odds:
+            raise PydanticCustomError("calculator_back_odds_required", "Enter back odds.")
+        if self.bet_type == "profit_boost" and not self.actual_accepted_back_odds:
+            required_by_mode = {
+                "displayed_odds": self.boosted_back_odds,
+                "total_return": self.total_potential_return,
+                "profit_only": self.potential_profit,
+                "percentage": self.base_back_odds and self.profit_boost_percent,
+            }
+            if not required_by_mode[self.profit_boost_mode]:
+                raise PydanticCustomError(
+                    "calculator_profit_boost_required",
+                    "Enter the values required for the selected Profit Boost source.",
+                )
         return self
+
+
+class CalculatorOutcomeResponse(BaseModel):
+    key: str
+    label: str
+    bookmaker_component: str
+    exchange_component: str
+    promotion_component: str | None = None
+    total: str
 
 
 class MatchedBettingResponse(BaseModel):
@@ -133,6 +197,18 @@ class MatchedBettingResponse(BaseModel):
     pnl_if_lay_wins: str
     matched_result: str
     promotion_trigger_result: str | None = None
+    effective_back_odds: str
+    profit_boost_source: str | None = None
+    outcomes: list[CalculatorOutcomeResponse]
+
+
+class CalculatorExchangeResponse(BaseModel):
+    catalogue_id: str
+    name: str
+    default_commission_rate: str
+
+
+CALCULATOR_EXCHANGE_DEFAULTS = {"EXCHANGE-SMARKETS": "0"}
 
 
 class MultiLayOutcomePayload(BaseModel):
@@ -305,7 +381,73 @@ def _money(value: Decimal | None) -> str:
     return f"{value:.2f}"
 
 
+def _matched_outcomes(
+    payload: MatchedBettingPayload,
+    *,
+    bookmaker_if_back: Decimal,
+    exchange_if_back: Decimal,
+    bookmaker_if_lay: Decimal,
+    exchange_if_lay: Decimal,
+    promotion: Decimal | None,
+) -> list[CalculatorOutcomeResponse]:
+    offer_type = payload.bet_type
+    if offer_type == "money_back":
+        offer_type = "bonus_lock_in"
+    if payload.bet_type == "qualifying" and payload.promotion_mode == "cashback":
+        offer_type = "cashback"
+    trigger_back = payload.bonus_trigger == "Back Wins"
+
+    def row(
+        key: str, label: str, bookmaker: Decimal, exchange: Decimal, applied_promotion: Decimal
+    ) -> CalculatorOutcomeResponse:
+        return CalculatorOutcomeResponse(
+            key=key,
+            label=label,
+            bookmaker_component=_money(quantize_money(bookmaker)),
+            exchange_component=_money(quantize_money(exchange)),
+            promotion_component=(
+                _money(quantize_money(applied_promotion)) if applied_promotion else None
+            ),
+            total=_money(quantize_money(bookmaker + exchange + applied_promotion)),
+        )
+
+    back_label = "Back bet wins"
+    lay_label = "Lay bet wins"
+    if promotion:
+        if trigger_back:
+            back_label = "Back wins / bonus triggers" if offer_type == "bonus_lock_in" else "Back wins / cashback triggers"
+        else:
+            lay_label = "Back loses / bonus triggers" if offer_type == "bonus_lock_in" else "Cashback-trigger result"
+    return [
+        row("back-wins", back_label, bookmaker_if_back, exchange_if_back, promotion if promotion and trigger_back else Decimal("0")),
+        row("lay-wins", lay_label, bookmaker_if_lay, exchange_if_lay, promotion if promotion and not trigger_back else Decimal("0")),
+    ]
+
+
 def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
+    profit_boost = None
+    effective_back_odds_text = payload.back_odds
+    if payload.bet_type == "profit_boost":
+        profit_boost = calculate_profit_boost(
+            ProfitBoostInput(
+                profile_id="standalone",
+                mode=payload.profit_boost_mode,
+                back_stake=payload.back_stake,
+                base_back_odds=payload.base_back_odds,
+                profit_boost_percent=payload.profit_boost_percent,
+                boosted_back_odds=payload.boosted_back_odds,
+                total_potential_return=payload.total_potential_return,
+                potential_profit=payload.potential_profit,
+                actual_accepted_back_odds=payload.actual_accepted_back_odds,
+                maximum_boost_winnings=payload.maximum_boost_winnings,
+            )
+        )
+        if profit_boost.calculation_state != "resolved" or profit_boost.effective_back_odds is None:
+            raise HTTPException(status_code=422, detail=profit_boost.calculation_notes[0])
+        effective_back_odds_text = f"{profit_boost.effective_back_odds:.4f}"
+    calculation_strategy = (
+        "Standard" if payload.strategy == "Custom" and not payload.manual_lay_stake else payload.strategy
+    )
     if payload.bet_type == "free_bet":
         free_result = calculate_free_bet_current_value(
             FreeBetCalculationInput(
@@ -315,8 +457,8 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
                 result="Pending",
                 retention_mode=payload.free_bet_mode,
                 free_bet_value=payload.back_stake,
-                back_odds=payload.back_odds,
-                match_strategy=payload.strategy,
+                back_odds=effective_back_odds_text,
+                match_strategy=calculation_strategy,
                 lay_odds_1=payload.lay_odds,
                 lay_commission_1=payload.exchange_commission,
                 lay_actual=payload.manual_lay_stake,
@@ -337,12 +479,21 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         pnl_lay = free_result.scenario_pnl_if_lay_wins
         matched = free_result.projected_current_pnl
         promotion_trigger_result = None
-    else:
-        offer_type = (
-            "Refund"
-            if payload.bet_type == "money_back"
-            else ("Cashback" if payload.promotion_mode == "cashback" else "")
+        component_values = (
+            free_result.bookmaker_component_if_back_wins,
+            free_result.exchange_component_if_back_wins,
+            free_result.bookmaker_component_if_lay_wins,
+            free_result.exchange_component_if_lay_wins,
+            None,
         )
+    else:
+        offer_type = ""
+        if payload.bet_type in {"money_back", "bonus_lock_in"}:
+            offer_type = "Bonus Lock-In"
+        elif payload.bet_type == "cashback" or payload.promotion_mode == "cashback":
+            offer_type = "Cashback"
+        elif payload.bet_type == "profit_boost":
+            offer_type = "Profit Boost"
         sportsbook_result = calculate_sportsbook_current_value(
             SportsbookCalculationInput(
                 profile_id="standalone",
@@ -351,9 +502,9 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
                 result="Pending",
                 offer_type=offer_type,
                 back_stake=payload.back_stake,
-                back_odds=payload.back_odds,
-                match_strategy=payload.strategy,
-                bonus_trigger="Lay Wins" if offer_type else "",
+                back_odds=effective_back_odds_text,
+                match_strategy=calculation_strategy,
+                bonus_trigger=payload.bonus_trigger if offer_type in {"Bonus Lock-In", "Cashback"} else "",
                 maximum_bonus=payload.promotion_value,
                 bonus_retention_rate=payload.retention_percent,
                 lay_odds_1=payload.lay_odds,
@@ -374,10 +525,29 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         pnl_lay = sportsbook_result.scenario_pnl_if_lay_wins
         matched = sportsbook_result.projected_current_pnl
         promotion_trigger_result = sportsbook_result.scenario_pnl_if_outcome_2_wins
+        component_values = (
+            sportsbook_result.bookmaker_component_if_back_wins,
+            sportsbook_result.exchange_component_if_back_wins,
+            sportsbook_result.bookmaker_component_if_lay_wins,
+            sportsbook_result.exchange_component_if_lay_wins,
+            sportsbook_result.promotion_component,
+        )
+
+    assert actual_lay_stake is not None
+    assert liability is not None
+    effective_back_odds = Decimal(effective_back_odds_text)
+    outcomes = _matched_outcomes(
+        payload,
+        bookmaker_if_back=component_values[0] or Decimal("0"),
+        exchange_if_back=component_values[1] or Decimal("0"),
+        bookmaker_if_lay=component_values[2] or Decimal("0"),
+        exchange_if_lay=component_values[3] or Decimal("0"),
+        promotion=component_values[4],
+    )
 
     return MatchedBettingResponse(
         calculation_state=calculation_state,
-        canonical_back_odds=payload.back_odds,
+        canonical_back_odds=effective_back_odds_text,
         canonical_lay_odds=payload.lay_odds,
         selected_lay_stake=_money(actual_lay_stake),
         reference_lay_stake_standard=_money(standard),
@@ -390,6 +560,9 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         promotion_trigger_result=_money(promotion_trigger_result)
         if promotion_trigger_result is not None
         else None,
+        effective_back_odds=f"{effective_back_odds:.4f}",
+        profit_boost_source=profit_boost.boost_source if profit_boost else None,
+        outcomes=outcomes,
     )
 
 
@@ -398,6 +571,23 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
 )
 def preview_matched_betting(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     return _calculate(payload)
+
+
+@router.get(
+    "/fund-manager/calculators/exchanges", response_model=list[CalculatorExchangeResponse]
+)
+def list_calculator_exchanges() -> list[CalculatorExchangeResponse]:
+    catalogue = load_master_account_catalogue()
+    records = [
+        CalculatorExchangeResponse(
+            catalogue_id=record.catalogue_id,
+            name=record.brand_name,
+            default_commission_rate=CALCULATOR_EXCHANGE_DEFAULTS.get(record.catalogue_id, ""),
+        )
+        for record in catalogue.records
+        if record.account_type == "Exchange" and record.status == "Active"
+    ]
+    return sorted(records, key=lambda record: (record.name.casefold() != "smarkets", record.name.casefold()))
 
 
 @router.post("/fund-manager/calculators/multi-lay/preview", response_model=MultiLayResponse)

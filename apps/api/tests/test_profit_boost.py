@@ -39,6 +39,20 @@ from openforge_api.calculations.profit_boost import ProfitBoostInput, calculate_
             Decimal("3.2800"),
             "accepted",
         ),
+        (
+            ProfitBoostInput(
+                "PROFILE-001", "total_return", "10.00", total_potential_return="27.86"
+            ),
+            Decimal("2.78"),
+            "calculated",
+        ),
+        (
+            ProfitBoostInput(
+                "PROFILE-001", "profit_only", "5.00", potential_profit="11.495"
+            ),
+            Decimal("3.2990"),
+            "calculated",
+        ),
     ],
 )
 def test_profit_boost_effective_odds(
@@ -69,3 +83,17 @@ def test_profit_boost_rejects_missing_percentage() -> None:
     assert result.calculation_state == "incomplete"
     assert result.effective_back_odds is None
     assert "percentage" in result.calculation_notes[0].lower()
+
+
+def test_accepted_odds_precede_derived_payout_sources() -> None:
+    result = calculate_profit_boost(
+        ProfitBoostInput(
+            "PROFILE-001",
+            "total_return",
+            "10.00",
+            total_potential_return="29.00",
+            actual_accepted_back_odds="2.87",
+        )
+    )
+    assert result.effective_back_odds == Decimal("2.8700")
+    assert result.boost_source == "accepted"
