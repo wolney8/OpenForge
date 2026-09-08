@@ -10,9 +10,10 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  The Fund Manager calculator hub now includes Matched Betting, Multi-Lay, and combined Each Way /
-  Extra Place families without ledger writes.
-- Current implementation base before this tranche: `2ac1d30d3f2e01bef9e3d8663a68a47c7ec5e695` on `main`.
+  The Fund Manager calculator hub now includes STANDARD Calculator (the matched-betting engine),
+  Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Calculator Hub visual acceptance is `PENDING RECHECK`
+  after aligning it with the signed-off ledger calculator system.
+- Current implementation base before this tranche: `6bbfdc9c577509c8f4fcb51edb6c573b53fc537f` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -89,10 +90,10 @@ durable requirements.
 
 ## What changed
 
-- #35 now presents the page hierarchy as **Fund Manager → Calculators**, uses the shared three-choice
-  carousel without a native scrollbar, and adds source-backed Multi-Lay plus combined Each Way /
-  Extra Place reference calculators.
-- #35 now uses **Fund Manager → Calculators → Matched Betting**. The old Profile URL redirects;
+- #35 now presents **Fund Manager → Calculators → STANDARD Calculator**, reuses the ledger calculator
+  heading/field/result/action primitives, and provides distinct previous, next and all-family controls
+  without a native scrollbar. User visual acceptance remains pending.
+- #35 uses the Fund Manager calculator route. The old Profile URL redirects;
   calculator state can open in a separate tab without persistence. #112 adds fractional and
   unambiguous decimal-comma entry while keeping canonical server-validated decimal odds.
 - [`630bde8`](https://github.com/wolney8/OpenForge/commit/630bde854a76ef8551a677690a060c3cf167a55a): separates peer fields from the action row so Search,
