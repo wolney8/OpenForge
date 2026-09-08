@@ -13,6 +13,7 @@ import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import {
   BookmakerIdentity,
   catalogueIdForBookmaker,
@@ -2996,7 +2997,7 @@ export function FreeBetWorkflowShell({
             selectedRow?.base_reference_lay_stake;
 
     if (!suggested || suggested === "—") {
-      return;
+      return false;
     }
 
     setFormState((current) => ({
@@ -3014,6 +3015,7 @@ export function FreeBetWorkflowShell({
         ? `Applied ${mode.toLowerCase()} best-value lay ${suggested}, switched strategy to ${mode}, and copied it to the clipboard.`
         : `Applied ${mode.toLowerCase()} best-value lay ${suggested} and switched strategy to ${mode}.`
     );
+    return copied;
   }
 
   async function applyCustomLayValue() {
@@ -3022,7 +3024,7 @@ export function FreeBetWorkflowShell({
       formState.lay_actual.trim() ||
       formatPreviewMoney(freeBetCustomSliderCurrentFloat);
     if (!value) {
-      return;
+      return false;
     }
 
     setFormState((current) => ({
@@ -3040,6 +3042,7 @@ export function FreeBetWorkflowShell({
         ? "Applied custom lay, marked it fully placed, and copied it to the clipboard."
         : "Applied custom lay and marked it fully placed."
     );
+    return copied;
   }
 
   function commitFreeBetCustomSliderValue(value?: string) {
@@ -4545,7 +4548,7 @@ export function FreeBetWorkflowShell({
                               <dl className="calculator-result-card-values">
                                 <div>
                                   <dt>Lay Stake</dt>
-                                  <dd>{formatPreviewFinancialValue(card.preview?.layStake ?? card.stake)}</dd>
+                                  <dd><CopyableFinancialValue actionLabel={`Copy ${card.mode} free-bet lay stake and mark placed`} disabled={card.stake === "—"} label={`${card.mode} free-bet lay stake`} onCopy={() => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode)} value={card.preview?.layStake ?? card.stake} /></dd>
                                 </div>
                                 <div>
                                   <dt>Liability</dt>
@@ -4641,21 +4644,6 @@ export function FreeBetWorkflowShell({
                                   </div>
                                 </div>
                               ) : null}
-                              <button
-                                className="review-chip review-chip-copy calculator-result-copy"
-                                disabled={card.stake === "—"}
-                                onClick={() =>
-                                  card.mode === "Custom"
-                                    ? void applyCustomLayValue()
-                                    : void applySuggestedLayValue(card.mode)
-                                }
-                                type="button"
-                              >
-                                <span aria-hidden="true" className="material-symbols-outlined">
-                                  copy_all
-                                </span>
-                                <span>Copy</span>
-                              </button>
                             </article>
                           ))}
                         </div>

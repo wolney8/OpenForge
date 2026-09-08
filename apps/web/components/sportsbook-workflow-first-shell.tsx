@@ -29,6 +29,7 @@ import {
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutcomeScenario } from "@/components/calculator-outcomes";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
 import {
   BookmakerIdentity,
@@ -5839,7 +5840,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             "—";
 
     if (!nextSuggestedLay || nextSuggestedLay === "—") {
-      return;
+      return false;
     }
 
     const matchedLayLeg: PartialLayLegInput = {
@@ -5869,6 +5870,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? `${mode} lay copied and marked fully placed.`
         : `${mode} lay applied and marked fully placed.`
     );
+    return copied;
   }
 
   async function handleFreeBetBridgeFooterAction() {
@@ -5891,7 +5893,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       formState.lay_actual.trim() ||
       formatPreviewMoney(customSliderCurrentFloat);
     if (!value) {
-      return;
+      return false;
     }
 
     const matchedLayLeg: PartialLayLegInput = {
@@ -5921,6 +5923,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ? "Custom lay copied and marked fully placed."
         : "Custom lay applied and marked fully placed."
     );
+    return copied;
   }
 
   function commitCustomSliderValue(value?: string) {
@@ -8648,7 +8651,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                    <dl className="calculator-result-card-values">
 	                                      <div>
 	                                        <dt>Lay Stake</dt>
-	                                        <dd>{formatPreviewFinancialValue(card.layStake)}</dd>
+	                                        <dd><CopyableFinancialValue actionLabel={`Copy ${card.mode} lay stake and mark placed`} disabled={!card.canCopy || layFullyConfirmed} label={`${card.mode} lay stake`} onCopy={() => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode)} value={card.layStake} /></dd>
 	                                      </div>
 	                                      <div>
 	                                        <dt>Liability</dt>
@@ -8676,21 +8679,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                        onMinimumChange={(value) => { if (isDecimalCalculatorInput(value)) setCustomSliderMin(value); }}
 	                                      />
 	                                    ) : null}
-	                                    <button
-	                                      className="review-chip review-chip-copy calculator-result-copy"
-	                                      disabled={!card.canCopy || layFullyConfirmed}
-	                                      onClick={() =>
-	                                        card.mode === "Custom"
-	                                          ? void applyCustomLayValue()
-	                                          : void applySuggestedLayValue(card.mode)
-	                                      }
-	                                      type="button"
-	                                    >
-	                                      <span aria-hidden="true" className="material-symbols-outlined">
-	                                        copy_all
-	                                      </span>
-	                                      <span>Copy</span>
-	                                    </button>
 	                                  </article>
 	                                ))}
 	                              </div>

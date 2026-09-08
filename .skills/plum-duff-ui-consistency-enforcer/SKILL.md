@@ -227,7 +227,11 @@ For dialogs and drawers, assert:
 For tables and rows, assert:
 
 - header and body columns align;
+- dense calculator columns reflect semantic content need: provider/text columns must not force
+  compact odds/rate columns to the same width, and controls plus focus rings remain contained;
 - action slots have matching centres and dimensions;
+- copyable calculated stakes use the shared financial-value plus adjacent copy/check affordance;
+  do not add an Actions column when Copy is the row's only action;
 - optional actions do not shift destructive actions;
 - narrow viewports use the intended local scroll or reflow.
 - stacked primary/supporting text retains a measurable gap, chips remain at least the canonical

@@ -8742,6 +8742,149 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   table-layout: fixed;
 }
 
+.copyable-financial-value {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.copyable-financial-value-display {
+  align-items: baseline;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.copyable-financial-value-action {
+  flex: 0 0 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  width: 2.25rem;
+}
+
+.copyable-financial-value-action.is-success {
+  background: color-mix(in srgb, var(--success) 16%, var(--surface-container));
+  border-color: color-mix(in srgb, var(--success) 60%, var(--outline));
+  color: var(--success);
+}
+
+.dense-calculator-grid {
+  min-width: 100%;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.dense-calculator-grid th,
+.dense-calculator-grid td {
+  overflow: visible;
+  padding: 0.8rem 0.45rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.dense-calculator-grid .field-control,
+.dense-calculator-grid .field-control :is(input, select) {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.dense-calculator-grid .field-control :is(input, select) {
+  text-align: center;
+}
+
+.sequential-lay-grid th:nth-child(1) { width: 10%; }
+.sequential-lay-grid th:nth-child(2) { width: 24%; }
+.sequential-lay-grid th:nth-child(3) { width: 13%; }
+.sequential-lay-grid th:nth-child(4) { width: 13%; }
+.sequential-lay-grid th:nth-child(5) { width: 22%; }
+.sequential-lay-grid th:nth-child(6) { width: 18%; }
+.sequential-lay-grid.has-remove th:nth-child(1) { width: 9%; }
+.sequential-lay-grid.has-remove th:nth-child(2) { width: 21%; }
+.sequential-lay-grid.has-remove th:nth-child(3) { width: 12%; }
+.sequential-lay-grid.has-remove th:nth-child(4) { width: 12%; }
+.sequential-lay-grid.has-remove th:nth-child(5) { width: 20%; }
+.sequential-lay-grid.has-remove th:nth-child(6) { width: 17%; }
+.sequential-lay-grid.has-remove th:nth-child(7) { width: 9%; }
+
+.multi-lay-reference-grid th:nth-child(1) { width: 7%; }
+.multi-lay-reference-grid th:nth-child(2) { width: 29%; }
+.multi-lay-reference-grid th:nth-child(3) { width: 15%; }
+.multi-lay-reference-grid th:nth-child(4) { width: 27%; }
+.multi-lay-reference-grid th:nth-child(5) { width: 22%; }
+.multi-lay-reference-grid.has-remove th:nth-child(1) { width: 6%; }
+.multi-lay-reference-grid.has-remove th:nth-child(2) { width: 27%; }
+.multi-lay-reference-grid.has-remove th:nth-child(3) { width: 14%; }
+.multi-lay-reference-grid.has-remove th:nth-child(4) { width: 25%; }
+.multi-lay-reference-grid.has-remove th:nth-child(5) { width: 20%; }
+.multi-lay-reference-grid.has-remove th:nth-child(6) { width: 8%; }
+
+@media (max-width: 860px) {
+  .dense-calculator-grid,
+  .dense-calculator-grid tbody {
+    display: block;
+    min-width: 0;
+  }
+
+  .dense-calculator-grid thead {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .dense-calculator-grid tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .dense-calculator-grid tbody tr {
+    border: 1px solid color-mix(in srgb, var(--outline) 72%, transparent);
+    border-radius: 0.85rem;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0.75rem;
+  }
+
+  .dense-calculator-grid tbody td {
+    align-content: start;
+    border: 0;
+    display: grid;
+    gap: 0.35rem;
+    justify-items: start;
+    min-width: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  .dense-calculator-grid tbody td::before {
+    color: var(--muted);
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .dense-calculator-grid .copyable-financial-value {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .dense-calculator-grid tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .multi-lay-results-grid,
 .multi-lay-placement-grid {
   min-width: max(100%, 58rem);

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 
 export type EachWayPresentationMode = "Each Way" | "Extra Place";
@@ -74,12 +75,11 @@ export function EachWayTermField({ dataPdId, inputId, onChange, quickChoices, va
   </div>;
 }
 
-export function EachWayLaySection({ children, kind, label, liability, onCopy, quickChoices, stake }: {
+export function EachWayLaySection({ children, kind, label, liability, quickChoices, stake }: {
   children: ReactNode;
   kind: "win" | "place";
   label: string;
   liability: string | null | undefined;
-  onCopy: (value: string | null | undefined) => void;
   quickChoices?: ReactNode;
   stake: string | null | undefined;
 }) {
@@ -90,12 +90,8 @@ export function EachWayLaySection({ children, kind, label, liability, onCopy, qu
     <FinancialValueReplayGroup>
       <div className="extra-place-calculated-stake">
         <span>Calculated Lay Stake</span>
-        <strong>{neutralValue(stake)}</strong>
+        <strong><CopyableFinancialValue dataPdId={`calculator.${kind}-lay-stake.copyable`} label={`${label} stake`} value={stake} /></strong>
         <span>Liability {neutralValue(liability)}</span>
-        <button className="review-chip extra-place-copy-button" disabled={!stake} onClick={() => void onCopy(stake)} type="button">
-          <span aria-hidden="true" className="material-symbols-outlined">content_copy</span>
-          <span>Copy stake</span>
-        </button>
       </div>
     </FinancialValueReplayGroup>
   </section>;

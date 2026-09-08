@@ -701,9 +701,6 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     if (response.ok) await load();
   };
-  const copy = async (stake: string | null | undefined) => {
-    if (stake) await navigator.clipboard?.writeText(stake);
-  };
   const missing = useMemo(
     () => ({
       calculate: [
@@ -1336,7 +1333,6 @@ export function EachWayExtraPlaceWorkflowShell({
                         exchangeOptions={accountOptions.exchanges}
                         exchangeQuickOptions={exchangeQuickOptions}
                         form={form}
-                        onCopy={copy}
                         onRaceDatePick={applyRaceDate}
                         onRacePaste={applyRacePaste}
                         onRaceUpdate={updateRace}
@@ -2293,7 +2289,6 @@ function Calculate({
   onRacePaste,
   preview,
   rows,
-  onCopy,
 }: {
   accountAccess: ExtraPlaceAccountAccess | null;
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
@@ -2308,7 +2303,6 @@ function Calculate({
   onRacePaste: (value: string) => boolean;
   preview: Row | null;
   rows: Row[];
-  onCopy: (value: string | null | undefined) => void;
 }) {
   const raceDates = getRaceDateSuggestions(form.race);
   return (
@@ -2456,7 +2450,6 @@ function Calculate({
         label="Lay The Win"
         odds="win_lay_odds"
         form={form}
-        onCopy={onCopy}
         onUpdate={onUpdate}
         stake={preview?.win_lay_stake}
         liability={preview?.win_liability}
@@ -2469,7 +2462,6 @@ function Calculate({
         label="Lay The Place"
         odds="place_lay_odds"
         form={form}
-        onCopy={onCopy}
         onUpdate={onUpdate}
         stake={preview?.place_lay_stake}
         liability={preview?.place_liability}
@@ -2489,7 +2481,6 @@ function LaySegment({
   onUpdate,
   stake,
   liability,
-  onCopy,
 }: {
   label: string;
   kind: "win" | "place";
@@ -2501,14 +2492,12 @@ function LaySegment({
   onUpdate: (key: keyof Form, value: string) => void;
   stake: string | null | undefined;
   liability: string | null | undefined;
-  onCopy: (value: string | null | undefined) => void;
 }) {
   return (
     <EachWayLaySection
       kind={kind}
       label={label}
       liability={liability}
-      onCopy={onCopy}
       quickChoices={<div className="extra-place-account-option-rail"><QuickSelectRail ariaLabel={`${label} Account quick selections`} choices={[...new Set([form[exchange] as string, ...exchangeQuickOptions])].filter(Boolean).map((value) => ({ label: value, value }))} onSelect={(next) => onUpdate(exchange, next)} selectedValues={[form[exchange] as string]} /></div>}
       stake={stake}
     >

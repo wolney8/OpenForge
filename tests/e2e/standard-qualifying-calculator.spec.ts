@@ -19,6 +19,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   });
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
   await page.goto("/fund-manager/calculators");
+  await page.waitForTimeout(250);
   if (await page.locator("html").getAttribute("data-theme") === "dark") {
     await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   }
@@ -69,8 +70,8 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   expect(actionPadding[0]).toBe(actionPadding[2]);
   expect(actionPadding[1]).toBe(actionPadding[3]);
   expect(openBox?.height).toBeGreaterThanOrEqual(44);
-  await page.getByRole("button", { name: "Copy Lay Stake" }).click();
-  await expect(page.getByText(/^Copied /)).toBeVisible();
+  await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button').click();
+  await expect(page.getByText(/^Copied £ /)).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -196,7 +197,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.locator('[data-pd-id="calculators.multi-outcome-1-odds"]')).toHaveValue("5.9");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(3);
-  await page.getByRole("button", { name: /Copy stake for Outcome 1/ }).click();
+  await page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"] button').click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
   await page.locator('[data-pd-id="calculators.multi-lay.reset"]').click();
   await expect(page.getByLabel("Back stake")).toHaveValue("");
@@ -213,7 +214,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]').getByText("Extra Place", { exact: true })).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toContainText("Extra Place");
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(4);
-  await page.getByRole("button", { name: "Copy stake" }).first().click();
+  await page.locator('[data-pd-id="calculator.win-lay-stake.copyable"] button').click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
   await page.locator('[data-pd-id="calculators.each-way.reset"]').click();
   await expect(page.getByLabel("E/W Stake (each way)")).toHaveValue("");
@@ -270,6 +271,32 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
   await page.goto("/fund-manager/calculators?family=sequential-lay");
   await expect(page.getByRole("heading", { name: "Sequential Lay" })).toBeVisible();
+  const sequentialGrid = page.locator(".sequential-lay-grid");
+  await expect(sequentialGrid.locator("thead th", { hasText: "Actions" })).toHaveCount(0);
+  await expect(sequentialGrid.locator("thead th", { hasText: "Remove" })).toHaveCount(0);
+  const denseGeometry = await sequentialGrid.locator("tbody tr").first().evaluate((row) => {
+    const cells = [...row.querySelectorAll<HTMLElement>(":scope > td")];
+    const controls = [...row.querySelectorAll<HTMLElement>("input, select")];
+    const contained = controls.every((control) => {
+      const controlBox = control.getBoundingClientRect();
+      const cellBox = control.closest("td")!.getBoundingClientRect();
+      return controlBox.left >= cellBox.left && controlBox.right <= cellBox.right;
+    });
+    const separated = cells.every((cell, index) => {
+      if (!cells[index + 1]) return true;
+      return cell.getBoundingClientRect().right <= cells[index + 1].getBoundingClientRect().left;
+    });
+    return { contained, separated };
+  });
+  expect(denseGeometry).toEqual({ contained: true, separated: true });
+  const commission = page.getByLabel("Leg 1 commission");
+  await commission.focus();
+  await expect(commission).toBeFocused();
+  expect(await commission.evaluate((input) => {
+    const control = input.getBoundingClientRect();
+    const cell = input.closest("td")!.getBoundingClientRect();
+    return control.left - 3 >= cell.left && control.right + 3 <= cell.right;
+  })).toBe(true);
   await page.locator('[data-pd-id="calculators.sequential-back-stake"]').fill("10");
   await page.locator('[data-pd-id="calculators.sequential-back-odds"]').fill("8/1");
   await page.getByLabel("Back commission").fill("0");
@@ -278,6 +305,7 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await page.locator('[data-pd-id="calculators.sequential-lay.leg-2-odds"]').fill("2,00");
   await page.getByLabel("Leg 2 commission").fill("0.05");
   await page.getByRole("button", { name: "Add leg" }).click();
+  await expect(sequentialGrid.locator("thead th", { hasText: "Remove" })).toHaveCount(1);
   await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1.50");
   await page.getByLabel("Leg 3 commission").fill("0.05");
   await page.locator('[data-pd-id="calculators.sequential-mode"]').focus();
@@ -290,6 +318,10 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await page.locator('[data-pd-id="calculators.sequential-lay.leg-4-odds"]').fill("1.20");
   await page.getByLabel("Leg 4 commission").fill("0.05");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(5);
+  await page.setViewportSize({ width: 800, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  expect(await sequentialGrid.locator("tbody tr").evaluateAll((rows) => rows.every((row) => row.getBoundingClientRect().right <= document.documentElement.clientWidth + 1))).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("button", { name: "Remove leg 4" }).click();
   await page.locator('[data-pd-id="calculators.sequential-mode"]').selectOption("lock_in");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("62.07");
@@ -298,10 +330,31 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toHaveCount(0);
   await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1.50");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("62.07");
-  await page.getByRole("button", { name: "Copy leg 3 lay stake" }).click();
-  await expect(page.getByText("Copied 62.07")).toBeVisible();
+  const legThreeCopyable = page.locator('[data-pd-id="calculators.sequential-lay.leg-3.copyable"]');
+  await legThreeCopyable.getByRole("button").click();
+  await expect(legThreeCopyable.getByText("Copied £ 62.07")).toBeVisible();
+  await expect(legThreeCopyable.locator(".material-symbols-outlined")).toHaveText("check");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("62.07");
+  await page.waitForTimeout(1700);
+  await expect(legThreeCopyable.locator(".material-symbols-outlined")).toHaveText("content_copy");
+  await legThreeCopyable.getByRole("button").click();
+  await expect(legThreeCopyable.locator(".material-symbols-outlined")).toHaveText("check");
+  await page.waitForTimeout(1700);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, "writeText", {
+      configurable: true,
+      value: async () => { throw new Error("Synthetic clipboard denial"); },
+    });
+  });
+  await legThreeCopyable.locator(".financial-value").click();
+  await expect(legThreeCopyable).toHaveAttribute("data-copy-state", "idle");
+  await legThreeCopyable.getByRole("button").click();
+  await expect(legThreeCopyable.getByText("Unable to copy Leg 3 lay stake. Select the value and copy it manually.")).toBeVisible();
+  await expect(legThreeCopyable.locator(".material-symbols-outlined")).toHaveText("content_copy");
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
+  const originalTheme = await page.locator("html").getAttribute("data-theme");
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", originalTheme === "dark" ? "light" : "dark");
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-alternate-theme.png"), fullPage: true });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
@@ -313,7 +366,11 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await expect(page.locator('[data-pd-id="calculators.sequential-back-stake"]')).toHaveValue("");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("html").evaluate((element) => { element.style.fontSize = "125%"; });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  const narrowRows = page.locator(".sequential-lay-grid tbody tr");
+  await expect(narrowRows).toHaveCount(2);
+  expect(await narrowRows.first().evaluate((row) => row.getBoundingClientRect().right <= document.documentElement.clientWidth + 1)).toBe(true);
   await page.locator('[data-pd-id="calculators.sequential-mode"]').focus();
   await expect(page.locator('[data-pd-id="calculators.sequential-mode"]')).toBeFocused();
   expect(businessMutations).toEqual([]);
@@ -386,8 +443,8 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await page.locator('[data-pd-id="calculators.early-payout.lock-adjustment-reset"]').click();
   await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toHaveValue("100");
   await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
-  await page.getByRole("button", { name: "Copy back stake" }).click();
-  await expect(page.getByText("Copied 95.82")).toBeVisible();
+  await page.locator('[data-pd-id="calculators.early-payout.reference.additional-back-stake.copyable"] button').click();
+  await expect(page.getByText("Copied £ 95.82")).toBeVisible();
   await page.getByRole("button", { name: "Add part back" }).click();
   await page.getByLabel("Part back 1 stake").fill("20");
   await page.getByLabel("Part back 1 odds").fill("1.4");
@@ -487,7 +544,7 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
         mode: pick('[data-pd-id="calculators.matched-betting.bet-type"]'),
         panel: pick(".calculator-band-primary"),
         resultHeading: pick(".calculator-result-card-heading"),
-        resultButton: pick(".calculator-result-copy"),
+        resultButton: pick(".copyable-financial-value-action"),
       };
     });
 
@@ -514,7 +571,7 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
         mode: pick('[data-pd-id="sportsbook.matching.calculator-mode"] select'),
         panel: pick(".calculator-band-primary"),
         resultHeading: pick(".calculator-result-card-heading"),
-        resultButton: pick(".calculator-result-copy"),
+        resultButton: pick(".copyable-financial-value-action"),
       };
     });
     expect(hubGeometry.field).toEqual(ledgerGeometry.field);
@@ -524,6 +581,8 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
     expect(hubGeometry.resultButton).toEqual(ledgerGeometry.resultButton);
     expect(hubGeometry.panel.padding).toBe(ledgerGeometry.panel.padding);
     expect(hubGeometry.panel.radius).toBe(ledgerGeometry.panel.radius);
+    await expect(editor.locator('[data-pd-id="sportsbook.matching.result-cards"] .copyable-financial-value')).toHaveCount(1);
+    await expect(editor.locator('[data-pd-id="sportsbook.matching.result-cards"] .calculator-result-copy')).toHaveCount(0);
 
     await editor.getByRole("tab", { name: /Settlement/ }).click();
     await expect(editor.locator('[data-pd-id="sportsbook.calculator.outcomes"]')).toBeVisible();
@@ -539,14 +598,14 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
         const style = getComputedStyle(target);
         return { padding: style.padding, radius: style.borderRadius, background: style.backgroundColor };
       };
-      const field = element.querySelector<HTMLElement>(".multi-lay-planner-grid input");
+      const field = element.querySelector<HTMLElement>(".multi-lay-planner-grid input, .multi-lay-reference-grid input");
       if (!field) throw new Error("Missing Multi-Lay outcome field");
       return {
         band: pick(".calculator-band-multilay"),
         panel: pick(".calculator-panel-card-multilay"),
         heading: pick(".multi-lay-calculator-title-row"),
         toolbar: pick(".multi-lay-planner-toolbar"),
-        grid: pick(".multi-lay-planner-grid"),
+        grid: pick(".multi-lay-planner-grid, .multi-lay-reference-grid"),
         field: { height: field.getBoundingClientRect().height, radius: getComputedStyle(field).borderRadius, padding: getComputedStyle(field).padding },
       };
     });
@@ -625,7 +684,7 @@ test("matches the Extra Places calculator presentation for the same family", asy
       winLay: surface(".extra-place-lay-win"),
       layField: pick(".extra-place-lay-win input"),
       calculated: pick(".extra-place-lay-win .extra-place-calculated-stake"),
-      copy: pick(".extra-place-lay-win .extra-place-copy-button"),
+        copy: pick(".extra-place-lay-win .copyable-financial-value-action"),
       outcome: surface(".extra-place-outcome-matrix"),
       outcomeHeading: pick(".extra-place-outcome-matrix .calculator-result-card-heading"),
       outcomeRow: pick(".extra-place-outcome-row"),

@@ -16,12 +16,16 @@ durable requirements.
   ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
   Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay now has a
   source-verified decimal calculation contract and a Fund Manager reference calculator with
-  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes. Early Payout /
+  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes. Its leg grid now
+  sizes provider, odds, rate and financial columns by semantic need, reflows rather than clipping,
+  and places Copy beside each calculated stake. Early Payout /
   2UP is implemented locally, covering ordinary matching, explicit trigger lock-in, maximum
   payout, part backs and 2-Way Dutch without ledger writes. Its Reference and Outcomes are now peer
   sections with stable live recalculation, a guarded/local-reset Lock-In slider and concise guidance;
-  user acceptance remains pending.
-- Current implementation base before this tranche: `8a441305225247c7ad79d21c00809d1573cf2018` on `main`.
+  user acceptance remains pending. Current standalone calculators and the directly equivalent
+  Sportsbook, Free Bet and Extra Place/Each Way ledger calculations use the shared copyable stake
+  value; complex embedded Multi-Lay placement controls retain their existing multi-action area.
+- Current implementation base before this tranche: `dd5930505525c37be58b83736daffd15d8422c31` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

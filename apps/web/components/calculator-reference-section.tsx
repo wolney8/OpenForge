@@ -3,9 +3,11 @@
 import type { ReactNode } from "react";
 
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
 
 export type CalculatorReferenceRow = {
+  copyable?: boolean;
   label: string;
   value: string | null | undefined;
 };
@@ -38,7 +40,11 @@ export function CalculatorReferenceSection({
       <dl className="calculator-reference-rows">
         {rows.map((row) => <div className="calculator-reference-row" key={row.label}>
           <dt><span>{row.label}</span></dt>
-          <dd>{row.value === null || row.value === undefined || row.value === "" ? <span>£ -</span> : <FinancialValue label={row.label} value={row.value} />}</dd>
+          <dd>{row.copyable
+            ? <CopyableFinancialValue dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} value={row.value} />
+            : row.value === null || row.value === undefined || row.value === ""
+              ? <span>£ -</span>
+              : <FinancialValue label={row.label} value={row.value} />}</dd>
         </div>)}
       </dl>
       {action ? <div className="calculator-reference-action">{action}</div> : null}

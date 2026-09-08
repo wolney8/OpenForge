@@ -51,6 +51,9 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
 - [ ] Flex/grid ancestors around wide content use `min-width: 0` where required.
+- [ ] Dense calculator columns are sized by semantic need: provider/text controls receive room while
+      odds/rate fields stay compact, and every control plus focus ring remains inside its cell at
+      supported viewport and text-scale states.
 - [ ] Dialog header/close action remain visible.
 - [ ] Dialog footer actions remain visible and keyboard reachable.
 - [ ] Enabled, disabled, loading, success and error action conditions are defined.
@@ -66,6 +69,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       calculator/workflow presentation; generic calculator geometry alone is not parity evidence.
 - [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than
       family-specific generic result tables.
+- [ ] Copyable calculated stakes use the shared financial-value plus adjacent copy/check action;
+      a copy-only operation does not create a separate Actions column.
 - [ ] Switches represent genuine binary on/off state; named mutually exclusive modes use the
       canonical segmented control.
 - [ ] Partial lay, where applicable, is represented as a placement state/control rather than a
