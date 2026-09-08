@@ -8478,6 +8478,96 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   line-height: 1;
 }
 
+.calculator-result-peers {
+  align-items: start;
+  gap: 1rem;
+}
+
+.calculator-result-peers > :is(.calculator-reference-section, .calculator-outcomes-matrix) {
+  box-sizing: border-box;
+  margin: 0;
+  width: 100%;
+}
+
+.calculator-reference-heading h3 {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+  justify-content: center;
+  margin: 0;
+}
+
+.calculator-section-guidance {
+  color: var(--muted);
+  margin: 0;
+  padding: 0 1rem;
+}
+
+.calculator-reference-rows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.calculator-reference-row {
+  align-items: center;
+  background: var(--surface-container-high);
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(7rem, auto);
+  min-height: 3rem;
+}
+
+.calculator-reference-row + .calculator-reference-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.calculator-reference-row :is(dt, dd) { margin: 0; }
+
+.calculator-reference-row dt {
+  align-items: center;
+  align-self: stretch;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-container-high));
+  border-left: 0.5rem solid var(--primary);
+  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 50%, calc(100% - 1rem) 100%, 0 100%);
+  display: flex;
+  font-weight: 750;
+  padding: 0.6rem 1.4rem 0.6rem 0.7rem;
+}
+
+.calculator-reference-row dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 0.6rem 1rem;
+  text-align: right;
+}
+
+.calculator-reference-action {
+  display: flex;
+  justify-content: center;
+}
+
+.calculator-slider-heading {
+  align-items: end;
+  display: flex;
+  gap: var(--action-group-gap);
+  justify-content: space-between;
+}
+
+.calculator-slider-heading .field-control { flex: 1; }
+
+.calculator-live-chip.is-motion-enabled {
+  animation: calculator-live-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes calculator-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+  50% { box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--danger) 22%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calculator-live-chip.is-motion-enabled { animation: none; }
+}
+
 .custom-slider-card-controls {
   padding: 0 0.95rem;
   min-width: 0;
@@ -9361,6 +9451,22 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.quick-select-rail-wrap-labels {
+  max-width: min(100%, 44rem);
+}
+
+.quick-select-rail-wrap-labels .quick-select-rail-label {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.quick-select-rail-wrap-labels .review-chip {
+  height: auto;
+  min-height: 2.75rem;
 }
 
 .quick-select-rail .icon-button {

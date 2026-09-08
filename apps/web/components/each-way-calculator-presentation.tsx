@@ -28,7 +28,7 @@ function neutralValue(value: string | null | undefined) {
 
 export function EachWayModeToggle({ mode, onChange }: { mode: EachWayPresentationMode; onChange: (mode: EachWayPresentationMode) => void }) {
   return <div aria-label="Each Way calculator mode" className="extra-place-bet-type-toggle" role="group">
-    {(["Each Way", "Extra Place"] as const).map((option) => <button aria-pressed={mode === option} className="extra-place-bet-type-toggle-option" key={option} onClick={() => onChange(option)} type="button">{option}</button>)}
+    {(["Extra Place", "Each Way"] as const).map((option) => <button aria-pressed={mode === option} className="extra-place-bet-type-toggle-option" key={option} onClick={() => onChange(option)} type="button">{option}</button>)}
   </div>;
 }
 

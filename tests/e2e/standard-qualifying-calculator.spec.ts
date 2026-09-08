@@ -202,7 +202,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.getByLabel("Back stake")).toHaveValue("");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toHaveCount(0);
 
-  await rail.getByRole("button", { name: "Each Way" }).click();
+  await rail.getByRole("button", { name: "Extra Place / Each Way" }).click();
   await page.getByLabel("E/W Stake (each way)").fill("10");
   await page.getByLabel("Back odds").fill("6");
   await page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]').fill("2.3");
@@ -217,7 +217,15 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.getByText(/^Copied /)).toBeVisible();
   await page.locator('[data-pd-id="calculators.each-way.reset"]').click();
   await expect(page.getByLabel("E/W Stake (each way)")).toHaveValue("");
-  await expect(page.getByLabel("Each Way calculator mode").getByRole("button", { name: "Each Way", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Each Way calculator mode").getByRole("button", { name: "Extra Place", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const placeTermsRail = page.getByRole("group", { name: "Place terms quick choices" });
+  const firstPlaceTerm = placeTermsRail.getByRole("button", { name: "Paying 4 instead of 3" });
+  await expect(firstPlaceTerm).toBeVisible();
+  expect(await firstPlaceTerm.locator(".quick-select-rail-label").evaluate((element) => ({
+    overflow: getComputedStyle(element).overflow,
+    textOverflow: getComputedStyle(element).textOverflow,
+    whiteSpace: getComputedStyle(element).whiteSpace,
+  }))).toEqual({ overflow: "visible", textOverflow: "clip", whiteSpace: "normal" });
 
   const inputHeights = await Promise.all([page.locator('[data-pd-id="calculators.each-way-stake"]'), page.locator('[data-pd-id="calculators.each-way-back-odds"]'), page.locator('[data-pd-id="calculators.each-way-win-lay-odds"]'), page.locator('[data-pd-id="calculators.each-way-place-lay-odds"]')].map((locator) => locator.boundingBox()));
   expect(inputHeights.map((box) => Math.round(box?.height ?? 0))).toEqual([44, 44, 44, 44]);
@@ -232,6 +240,8 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
   await page.evaluate(() => { document.documentElement.style.fontSize = "20px"; });
+  await expect(placeTermsRail.locator(".quick-select-rail-page .review-chip")).toHaveCount(1);
+  expect(await firstPlaceTerm.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   const scaledOverflow = await page.locator('[data-pd-id="calculators.workspace"]').evaluate((workspace) => ({
     fits: workspace.scrollWidth <= workspace.clientWidth + 1,
     dimensions: `${workspace.getBoundingClientRect().left}/${workspace.getBoundingClientRect().right}/${workspace.clientWidth}/${workspace.scrollWidth}`,
@@ -330,17 +340,51 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await expect(page.getByLabel("Team / selection wins: Bookmaker £ 62.50; Exchange £ (65.42); total £ (2.92)")).toBeVisible();
   await expect(page.getByLabel("Recommended lay stake: £ 49.56")).toBeVisible();
   await expect(page.getByLabel("Liability: £ 65.42")).toBeVisible();
+  const reference = page.locator('[data-pd-id="calculators.early-payout.reference"]');
+  const outcomes = page.locator('[data-pd-id="calculators.early-payout.outcomes"]');
+  await expect(reference.getByRole("heading", { name: "Initial Matching Reference" })).toBeVisible();
+  await expect(reference.getByText("Shows the initial hedge before the early-payout trigger is reached.")).toBeVisible();
+  expect(await reference.evaluate((element) => element.parentElement?.getAttribute("data-pd-id"))).toBe("calculators.early-payout.result-sections");
+  expect(await outcomes.evaluate((element) => element.parentElement?.getAttribute("data-pd-id"))).toBe("calculators.early-payout.result-sections");
+  const [referenceBox, outcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
+  expect(referenceBox?.x).toBeCloseTo(outcomesBox?.x ?? 0, 0);
+  expect((referenceBox?.x ?? 0) + (referenceBox?.width ?? 0)).toBeCloseTo((outcomesBox?.x ?? 0) + (outcomesBox?.width ?? 0), 0);
+  expect(await reference.locator(".calculator-panel-card").count()).toBe(0);
 
   await page.getByRole("switch", { name: "Bookmaker has paid out early" }).click();
+  await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toBeDisabled();
   await page.locator('[data-pd-id="calculators.early-in-play-odds"]').fill("1.20");
+  await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toBeEnabled();
+  await expect(reference.getByText("LIVE", { exact: true })).toBeVisible();
+  await expect(reference.getByRole("heading", { name: "LIVE Lock-In Reference" })).toBeVisible();
+  await expect(page.getByText("Shift the suggested hedge toward more or less profit on the remaining outcome.")).toBeVisible();
   await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
   await expect(page.getByLabel("Team / selection wins: Bookmaker £ 62.50; Exchange £ (46.26); total £ 16.24")).toBeVisible();
   await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("80");
   await expect(page.getByLabel("Additional back stake: £ 68.73")).toBeVisible();
   await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("");
+  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await page.route("**/fund-manager/calculators/early-payout/preview", async (route) => {
+    const payload = route.request().postDataJSON() as { lock_adjustment_percent?: string };
+    if (payload.lock_adjustment_percent !== "50") return route.continue();
+    const response = await route.fetch();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await route.fulfill({ response });
+  });
+  const [settledReferenceBox, settledOutcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
   await page.getByRole("slider", { name: "Lock-in adjustment" }).fill("50");
+  await expect(reference).toBeVisible();
+  await expect(outcomes).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  const [pendingReferenceBox, pendingOutcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
+  expect(pendingReferenceBox?.height).toBeCloseTo(settledReferenceBox?.height ?? 0, 0);
+  expect(pendingOutcomesBox?.height).toBeCloseTo(settledOutcomesBox?.height ?? 0, 0);
   await expect(page.getByLabel("Additional back stake: £ 48.91")).toBeVisible();
-  await page.getByRole("slider", { name: "Lock-in adjustment" }).fill("100");
+  const [liveReferenceBox, liveOutcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
+  expect(liveReferenceBox?.x).toBeCloseTo(liveOutcomesBox?.x ?? 0, 0);
+  expect(liveReferenceBox?.width).toBeCloseTo(liveOutcomesBox?.width ?? 0, 0);
+  await page.locator('[data-pd-id="calculators.early-payout.lock-adjustment-reset"]').click();
+  await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toHaveValue("100");
   await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
   await page.getByRole("button", { name: "Copy back stake" }).click();
   await expect(page.getByText("Copied 95.82")).toBeVisible();

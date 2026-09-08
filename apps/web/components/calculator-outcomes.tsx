@@ -33,17 +33,20 @@ export function CalculatorOutcomeValueDisplay({ label, value }: { label: string;
 
 export function CalculatorOutcomes({
   columns = [],
+  description,
   inspectionId,
   rows,
   summary,
 }: {
   columns?: string[];
+  description?: ReactNode;
   inspectionId: string;
   rows: CalculatorOutcomeScenario[];
   summary?: ReactNode;
 }) {
   return <section className="calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card" data-pd-id={inspectionId}>
     <div className="calculator-result-card-heading"><h3>Outcomes</h3></div>
+    {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
       {rows.map((row) => {
         const components = row.components ?? [];

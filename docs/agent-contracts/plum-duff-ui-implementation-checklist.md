@@ -66,6 +66,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       calculator/workflow presentation; generic calculator geometry alone is not parity evidence.
 - [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than
       family-specific generic result tables.
+- [ ] Switches represent genuine binary on/off state; named mutually exclusive modes use the
+      canonical segmented control.
 - [ ] Partial lay, where applicable, is represented as a placement state/control rather than a
       standalone calculator mode, with legacy `Partial Lay` rows kept readable.
 - [ ] Unit/Playwright/accessibility tests added or updated.

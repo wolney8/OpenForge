@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 export type QuickSelectChoice = {
   label: string;
@@ -13,13 +13,16 @@ export function QuickSelectRail({
   choices,
   onSelect,
   selectedValues = [],
+  wrapLabels = false,
 }: {
   ariaLabel: string;
   choices: QuickSelectChoice[];
   onSelect: (value: string) => void;
   selectedValues?: string[];
+  wrapLabels?: boolean;
 }) {
-  const pageSize = 3;
+  const [compactLabels, setCompactLabels] = useState(false);
+  const pageSize = wrapLabels && compactLabels ? 1 : 3;
   const pageCount = Math.max(1, Math.ceil(choices.length / pageSize));
   const selectedIndex = useMemo(
     () => choices.findIndex((choice) => selectedValues.includes(choice.value)),
@@ -29,22 +32,30 @@ export function QuickSelectRail({
   const selectedPage = selectedIndex < 0 ? 0 : Math.floor(selectedIndex / pageSize);
   const [navigation, setNavigation] = useState(() => ({
     page: selectedPage,
+    pageSize,
     selectedValue,
   }));
+  useEffect(() => {
+    if (!wrapLabels) return;
+    const media = window.matchMedia("(max-width: 40rem)");
+    const sync = () => setCompactLabels(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, [wrapLabels]);
   const page = Math.min(
-    navigation.selectedValue === selectedValue ? navigation.page : selectedPage,
+    navigation.selectedValue === selectedValue && navigation.pageSize === pageSize ? navigation.page : selectedPage,
     pageCount - 1,
   );
 
   const firstIndex = page * pageSize;
   const visibleChoices = choices.slice(firstIndex, firstIndex + pageSize);
   const hasPages = choices.length > pageSize;
-  const remaining = Math.max(0, choices.length - (firstIndex + visibleChoices.length));
 
   return (
     <div
       aria-label={ariaLabel}
-      className="import-review-loadout-shell quick-select-rail"
+      className={`import-review-loadout-shell quick-select-rail${wrapLabels ? " quick-select-rail-wrap-labels" : ""}`}
       data-pd-id="quick-select.rail"
       role="group"
     >
@@ -53,7 +64,7 @@ export function QuickSelectRail({
           aria-label={`Show previous ${ariaLabel}`}
           className="icon-button compact-action"
           disabled={page === 0}
-          onClick={() => setNavigation({ page: Math.max(0, page - 1), selectedValue })}
+          onClick={() => setNavigation({ page: Math.max(0, page - 1), pageSize, selectedValue })}
           type="button"
         >
           <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
@@ -79,13 +90,13 @@ export function QuickSelectRail({
       </div>
       {hasPages ? (
         <button
-          aria-label={`Show next ${ariaLabel}${remaining ? `, ${remaining} remaining` : ""}`}
+          aria-label={`Show next ${ariaLabel}`}
           className="icon-button compact-action"
           disabled={page >= pageCount - 1}
-          onClick={() => setNavigation({ page: Math.min(pageCount - 1, page + 1), selectedValue })}
+          onClick={() => setNavigation({ page: Math.min(pageCount - 1, page + 1), pageSize, selectedValue })}
           type="button"
         >
-          {remaining ? <span aria-hidden="true">+{remaining}</span> : <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>}
+          <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
         </button>
       ) : null}
     </div>

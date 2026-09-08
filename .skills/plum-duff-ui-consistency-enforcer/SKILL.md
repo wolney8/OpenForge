@@ -140,6 +140,8 @@ use the canonical primitive and computed styling.
   not establish calculator parity.
 - All calculator scenario results use the shared Outcomes presentation primitive. Family-specific
   generic result tables are not permitted where contracted scenario outcomes exist.
+- Use a Switch only for genuine binary on/off state. Mutually exclusive named modes use the
+  canonical segmented control.
 - Animated financial digits must inherit the static value's typography, line height and baseline;
   compare animated and plain geometry. Keep currency spaces and punctuation at their natural width.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global

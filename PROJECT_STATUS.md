@@ -11,15 +11,17 @@ durable requirements.
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager calculator hub now includes Standard (the matched-betting engine),
-  Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
+  Multi-Lay, and combined Extra Place / Each Way families without ledger writes. Extra Place / Each
   Place now shares its Back Bet, Place Terms, Lay Win and Lay Place presentation directly with the
   ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
   Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay now has a
   source-verified decimal calculation contract and a Fund Manager reference calculator with
   Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes. Early Payout /
   2UP is implemented locally, covering ordinary matching, explicit trigger lock-in, maximum
-  payout, part backs and 2-Way Dutch without ledger writes; user acceptance remains pending.
-- Current implementation base before this tranche: `a525e0e07d7653c6182f69d478981a7a1ce11d00` on `main`.
+  payout, part backs and 2-Way Dutch without ledger writes. Its Reference and Outcomes are now peer
+  sections with stable live recalculation, a guarded/local-reset Lock-In slider and concise guidance;
+  user acceptance remains pending.
+- Current implementation base before this tranche: `8a441305225247c7ad79d21c00809d1573cf2018` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -106,6 +108,9 @@ durable requirements.
   four Profit Boost price sources. Each Way / Extra Place uses
   shared same-family ledger presentation sections and Multi-Lay uses the ledger planner/table
   composition; focused family-specific visual acceptance remains pending Will's recheck.
+- Early Payout / 2UP now keeps Initial/LIVE Reference aligned as a peer of Outcomes while slider
+  previews update in place. Extra Place / Each Way defaults to Extra Place, uses the shared
+  segmented mode control and preserves full Place Terms quick-choice labels through bounded paging.
 - #35 uses the Fund Manager calculator route. The old Profile URL redirects;
   calculator state can open in a separate tab without persistence. #112 adds fractional and
   unambiguous decimal-comma entry while keeping canonical server-validated decimal odds.
