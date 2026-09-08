@@ -10,8 +10,8 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  The Fund Manager Matched Betting family is the active tranche, covering Qualifying, Free Bet
-  SNR/SR, Money Back, Cashback and contracted single-lay strategies without ledger writes.
+  The Fund Manager calculator hub now includes Matched Betting, Multi-Lay, and combined Each Way /
+  Extra Place families without ledger writes.
 - Current implementation base before this tranche: `2ac1d30d3f2e01bef9e3d8663a68a47c7ec5e695` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
@@ -37,9 +37,9 @@ durable requirements.
 
 ## Project plan
 
-- Current: #35 Fund Manager Calculator Workspace and main Matched Betting family.
-- Next queue: #35 advanced families (Multi-Lay; Each Way / Extra Place; Sequential Lay; Early
-  Payout / 2UP; Accumulator / Multiples; Dutching; Odds Converter / Probability; Blackjack), then
+- Current: #35 Fund Manager Calculator Workspace through Multi-Lay and Each Way / Extra Place.
+- Next queue: #35 advanced families (Sequential Lay; Early Payout / 2UP; Accumulator / Multiples;
+  Dutching; Odds Converter / Probability; Blackjack), then
   #36 calculator-to-Opportunity bridge; #83 Profit Boost
   parity, #85 + #106 Account reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
@@ -89,6 +89,9 @@ durable requirements.
 
 ## What changed
 
+- #35 now presents the page hierarchy as **Fund Manager → Calculators**, uses the shared three-choice
+  carousel without a native scrollbar, and adds source-backed Multi-Lay plus combined Each Way /
+  Extra Place reference calculators.
 - #35 now uses **Fund Manager → Calculators → Matched Betting**. The old Profile URL redirects;
   calculator state can open in a separate tab without persistence. #112 adds fractional and
   unambiguous decimal-comma entry while keeping canonical server-validated decimal odds.
@@ -106,10 +109,11 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Matched Betting**. Enter Back stake `10.00`, Back odds
-   `11/4`, Lay odds `4.2`, and commission `0.02`; leave Back odds and expect visible `3.75`, then calculate.
-2. Switch Qualifying / Free Bet / Money Back, copy the lay stake, and use **Open in new tab**. Expect
-   the selected mode and inputs in an independent reference-only calculator session.
+1. Open **Fund Manager → Calculators**. Page the family carousel to its final boundary and back;
+   expect at most three choices, no native scrollbar, and keyboard-reachable controls.
+2. Calculate the synthetic Multi-Lay `10 @ 3.20` across `5.90`, `4.90`, `8.00`; then switch to
+   Each Way / Extra Place and use `10 @ 6`, `1/5`, win lay `2.3`, place lay `4.5`. Copy a stake and
+   confirm no ledger row is created.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

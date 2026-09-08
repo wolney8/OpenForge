@@ -97,6 +97,9 @@
       "expected": {
         "result_kind": "reference",
         "outcome_columns": ["Outcome A", "Outcome B", "Outcome C"],
+        "lay_stakes": ["5.44", "6.56", "4.01"],
+        "outcome_values": ["5.70", "5.68", "5.69"],
+        "matched_result": "5.68",
         "branch_placement_state_created": false,
         "ledger_row_created": false
       }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Literal
@@ -8,6 +9,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
+from openforge_api.calculations.each_way_extra_place import (
+    EachWayCalculationInput,
+    calculate_each_way_extra_place,
+)
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
@@ -130,6 +135,141 @@ class MatchedBettingResponse(BaseModel):
     promotion_trigger_result: str | None = None
 
 
+class MultiLayOutcomePayload(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    lay_odds: str = Field(max_length=40)
+
+    @field_validator("lay_odds", mode="before")
+    @classmethod
+    def validate_lay_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+
+class MultiLayPayload(BaseModel):
+    allocation: Literal["standard", "underlay"] = "standard"
+    back_stake: str = Field(max_length=40)
+    back_odds: str = Field(max_length=40)
+    exchange_commission: str = Field(max_length=40)
+    outcomes: list[MultiLayOutcomePayload] = Field(min_length=2, max_length=3)
+
+    @field_validator("back_stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator("back_odds", mode="before")
+    @classmethod
+    def validate_back_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+    @field_validator("exchange_commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) <= Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+
+class MultiLayBranchResponse(BaseModel):
+    label: str
+    lay_odds: str
+    lay_stake: str
+    liability: str
+    outcome_value: str
+
+
+class MultiLayResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    calculation_state: str
+    branches: list[MultiLayBranchResponse]
+    no_selection_value: str
+    matched_result: str
+    total_liability: str
+
+
+class EachWayPayload(BaseModel):
+    mode: Literal["Each Way", "Extra Place"] = "Each Way"
+    each_way_stake: str = Field(max_length=40)
+    back_odds: str = Field(max_length=40)
+    place_term_numerator: str = Field(default="1", max_length=10)
+    place_term_denominator: str = Field(default="5", max_length=10)
+    bookmaker_places: int = Field(default=4, ge=1, le=20)
+    exchange_places: int = Field(default=4, ge=1, le=20)
+    win_lay_odds: str = Field(max_length=40)
+    place_lay_odds: str = Field(max_length=40)
+    win_commission: str = Field(default="0", max_length=40)
+    place_commission: str = Field(default="0", max_length=40)
+
+    @field_validator("each_way_stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator("back_odds", "win_lay_odds", "place_lay_odds", mode="before")
+    @classmethod
+    def validate_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+    @field_validator("place_term_numerator", "place_term_denominator", mode="before")
+    @classmethod
+    def validate_term(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message="Enter valid each-way terms.")
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError("calculator_term_positive", "Enter valid each-way terms.")
+        return parsed
+
+    @field_validator("win_commission", "place_commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) <= Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+    @model_validator(mode="after")
+    def validate_places(self) -> "EachWayPayload":
+        if self.mode == "Each Way" and self.bookmaker_places != self.exchange_places:
+            raise PydanticCustomError(
+                "calculator_places_match",
+                "Each Way uses the same bookmaker and exchange place count.",
+            )
+        if self.mode == "Extra Place" and self.bookmaker_places <= self.exchange_places:
+            raise PydanticCustomError(
+                "calculator_extra_places",
+                "Extra Place requires the bookmaker to pay more places than the exchange.",
+            )
+        return self
+
+
+class EachWayResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    calculation_state: str
+    mode: Literal["Each Way", "Extra Place"]
+    place_back_odds: str
+    win_lay_stake: str
+    place_lay_stake: str
+    win_liability: str
+    place_liability: str
+    qualifying_loss: str
+    extra_place_profit: str | None
+    first_place_pnl: str
+    standard_place_pnl: str
+    extra_place_pnl: str | None
+    unplaced_pnl: str
+    current_value: str
+
+
 class StandardQualifyingResponse(BaseModel):
     profile_id: str
     result_kind: str
@@ -242,6 +382,95 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
 )
 def preview_matched_betting(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     return _calculate(payload)
+
+
+@router.post("/fund-manager/calculators/multi-lay/preview", response_model=MultiLayResponse)
+def preview_multi_lay(payload: MultiLayPayload) -> MultiLayResponse:
+    first, *additional = payload.outcomes
+    result = calculate_sportsbook_current_value(
+        SportsbookCalculationInput(
+            profile_id="standalone",
+            record_id="standalone-multi-lay-preview",
+            status="Placed",
+            result="Pending",
+            offer_type="Bet & Get",
+            back_stake=payload.back_stake,
+            back_odds=payload.back_odds,
+            match_strategy="Multilay" if payload.allocation == "standard" else "Multilay-Underlay",
+            lay_odds_1=first.lay_odds,
+            multi_lay_outcome_1_name=first.label,
+            multi_lay_outcomes_json=json.dumps(
+                [
+                    {"id": f"outcome{index}", "label": outcome.label, "layOdds": outcome.lay_odds}
+                    for index, outcome in enumerate(additional, start=2)
+                ],
+                separators=(",", ":"),
+            ),
+            lay_commission_1=payload.exchange_commission,
+        ),
+        as_of_date=date.today(),
+    )
+    if result.calculation_state != "resolved" or not result.multi_lay_branches:
+        raise HTTPException(
+            status_code=422, detail="The Multi-Lay inputs did not produce a complete result."
+        )
+    return MultiLayResponse(
+        calculation_state=result.calculation_state,
+        branches=[
+            MultiLayBranchResponse(
+                label=branch.label,
+                lay_odds=str(branch.lay_odds),
+                lay_stake=_money(branch.lay_stake),
+                liability=_money(branch.liability),
+                outcome_value=_money(branch.scenario_pnl),
+            )
+            for branch in result.multi_lay_branches
+        ],
+        no_selection_value=_money(result.scenario_pnl_if_lay_wins),
+        matched_result=_money(result.projected_current_pnl),
+        total_liability=_money(
+            sum((branch.liability for branch in result.multi_lay_branches), Decimal("0"))
+        ),
+    )
+
+
+@router.post("/fund-manager/calculators/each-way/preview", response_model=EachWayResponse)
+def preview_each_way(payload: EachWayPayload) -> EachWayResponse:
+    result = calculate_each_way_extra_place(
+        EachWayCalculationInput(
+            mode=payload.mode,
+            each_way_stake=payload.each_way_stake,
+            back_odds=payload.back_odds,
+            place_term_numerator=payload.place_term_numerator,
+            place_term_denominator=payload.place_term_denominator,
+            win_lay_odds=payload.win_lay_odds,
+            place_lay_odds=payload.place_lay_odds,
+            win_commission=payload.win_commission,
+            place_commission=payload.place_commission,
+        )
+    )
+    if result.calculation_state != "resolved":
+        raise HTTPException(
+            status_code=422, detail="The Each Way inputs did not produce a complete result."
+        )
+    return EachWayResponse(
+        calculation_state=result.calculation_state,
+        mode=payload.mode,
+        place_back_odds=str(result.place_back_odds),
+        win_lay_stake=_money(result.win_lay_stake),
+        place_lay_stake=_money(result.place_lay_stake),
+        win_liability=_money(result.win_liability),
+        place_liability=_money(result.place_liability),
+        qualifying_loss=_money(result.qualifying_loss),
+        extra_place_profit=_money(result.extra_place_profit)
+        if payload.mode == "Extra Place"
+        else None,
+        first_place_pnl=_money(result.first_place_pnl),
+        standard_place_pnl=_money(result.standard_place_pnl),
+        extra_place_pnl=_money(result.extra_place_pnl) if payload.mode == "Extra Place" else None,
+        unplaced_pnl=_money(result.unplaced_pnl),
+        current_value=_money(result.current_value),
+    )
 
 
 @router.post(

@@ -8,8 +8,8 @@ _Last updated: 2026-09-08_
 - Milestone: M14 Calculator Workspace and Ledger Bridge
 - Plum Duff issue coverage: GitHub issues `#35`, `#36`, `#37`, `#38`, and `#83`
 - Oddsmatcher integration: Deferred
-- Implemented family: Fund Manager-owned Matched Betting reference calculator with Qualifying,
-  Free Bet SNR/SR, Money Back, Cashback and contracted single-lay strategies
+- Implemented families: Fund Manager-owned Matched Betting, Multi-Lay, and combined Each Way / Extra
+  Place reference calculators
 - Canonical route: `/fund-manager/calculators`; the retired Profile route redirects safely
 - Ledger draft bridge: Later scope under `#36`; standalone calculation creates no business record
 
@@ -42,6 +42,11 @@ The workspace may expose a calculator only when its financial contract and deter
 - each-way and extra places
 
 Sequential lay, dutching, blackjack and other future calculators remain unavailable until their own contracts and fixtures are approved.
+
+Top-level navigation represents distinct calculation models, not every variation. Matched Betting
+keeps its bet and matching modes internally; Each Way contains the Standard Each Way and Extra
+Place modes; Multi-Lay contains its Standard and Underlay allocation modes. The family rail pages
+through at most three choices without a native scrollbar and retains every family for keyboard use.
 
 The first implementation slice should reuse the Sportsbook Matching calculator component as the
 standalone calculator MVP. Free Bets should reuse the same calculator shell where the underlying
@@ -113,6 +118,12 @@ The existing contracts resolve Standard, Underlay, Overlay, Custom and one expli
 Multiple partial-lay executions remain blocked by the source fixture evidence and must not be
 aggregated using invented maths. Back commission is likewise not present in the current canonical
 Sportsbook/Free Bet calculation engines.
+
+Multi-Lay accepts two or three mutually exclusive outcomes, matching the current Sportsbook
+contract fields. Its standalone response exposes the canonical engine's stake, liability and
+scenario value per branch plus the no-selection and conservative matched results. Each Way / Extra
+Place delegates to `each-way-extra-place-ledger-contract`; place fraction and explicit place counts
+remain separate inputs. Both adapters are reference-only and perform no business writes.
 
 ## Tests and Playwright path
 

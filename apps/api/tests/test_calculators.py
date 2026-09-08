@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from openforge_api.calculations.each_way_extra_place import (
+    EachWayCalculationInput,
+    calculate_each_way_extra_place,
+)
+from openforge_api.calculations.sportsbook_current_value import (
+    SportsbookCalculationInput,
+    calculate_sportsbook_current_value,
+)
 from openforge_api.config import settings
-from openforge_api.db import list_sportsbook_bets
+from openforge_api.db import list_each_way_extra_places, list_sportsbook_bets
 from openforge_api.main import app
 
 
@@ -185,15 +194,118 @@ def test_fund_manager_calculator_is_protected_when_authentication_is_required(
     configure_temp_database(tmp_path)
     settings.auth_required = True
     try:
-        response = TestClient(app).post(
+        client = TestClient(app)
+        for endpoint in (
             "/fund-manager/calculators/matched-betting/preview",
-            json={
-                "back_stake": "10",
-                "back_odds": "3",
-                "lay_odds": "3.1",
-                "exchange_commission": "0",
-            },
-        )
-        assert response.status_code == 401
+            "/fund-manager/calculators/multi-lay/preview",
+            "/fund-manager/calculators/each-way/preview",
+        ):
+            assert client.post(endpoint, json={}).status_code == 401
     finally:
         settings.auth_required = False
+
+
+def test_multi_lay_preview_matches_canonical_engine_without_writes(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    payload = {
+        "allocation": "standard",
+        "back_stake": "10.00",
+        "back_odds": "3.20",
+        "exchange_commission": "0.02",
+        "outcomes": [
+            {"label": "Outcome A", "lay_odds": "5.90"},
+            {"label": "Outcome B", "lay_odds": "4.90"},
+            {"label": "Outcome C", "lay_odds": "8.00"},
+        ],
+    }
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    for allocation, strategy in (("standard", "Multilay"), ("underlay", "Multilay-Underlay")):
+        response = client.post(
+            "/fund-manager/calculators/multi-lay/preview",
+            json={**payload, "allocation": allocation},
+        )
+        assert response.status_code == 200, response.text
+        actual = response.json()
+        canonical = calculate_sportsbook_current_value(
+            SportsbookCalculationInput(
+                profile_id="standalone",
+                record_id="parity",
+                status="Placed",
+                result="Pending",
+                offer_type="Bet & Get",
+                back_stake="10.00",
+                back_odds="3.20",
+                match_strategy=strategy,
+                lay_odds_1="5.90",
+                multi_lay_outcome_1_name="Outcome A",
+                multi_lay_outcomes_json=(
+                    '[{"id":"outcome2","label":"Outcome B","layOdds":"4.90"},'
+                    '{"id":"outcome3","label":"Outcome C","layOdds":"8.00"}]'
+                ),
+                lay_commission_1="0.02",
+            ),
+            as_of_date=date(2026, 9, 8),
+        )
+        assert [row["lay_stake"] for row in actual["branches"]] == [
+            f"{branch.lay_stake:.2f}" for branch in canonical.multi_lay_branches
+        ]
+        assert actual["matched_result"] == f"{canonical.projected_current_pnl:.2f}"
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
+def test_each_way_modes_match_canonical_engine_without_writes(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    base = {
+        "each_way_stake": "10",
+        "back_odds": "6",
+        "place_term_numerator": "1",
+        "place_term_denominator": "5",
+        "win_lay_odds": "2.3",
+        "place_lay_odds": "4.5",
+        "win_commission": "0",
+        "place_commission": "0",
+    }
+    before = len(list_each_way_extra_places("profile-demo-001"))
+    for mode, bookmaker_places, exchange_places in [("Each Way", 4, 4), ("Extra Place", 5, 4)]:
+        response = client.post(
+            "/fund-manager/calculators/each-way/preview",
+            json={
+                **base,
+                "mode": mode,
+                "bookmaker_places": bookmaker_places,
+                "exchange_places": exchange_places,
+            },
+        )
+        assert response.status_code == 200, response.text
+        actual = response.json()
+        canonical = calculate_each_way_extra_place(EachWayCalculationInput(mode=mode, **base))
+        assert actual["win_lay_stake"] == f"{canonical.win_lay_stake:.2f}"
+        assert actual["place_lay_stake"] == f"{canonical.place_lay_stake:.2f}"
+        assert actual["current_value"] == f"{canonical.current_value:.2f}"
+        assert (actual["extra_place_pnl"] is not None) is (mode == "Extra Place")
+    assert len(list_each_way_extra_places("profile-demo-001")) == before
+
+
+def test_advanced_calculator_odds_are_normalized_and_malformed_values_rejected(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    multi = {
+        "back_stake": "10",
+        "back_odds": "11/4",
+        "exchange_commission": "0",
+        "outcomes": [{"label": "A", "lay_odds": "3,8"}, {"label": "B", "lay_odds": "5/2"}],
+    }
+    assert client.post("/fund-manager/calculators/multi-lay/preview", json=multi).status_code == 200
+    for bad in ("1,000", "£3.1", "3.1abc", "1e3", "NaN", "Infinity", "1/0"):
+        response = client.post(
+            "/fund-manager/calculators/multi-lay/preview",
+            json={
+                **multi,
+                "outcomes": [{"label": "A", "lay_odds": bad}, {"label": "B", "lay_odds": "3.8"}],
+            },
+        )
+        assert response.status_code == 422, (bad, response.text)

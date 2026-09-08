@@ -72,6 +72,15 @@ class SportsbookCalculationInput:
 
 
 @dataclass(frozen=True)
+class MultiLayBranchResult:
+    label: str
+    lay_odds: Decimal
+    lay_stake: Decimal
+    liability: Decimal
+    scenario_pnl: Decimal
+
+
+@dataclass(frozen=True)
 class SportsbookCalculationResult:
     profile_id: str
     record_id: str
@@ -94,6 +103,7 @@ class SportsbookCalculationResult:
     is_overdue: bool
     scenario_pnl_if_outcome_2_wins: MoneyOrNone = None
     scenario_pnl_if_outcome_3_wins: MoneyOrNone = None
+    multi_lay_branches: tuple[MultiLayBranchResult, ...] = ()
 
 
 def _manual_override_fallback(
@@ -699,6 +709,22 @@ def calculate_sportsbook_current_value(
             ),
             scenario_pnl_if_outcome_3_wins=(
                 scenario_values[2] if len(scenario_values) > 2 else None
+            ),
+            multi_lay_branches=tuple(
+                MultiLayBranchResult(
+                    label=label,
+                    lay_odds=lay_odds,
+                    lay_stake=stake,
+                    liability=liability,
+                    scenario_pnl=scenario,
+                )
+                for (label, lay_odds), stake, liability, scenario in zip(
+                    active_outcomes,
+                    suggested_stakes,
+                    liabilities,
+                    scenario_values,
+                    strict=True,
+                )
             ),
         )
 
