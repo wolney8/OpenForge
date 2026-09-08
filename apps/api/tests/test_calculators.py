@@ -287,6 +287,7 @@ def test_fund_manager_calculator_is_protected_when_authentication_is_required(
             "/fund-manager/calculators/matched-betting/preview",
             "/fund-manager/calculators/multi-lay/preview",
             "/fund-manager/calculators/each-way/preview",
+            "/fund-manager/calculators/sequential-lay/preview",
         ):
             assert client.post(endpoint, json={}).status_code == 401
     finally:
@@ -407,3 +408,69 @@ def test_advanced_calculator_odds_are_normalized_and_malformed_values_rejected(
             },
         )
         assert response.status_code == 422, (bad, response.text)
+
+
+def test_sequential_lay_preview_uses_source_contract_without_writes(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    payload = {
+        "mode": "standard",
+        "back_stake": "10",
+        "back_odds": "9",
+        "back_commission": "0",
+        "legs": [
+            {"lay_odds": "3/2", "commission": "0.05"},
+            {"lay_odds": "2,00", "commission": "0.05"},
+            {"lay_odds": "1.50", "commission": "0.05"},
+        ],
+    }
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    standard = client.post("/fund-manager/calculators/sequential-lay/preview", json=payload)
+    assert standard.status_code == 200, standard.text
+    assert [leg["lay_stake"] for leg in standard.json()["legs"]] == ["10.53", "27.15", "55.73"]
+    assert [row["total"] for row in standard.json()["outcomes"]] == ["0.00", "0.00", "0.00", "9.20"]
+    lock_in = client.post(
+        "/fund-manager/calculators/sequential-lay/preview",
+        json={**payload, "mode": "lock_in"},
+    )
+    assert lock_in.status_code == 200, lock_in.text
+    assert [leg["lay_stake"] for leg in lock_in.json()["legs"]] == ["10.53", "27.15", "62.07"]
+    assert lock_in.json()["locked_result"] == "6.02"
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
+def test_sequential_lay_rejects_malformed_odds_and_supports_more_than_three_legs(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    base = {
+        "mode": "standard",
+        "back_stake": "10",
+        "back_odds": "9",
+        "back_commission": "0.02",
+        "legs": [
+            {"lay_odds": odds, "commission": commission}
+            for odds, commission in (
+                ("2.5", "0.02"),
+                ("2", "0.05"),
+                ("1.5", "0.01"),
+                ("1.2", "0.03"),
+            )
+        ],
+    }
+    assert (
+        client.post("/fund-manager/calculators/sequential-lay/preview", json=base).status_code
+        == 200
+    )
+    for bad in ("1,000", "£3.1", "3.1abc", "1e3", "NaN", "Infinity", "1/0"):
+        malformed = {
+            **base,
+            "legs": [{**base["legs"][0], "lay_odds": bad}, *base["legs"][1:]],
+        }
+        assert (
+            client.post(
+                "/fund-manager/calculators/sequential-lay/preview", json=malformed
+            ).status_code
+            == 422
+        )

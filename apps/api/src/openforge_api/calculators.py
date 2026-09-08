@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
+from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.calculations.each_way_extra_place import (
     EachWayCalculationInput,
     calculate_each_way_extra_place,
@@ -18,12 +19,16 @@ from openforge_api.calculations.free_bet_current_value import (
     calculate_free_bet_current_value,
 )
 from openforge_api.calculations.profit_boost import ProfitBoostInput, calculate_profit_boost
+from openforge_api.calculations.sequential_lay import (
+    SequentialLayInput,
+    SequentialLayLegInput,
+    calculate_sequential_lay,
+)
 from openforge_api.calculations.sportsbook_current_value import (
     SportsbookCalculationInput,
     calculate_sportsbook_current_value,
     quantize_money,
 )
-from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import get_profile
 from openforge_api.sportsbook_odds_input import (
     normalize_calculator_odds,
@@ -267,6 +272,82 @@ class MultiLayResponse(BaseModel):
     no_selection_value: str
     matched_result: str
     total_liability: str
+
+
+class SequentialLayLegPayload(BaseModel):
+    lay_odds: str = Field(max_length=40)
+    commission: str = Field(max_length=40)
+
+    @field_validator("lay_odds", mode="before")
+    @classmethod
+    def validate_lay_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+    @field_validator("commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) < Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+
+class SequentialLayPayload(BaseModel):
+    mode: Literal["standard", "lock_in"] = "standard"
+    back_stake: str = Field(max_length=40)
+    back_odds: str = Field(max_length=40)
+    back_commission: str = Field(default="0", max_length=40)
+    legs: list[SequentialLayLegPayload] = Field(min_length=2)
+
+    @field_validator("back_stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator("back_odds", mode="before")
+    @classmethod
+    def validate_back_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+    @field_validator("back_commission", mode="before")
+    @classmethod
+    def validate_back_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) <= Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+
+class SequentialLayLegResponse(BaseModel):
+    lay_odds: str
+    commission: str
+    lay_stake: str
+    liability: str
+    lay_win: str
+
+
+class SequentialLayOutcomeResponse(BaseModel):
+    key: str
+    label: str
+    bookmaker_component: str
+    exchange_components: list[str]
+    total: str
+
+
+class SequentialLayResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    calculation_state: Literal["resolved"] = "resolved"
+    mode: Literal["standard", "lock_in"]
+    back_win: str
+    legs: list[SequentialLayLegResponse]
+    outcomes: list[SequentialLayOutcomeResponse]
+    all_legs_win: str
+    locked_result: str | None
 
 
 class EachWayPayload(BaseModel):
@@ -637,6 +718,54 @@ def preview_multi_lay(payload: MultiLayPayload) -> MultiLayResponse:
         total_liability=_money(
             sum((branch.liability for branch in result.multi_lay_branches), Decimal("0"))
         ),
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/sequential-lay/preview",
+    response_model=SequentialLayResponse,
+)
+def preview_sequential_lay(payload: SequentialLayPayload) -> SequentialLayResponse:
+    result = calculate_sequential_lay(
+        SequentialLayInput(
+            mode=payload.mode,
+            back_stake=Decimal(payload.back_stake),
+            back_odds=Decimal(payload.back_odds),
+            back_commission=Decimal(payload.back_commission),
+            legs=tuple(
+                SequentialLayLegInput(
+                    lay_odds=Decimal(leg.lay_odds),
+                    commission=Decimal(leg.commission),
+                )
+                for leg in payload.legs
+            ),
+        )
+    )
+    return SequentialLayResponse(
+        mode=payload.mode,
+        back_win=_money(result.back_win),
+        legs=[
+            SequentialLayLegResponse(
+                lay_odds=str(leg.lay_odds),
+                commission=str(leg.commission),
+                lay_stake=_money(leg.lay_stake),
+                liability=_money(leg.liability),
+                lay_win=_money(leg.lay_win),
+            )
+            for leg in result.legs
+        ],
+        outcomes=[
+            SequentialLayOutcomeResponse(
+                key=outcome.key,
+                label=outcome.label,
+                bookmaker_component=_money(outcome.bookmaker_component),
+                exchange_components=[_money(value) for value in outcome.exchange_components],
+                total=_money(outcome.total),
+            )
+            for outcome in result.outcomes
+        ],
+        all_legs_win=_money(result.all_legs_win),
+        locked_result=_money(result.locked_result) if result.locked_result is not None else None,
     )
 
 

@@ -39,6 +39,15 @@
       "owning_contract": "docs/contracts/m14-odds-converter-reference-contract.md",
       "display_tolerance": "0.01 in displayed numeric unit",
       "allowed_use": "odds conversion regression comparison"
+    },
+    {
+      "fixture_id": "M14-FX-MBB-SEQUENTIAL-LAY",
+      "provider": "MatchedBettingBlog",
+      "mode": "Sequential Lay Standard / Lock In",
+      "owning_contract": "docs/contracts/sequential-lay-calculation-contract.md",
+      "fixture_file": "tests/fixtures/sequential-lay-calculation-fixtures.json",
+      "live_implementation_sha256": "f7609faae04ff25ffed73c8294efe151f3f96c1e3f0c1d14037788378ded9da7",
+      "allowed_use": "directional penny-rounding and branch regression comparison"
     }
   ],
   "contract_draft": [
@@ -92,15 +101,6 @@
       "case_ids": ["MBB-EP-001", "MBB-EP-002", "MBB-EP-003", "MBB-EP-004", "MBB-EP-005", "MBB-EP-006"],
       "reason": "captured outputs did not distinguish the extra-place branch",
       "follow_up": "capture contrasting ordinary-place and extra-place-only scenarios"
-    },
-    {
-      "fixture_id": "M14-BLOCK-MBB-SEQUENTIAL-LAY",
-      "packets": [
-        "docs/reference/m14-calculator-research/mbb-sequential-lay-standard.packet.json",
-        "docs/reference/m14-calculator-research/mbb-sequential-lay-lock-in.packet.json"
-      ],
-      "reason": "exact leg model and branch equations unresolved",
-      "follow_up": "verify input-to-leg mapping and derive every outcome branch"
     },
     {
       "fixture_id": "M14-BLOCK-MBB-EARLY-PAYOUT",

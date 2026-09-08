@@ -58,9 +58,10 @@ financial review.
 - MatchedBettingBlog each-way: `research-only`; compare with the existing
   OpenForge each-way draft, but do not import the observed outputs as formula
   authority.
-- MatchedBettingBlog comparison, extra-place, sequential-lay, early-payout,
-  and accumulator packets: `research-only` or `blocked` as recorded in the
-  review matrix and fixture manifest.
+- MatchedBettingBlog Sequential Lay: accepted external reference under the dedicated
+  `sequential-lay-calculation-v1` contract after current live implementation verification.
+- MatchedBettingBlog comparison, extra-place, early-payout, and accumulator packets:
+  `research-only` or `blocked` as recorded in the review matrix and fixture manifest.
 
 ## 5. Inputs and outputs
 

@@ -18,7 +18,7 @@ raw `validation_state`.
 | MBB risk-free | All-zero anomaly | refund draft | Blocked | Verify selected mode and required award inputs |
 | MBB each-way | Reactive dual-leg outputs; exact equation unresolved | sportsbook each-way draft | Research only | Reconcile formulas, terms, and rounding |
 | MBB extra place | No observed mode-specific difference | sportsbook extra-places draft | Blocked | Capture extra-place-only contrasting result |
-| MBB sequential lay Standard/Lock In | Values captured; input/leg model and equations unresolved | none | Blocked | Create dedicated contract only after branch derivation |
+| MBB sequential lay Standard/Lock In | Current live calculator and versioned implementation verified on 2026-09-08 | sequential-lay-calculation-v1 | Accepted reference | Retain older guide approximations as historical evidence; pin current directional penny rounding |
 | MBB early payout / 2-way dutch | Captured values match ordinary equal-profit shape; no 2UP branch evidence | sportsbook 2UP draft | Blocked | Capture advanced trigger/dutch branches |
 | MBB accumulator variants | Non-reactive default totals | none | Blocked | Repeat capture with verified reactive inputs |
 | MBB odds converter | Reactive; standard transforms reproduced | M14 odds converter draft | Accepted reference | Approve fraction approximation and `+` normalisation |
@@ -47,7 +47,7 @@ raw `validation_state`.
 
 ## Missing calculator-specific coverage
 
-- sequential lay Standard and Lock In calculation contract plus deterministic fixtures
+- Sequential Lay contract/fixtures are now present; Google/third-party future changes remain external revalidation, not an OpenForge runtime dependency.
 - accumulator standard/each-way/Rule 4 numerical contract plus fixtures
 - extra-place mode-specific calculator fixtures
 - 2UP/dutch trigger and auxiliary-output calculator fixtures

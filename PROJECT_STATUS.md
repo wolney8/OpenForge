@@ -14,11 +14,11 @@ durable requirements.
   Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
   Place now shares its Back Bet, Place Terms, Lay Win and Lay Place presentation directly with the
   ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
-  Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay implementation
-  is `BLOCKED` at its financial contract gate: the captured Standard/Lock In observations do not
-  establish the leg recurrence, complete outcome branches, rounding order, or supported leg count.
-- Current implementation base before this tranche: `8861b7994805aaa0ee553305fcb5ea3f923aa5e0` on `main`.
-- Interruptions: the Sequential Lay contract decision blocks only that #35 family.
+  Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay now has a
+  source-verified decimal calculation contract and a Fund Manager reference calculator with
+  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes.
+- Current implementation base before this tranche: `6cb6317ceca4aa90c824c96553982fba9d9d7d80` on `main`.
+- Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -45,9 +45,9 @@ durable requirements.
 
 - Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
   Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
-  and Each Way / Extra Place also calculate automatically. Sequential Lay remains unavailable until
-  its dedicated calculation contract and deterministic branch fixtures are approved.
-- Next queue: resolve the Sequential Lay contract gate; then #35 advanced families (Early Payout /
+  Each Way / Extra Place and Sequential Lay also calculate automatically. Sequential Lay's exact
+  directional penny placement is pinned to the verified current source implementation.
+- Next queue: #35 advanced families (Early Payout /
   2UP; Accumulator / Multiples; Dutching; Odds Converter / Probability; Blackjack), then
   #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
   Fund Manager task deck.

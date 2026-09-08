@@ -351,7 +351,7 @@ export function CalculatorWorkspace() {
         <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
       </div>
       {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl><button className="review-chip review-chip-copy calculator-result-copy" data-pd-id="calculators.matched-betting.copy-lay-stake" onClick={() => void copyLayStake()} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span><span>Copy Lay Stake</span></button>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
-    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
+    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
   </section>;
 }
 
@@ -484,6 +484,89 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
   </div></div>;
 }
 
+type SequentialLayInputs = {
+  mode: "standard" | "lock_in";
+  backStake: string;
+  backOdds: string;
+  backCommission: string;
+  legs: Array<{ exchange: string; layOdds: string; commission: string }>;
+};
+type SequentialLayResult = {
+  mode: SequentialLayInputs["mode"];
+  legs: Array<{ lay_odds: string; commission: string; lay_stake: string; liability: string; lay_win: string }>;
+  outcomes: Array<{ key: string; label: string; bookmaker_component: string; exchange_components: string[]; total: string }>;
+  all_legs_win: string;
+  locked_result: string | null;
+};
+
+function sequentialLayDefaults(exchanges: ExchangeOption[]): SequentialLayInputs {
+  const smarkets = exchanges.find((option) => option.name === "Smarkets");
+  const exchange = smarkets?.name ?? "Smarkets";
+  const commission = smarkets?.default_commission_rate ?? "0";
+  return { mode: "standard", backStake: "", backOdds: "", backCommission: "0", legs: [{ exchange, layOdds: "", commission }, { exchange, layOdds: "", commission }] };
+}
+
+function readSequentialLay(search: URLSearchParams): SequentialLayInputs {
+  try {
+    const parsed = JSON.parse(search.get("sequentialLay") ?? "null") as SequentialLayInputs | null;
+    return parsed && Array.isArray(parsed.legs) && parsed.legs.length >= 2 ? parsed : sequentialLayDefaults([]);
+  } catch { return sequentialLayDefaults([]); }
+}
+
+function SequentialLayCalculator({ exchanges, onState, search }: { exchanges: ExchangeOption[]; onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
+  const [inputs, setInputs] = useState<SequentialLayInputs>(() => readSequentialLay(search));
+  const [result, setResult] = useState<SequentialLayResult | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const requestVersion = useRef(0);
+  const requestAbort = useRef<AbortController | null>(null);
+  const invalid = !isPositiveAmount(inputs.backStake) || Boolean(getSportsbookOddsInputError(inputs.backOdds, { required: true })) || commissionError(inputs.backCommission) !== null || inputs.legs.some((leg) => Boolean(getSportsbookOddsInputError(leg.layOdds, { required: true })) || commissionError(leg.commission) !== null || Number(leg.commission) >= 1);
+  const serialized = JSON.stringify(inputs);
+  useEffect(() => { onState(new URLSearchParams({ family: "sequential-lay", sequentialLay: serialized })); }, [serialized, onState]);
+  function update(next: SequentialLayInputs) { requestAbort.current?.abort(); requestVersion.current += 1; setInputs(next); setResult(null); setError(""); setCopyFeedback(""); setBusy(false); }
+  function updateLeg(index: number, patch: Partial<SequentialLayInputs["legs"][number]>) { update({ ...inputs, legs: inputs.legs.map((leg, at) => at === index ? { ...leg, ...patch } : leg) }); }
+  async function calculate() {
+    if (invalid) return;
+    const version = ++requestVersion.current; const controller = new AbortController(); requestAbort.current = controller; setBusy(true); setError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/sequential-lay/preview`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, signal: controller.signal, body: JSON.stringify({ mode: inputs.mode, back_stake: inputs.backStake, back_odds: inputs.backOdds, back_commission: inputs.backCommission, legs: inputs.legs.map((leg) => ({ lay_odds: leg.layOdds, commission: leg.commission })) }) });
+      if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Unable to calculate Sequential Lay."));
+      const next = await response.json() as SequentialLayResult; if (version === requestVersion.current) setResult(next);
+    } catch (caught) { if (version === requestVersion.current && !(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "Unable to calculate Sequential Lay."); }
+    finally { if (version === requestVersion.current) setBusy(false); }
+  }
+  useEffect(() => { if (invalid) { requestAbort.current?.abort(); return; } const timer = window.setTimeout(() => { void calculate(); }, 120); return () => window.clearTimeout(timer); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [serialized, invalid]);
+  useEffect(() => () => requestAbort.current?.abort(), []);
+  function normalizeBack() { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }
+  function normalizeLeg(index: number) { const normalized = normalizeCalculatorOddsInput(inputs.legs[index].layOdds); if (normalized.converted) updateLeg(index, { layOdds: normalized.canonicalValue }); }
+  function resetCalculator() { requestAbort.current?.abort(); requestVersion.current += 1; setInputs(sequentialLayDefaults(exchanges)); setResult(null); setError(""); setCopyFeedback(""); setBusy(false); }
+  return <div className="calculator-panel-shell" data-pd-id="calculators.sequential-lay.presentation"><div className="calculator-shell">
+    <div className="calculator-band calculator-band-primary stack">
+      <div className="ledger-calculator-mode-bar"><SelectField id="sequential-mode" label="Mode" value={inputs.mode} onChange={(mode) => update({ ...inputs, mode: mode as SequentialLayInputs["mode"] })} options={[["standard", "Standard"], ["lock_in", "Lock In"]]} /></div>
+      <div className="calculator-segment calculator-segment-back"><div className="calculator-segment-title">Back bet</div><div className="calculator-segment-grid calculator-segment-grid-back">
+        <Field error={null} id="sequential-back-stake" label="Back stake" onChange={(backStake) => update({ ...inputs, backStake })} value={inputs.backStake} />
+        <Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="sequential-back-odds" label="Back odds" onBlur={normalizeBack} onChange={(backOdds) => update({ ...inputs, backOdds })} value={inputs.backOdds} />
+        <Field error={commissionError(inputs.backCommission)} id="sequential-back-commission" label="Back commission" onChange={(backCommission) => update({ ...inputs, backCommission })} value={inputs.backCommission} />
+      </div></div>
+    </div>
+    <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay"><div className="calculator-panel-card calculator-panel-card-multilay"><div className="multi-lay-calculator-title-row"><span className="eyebrow">Sequential Lay legs</span></div><div className="stack">
+      <div className="multi-lay-grid-wrap"><table className="data-table multi-lay-planner-grid"><thead><tr><th>Leg</th><th>Exchange</th><th>Lay odds</th><th>Commission</th><th>Lay stake</th><th>Liability</th><th>Actions</th></tr></thead><tbody>{inputs.legs.map((leg, index) => { const calculated = result?.legs[index]; return <tr data-pd-id={`calculators.sequential-lay.leg-${index + 1}`} key={index}>
+        <td><strong>Leg {index + 1}</strong><br /><span aria-label={index === 0 ? "Current leg" : index === 1 ? "Next if leg 1 wins" : "Not yet calculable; prior legs must win"} className="field-hint">{index === 0 ? "Current" : index === 1 ? "Next" : "Not yet"}</span></td>
+        <td><label className="field-control"><span className="sr-only">Leg {index + 1} exchange</span><select aria-label={`Leg ${index + 1} exchange`} value={leg.exchange} onChange={(event) => { const selected = exchanges.find((option) => option.name === event.target.value); updateLeg(index, { exchange: event.target.value, commission: selected?.default_commission_rate ?? "" }); }}>{(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => <option key={option.name}>{option.name}</option>)}</select></label></td>
+        <td><label className="field-control"><span className="sr-only">Leg {index + 1} lay odds</span><input aria-invalid={Boolean(getSportsbookOddsInputError(leg.layOdds, { required: false }))} data-pd-id={`calculators.sequential-lay.leg-${index + 1}-odds`} inputMode="decimal" onBlur={() => normalizeLeg(index)} onChange={(event) => updateLeg(index, { layOdds: event.target.value })} value={leg.layOdds} /></label></td>
+        <td><label className="field-control"><span className="sr-only">Leg {index + 1} commission</span><input aria-label={`Leg ${index + 1} commission`} inputMode="decimal" onChange={(event) => updateLeg(index, { commission: event.target.value })} value={leg.commission} /></label></td>
+        <td>{calculated ? <FinancialValue label={`Leg ${index + 1} lay stake`} tone="inherit" value={calculated.lay_stake} /> : <span>£ -</span>}</td><td>{calculated ? <FinancialValue label={`Leg ${index + 1} liability`} tone="inherit" value={calculated.liability} /> : <span>£ -</span>}</td>
+        <td><div className="multi-lay-row-actions"><button aria-label={`Copy leg ${index + 1} lay stake`} className="icon-button multi-lay-action-button" disabled={!calculated} onClick={() => { if (calculated) void copyCalculatorValue(calculated.lay_stake, setCopyFeedback); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">copy_all</span></button>{inputs.legs.length > 2 ? <button aria-label={`Remove leg ${index + 1}`} className="icon-button icon-button-destructive multi-lay-action-button" onClick={() => update({ ...inputs, legs: inputs.legs.filter((_, at) => at !== index) })} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button> : null}</div></td>
+      </tr>; })}</tbody></table></div>
+      <div className="tracker-nav multi-lay-add-row"><button className="button-link" onClick={() => { const defaults = sequentialLayDefaults(exchanges).legs[0]; update({ ...inputs, legs: [...inputs.legs, defaults] }); }} type="button">Add leg</button></div>
+      {result ? <CalculatorOutcomes columns={["Bookmaker", "Exchange legs"]} inspectionId="calculators.sequential-lay.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === result.outcomes.length - 1 ? "positive" as const : "exchange" as const, components: [[outcome.bookmaker_component], outcome.exchange_components], total: outcome.total }))} summary={result.locked_result !== null ? <span>Locked result <CalculatorOutcomeValueDisplay label="Locked result" value={result.locked_result} /></span> : <span>All legs win <CalculatorOutcomeValueDisplay label="All legs win" value={result.all_legs_win} /></span>} /> : null}
+      {busy ? <p className="field-hint" role="status">Updating outcomes…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
+      <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.sequential-lay.reset" onClick={resetCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
+    </div></div></div>
+  </div></div>;
+}
+
 type EachWayInputs = { mode: "Each Way" | "Extra Place"; stake: string; backOdds: string; term: string; bookmakerPlaces: string; exchangePlaces: string; exchange: string; winLayOdds: string; placeLayOdds: string; winCommission: string; placeCommission: string };
 type EachWayResult = {
   mode: EachWayInputs["mode"];
@@ -594,11 +677,11 @@ function commissionError(value: string) { return hasCompleteDecimalInputSyntax(v
 
 function Field({ error, id, inputMode = "decimal", label, onBlur, onChange, supportingText, value }: { error: string | null; id: string; inputMode?: "decimal" | "numeric" | "text"; label: string; onBlur?: () => void; onChange: (value: string) => void; supportingText?: string; value: string }) {
   const errorId = `calculator-${id}-error`;
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className={`field-control${error ? " is-invalid" : ""}`} htmlFor={`calculator-${id}`}><span>{label}</span><input aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} data-pd-id={dataPdId} id={`calculator-${id}`} inputMode={inputMode} onBlur={onBlur} onChange={(event) => onChange(event.target.value)} type="text" value={value} />{error ? <span className="field-validation-text" id={errorId} role="alert">{error}</span> : supportingText ? <span className="field-support-text">{supportingText}</span> : null}</label>;
 }
 function SelectField({ disabled = false, id, label, onChange, options, value }: { disabled?: boolean; id: string; label: string; onChange: (value: string) => void; options: readonly (readonly [string, string])[]; value: string }) {
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className="field-control ledger-calculator-mode-field" htmlFor={`calculator-${id}`}><span>{label}</span><select data-pd-id={dataPdId} disabled={disabled} id={`calculator-${id}`} onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([option, text]) => <option key={option} value={option}>{text}</option>)}</select></label>;
 }
 function ResultValue({ label, money = true, value }: { label: string; money?: boolean; value: string }) { return <div><dt>{label}</dt><dd>{money ? <FinancialValue label={label} value={value} /> : value}</dd></div>; }

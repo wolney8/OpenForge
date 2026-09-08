@@ -251,6 +251,64 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   expect(businessMutations).toEqual([]);
 });
 
+test("calculates a Sequential Lay sequence and lock-in without ledger writes", async ({ page }) => {
+  await mockSession(page);
+  const businessMutations: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && /\/profiles\/[^/]+\/(?:sportsbook-bets|free-bets)(?:$|\?)/.test(request.url())) businessMutations.push(request.url());
+  });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
+  await page.goto("/fund-manager/calculators?family=sequential-lay");
+  await expect(page.getByRole("heading", { name: "Sequential Lay" })).toBeVisible();
+  await page.locator('[data-pd-id="calculators.sequential-back-stake"]').fill("10");
+  await page.locator('[data-pd-id="calculators.sequential-back-odds"]').fill("8/1");
+  await page.getByLabel("Back commission").fill("0");
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-1-odds"]').fill("3/2");
+  await page.getByLabel("Leg 1 commission").fill("0.05");
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-2-odds"]').fill("2,00");
+  await page.getByLabel("Leg 2 commission").fill("0.05");
+  await page.getByRole("button", { name: "Add leg" }).click();
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1.50");
+  await page.getByLabel("Leg 3 commission").fill("0.05");
+  await page.locator('[data-pd-id="calculators.sequential-mode"]').focus();
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-1-odds"]')).toHaveValue("2.50");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-2-odds"]')).toHaveValue("2.00");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("55.73");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(4);
+  await page.getByRole("button", { name: "Add leg" }).click();
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-4-odds"]').fill("1.20");
+  await page.getByLabel("Leg 4 commission").fill("0.05");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(5);
+  await page.getByRole("button", { name: "Remove leg 4" }).click();
+  await page.locator('[data-pd-id="calculators.sequential-mode"]').selectOption("lock_in");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("62.07");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toContainText("6.02");
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1e3");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toHaveCount(0);
+  await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1.50");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("62.07");
+  await page.getByRole("button", { name: "Copy leg 3 lay stake" }).click();
+  await expect(page.getByText("Copied 62.07")).toBeVisible();
+  if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-alternate-theme.png"), fullPage: true });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "Remove leg 3" }).click();
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toHaveCount(0);
+  await page.locator('[data-pd-id="calculators.sequential-lay.reset"]').click();
+  await expect(page.locator('[data-pd-id="calculators.sequential-mode"]')).toHaveValue("standard");
+  await expect(page.locator('[data-pd-id="calculators.sequential-back-stake"]')).toHaveValue("");
+  await expect(page.locator('[data-pd-id="calculators.sequential-lay.outcomes"]')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  await page.locator('[data-pd-id="calculators.sequential-mode"]').focus();
+  await expect(page.locator('[data-pd-id="calculators.sequential-mode"]')).toBeFocused();
+  expect(businessMutations).toEqual([]);
+});
+
 test("matches the signed-off Sportsbook calculator geometry", async ({ page, request }) => {
   test.setTimeout(60_000);
   await mockSession(page);
