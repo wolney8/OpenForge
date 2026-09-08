@@ -1,0 +1,35 @@
+{
+  "contract": "sportsbook-2up-early-payout-current-value-v1",
+  "cases": [
+    {
+      "id": "live-source-exchange-five-percent-pre-trigger",
+      "input": {"cover_mode":"exchange_lay","back_stake":"50","back_odds":"2.25","lay_odds":"2.32","lay_commission":"0.05","triggered":false},
+      "initial_stake": "49.56", "liability": "65.42", "additional_stake": null, "outcomes": ["-2.92","-2.92","-2.92"]
+    },
+    {
+      "id": "live-source-exchange-five-percent-triggered",
+      "input": {"cover_mode":"exchange_lay","back_stake":"50","back_odds":"2.25","lay_odds":"2.32","lay_commission":"0.05","triggered":true,"in_play_back_odds":"1.20"},
+      "initial_stake": "49.56", "liability": "65.42", "additional_stake": "95.82", "outcomes": ["16.24","16.24","16.24"]
+    },
+    {
+      "id": "live-source-exchange-two-percent-label-correction",
+      "input": {"cover_mode":"exchange_lay","back_stake":"50","back_odds":"2.25","lay_odds":"2.32","lay_commission":"0.02","triggered":false},
+      "initial_stake": "48.91", "liability": "64.56", "additional_stake": null, "outcomes": ["-2.06","-2.07","-2.07"]
+    },
+    {
+      "id": "live-source-capped-trigger",
+      "input": {"cover_mode":"exchange_lay","back_stake":"50","back_odds":"2.25","lay_odds":"2.32","lay_commission":"0.05","triggered":true,"maximum_payout":"80","in_play_back_odds":"1.20"},
+      "initial_stake": "49.56", "liability": "65.42", "additional_stake": "68.73", "outcomes": ["10.83","10.83","10.83"]
+    },
+    {
+      "id": "live-source-trigger-with-part-back",
+      "input": {"cover_mode":"exchange_lay","back_stake":"50","back_odds":"2.25","lay_odds":"2.32","lay_commission":"0.05","triggered":true,"in_play_back_odds":"1.20","part_backs":[{"stake":"20","odds":"1.40"}]},
+      "initial_stake": "49.56", "liability": "65.42", "additional_stake": "72.48", "outcomes": ["19.58","19.58","19.58"]
+    },
+    {
+      "id": "live-source-two-way-dutch-triggered",
+      "input": {"cover_mode":"two_way_dutch","back_stake":"50","back_odds":"2.25","second_back_odds":"1.80","lay_commission":"0","triggered":true,"in_play_back_odds":"1.20"},
+      "initial_stake": "62.50", "liability": null, "additional_stake": "93.75", "outcomes": ["18.75","18.75"]
+    }
+  ]
+}

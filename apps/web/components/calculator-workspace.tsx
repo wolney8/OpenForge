@@ -351,7 +351,7 @@ export function CalculatorWorkspace() {
         <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
       </div>
       {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl><button className="review-chip review-chip-copy calculator-result-copy" data-pd-id="calculators.matched-betting.copy-lay-stake" onClick={() => void copyLayStake()} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span><span>Copy Lay Stake</span></button>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
-    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
+    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "early-payout" ? <EarlyPayoutCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
   </section>;
 }
 
@@ -536,7 +536,8 @@ function SequentialLayCalculator({ exchanges, onState, search }: { exchanges: Ex
     } catch (caught) { if (version === requestVersion.current && !(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "Unable to calculate Sequential Lay."); }
     finally { if (version === requestVersion.current) setBusy(false); }
   }
-  useEffect(() => { if (invalid) { requestAbort.current?.abort(); return; } const timer = window.setTimeout(() => { void calculate(); }, 120); return () => window.clearTimeout(timer); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [serialized, invalid]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (invalid) { requestAbort.current?.abort(); return; } const timer = window.setTimeout(() => { void calculate(); }, 120); return () => window.clearTimeout(timer); }, [serialized, invalid]);
   useEffect(() => () => requestAbort.current?.abort(), []);
   function normalizeBack() { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }
   function normalizeLeg(index: number) { const normalized = normalizeCalculatorOddsInput(inputs.legs[index].layOdds); if (normalized.converted) updateLeg(index, { layOdds: normalized.canonicalValue }); }
@@ -564,6 +565,103 @@ function SequentialLayCalculator({ exchanges, onState, search }: { exchanges: Ex
       {busy ? <p className="field-hint" role="status">Updating outcomes…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
       <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.sequential-lay.reset" onClick={resetCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
     </div></div></div>
+  </div></div>;
+}
+
+type EarlyPayoutInputs = {
+  coverMode: "exchange_lay" | "two_way_dutch";
+  backStake: string;
+  backOdds: string;
+  exchange: string;
+  layOdds: string;
+  commission: string;
+  actualInitialStake: string;
+  triggered: boolean;
+  maximumPayout: string;
+  inPlayBackOdds: string;
+  lockAdjustmentPercent: string;
+  partBacks: Array<{ stake: string; odds: string }>;
+};
+type EarlyPayoutResult = {
+  cover_mode: EarlyPayoutInputs["coverMode"];
+  triggered: boolean;
+  recommended_initial_stake: string;
+  actual_initial_stake: string;
+  liability: string | null;
+  recommended_additional_back_stake: string | null;
+  current_value: string;
+  outcomes: Array<{ key: string; label: string; components: string[]; total: string }>;
+};
+
+function earlyPayoutDefaults(exchanges: ExchangeOption[]): EarlyPayoutInputs {
+  const smarkets = exchanges.find((option) => option.name === "Smarkets");
+  return { coverMode: "exchange_lay", backStake: "", backOdds: "", exchange: smarkets?.name ?? "Smarkets", layOdds: "", commission: smarkets?.default_commission_rate ?? "0", actualInitialStake: "", triggered: false, maximumPayout: "", inPlayBackOdds: "", lockAdjustmentPercent: "100", partBacks: [] };
+}
+
+function readEarlyPayout(search: URLSearchParams): EarlyPayoutInputs {
+  try {
+    const parsed = JSON.parse(search.get("earlyPayout") ?? "null") as EarlyPayoutInputs | null;
+    return parsed && ["exchange_lay", "two_way_dutch"].includes(parsed.coverMode) && Array.isArray(parsed.partBacks) ? parsed : earlyPayoutDefaults([]);
+  } catch { return earlyPayoutDefaults([]); }
+}
+
+function EarlyPayoutCalculator({ exchanges, onState, search }: { exchanges: ExchangeOption[]; onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
+  const [inputs, setInputs] = useState<EarlyPayoutInputs>(() => readEarlyPayout(search));
+  const [result, setResult] = useState<EarlyPayoutResult | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const requestVersion = useRef(0);
+  const requestAbort = useRef<AbortController | null>(null);
+  const initialOdds = inputs.coverMode === "exchange_lay" ? inputs.layOdds : inputs.layOdds;
+  const invalid = !isPositiveAmount(inputs.backStake)
+    || Boolean(getSportsbookOddsInputError(inputs.backOdds, { required: true }))
+    || Boolean(getSportsbookOddsInputError(initialOdds, { required: true }))
+    || (inputs.coverMode === "exchange_lay" && (commissionError(inputs.commission) !== null || Number(inputs.commission) >= 1))
+    || Boolean(inputs.actualInitialStake && !isPositiveAmount(inputs.actualInitialStake))
+    || Boolean(inputs.maximumPayout && !isPositiveAmount(inputs.maximumPayout))
+    || (inputs.triggered && Boolean(getSportsbookOddsInputError(inputs.inPlayBackOdds, { required: true })))
+    || !hasCompleteDecimalInputSyntax(inputs.lockAdjustmentPercent)
+    || Number(inputs.lockAdjustmentPercent) < 0 || Number(inputs.lockAdjustmentPercent) > 150
+    || inputs.partBacks.some((part) => !isPositiveAmount(part.stake) || Boolean(getSportsbookOddsInputError(part.odds, { required: true })));
+  const serialized = JSON.stringify(inputs);
+  useEffect(() => { onState(new URLSearchParams({ family: "early-payout", earlyPayout: serialized })); }, [serialized, onState]);
+  function update(patch: Partial<EarlyPayoutInputs>) { requestAbort.current?.abort(); requestVersion.current += 1; setInputs((current) => ({ ...current, ...patch })); setResult(null); setError(""); setCopyFeedback(""); setBusy(false); }
+  function updatePart(index: number, patch: Partial<EarlyPayoutInputs["partBacks"][number]>) { update({ partBacks: inputs.partBacks.map((part, at) => at === index ? { ...part, ...patch } : part) }); }
+  function normalize(field: "backOdds" | "layOdds" | "inPlayBackOdds") { const normalized = normalizeCalculatorOddsInput(inputs[field]); if (normalized.converted) update({ [field]: normalized.canonicalValue }); }
+  function normalizePart(index: number) { const normalized = normalizeCalculatorOddsInput(inputs.partBacks[index].odds); if (normalized.converted) updatePart(index, { odds: normalized.canonicalValue }); }
+  async function calculate() {
+    if (invalid) return;
+    const version = ++requestVersion.current; const controller = new AbortController(); requestAbort.current = controller; setBusy(true); setError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/early-payout/preview`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, signal: controller.signal, body: JSON.stringify({ cover_mode: inputs.coverMode, back_stake: inputs.backStake, back_odds: inputs.backOdds, triggered: inputs.triggered, lay_odds: inputs.coverMode === "exchange_lay" ? inputs.layOdds : "", lay_commission: inputs.coverMode === "exchange_lay" ? inputs.commission : "0", actual_lay_stake: inputs.coverMode === "exchange_lay" ? inputs.actualInitialStake : "", second_back_odds: inputs.coverMode === "two_way_dutch" ? inputs.layOdds : "", actual_second_back_stake: inputs.coverMode === "two_way_dutch" ? inputs.actualInitialStake : "", maximum_payout: inputs.maximumPayout, in_play_back_odds: inputs.inPlayBackOdds, lock_adjustment_percent: inputs.lockAdjustmentPercent, part_backs: inputs.partBacks }) });
+      if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Unable to calculate Early Payout."));
+      const next = await response.json() as EarlyPayoutResult; if (version === requestVersion.current) setResult(next);
+    } catch (caught) { if (version === requestVersion.current && !(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "Unable to calculate Early Payout."); }
+    finally { if (version === requestVersion.current) setBusy(false); }
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (invalid) { requestAbort.current?.abort(); return; } const timer = window.setTimeout(() => { void calculate(); }, 120); return () => window.clearTimeout(timer); }, [serialized, invalid]);
+  useEffect(() => () => requestAbort.current?.abort(), []);
+  function resetCalculator() { requestAbort.current?.abort(); requestVersion.current += 1; setInputs(earlyPayoutDefaults(exchanges)); setResult(null); setError(""); setCopyFeedback(""); setBusy(false); }
+  const columns = inputs.coverMode === "exchange_lay" ? ["Bookmaker", "Exchange"] : ["Bookmaker 1", "Bookmaker 2", "Bookmaker 3"];
+  return <div className="calculator-panel-shell" data-pd-id="calculators.early-payout.presentation"><div className="calculator-shell">
+    <div className="calculator-band calculator-band-primary stack">
+      <div className="ledger-calculator-mode-bar">
+        <SelectField id="early-cover-mode" label="Matching mode" value={inputs.coverMode} onChange={(value) => update({ coverMode: value as EarlyPayoutInputs["coverMode"], actualInitialStake: "", commission: value === "two_way_dutch" ? "0" : inputs.commission })} options={[["exchange_lay", "Exchange Lay"], ["two_way_dutch", "2-Way Dutch"]]} />
+        {inputs.coverMode === "exchange_lay" ? <SelectField id="early-exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); update({ exchange: value, commission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} /> : null}
+        <button aria-checked={inputs.triggered} className={`material-switch${inputs.triggered ? " is-selected" : ""}`} data-pd-id="calculators.early-payout.triggered" onClick={() => update({ triggered: !inputs.triggered, inPlayBackOdds: "", maximumPayout: "", lockAdjustmentPercent: "100", partBacks: [] })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Bookmaker has paid out early</span></button>
+      </div>
+      <div className="form-grid">
+        <section className="calculator-segment calculator-segment-back"><div className="calculator-segment-heading"><span className="eyebrow">Back bet</span></div><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="early-back-stake" label="Back stake" onChange={(backStake) => update({ backStake })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="early-back-odds" label="Back odds" onBlur={() => normalize("backOdds")} onChange={(backOdds) => update({ backOdds })} value={inputs.backOdds} /></div></section>
+        <section className="calculator-segment calculator-segment-lay"><div className="calculator-segment-heading"><span className="eyebrow">{inputs.coverMode === "exchange_lay" ? "Lay bet" : "Bookmaker 2"}</span></div><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={getSportsbookOddsInputError(inputs.layOdds, { required: false })} id="early-initial-odds" label={inputs.coverMode === "exchange_lay" ? "Lay odds" : "Second bookmaker odds"} onBlur={() => normalize("layOdds")} onChange={(layOdds) => update({ layOdds })} value={inputs.layOdds} />{inputs.coverMode === "exchange_lay" ? <Field error={commissionError(inputs.commission)} id="early-commission" label="Exchange commission" onChange={(commission) => update({ commission })} value={inputs.commission} /> : null}<Field error={null} id="early-actual-initial-stake" label={inputs.coverMode === "exchange_lay" ? "Actual lay stake (optional)" : "Actual second stake (optional)"} onChange={(actualInitialStake) => update({ actualInitialStake })} value={inputs.actualInitialStake} /></div></section>
+      </div>
+      {inputs.triggered ? <section className="calculator-panel-card stack" data-pd-id="calculators.early-payout.lock-in"><div className="calculator-segment-heading"><span className="eyebrow">Lock in after payout</span></div><div className="form-grid"><Field error={getSportsbookOddsInputError(inputs.inPlayBackOdds, { required: false })} id="early-in-play-odds" label="In-play back odds" onBlur={() => normalize("inPlayBackOdds")} onChange={(inPlayBackOdds) => update({ inPlayBackOdds })} value={inputs.inPlayBackOdds} /><Field error={null} id="early-maximum-payout" label="Maximum payout (optional)" onChange={(maximumPayout) => update({ maximumPayout })} value={inputs.maximumPayout} /></div><label className="field-control"><span>Lock-in adjustment: {inputs.lockAdjustmentPercent}%</span><input aria-label="Lock-in adjustment" className="custom-slider-track" max="150" min="0" onChange={(event) => update({ lockAdjustmentPercent: event.target.value })} step="1" type="range" value={inputs.lockAdjustmentPercent} /></label><div className="custom-slider-direction-labels" aria-hidden="true"><span>Conservative</span><span>Equalised</span><span>Aggressive</span></div>
+        <div className="multi-lay-grid-wrap"><table className="data-table multi-lay-planner-grid"><thead><tr><th>Part back</th><th>Stake</th><th>Odds</th><th>Action</th></tr></thead><tbody>{inputs.partBacks.map((part, index) => <tr key={index}><td>Part {index + 1}</td><td><label className="field-control"><span className="sr-only">Part back {index + 1} stake</span><input inputMode="decimal" onChange={(event) => updatePart(index, { stake: event.target.value })} value={part.stake} /></label></td><td><label className="field-control"><span className="sr-only">Part back {index + 1} odds</span><input inputMode="decimal" onBlur={() => normalizePart(index)} onChange={(event) => updatePart(index, { odds: event.target.value })} value={part.odds} /></label></td><td><button aria-label={`Remove part back ${index + 1}`} className="icon-button icon-button-destructive multi-lay-action-button" onClick={() => update({ partBacks: inputs.partBacks.filter((_, at) => at !== index) })} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></td></tr>)}</tbody></table></div><div className="tracker-nav multi-lay-add-row"><button className="button-link" onClick={() => update({ partBacks: [...inputs.partBacks, { stake: "", odds: "" }] })} type="button">Add part back</button></div>
+      </section> : null}
+      {result ? <div className="calculator-band calculator-band-secondary"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.triggered ? "Live lock-in reference" : "Initial matching reference"}</strong></div><dl className="calculator-result-card-values"><ResultValue label={inputs.coverMode === "exchange_lay" ? "Recommended lay stake" : "Recommended second bookmaker stake"} value={result.recommended_initial_stake} />{result.actual_initial_stake !== result.recommended_initial_stake ? <ResultValue label={inputs.coverMode === "exchange_lay" ? "Actual lay stake" : "Actual second bookmaker stake"} value={result.actual_initial_stake} /> : null}{result.liability !== null ? <ResultValue label="Liability" value={result.liability} /> : null}{result.recommended_additional_back_stake !== null ? <ResultValue label="Additional back stake" value={result.recommended_additional_back_stake} /> : null}<ResultValue label="Current value" value={result.current_value} /></dl>{result.recommended_additional_back_stake !== null ? <button className="review-chip review-chip-copy calculator-result-copy" data-pd-id="calculators.early-payout.copy-back-stake" onClick={() => void copyCalculatorValue(result.recommended_additional_back_stake!, setCopyFeedback)} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span><span>Copy back stake</span></button> : null}</article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={columns} inspectionId="calculators.early-payout.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" as const : "exchange" as const, components: outcome.components.map((component) => [component]), total: outcome.total }))} summary={<span>Conservative current value <CalculatorOutcomeValueDisplay label="Conservative current value" value={result.current_value} /></span>} /></div> : null}
+      {busy ? <p className="field-hint" role="status">Updating outcomes…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}<div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.early-payout.reset" onClick={resetCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
+    </div>
   </div></div>;
 }
 
@@ -677,11 +775,11 @@ function commissionError(value: string) { return hasCompleteDecimalInputSyntax(v
 
 function Field({ error, id, inputMode = "decimal", label, onBlur, onChange, supportingText, value }: { error: string | null; id: string; inputMode?: "decimal" | "numeric" | "text"; label: string; onBlur?: () => void; onChange: (value: string) => void; supportingText?: string; value: string }) {
   const errorId = `calculator-${id}-error`;
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className={`field-control${error ? " is-invalid" : ""}`} htmlFor={`calculator-${id}`}><span>{label}</span><input aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} data-pd-id={dataPdId} id={`calculator-${id}`} inputMode={inputMode} onBlur={onBlur} onChange={(event) => onChange(event.target.value)} type="text" value={value} />{error ? <span className="field-validation-text" id={errorId} role="alert">{error}</span> : supportingText ? <span className="field-support-text">{supportingText}</span> : null}</label>;
 }
 function SelectField({ disabled = false, id, label, onChange, options, value }: { disabled?: boolean; id: string; label: string; onChange: (value: string) => void; options: readonly (readonly [string, string])[]; value: string }) {
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className="field-control ledger-calculator-mode-field" htmlFor={`calculator-${id}`}><span>{label}</span><select data-pd-id={dataPdId} disabled={disabled} id={`calculator-${id}`} onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([option, text]) => <option key={option} value={option}>{text}</option>)}</select></label>;
 }
 function ResultValue({ label, money = true, value }: { label: string; money?: boolean; value: string }) { return <div><dt>{label}</dt><dd>{money ? <FinancialValue label={label} value={value} /> : value}</dd></div>; }

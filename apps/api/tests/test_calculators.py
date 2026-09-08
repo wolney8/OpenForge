@@ -159,7 +159,9 @@ def test_fund_manager_matched_betting_modes_are_reference_only(tmp_path: Path) -
     assert len(list_sportsbook_bets("profile-demo-001")) == before
 
 
-def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(tmp_path: Path) -> None:
+def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(
+    tmp_path: Path,
+) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
     before = len(list_sportsbook_bets("profile-demo-001"))
@@ -204,7 +206,14 @@ def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(tmp
         ({"profit_boost_mode": "displayed_odds", "boosted_back_odds": "3.20"}, "3.2000"),
         ({"profit_boost_mode": "total_return", "total_potential_return": "27.86"}, "2.7800"),
         ({"profit_boost_mode": "profit_only", "potential_profit": "22.00"}, "3.2000"),
-        ({"profit_boost_mode": "percentage", "base_back_odds": "3", "profit_boost_percent": "10"}, "3.2000"),
+        (
+            {
+                "profit_boost_mode": "percentage",
+                "base_back_odds": "3",
+                "profit_boost_percent": "10",
+            },
+            "3.2000",
+        ),
     ]
     for fields, expected in profit_modes:
         response = client.post(
@@ -288,6 +297,7 @@ def test_fund_manager_calculator_is_protected_when_authentication_is_required(
             "/fund-manager/calculators/multi-lay/preview",
             "/fund-manager/calculators/each-way/preview",
             "/fund-manager/calculators/sequential-lay/preview",
+            "/fund-manager/calculators/early-payout/preview",
         ):
             assert client.post(endpoint, json={}).status_code == 401
     finally:
@@ -377,12 +387,8 @@ def test_each_way_modes_match_canonical_engine_without_writes(tmp_path: Path) ->
         assert actual["first_place_exchange_place_pnl"] == (
             f"{canonical.first_place_exchange_place_pnl:.2f}"
         )
-        assert actual["unplaced_bookie_place_pnl"] == (
-            f"{canonical.unplaced_bookie_place_pnl:.2f}"
-        )
-        assert actual["unplaced_exchange_win_pnl"] == (
-            f"{canonical.unplaced_exchange_win_pnl:.2f}"
-        )
+        assert actual["unplaced_bookie_place_pnl"] == (f"{canonical.unplaced_bookie_place_pnl:.2f}")
+        assert actual["unplaced_exchange_win_pnl"] == (f"{canonical.unplaced_exchange_win_pnl:.2f}")
         assert (actual["extra_place_pnl"] is not None) is (mode == "Extra Place")
     assert len(list_each_way_extra_places("profile-demo-001")) == before
 
@@ -474,3 +480,34 @@ def test_sequential_lay_rejects_malformed_odds_and_supports_more_than_three_legs
             ).status_code
             == 422
         )
+
+
+def test_early_payout_preview_normalises_odds_and_performs_no_writes(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    payload = {
+        "cover_mode": "exchange_lay",
+        "back_stake": "50",
+        "back_odds": "5/4",
+        "lay_odds": "2,32",
+        "lay_commission": "0.05",
+        "triggered": True,
+        "in_play_back_odds": "1.20",
+        "lock_adjustment_percent": "100",
+        "part_backs": [],
+    }
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    response = client.post("/fund-manager/calculators/early-payout/preview", json=payload)
+    assert response.status_code == 200, response.text
+    assert response.json()["recommended_initial_stake"] == "49.56"
+    assert response.json()["liability"] == "65.42"
+    assert response.json()["recommended_additional_back_stake"] == "95.82"
+    assert [row["total"] for row in response.json()["outcomes"]] == ["16.24"] * 3
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+    for malformed in ("1,000", "£2.32", "2.32abc", "1e3", "NaN", "Infinity", "1/0"):
+        rejected = client.post(
+            "/fund-manager/calculators/early-payout/preview",
+            json={**payload, "lay_odds": malformed},
+        )
+        assert rejected.status_code == 422

@@ -14,6 +14,11 @@ from openforge_api.calculations.each_way_extra_place import (
     EachWayCalculationInput,
     calculate_each_way_extra_place,
 )
+from openforge_api.calculations.early_payout import (
+    EarlyPayoutInput,
+    PartBackInput,
+    calculate_early_payout,
+)
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
@@ -58,9 +63,9 @@ class MatchedBettingPayload(BaseModel):
     retention_percent: str = Field(default="70", max_length=40)
     underlay_factor: str = Field(default="0.928", max_length=40)
     overlay_factor: str = Field(default="1.300", max_length=40)
-    profit_boost_mode: Literal[
-        "displayed_odds", "total_return", "profit_only", "percentage"
-    ] = "displayed_odds"
+    profit_boost_mode: Literal["displayed_odds", "total_return", "profit_only", "percentage"] = (
+        "displayed_odds"
+    )
     boosted_back_odds: str = Field(default="", max_length=40)
     total_potential_return: str = Field(default="", max_length=40)
     potential_profit: str = Field(default="", max_length=40)
@@ -85,7 +90,10 @@ class MatchedBettingPayload(BaseModel):
         return normalize_calculator_odds(value)
 
     @field_validator(
-        "back_odds", "boosted_back_odds", "base_back_odds", "actual_accepted_back_odds",
+        "back_odds",
+        "boosted_back_odds",
+        "base_back_odds",
+        "actual_accepted_back_odds",
         mode="before",
     )
     @classmethod
@@ -102,8 +110,12 @@ class MatchedBettingPayload(BaseModel):
         return parsed
 
     @field_validator(
-        "manual_lay_stake", "promotion_value", "total_potential_return", "potential_profit",
-        "maximum_boost_winnings", mode="before",
+        "manual_lay_stake",
+        "promotion_value",
+        "total_potential_return",
+        "potential_profit",
+        "maximum_boost_winnings",
+        mode="before",
     )
     @classmethod
     def validate_optional_money(cls, value: Any) -> str:
@@ -350,6 +362,125 @@ class SequentialLayResponse(BaseModel):
     locked_result: str | None
 
 
+class EarlyPayoutPartBackPayload(BaseModel):
+    stake: str = Field(max_length=40)
+    odds: str = Field(max_length=40)
+
+    @field_validator("stake", mode="before")
+    @classmethod
+    def validate_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator("odds", mode="before")
+    @classmethod
+    def validate_odds(cls, value: Any) -> str:
+        return normalize_calculator_odds(value)
+
+
+class EarlyPayoutPayload(BaseModel):
+    cover_mode: Literal["exchange_lay", "two_way_dutch"] = "exchange_lay"
+    back_stake: str = Field(max_length=40)
+    back_odds: str = Field(max_length=40)
+    triggered: bool = False
+    lay_odds: str = Field(default="", max_length=40)
+    lay_commission: str = Field(default="0", max_length=40)
+    actual_lay_stake: str = Field(default="", max_length=40)
+    second_back_odds: str = Field(default="", max_length=40)
+    actual_second_back_stake: str = Field(default="", max_length=40)
+    maximum_payout: str = Field(default="", max_length=40)
+    in_play_back_odds: str = Field(default="", max_length=40)
+    lock_adjustment_percent: str = Field(default="100", max_length=40)
+    part_backs: list[EarlyPayoutPartBackPayload] = Field(default_factory=list)
+
+    @field_validator("back_stake", mode="before")
+    @classmethod
+    def validate_back_stake(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator(
+        "back_odds", "lay_odds", "second_back_odds", "in_play_back_odds", mode="before"
+    )
+    @classmethod
+    def validate_optional_odds(cls, value: Any) -> str:
+        return "" if value == "" else normalize_calculator_odds(value)
+
+    @field_validator(
+        "actual_lay_stake", "actual_second_back_stake", "maximum_payout", mode="before"
+    )
+    @classmethod
+    def validate_optional_money(cls, value: Any) -> str:
+        if value == "":
+            return ""
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0:
+            raise PydanticCustomError(
+                "calculator_amount_positive", "Enter an amount greater than zero."
+            )
+        return parsed
+
+    @field_validator("lay_commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) < Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
+    @field_validator("lock_adjustment_percent", mode="before")
+    @classmethod
+    def validate_lock_adjustment(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=PERCENT_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) <= Decimal("150"):
+            raise PydanticCustomError("calculator_percentage_range", PERCENT_MESSAGE)
+        return parsed
+
+    @model_validator(mode="after")
+    def validate_mode_fields(self) -> "EarlyPayoutPayload":
+        if not self.back_odds:
+            raise PydanticCustomError("calculator_back_odds_required", "Enter back odds.")
+        if self.cover_mode == "exchange_lay" and not self.lay_odds:
+            raise PydanticCustomError("calculator_lay_odds_required", "Enter lay odds.")
+        if self.cover_mode == "two_way_dutch" and not self.second_back_odds:
+            raise PydanticCustomError(
+                "calculator_second_odds_required", "Enter second bookmaker odds."
+            )
+        if self.triggered and not self.in_play_back_odds:
+            raise PydanticCustomError(
+                "calculator_in_play_odds_required", "Enter in-play back odds."
+            )
+        return self
+
+
+class EarlyPayoutOutcomeResponse(BaseModel):
+    key: str
+    label: str
+    components: list[str]
+    total: str
+
+
+class EarlyPayoutResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    calculation_state: Literal["resolved"] = "resolved"
+    cover_mode: Literal["exchange_lay", "two_way_dutch"]
+    triggered: bool
+    recommended_initial_stake: str
+    actual_initial_stake: str
+    liability: str | None
+    recommended_additional_back_stake: str | None
+    current_value: str
+    outcomes: list[EarlyPayoutOutcomeResponse]
+
+
 class EachWayPayload(BaseModel):
     mode: Literal["Each Way", "Extra Place"] = "Each Way"
     each_way_stake: str = Field(max_length=40)
@@ -496,12 +627,32 @@ def _matched_outcomes(
     lay_label = "Lay bet wins"
     if promotion:
         if trigger_back:
-            back_label = "Back wins / bonus triggers" if offer_type == "bonus_lock_in" else "Back wins / cashback triggers"
+            back_label = (
+                "Back wins / bonus triggers"
+                if offer_type == "bonus_lock_in"
+                else "Back wins / cashback triggers"
+            )
         else:
-            lay_label = "Back loses / bonus triggers" if offer_type == "bonus_lock_in" else "Cashback-trigger result"
+            lay_label = (
+                "Back loses / bonus triggers"
+                if offer_type == "bonus_lock_in"
+                else "Cashback-trigger result"
+            )
     return [
-        row("back-wins", back_label, bookmaker_if_back, exchange_if_back, promotion if promotion and trigger_back else Decimal("0")),
-        row("lay-wins", lay_label, bookmaker_if_lay, exchange_if_lay, promotion if promotion and not trigger_back else Decimal("0")),
+        row(
+            "back-wins",
+            back_label,
+            bookmaker_if_back,
+            exchange_if_back,
+            promotion if promotion and trigger_back else Decimal("0"),
+        ),
+        row(
+            "lay-wins",
+            lay_label,
+            bookmaker_if_lay,
+            exchange_if_lay,
+            promotion if promotion and not trigger_back else Decimal("0"),
+        ),
     ]
 
 
@@ -527,7 +678,9 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             raise HTTPException(status_code=422, detail=profit_boost.calculation_notes[0])
         effective_back_odds_text = f"{profit_boost.effective_back_odds:.4f}"
     calculation_strategy = (
-        "Standard" if payload.strategy == "Custom" and not payload.manual_lay_stake else payload.strategy
+        "Standard"
+        if payload.strategy == "Custom" and not payload.manual_lay_stake
+        else payload.strategy
     )
     if payload.bet_type == "free_bet":
         free_result = calculate_free_bet_current_value(
@@ -585,7 +738,9 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
                 back_stake=payload.back_stake,
                 back_odds=effective_back_odds_text,
                 match_strategy=calculation_strategy,
-                bonus_trigger=payload.bonus_trigger if offer_type in {"Bonus Lock-In", "Cashback"} else "",
+                bonus_trigger=payload.bonus_trigger
+                if offer_type in {"Bonus Lock-In", "Cashback"}
+                else "",
                 maximum_bonus=payload.promotion_value,
                 bonus_retention_rate=payload.retention_percent,
                 lay_odds_1=payload.lay_odds,
@@ -654,9 +809,7 @@ def preview_matched_betting(payload: MatchedBettingPayload) -> MatchedBettingRes
     return _calculate(payload)
 
 
-@router.get(
-    "/fund-manager/calculators/exchanges", response_model=list[CalculatorExchangeResponse]
-)
+@router.get("/fund-manager/calculators/exchanges", response_model=list[CalculatorExchangeResponse])
 def list_calculator_exchanges() -> list[CalculatorExchangeResponse]:
     catalogue = load_master_account_catalogue()
     records = [
@@ -668,7 +821,9 @@ def list_calculator_exchanges() -> list[CalculatorExchangeResponse]:
         for record in catalogue.records
         if record.account_type == "Exchange" and record.status == "Active"
     ]
-    return sorted(records, key=lambda record: (record.name.casefold() != "smarkets", record.name.casefold()))
+    return sorted(
+        records, key=lambda record: (record.name.casefold() != "smarkets", record.name.casefold())
+    )
 
 
 @router.post("/fund-manager/calculators/multi-lay/preview", response_model=MultiLayResponse)
@@ -766,6 +921,65 @@ def preview_sequential_lay(payload: SequentialLayPayload) -> SequentialLayRespon
         ],
         all_legs_win=_money(result.all_legs_win),
         locked_result=_money(result.locked_result) if result.locked_result is not None else None,
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/early-payout/preview",
+    response_model=EarlyPayoutResponse,
+)
+def preview_early_payout(payload: EarlyPayoutPayload) -> EarlyPayoutResponse:
+    result = calculate_early_payout(
+        EarlyPayoutInput(
+            cover_mode=payload.cover_mode,
+            back_stake=Decimal(payload.back_stake),
+            back_odds=Decimal(payload.back_odds),
+            triggered=payload.triggered,
+            lock_adjustment=Decimal(payload.lock_adjustment_percent) / Decimal("100"),
+            lay_odds=Decimal(payload.lay_odds) if payload.lay_odds else None,
+            lay_commission=Decimal(payload.lay_commission),
+            actual_lay_stake=(
+                Decimal(payload.actual_lay_stake) if payload.actual_lay_stake else None
+            ),
+            second_back_odds=(
+                Decimal(payload.second_back_odds) if payload.second_back_odds else None
+            ),
+            actual_second_back_stake=(
+                Decimal(payload.actual_second_back_stake)
+                if payload.actual_second_back_stake
+                else None
+            ),
+            maximum_payout=(Decimal(payload.maximum_payout) if payload.maximum_payout else None),
+            in_play_back_odds=(
+                Decimal(payload.in_play_back_odds) if payload.in_play_back_odds else None
+            ),
+            part_backs=tuple(
+                PartBackInput(stake=Decimal(part.stake), odds=Decimal(part.odds))
+                for part in payload.part_backs
+            ),
+        )
+    )
+    return EarlyPayoutResponse(
+        cover_mode=payload.cover_mode,
+        triggered=payload.triggered,
+        recommended_initial_stake=_money(result.recommended_initial_stake),
+        actual_initial_stake=_money(result.actual_initial_stake),
+        liability=_money(result.liability) if result.liability is not None else None,
+        recommended_additional_back_stake=(
+            _money(result.recommended_additional_back_stake)
+            if result.recommended_additional_back_stake is not None
+            else None
+        ),
+        current_value=_money(result.current_value),
+        outcomes=[
+            EarlyPayoutOutcomeResponse(
+                key=outcome.key,
+                label=outcome.label,
+                components=[_money(component) for component in outcome.components],
+                total=_money(outcome.total),
+            )
+            for outcome in result.outcomes
+        ],
     )
 
 

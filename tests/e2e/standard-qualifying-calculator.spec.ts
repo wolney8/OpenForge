@@ -309,6 +309,74 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   expect(businessMutations).toEqual([]);
 });
 
+test("calculates Early Payout trigger, part-back and Dutch references without writes", async ({ page }) => {
+  await mockSession(page);
+  const businessMutations: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && /\/profiles\/[^/]+\/(?:sportsbook-bets|free-bets)(?:$|\?)/.test(request.url())) businessMutations.push(request.url());
+  });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
+  await page.goto("/fund-manager/calculators?family=early-payout");
+  await expect(page.getByRole("heading", { name: "Early Payout / 2UP" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.early-exchange"]')).toHaveValue("Smarkets");
+  await expect(page.locator('[data-pd-id="calculators.early-commission"]')).toHaveValue("0");
+  await page.locator('[data-pd-id="calculators.early-back-stake"]').fill("50");
+  await page.locator('[data-pd-id="calculators.early-back-odds"]').fill("5/4");
+  await page.locator('[data-pd-id="calculators.early-initial-odds"]').fill("2,32");
+  await page.locator('[data-pd-id="calculators.early-commission"]').fill("0.05");
+  await page.getByRole("switch", { name: "Bookmaker has paid out early" }).focus();
+  await expect(page.locator('[data-pd-id="calculators.early-back-odds"]')).toHaveValue("2.25");
+  await expect(page.locator('[data-pd-id="calculators.early-initial-odds"]')).toHaveValue("2.32");
+  await expect(page.getByLabel("Team / selection wins: Bookmaker £ 62.50; Exchange £ (65.42); total £ (2.92)")).toBeVisible();
+  await expect(page.getByLabel("Recommended lay stake: £ 49.56")).toBeVisible();
+  await expect(page.getByLabel("Liability: £ 65.42")).toBeVisible();
+
+  await page.getByRole("switch", { name: "Bookmaker has paid out early" }).click();
+  await page.locator('[data-pd-id="calculators.early-in-play-odds"]').fill("1.20");
+  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await expect(page.getByLabel("Team / selection wins: Bookmaker £ 62.50; Exchange £ (46.26); total £ 16.24")).toBeVisible();
+  await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("80");
+  await expect(page.getByLabel("Additional back stake: £ 68.73")).toBeVisible();
+  await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("");
+  await page.getByRole("slider", { name: "Lock-in adjustment" }).fill("50");
+  await expect(page.getByLabel("Additional back stake: £ 48.91")).toBeVisible();
+  await page.getByRole("slider", { name: "Lock-in adjustment" }).fill("100");
+  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await page.getByRole("button", { name: "Copy back stake" }).click();
+  await expect(page.getByText("Copied 95.82")).toBeVisible();
+  await page.getByRole("button", { name: "Add part back" }).click();
+  await page.getByLabel("Part back 1 stake").fill("20");
+  await page.getByLabel("Part back 1 odds").fill("1.4");
+  await expect(page.getByLabel("Additional back stake: £ 72.48")).toBeVisible();
+  if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
+    await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
+  }
+
+  await page.locator('[data-pd-id="calculators.early-payout.reset"]').click();
+  await page.locator('[data-pd-id="calculators.early-cover-mode"]').selectOption("two_way_dutch");
+  await page.locator('[data-pd-id="calculators.early-back-stake"]').fill("50");
+  await page.locator('[data-pd-id="calculators.early-back-odds"]').fill("2.25");
+  await page.locator('[data-pd-id="calculators.early-initial-odds"]').fill("1.8");
+  await expect(page.getByLabel("Recommended second bookmaker stake: £ 62.50")).toBeVisible();
+  await page.getByRole("switch", { name: "Bookmaker has paid out early" }).click();
+  await page.locator('[data-pd-id="calculators.early-in-play-odds"]').fill("1.2");
+  await expect(page.getByLabel("Additional back stake: £ 93.75")).toBeVisible();
+  await expect(page.getByLabel("Selection wins: Bookmaker 1 £ 62.50; Bookmaker 2 £ (62.50); Bookmaker 3 £ 18.75; total £ 18.75")).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator('[data-pd-id="calculators.early-payout.outcomes"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.locator('[data-pd-id="calculators.early-payout.reset"]').click();
+  await expect(page.locator('[data-pd-id="calculators.early-cover-mode"]')).toHaveValue("exchange_lay");
+  await expect(page.locator('[data-pd-id="calculators.early-back-stake"]')).toHaveValue("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
+    await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-alternate-theme-narrow.png"), fullPage: true });
+  }
+  expect(businessMutations).toEqual([]);
+});
+
 test("matches the signed-off Sportsbook calculator geometry", async ({ page, request }) => {
   test.setTimeout(60_000);
   await mockSession(page);

@@ -16,8 +16,10 @@ durable requirements.
   ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
   Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay now has a
   source-verified decimal calculation contract and a Fund Manager reference calculator with
-  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes.
-- Current implementation base before this tranche: `6cb6317ceca4aa90c824c96553982fba9d9d7d80` on `main`.
+  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes. Early Payout /
+  2UP is implemented locally, covering ordinary matching, explicit trigger lock-in, maximum
+  payout, part backs and 2-Way Dutch without ledger writes; user acceptance remains pending.
+- Current implementation base before this tranche: `a525e0e07d7653c6182f69d478981a7a1ce11d00` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -47,8 +49,8 @@ durable requirements.
   Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
   Each Way / Extra Place and Sequential Lay also calculate automatically. Sequential Lay's exact
   directional penny placement is pinned to the verified current source implementation.
-- Next queue: #35 advanced families (Early Payout /
-  2UP; Accumulator / Multiples; Dutching; Odds Converter / Probability; Blackjack), then
+- Next queue: #35 advanced families (Accumulator / Multiples; Dutching; Odds Converter /
+  Probability; Blackjack), then
   #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
   Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an

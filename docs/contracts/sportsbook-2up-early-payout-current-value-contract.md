@@ -1,12 +1,13 @@
 # Calculation Contract: Sportsbook 2UP / Early Payout Cash-First Current Value
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-09-08_
 
 ## 0. Contract status
 
-- Status: Draft
+- Status: **Verified for standalone reference calculation; Draft for persisted tracker lifecycle**
 - Owner: Codex planning draft
-- Human approval required before implementation: Yes
+- Human approval required before implementation: standalone reference scope approved; persisted
+  sportsbook state remains unapproved
 - Related workflow contract: `docs/workflows/sportsbook-bet-workflow-contract.md`
 - Related spreadsheet source: none in current workbook source-pack
 - Related source-pack file: external expansion beyond current workbook source-pack
@@ -134,12 +135,46 @@ before the early-payout trigger is actually hit.
 
 ## 8. Formula source
 
-- manually specified business rule
-- later aligned against approved early-payout calculator conventions
+- Current public [MBB Early Payout calculator](https://matchedbettingblog.com/early-payout-calculator/)
+  and [worked 2UP guide](https://matchedbettingblog.com/bet365-early-payout-2up-offer/),
+  inspected and black-box executed on 2026-09-08. Calculator script SHA-256:
+  `51e9b495fd17a4917e13889141e9a1ae5ede35bfd67b3e097925028963980338`.
 - OpenForge cash-first tracker rule
 
 If public calculators show optimistic upside before the trigger occurs,
 OpenForge should not import that optimism into `projected_current_pnl`.
+
+### 8.1 Source-verified standalone reference scope
+
+The standalone Fund Manager calculator is Profile-independent and performs no business writes. It
+supports `Exchange Lay` and `2-Way Dutch`, an explicit paid-early trigger, actual initial stake,
+maximum payout, a `0%`–`150%` lock adjustment, and zero or more part backs. The source establishes
+no business maximum for part backs.
+
+The source rounds each displayed stake, liability and outcome component to the nearest penny before
+the next displayed calculation consumes it. OpenForge mirrors this placement with exact decimal
+arithmetic and `ROUND_HALF_UP`; it does not use binary floating point.
+
+For ordinary exchange matching:
+
+- `back_return = penny(back_stake × back_odds)`
+- `recommended_lay = penny(back_return ÷ (lay_odds - commission))`
+- `liability = penny(actual_or_recommended_lay × (lay_odds - 1))`
+
+After the explicit trigger, the already-paid bookmaker return and the existing hedge are combined
+with the in-play back odds, maximum payout and part backs to calculate the remaining stake. The
+source's piecewise exchange-commission handling is applied before the `0%`–`150%` lock multiplier.
+`100%` is the equalised source reference; lower/higher values redistribute rather than change the
+underlying cash entries.
+
+For 2-Way Dutch, the initial second-bookmaker stake is
+`penny(back_return ÷ second_back_odds)`. After trigger, the same source-backed remaining-position
+equation supplies the third/in-play bookmaker stake.
+
+The worked £50 @ 2.25 / 2.32 fixture is labelled **5% commission** by the current live output:
+£49.56 lay, £65.42 liability, £95.82 added back at 1.20 and £16.24 equalised outcomes. With **2%**,
+the live initial values are £48.91 and £64.56. The earlier issue prose pairing 2% with the 5%
+figures is a source-label discrepancy and is not used as a financial assertion.
 
 ## 9. Formula
 

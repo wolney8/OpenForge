@@ -1,6 +1,6 @@
 # Fixture Spec: Sportsbook 2UP / Early Payout Current Value
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-09-08_
 
 ## Contracts covered
 
@@ -16,6 +16,12 @@ Define the synthetic 2UP / early-payout sportsbook cases needed to prove:
 - final hold vs reversal settlement
 - override behaviour
 - profile isolation
+- standalone reference parity for exchange lay, trigger lock-in, caps, part backs and 2-Way Dutch
+
+Executable standalone cases are in
+`tests/fixtures/early-payout-calculation-fixtures.json`. They pin the current source's penny
+placement and explicitly distinguish the 5% worked fixture (£49.56 lay / £65.42 liability) from
+the 2% result (£48.91 / £64.56).
 
 ## Shared assumptions
 
