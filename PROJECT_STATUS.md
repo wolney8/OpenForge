@@ -14,10 +14,13 @@ durable requirements.
   Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
   Place now shares its Back Bet, Place Terms, Lay Win and Lay Place presentation directly with the
   ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
-  Outcomes presentation; user visual acceptance is `PENDING RECHECK`.
-- Current implementation base before this tranche: `307a178097250aa5821095cfedd9e676da4a3fe6` on `main`.
-- Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
-  captured visual work remain tracked, but are not the active feature.
+  Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay implementation
+  is `BLOCKED` at its financial contract gate: the captured Standard/Lock In observations do not
+  establish the leg recurrence, complete outcome branches, rounding order, or supported leg count.
+- Current implementation base before this tranche: `8861b7994805aaa0ee553305fcb5ea3f923aa5e0` on `main`.
+- Interruptions: the Sequential Lay contract decision blocks only that #35 family.
+  Notification/session user acceptance and captured visual work remain tracked, but are not the
+  active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
   ledger bridge remains later work under [#36](https://github.com/wolney8/OpenForge/issues/36).
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
@@ -42,10 +45,10 @@ durable requirements.
 
 - Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
   Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
-  and Each Way / Extra Place also calculate automatically. This tranche adds stake-derived Bonus
-  defaults, calculator-local Reset and a shared Outcomes shell without changing financial arithmetic.
-- Next queue: #35 advanced families (Sequential Lay; Early Payout / 2UP; Accumulator / Multiples;
-  Dutching; Odds Converter / Probability; Blackjack), then
+  and Each Way / Extra Place also calculate automatically. Sequential Lay remains unavailable until
+  its dedicated calculation contract and deterministic branch fixtures are approved.
+- Next queue: resolve the Sequential Lay contract gate; then #35 advanced families (Early Payout /
+  2UP; Accumulator / Multiples; Dutching; Odds Converter / Probability; Blackjack), then
   #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
   Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
