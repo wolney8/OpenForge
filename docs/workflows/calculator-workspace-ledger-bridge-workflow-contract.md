@@ -69,7 +69,13 @@ reward conversion and RTP/EV planning use different contracts and are not lay ca
   system default with `0` suggested commission; a user-entered commission remains an ephemeral
   override until the Exchange itself changes.
 - Every family ends with its contract-backed `Outcomes` presentation; rows vary by economic branch
-  rather than being forced into a generic two-outcome shape.
+  rather than being forced into a generic two-outcome shape. Standalone and embedded calculators
+  render those scenarios through the shared Extra Places-authority Outcomes shell and row primitive.
+- Entering Bonus Lock-In seeds the ephemeral bonus/refund value from Back Stake. It follows stake
+  edits only while untouched; a manual override remains authoritative until calculator Reset.
+- Reset affects only the selected calculator: it cancels pending preview work, restores calculator
+  defaults and canonical Exchange suggestion, clears local result/error/feedback state, and performs
+  no ledger or settings mutation.
 
 ## Ledger bridge
 

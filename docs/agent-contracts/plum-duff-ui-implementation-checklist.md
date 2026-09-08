@@ -64,6 +64,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       Adjustments, or a documented reason explains why a ledger is intentionally excluded.
 - [ ] A standalone calculator was compared with and reuses the nearest same-family ledger
       calculator/workflow presentation; generic calculator geometry alone is not parity evidence.
+- [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than
+      family-specific generic result tables.
 - [ ] Partial lay, where applicable, is represented as a placement state/control rather than a
       standalone calculator mode, with legacy `Partial Lay` rows kept readable.
 - [ ] Unit/Playwright/accessibility tests added or updated.

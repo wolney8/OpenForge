@@ -8419,6 +8419,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   text-align: center;
 }
 
+.calculator-result-card-heading :is(h2, h3, strong) {
+  color: inherit;
+}
+
 .calculator-result-card-values {
   display: grid;
   gap: 0.55rem;
@@ -9521,7 +9525,7 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 
 .extra-place-outcome-row {
   display: grid;
-  grid-template-columns: minmax(10rem, 1.3fr) repeat(3, minmax(7rem, 1fr));
+  grid-template-columns: minmax(10rem, 1.3fr) repeat(2, minmax(7rem, 1fr)) minmax(7rem, 1fr);
   align-items: center;
   gap: 0.75rem;
   min-height: 3rem;
@@ -9565,10 +9569,23 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 .extra-place-outcome-extra strong:first-child { border-color: var(--warning); }
 .extra-place-outcome-unplaced strong:first-child { border-color: color-mix(in srgb, var(--danger) 78%, var(--outline)); }
 
+.calculator-outcome-tone-primary strong:first-child { border-color: var(--primary); }
+.calculator-outcome-tone-exchange strong:first-child { border-color: var(--primary); }
+.calculator-outcome-tone-positive strong:first-child { border-color: var(--success); }
+.calculator-outcome-tone-warning strong:first-child { border-color: var(--warning); }
+.calculator-outcome-tone-danger strong:first-child { border-color: color-mix(in srgb, var(--danger) 78%, var(--outline)); }
+.calculator-outcome-tone-neutral strong:first-child { border-color: var(--outline); }
+
 .extra-place-outcome-win strong:first-child { background: color-mix(in srgb, var(--primary) 18%, var(--surface-container-high)); }
 .extra-place-outcome-standard strong:first-child { background: color-mix(in srgb, var(--success) 18%, var(--surface-container-high)); }
 .extra-place-outcome-extra strong:first-child { background: color-mix(in srgb, var(--warning) 18%, var(--surface-container-high)); }
 .extra-place-outcome-unplaced strong:first-child { background: color-mix(in srgb, var(--danger) 30%, var(--surface-container-high)); }
+.calculator-outcome-tone-primary strong:first-child { background: color-mix(in srgb, var(--primary) 18%, var(--surface-container-high)); }
+.calculator-outcome-tone-exchange strong:first-child { background: color-mix(in srgb, var(--primary) 18%, var(--surface-container-high)); }
+.calculator-outcome-tone-positive strong:first-child { background: color-mix(in srgb, var(--success) 18%, var(--surface-container-high)); }
+.calculator-outcome-tone-warning strong:first-child { background: color-mix(in srgb, var(--warning) 18%, var(--surface-container-high)); }
+.calculator-outcome-tone-danger strong:first-child { background: color-mix(in srgb, var(--danger) 30%, var(--surface-container-high)); }
+.calculator-outcome-tone-neutral strong:first-child { background: var(--surface-container-high); }
 .extra-place-outcome-unplaced {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface-container));
 }
@@ -10168,6 +10185,10 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-back-lay)
   background: var(--surface-container-high);
 }
 
+.extra-place-outcome-row.calculator-outcome-columns-0 { grid-template-columns: minmax(10rem, 1.2fr) minmax(7rem, 0.8fr); }
+.extra-place-outcome-row.calculator-outcome-columns-1 { grid-template-columns: minmax(10rem, 1.2fr) minmax(10rem, 1.4fr) minmax(7rem, 0.8fr); }
+.extra-place-outcome-row.calculator-outcome-columns-3 { grid-template-columns: minmax(10rem, 1.2fr) repeat(3, minmax(8rem, 1.2fr)) minmax(7rem, 0.8fr); }
+
 /* Keep the missed outcome legible after the generic matrix row surface is applied. */
 .extra-place-editor-modal .extra-place-outcome-row.extra-place-outcome-unplaced {
   background: #fff0ef;
@@ -10192,6 +10213,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   min-width: 0;
 }
 
+.calculator-outcome-component-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
 @media (max-width: 780px) {
   .extra-place-table-preferences { align-items: flex-start; flex-direction: column; }
   .extra-place-toolbar-actions { margin-left: auto; }
@@ -10212,10 +10239,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 @media (max-width: 780px) {
-  .extra-place-outcome-row { grid-template-columns: 1fr 1fr; }
+  .extra-place-outcome-row,
+  .extra-place-outcome-row[class*="calculator-outcome-columns-"] { grid-template-columns: 1fr 1fr; }
   .extra-place-outcome-row-heading { display: none; }
   .extra-place-outcome-row > span::before,
   .extra-place-outcome-row > strong:last-child::before { display: block; color: var(--on-surface-variant); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .calculator-outcome-scenario-row > span::before,
+  .calculator-outcome-scenario-row > strong:last-child::before { content: attr(data-label); }
 }
 
 .sportsbook-tabbed-editor-modal > form.form-grid {

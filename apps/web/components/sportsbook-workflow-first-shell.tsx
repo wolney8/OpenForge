@@ -28,6 +28,7 @@ import {
 } from "@/lib/guided-entry-focus";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
+import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutcomeScenario } from "@/components/calculator-outcomes";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
 import {
   BookmakerIdentity,
@@ -9594,87 +9595,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       }`}
                       data-pd-id="sportsbook.settlement.outcomes"
                     >
-                      <div className="settlement-outcome-primary">
-                        <span className="eyebrow">
-                          {settlementHasFinalOutcome ? "Final value" : "Current value"}
-                        </span>
-                        <strong>{renderPreviewFinancialValue(settlementPrimaryValue)}</strong>
-                      </div>
                       {settlementHasFinalOutcome ? (
-                        <div className="settlement-outcome-status">
-                          <span className="summary-label">Outcome</span>
-                          <strong>{formState.result}</strong>
-                        </div>
+                        <><div className="settlement-outcome-primary"><span className="eyebrow">Final value</span><strong>{renderPreviewFinancialValue(settlementPrimaryValue)}</strong></div><div className="settlement-outcome-status"><span className="summary-label">Outcome</span><strong>{formState.result}</strong></div></>
                       ) : usesMultiLayStrategy && multiLayPlannerSummary ? (
-                        <div className="settlement-outcome-grid" aria-label="Potential multi-lay outcomes">
-                          {multiLayResultsGridRows.map((row) => (
-                            <div className="settlement-outcome-card" key={row.key}>
-                              <span className="summary-label">{row.outcomeLabel}</span>
-                              <strong>{renderPreviewFinancialValue(row.profit)}</strong>
-                            </div>
-                          ))}
-                        </div>
+                        <CalculatorOutcomes inspectionId="sportsbook.calculator.outcomes" rows={multiLayResultsGridRows.map((row, index) => ({ key: row.key, label: row.outcomeLabel, tone: index === 0 ? "primary" : "exchange", total: row.profit }))} summary={<span>Current value <CalculatorOutcomeValueDisplay label="Current value" value={settlementPrimaryValue} /></span>} />
                       ) : (
-                        <div className="settlement-outcome-grid" aria-label="Potential outcomes">
-                          <div className="settlement-outcome-card">
-                            <span className="summary-label">
-                              {getScenarioBranchText(
-                                scenarioBranchLabels.backWinLabel,
-                                formState.result
-                              )}
-                            </span>
-                            <strong>
-                              {renderPreviewFinancialValue(
-                                activePreviewCalculation.scenario_pnl_if_back_wins
-                              )}
-                            </strong>
-                          </div>
-                          <div className="settlement-outcome-card">
-                            <span className="summary-label">
-                              {getScenarioBranchText(
-                                scenarioBranchLabels.layWinLabel,
-                                formState.result
-                              )}
-                            </span>
-                            <strong>
-                              {renderPreviewFinancialValue(
-                                activePreviewCalculation.scenario_pnl_if_lay_wins
-                              )}
-                            </strong>
-                          </div>
-                          {scenarioBranchLabels.outcome2Label &&
-                          activePreviewCalculation.scenario_pnl_if_outcome_2_wins !== null ? (
-                            <div className="settlement-outcome-card">
-                              <span className="summary-label">
-                                {getScenarioBranchText(
-                                  scenarioBranchLabels.outcome2Label,
-                                  formState.result
-                                )}
-                              </span>
-                              <strong>
-                                {renderPreviewFinancialValue(
-                                  activePreviewCalculation.scenario_pnl_if_outcome_2_wins
-                                )}
-                              </strong>
-                            </div>
-                          ) : null}
-                          {scenarioBranchLabels.outcome3Label &&
-                          activePreviewCalculation.scenario_pnl_if_outcome_3_wins !== null ? (
-                            <div className="settlement-outcome-card">
-                              <span className="summary-label">
-                                {getScenarioBranchText(
-                                  scenarioBranchLabels.outcome3Label,
-                                  formState.result
-                                )}
-                              </span>
-                              <strong>
-                                {renderPreviewFinancialValue(
-                                  activePreviewCalculation.scenario_pnl_if_outcome_3_wins
-                                )}
-                              </strong>
-                            </div>
-                          ) : null}
-                        </div>
+                        <CalculatorOutcomes inspectionId="sportsbook.calculator.outcomes" rows={([
+                          { key: "back-wins", label: getScenarioBranchText(scenarioBranchLabels.backWinLabel, formState.result), tone: "positive", total: activePreviewCalculation.scenario_pnl_if_back_wins },
+                          { key: "lay-wins", label: getScenarioBranchText(scenarioBranchLabels.layWinLabel, formState.result), tone: "exchange", total: activePreviewCalculation.scenario_pnl_if_lay_wins },
+                          ...(scenarioBranchLabels.outcome2Label && activePreviewCalculation.scenario_pnl_if_outcome_2_wins !== null ? [{ key: "outcome-2", label: getScenarioBranchText(scenarioBranchLabels.outcome2Label, formState.result), tone: "warning", total: activePreviewCalculation.scenario_pnl_if_outcome_2_wins }] : []),
+                          ...(scenarioBranchLabels.outcome3Label && activePreviewCalculation.scenario_pnl_if_outcome_3_wins !== null ? [{ key: "outcome-3", label: getScenarioBranchText(scenarioBranchLabels.outcome3Label, formState.result), tone: "neutral", total: activePreviewCalculation.scenario_pnl_if_outcome_3_wins }] : []),
+                        ] as CalculatorOutcomeScenario[])} summary={<span>Current value <CalculatorOutcomeValueDisplay label="Current value" value={settlementPrimaryValue} /></span>} />
                       )}
                     </section>
                   ) : null}

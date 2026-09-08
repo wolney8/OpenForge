@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import {
   EachWayBackBetSection,
@@ -164,6 +165,7 @@ export function CalculatorWorkspace() {
   const commissionWasEdited = useRef(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [customReference, setCustomReference] = useState("");
+  const bonusValueIsDerived = useRef(true);
   const requestVersionRef = useRef(0);
   const requestAbortRef = useRef<AbortController | null>(null);
   const errors = useMemo(() => validate(inputs), [inputs]);
@@ -187,7 +189,18 @@ export function CalculatorWorkspace() {
 
   function update<K extends keyof Inputs>(field: K, value: Inputs[K]) {
     requestAbortRef.current?.abort(); requestAbortRef.current = null; requestVersionRef.current += 1;
-    setInputs((current) => ({ ...current, [field]: value }));
+    setInputs((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "betType" && value === "bonus_lock_in") {
+        bonusValueIsDerived.current = true;
+        next.promotionValue = current.backStake;
+      } else if (field === "backStake" && current.betType === "bonus_lock_in" && bonusValueIsDerived.current) {
+        next.promotionValue = String(value);
+      } else if (field === "promotionValue" && current.betType === "bonus_lock_in") {
+        bonusValueIsDerived.current = false;
+      }
+      return next;
+    });
     setTouched((current) => ({ ...current, [field]: true }));
     setResult(null); setError(""); setCopyFeedback(""); setConversion(""); setIsCalculating(false);
   }
@@ -271,6 +284,15 @@ export function CalculatorWorkspace() {
     window.open(`/fund-manager/calculators?${params.toString()}`, "_blank", "noopener,noreferrer");
   }
 
+  function resetMatchedCalculator() {
+    requestAbortRef.current?.abort(); requestAbortRef.current = null; requestVersionRef.current += 1;
+    const smarkets = exchanges.find((option) => option.name === "Smarkets");
+    commissionWasEdited.current = false;
+    bonusValueIsDerived.current = true;
+    setInputs({ ...defaults, exchange: smarkets?.name ?? defaults.exchange, exchangeCommission: smarkets?.default_commission_rate ?? defaults.exchangeCommission });
+    setTouched({}); setResult(null); setError(""); setConversion(""); setCopyFeedback(""); setCustomReference(""); setIsCalculating(false);
+  }
+
   const showPromotion = inputs.betType === "bonus_lock_in" || inputs.betType === "cashback";
   const showManualLay = inputs.strategy === "Partial Lay";
   const activeFamilyLabel = families.find((item) => item.value === family)?.label ?? "Calculator";
@@ -326,8 +348,9 @@ export function CalculatorWorkspace() {
         {conversion ? <p className="field-hint" role="status">{conversion}</p> : null}
         {isCalculating ? <p className="field-hint" role="status">Updating outcomes…</p> : null}
         {error ? <p className="error-text" role="alert">{error}</p> : null}
+        <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
       </div>
-      {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl><button className="review-chip review-chip-copy calculator-result-copy" data-pd-id="calculators.matched-betting.copy-lay-stake" onClick={() => void copyLayStake()} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span><span>Copy Lay Stake</span></button>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div><CalculatorOutcomes outcomes={result.outcomes} /></div> : null}
+      {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl><button className="review-chip review-chip-copy calculator-result-copy" data-pd-id="calculators.matched-betting.copy-lay-stake" onClick={() => void copyLayStake()} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span><span>Copy Lay Stake</span></button>{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}</article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
     </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
   </section>;
 }
@@ -425,6 +448,12 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multiInputKey, invalid]);
   useEffect(() => () => requestAbort.current?.abort(), []);
+  function resetCalculator() {
+    requestAbort.current?.abort(); requestVersion.current += 1;
+    const smarkets = exchanges.find((option) => option.name === "Smarkets");
+    setInputs({ ...readMultiLay(new URLSearchParams()), exchange: smarkets?.name ?? "Smarkets", commission: smarkets?.default_commission_rate ?? "0" });
+    setResult(null); setError(""); setCopyFeedback(""); setBusy(false);
+  }
   return <div className="calculator-panel-shell" data-pd-id="calculators.multi-lay.presentation"><div className="calculator-shell">
     <div className="calculator-band calculator-band-primary"><div className="calculator-segment calculator-segment-back"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} /></div></div></div>
     <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
@@ -445,9 +474,10 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
             </tr>; })}
           </tbody></table></div>
           <div className="tracker-nav multi-lay-add-row"><button className="button-link" disabled={inputs.outcomes.length >= 3} onClick={() => update({ ...inputs, outcomes: [...inputs.outcomes, { label: `Outcome ${inputs.outcomes.length + 1}`, layOdds: "" }] })} type="button">Add outcome</button></div>
-          {result ? <div className="multi-lay-grid-wrap" data-pd-id="calculators.multi-lay.outcomes"><div className="multi-lay-table-heading">Outcomes</div><table className="data-table multi-lay-results-grid"><thead><tr><th>Outcome</th><th>Profit</th></tr></thead><tbody>{result.branches.map((branch) => <FinancialValueReplayGroup key={branch.label}><tr><td>{branch.label}</td><td><FinancialValue label={`${branch.label} outcome value`} value={branch.outcome_value} /></td></tr></FinancialValueReplayGroup>)}<tr><td>No selection wins</td><td><FinancialValue label="No selection wins" value={result.no_selection_value} /></td></tr></tbody><tfoot><tr><td>Total liability</td><td><FinancialValue label="Total liability" value={result.total_liability} /></td></tr><tr><td>Matched result</td><td><FinancialValue label="Matched result" value={result.matched_result} /></td></tr></tfoot></table></div> : null}
+          {result ? <CalculatorOutcomes inspectionId="calculators.multi-lay.outcomes" rows={[...result.branches.map((branch, index) => ({ key: `branch-${index}`, label: branch.label, tone: index === 0 ? "primary" as const : "exchange" as const, total: branch.outcome_value })), { key: "no-selection", label: "No selection wins", tone: "neutral", total: result.no_selection_value }]} summary={<><span>Total liability <CalculatorOutcomeValueDisplay label="Total liability" value={result.total_liability} /></span><span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span></>} /> : null}
           {busy ? <p className="field-hint" role="status">Updating outcomes…</p> : null}
           {error ? <p className="error-text" role="alert">{error}</p> : null}{copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
+          <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.multi-lay.reset" onClick={resetCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
         </div>
       </div>
     </div>
@@ -506,6 +536,12 @@ function EachWayCalculator({ exchanges, onState, search }: { exchanges: Exchange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eachWayInputKey, invalid]);
   useEffect(() => () => requestAbort.current?.abort(), []);
+  function resetCalculator() {
+    requestAbort.current?.abort(); requestVersion.current += 1;
+    const smarkets = exchanges.find((option) => option.name === "Smarkets");
+    setInputs({ ...eachWayDefaults, exchange: smarkets?.name ?? "Smarkets", winCommission: smarkets?.default_commission_rate ?? "0", placeCommission: smarkets?.default_commission_rate ?? "0" });
+    setResult(null); setError(""); setCopyFeedback(""); setBusy(false);
+  }
   const outcomes: EachWayOutcomeRow[] = [
     { key: "win", label: "First Place", bookmaker: [result?.first_place_bookie_win_pnl, result?.first_place_bookie_place_pnl], exchange: [result?.first_place_exchange_win_pnl, result?.first_place_exchange_place_pnl], total: result?.first_place_pnl, result: "Win" },
     { key: "standard", label: "Standard Place", bookmaker: [result?.standard_place_bookie_win_pnl, result?.standard_place_bookie_place_pnl], exchange: [result?.standard_place_exchange_win_pnl, result?.standard_place_exchange_place_pnl], total: result?.standard_place_pnl, result: "Standard Place" },
@@ -544,6 +580,7 @@ function EachWayCalculator({ exchanges, onState, search }: { exchanges: Exchange
     {busy ? <p className="field-hint" role="status">Updating outcomes…</p> : null}
     {error ? <p className="error-text" role="alert">{error}</p> : null}
     {copyFeedback ? <p className="calculator-copy-feedback" role="status">{copyFeedback}</p> : null}
+    <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.each-way.reset" onClick={resetCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
     <EachWayOutcomeMatrix inspectionId="calculators.each-way.outcomes" outcomes={outcomes} qualifyingLoss={result?.qualifying_loss} selectedResult="" />
   </div></div></div>;
 }
@@ -563,11 +600,5 @@ function Field({ error, id, inputMode = "decimal", label, onBlur, onChange, supp
 function SelectField({ disabled = false, id, label, onChange, options, value }: { disabled?: boolean; id: string; label: string; onChange: (value: string) => void; options: readonly (readonly [string, string])[]; value: string }) {
   const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className="field-control ledger-calculator-mode-field" htmlFor={`calculator-${id}`}><span>{label}</span><select data-pd-id={dataPdId} disabled={disabled} id={`calculator-${id}`} onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([option, text]) => <option key={option} value={option}>{text}</option>)}</select></label>;
-}
-function CalculatorOutcomes({ outcomes }: { outcomes: Outcome[] }) {
-  return <section className="calculator-outcomes" data-pd-id="calculators.outcomes">
-    <div className="calculator-result-card-heading"><strong>Outcomes</strong></div>
-    <div className="table-scroll"><table className="data-table calculator-outcomes-table"><thead><tr><th>Outcome</th><th>Bookmaker</th><th>Exchange</th><th>Bonus / cashback</th><th>Total</th></tr></thead><tbody>{outcomes.map((outcome) => <FinancialValueReplayGroup key={outcome.key}><tr><th scope="row">{outcome.label}</th><td><FinancialValue label={`${outcome.label} bookmaker component`} value={outcome.bookmaker_component} /></td><td><FinancialValue label={`${outcome.label} exchange component`} value={outcome.exchange_component} /></td><td>{outcome.promotion_component ? <FinancialValue label={`${outcome.label} promotion component`} value={outcome.promotion_component} /> : <span>—</span>}</td><td><FinancialValue label={`${outcome.label} total`} value={outcome.total} /></td></tr></FinancialValueReplayGroup>)}</tbody></table></div>
-  </section>;
 }
 function ResultValue({ label, money = true, value }: { label: string; money?: boolean; value: string }) { return <div><dt>{label}</dt><dd>{money ? <FinancialValue label={label} value={value} /> : value}</dd></div>; }

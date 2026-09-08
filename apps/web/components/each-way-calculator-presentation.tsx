@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
-import { formatFinancialValue } from "@/lib/financial-display";
 
 export type EachWayPresentationMode = "Each Way" | "Extra Place";
 
@@ -24,11 +24,6 @@ function asNumber(value: string | null | undefined) {
 function neutralValue(value: string | null | undefined) {
   const parsed = asNumber(value);
   return <span className="extra-place-stake-value">{parsed === null ? "£ -" : <FinancialValue tone="inherit" value={parsed} />}</span>;
-}
-
-function matrixValue(value: string | null | undefined) {
-  const parsed = asNumber(value);
-  return <span className="extra-place-matrix-value">{parsed === null ? "£ -" : <FinancialValue value={parsed} />}</span>;
 }
 
 export function EachWayModeToggle({ mode, onChange }: { mode: EachWayPresentationMode; onChange: (mode: EachWayPresentationMode) => void }) {
@@ -113,21 +108,20 @@ export function EachWayOutcomeMatrix({ inspectionId = "extra-place.outcome-matri
   selectedResult: string;
 }) {
   const selected = outcomes.find((outcome) => outcome.result === selectedResult);
-  return <section className="extra-place-outcome-matrix calculator-result-card" data-pd-id={inspectionId}>
-    <div className="calculator-result-card-heading"><h3>Outcomes</h3></div>
-    <div className="extra-place-outcome-table" role="table">
-      {outcomes.map((outcome) => <FinancialValueReplayGroup key={outcome.key}>
-        <div aria-label={`${outcome.label}: bookmaker ${formatFinancialValue(asNumber(outcome.bookmaker[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.bookmaker[1]) ?? 0)}; exchange ${formatFinancialValue(asNumber(outcome.exchange[0]) ?? 0)} and ${formatFinancialValue(asNumber(outcome.exchange[1]) ?? 0)}; total ${formatFinancialValue(asNumber(outcome.total) ?? 0)}`} className={`extra-place-outcome-row extra-place-outcome-${outcome.key}${selectedResult === outcome.result ? " is-selected" : ""}`} role="row">
-          <strong>{outcome.label}</strong>
-          <span>{matrixValue(outcome.bookmaker[0])} <b>+</b> {matrixValue(outcome.bookmaker[1])}</span>
-          <span>{matrixValue(outcome.exchange[0])} <b>+</b> {matrixValue(outcome.exchange[1])}</span>
-          <strong>{matrixValue(outcome.total)}</strong>
-        </div>
-      </FinancialValueReplayGroup>)}
-    </div>
-    <div className="extra-place-outcome-summary">
-      <span>Outcome {selected ? matrixValue(selected.total) : "Select a finishing position"}</span>
-      <span>Qualifying Loss {matrixValue(qualifyingLoss)}</span>
-    </div>
-  </section>;
+  return <CalculatorOutcomes
+    columns={["Bookmaker", "Exchange"]}
+    inspectionId={inspectionId}
+    rows={outcomes.map((outcome) => ({
+      key: outcome.key,
+      label: outcome.label,
+      tone: outcome.key === "win" ? "primary" : outcome.key === "standard" ? "positive" : outcome.key === "extra" ? "warning" : "danger",
+      components: [outcome.bookmaker, outcome.exchange],
+      total: outcome.total,
+      selected: selectedResult === outcome.result,
+    }))}
+    summary={<>
+      <span>Outcome {selected ? <CalculatorOutcomeValueDisplay label="Selected outcome" value={selected.total} /> : "Select a finishing position"}</span>
+      <span>Qualifying Loss <CalculatorOutcomeValueDisplay label="Qualifying loss" value={qualifyingLoss} /></span>
+    </>}
+  />;
 }

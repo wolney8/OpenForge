@@ -12,9 +12,10 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager calculator hub now includes Standard (the matched-betting engine),
   Multi-Lay, and combined Each Way / Extra Place families without ledger writes. Each Way / Extra
-  Place now shares its Back Bet, Place Terms, Lay Win, Lay Place and Outcomes presentation directly
-  with the ledger workflow; user visual acceptance is `PENDING RECHECK`.
-- Current implementation base before this tranche: `e55b46399675f59422c2c3a49e0cf5e04e36186d` on `main`.
+  Place now shares its Back Bet, Place Terms, Lay Win and Lay Place presentation directly with the
+  ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
+  Outcomes presentation; user visual acceptance is `PENDING RECHECK`.
+- Current implementation base before this tranche: `307a178097250aa5821095cfedd9e676da4a3fe6` on `main`.
 - Interruptions: no open defect currently blocks #35. Notification/session user acceptance and
   captured visual work remain tracked, but are not the active feature.
 - Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
@@ -41,7 +42,8 @@ durable requirements.
 
 - Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
   Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
-  and Each Way / Extra Place also calculate automatically.
+  and Each Way / Extra Place also calculate automatically. This tranche adds stake-derived Bonus
+  defaults, calculator-local Reset and a shared Outcomes shell without changing financial arithmetic.
 - Next queue: #35 advanced families (Sequential Lay; Early Payout / 2UP; Accumulator / Multiples;
   Dutching; Odds Converter / Probability; Blackjack), then
   #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
