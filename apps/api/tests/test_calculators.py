@@ -298,10 +298,81 @@ def test_fund_manager_calculator_is_protected_when_authentication_is_required(
             "/fund-manager/calculators/each-way/preview",
             "/fund-manager/calculators/sequential-lay/preview",
             "/fund-manager/calculators/early-payout/preview",
+            "/fund-manager/calculators/odds-probability/preview",
         ):
             assert client.post(endpoint, json={}).status_code == 401
     finally:
         settings.auth_required = False
+
+
+def test_odds_probability_preview_is_exact_reference_only_and_performs_no_writes(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    cases = [
+        (
+            {"source": "fractional", "value": "5/2"},
+            {
+                "decimal_odds": "3.50",
+                "fractional_odds": "5/2",
+                "american_odds": "+250",
+                "implied_probability": "28.57",
+            },
+        ),
+        (
+            {"source": "decimal", "value": "3.75"},
+            {
+                "decimal_odds": "3.75",
+                "fractional_odds": "11/4",
+                "american_odds": "+275",
+                "implied_probability": "26.67",
+            },
+        ),
+        (
+            {"source": "decimal", "value": "3,1"},
+            {
+                "decimal_odds": "3.10",
+                "fractional_odds": "21/10",
+                "american_odds": "+210",
+                "implied_probability": "32.26",
+            },
+        ),
+        (
+            {"source": "probability", "value": "62.5"},
+            {
+                "decimal_odds": "1.60",
+                "fractional_odds": "3/5",
+                "american_odds": "-166.67",
+                "implied_probability": "62.50",
+            },
+        ),
+    ]
+    for payload, expected in cases:
+        response = client.post("/fund-manager/calculators/odds-probability/preview", json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["result_kind"] == "reference"
+        for field, value in expected.items():
+            assert response.json()[field] == value
+
+    malformed = [
+        {"source": "decimal", "value": "1,000"},
+        {"source": "decimal", "value": "£3.1"},
+        {"source": "decimal", "value": "3.1abc"},
+        {"source": "decimal", "value": "1e3"},
+        {"source": "fractional", "value": "1/0"},
+        {"source": "probability", "value": "100"},
+        {"source": "american", "value": "99"},
+    ]
+    for payload in malformed:
+        assert (
+            client.post(
+                "/fund-manager/calculators/odds-probability/preview", json=payload
+            ).status_code
+            == 422
+        )
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
 
 
 def test_multi_lay_preview_matches_canonical_engine_without_writes(tmp_path: Path) -> None:

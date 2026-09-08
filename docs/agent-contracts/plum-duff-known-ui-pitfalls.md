@@ -3,6 +3,18 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-08: Icon substitution exposed inherited asymmetric button geometry
+
+- Area: shared copyable financial values across standalone and embedded calculators.
+- Root cause: the copy target combined the generic icon-button and later compact-action rules;
+  inherited padding/minimum height overrode its intended square box and left the Material glyph
+  aligned by text metrics rather than the target centre.
+- Prevention: icon-only actions use the canonical centred icon-button primitive with a stable
+  square target and explicit glyph box/line-height. Replacing Copy with Check cannot alter either
+  box.
+- Regression test: focused calculator Playwright compares target and glyph centres before/after
+  success across representative standalone and embedded consumers.
+
 ## 2026-09-08: Standalone calculator matched generic geometry but not its ledger family
 
 - Area: Fund Manager Each Way / Extra Place calculator.

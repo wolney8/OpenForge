@@ -26,6 +26,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Delete actions use the shared red Material `delete` icon and close actions use the shared red
       Material `close` icon.
 - [ ] Icons inside buttons/pills are centre-aligned and match neighbouring action icon dimensions.
+- [ ] Icon-only controls use the canonical centred icon-button primitive; substituting a success
+      or state icon does not change the target geometry.
 - [ ] Button, pill, input and focus-ring padding/margins match the nearest canonical Plum Duff
       control and are not clipped.
 

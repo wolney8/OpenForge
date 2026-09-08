@@ -347,7 +347,7 @@ export function CalculatorWorkspace() {
         <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
       </div>
       {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue copyable dataPdId="calculators.matched-betting.copy-lay-stake" label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl></article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
-    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "early-payout" ? <EarlyPayoutCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <div className="calculator-panel-shell"><div className="calculator-band calculator-band-primary"><p className="empty-copy">This calculator family remains in the approved queue.</p></div></div>}
+    </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "early-payout" ? <EarlyPayoutCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "odds-converter" ? <OddsProbabilityCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <BlockedCalculatorFamily family={family} />}
   </section>;
 }
 
@@ -770,16 +770,136 @@ function EachWayCalculator({ exchanges, onState, search }: { exchanges: Exchange
   </div></div></div>;
 }
 
+type OddsProbabilitySource = "decimal" | "fractional" | "probability" | "american";
+type OddsProbabilityResult = {
+  result_kind: "reference";
+  source: OddsProbabilitySource;
+  decimal_odds: string;
+  fractional_odds: string;
+  american_odds: string;
+  implied_probability: string;
+};
+
+function oddsProbabilityError(source: OddsProbabilitySource, value: string): string | null {
+  if (!value) return "Enter a value to convert.";
+  if (source === "fractional") {
+    const match = /^([0-9]+)\/([0-9]+)$/.exec(value);
+    return match && Number(match[1]) > 0 && Number(match[2]) > 0
+      ? null
+      : "Enter fractional odds as positive whole numbers, for example 5/2.";
+  }
+  if (source === "american") {
+    if (!/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(value)) return "Enter American odds of at least +100 or at most -100.";
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && Math.abs(parsed) >= 100 ? null : "Enter American odds of at least +100 or at most -100.";
+  }
+  const canonical = /^[0-9]+,[0-9]{1,2}$/.test(value) ? value.replace(",", ".") : value;
+  if (!hasCompleteDecimalInputSyntax(canonical)) return `Enter complete ${source === "probability" ? "probability" : "decimal odds"} using digits and a full stop.`;
+  const parsed = Number(canonical);
+  if (source === "decimal" && parsed <= 1) return "Enter decimal odds greater than 1.";
+  if (source === "probability" && (parsed <= 0 || parsed >= 100)) return "Enter probability above 0 and below 100.";
+  return null;
+}
+
+function OddsProbabilityCalculator({ onState, search }: { onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
+  const requestedSource = search.get("oddsSource") as OddsProbabilitySource | null;
+  const [source, setSource] = useState<OddsProbabilitySource>(requestedSource && ["decimal", "fractional", "probability", "american"].includes(requestedSource) ? requestedSource : "decimal");
+  const [value, setValue] = useState(search.get("oddsValue") ?? "");
+  const [result, setResult] = useState<OddsProbabilityResult | null>(null);
+  const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
+  const requestVersion = useRef(0);
+  const requestAbort = useRef<AbortController | null>(null);
+  const validationError = oddsProbabilityError(source, value);
+
+  useEffect(() => {
+    onState(new URLSearchParams({ family: "odds-converter", oddsSource: source, oddsValue: value }));
+  }, [onState, source, value]);
+
+  useEffect(() => {
+    requestAbort.current?.abort();
+    const version = ++requestVersion.current;
+    if (validationError) return;
+    const controller = new AbortController(); requestAbort.current = controller;
+    const timer = window.setTimeout(() => {
+      void fetch(`${apiBaseUrl}/fund-manager/calculators/odds-probability/preview`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        signal: controller.signal, body: JSON.stringify({ source, value }),
+      }).then(async (response) => {
+        if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Unable to convert odds."));
+        const next = await response.json() as OddsProbabilityResult;
+        if (version === requestVersion.current) { setResult(next); setError(""); }
+      }).catch((caught) => {
+        if (version === requestVersion.current && !(caught instanceof DOMException && caught.name === "AbortError")) {
+          setResult(null); setError(caught instanceof Error ? caught.message : "Unable to convert odds.");
+        }
+      });
+    }, 120);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [source, value, validationError]);
+
+  function reset() {
+    requestAbort.current?.abort(); requestAbort.current = null; requestVersion.current += 1;
+    setSource("decimal"); setValue(""); setResult(null); setError(""); setTouched(false);
+  }
+
+  function normalizeDecimalComma() {
+    if ((source === "decimal" || source === "probability") && /^[0-9]+,[0-9]{1,2}$/.test(value)) {
+      setValue(value.replace(",", "."));
+    }
+  }
+
+  return <div className="calculator-panel-shell" data-pd-id="calculators.odds-probability">
+    <div className="calculator-shell">
+      <div className="calculator-band calculator-band-primary">
+        <div className="ledger-calculator-mode-bar">
+          <SelectField id="odds-probability-source" label="Source format" onChange={(next) => { requestAbort.current?.abort(); setSource(next as OddsProbabilitySource); setValue(""); setResult(null); setError(""); setTouched(false); }} options={[["decimal", "Decimal odds"], ["fractional", "Fractional odds"], ["probability", "Implied probability"], ["american", "American odds"]]} value={source} />
+        </div>
+        <div className="calculator-segment calculator-segment-back">
+          <div className="calculator-segment-heading"><span className="eyebrow">Convert</span></div>
+          <div className="calculator-segment-grid calculator-segment-grid-back">
+            <Field error={touched ? validationError : null} id="odds-probability-value" inputMode={source === "fractional" || source === "american" ? "text" : "decimal"} label={source === "probability" ? "Probability (%)" : source === "american" ? "American odds" : source === "fractional" ? "Fractional odds" : "Decimal odds"} onBlur={() => { setTouched(true); normalizeDecimalComma(); }} onChange={(next) => { requestAbort.current?.abort(); setValue(next); setResult(null); setError(""); }} value={value} />
+          </div>
+        </div>
+        <p className="field-hint">Implied probability is an odds conversion, not a prediction.</p>
+        {error ? <p className="error-text" role="alert">{error}</p> : null}
+        <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.odds-probability.reset" onClick={reset} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
+      </div>
+      {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.odds-probability.results">
+        <div className="calculator-panel-card calculator-result-panel"><article className="calculator-result-card">
+          <div className="calculator-result-card-heading"><strong>Converted reference</strong></div>
+          <dl className="calculator-result-card-values">
+            <ResultValue label="Decimal odds" money={false} value={result.decimal_odds} />
+            <ResultValue label="Fractional odds" money={false} value={result.fractional_odds} />
+            <ResultValue label="American odds" money={false} value={result.american_odds} />
+            <ResultValue label="Implied probability" money={false} value={`${result.implied_probability}%`} />
+          </dl>
+        </article></div>
+      </div> : null}
+    </div>
+  </div>;
+}
+
+function BlockedCalculatorFamily({ family }: { family: Family }) {
+  const copy: Partial<Record<Family, { title: string; reason: string }>> = {
+    multiples: { title: "Multiples / Accumulator", reason: "Blocked pending an approved reactive calculation contract for selection states, stake allocation, rounding, Rule 4 and bonus handling." },
+    dutching: { title: "Dutching", reason: "Blocked pending a standalone 2-way/3-way Normal and Free Bet contract. The existing 2-way calculation is specific to Early Payout / 2UP." },
+    blackjack: { title: "Blackjack Strategy", reason: "Blocked pending an approved game-rule strategy matrix and deterministic action fixtures." },
+  };
+  const selected = copy[family] ?? { title: "Calculator", reason: "This calculator family remains pending contract evidence." };
+  return <div className="calculator-panel-shell" data-pd-id={`calculators.${family}.blocked`}><div className="calculator-band calculator-band-primary"><div className="content-subpanel stack"><span className="table-chip table-chip-warning">Contract required</span><h3>{selected.title}</h3><p className="empty-copy">{selected.reason}</p></div></div></div>;
+}
+
 function isPositiveAmount(value: string) { return hasCompleteDecimalInputSyntax(value) && Number.isFinite(Number(value)) && Number(value) > 0; }
 function commissionError(value: string) { return hasCompleteDecimalInputSyntax(value) && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 1 ? null : "Enter commission as a decimal from 0 to 1, for example 0.02."; }
 
 function Field({ error, id, inputMode = "decimal", label, onBlur, onChange, supportingText, value }: { error: string | null; id: string; inputMode?: "decimal" | "numeric" | "text"; label: string; onBlur?: () => void; onChange: (value: string) => void; supportingText?: string; value: string }) {
   const errorId = `calculator-${id}-error`;
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") || id.startsWith("odds-probability-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className={`field-control${error ? " is-invalid" : ""}`} htmlFor={`calculator-${id}`}><span>{label}</span><input aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} data-pd-id={dataPdId} id={`calculator-${id}`} inputMode={inputMode} onBlur={onBlur} onChange={(event) => onChange(event.target.value)} type="text" value={value} />{error ? <span className="field-validation-text" id={errorId} role="alert">{error}</span> : supportingText ? <span className="field-support-text">{supportingText}</span> : null}</label>;
 }
 function SelectField({ disabled = false, id, label, onChange, options, value }: { disabled?: boolean; id: string; label: string; onChange: (value: string) => void; options: readonly (readonly [string, string])[]; value: string }) {
-  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
+  const dataPdId = id.startsWith("multi-") || id.startsWith("each-way-") || id.startsWith("sequential-") || id.startsWith("early-") || id.startsWith("odds-probability-") ? `calculators.${id}` : `calculators.matched-betting.${id}`;
   return <label className="field-control ledger-calculator-mode-field" htmlFor={`calculator-${id}`}><span>{label}</span><select data-pd-id={dataPdId} disabled={disabled} id={`calculator-${id}`} onChange={(event) => onChange(event.target.value)} value={value}>{options.map(([option, text]) => <option key={option} value={option}>{text}</option>)}</select></label>;
 }
 function ResultValue({ copyable = false, dataPdId, label, money = true, value }: { copyable?: boolean; dataPdId?: string; label: string; money?: boolean; value: string }) { return <div><dt>{label}</dt><dd>{money ? copyable ? <CopyableFinancialValue dataPdId={dataPdId} label={label} value={value} /> : <FinancialValue label={label} value={value} /> : value}</dd></div>; }

@@ -64,8 +64,9 @@ use the canonical primitive and computed styling.
 - Portal viewport-level dialogs to `document.body` when an ancestor can constrain fixed positioning.
 - Dialog header and footer remain visible; only the intended body or table viewport scrolls.
 - No dialog child may enlarge the browser viewport or cause page-level horizontal scrolling.
-- Icon-only controls use the established Material Symbol, a context-specific accessible name and
-  the same target dimensions as sibling actions.
+- Icon-only controls use the canonical centred icon-button primitive, an established Material
+  Symbol, a context-specific accessible name and the same target dimensions as sibling actions.
+  Icon substitution must never alter target geometry.
 - A modal close control must be a true square/circle after all shared button rules apply: assert
   computed width equals height, zero internal padding, centred Material Symbol glyph, and no
   inherited minimum size that turns it into an oval.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Literal
@@ -23,6 +24,7 @@ from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
 )
+from openforge_api.calculations.odds_probability import calculate_odds_probability
 from openforge_api.calculations.profit_boost import ProfitBoostInput, calculate_profit_boost
 from openforge_api.calculations.sequential_lay import (
     SequentialLayInput,
@@ -574,6 +576,67 @@ class EachWayResponse(BaseModel):
     unplaced_exchange_place_pnl: str
 
 
+class OddsProbabilityPayload(BaseModel):
+    source: Literal["decimal", "fractional", "probability", "american"]
+    value: str = Field(max_length=40)
+
+    @model_validator(mode="after")
+    def validate_source_value(self) -> "OddsProbabilityPayload":
+        decimal_pattern = r"[0-9]+(?:\.[0-9]+)?"
+        if self.source == "fractional":
+            match = re.fullmatch(r"([0-9]+)/([0-9]+)", self.value)
+            if not match or int(match.group(1)) <= 0 or int(match.group(2)) <= 0:
+                raise PydanticCustomError(
+                    "calculator_fractional_odds",
+                    "Enter fractional odds as positive whole numbers, for example 5/2.",
+                )
+            return self
+        if self.source == "american":
+            if not re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?", self.value):
+                raise PydanticCustomError(
+                    "calculator_american_odds",
+                    "Enter American odds of at least +100 or at most -100.",
+                )
+            value = Decimal(self.value)
+            if -100 < value < 100:
+                raise PydanticCustomError(
+                    "calculator_american_odds",
+                    "Enter American odds of at least +100 or at most -100.",
+                )
+            return self
+        canonical = (
+            self.value.replace(",", ".")
+            if re.fullmatch(r"[0-9]+,[0-9]{1,2}", self.value)
+            else self.value
+        )
+        if not re.fullmatch(decimal_pattern, canonical):
+            label = "probability" if self.source == "probability" else "decimal odds"
+            raise PydanticCustomError(
+                "calculator_odds_conversion_value",
+                f"Enter complete {label} using digits and a full stop.",
+            )
+        value = Decimal(canonical)
+        if self.source == "decimal" and value <= 1:
+            raise PydanticCustomError(
+                "calculator_decimal_odds_range", "Enter decimal odds greater than 1."
+            )
+        if self.source == "probability" and not Decimal("0") < value < Decimal("100"):
+            raise PydanticCustomError(
+                "calculator_probability_range",
+                "Enter probability above 0 and below 100.",
+            )
+        return self
+
+
+class OddsProbabilityResponse(BaseModel):
+    result_kind: Literal["reference"] = "reference"
+    source: Literal["decimal", "fractional", "probability", "american"]
+    decimal_odds: str
+    fractional_odds: str
+    american_odds: str
+    implied_probability: str
+
+
 class StandardQualifyingResponse(BaseModel):
     profile_id: str
     result_kind: str
@@ -1043,6 +1106,37 @@ def preview_each_way(payload: EachWayPayload) -> EachWayResponse:
         unplaced_bookie_place_pnl=_money(result.unplaced_bookie_place_pnl),
         unplaced_exchange_win_pnl=_money(result.unplaced_exchange_win_pnl),
         unplaced_exchange_place_pnl=_money(result.unplaced_exchange_place_pnl),
+    )
+
+
+@router.post(
+    "/fund-manager/calculators/odds-probability/preview",
+    response_model=OddsProbabilityResponse,
+)
+def preview_odds_probability(payload: OddsProbabilityPayload) -> OddsProbabilityResponse:
+    numerator: int | None = None
+    denominator: int | None = None
+    decimal_value: Decimal | None = None
+    if payload.source == "fractional":
+        numerator_text, denominator_text = payload.value.split("/", maxsplit=1)
+        numerator, denominator = int(numerator_text), int(denominator_text)
+    else:
+        decimal_value = Decimal(payload.value.replace(",", "."))
+    try:
+        result = calculate_odds_probability(
+            source=payload.source,
+            numerator=numerator,
+            denominator=denominator,
+            decimal_value=decimal_value,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return OddsProbabilityResponse(
+        source=result.source,
+        decimal_odds=result.decimal_odds,
+        fractional_odds=result.fractional_odds,
+        american_odds=result.american_odds,
+        implied_probability=result.implied_probability,
     )
 
 

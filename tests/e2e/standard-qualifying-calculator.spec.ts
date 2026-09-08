@@ -11,6 +11,22 @@ async function mockSession(page: import("@playwright/test").Page) {
   }}));
 }
 
+async function iconButtonGeometry(button: import("@playwright/test").Locator) {
+  return button.evaluate((element) => {
+    const icon = element.querySelector<HTMLElement>(".material-symbols-outlined");
+    if (!icon) throw new Error("Missing icon glyph");
+    const target = element.getBoundingClientRect();
+    const glyph = icon.getBoundingClientRect();
+    return {
+      target: { width: target.width, height: target.height },
+      offset: {
+        x: glyph.left + glyph.width / 2 - (target.left + target.width / 2),
+        y: glyph.top + glyph.height / 2 - (target.top + target.height / 2),
+      },
+    };
+  });
+}
+
 test("uses the Fund Manager matched-betting calculator without a Profile", async ({ page }) => {
   await mockSession(page);
   const ledgerMutations: string[] = [];
@@ -70,8 +86,17 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   expect(actionPadding[0]).toBe(actionPadding[2]);
   expect(actionPadding[1]).toBe(actionPadding[3]);
   expect(openBox?.height).toBeGreaterThanOrEqual(44);
-  await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button').click();
+  const standardCopyButton = page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button');
+  const standardCopyGeometry = await iconButtonGeometry(standardCopyButton);
+  expect(Math.abs(standardCopyGeometry.offset.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(standardCopyGeometry.offset.y)).toBeLessThanOrEqual(0.5);
+  expect(standardCopyGeometry.target).toEqual({ width: 44, height: 44 });
+  await standardCopyButton.click();
   await expect(page.getByText(/^Copied £ /)).toBeVisible();
+  const standardCheckGeometry = await iconButtonGeometry(standardCopyButton);
+  expect(standardCheckGeometry.target).toEqual(standardCopyGeometry.target);
+  expect(Math.abs(standardCheckGeometry.offset.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(standardCheckGeometry.offset.y)).toBeLessThanOrEqual(0.5);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -214,7 +239,11 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]').getByText("Extra Place", { exact: true })).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"]')).toContainText("Extra Place");
   await expect(page.locator('[data-pd-id="calculators.each-way.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(4);
-  await page.locator('[data-pd-id="calculator.win-lay-stake.copyable"] button').click();
+  const eachWayCopy = page.locator('[data-pd-id="calculator.win-lay-stake.copyable"] button');
+  const eachWayCopyGeometry = await iconButtonGeometry(eachWayCopy);
+  expect(Math.abs(eachWayCopyGeometry.offset.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(eachWayCopyGeometry.offset.y)).toBeLessThanOrEqual(0.5);
+  await eachWayCopy.click();
   await expect(page.getByText(/^Copied /)).toBeVisible();
   await page.locator('[data-pd-id="calculators.each-way.reset"]').click();
   await expect(page.getByLabel("E/W Stake (each way)")).toHaveValue("");
@@ -331,6 +360,9 @@ test("calculates a Sequential Lay sequence and lock-in without ledger writes", a
   await page.locator('[data-pd-id="calculators.sequential-lay.leg-3-odds"]').fill("1.50");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.leg-3"]')).toContainText("62.07");
   const legThreeCopyable = page.locator('[data-pd-id="calculators.sequential-lay.leg-3.copyable"]');
+  const sequentialCopyGeometry = await iconButtonGeometry(legThreeCopyable.getByRole("button"));
+  expect(Math.abs(sequentialCopyGeometry.offset.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(sequentialCopyGeometry.offset.y)).toBeLessThanOrEqual(0.5);
   await legThreeCopyable.getByRole("button").click();
   await expect(legThreeCopyable.getByText("Copied £ 62.07")).toBeVisible();
   await expect(legThreeCopyable.locator(".material-symbols-outlined")).toHaveText("check");
@@ -443,7 +475,11 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await page.locator('[data-pd-id="calculators.early-payout.lock-adjustment-reset"]').click();
   await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toHaveValue("100");
   await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
-  await page.locator('[data-pd-id="calculators.early-payout.reference.additional-back-stake.copyable"] button').click();
+  const earlyCopyButton = page.locator('[data-pd-id="calculators.early-payout.reference.additional-back-stake.copyable"] button');
+  const earlyCopyGeometry = await iconButtonGeometry(earlyCopyButton);
+  expect(Math.abs(earlyCopyGeometry.offset.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(earlyCopyGeometry.offset.y)).toBeLessThanOrEqual(0.5);
+  await earlyCopyButton.click();
   await expect(page.getByText("Copied £ 95.82")).toBeVisible();
   await page.getByRole("button", { name: "Add part back" }).click();
   await page.getByLabel("Part back 1 stake").fill("20");
@@ -475,6 +511,65 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-alternate-theme-narrow.png"), fullPage: true });
   }
+  expect(businessMutations).toEqual([]);
+});
+
+test("converts odds and probability exactly without ledger writes", async ({ page }) => {
+  await mockSession(page);
+  const businessMutations: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && /\/profiles\/[^/]+\/(?:sportsbook-bets|free-bets|each-way-extra-places)(?:$|\?)/.test(request.url())) businessMutations.push(request.url());
+  });
+  await page.goto("/fund-manager/calculators?family=odds-converter");
+  await expect(page.getByRole("heading", { name: "Odds / Probability" })).toBeVisible();
+
+  await page.getByRole("textbox", { name: "Decimal odds", exact: true }).fill("3.75");
+  const results = page.locator('[data-pd-id="calculators.odds-probability.results"]');
+  await expect(results).toContainText("11/4");
+  await expect(results).toContainText("26.67%");
+
+  await page.getByLabel("Source format").selectOption("fractional");
+  await page.getByRole("textbox", { name: "Fractional odds", exact: true }).fill("5/2");
+  await expect(results).toContainText("3.50");
+  await expect(results).toContainText("+250");
+
+  await page.getByLabel("Source format").selectOption("probability");
+  const probabilityInput = page.locator('[data-pd-id="calculators.odds-probability-value"]');
+  await probabilityInput.fill("62,5");
+  await probabilityInput.blur();
+  await expect(probabilityInput).toHaveValue("62.5");
+  await expect(results).toContainText("3/5");
+  await expect(results).toContainText("-166.67");
+  if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
+    await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
+  }
+
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Open in new tab" }).click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState();
+  await expect(popup.getByLabel("Source format")).toHaveValue("probability");
+  await expect(popup.getByRole("textbox", { name: "Probability (%)", exact: true })).toHaveValue("62.5");
+  await expect(popup.locator('[data-pd-id="calculators.odds-probability.results"]')).toContainText("3/5");
+  await popup.close();
+
+  await probabilityInput.fill("1,000");
+  await probabilityInput.blur();
+  await expect(results).toHaveCount(0);
+  await expect(page.getByText("Enter complete probability using digits and a full stop.")).toBeVisible();
+  await page.locator('[data-pd-id="calculators.odds-probability.reset"]').click();
+  await expect(page.getByLabel("Source format")).toHaveValue("decimal");
+  await expect(page.getByRole("textbox", { name: "Decimal odds", exact: true })).toHaveValue("");
+  await expect(results).toHaveCount(0);
+
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", initialTheme === "dark" ? "light" : "dark");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("html").evaluate((element) => { element.style.fontSize = "125%"; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  await page.getByRole("textbox", { name: "Decimal odds", exact: true }).focus();
+  await expect(page.getByRole("textbox", { name: "Decimal odds", exact: true })).toBeFocused();
   expect(businessMutations).toEqual([]);
 });
 

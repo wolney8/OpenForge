@@ -10,27 +10,19 @@ durable requirements.
 ## Current state
 
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
-  The Fund Manager calculator hub now includes Standard (the matched-betting engine),
-  Multi-Lay, and combined Extra Place / Each Way families without ledger writes. Extra Place / Each
-  Place now shares its Back Bet, Place Terms, Lay Win and Lay Place presentation directly with the
-  ledger workflow. Current calculator scenarios are being consolidated on the shared Extra Places
-  Outcomes presentation; user visual acceptance is `PENDING RECHECK`. Sequential Lay now has a
-  source-verified decimal calculation contract and a Fund Manager reference calculator with
-  Standard/Lock In modes, per-leg commissions, dynamic legs and shared Outcomes. Its leg grid now
-  sizes provider, odds, rate and financial columns by semantic need, reflows rather than clipping,
-  and places Copy beside each calculated stake. Early Payout /
-  2UP is implemented locally, covering ordinary matching, explicit trigger lock-in, maximum
-  payout, part backs and 2-Way Dutch without ledger writes. Its Reference and Outcomes are now peer
-  sections with stable live recalculation, a guarded/local-reset Lock-In slider and concise guidance;
-  user acceptance remains pending. Current standalone calculators and the directly equivalent
-  Sportsbook, Free Bet and Extra Place/Each Way ledger calculations use the shared copyable stake
-  value; complex embedded Multi-Lay placement controls retain their existing multi-action area.
-- Current implementation base before this tranche: `dd5930505525c37be58b83736daffd15d8422c31` on `main`.
+  Standard, Multi-Lay, Extra Place / Each Way, Sequential Lay, Early Payout / 2UP and the exact
+  Odds / Probability utility are locally implemented as Fund Manager reference-only families.
+  Current copyable stakes share one geometrically centred 44px copy/check action. Multiples /
+  Accumulator is blocked by non-reactive source evidence and no approved calculation/rounding
+  contract; standalone Dutching has no family contract beyond the Early Payout-specific two-way
+  branch; Blackjack has no approved rule matrix or deterministic action fixtures. These are
+  explicit contract blockers rather than implemented families. User/hosted acceptance is pending.
+- Current implementation base before this tranche: `89dc57740543e7218f4651d169d1b75433f2bf2e` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
-- Return point: #35 until its approved calculator-family slices are complete. The calculator-to-
-  ledger bridge remains later work under [#36](https://github.com/wolney8/OpenForge/issues/36).
+- Return point: resolve the three family-contract blockers under #35/#38/#40; the next independently
+  implementable roadmap tranche is the calculator-to-ledger bridge under [#36](https://github.com/wolney8/OpenForge/issues/36).
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -54,11 +46,12 @@ durable requirements.
 - Current: #35 Fund Manager Calculator Workspace. Standard now includes Qualifying, Free Bet SNR/SR,
   Bonus Lock-In, Cashback and Profit Boost sources with automatic calculation and Outcomes; Multi-Lay
   Each Way / Extra Place and Sequential Lay also calculate automatically. Sequential Lay's exact
-  directional penny placement is pinned to the verified current source implementation.
-- Next queue: #35 advanced families (Accumulator / Multiples; Dutching; Odds Converter /
-  Probability; Blackjack), then
-  #36 calculator-to-Opportunity bridge; #85 + #106 Account reconciliation/history/trends, and #86
-  Fund Manager task deck.
+  directional penny placement is pinned to the verified current source implementation. Odds /
+  Probability is implemented from the approved exact-conversion contract; the remaining three
+  families retain explicit contract blockers.
+- Next queue: #36 calculator-to-Opportunity bridge while the Multiples, general Dutching and
+  Blackjack contract blockers remain visible under #35/#38/#40; then #85 + #106 Account
+  reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
   a reusable metric/granularity/filter model. Account balance charts remain dependent on the
@@ -106,6 +99,12 @@ durable requirements.
 
 ## What changed
 
+- Odds / Probability now converts exact decimal, fractional, American and implied-probability
+  sources without Profile or ledger writes, retains unrounded source precision through conversion,
+  rejects malformed input and preserves current state when opened in a new tab. Multiples,
+  standalone Dutching and Blackjack remain blocked on their explicit missing contracts/fixtures.
+- The canonical icon-only action now centres both copy and success glyphs within the same stable
+  target; representative standalone and embedded calculator consumers share that primitive.
 - #35 now presents **Fund Manager → Calculators → Standard**. Standard reuses the Sportsbook
   custom lay slider, resolves Smarkets/0% from the system exchange authority, calculates valid
   inputs automatically and exposes contract-backed Outcomes for Bonus Lock-In, Cashback and all
@@ -132,11 +131,10 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators**. Page the family carousel to its final boundary and back;
-   expect at most three choices, no native scrollbar, and keyboard-reachable controls.
-2. Calculate the synthetic Multi-Lay `10 @ 3.20` across `5.90`, `4.90`, `8.00`; then switch to
-   Each Way / Extra Place and use `10 @ 6`, `1/5`, win lay `2.3`, place lay `4.5`. Copy a stake and
-   confirm no ledger row is created.
+1. Open **Fund Manager → Calculators → Odds / Probability**. Convert `5/2`, `3.75` and `62.5%`;
+   expect `3.50`, `11/4` and `3/5` respectively, then verify Reset and Open in new tab.
+2. In Standard, Sequential Lay, Extra Place and Early Payout, inspect and use one calculated-stake
+   Copy control; expect both copy/check glyphs centred without target movement.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

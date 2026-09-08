@@ -1,10 +1,10 @@
 # Calculation Contract: M14 Odds Converter
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-09-08_
 
 ## 0. Contract status
 
-- Status: Draft - human approval required
+- Status: Approved for the exact standalone reference-conversion scope
 - Owner: OpenForge M14 Calculator Workspace
 - Financial authority: helper conversion only; never tracker P&L authority
 - Related evidence: `docs/reference/m14-calculator-research/mbb-odds-converter.packet.json`
@@ -62,7 +62,8 @@ The public page's observed retention of decimal `0` is not adopted.
 - probability display: 2 decimal places
 - American display: up to 2 decimal places; include `+` for positive display
 - fractional display: reduced exact ratio when the source is exact
-- approximation policy for arbitrary repeating decimals: To confirm before implementation
+- finite decimal sources convert to their exact reduced rational value; no approximate fractional
+  value is manufactured
 
 Do not derive one output from another rounded output.
 
@@ -93,8 +94,10 @@ must reject it.
 - copied values must identify their format
 - no conversion writes tracker money fields or bet placement fields
 
-## 9. Human approval gate
+## 9. Approved implementation boundary
 
-Approve the arbitrary-decimal fractional approximation policy and leading-plus
-normalisation before implementation.
-
+The Fund Manager standalone family is approved for exact decimal, fractional, American and
+implied-probability sources. Leading `+` is accepted only for American odds, where it is part of
+the representation. Decimal and probability entry reuse the shared unambiguous decimal-comma
+normalisation; fractional odds remain an explicit exact source. Ambiguous comma forms remain
+invalid. This helper is reference-only and performs no ledger write.
