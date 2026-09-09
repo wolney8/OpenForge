@@ -48,7 +48,7 @@ describe("Blackjack session source contract", () => {
     expect(snapshot.monetary.session_result).toBeNull();
   });
 
-  it("derives exact live balance movement and stable provenance", async () => {
+  it("preserves relocated Session Setup values in the stable source provenance", async () => {
     const input = {
       activitySource: "own_cash" as const,
       endedAt: "2026-09-09T11:00:00.000Z", endingBalance: "84.01", freeCreditValue: "",

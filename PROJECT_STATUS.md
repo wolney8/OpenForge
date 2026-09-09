@@ -13,8 +13,9 @@ durable requirements.
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
   Dutching, Odds / Probability and Blackjack Strategy. Blackjack Live Play now reports entered-value
-  Gross Staked/Returned and Net P&L, keeps balance reconciliation separate, warns (without wagering or
-  hard-blocking) against fixed-cap/use-winnings limits, and offers explicit Rebet next-hand controls.
+  Gross Staked/Returned, Net P&L and Remaining Buffer in a compact main summary. Only per-hand Stake
+  and Actual Return remain in the Live Play flow; slower provenance, balance and limit fields share a
+  bounded Session Setup modal. Deal Again now sits in the Player header beside the cards.
   Its calculation matrices are unchanged; `blackjack-session-v1` is additively extended with those reviewed
   running totals and limit provenance. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
@@ -146,17 +147,18 @@ durable requirements.
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
   labels share the canonical calculator label hierarchy.
-- Blackjack session controls use an explicit grid above the card table: Session Mode/activity
-  source, then Free Play or Live Play money rows. Shared Blackjack cards hold one hover/focus tilt
-  direction, flip once on selection, suppress repeat callbacks during the flip and remain static
-  under reduced motion.
+- Blackjack keeps Session Mode and a compact Session Setup action above the card table. In Live Play,
+  only Stake and Actual Return remain as high-frequency inputs; Activity Source, Table Type, starting/
+  ending balances and play-limit settings use the shared settings-modal shell. Free Play credit/result
+  setup follows the same density rule. Shared Blackjack cards retain their established motion.
 - Blackjack money entry now uses the shared commit-time normaliser (`.50`/`.5`/`0.5` → `0.50`)
   while malformed text remains available for inline validation. Convertible sessions expose an
   explicit, unset-by-default activity source independent of table type; Digital/RNG versus Live
   Dealer has moved into a compact Session details disclosure. The blocked-mode error stays attached
   to Session Mode and offers the existing confirmed Reset Session flow.
-- Blackjack top controls now use three explicit grid rows: Deal Again/Reset Hand, hand count/Surrender,
-  then Soft 17 at the right, with no spacer element and deliberate container-width reflow. The banner's
+- Blackjack top controls retain Session Mode/Reset Hand, hand count/Surrender and Soft 17 rows; Deal
+  Again has moved to a collision-safe Player-header grid and reflows below the Player label at narrow
+  container widths. The banner's
   icon-only Undo uses the canonical centred icon box and remains outside layout flow. One responsive size/aspect token materially enlarges
   the 13-rank picker, dealer/player cards and empty/add-card backs; dark mode now uses a tokenised
   charcoal face and high-contrast rank/suit treatment rather than white-card glare. Stake/accounting
