@@ -8844,14 +8844,16 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   display: grid;
   gap: 0.55rem 1.25rem;
   grid-template-areas:
-    "deal reset"
+    "mode reset"
     "count surrender"
-    ". soft-17";
+    ". soft-17"
+    ". deal";
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
 }
 
-.blackjack-top-deal { grid-area: deal; justify-self: start; }
+.blackjack-top-deal { grid-area: deal; justify-self: end; }
+.blackjack-top-rule-bar > .blackjack-session-mode-cell { grid-area: mode; justify-self: start; }
 
 .blackjack-session-count {
   grid-area: count;
@@ -9485,6 +9487,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .blackjack-last-hand-heading { align-items: center; display: flex; }
+.blackjack-last-hand-heading { justify-content: space-between; }
 
 .blackjack-last-hand-card-line,
 .blackjack-last-hand-player-cards {
@@ -9508,6 +9511,29 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-card.blackjack-last-hand-card { inline-size: 3.25rem; }
 .blackjack-card.blackjack-last-hand-card:disabled { opacity: 1; }
+
+.blackjack-next-hand-controls {
+  border-top: 1px solid var(--outline);
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+}
+
+.blackjack-limit-acknowledgement {
+  align-items: center;
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 54%, var(--outline));
+  border-radius: var(--shape-medium);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+}
+
+.blackjack-last-hand-reopen { justify-self: start; }
+.blackjack-conversion-status { align-self: start; justify-self: start; }
+.blackjack-play-limit-mode { min-width: 0; width: min(100%, 15rem); }
 
 .blackjack-rank-picker-shell.is-waiting {
   border: 2px solid color-mix(in srgb, var(--primary) 68%, var(--outline));
@@ -9618,7 +9644,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   }
 
   .blackjack-top-rule-bar {
-    grid-template-areas: "deal reset" "count count" "surrender surrender" "soft-17 soft-17";
+    grid-template-areas: "mode reset" "count count" "surrender surrender" "soft-17 soft-17" ". deal";
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .blackjack-rule-surrender,
@@ -9660,13 +9686,6 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 @container blackjack-calculator (max-width: 47.5rem) {
   .blackjack-table,
   .blackjack-player-action-panel { grid-template-columns: minmax(0, 1fr); }
-  .blackjack-top-rule-bar {
-    grid-template-areas: "deal reset" "count count" "surrender surrender" "soft-17 soft-17";
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .blackjack-rule-surrender,
-  .blackjack-rule-soft-17 { justify-self: stretch; }
-  .blackjack-rule-control { justify-content: space-between; }
   .blackjack-action-group { justify-content: flex-start; }
   .blackjack-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--blackjack-card-inline-size), max-content)); }
   .blackjack-rank-picker { grid-template-columns: repeat(auto-fit, var(--blackjack-card-inline-size)); }

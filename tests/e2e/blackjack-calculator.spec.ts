@@ -90,7 +90,7 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await startingBalance.blur();
   await expect(startingBalance).toHaveValue("0.50");
   await page.getByRole("textbox", { name: "Session ending balance", exact: true }).fill("116.24");
-  await expect(page.getByLabel("Session result")).toHaveAttribute("aria-label", /£ 115\.74/);
+  await expect(page.getByLabel("Balance result")).toHaveAttribute("aria-label", /£ 115\.74/);
   const playerStake = page.getByLabel("Player stake", { exact: true });
   await playerStake.fill(".5");
   await playerStake.blur();
@@ -137,6 +137,7 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await expect(modeError).toHaveCount(0);
   await mode.selectOption("live_play");
   await page.getByLabel("Player stake", { exact: true }).fill("5.00");
+  await page.getByRole("textbox", { name: "Session play limit (optional)" }).fill("12.00");
   await chooseRank(page, "Dealer up-card", "9");
   await mode.selectOption("free_play");
   await expect(page.locator("#blackjack-session-mode-error")).toBeVisible();
@@ -202,6 +203,20 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await page.getByRole("group", { name: "Player outcome" }).getByRole("button", { name: "Win" }).evaluate((button) => { button.click(); button.click(); });
   await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
   await expect(page.locator(".blackjack-history-table tbody tr")).toHaveCount(1);
+  await expect(page.getByLabel("Gross staked")).toHaveAttribute("aria-label", /£ 10\.00/);
+  await expect(page.getByLabel("Gross returned")).toHaveAttribute("aria-label", /£ 12\.00/);
+  await expect(page.getByLabel("Net P and L")).toHaveAttribute("aria-label", /£ 2\.00/);
+  const lastHandControls = page.locator('[data-pd-id="calculators.blackjack.last-hand"]');
+  await lastHandControls.getByRole("button", { name: "Keep open" }).click();
+  await lastHandControls.getByRole("button", { name: "Rebet", exact: true }).click();
+  await expect(page.getByLabel("Player stake", { exact: true })).toHaveValue("5.00");
+  await lastHandControls.getByRole("button", { name: "Double & Deal" }).click();
+  await expect(lastHandControls.getByText("This next hand would exceed the session play limit.")).toBeVisible();
+  await lastHandControls.getByRole("button", { name: "Continue anyway" }).click();
+  await expect(page.getByLabel("Player stake", { exact: true })).toHaveValue("10.00");
+  await lastHandControls.getByRole("button", { name: "Rebet & Deal" }).click();
+  await expect(lastHandControls.getByText("This next hand would exceed the session play limit.")).toBeVisible();
+  await lastHandControls.getByRole("button", { name: "Continue anyway" }).click();
   await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.blackjack.result-pending"]')).toBeVisible();
   await expect(page.getByLabel("Player stake", { exact: true })).toHaveValue("5.00");
@@ -237,20 +252,23 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   const surrenderControl = page.locator(".blackjack-rule-surrender");
   const soft17Control = page.locator(".blackjack-rule-soft-17");
   const dealAgain = page.getByRole("button", { name: "Deal Again" });
+  const sessionMode = page.locator(".blackjack-top-rule-bar > .blackjack-session-mode-cell");
   const sessionCount = page.getByText("You have played 0 hands", { exact: true });
   const resetHand = page.locator('[data-pd-id="calculators.blackjack.reset-hand"]');
-  const [headerBox, dealBox, countBox, resetButtonBox, surrenderBox, soft17Box] = await Promise.all([
-    header.boundingBox(), dealAgain.boundingBox(), sessionCount.boundingBox(), resetHand.boundingBox(),
+  const [headerBox, dealBox, modeBox, countBox, resetButtonBox, surrenderBox, soft17Box] = await Promise.all([
+    header.boundingBox(), dealAgain.boundingBox(), sessionMode.boundingBox(), sessionCount.boundingBox(), resetHand.boundingBox(),
     surrenderControl.boundingBox(), soft17Control.boundingBox(),
   ]);
-  expect(Math.abs((dealBox?.x ?? 0) - (headerBox?.x ?? 0))).toBeLessThanOrEqual(1);
-  expect(Math.abs(((dealBox?.y ?? 0) + (dealBox?.height ?? 0) / 2) - ((resetButtonBox?.y ?? 0) + (resetButtonBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
-  expect(Math.abs((countBox?.x ?? 0) - (dealBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((modeBox?.x ?? 0) - (headerBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs(((modeBox?.y ?? 0) + (modeBox?.height ?? 0) / 2) - ((resetButtonBox?.y ?? 0) + (resetButtonBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
+  expect(Math.abs((countBox?.x ?? 0) - (modeBox?.x ?? 0))).toBeLessThanOrEqual(1);
   expect(Math.abs(((countBox?.y ?? 0) + (countBox?.height ?? 0) / 2) - ((surrenderBox?.y ?? 0) + (surrenderBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
   expect((soft17Box?.y ?? 0)).toBeGreaterThanOrEqual((surrenderBox?.y ?? 0) + (surrenderBox?.height ?? 0));
   expect(Math.abs(((resetButtonBox?.x ?? 0) + (resetButtonBox?.width ?? 0)) - ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)))).toBeLessThanOrEqual(1);
   expect(Math.abs(((surrenderBox?.x ?? 0) + (surrenderBox?.width ?? 0)) - ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)))).toBeLessThanOrEqual(1);
   expect(Math.abs(((soft17Box?.x ?? 0) + (soft17Box?.width ?? 0)) - ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)))).toBeLessThanOrEqual(1);
+  expect(Math.abs(((dealBox?.x ?? 0) + (dealBox?.width ?? 0)) - ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)))).toBeLessThanOrEqual(1);
+  expect((dealBox?.y ?? 0)).toBeGreaterThanOrEqual((soft17Box?.y ?? 0) + (soft17Box?.height ?? 0));
 
   const surrenderHelp = page.getByRole("button", { name: "Help with Surrender allowed" });
   await surrenderHelp.click();
@@ -410,8 +428,8 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
     header.boundingBox(), dealAgain.boundingBox(), resetHand.boundingBox(), page.locator(".blackjack-session-count").boundingBox(),
     surrenderControl.boundingBox(), soft17Control.boundingBox(),
   ]);
-  expect(Math.abs(((halfDealBox?.y ?? 0) + (halfDealBox?.height ?? 0) / 2) - ((halfResetBox?.y ?? 0) + (halfResetBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
-  expect((halfSurrenderBox?.y ?? 0)).toBeGreaterThanOrEqual((halfCountBox?.y ?? 0) + (halfCountBox?.height ?? 0));
+  expect((halfDealBox?.y ?? 0)).toBeGreaterThanOrEqual((halfSoft17Box?.y ?? 0) + (halfSoft17Box?.height ?? 0));
+  expect(Math.abs(((halfCountBox?.y ?? 0) + (halfCountBox?.height ?? 0) / 2) - ((halfSurrenderBox?.y ?? 0) + (halfSurrenderBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
   expect((halfSoft17Box?.y ?? 0)).toBeGreaterThanOrEqual((halfSurrenderBox?.y ?? 0) + (halfSurrenderBox?.height ?? 0));
   for (const box of [halfDealBox, halfResetBox, halfCountBox, halfSurrenderBox, halfSoft17Box]) {
     expect(box?.x ?? -1).toBeGreaterThanOrEqual(halfHeaderBox?.x ?? 0);

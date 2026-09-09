@@ -3,6 +3,7 @@ import { normalizeMoneyInput } from "./decimal-input";
 export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
 export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
+export type BlackjackPlayLimitMode = "fixed_stake_cap" | "use_winnings";
 
 export type BlackjackSessionHandSnapshot = {
   actual_actions: string[];
@@ -37,6 +38,14 @@ export type BlackjackSessionSourceSnapshot = {
     session_result: string | null;
     starting_balance: string | null;
     withdrawable_result: string | null;
+    gross_staked: string;
+    gross_returned: string | null;
+  };
+  play_limit: {
+    mode: BlackjackPlayLimitMode;
+    remaining_loss_buffer: string | null;
+    returns_complete: boolean;
+    value: string | null;
   };
   rules: { dealer_hits_soft_17: boolean; surrender_allowed: boolean };
   session_mode: BlackjackSessionMode;
@@ -91,6 +100,48 @@ export function blackjackCommittedStake(startingStake: string, actualActions: st
   return multiplyMoney(startingStake, actualActions.includes("Double") ? 2 : 1);
 }
 
+export function blackjackRunningFinancials(hands: BlackjackSessionHandSnapshot[]): {
+  grossReturned: string | null;
+  grossStaked: string;
+  net: string | null;
+  returnsComplete: boolean;
+} {
+  const stakes = hands.map((hand) => hand.committed_stake ? moneyToCents(hand.committed_stake) : null);
+  const returns = hands.map((hand) => hand.actual_return ? moneyToCents(hand.actual_return) : null);
+  const grossStaked = stakes.reduce<bigint>((sum, value) => sum + (value ?? BigInt(0)), BigInt(0));
+  const returnsComplete = hands.length === 0 || returns.every((value) => value !== null);
+  const grossReturned = returnsComplete
+    ? returns.reduce<bigint>((sum, value) => sum + (value ?? BigInt(0)), BigInt(0))
+    : null;
+  return {
+    grossReturned: grossReturned === null ? null : centsToMoney(grossReturned),
+    grossStaked: centsToMoney(grossStaked),
+    net: grossReturned === null ? null : centsToMoney(grossReturned - grossStaked),
+    returnsComplete,
+  };
+}
+
+export function blackjackPlayLimitStatus(input: {
+  grossStaked: string;
+  limit: string;
+  mode: BlackjackPlayLimitMode;
+  net: string | null;
+  nextStake: string;
+  returnsComplete: boolean;
+}): { prerequisiteMissing: boolean; remainingLossBuffer: string | null; warning: boolean } {
+  const limit = moneyToCents(input.limit);
+  const nextStake = moneyToCents(input.nextStake);
+  if (limit === null || nextStake === null) return { prerequisiteMissing: false, remainingLossBuffer: null, warning: false };
+  if (input.mode === "fixed_stake_cap") {
+    const grossStaked = moneyToCents(input.grossStaked) ?? BigInt(0);
+    return { prerequisiteMissing: false, remainingLossBuffer: null, warning: grossStaked + nextStake > limit };
+  }
+  if (!input.returnsComplete || input.net === null) return { prerequisiteMissing: true, remainingLossBuffer: null, warning: false };
+  const net = input.net.startsWith("-") ? -moneyToCents(input.net.slice(1))! : moneyToCents(input.net)!;
+  const remaining = limit + net;
+  return { prerequisiteMissing: false, remainingLossBuffer: centsToMoney(remaining), warning: nextStake > remaining };
+}
+
 export function blackjackConversionEligible(mode: BlackjackSessionMode): boolean {
   return mode === "free_play" || mode === "live_play";
 }
@@ -125,6 +176,8 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
   hands: BlackjackSessionHistorySnapshot[];
   mode: BlackjackSessionMode;
   recordedHandNet: string | null;
+  playLimitMode?: BlackjackPlayLimitMode;
+  playLimitValue?: string;
   soft17Rule: "stands" | "hits";
   startedAt: string;
   startingBalance: string;
@@ -140,6 +193,11 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
     ? subtractMoney(input.endingBalance, input.startingBalance)
     : null;
   const immutableHands = JSON.parse(canonicalBlackjackSessionJson(input.hands)) as BlackjackSessionHistorySnapshot[];
+  const running = blackjackRunningFinancials(immutableHands.flatMap((round) => round.hands));
+  const playLimitValue = canonicalMoney(input.playLimitValue ?? "");
+  const remainingLossBuffer = input.playLimitMode === "use_winnings" && playLimitValue !== null && running.net !== null
+    ? centsToMoney(moneyToCents(playLimitValue)! + (running.net.startsWith("-") ? -moneyToCents(running.net.slice(1))! : moneyToCents(running.net)!))
+    : null;
   const withoutIdentity = {
     activity_source: input.mode === "simulation" || !input.activitySource ? null : input.activitySource,
     calculator_family: "blackjack_strategy" as const,
@@ -154,6 +212,14 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
       session_result: sessionResult,
       starting_balance: input.mode === "live_play" ? canonicalMoney(input.startingBalance) : null,
       withdrawable_result: input.mode === "free_play" ? canonicalMoney(input.withdrawableResult) : null,
+      gross_staked: input.mode === "live_play" ? running.grossStaked : "0.00",
+      gross_returned: input.mode === "live_play" ? running.grossReturned : null,
+    },
+    play_limit: {
+      mode: input.playLimitMode ?? "fixed_stake_cap",
+      remaining_loss_buffer: input.mode === "live_play" ? remainingLossBuffer : null,
+      returns_complete: input.mode === "live_play" ? running.returnsComplete : true,
+      value: input.mode === "live_play" ? playLimitValue : null,
     },
     rules: {
       dealer_hits_soft_17: input.soft17Rule === "hits",

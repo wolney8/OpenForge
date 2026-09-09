@@ -12,13 +12,14 @@ durable requirements.
 - Current feature: [#36 Calculator / session to ledger bridge](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's action banner now uses an explicit
-  primary/status grid: the Current Hand action (with canonical icon) and outcome buttons stay together,
-  while last-action, waiting and completion text remain separate rows. Its calculation matrices and session
-  snapshot are unchanged. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack Live Play now reports entered-value
+  Gross Staked/Returned and Net P&L, keeps balance reconciliation separate, warns (without wagering or
+  hard-blocking) against fixed-cap/use-winnings limits, and offers explicit Rebet next-hand controls.
+  Its calculation matrices are unchanged; `blackjack-session-v1` is additively extended with those reviewed
+  running totals and limit provenance. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `3af0502` on `main`.
+- Current implementation base before this tranche: `3843092` on `main`.
 - Interruptions: none within the selected #36 bridge tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -133,6 +134,12 @@ durable requirements.
   compact Last Hand recap uses the shared card artwork and fades after the next dealer/two player cards are
   entered. Session History is open by default, collapsible and retained across refresh in the same authenticated
   session. Bust is recognised, shown briefly with reduced-motion protection and archived automatically.
+  Live Play additionally totals committed stakes from actual actions and returns only from entered Actual
+  Return values. Missing returns leave Gross Returned/Net P&L and Use Winnings unavailable rather than
+  inferred. Fixed stake cap and Use Winnings are advisory limits with explicit continue acknowledgement;
+  Rebet, Rebet & Deal and Double & Deal prepare calculator state only. Last Hand briefly auto-collapses,
+  while a manual Keep open choice persists until the next dealer/two-player-card entry. The top controls
+  now use the requested four semantic grid rows with Session Mode and Reset Hand first.
   Card ranks alone use the requested Times serif face. Outcome controls use semantic M3 treatments, and
   `Blackjack Win` appears only for an original two-card natural; Push remains available for a dealer tie.
 - Blackjack session mode now uses the compact canonical select. Touched money fields use the shared
