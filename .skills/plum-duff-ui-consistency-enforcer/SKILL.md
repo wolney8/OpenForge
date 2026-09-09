@@ -72,7 +72,9 @@ use the canonical primitive and computed styling.
   inherited minimum size that turns it into an oval.
 - Composite monetary inputs must have exactly one visible field surface. Prefix/suffix adornments
   belong inside that surface; generic input borders, radius, padding and backgrounds must be
-  explicitly reset so they cannot create a second overlapping control.
+  explicitly reset so they cannot create a second overlapping control. Size routine money fields
+  to their semantic numeric content rather than stretching them like long-form text; verify every
+  adornment is fully visible, vertically centred and clear of entered text at supported text scales.
 - In a grid, chip-heavy fields must not stretch neighbouring fields vertically. Use `align-items:
   start` and compare every field's input height and top alignment with its adjacent field.
 - Quick-select chips must be visibly actionable, preserve semantic financial colour states, and
@@ -111,6 +113,8 @@ use the canonical primitive and computed styling.
   sections use local layout-preserving loading, while background refresh keeps usable content and
   uses only subtle progress. `Unavailable`, `Empty`, `Loading` and `Error` are distinct states.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
+  High-frequency calculator fields use the shared label hierarchy and put optional routine guidance
+  in the contextual accessible help primitive; validation and essential safety meaning stay inline.
 - Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
   for a genuinely nested card, inset section or secondary surface; do not use it to create a
   visually smaller peer tab.

@@ -5462,6 +5462,32 @@ html[data-theme="dark"] .notification-count-badge {
   min-width: 220px;
 }
 
+.field-control-label-row {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+  justify-content: flex-start;
+  width: fit-content;
+}
+
+.field-control-label-row > label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.financial-input-field-compact {
+  min-width: 0;
+  width: min(100%, 15rem);
+}
+
+.financial-input-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 15rem));
+  justify-content: start;
+}
+
 .field-control span {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -8829,9 +8855,20 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-session-reset { justify-self: end; }
 
-.blackjack-session-mode > .calculator-segmented-control {
-  align-self: start;
-  width: min(100%, 36rem);
+.blackjack-session-mode-row {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.blackjack-session-mode-field {
+  min-width: 0;
+  width: min(100%, 15rem);
+}
+
+.blackjack-session-mode-row > .table-chip {
+  margin-block-end: 0.65rem;
 }
 
 .blackjack-table-type-field {
@@ -9091,19 +9128,22 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
-.blackjack-player-heading > span {
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .blackjack-suggested-action {
-  align-items: center;
+  align-items: start;
+  appearance: none;
   background: color-mix(in srgb, var(--primary) 14%, var(--surface-container-highest));
   border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--outline));
-  border-radius: var(--shape-full);
-  display: inline-flex;
-  gap: 0.4rem;
-  padding: 0.35rem 0.65rem;
+  border-radius: var(--shape-medium);
+  color: var(--on-surface);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 0.15rem;
+  justify-items: start;
+  min-height: 4.75rem;
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  width: min(100%, 15rem);
 }
 
 .blackjack-suggested-action small {
@@ -9113,7 +9153,59 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   text-transform: uppercase;
 }
 
-.blackjack-suggested-action strong { color: var(--on-surface); }
+.blackjack-suggested-action strong {
+  color: var(--on-surface);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.blackjack-suggested-action em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+.blackjack-suggested-action:hover:not(.is-static) {
+  background: color-mix(in srgb, var(--primary) 22%, var(--surface-container-highest));
+}
+
+.blackjack-suggested-action:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.blackjack-suggested-action.is-static { cursor: default; }
+
+.blackjack-player-action-panel {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 14%, var(--surface-container-highest)), var(--surface-container-high));
+  border: 1px solid var(--outline);
+  border-left: 0.35rem solid var(--primary);
+  border-radius: var(--shape-medium);
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.8rem;
+}
+
+.blackjack-player-action-panel.blackjack-recommendation-hit { border-left-color: var(--success); }
+.blackjack-player-action-panel.blackjack-recommendation-stand { border-left-color: var(--success); }
+.blackjack-player-action-panel.blackjack-recommendation-double { border-left-color: var(--primary); }
+.blackjack-player-action-panel.blackjack-recommendation-split { border-left-color: var(--focus); }
+.blackjack-player-action-panel.blackjack-recommendation-surrender { border-left-color: var(--warning); }
+.blackjack-player-action-panel.blackjack-recommendation-bust { border-left-color: var(--danger); }
+
+.blackjack-hand-summary {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.blackjack-hand-summary strong {
+  color: var(--on-surface);
+  font-size: 1.15rem;
+}
 
 .blackjack-card-row {
   align-items: start;
@@ -9136,11 +9228,13 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-card-slot-label {
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.8rem;
   font-weight: 760;
+  letter-spacing: 0.08em;
   line-height: 1.2;
-  max-width: 7rem;
+  max-width: var(--blackjack-card-inline-size);
   text-align: center;
+  text-transform: uppercase;
 }
 
 .blackjack-card:disabled {
@@ -9165,57 +9259,16 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-deal-again-action:disabled { opacity: 0.48; }
 .blackjack-deal-again-action:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-.blackjack-result {
-  align-items: center;
-  border: 1px solid var(--outline);
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.blackjack-result-copy {
-  display: grid;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.blackjack-result-copy > span:last-child {
-  font-size: clamp(1.1rem, 2vw, 1.45rem);
-}
-
-.blackjack-recommendation {
-  align-items: start;
-  border: 1px solid var(--outline);
-  border-left: 0.35rem solid var(--primary);
-  border-radius: var(--shape-medium);
-  display: grid;
-  gap: 0.18rem;
-  padding: 0.7rem 0.85rem;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 15%, var(--surface-container-highest)), var(--surface-container-high));
-}
-
-.blackjack-recommendation small,
-.blackjack-recommendation em { color: var(--muted); font-size: 0.78rem; font-style: normal; }
-.blackjack-recommendation strong { align-items: center; display: inline-flex; gap: 0.4rem; }
-.blackjack-recommendation-hit { border-left-color: var(--success); }
-.blackjack-recommendation-double { border-left-color: var(--primary); }
-.blackjack-recommendation-split { border-left-color: var(--focus); }
-.blackjack-recommendation-surrender { border-left-color: var(--warning); }
-.blackjack-recommendation-bust { border-left-color: var(--danger); }
-
 .blackjack-action-group {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .blackjack-action-group button { align-items: center; display: inline-flex; gap: 0.35rem; min-height: 2.75rem; }
 .blackjack-action-group .material-symbols-outlined { font-size: 1.15rem; }
-
-.blackjack-result .calculator-section-guidance {
-  grid-column: 1 / -1;
-  margin: 0;
-}
 
 .blackjack-outcome-group {
   align-items: center;
@@ -9228,7 +9281,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-recorded-outcome { grid-column: 1 / -1; margin: 0; }
 
 .blackjack-result-pending {
-  min-height: 7rem;
+  min-height: 4.75rem;
   place-items: center;
 }
 
@@ -9302,8 +9355,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 @media (max-width: 760px) {
   .blackjack-calculator-shell { --blackjack-card-inline-size: 4.5rem; }
 
-  .blackjack-table,
-  .blackjack-result {
+  .blackjack-table {
     grid-template-columns: minmax(0, 1fr);
   }
 

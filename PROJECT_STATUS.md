@@ -12,11 +12,11 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's final visual acceptance pass is
-  code-verified locally and pending Will's recheck; its calculation matrices are unchanged. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's Player-centric composition pass is
+  code-verified locally and pending Will's recheck; its calculation matrices and session snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `dc08b7311c74a10c372dbe3be1b7d32dd74752f6` on `main`.
+- Current implementation base before this tranche: `5381571` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -102,7 +102,12 @@ durable requirements.
   produces a deterministic immutable source snapshot for #36 without creating a business row.
   Casino mapping uses existing `Fixed Spins Or Free Play` and the new controlled `Manual Play / No
   Offer` type, so Live Play need not masquerade as a promotion. How to use is collapsed and the
-  current recommendation is repeated as a compact Suggested cue in the Player area.
+  current recommendation, fallback and legal actions now share the Player region. The recommendation
+  itself invokes the same existing action path as its matching action button.
+- Blackjack session mode now uses the compact canonical select. Touched money fields use the shared
+  bounded financial-input surface with centred, unclipped currency adornment; optional routine help
+  is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
+  labels share the canonical calculator label hierarchy.
 - Blackjack now groups Deal Again/count at the left, its two M3 rule controls centrally and Reset
   Hand at the right, with logical narrow reflow. One responsive size/aspect token materially enlarges
   the 13-rank picker, dealer/player cards and empty/add-card backs; dark mode now uses a tokenised
@@ -146,11 +151,10 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Blackjack Strategy**. Confirm Simulation has no money fields;
-   Free Play separates free credit/withdrawable value; Live Play shows hand stake/optional return and
-   derives Session result from starting/ending balances.
-2. Record Double and Split actions and confirm only the actions actually taken change committed
-   stake. Deal Again should retain the previous Live stake; Reset Session should restore Simulation.
+1. Open **Fund Manager → Calculators → Blackjack Strategy**, choose Live Play and confirm Session mode
+   and £ fields are compact, prefixes are clear, and field help opens beside its label.
+2. Enter dealer/player cards, then click the prominent recommended action inside Player. Confirm it
+   advances the same Hit/Double/Split flow as the matching normal action button.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

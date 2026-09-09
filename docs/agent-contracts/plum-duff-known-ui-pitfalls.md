@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-09: Generic money rows stretched routine fields and clipped currency adornments
+
+- Area: high-frequency standalone calculator fields and Blackjack Player composition.
+- Root cause: routine currency inputs used an older prefixed wrapper inside equal-width form-grid
+  columns, while permanent helper rows separated the recommendation/action controls from the cards.
+- Prevention: use the shared single-surface financial input with a bounded semantic width and
+  anchored contextual help; keep shared field labels and the current recommendation/action path in
+  the owning calculator region.
+- Regression test: focused Blackjack Playwright checks prefix/input containment and centring,
+  compact widths, contextual help, shared label geometry and Player-owned action progression.
+
 ## 2026-09-08: Icon substitution exposed inherited asymmetric button geometry
 
 - Area: shared copyable financial values across standalone and embedded calculators.

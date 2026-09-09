@@ -58,6 +58,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Dense calculator columns are sized by semantic need: provider/text controls receive room while
       odds/rate fields stay compact, and every control plus focus ring remains inside its cell at
       supported viewport and text-scale states.
+- [ ] Financial input widths fit their numeric role; currency adornments remain fully visible,
+      vertically centred and clear of input text in every supported responsive/text-scale state.
 - [ ] Dialog header/close action remain visible.
 - [ ] Dialog footer actions remain visible and keyboard reachable.
 - [ ] Enabled, disabled, loading, success and error action conditions are defined.
@@ -79,6 +81,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       canonical segmented control.
 - [ ] Shared controls use product-neutral component/class names; reusing a domain-named control in
       another workflow requires extracting the existing implementation rather than leaking semantics.
+- [ ] High-frequency calculator fields use the shared field-label typography and move optional
+      routine guidance to anchored hover/focus/touch help without hiding validation or safety copy.
 - [ ] Picker and displayed instances of the same visual object share one responsive size/aspect token,
       and theme-aware illustrated surfaces preserve contrast without light-theme glare in dark mode.
 - [ ] Help icons use the canonical primitive and their help surface remains immediately anchored to
