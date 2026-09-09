@@ -25,6 +25,9 @@ durable requirements.
 - Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active until the
   shared bridge adapter is expanded from the proven Standard and Blackjack paths to the remaining
   eligible calculator families. Unresolved optional family extensions remain visible under #35/#38.
+- GitHub evidence comments for #36/#77/#40 are `SYNC PENDING`: this handoff environment has no
+  authenticated GitHub connector, API token or `gh` executable. Local tracking and pushed code are
+  complete; issue state has not been misreported as synchronised.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
