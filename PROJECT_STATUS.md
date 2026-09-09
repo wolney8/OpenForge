@@ -16,7 +16,7 @@ durable requirements.
   code-verified locally and pending Will's recheck; its calculation matrices are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `7afb80fe29ce3a15a52cc0c62ac7d9552e9484f7` on `main`.
+- Current implementation base before this tranche: `dc08b7311c74a10c372dbe3be1b7d32dd74752f6` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -95,6 +95,14 @@ durable requirements.
 
 ## What changed
 
+- Blackjack now has explicit Simulation, Free Play and Live Play session modes. Simulation exposes no
+  money and cannot convert; Free Play separates free credit from withdrawable value; Live Play
+  records actual stakes/returns and derives the reviewed result from ending minus starting balance.
+  Optional Digital/RNG or Live Dealer provenance does not affect strategy. `blackjack-session-v1`
+  produces a deterministic immutable source snapshot for #36 without creating a business row.
+  Casino mapping uses existing `Fixed Spins Or Free Play` and the new controlled `Manual Play / No
+  Offer` type, so Live Play need not masquerade as a promotion. How to use is collapsed and the
+  current recommendation is repeated as a compact Suggested cue in the Player area.
 - Blackjack now groups Deal Again/count at the left, its two M3 rule controls centrally and Reset
   Hand at the right, with logical narrow reflow. One responsive size/aspect token materially enlarges
   the 13-rank picker, dealer/player cards and empty/add-card backs; dark mode now uses a tokenised
@@ -138,11 +146,11 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Blackjack Strategy** in dark and light themes. Confirm Deal
-   Again/count sit left, the rule controls remain central, Reset Hand sits right, and every picker,
-   dealer and player card uses the same enlarged scale without dark-theme glare.
-2. Narrow the browser and increase text size. Confirm the header reflows logically, cards scale
-   together, the deck stays contained, and keyboard focus remains visible.
+1. Open **Fund Manager → Calculators → Blackjack Strategy**. Confirm Simulation has no money fields;
+   Free Play separates free credit/withdrawable value; Live Play shows hand stake/optional return and
+   derives Session result from starting/ending balances.
+2. Record Double and Split actions and confirm only the actions actually taken change committed
+   stake. Deal Again should retain the previous Live stake; Reset Session should restore Simulation.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

@@ -1,6 +1,6 @@
 # Fixture Spec: Calculator Workspace and Ledger Bridge
 
-_Last updated: 2026-08-16_
+_Last updated: 2026-09-09_
 
 ## Contract covered
 
@@ -21,7 +21,11 @@ _Last updated: 2026-08-16_
 | CALC-010 | Multi-lay standalone calculator | Outcome branches render reference stakes and results; no placement state |
 | CALC-011 | Core accumulator with Winner/Loser/Void selections | Deterministic total stake/return/profit; no Profile or ledger mutation |
 | CALC-012 | Simple two/three-way Normal or SNR Free Bet Dutching | Deterministic rounded stakes and covered-outcome results; no placement state |
-| CALC-013 | Blackjack hard/soft/pair hand under selected rule controls | Published strategy action plus temporary hand/stake/session reference; no outcome, P&L or business write |
+| CALC-013 | Blackjack hard/soft/pair hand under selected rule controls | Published strategy action plus temporary Simulation history; no money or business write |
+| CALC-014 | Blackjack Free Play session | Free credit stays separate from optional withdrawable result; eligible for later reviewed Casino conversion |
+| CALC-015 | Blackjack Live Play balance review | Exact ending-minus-starting session result; recommendations do not change committed stake |
+| CALC-016 | Blackjack actual Double/Split | Only recorded actions change per-hand committed stakes; optional returns remain entered evidence |
+| CALC-017 | Blackjack source snapshot | Canonical immutable history and mode-specific money yield a deterministic checksum; Simulation is non-convertible |
 
 Shared calculator odds-entry cases are maintained in
 `tests/fixtures/calculator-odds-normalization-fixtures.json`. They cover decimal, fractional and

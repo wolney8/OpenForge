@@ -1,6 +1,6 @@
 # Workflow Contract: Calculator Workspace and Ledger Bridge
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-09_
 
 ## Status and scope
 
@@ -143,6 +143,35 @@ adapters are reference-only and perform no business writes.
 Every standalone family reuses or extracts its nearest same-family ledger presentation. The Each
 Way / Extra Place wrappers share Back Bet, Place Terms, Lay Win, Lay Place and Outcomes primitives;
 Profile accounts, capability warnings and persistence remain ledger-wrapper responsibilities.
+
+## Blackjack session source contract (`blackjack-session-v1`)
+
+Blackjack strategy remains independent of session mode:
+
+- `simulation` is the default, contains no money fields, remains browser-session-local and is not
+  eligible for conversion;
+- `free_play` describes actual free chips/credit. `free_credit_value` is not user cash stake, while
+  optional `withdrawable_result` records only real cash/value produced;
+- `live_play` records optional per-hand starting stake and actual return (including returned stake),
+  plus reviewed session starting/ending balances. The authoritative session result is exact
+  `ending_balance - starting_balance`; no return is inferred from outcome labels.
+
+Only an actually chosen Double doubles committed stake. Each actual split hand carries its own
+starting stake. Recommendations never change money. Complete per-hand returns may be compared with
+balance movement as informational reconciliation; they never silently replace the balance result.
+Digital/RNG versus Live Dealer is optional provenance and does not alter strategy.
+
+`buildBlackjackSessionSourceSnapshot` produces canonical sorted JSON and a SHA-256 identity over
+calculator/version, mode, timestamps, rules, table type, immutable hand history, counts and
+mode-appropriate money. It strips money from Simulation. The later `#36` bridge captures this
+snapshot only at reviewed conversion time and remains responsible for Profile/Account authorization,
+idempotency, notifications and record creation.
+
+The current Casino ledger string authority needs no database migration: promotional activity keeps
+its approved offer type, Free Play maps to `Fixed Spins Or Free Play`, and Live Play maps to the
+controlled `Manual Play / No Offer` type. A reviewed activity name may describe the Blackjack
+session; it must not masquerade as an offer. Completed Free/Live sessions may later become settled
+Casino activity rather than a prospecting Opportunity.
 
 ## Tests and Playwright path
 

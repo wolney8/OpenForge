@@ -103,6 +103,21 @@
         "branch_placement_state_created": false,
         "ledger_row_created": false
       }
+    },
+    {
+      "case_id": "CALC-014",
+      "inputs": {"calculator_family": "blackjack_strategy", "session_mode": "free_play", "free_credit_value": "10.00", "withdrawable_result": "4.25"},
+      "expected": {"conversion_eligible": true, "cash_stake": null, "casino_offer_type": "Fixed Spins Or Free Play"}
+    },
+    {
+      "case_id": "CALC-015",
+      "inputs": {"calculator_family": "blackjack_strategy", "session_mode": "live_play", "starting_balance": "100.00", "ending_balance": "84.01"},
+      "expected": {"session_result": "-15.99", "casino_offer_type": "Manual Play / No Offer", "ledger_row_created": false}
+    },
+    {
+      "case_id": "CALC-017",
+      "inputs": {"calculator_family": "blackjack_strategy", "session_mode": "simulation", "entered_money": "10.00"},
+      "expected": {"conversion_eligible": false, "snapshot_money": null, "ledger_row_created": false}
     }
   ]
 }

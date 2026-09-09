@@ -340,6 +340,17 @@ export const casinoOfferTypeDefinitions: CasinoOfferTypeDefinition[] = [
     }),
   },
   {
+    label: "Manual Play / No Offer",
+    displayLabel: "Manual Play / No Offer",
+    helpText: "Record reviewed real-money casino play that was not linked to a promotion.",
+    legacyAliases: ["Manual Play"],
+    enabledTabs: ["setup", "settlement", "advanced"],
+    fieldGroups: [],
+    requiredFields: [],
+    resultOptions: defaultResultOptions,
+    capabilities: capabilities({}),
+  },
+  {
     label: "Other / Custom",
     displayLabel: "Other / Custom",
     helpText: "Use only when the offer does not match a standard casino workflow.",

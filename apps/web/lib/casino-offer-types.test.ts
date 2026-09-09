@@ -21,6 +21,7 @@ describe("casino offer type metadata", () => {
     expect(normalizeCasinoOfferType("Reload / Recurring Casino Bonus")).toBe("Daily / Recurring Casino Reward");
     expect(normalizeCasinoOfferType("Wager And Get Free Spins")).toBe("Wager To Earn Free Spins");
     expect(normalizeCasinoOfferType("None")).toBe("Other / Custom");
+    expect(normalizeCasinoOfferType("Manual Play")).toBe("Manual Play / No Offer");
   });
 
   it("exposes only relevant tabs and field groups for reward-led offers", () => {
@@ -79,6 +80,7 @@ describe("casino offer type metadata", () => {
         "Wagering / Turnover Challenge",
         "Daily / Recurring Casino Reward",
         "Prize / Mystery Reward",
+        "Manual Play / No Offer",
         "Other / Custom",
       ])
     );

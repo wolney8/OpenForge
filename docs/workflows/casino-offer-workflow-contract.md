@@ -1,6 +1,6 @@
 # Workflow Contract: Casino Offer Lifecycle
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-09-09_
 
 ## 1. Workflow name
 
@@ -68,6 +68,8 @@ Allow the Fund Manager, inside a selected profile tracker, to record and manage 
 - expiry passed while still open
 - `FinalNetPnL` override present
 - different offer types such as wager/free-spins rows
+- reviewed `Manual Play / No Offer` activity remains distinct from promotions; actual free-play
+  credit uses `Fixed Spins Or Free Play` and is not own-cash stake
 - profile mismatch
 
 ## 10. Audit notes

@@ -17,6 +17,7 @@ export function CalculatorSegmentedControl<T extends string>({
       className="calculator-segmented-control"
       data-pd-id={dataPdId}
       role="group"
+      style={{ "--calculator-segment-count": options.length } as CSSProperties}
     >
       {options.map((option) => (
         <button
@@ -32,3 +33,4 @@ export function CalculatorSegmentedControl<T extends string>({
     </div>
   );
 }
+import type { CSSProperties } from "react";
