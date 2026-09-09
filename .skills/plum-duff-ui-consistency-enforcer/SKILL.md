@@ -149,6 +149,12 @@ use the canonical primitive and computed styling.
   canonical segmented control.
 - Time-critical rank-only selectors use one direct, single-action control per authoritative value;
   decorative variants must not multiply choices, enter domain state or increase interaction depth.
+- High-frequency dual-pane tools respond to their containing surface, not only the browser viewport;
+  cards, actions and controls reflow without page overflow at half-window widths and text scaling.
+- Operational disclosures use the shared semantic details/summary pattern. When open state is
+  session-local, normal refresh may retain it but authoritative logout/reset must clear it.
+- Status, waiting, completion and action content that belongs on separate rows uses structural
+  blocks; incidental inline wrapping is not an accepted responsive layout mechanism.
 - A shared visual primitive representing the same semantic object in picker and display contexts uses
   one aspect/size token at each responsive state; composed layouts must not quietly shrink one context.
 - Theme-aware illustrative controls use semantic surfaces and foregrounds for each theme; a light-mode

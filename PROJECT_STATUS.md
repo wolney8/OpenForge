@@ -108,10 +108,13 @@ durable requirements.
   outer edges as their combined row and no reserved Player-side column. In completed state, its status
   and outcome controls align compactly beside Current Hand. Recording an outcome archives exactly once,
   updates the hand count and opens a blank next hand immediately while preserving session-level choices.
-  A shared snapshot-based Undo reverses the latest card/action transition; explicit waiting text and picker
-  emphasis identify the next required card. The compact Last Hand recap uses the shared card artwork at a
-  reduced scale and can restore the archived hand only while the new hand remains pristine. Bust is recognised,
-  shown briefly with reduced-motion protection and archived automatically.
+  A shared snapshot-based, top-right icon Undo reverses the latest card/action/outcome transition; explicit
+  status rows and picker emphasis identify the next required card without shifting the banner. The aligned,
+  compact Last Hand recap uses the shared card artwork and fades after the next dealer/two player cards are
+  entered. Session History is open by default, collapsible and retained across refresh in the same authenticated
+  session. Bust is recognised, shown briefly with reduced-motion protection and archived automatically.
+  Card ranks alone use the requested Times serif face. Outcome controls use semantic M3 treatments, and
+  `Blackjack Win` appears only for an original two-card natural; Push remains available for a dealer tie.
 - Blackjack session mode now uses the compact canonical select. Touched money fields use the shared
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
@@ -161,8 +164,8 @@ commit. Manual status: `NOT RUN`.
 
 1. Open **Fund Manager → Calculators → Blackjack Strategy**, record Hit/Double/Stand and use Undo; expect
    the prior cards, recommendation and highlighted waiting target to return.
-2. Record an outcome. Expect one History row, a compact Last Hand recap and a blank new hand; restore it
-   before entering the new dealer card. Also enter player cards totalling over 21 and expect automatic Bust.
+2. Record an outcome. Expect one History row, a compact Last Hand recap and a blank new hand; enter its dealer
+   and first two player cards and expect the recap to fade. Refresh and confirm Session History remains.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

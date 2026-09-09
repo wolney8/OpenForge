@@ -25,7 +25,7 @@ import {
 } from "@/lib/blackjack-session";
 
 type BlackjackAction = "Hit" | "Stand" | "Double" | "Split" | "Surrender";
-type BlackjackOutcome = "" | "Win" | "Loss" | "Push" | "Blackjack" | "Surrender" | "Bust";
+type BlackjackOutcome = "" | "Win" | "Loss" | "Push" | "Blackjack Win" | "Surrender" | "Bust";
 type Soft17Rule = "stands" | "hits";
 type HandStatus = "playing" | "awaiting-double-card" | "stood" | "doubled" | "surrendered" | "bust";
 type BlackjackResult = {
@@ -77,14 +77,14 @@ type BlackjackSessionDetails = {
   tableType: BlackjackTableType;
   withdrawableResult: string;
 };
-type StoredBlackjackSession = { details?: BlackjackSessionDetails; history: BlackjackHistoryEntry[]; round: BlackjackRound };
+type StoredBlackjackSession = { details?: BlackjackSessionDetails; history: BlackjackHistoryEntry[]; historyOpen?: boolean; round: BlackjackRound };
 
 type RulePreview = { kind: "common"; result: BlackjackResult };
 type CardTarget = { kind: "dealer" } | { handId: string; index: number; kind: "hand" };
 type BlackjackUndoSnapshot = { cardTarget: CardTarget; history: BlackjackHistoryEntry[]; round: BlackjackRound };
 const storageKey = BLACKJACK_SESSION_STORAGE_KEY;
 const terminalStatuses: HandStatus[] = ["stood", "doubled", "surrendered", "bust"];
-const outcomeChoices: BlackjackOutcome[] = ["Win", "Loss", "Push", "Blackjack"];
+const ordinaryOutcomeChoices: BlackjackOutcome[] = ["Win", "Loss", "Push"];
 
 function emptyHand(handNumber: number, suffix = "main", startingStake = ""): BlackjackHand {
   return {
@@ -121,10 +121,13 @@ function readSessionDetails(search: URLSearchParams): BlackjackSessionDetails {
 }
 
 function normalizeHand(hand: BlackjackHand): BlackjackHand {
+  const legacyOutcome = hand.outcome as BlackjackOutcome | "Blackjack" | undefined;
   return {
     ...hand,
     actualReturn: hand.actualReturn ?? "",
-    outcome: hand.outcome ?? (hand.status === "bust" ? "Bust" : hand.status === "surrendered" ? "Surrender" : ""),
+    outcome: legacyOutcome === "Blackjack"
+      ? "Blackjack Win"
+      : legacyOutcome ?? (hand.status === "bust" ? "Bust" : hand.status === "surrendered" ? "Surrender" : ""),
     startingStake: hand.startingStake ?? "",
   };
 }
@@ -201,9 +204,24 @@ function handSummary(hand: BlackjackHand) {
   return `${hand.outcome || "Outcome pending"} · ${kind} · ${action}`;
 }
 
-function isPristineRound(round: BlackjackRound) {
-  return round.dealer === "" && !round.splitOccurred && round.hands.length === 1
-    && round.hands[0].actions.length === 0 && round.hands[0].cards.every((card) => card === "");
+function isNaturalBlackjack(hand: BlackjackHand) {
+  if (hand.cards.length !== 2) return false;
+  const cards = hand.cards.filter(isBlackjackCard);
+  return cards.length === 2 && cards.includes("A") && cards.some((card) => ["10", "J", "Q", "K"].includes(card));
+}
+
+function outcomeChoicesForHand(hand: BlackjackHand, splitOccurred: boolean): BlackjackOutcome[] {
+  return !splitOccurred && isNaturalBlackjack(hand)
+    ? [...ordinaryOutcomeChoices, "Blackjack Win"]
+    : ordinaryOutcomeChoices;
+}
+
+function outcomeToneClass(outcome: BlackjackOutcome) {
+  if (outcome === "Win") return "is-win";
+  if (outcome === "Loss" || outcome === "Bust") return "is-loss";
+  if (outcome === "Blackjack Win") return "is-blackjack";
+  if (outcome === "Surrender") return "is-surrender";
+  return "is-push";
 }
 
 function previewResult(value: RulePreview | null): BlackjackResult | null {
@@ -241,6 +259,8 @@ export function BlackjackCalculator({ onState, search }: {
   const [undoStack, setUndoStack] = useState<BlackjackUndoSnapshot[]>([]);
   const [storageReady, setStorageReady] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [dismissedLastHandNumber, setDismissedLastHandNumber] = useState<number | null>(null);
   const requestVersion = useRef(0);
   const abort = useRef<AbortController | null>(null);
   const outcomeSubmission = useRef("");
@@ -259,6 +279,10 @@ export function BlackjackCalculator({ onState, search }: {
     ? subtractSignedMoney(balanceResult, handActivityResult)
     : null;
   const lastHand = history.at(-1) ?? null;
+  const newHandHasInitialCards = isBlackjackCard(round.dealer)
+    && round.hands[0]?.cards.slice(0, 2).every(isBlackjackCard);
+  const lastHandIsDismissing = Boolean(lastHand && newHandHasInitialCards);
+  const showLastHand = Boolean(lastHand && dismissedLastHandNumber !== lastHand.handNumber);
   const lastAction = activeHand.actions.at(-1) ?? null;
   const waitingState = activeHand.status === "awaiting-double-card"
     ? "Waiting for final player card"
@@ -272,18 +296,19 @@ export function BlackjackCalculator({ onState, search }: {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (!hasUrlState) {
-        try {
-          const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "null") as StoredBlackjackSession | null;
-          if (stored?.round && Array.isArray(stored.history)) {
-            const normalized = normalizeStoredSession(stored);
+      try {
+        const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "null") as StoredBlackjackSession | null;
+        if (stored?.round && Array.isArray(stored.history)) {
+          const normalized = normalizeStoredSession(stored);
+          setHistory(normalized.history);
+          setHistoryOpen(stored.historyOpen ?? true);
+          if (!hasUrlState) {
             setRound(normalized.round);
-            setHistory(normalized.history);
             setDetails({ ...emptySessionDetails(), ...stored.details });
           }
-        } catch {
-          // Session storage is optional; calculator state remains usable in memory.
         }
+      } catch {
+        // Session storage is optional; calculator state remains usable in memory.
       }
       setDetails((current) => current.startedAt ? current : { ...current, startedAt: new Date().toISOString() });
       setStorageReady(true);
@@ -302,6 +327,8 @@ export function BlackjackCalculator({ onState, search }: {
       setPreview(null);
       setSessionModeError("");
       setUndoStack([]);
+      setHistoryOpen(true);
+      setDismissedLastHandNumber(null);
       setCardTarget({ kind: "dealer" });
     };
     window.addEventListener(AUTHENTICATED_SESSION_ENDED_EVENT, clearSession);
@@ -311,11 +338,18 @@ export function BlackjackCalculator({ onState, search }: {
   useEffect(() => {
     if (!storageReady) return;
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify({ details, history, round } satisfies StoredBlackjackSession));
+      sessionStorage.setItem(storageKey, JSON.stringify({ details, history, historyOpen, round } satisfies StoredBlackjackSession));
     } catch {
       // Session storage is optional; calculator state remains usable in memory.
     }
-  }, [details, history, round, storageReady]);
+  }, [details, history, historyOpen, round, storageReady]);
+
+  useEffect(() => {
+    if (!lastHand || !lastHandIsDismissing || dismissedLastHandNumber === lastHand.handNumber) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setDismissedLastHandNumber(lastHand.handNumber), reduceMotion ? 0 : 260);
+    return () => window.clearTimeout(timer);
+  }, [dismissedLastHandNumber, lastHand, lastHandIsDismissing]);
 
   useEffect(() => {
     const shareable = { ...round, archived: false };
@@ -551,34 +585,13 @@ export function BlackjackCalculator({ onState, search }: {
     requestVersion.current += 1;
     outcomeSubmission.current = "";
     setUndoStack((entries) => entries.slice(0, -1));
+    if (snapshot.history.length !== history.length) setDismissedLastHandNumber(null);
     setHistory(snapshot.history);
     setRound(snapshot.round);
     setCardTarget(snapshot.cardTarget);
     const restoredHand = snapshot.round.hands.find((hand) => hand.id === snapshot.round.activeHandId) ?? snapshot.round.hands[0];
     setPreview(restoredHand.lastRulePreview);
     setError("");
-  }
-
-  function restoreLastHand() {
-    if (!lastHand || !isPristineRound(round)) return;
-    const restoredHands = lastHand.hands.map((hand, index, hands) => index === hands.length - 1 ? { ...hand, outcome: "" as BlackjackOutcome } : hand);
-    const restored: BlackjackRound = {
-      activeHandId: restoredHands.at(-1)!.id,
-      archived: false,
-      dealer: lastHand.dealer,
-      handNumber: lastHand.handNumber,
-      hands: restoredHands,
-      soft17Rule: lastHand.soft17Rule,
-      splitOccurred: restoredHands.length > 1,
-      surrender: lastHand.surrender,
-    };
-    setHistory((entries) => entries.slice(0, -1));
-    setRound(restored);
-    setUndoStack([]);
-    outcomeSubmission.current = "";
-    const restoredHand = restoredHands.at(-1)!;
-    setPreview(restoredHand.lastRulePreview);
-    setCardTarget({ handId: restoredHand.id, index: Math.max(0, restoredHand.cards.length - 1), kind: "hand" });
   }
 
   function startFreshHand() {
@@ -612,6 +625,11 @@ export function BlackjackCalculator({ onState, search }: {
     || round.soft17Rule !== "stands"
     || details.mode !== "simulation"
     || round.hands.some((hand) => hand.actions.length > 0 || hand.cards.some((card) => card !== ""));
+  const undoControl = undoStack.length > 0 ? (
+    <button aria-label="Undo last Blackjack action" className="icon-button blackjack-undo-action" data-pd-id="calculators.blackjack.undo" onClick={undoLastStep} title="Undo last action" type="button">
+      <span aria-hidden="true" className="material-symbols-outlined">undo</span>
+    </button>
+  ) : null;
 
   return (
     <div className="calculator-panel-shell" data-pd-id="calculators.blackjack">
@@ -666,16 +684,17 @@ export function BlackjackCalculator({ onState, search }: {
 
         <section className="calculator-band calculator-band-secondary blackjack-table" data-pd-id="calculators.blackjack.table">
           {visiblePreview ? <section className={`blackjack-player-action-panel blackjack-recommendation-${visiblePreview.action.toLowerCase()}${terminalStatuses.includes(activeHand.status) ? " is-complete" : ""}`} data-pd-id="calculators.blackjack.result">
+            {undoControl}
             <div className="blackjack-recommendation-summary">
               <div className="blackjack-hand-summary">Hand <strong>{visiblePreview.total}</strong> · {visiblePreview.hand_kind.toUpperCase()}</div>
               {visiblePreview.action !== "Bust" && legalActions.includes(visiblePreview.action) ? <button aria-describedby="blackjack-strategy-guidance" aria-label={`Suggested action ${visiblePreview.action}`} className="blackjack-suggested-action" onClick={() => takeAction(visiblePreview.action as BlackjackAction)} type="button"><small>Recommended</small><strong>{visiblePreview.action.toUpperCase()}</strong>{visiblePreview.fallback_action ? <em>Otherwise {visiblePreview.fallback_action}</em> : null}</button> : <div className="blackjack-suggested-action is-static"><small>Current hand</small><strong>{visiblePreview.action.toUpperCase()}</strong></div>}
             </div>
-            {legalActions.length > 0 ? <div className="blackjack-action-column">{lastAction || waitingState || undoStack.length > 0 ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}{undoStack.length > 0 ? <button className="button-link icon-text-action blackjack-undo-action" onClick={undoLastStep} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span><span>Undo</span></button> : null}</div> : null}<div aria-label="Action taken" className="blackjack-action-group" role="group">
+            {legalActions.length > 0 ? <div className="blackjack-action-column">{lastAction || waitingState ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : null}<div aria-label="Action taken" className="blackjack-action-group" role="group">
               {legalActions.map((action) => { const recommended = visiblePreview.action === action; return <button aria-describedby="blackjack-strategy-guidance" className={recommended ? "modal-primary-button" : "button-link"} data-recommended={recommended ? "true" : undefined} key={action} onClick={() => takeAction(action)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{action === "Hit" ? "touch_app" : action === "Stand" ? "front_hand" : action === "Double" ? "double_arrow" : action === "Split" ? "call_split" : "warning"}</span><span>{action}</span>{recommended ? <span className="sr-only"> (recommended)</span> : null}</button>; })}
-            </div></div> : <div className="blackjack-completion-group">{lastAction || waitingState || undoStack.length > 0 ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}{undoStack.length > 0 ? <button className="button-link icon-text-action blackjack-undo-action" onClick={undoLastStep} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span><span>Undo</span></button> : null}</div> : null}<p className="field-hint">This player hand is complete.</p>{terminalStatuses.includes(activeHand.status) && !activeHand.outcome ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group"><span>Record outcome</span>{(activeHand.status === "bust" ? ["Bust"] : activeHand.status === "surrendered" ? ["Surrender"] : outcomeChoices).map((outcome) => <button className="review-chip" key={outcome} onClick={() => recordOutcome(outcome as BlackjackOutcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}</div>}
+            </div></div> : <div className="blackjack-completion-group">{lastAction || waitingState ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : null}<p className="field-hint">This player hand is complete.</p>{terminalStatuses.includes(activeHand.status) && !activeHand.outcome ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group"><span>Record outcome</span>{(activeHand.status === "bust" ? ["Bust"] : activeHand.status === "surrendered" ? ["Surrender"] : outcomeChoicesForHand(activeHand, round.splitOccurred)).map((outcome) => <button className={`review-chip blackjack-outcome-button ${outcomeToneClass(outcome as BlackjackOutcome)}`} key={outcome} onClick={() => recordOutcome(outcome as BlackjackOutcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}</div>}
             <p className="sr-only" id="blackjack-strategy-guidance">Basic strategy minimises the house edge over time; it does not guarantee this hand will win.</p>
-          </section> : <section aria-live="polite" className="blackjack-player-action-panel blackjack-result-pending" data-pd-id="calculators.blackjack.result-pending">{lastAction || waitingState ? <div className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : <p>Choose the dealer card and all visible player cards to see the recommended move.</p>}{undoStack.length > 0 ? <button className="button-link icon-text-action blackjack-undo-action" onClick={undoLastStep} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span><span>Undo</span></button> : null}</section>}
-          {lastHand ? <section className="blackjack-last-hand" data-pd-id="calculators.blackjack.last-hand"><div className="blackjack-last-hand-heading"><div><span className="eyebrow">Last hand #{lastHand.handNumber}</span><strong>LAST HAND</strong></div><button className="button-link icon-text-action" disabled={!isPristineRound(round)} onClick={restoreLastHand} title={isPristineRound(round) ? "Restore last hand" : "Reset the current hand before restoring the last hand"} type="button"><span aria-hidden="true" className="material-symbols-outlined">restore</span><span>Restore last hand</span></button></div><div className="blackjack-last-hand-cards"><div><span>Dealer up-card</span><BlackjackCardVisual ariaLabel={`Last hand dealer up-card, ${lastHand.dealer}`} className="blackjack-last-hand-card" disabled onClick={() => undefined} rank={lastHand.dealer} /></div>{lastHand.hands.map((hand) => <div key={hand.id}><span>{hand.label}</span><div className="blackjack-last-hand-player-cards">{hand.cards.filter(isBlackjackCard).map((card, index) => <BlackjackCardVisual ariaLabel={`Last hand ${hand.label} card ${index + 1}, ${card}`} className="blackjack-last-hand-card" disabled key={`${hand.id}-${index}`} onClick={() => undefined} rank={card} />)}</div><small>{hand.lastResult ? `${hand.lastResult.total} · ${hand.lastResult.hand_kind.toUpperCase()}` : "—"} · Last action: {hand.actions.at(-1) ?? "—"} · Outcome: {hand.outcome || "—"}</small></div>)}</div></section> : null}
+          </section> : <section aria-live="polite" className="blackjack-player-action-panel blackjack-result-pending" data-pd-id="calculators.blackjack.result-pending">{undoControl}{lastAction || waitingState ? <div className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : <p>Choose the dealer card and all visible player cards to see the recommended move.</p>}</section>}
+          {lastHand && showLastHand ? <section aria-label={`Last hand ${lastHand.handNumber}`} className={`blackjack-last-hand${lastHandIsDismissing ? " is-dismissing" : ""}`} data-pd-id="calculators.blackjack.last-hand"><div className="blackjack-last-hand-heading"><span className="eyebrow">Last hand #{lastHand.handNumber}</span></div><div className="blackjack-last-hand-card-line"><div className="blackjack-last-hand-card-group"><span>Dealer up-card</span><BlackjackCardVisual ariaLabel={`Last hand dealer up-card, ${lastHand.dealer}`} className="blackjack-last-hand-card" disabled onClick={() => undefined} rank={lastHand.dealer} /></div>{lastHand.hands.map((hand) => <div className="blackjack-last-hand-card-group" key={hand.id}><span>{hand.label}</span><div className="blackjack-last-hand-player-cards">{hand.cards.filter(isBlackjackCard).map((card, index) => <BlackjackCardVisual ariaLabel={`Last hand ${hand.label} card ${index + 1}, ${card}`} className="blackjack-last-hand-card" disabled key={`${hand.id}-${index}`} onClick={() => undefined} rank={card} />)}</div></div>)}</div><div className="blackjack-last-hand-metadata">{lastHand.hands.map((hand) => <small key={hand.id}>{hand.lastResult ? `${hand.lastResult.total} · ${hand.lastResult.hand_kind.toUpperCase()}` : "—"}<span>Last action: {hand.actions.at(-1) ?? "—"}</span><span>Outcome: {hand.outcome || "—"}</span></small>)}</div></section> : null}
           <div className="blackjack-table-side blackjack-dealer-side">
             <h3>Dealer</h3>
             <BlackjackCardSlot active={cardTarget.kind === "dealer"} label="Dealer up-card" onActivate={() => setCardTarget({ kind: "dealer" })} value={round.dealer} />
@@ -699,15 +718,17 @@ export function BlackjackCalculator({ onState, search }: {
         </section>
 
         {error ? <p className="error-text" role="alert">{error}</p> : null}
-        <section className="calculator-band calculator-band-secondary stack blackjack-history" data-pd-id="calculators.blackjack.history">
-          <div className="blackjack-section-heading"><div><span className="eyebrow">Session history</span><h3>Played hands</h3></div><button className="button-link destructive-action" disabled={!sessionHasState} onClick={() => setConfirmClear(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span><span>Reset Session</span></button></div>
-          {history.length === 0 ? <p className="field-hint">Completed hands appear here for this authenticated browser session only.</p> : <div className="table-scroll"><table className="data-table blackjack-history-table"><thead><tr><th>Hand</th><th>Dealer</th><th>Outcome</th></tr></thead><tbody>{history.map((entry) => <tr key={entry.handNumber}><td data-label="Hand"><details><summary>#{entry.handNumber}</summary><div className="blackjack-history-detail"><span>{entry.mode === "simulation" ? "Simulation" : entry.mode === "free_play" ? "Free Play" : "Live Play"}{entry.tableType ? ` · ${entry.tableType === "digital_rng" ? "Digital / RNG" : "Live Dealer"}` : ""} · Surrender {entry.surrender ? "allowed" : "not allowed"}; Soft 17 rule {entry.soft17Rule === "hits" ? "Hits (H17)" : "Stands (S17)"}.</span>{entry.hands.map((hand) => <span key={hand.id}>{hand.label}: {hand.cards.join(", ")} · Recommended {hand.recommendations.map((item) => item.ruleComparison ?? item.action).join(" → ") || "—"} · Chosen {hand.actions.join(" → ") || "—"} · Outcome {hand.outcome || "not recorded"}{entry.mode === "live_play" ? ` · Stake £${hand.startingStake || "—"} · Committed £${committedStake(hand) ?? "—"} · Return £${hand.actualReturn || "—"}${handNet(hand) === null ? "" : ` · Net £${handNet(hand)}`}` : ""}</span>)}</div></details></td><td data-label="Dealer">{entry.dealer}</td><td data-label="Outcome">{entry.hands.map(handSummary).join("; ")}</td></tr>)}</tbody></table></div>}
-          <p className="field-hint">Recorded outcomes describe what happened; they do not grade whether the strategy recommendation was correct.</p>
-        </section>
+        <details className="calculator-band calculator-band-secondary blackjack-history blackjack-disclosure" data-pd-id="calculators.blackjack.history" onToggle={(event) => setHistoryOpen(event.currentTarget.open)} open={historyOpen}>
+          <summary><span><span className="eyebrow">Session history</span><strong>Played hands</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary>
+          <div className="stack blackjack-history-content"><div className="blackjack-section-heading"><span className="field-hint">Completed hands remain available for this authenticated browser session.</span><button className="button-link destructive-action" disabled={!sessionHasState} onClick={() => setConfirmClear(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span><span>Reset Session</span></button></div>
+            {history.length === 0 ? <p className="field-hint">Completed hands appear here for this authenticated browser session only.</p> : <div className="table-scroll"><table className="data-table blackjack-history-table"><thead><tr><th>Hand</th><th>Dealer</th><th>Outcome</th></tr></thead><tbody>{history.map((entry) => <tr key={entry.handNumber}><td data-label="Hand"><details><summary>#{entry.handNumber}</summary><div className="blackjack-history-detail"><span>{entry.mode === "simulation" ? "Simulation" : entry.mode === "free_play" ? "Free Play" : "Live Play"}{entry.tableType ? ` · ${entry.tableType === "digital_rng" ? "Digital / RNG" : "Live Dealer"}` : ""} · Surrender {entry.surrender ? "allowed" : "not allowed"}; Soft 17 rule {entry.soft17Rule === "hits" ? "Hits (H17)" : "Stands (S17)"}.</span>{entry.hands.map((hand) => <span key={hand.id}>{hand.label}: {hand.cards.join(", ")} · Recommended {hand.recommendations.map((item) => item.ruleComparison ?? item.action).join(" → ") || "—"} · Chosen {hand.actions.join(" → ") || "—"} · Outcome {hand.outcome || "not recorded"}{entry.mode === "live_play" ? ` · Stake £${hand.startingStake || "—"} · Committed £${committedStake(hand) ?? "—"} · Return £${hand.actualReturn || "—"}${handNet(hand) === null ? "" : ` · Net £${handNet(hand)}`}` : ""}</span>)}</div></details></td><td data-label="Dealer">{entry.dealer}</td><td data-label="Outcome">{entry.hands.map(handSummary).join("; ")}</td></tr>)}</tbody></table></div>}
+            <p className="field-hint">Recorded outcomes describe what happened; they do not grade whether the strategy recommendation was correct.</p>
+          </div>
+        </details>
 
         <details className="calculator-band calculator-band-secondary stack blackjack-how-to" data-pd-id="calculators.blackjack.how-to"><summary>How to use</summary><div className="stack"><ol><li>Choose Simulation, Free Play or Live Play.</li><li>Enable Surrender only if the game rules allow it.</li><li>Enable Dealer hits Soft 17 only if the game rules say H17; otherwise leave it off.</li><li>Enter the dealer&apos;s visible card.</li><li>Enter your first two cards using the fast rank picker.</li><li>Follow or check the recommended basic-strategy move.</li><li>After Hit, enter the next card for the updated recommendation.</li></ol><p className="field-hint">Recommendations minimise the house edge over the long run; they do not guarantee an individual hand. Never take Insurance under this strategy.</p></div></details>
       </div>
-      <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setSessionModeError(""); setUndoStack([]); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
+      <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setSessionModeError(""); setUndoStack([]); setHistoryOpen(true); setDismissedLastHandNumber(null); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
     </div>
   );
 }
