@@ -1574,6 +1574,29 @@ def initialize_database(connection: sqlite3.Connection) -> None:
             ON DELETE SET NULL
         );
 
+        CREATE TABLE IF NOT EXISTS calculator_conversion_targets (
+          attempt_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          source_checksum TEXT NOT NULL,
+          source_family TEXT NOT NULL,
+          source_version TEXT NOT NULL,
+          source_mode TEXT NOT NULL,
+          source_envelope_json TEXT NOT NULL,
+          destination_kind TEXT NOT NULL,
+          target_profile_id TEXT NOT NULL,
+          target_account TEXT NOT NULL,
+          destination_record_id TEXT,
+          state TEXT NOT NULL,
+          failure_reason TEXT NOT NULL DEFAULT '',
+          notification_title TEXT NOT NULL DEFAULT '',
+          notification_body TEXT NOT NULL DEFAULT '',
+          notification_link TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (source_id, destination_kind, target_profile_id, target_account),
+          FOREIGN KEY (target_profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS free_bets (
           free_bet_id TEXT PRIMARY KEY,
           profile_id TEXT NOT NULL,
@@ -4310,6 +4333,113 @@ def list_multi_profile_entry_batch_targets(batch_id: str) -> list[dict[str, Any]
             ORDER BY created_at, target_profile_id
             """,
             (batch_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def begin_calculator_conversion_target(
+    *,
+    source_id: str,
+    source_checksum: str,
+    source_family: str,
+    source_version: str,
+    source_mode: str,
+    source_envelope_json: str,
+    destination_kind: str,
+    target_profile_id: str,
+    target_account: str,
+) -> dict[str, Any]:
+    """Reserve one source/target conversion and return the durable attempt."""
+    timestamp = utc_now()
+    attempt_id = f"CCT-{uuid4().hex[:12].upper()}"
+    with connect() as connection:
+        inserted = connection.execute(
+            """
+            INSERT INTO calculator_conversion_targets (
+              attempt_id, source_id, source_checksum, source_family, source_version,
+              source_mode, source_envelope_json, destination_kind, target_profile_id,
+              target_account, destination_record_id, state, failure_reason,
+              notification_title, notification_body, notification_link, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'Pending', '', '', '', '', ?, ?)
+            ON CONFLICT(source_id, destination_kind, target_profile_id, target_account)
+            DO NOTHING
+            """,
+            (
+                attempt_id, source_id, source_checksum, source_family, source_version,
+                source_mode, source_envelope_json, destination_kind, target_profile_id,
+                target_account, timestamp, timestamp,
+            ),
+        )
+        claimed = inserted.rowcount > 0
+        if not claimed:
+            retried = connection.execute(
+                """
+                UPDATE calculator_conversion_targets
+                SET state = 'Pending', failure_reason = '', updated_at = ?
+                WHERE source_id = ? AND destination_kind = ?
+                  AND target_profile_id = ? AND target_account = ? AND state = 'Failed'
+                """,
+                (timestamp, source_id, destination_kind, target_profile_id, target_account),
+            )
+            claimed = retried.rowcount > 0
+        row = connection.execute(
+            """
+            SELECT * FROM calculator_conversion_targets
+            WHERE source_id = ? AND destination_kind = ?
+              AND target_profile_id = ? AND target_account = ?
+            """,
+            (source_id, destination_kind, target_profile_id, target_account),
+        ).fetchone()
+    assert row is not None
+    return {**dict(row), "_claimed": claimed}
+
+
+def complete_calculator_conversion_target(
+    attempt_id: str,
+    *,
+    destination_record_id: str,
+    notification_title: str,
+    notification_body: str,
+    notification_link: str,
+) -> None:
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE calculator_conversion_targets
+            SET destination_record_id = ?, state = 'Succeeded', failure_reason = '',
+                notification_title = ?, notification_body = ?, notification_link = ?,
+                updated_at = ?
+            WHERE attempt_id = ? AND state != 'Succeeded'
+            """,
+            (
+                destination_record_id, notification_title, notification_body,
+                notification_link, utc_now(), attempt_id,
+            ),
+        )
+
+
+def fail_calculator_conversion_target(attempt_id: str, reason: str) -> None:
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE calculator_conversion_targets
+            SET state = 'Failed', failure_reason = ?, updated_at = ?
+            WHERE attempt_id = ? AND state != 'Succeeded'
+            """,
+            (reason, utc_now(), attempt_id),
+        )
+
+
+def list_calculator_conversion_notifications() -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT attempt_id, notification_title, notification_body,
+                   notification_link, target_profile_id, created_at
+            FROM calculator_conversion_targets
+            WHERE state = 'Succeeded' AND notification_title != ''
+            ORDER BY created_at DESC
+            """
         ).fetchall()
     return [dict(row) for row in rows]
 

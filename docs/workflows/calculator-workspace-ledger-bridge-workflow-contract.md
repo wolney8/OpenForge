@@ -11,7 +11,8 @@ _Last updated: 2026-09-09_
 - Implemented families: Fund Manager-owned `Standard` (the existing matched-betting
   contract/API), Multi-Lay, and combined Each Way / Extra Place reference calculators
 - Canonical route: `/fund-manager/calculators`; the retired Profile route redirects safely
-- Ledger draft bridge: Later scope under `#36`; standalone calculation creates no business record
+- Ledger bridge: first #36 slice implemented for Standard → Sportsbook Prospecting and completed
+  Blackjack Free/Live session → reviewed Casino activity; remaining family adapters stay open
 
 ## User goal
 
@@ -79,7 +80,18 @@ reward conversion and RTP/EV planning use different contracts and are not lay ca
 
 ## Ledger bridge
 
-1. User calculates and selects `Create sportsbook row` or `Create free-bet row`.
+The shared bridge stores one canonical source envelope and SHA-256 identity per conversion target.
+The source remains reference-only: the destination API validates required identity, Account access
+and its own calculation contract. A successful `(source, destination kind, Profile, Account)` target
+is idempotent; failed independent targets remain retryable and successful targets are not rolled back.
+
+The implemented Standard path permits one or more authorised Profiles and creates isolated
+`Prospecting` Sportsbook rows after bookmaker/Exchange checks. The implemented Blackjack path
+accepts exactly one Profile and Casino Account for a completed Free/Live session, rejects Simulation,
+requires promotion identity, maps own cash to `Manual Play / No Offer`, and preserves the exact
+`blackjack-session-v1` source checksum. Each successful target produces one durable Notification.
+
+1. User calculates and selects `Convert to opportunity` (or the family-appropriate save action).
 2. User selects/retains a target profile.
 3. Plum Duff creates an unsaved bridge payload, not a database row.
 4. Map calculator fields into calculator/reference fields.

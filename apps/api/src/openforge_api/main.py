@@ -10,6 +10,7 @@ from openforge_api.backups import router as backups_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
 from openforge_api.bookmaker_catalogue import router as bookmaker_catalogue_router
 from openforge_api.calculators import router as calculators_router
+from openforge_api.calculator_conversions import router as calculator_conversions_router
 from openforge_api.cash_adjustments import router as cash_adjustments_router
 from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.common_bet_combos import router as common_bet_combos_router
@@ -78,6 +79,7 @@ app.include_router(fund_manager_fee_periods_router)
 app.include_router(imports_router)
 app.include_router(cash_adjustments_router)
 app.include_router(calculators_router)
+app.include_router(calculator_conversions_router)
 app.include_router(casino_offers_router)
 app.include_router(common_bet_combos_router)
 app.include_router(database_provider_router)

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
+import { CalculatorConversionDialog } from "@/components/calculator-conversion-dialog";
 import { BlackjackCard as BlackjackCardVisual } from "@/components/blackjack-card";
 import { BlackjackCardSlot, BlackjackRankPicker } from "@/components/blackjack-rank-picker";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
@@ -15,6 +16,7 @@ import { AUTHENTICATED_SESSION_ENDED_EVENT, BLACKJACK_SESSION_STORAGE_KEY } from
 import { isBlackjackCard, type BlackjackCard, type BlackjackCardValue as CardValue } from "@/lib/blackjack-ranks";
 import {
   blackjackCommittedStake,
+  buildBlackjackSessionSourceSnapshot,
   centsToMoney,
   moneyInputError,
   moneyToCents,
@@ -23,6 +25,7 @@ import {
   type BlackjackActivitySource,
   type BlackjackSessionMode,
   type BlackjackTableType,
+  type BlackjackSessionSourceSnapshot,
 } from "@/lib/blackjack-session";
 
 type BlackjackAction = "Hit" | "Stand" | "Double" | "Split" | "Surrender";
@@ -270,6 +273,8 @@ export function BlackjackCalculator({ onState, search }: {
   const [undoStack, setUndoStack] = useState<BlackjackUndoSnapshot[]>([]);
   const [storageReady, setStorageReady] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [conversionSnapshot, setConversionSnapshot] = useState<BlackjackSessionSourceSnapshot | null>(null);
+  const [conversionBusy, setConversionBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [dismissedLastHandNumber, setDismissedLastHandNumber] = useState<number | null>(null);
   const requestVersion = useRef(0);
@@ -621,6 +626,44 @@ export function BlackjackCalculator({ onState, search }: {
     setCardTarget({ kind: "dealer" });
   }
 
+  async function openCasinoConversion() {
+    if (details.mode === "simulation" || history.length === 0 || !details.activitySource) return;
+    setConversionBusy(true);
+    try {
+      const snapshot = await buildBlackjackSessionSourceSnapshot({
+        activitySource: details.activitySource,
+        endedAt: new Date().toISOString(),
+        endingBalance: details.endingBalance,
+        freeCreditValue: details.freeCreditValue,
+        hands: history.map((entry) => ({
+          dealer_card: entry.dealer,
+          hand_number: entry.handNumber,
+          hands: entry.hands.map((hand) => ({
+            actual_actions: [...hand.actions],
+            actual_return: hand.actualReturn || null,
+            cards: hand.cards.filter(isBlackjackCard),
+            classification: hand.lastResult?.hand_kind ?? null,
+            committed_stake: committedStake(hand),
+            label: hand.label,
+            outcome: hand.outcome,
+            recommendation_sequence: hand.recommendations.map((item) => item.ruleComparison ?? item.action),
+            starting_stake: hand.startingStake || null,
+            total: hand.lastResult?.total ?? null,
+          })),
+        })),
+        mode: details.mode,
+        recordedHandNet: handActivityResult,
+        soft17Rule: round.soft17Rule,
+        startedAt: details.startedAt,
+        startingBalance: details.startingBalance,
+        surrenderAllowed: round.surrender,
+        tableType: details.tableType,
+        withdrawableResult: details.withdrawableResult,
+      });
+      setConversionSnapshot(snapshot);
+    } finally { setConversionBusy(false); }
+  }
+
   const legalActions = (() => {
     if (!visiblePreview || visiblePreview.hand_kind === "bust" || terminalStatuses.includes(activeHand.status)) return [];
     const actions: BlackjackAction[] = ["Hit", "Stand"];
@@ -742,6 +785,7 @@ export function BlackjackCalculator({ onState, search }: {
         </section>
 
         {error ? <p className="error-text" role="alert">{error}</p> : null}
+        {details.mode !== "simulation" ? <div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="calculators.blackjack.save-activity" disabled={conversionBusy || history.length === 0 || !details.activitySource || (details.mode === "live_play" ? balanceResult === null : !details.withdrawableResult)} onClick={() => void openCasinoConversion()} type="button"><span aria-hidden="true" className="material-symbols-outlined">save</span><span>{conversionBusy ? "Preparing…" : "Save as Casino activity"}</span></button></div> : null}
         <details className="calculator-band calculator-band-secondary blackjack-history blackjack-disclosure" data-pd-id="calculators.blackjack.history" onToggle={(event) => setHistoryOpen(event.currentTarget.open)} open={historyOpen}>
           <summary><span><span className="eyebrow">Session history</span><strong>Played hands</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary>
           <div className="stack blackjack-history-content"><div className="blackjack-section-heading"><span className="field-hint">Completed hands remain available for this authenticated browser session.</span><button className="button-link destructive-action" disabled={!sessionHasState} onClick={() => setConfirmClear(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span><span>Reset Session</span></button></div>
@@ -753,6 +797,7 @@ export function BlackjackCalculator({ onState, search }: {
         <details className="calculator-band calculator-band-secondary stack blackjack-how-to" data-pd-id="calculators.blackjack.how-to"><summary>How to use</summary><div className="stack"><ol><li>Choose Simulation, Free Play or Live Play.</li><li>Enable Surrender only if the game rules allow it.</li><li>Enable Dealer hits Soft 17 only if the game rules say H17; otherwise leave it off.</li><li>Enter the dealer&apos;s visible card.</li><li>Enter your first two cards using the fast rank picker.</li><li>Follow or check the recommended basic-strategy move.</li><li>After Hit, enter the next card for the updated recommendation.</li></ol><p className="field-hint">Recommendations minimise the house edge over the long run; they do not guarantee an individual hand. Never take Insurance under this strategy.</p></div></details>
       </div>
       <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setSessionModeError(""); setUndoStack([]); setHistoryOpen(true); setDismissedLastHandNumber(null); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
+      {conversionSnapshot ? <CalculatorConversionDialog blackjack={conversionSnapshot} onClose={() => setConversionSnapshot(null)} /> : null}
     </div>
   );
 }

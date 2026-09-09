@@ -9,7 +9,7 @@ durable requirements.
 
 ## Current state
 
-- Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
+- Current feature: [#36 Calculator / session to ledger bridge](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
   Dutching, Odds / Probability and Blackjack Strategy. Blackjack's action banner now uses an explicit
@@ -18,13 +18,13 @@ durable requirements.
   snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `dc71d0d` on `main`.
-- Interruptions: none within the selected #35 calculator tranche.
+- Current implementation base before this tranche: `2d5f558` on `main`.
+- Interruptions: none within the selected #36 bridge tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
-- Return point: the next roadmap tranche is the calculator-to-ledger bridge under
-  [#36](https://github.com/wolney8/OpenForge/issues/36); unresolved optional family extensions
-  remain visible under #35/#38.
+- Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active until the
+  shared bridge adapter is expanded from the proven Standard and Blackjack paths to the remaining
+  eligible calculator families. Unresolved optional family extensions remain visible under #35/#38.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
@@ -45,10 +45,11 @@ durable requirements.
 
 ## Project plan
 
-- Current: #35 Fund Manager Calculator Workspace. Core standalone family coverage is locally
-  implemented with deterministic contracts/fixtures and reference-only APIs; specialised
-  Accumulator and Advanced Dutching extensions remain explicitly pending.
-- Next queue: #36 calculator-to-Opportunity bridge; then #85 + #106 Account
+- Current: #36 calculator-to-ledger bridge. Its first shared slice converts Standard source state
+  into isolated Sportsbook Prospecting rows for one or more reviewed Profiles, and saves one
+  completed Blackjack Free/Live session as one reviewed Casino activity. Durable per-target source
+  identity prevents duplicate retry writes; destination contracts remain authoritative.
+- Next queue: expand #36 across remaining eligible calculator families; then #85 + #106 Account
   reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
@@ -96,6 +97,15 @@ durable requirements.
 - Full current blockers and recent IDs are in the [canonical request register](docs/planning/plum-duff-next-issue-tracking-register.md).
 
 ## What changed
+
+- The first #36 bridge slice adds one immutable conversion-source boundary and one guided modal
+  based on the existing #77 Profile/Account selection pattern. Standard conversion requests missing
+  destination identity, checks Account eligibility, creates Profile-isolated Prospecting rows and
+  reruns the destination Sportsbook contract. Completed Blackjack Free/Live sessions choose exactly
+  one Profile/Casino Account and retain the verified `blackjack-session-v1` checksum; Simulation is
+  ineligible, promotions require identity, and own-cash sessions map to `Manual Play / No Offer`.
+  Successful targets emit one durable Notification and retries reuse the created row. Calculator and
+  session state remain intact. Remaining calculator-family adapters are still open under #36.
 
 - Blackjack now has explicit Simulation, Free Play and Live Play session modes. Simulation exposes no
   money and cannot convert; Free Play separates free credit from withdrawable value; Live Play

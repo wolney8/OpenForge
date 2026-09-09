@@ -14,6 +14,7 @@ from openforge_api.db import (
     get_notification_preferences,
     get_notification_user_state,
     list_backup_snapshot_records,
+    list_calculator_conversion_notifications,
     list_free_bet_follow_up_notifications,
     list_partial_lay_notifications,
     postgres_runtime_enabled,
@@ -354,6 +355,32 @@ def list_fund_manager_notifications(
     backup_notification = backup_reminder_notification(now)
     if backup_notification is not None:
         notifications.append(backup_notification)
+
+    for row in list_calculator_conversion_notifications():
+        profile_id = str(row["target_profile_id"])
+        notifications.append(
+            FundManagerNotificationResponse(
+                audience="fund_manager",
+                security_tag="fund_manager_only",
+                kind="information",
+                task_state="done",
+                notification_id=f"calculator-conversion:{row['attempt_id']}",
+                notification_type="calculator_conversion_complete",
+                title=str(row["notification_title"]),
+                ledger_label="Calculator conversion",
+                bookmaker_label="",
+                message=str(row["notification_body"]),
+                profile_id=profile_id,
+                profile_name="",
+                record_id="",
+                due_at="",
+                settles_at="",
+                created_at=str(row["created_at"]),
+                href=str(row["notification_link"]),
+                completion_href="",
+                tone="success",
+            )
+        )
 
     for row in list_partial_lay_notifications():
         due_at = str(row["due_at"])

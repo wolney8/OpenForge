@@ -70,6 +70,13 @@ export function canViewerReceiveNotification(
 
 export const fundManagerNotificationTypes = [
   {
+    id: "calculator_conversion_complete",
+    label: "Calculator Conversions",
+    description:
+      "Confirms calculator opportunities and completed sessions saved into Profile ledgers.",
+    timing: "Once after each destination row is created.",
+  },
+  {
     id: "database_backup_reminder",
     label: "Database Backup Reminders",
     description:
@@ -115,6 +122,7 @@ export type FundManagerNotificationPreferences = Record<
 >;
 
 export const defaultFundManagerNotificationPreferences: FundManagerNotificationPreferences = {
+  calculator_conversion_complete: true,
   database_backup_reminder: true,
   partial_lay_reminder: true,
   free_bet_follow_up_reminder: true,

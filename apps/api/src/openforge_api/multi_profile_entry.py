@@ -23,7 +23,7 @@ UNAVAILABLE_LIFECYCLES = {
     "suspended",
 }
 WARNING_LIFECYCLES = {"pending sign up", "verification pending"}
-BLOCKING_RESTRICTIONS = {"kyc blocked", "risk blocked"}
+BLOCKING_RESTRICTIONS = {"kyc blocked", "login restricted", "risk blocked"}
 NON_PROMOTIONAL_OFFER_TYPES = {"", "mug bet", "none", "no offer", "qualifying bet"}
 
 

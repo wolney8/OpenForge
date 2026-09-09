@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { CalculatorReferenceSection } from "@/components/calculator-reference-section";
+import { CalculatorConversionDialog } from "@/components/calculator-conversion-dialog";
 import { BlackjackCalculator } from "@/components/blackjack-calculator";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -157,11 +158,13 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const requestedFamily = search.get("family") as Family | null;
   const [family, setFamily] = useState<Family>(families.some((item) => item.value === requestedFamily) ? requestedFamily! : "matched-betting");
   const popoutStateRef = useRef(new URLSearchParams({ family }));
+  const [conversionCreatedAt] = useState(() => new Date().toISOString());
   const [inputs, setInputs] = useState<Inputs>(() => readInitial(search));
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [conversion, setConversion] = useState("");
+  const [conversionOpen, setConversionOpen] = useState(false);
   const [exchanges, setExchanges] = useState<ExchangeOption[]>([]);
   const commissionWasEdited = useRef(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -344,10 +347,11 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
         {conversion ? <p className="field-hint" role="status">{conversion}</p> : null}
         {isCalculating ? <p className="field-hint" role="status">Updating outcomes…</p> : null}
         {error ? <p className="error-text" role="alert">{error}</p> : null}
-        <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button></div>
+        <div className="tracker-nav"><button className="button-link icon-text-action" data-pd-id="calculators.matched-betting.reset" onClick={resetMatchedCalculator} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset</span></button>{result ? <button className="modal-primary-button icon-text-action" data-pd-id="calculators.matched-betting.convert" onClick={() => setConversionOpen(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">move_item</span><span>Convert to opportunity</span></button> : null}</div>
       </div>
       {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results"><div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue copyable dataPdId="calculators.matched-betting.copy-lay-stake" label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl></article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
     </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "early-payout" ? <EarlyPayoutCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "multiples" ? <AccumulatorCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "dutching" ? <DutchingCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "odds-converter" ? <OddsProbabilityCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <BlackjackCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} />}
+    {conversionOpen && result ? <CalculatorConversionDialog onClose={() => setConversionOpen(false)} standard={{ envelope: { calculator_family: "matched-betting", calculator_version: "matched-betting-v1", calculator_mode: inputs.betType, canonical_inputs: { ...inputs, exchange: inputs.exchange }, created_at: conversionCreatedAt }, calculator: { bet_type: inputs.betType, free_bet_mode: inputs.freeBetMode, promotion_mode: inputs.promotionMode, strategy: inputs.strategy, back_stake: inputs.backStake, back_odds: inputs.backOdds, lay_odds: inputs.layOdds, exchange_commission: inputs.exchangeCommission, manual_lay_stake: inputs.manualLayStake, promotion_value: inputs.promotionValue, bonus_trigger: inputs.bonusTrigger, retention_percent: inputs.retentionPercent, underlay_factor: inputs.underlayFactor, overlay_factor: inputs.overlayFactor, profit_boost_mode: inputs.profitBoostMode, boosted_back_odds: inputs.boostedBackOdds, total_potential_return: inputs.totalPotentialReturn, potential_profit: inputs.potentialProfit, base_back_odds: inputs.baseBackOdds, profit_boost_percent: inputs.profitBoostPercent, actual_accepted_back_odds: inputs.actualAcceptedBackOdds, maximum_boost_winnings: inputs.maximumBoostWinnings } }} /> : null}
   </section>;
 }
 
