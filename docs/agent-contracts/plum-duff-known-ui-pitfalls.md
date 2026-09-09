@@ -987,6 +987,9 @@ cause, prevention rule and regression test.
   time-critical card entry is verified as a one-click portrait-card selector with distinct dealer and
   player regions. Picker and displayed cards share one responsive size/aspect token, and card-face
   surfaces use theme-specific semantic colours rather than carrying bright paper into dark mode.
+  Conditional session/hand money fields stay in an explicit grid above the Dealer/Player table so
+  they cannot change card alignment. Card hover/focus chooses one stable tilt until exit; selection
+  performs one bounded flip while its callback remains single-fire, with a static reduced-motion path.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks switch geometry, help, card aspect,
   direct rank selection, repeated Hit continuation, recommendation/action prominence and themes.
 

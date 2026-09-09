@@ -8863,11 +8863,20 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-rule-surrender,
 .blackjack-rule-soft-17 { justify-self: end; }
 
-.blackjack-session-mode-row {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
+.blackjack-session-control-grid {
+  align-items: start;
+  display: grid;
+  gap: 0.85rem clamp(1rem, 4cqi, 3rem);
+  grid-template-columns: repeat(2, minmax(0, 15rem));
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.blackjack-session-mode-cell {
+  align-content: start;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .blackjack-session-mode-field {
@@ -8875,25 +8884,33 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   width: min(100%, 15rem);
 }
 
-.blackjack-session-mode-row > .table-chip {
-  margin-block-end: 0.65rem;
-}
+.blackjack-session-mode-cell > .table-chip { justify-self: start; }
 
 .blackjack-table-type-field {
-  align-items: start;
+  align-content: start;
   display: grid;
   gap: 0.45rem;
+  justify-self: end;
+  min-width: 0;
+  width: min(100%, 15rem);
 }
 
-.blackjack-table-type-field > .calculator-segmented-control {
-  width: min(100%, 28rem);
+.blackjack-table-type-field > .material-switch {
+  justify-self: start;
+  max-width: 100%;
 }
 
-.blackjack-session-money-grid,
-.blackjack-hand-money-grid {
+.blackjack-session-summary-row {
   align-items: start;
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  min-width: 0;
 }
+
+.blackjack-session-summary-row > .blackjack-session-result { width: min(100%, 15rem); }
+.blackjack-session-summary-row > .calculator-section-guidance { flex-basis: 100%; margin: 0; }
 
 .blackjack-session-result {
   align-items: center;
@@ -9020,14 +9037,31 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
   overflow: hidden;
   padding: 0;
+  perspective: 40rem;
   position: relative;
-  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, translate 140ms ease;
+  transform: translateY(0) rotate(0deg);
+  transform-style: preserve-3d;
+  transition: background-color 170ms ease, border-color 170ms ease, box-shadow 170ms ease, transform 190ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.blackjack-card:hover:not(:disabled) {
+.blackjack-card:is(:hover, :focus-visible):not(:disabled) {
   background-color: var(--surface-container-highest);
   box-shadow: var(--shadow);
-  translate: 0 -1px;
+  transform: translateY(-0.22rem) rotate(var(--blackjack-card-tilt, 3deg));
+}
+
+.blackjack-card[data-motion-direction="left"] { --blackjack-card-tilt: -3deg; }
+.blackjack-card[data-motion-direction="right"] { --blackjack-card-tilt: 3deg; }
+
+.blackjack-card.is-flipping {
+  animation: blackjack-card-select-flip 340ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes blackjack-card-select-flip {
+  0% { transform: translateY(-0.1rem) rotateY(0deg); }
+  48% { transform: translateY(-0.18rem) rotateY(88deg); }
+  52% { transform: translateY(-0.18rem) rotateY(-88deg); }
+  100% { transform: translateY(-0.22rem) rotateY(0deg); }
 }
 
 .blackjack-card.is-selected {
@@ -9109,11 +9143,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 @media (prefers-reduced-motion: reduce) {
   .blackjack-card {
+    animation: none;
     transition: none;
   }
 
-  .blackjack-card:hover:not(:disabled) {
-    translate: none;
+  .blackjack-card:is(:hover, :focus-visible):not(:disabled) {
+    transform: none;
   }
 
   .blackjack-card:hover:not(:disabled) .blackjack-card-decoration { animation: none; }
@@ -9606,6 +9641,11 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   .blackjack-action-group { justify-content: flex-start; }
   .blackjack-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--blackjack-card-inline-size), max-content)); }
   .blackjack-rank-picker { grid-template-columns: repeat(auto-fit, var(--blackjack-card-inline-size)); }
+}
+
+@container blackjack-calculator (max-width: 34rem) {
+  .blackjack-session-control-grid { grid-template-columns: minmax(0, 15rem); justify-content: start; }
+  .blackjack-table-type-field { justify-self: start; }
 }
 
 .calculator-popout-shell {

@@ -41,6 +41,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Every control has a context-specific accessible name.
 - [ ] Time-critical selectors expose authoritative choices directly; decorative variants are hidden
       from assistive technology and never alter emitted domain values.
+- [ ] Selectable-card hover/focus motion holds one direction without jitter, click selection fires
+      once, and reduced motion retains immediate selection plus visible focus without tilt/flip.
 - [ ] Visible labels exist for form controls; placeholders are not labels.
 - [ ] Dialog focus containment, Escape close and trigger-focus return checked.
 - [ ] Important regions and controls have stable `data-pd-id` identifiers.
@@ -52,6 +54,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       intersect, preserve canonical row gaps, and keep focus indicators unobscured through reflow.
 - [ ] Peer-row labels and control top edges align, and secondary/action-row wrapping cannot shift
       only one peer field out of alignment.
+- [ ] Conditional session/hand fields use semantic rows outside the primary table/card composition,
+      so appearing fields cannot displace or misalign the primary content.
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
 - [ ] Flex/grid ancestors around wide content use `min-width: 0` where required.

@@ -18,7 +18,7 @@ durable requirements.
   snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `8b9d618` on `main`.
+- Current implementation base before this tranche: `9905bbd` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -121,6 +121,11 @@ durable requirements.
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
   labels share the canonical calculator label hierarchy.
+- Blackjack session controls now form an explicit grid above the card table: mode/table type, then
+  Free Play or Live Play money rows. Live Dealer is the canonical binary M3 switch over the existing
+  `digital_rng`/`live_dealer` values. Blocked mode changes remain unchanged and show the associated
+  sentence-case error for four seconds. Shared Blackjack cards hold one hover/focus tilt direction,
+  flip once on selection, suppress repeat callbacks during the flip and remain static under reduced motion.
 - Blackjack top controls now use three explicit grid rows: Deal Again/Reset Hand, hand count/Surrender,
   then Soft 17 at the right, with no spacer element and deliberate container-width reflow. The banner's
   icon-only Undo uses the canonical centred icon box and remains outside layout flow. One responsive size/aspect token materially enlarges

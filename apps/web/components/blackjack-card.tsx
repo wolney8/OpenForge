@@ -1,10 +1,14 @@
 "use client";
 
-import { forwardRef, type KeyboardEventHandler, type MouseEventHandler } from "react";
+import { forwardRef, type KeyboardEventHandler, type MouseEventHandler, useCallback, useEffect, useRef, useState } from "react";
 
 import { type BlackjackCardValue } from "@/lib/blackjack-ranks";
 
 const suits = ["♠", "♥", "♣", "♦"] as const;
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 function PipArtwork({ rank, suit, variant }: { rank: Exclude<BlackjackCardValue, "">; suit: string; variant: number }) {
   const numeric = Number(rank);
@@ -36,15 +40,64 @@ export const BlackjackCard = forwardRef<HTMLButtonElement, {
   role?: "button" | "radio";
   selected?: boolean;
   tabIndex?: number;
-}>(({ ariaLabel, className = "", disabled = false, onClick, onKeyDown, rank, role = "button", selected = false, tabIndex }, ref) => (
-  <button
+}>(({ ariaLabel, className = "", disabled = false, onClick, onKeyDown, rank, role = "button", selected = false, tabIndex }, ref) => {
+  const [tiltDirection, setTiltDirection] = useState<"left" | "right" | null>(null);
+  const [flipping, setFlipping] = useState(false);
+  const flipTimer = useRef<number | null>(null);
+  const flipLocked = useRef(false);
+  const previousRank = useRef(rank);
+  const nextTiltDirection = useRef<"left" | "right">(rank && rank.charCodeAt(0) % 2 === 0 ? "left" : "right");
+
+  const startFlip = useCallback(() => {
+    if (prefersReducedMotion()) return;
+    if (flipTimer.current !== null) window.clearTimeout(flipTimer.current);
+    flipLocked.current = true;
+    setFlipping(true);
+    flipTimer.current = window.setTimeout(() => {
+      flipLocked.current = false;
+      setFlipping(false);
+      flipTimer.current = null;
+    }, 340);
+  }, []);
+
+  function beginTilt() {
+    if (prefersReducedMotion()) return;
+    setTiltDirection((current) => {
+      if (current) return current;
+      const next = nextTiltDirection.current;
+      nextTiltDirection.current = next === "left" ? "right" : "left";
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (previousRank.current !== rank) {
+      previousRank.current = rank;
+      startFlip();
+    }
+  }, [rank, startFlip]);
+
+  useEffect(() => () => {
+    if (flipTimer.current !== null) window.clearTimeout(flipTimer.current);
+  }, []);
+
+  return <button
     aria-checked={role === "radio" ? selected : undefined}
     aria-label={ariaLabel}
     aria-pressed={role === "button" ? selected : undefined}
-    className={`blackjack-card ${rank ? "is-face" : "is-back"}${selected ? " is-selected" : ""}${className ? ` ${className}` : ""}`}
+    className={`blackjack-card ${rank ? "is-face" : "is-back"}${selected ? " is-selected" : ""}${flipping ? " is-flipping" : ""}${className ? ` ${className}` : ""}`}
+    data-motion-direction={tiltDirection ?? undefined}
     disabled={disabled}
-    onClick={onClick}
+    onBlur={(event) => { if (!event.currentTarget.matches(":hover")) setTiltDirection(null); }}
+    onClick={(event) => {
+      if (flipLocked.current) return;
+      startFlip();
+      onClick(event);
+    }}
+    onFocus={beginTilt}
     onKeyDown={onKeyDown}
+    onPointerEnter={beginTilt}
+    onPointerLeave={(event) => { if (document.activeElement !== event.currentTarget) setTiltDirection(null); }}
     ref={ref}
     role={role}
     tabIndex={tabIndex}
@@ -69,7 +122,7 @@ export const BlackjackCard = forwardRef<HTMLButtonElement, {
         </>
       )}
     </svg>
-  </button>
-));
+  </button>;
+});
 
 BlackjackCard.displayName = "BlackjackCard";

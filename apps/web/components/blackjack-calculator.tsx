@@ -104,7 +104,7 @@ function emptyRound(handNumber: number, surrender = false, soft17Rule: Soft17Rul
 function emptySessionDetails(mode: BlackjackSessionMode = "simulation"): BlackjackSessionDetails {
   return {
     endingBalance: "", freeCreditValue: "", lastStake: "", mode, startedAt: "",
-    startingBalance: "", tableType: "", withdrawableResult: "",
+    startingBalance: "", tableType: mode === "simulation" ? "" : "digital_rng", withdrawableResult: "",
   };
 }
 
@@ -354,6 +354,12 @@ export function BlackjackCalculator({ onState, search }: {
   }, [details, history, historyOpen, round, storageReady]);
 
   useEffect(() => {
+    if (!sessionModeError) return;
+    const timer = window.setTimeout(() => setSessionModeError(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [sessionModeError]);
+
+  useEffect(() => {
     if (!lastHand || !lastHandIsDismissing || dismissedLastHandNumber === lastHand.handNumber) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setDismissedLastHandNumber(lastHand.handNumber), reduceMotion ? 0 : 260);
@@ -490,7 +496,7 @@ export function BlackjackCalculator({ onState, search }: {
     const nextMode = mode as BlackjackSessionMode;
     const hasHandActivity = history.length > 0 || round.dealer !== "" || round.hands.some((hand) => hand.actions.length > 0 || hand.cards.some(Boolean));
     if (hasHandActivity) {
-      setSessionModeError("Reset Session before changing the Blackjack session mode.");
+      setSessionModeError("Reset session before changing the Blackjack session mode.");
       return;
     }
     setSessionModeError("");
@@ -498,7 +504,7 @@ export function BlackjackCalculator({ onState, search }: {
       ...emptySessionDetails(nextMode),
       mode: nextMode,
       startedAt: new Date().toISOString(),
-      tableType: nextMode === "simulation" ? "" : current.tableType,
+      tableType: nextMode === "simulation" ? "" : current.tableType || "digital_rng",
     }));
     setRound(emptyRound(1, round.surrender, round.soft17Rule));
   }
@@ -663,30 +669,37 @@ export function BlackjackCalculator({ onState, search }: {
           </div>
         </section>
 
-        <section className="calculator-band calculator-band-secondary stack blackjack-session-mode" data-pd-id="calculators.blackjack.session-mode">
-          <div className="blackjack-session-mode-row">
-            <label className="field-control blackjack-session-mode-field">
-              <span>Session mode</span>
-              <select aria-describedby={sessionModeError ? "blackjack-session-mode-error" : undefined} aria-invalid={sessionModeError ? "true" : undefined} aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
-                <option value="simulation">Simulation</option>
-                <option value="free_play">Free Play</option>
-                <option value="live_play">Live Play</option>
-              </select>
-              {sessionModeError ? <span className="error-text" id="blackjack-session-mode-error" role="alert">{sessionModeError}</span> : null}
-            </label>
-            <span className="table-chip">{details.mode === "simulation" ? "Not convertible" : "Eligible for later conversion"}</span>
+        <section className="calculator-band calculator-band-secondary blackjack-session-mode" data-pd-id="calculators.blackjack.session-mode">
+          <div className="blackjack-session-control-grid">
+            <div className="blackjack-session-mode-cell">
+              <label className="field-control blackjack-session-mode-field">
+                <span>Session mode</span>
+                <select aria-describedby={sessionModeError ? "blackjack-session-mode-error" : undefined} aria-invalid={sessionModeError ? "true" : undefined} aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
+                  <option value="simulation">Simulation</option>
+                  <option value="free_play">Free Play</option>
+                  <option value="live_play">Live Play</option>
+                </select>
+                {sessionModeError ? <span className="error-text" id="blackjack-session-mode-error" role="alert">{sessionModeError}</span> : null}
+              </label>
+              <span className="table-chip">{details.mode === "simulation" ? "Not convertible" : "Eligible for later conversion"}</span>
+            </div>
+            {details.mode !== "simulation" ? <div className="field-control blackjack-table-type-field"><span>Live Dealer</span><button aria-checked={details.tableType === "live_dealer"} aria-label="Live Dealer table" className={`material-switch${details.tableType === "live_dealer" ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.table-type" onClick={() => updateDetail("tableType", details.tableType === "live_dealer" ? "digital_rng" : "live_dealer")} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{details.tableType === "live_dealer" ? "Live Dealer" : "Digital / RNG"}</span></button></div> : null}
+            {freePlay ? <>
+              <FinancialInputField dataPdId="calculators.blackjack.free-credit" error={moneyInputError(details.freeCreditValue, "Free credit value")} help="Free credit is not user cash stake." id="blackjack-free-credit" label="Free credit / chip value (optional)" onChange={(value) => updateDetail("freeCreditValue", value)} value={details.freeCreditValue} />
+              <FinancialInputField dataPdId="calculators.blackjack.withdrawable-result" error={moneyInputError(details.withdrawableResult, "Withdrawable result")} help="Enter only real cash or withdrawable value produced." id="blackjack-withdrawable-result" label="Cash / withdrawable result (optional)" onChange={(value) => updateDetail("withdrawableResult", value)} value={details.withdrawableResult} />
+            </> : null}
+            {livePlay ? <>
+              <FinancialInputField dataPdId="calculators.blackjack.starting-balance" error={moneyInputError(details.startingBalance, "Starting balance")} help="Enter the reviewed balance before play." id="blackjack-starting-balance" label="Session starting balance" onChange={(value) => updateDetail("startingBalance", value)} value={details.startingBalance} />
+              <FinancialInputField dataPdId="calculators.blackjack.ending-balance" error={moneyInputError(details.endingBalance, "Ending balance")} help="Enter the reviewed balance after play." id="blackjack-ending-balance" label="Session ending balance" onChange={(value) => updateDetail("endingBalance", value)} value={details.endingBalance} />
+              <FinancialInputField dataPdId="calculators.blackjack.stake" error={moneyInputError(activeHand.startingStake, "Stake")} help="Committed stake follows actions actually recorded." id="blackjack-hand-stake" label="Player stake" onChange={(value) => { updateActiveHandMoney({ startingStake: value }); setDetails((current) => ({ ...current, lastStake: value })); }} value={activeHand.startingStake} />
+              <FinancialInputField dataPdId="calculators.blackjack.actual-return" error={moneyInputError(activeHand.actualReturn, "Actual return")} help="Include returned stake; no return is inferred from outcome." id="blackjack-actual-return" label="Actual return (optional)" onChange={(value) => updateActiveHandMoney({ actualReturn: value })} value={activeHand.actualReturn} />
+              <FinancialValueReplayGroup><div className="blackjack-session-summary-row">
+                {balanceResult !== null ? <div className="blackjack-session-result"><span>Session result</span>{balanceResult === "0.00" ? <output aria-label="Session result: £ 0.00" className="financial-value financial-value-neutral">£ 0.00</output> : <FinancialValue label="Session result" showPositiveSign value={balanceResult} />}</div> : null}
+                {committedStake(activeHand) !== null ? <div className="blackjack-session-result"><span>Committed stake</span><FinancialValue label="Committed stake" tone="inherit" value={committedStake(activeHand)!} /></div> : null}
+                {reconciliationDifference !== null && reconciliationDifference !== "0.00" ? <p className="calculator-section-guidance">Recorded hand activity differs from balance movement by <FinancialValue showPositiveSign tone="inherit" value={reconciliationDifference} />.</p> : null}
+              </div></FinancialValueReplayGroup>
+            </> : null}
           </div>
-          {details.mode !== "simulation" ? <div className="field-control blackjack-table-type-field"><span>Table type (optional)</span><CalculatorSegmentedControl ariaLabel="Blackjack table type" dataPdId="calculators.blackjack.table-type" onChange={(value) => updateDetail("tableType", value)} options={[{ label: "Digital / RNG", value: "digital_rng" }, { label: "Live Dealer", value: "live_dealer" }]} value={details.tableType} /></div> : null}
-          {freePlay ? <div className="form-grid financial-input-grid blackjack-session-money-grid">
-            <FinancialInputField dataPdId="calculators.blackjack.free-credit" error={moneyInputError(details.freeCreditValue, "Free credit value")} help="Free credit is not user cash stake." id="blackjack-free-credit" label="Free credit / chip value (optional)" onChange={(value) => updateDetail("freeCreditValue", value)} value={details.freeCreditValue} />
-            <FinancialInputField dataPdId="calculators.blackjack.withdrawable-result" error={moneyInputError(details.withdrawableResult, "Withdrawable result")} help="Enter only real cash or withdrawable value produced." id="blackjack-withdrawable-result" label="Cash / withdrawable result (optional)" onChange={(value) => updateDetail("withdrawableResult", value)} value={details.withdrawableResult} />
-          </div> : null}
-          {livePlay ? <FinancialValueReplayGroup><div className="form-grid financial-input-grid blackjack-session-money-grid">
-            <FinancialInputField dataPdId="calculators.blackjack.starting-balance" error={moneyInputError(details.startingBalance, "Starting balance")} help="Enter the reviewed balance before play." id="blackjack-starting-balance" label="Session starting balance" onChange={(value) => updateDetail("startingBalance", value)} value={details.startingBalance} />
-            <FinancialInputField dataPdId="calculators.blackjack.ending-balance" error={moneyInputError(details.endingBalance, "Ending balance")} help="Enter the reviewed balance after play." id="blackjack-ending-balance" label="Session ending balance" onChange={(value) => updateDetail("endingBalance", value)} value={details.endingBalance} />
-            {balanceResult !== null ? <div className="blackjack-session-result"><span>Session result</span>{balanceResult === "0.00" ? <output aria-label="Session result: £ 0.00" className="financial-value financial-value-neutral">£ 0.00</output> : <FinancialValue label="Session result" showPositiveSign value={balanceResult} />}</div> : null}
-            {reconciliationDifference !== null && reconciliationDifference !== "0.00" ? <p className="calculator-section-guidance field-span-2">Recorded hand activity differs from balance movement by <FinancialValue showPositiveSign tone="inherit" value={reconciliationDifference} />.</p> : null}
-          </div></FinancialValueReplayGroup> : null}
         </section>
 
         <section className="calculator-band calculator-band-secondary blackjack-table" data-pd-id="calculators.blackjack.table">
@@ -714,11 +727,6 @@ export function BlackjackCalculator({ onState, search }: {
           </div>
           <div className="blackjack-table-side blackjack-player-side">
             <div className="blackjack-player-heading"><h3>Player</h3></div>
-            {livePlay ? <div className="form-grid financial-input-grid blackjack-hand-money-grid">
-              <FinancialInputField dataPdId="calculators.blackjack.stake" error={moneyInputError(activeHand.startingStake, "Stake")} help="Committed stake follows actions actually recorded." id="blackjack-hand-stake" label="Stake" onChange={(value) => { updateActiveHandMoney({ startingStake: value }); setDetails((current) => ({ ...current, lastStake: value })); }} value={activeHand.startingStake} />
-              <FinancialInputField dataPdId="calculators.blackjack.actual-return" error={moneyInputError(activeHand.actualReturn, "Actual return")} help="Include returned stake; no return is inferred from outcome." id="blackjack-actual-return" label="Actual return (optional)" onChange={(value) => updateActiveHandMoney({ actualReturn: value })} value={activeHand.actualReturn} />
-              {committedStake(activeHand) !== null ? <div className="blackjack-session-result"><span>Committed stake</span><FinancialValue label="Committed stake" tone="inherit" value={committedStake(activeHand)!} /></div> : null}
-            </div> : null}
             {round.hands.length > 1 ? <CalculatorSegmentedControl ariaLabel="Active split hand" dataPdId="calculators.blackjack.split-hands" onChange={(activeHandId) => { updateRound({ activeHandId }, false); const hand = round.hands.find((item) => item.id === activeHandId); const index = hand?.cards.findIndex((card) => card === "") ?? -1; if (index >= 0) setCardTarget({ handId: activeHandId, index, kind: "hand" }); }} options={round.hands.map((hand) => ({ label: hand.label, value: hand.id }))} value={round.activeHandId} /> : null}
             <div className="blackjack-card-row">
               {activeHand.cards.map((card, index) => <BlackjackCardSlot active={cardTarget.kind === "hand" && cardTarget.handId === activeHand.id && cardTarget.index === index} disabled={terminalStatuses.includes(activeHand.status)} key={`${activeHand.id}-${index}`} label={`${activeHand.label} card ${index + 1}`} onActivate={() => setCardTarget({ handId: activeHand.id, index, kind: "hand" })} value={card} />)}

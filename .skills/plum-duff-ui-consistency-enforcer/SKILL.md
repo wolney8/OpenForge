@@ -149,6 +149,12 @@ use the canonical primitive and computed styling.
   canonical segmented control.
 - Time-critical rank-only selectors use one direct, single-action control per authoritative value;
   decorative variants must not multiply choices, enter domain state or increase interaction depth.
+- Shared selectable-card motion chooses one restrained tilt direction when hover/focus begins and
+  holds it until exit; selection may flip once without delaying or duplicating the domain callback.
+  Reduced motion removes lift, tilt and flip while preserving selection and focus treatment.
+- Session and hand financial controls that would disturb a primary table/card composition belong in
+  an explicit semantic grid above that content. Conditional rows must not change the alignment or
+  dimensions of the primary content beneath them.
 - High-frequency dual-pane tools respond to their containing surface, not only the browser viewport;
   cards, actions and controls reflow without page overflow at half-window widths and text scaling.
 - Operational disclosures use the shared semantic details/summary pattern. When open state is
