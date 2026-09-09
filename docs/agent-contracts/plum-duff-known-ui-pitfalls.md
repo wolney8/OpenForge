@@ -974,7 +974,8 @@ cause, prevention rule and regression test.
   controls and card selectors retained oversized/box-like composition instead of their own semantics.
 - Prevention: shared controls use product-neutral names; true rules use compact M3 Switches, and
   time-critical card entry is verified as a one-click portrait-card selector with distinct dealer and
-  player regions.
+  player regions. Picker and displayed cards share one responsive size/aspect token, and card-face
+  surfaces use theme-specific semantic colours rather than carrying bright paper into dark mode.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks switch geometry, help, card aspect,
   direct rank selection, repeated Hit continuation, recommendation/action prominence and themes.
 

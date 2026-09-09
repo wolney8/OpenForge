@@ -145,6 +145,10 @@ use the canonical primitive and computed styling.
   canonical segmented control.
 - Time-critical rank-only selectors use one direct, single-action control per authoritative value;
   decorative variants must not multiply choices, enter domain state or increase interaction depth.
+- A shared visual primitive representing the same semantic object in picker and display contexts uses
+  one aspect/size token at each responsive state; composed layouts must not quietly shrink one context.
+- Theme-aware illustrative controls use semantic surfaces and foregrounds for each theme; a light-mode
+  paper or panel surface must not become an unreviewed glare source in dark mode.
 - Help affordances use the canonical icon and keep their tooltip/popover anchored beside the trigger
   through scrolling and responsive reflow; theme contrast and focus are verified on the composed UI.
 - Calculator pop-outs use the authenticated minimal shell rather than hiding full application chrome

@@ -12,11 +12,11 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack is in its final user-recheck pass;
-  its calculation matrices are unchanged. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's final visual acceptance pass is
+  code-verified locally and pending Will's recheck; its calculation matrices are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `43954ffb3d5be7877236f7ba3ffc199c1fbc28cd` on `main`.
+- Current implementation base before this tranche: `7afb80fe29ce3a15a52cc0c62ac7d9552e9484f7` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -95,8 +95,11 @@ durable requirements.
 
 ## What changed
 
-- Blackjack now uses one original shared vector card for the 13-rank picker, dealer/player cards and
-  empty/add-card backs. Stake/accounting was removed; completed and split hands retain explicit
+- Blackjack now groups Deal Again/count at the left, its two M3 rule controls centrally and Reset
+  Hand at the right, with logical narrow reflow. One responsive size/aspect token materially enlarges
+  the 13-rank picker, dealer/player cards and empty/add-card backs; dark mode now uses a tokenised
+  charcoal face and high-contrast rank/suit treatment rather than white-card glare. Stake/accounting
+  remains removed; completed and split hands retain explicit
   session-only outcomes which do not grade strategy recommendations. The M3 rule switches retain
   their proven booleans, shared help is anchored to its trigger, and Deal Again has a prominent tonal
   action. Authoritative logout/expiry still clears session history. User/hosted acceptance remains
@@ -135,10 +138,11 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Blackjack Strategy**. With Surrender enabled, enter dealer
-   `10` and player `10, 5`; expect **Surrender**, record it, and inspect the retained history row.
-2. Open the current calculator in a new tab. Expect the current family/input state in the lean shell
-   with only its title, calculator controls and theme toggle; no normal app navigation or Profiles.
+1. Open **Fund Manager → Calculators → Blackjack Strategy** in dark and light themes. Confirm Deal
+   Again/count sit left, the rule controls remain central, Reset Hand sits right, and every picker,
+   dealer and player card uses the same enlarged scale without dark-theme glare.
+2. Narrow the browser and increase text size. Confirm the header reflows logically, cards scale
+   together, the deck stays contained, and keyboard focus remains visible.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

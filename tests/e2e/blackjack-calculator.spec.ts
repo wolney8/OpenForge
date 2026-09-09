@@ -49,6 +49,24 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   await expect(page.getByRole("switch", { name: "Surrender allowed" })).toHaveAttribute("aria-checked", "false");
   await expect(page.getByRole("switch", { name: "Dealer hits Soft 17" })).toHaveAttribute("aria-checked", "false");
 
+  const header = page.locator(".blackjack-top-rule-bar");
+  const sessionPrimary = page.locator('[data-pd-id="calculators.blackjack.session-primary"]');
+  const ruleControls = page.locator('[data-pd-id="calculators.blackjack.rule-controls"]');
+  const sessionReset = page.locator('[data-pd-id="calculators.blackjack.session-reset"]');
+  const dealAgain = page.getByRole("button", { name: "Deal Again" });
+  const sessionCount = page.getByText("You have played 0 hands", { exact: true });
+  const resetHand = page.locator('[data-pd-id="calculators.blackjack.reset-hand"]');
+  const [headerBox, primaryBox, rulesBox, resetBox, dealBox, countBox, resetButtonBox] = await Promise.all([
+    header.boundingBox(), sessionPrimary.boundingBox(), ruleControls.boundingBox(), sessionReset.boundingBox(),
+    dealAgain.boundingBox(), sessionCount.boundingBox(), resetHand.boundingBox(),
+  ]);
+  expect(Math.abs((dealBox?.x ?? 0) - (headerBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((countBox?.x ?? 0) - (dealBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect((countBox?.y ?? 0)).toBeGreaterThanOrEqual((dealBox?.y ?? 0) + (dealBox?.height ?? 0));
+  expect((rulesBox?.x ?? 0)).toBeGreaterThan((primaryBox?.x ?? 0) + (primaryBox?.width ?? 0));
+  expect((resetBox?.x ?? 0)).toBeGreaterThan((rulesBox?.x ?? 0) + (rulesBox?.width ?? 0));
+  expect(Math.abs(((resetButtonBox?.x ?? 0) + (resetButtonBox?.width ?? 0)) - ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)))).toBeLessThanOrEqual(1);
+
   const surrenderHelp = page.getByRole("button", { name: "Help with Surrender allowed" });
   await surrenderHelp.click();
   const surrenderTooltip = page.getByText("Check the game Help or Rules. If surrender is not stated, leave this set to No.");
@@ -62,6 +80,18 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   const pickerCard = picker.getByRole("radio", { name: "Queen" });
   await expect(pickerCard.locator("svg.blackjack-card-art")).toHaveCount(1);
   const pickerBox = await pickerCard.boundingBox();
+  expect(pickerBox?.width ?? 0).toBeGreaterThanOrEqual(110);
+  expect(Math.abs(((pickerBox?.width ?? 0) / (pickerBox?.height ?? 1)) - (5 / 7))).toBeLessThanOrEqual(0.02);
+  const pickerBounds = await picker.boundingBox();
+  const firstPickerBox = await picker.getByRole("radio").nth(0).boundingBox();
+  const seventhPickerBox = await picker.getByRole("radio").nth(6).boundingBox();
+  expect(((seventhPickerBox?.x ?? 0) + (seventhPickerBox?.width ?? 0)) - (firstPickerBox?.x ?? 0)).toBeGreaterThanOrEqual((pickerBounds?.width ?? 0) * 0.85);
+  const firstPicker = picker.getByRole("radio").first();
+  await firstPicker.focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(firstPicker).toBeFocused();
+  expect(await firstPicker.evaluate((node) => getComputedStyle(node).outlineStyle)).not.toBe("none");
   await pickerCard.hover();
   expect(await pickerCard.locator(".blackjack-card-decoration").first().evaluate((node) => getComputedStyle(node).animationName)).toContain("blackjack-card-art-cycle");
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -74,6 +104,10 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   expect(Math.abs((pickerBox?.height ?? 0) - (dealerBox?.height ?? 0))).toBeLessThanOrEqual(1);
 
   await chooseRank(page, "Player card 1", "6");
+  const playerCard = page.getByRole("button", { name: "Player card 1, 6 selected" });
+  const playerBox = await playerCard.boundingBox();
+  expect(Math.abs((pickerBox?.width ?? 0) - (playerBox?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((pickerBox?.height ?? 0) - (playerBox?.height ?? 0))).toBeLessThanOrEqual(1);
   await chooseRank(page, "Player card 2", "5");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("DOUBLE");
   expect(strategyPayloads.at(-1)?.player_cards).toEqual(["6", "5"]);
@@ -85,7 +119,6 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   await outcome.getByRole("button", { name: "Win" }).click();
   await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
 
-  const dealAgain = page.getByRole("button", { name: "Deal Again" });
   const dealStyle = await dealAgain.evaluate((node) => ({ weight: getComputedStyle(node).fontWeight, height: node.getBoundingClientRect().height, background: getComputedStyle(node).backgroundColor }));
   expect(Number(dealStyle.weight)).toBeGreaterThanOrEqual(700);
   expect(dealStyle.height).toBeGreaterThanOrEqual(44);
@@ -119,13 +152,41 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   if (process.env.BLACKJACK_E2E_SCREENSHOT_PATH) {
     await page.locator('[data-pd-id="calculators.blackjack"]').screenshot({ path: process.env.BLACKJACK_E2E_SCREENSHOT_PATH });
   }
-  const startingTheme = await page.locator("html").getAttribute("data-theme");
-  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", startingTheme === "dark" ? "light" : "dark");
-  await expect(page.locator(".blackjack-card-paper").first()).toBeVisible();
+  const themeToggle = page.locator('[data-pd-id="app-shell.theme-toggle"]');
+  if (await page.locator("html").getAttribute("data-theme") !== "dark") await themeToggle.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const renderedFaceCard = page.locator(".blackjack-card:has(.blackjack-card-paper)").first();
+  const darkCardPresentation = await renderedFaceCard.evaluate((node) => {
+    const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const luminance = (value: string) => {
+      const channels = parse(value).map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const paper = getComputedStyle(node.querySelector(".blackjack-card-paper")!).fill;
+    const ink = getComputedStyle(node.querySelector(".blackjack-card-main-rank")!).fill;
+    const light = Math.max(luminance(paper), luminance(ink));
+    const dark = Math.min(luminance(paper), luminance(ink));
+    return { contrast: (light + 0.05) / (dark + 0.05), paper };
+  });
+  expect(darkCardPresentation.contrast).toBeGreaterThanOrEqual(4.5);
+  expect(darkCardPresentation.paper).not.toBe("rgb(255, 255, 255)");
+  await themeToggle.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const lightPaper = await renderedFaceCard.locator(".blackjack-card-paper").evaluate((node) => getComputedStyle(node).fill);
+  expect(lightPaper).not.toBe(darkCardPresentation.paper);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("html").evaluate((node) => { node.style.fontSize = "125%"; });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  const narrowPickerCard = page.locator(".blackjack-rank-picker .blackjack-card").first();
+  const narrowDisplayCards = page.locator(".blackjack-card.blackjack-card-slot");
+  const [narrowPickerBox, narrowDealerBox, narrowPlayerBox] = await Promise.all([
+    narrowPickerCard.boundingBox(), narrowDisplayCards.nth(0).boundingBox(), narrowDisplayCards.nth(1).boundingBox(),
+  ]);
+  expect(Math.abs((narrowPickerBox?.width ?? 0) - (narrowDealerBox?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((narrowPickerBox?.width ?? 0) - (narrowPlayerBox?.width ?? 0))).toBeLessThanOrEqual(1);
 });
 
 test("retains Blackjack state on refresh and clears it only after authoritative expiry", async ({ page }) => {
