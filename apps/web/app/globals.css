@@ -9114,6 +9114,17 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 1rem;
 }
 
+.blackjack-player-region {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.78fr);
+  min-width: 0;
+}
+
+.blackjack-player-region > * {
+  min-width: 0;
+}
+
 .blackjack-table-side h3,
 .blackjack-section-heading h3 {
   margin: 0;
@@ -9357,6 +9368,27 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
   .blackjack-table {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .blackjack-player-region {
+    display: contents;
+  }
+
+  .blackjack-player-action-panel {
+    grid-column: 1 / -1;
+    order: -2;
+  }
+
+  .blackjack-dealer-side {
+    order: -1;
+  }
+
+  .blackjack-player-side {
+    order: 0;
+  }
+
+  .blackjack-rank-picker-shell {
+    order: 1;
   }
 
   .blackjack-top-rule-bar { grid-template-columns: minmax(0, 1fr); }

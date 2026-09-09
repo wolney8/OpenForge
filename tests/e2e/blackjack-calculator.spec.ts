@@ -95,7 +95,15 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await chooseRank(page, "Player card 2", "5");
   await expect(page.locator(".blackjack-suggested-action")).toContainText("DOUBLE");
   const playerResult = page.locator('[data-pd-id="calculators.blackjack.result"]');
-  await expect(playerResult.locator("xpath=ancestor::*[contains(@class, 'blackjack-player-side')]")).toHaveCount(1);
+  const playerRegion = page.locator('[data-pd-id="calculators.blackjack.player-region"]');
+  const playerCards = playerRegion.locator(".blackjack-player-side");
+  await expect(playerResult.locator("xpath=ancestor::*[contains(@class, 'blackjack-player-region')]")).toHaveCount(1);
+  const [playerRegionBox, playerCardsBox, playerResultBox] = await Promise.all([
+    playerRegion.boundingBox(), playerCards.boundingBox(), playerResult.boundingBox(),
+  ]);
+  expect(Math.abs((playerCardsBox?.y ?? 0) - (playerResultBox?.y ?? 0))).toBeLessThanOrEqual(1);
+  expect((playerResultBox?.x ?? 0)).toBeGreaterThanOrEqual((playerCardsBox?.x ?? 0) + (playerCardsBox?.width ?? 0));
+  expect((playerResultBox?.x ?? 0) + (playerResultBox?.width ?? 0)).toBeLessThanOrEqual((playerRegionBox?.x ?? 0) + (playerRegionBox?.width ?? 0) + 1);
   await page.getByRole("button", { name: "Suggested action Double" }).click();
   await expect(committed).toHaveAttribute("aria-label", /£ 10\.00/);
   await chooseRank(page, "Player card 3", "9");
@@ -263,6 +271,12 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("html").evaluate((node) => { node.style.fontSize = "125%"; });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  const narrowAction = page.locator('[data-pd-id="calculators.blackjack.result"]');
+  const narrowDealer = page.locator(".blackjack-dealer-side");
+  const [narrowActionBox, narrowDealerRegionBox] = await Promise.all([narrowAction.boundingBox(), narrowDealer.boundingBox()]);
+  expect((narrowActionBox?.y ?? 999)).toBeLessThan(narrowDealerRegionBox?.y ?? 0);
+  expect(Math.abs((narrowActionBox?.x ?? 0) - (narrowDealerRegionBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs(((narrowActionBox?.x ?? 0) + (narrowActionBox?.width ?? 0)) - ((narrowDealerRegionBox?.x ?? 0) + (narrowDealerRegionBox?.width ?? 0)))).toBeLessThanOrEqual(1);
   const narrowPickerCard = page.locator(".blackjack-rank-picker .blackjack-card").first();
   const narrowDisplayCards = page.locator(".blackjack-card.blackjack-card-slot");
   const [narrowPickerBox, narrowDealerBox, narrowPlayerBox] = await Promise.all([
