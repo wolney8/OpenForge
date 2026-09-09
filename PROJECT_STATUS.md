@@ -30,6 +30,8 @@ durable requirements.
 - Current Blackjack evidence is synced to [#40](https://github.com/wolney8/OpenForge/issues/40#issuecomment-5608374894)
   and [#36](https://github.com/wolney8/OpenForge/issues/36#issuecomment-5608375042). Earlier #77 evidence
   remains separate; neither issue is closed and Will's local acceptance is still required.
+- Evidence-comment sync for `923b375` to #40/#92/#36 is pending: no authenticated GitHub integration
+  is available in this session and `gh` is not installed. Local tracking retains the full tranche.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
