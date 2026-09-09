@@ -9189,6 +9189,52 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.8rem;
 }
 
+.blackjack-completion-group {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+  min-width: 0;
+}
+
+@media (min-width: 761px) {
+  .blackjack-player-action-panel.is-complete {
+    grid-template-rows: auto minmax(4.75rem, auto) auto;
+  }
+
+  .blackjack-player-action-panel.is-complete .blackjack-recommendation-summary,
+  .blackjack-player-action-panel.is-complete .blackjack-completion-group {
+    display: contents;
+  }
+
+  .blackjack-player-action-panel.is-complete .blackjack-hand-summary {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .blackjack-player-action-panel.is-complete .blackjack-suggested-action {
+    align-self: center;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .blackjack-player-action-panel.is-complete .blackjack-completion-group > .field-hint {
+    align-self: center;
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .blackjack-player-action-panel.is-complete .blackjack-outcome-group,
+  .blackjack-player-action-panel.is-complete .blackjack-recorded-outcome {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
+
+.blackjack-completion-group > .field-hint,
+.blackjack-completion-group > .blackjack-recorded-outcome {
+  margin: 0;
+}
+
 .blackjack-recommendation-summary {
   display: grid;
   gap: 0.45rem;
@@ -9283,10 +9329,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  grid-column: 1 / -1;
 }
 
-.blackjack-recorded-outcome { grid-column: 1 / -1; margin: 0; }
+.blackjack-recorded-outcome { margin: 0; }
 
 .blackjack-result-pending {
   grid-template-columns: minmax(0, 1fr);

@@ -230,10 +230,12 @@ export function BlackjackCalculator({ onState, search }: {
   const [preview, setPreview] = useState<RulePreview | null>(null);
   const [cardTarget, setCardTarget] = useState<CardTarget>({ kind: "dealer" });
   const [error, setError] = useState("");
+  const [sessionModeError, setSessionModeError] = useState("");
   const [storageReady, setStorageReady] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const requestVersion = useRef(0);
   const abort = useRef<AbortController | null>(null);
+  const outcomeSubmission = useRef("");
   const activeHand = round.hands.find((hand) => hand.id === round.activeHandId) ?? round.hands[0];
   const selectedCards = useMemo(() => activeHand.cards.filter(isBlackjackCard), [activeHand.cards]);
   const hasPendingCard = activeHand.cards.some((card) => card === "");
@@ -279,6 +281,7 @@ export function BlackjackCalculator({ onState, search }: {
       setRound(emptyRound(1));
       setDetails(emptySessionDetails());
       setPreview(null);
+      setSessionModeError("");
       setCardTarget({ kind: "dealer" });
     };
     window.addEventListener(AUTHENTICATED_SESSION_ENDED_EVENT, clearSession);
@@ -371,7 +374,9 @@ export function BlackjackCalculator({ onState, search }: {
       setHistory((entries) => entries.some((entry) => entry.handNumber === round.handNumber)
         ? entries
         : [...entries, historyEntry(round, details)]);
-      setRound((current) => ({ ...current, archived: true }));
+      setRound(emptyRound(round.handNumber + 1, round.surrender, round.soft17Rule, details.mode === "live_play" ? details.lastStake : ""));
+      setPreview(null);
+      setCardTarget({ kind: "dealer" });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [details, round]);
@@ -416,10 +421,10 @@ export function BlackjackCalculator({ onState, search }: {
     const nextMode = mode as BlackjackSessionMode;
     const hasHandActivity = history.length > 0 || round.dealer !== "" || round.hands.some((hand) => hand.actions.length > 0 || hand.cards.some(Boolean));
     if (hasHandActivity) {
-      setError("Reset Session before changing the Blackjack session mode.");
+      setSessionModeError("Reset Session before changing the Blackjack session mode.");
       return;
     }
-    setError("");
+    setSessionModeError("");
     setDetails((current) => ({
       ...emptySessionDetails(nextMode),
       mode: nextMode,
@@ -486,7 +491,30 @@ export function BlackjackCalculator({ onState, search }: {
   }
 
   function recordOutcome(outcome: BlackjackOutcome) {
-    updateActiveHand((hand) => ({ ...hand, outcome }));
+    const submissionKey = `${round.handNumber}:${activeHand.id}`;
+    if (outcomeSubmission.current === submissionKey) return;
+    outcomeSubmission.current = submissionKey;
+
+    abort.current?.abort();
+    requestVersion.current += 1;
+    setPreview(null);
+    setError("");
+    const completedRound: BlackjackRound = {
+      ...round,
+      archived: false,
+      hands: round.hands.map((hand) => hand.id === round.activeHandId ? { ...hand, outcome } : hand),
+    };
+    const allHandsComplete = completedRound.hands.every((hand) => terminalStatuses.includes(hand.status) && hand.outcome !== "");
+    if (!allHandsComplete) {
+      setRound(completedRound);
+      return;
+    }
+
+    setHistory((entries) => entries.some((entry) => entry.handNumber === completedRound.handNumber)
+      ? entries
+      : [...entries, historyEntry(completedRound, details)]);
+    setRound(emptyRound(completedRound.handNumber + 1, completedRound.surrender, completedRound.soft17Rule, livePlay ? details.lastStake : ""));
+    setCardTarget({ kind: "dealer" });
   }
 
   function startFreshHand() {
@@ -549,11 +577,12 @@ export function BlackjackCalculator({ onState, search }: {
           <div className="blackjack-session-mode-row">
             <label className="field-control blackjack-session-mode-field">
               <span>Session mode</span>
-              <select aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
+              <select aria-describedby={sessionModeError ? "blackjack-session-mode-error" : undefined} aria-invalid={sessionModeError ? "true" : undefined} aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
                 <option value="simulation">Simulation</option>
                 <option value="free_play">Free Play</option>
                 <option value="live_play">Live Play</option>
               </select>
+              {sessionModeError ? <span className="error-text" id="blackjack-session-mode-error" role="alert">{sessionModeError}</span> : null}
             </label>
             <span className="table-chip">{details.mode === "simulation" ? "Not convertible" : "Eligible for later conversion"}</span>
           </div>
@@ -571,15 +600,14 @@ export function BlackjackCalculator({ onState, search }: {
         </section>
 
         <section className="calculator-band calculator-band-secondary blackjack-table" data-pd-id="calculators.blackjack.table">
-          {visiblePreview ? <section className={`blackjack-player-action-panel blackjack-recommendation-${visiblePreview.action.toLowerCase()}`} data-pd-id="calculators.blackjack.result">
+          {visiblePreview ? <section className={`blackjack-player-action-panel blackjack-recommendation-${visiblePreview.action.toLowerCase()}${terminalStatuses.includes(activeHand.status) ? " is-complete" : ""}`} data-pd-id="calculators.blackjack.result">
             <div className="blackjack-recommendation-summary">
               <div className="blackjack-hand-summary">Hand <strong>{visiblePreview.total}</strong> · {visiblePreview.hand_kind.toUpperCase()}</div>
               {visiblePreview.action !== "Bust" && legalActions.includes(visiblePreview.action) ? <button aria-describedby="blackjack-strategy-guidance" aria-label={`Suggested action ${visiblePreview.action}`} className="blackjack-suggested-action" onClick={() => takeAction(visiblePreview.action as BlackjackAction)} type="button"><small>Recommended</small><strong>{visiblePreview.action.toUpperCase()}</strong>{visiblePreview.fallback_action ? <em>Otherwise {visiblePreview.fallback_action}</em> : null}</button> : <div className="blackjack-suggested-action is-static"><small>Current hand</small><strong>{visiblePreview.action.toUpperCase()}</strong></div>}
             </div>
             {legalActions.length > 0 ? <div aria-label="Action taken" className="blackjack-action-group" role="group">
               {legalActions.map((action) => { const recommended = visiblePreview.action === action; return <button aria-describedby="blackjack-strategy-guidance" className={recommended ? "modal-primary-button" : "button-link"} data-recommended={recommended ? "true" : undefined} key={action} onClick={() => takeAction(action)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{action === "Hit" ? "touch_app" : action === "Stand" ? "front_hand" : action === "Double" ? "double_arrow" : action === "Split" ? "call_split" : "warning"}</span><span>{action}</span>{recommended ? <span className="sr-only"> (recommended)</span> : null}</button>; })}
-            </div> : <p className="field-hint">This player hand is complete.</p>}
-            {terminalStatuses.includes(activeHand.status) && !["Surrender", "Bust"].includes(activeHand.outcome) ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group"><span>Record outcome</span>{outcomeChoices.map((outcome) => <button aria-pressed={activeHand.outcome === outcome} className={`review-chip${activeHand.outcome === outcome ? " is-selected" : ""}`} key={outcome} onClick={() => recordOutcome(outcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}
+            </div> : <div className="blackjack-completion-group"><p className="field-hint">This player hand is complete.</p>{terminalStatuses.includes(activeHand.status) && !["Surrender", "Bust"].includes(activeHand.outcome) ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group"><span>Record outcome</span>{outcomeChoices.map((outcome) => <button className="review-chip" key={outcome} onClick={() => recordOutcome(outcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}</div>}
             <p className="sr-only" id="blackjack-strategy-guidance">Basic strategy minimises the house edge over time; it does not guarantee this hand will win.</p>
           </section> : <section aria-live="polite" className="blackjack-player-action-panel blackjack-result-pending" data-pd-id="calculators.blackjack.result-pending"><p>Choose the dealer card and all visible player cards to see the recommended move.</p></section>}
           <div className="blackjack-table-side blackjack-dealer-side">
@@ -613,7 +641,7 @@ export function BlackjackCalculator({ onState, search }: {
 
         <details className="calculator-band calculator-band-secondary stack blackjack-how-to" data-pd-id="calculators.blackjack.how-to"><summary>How to use</summary><div className="stack"><ol><li>Choose Simulation, Free Play or Live Play.</li><li>Enable Surrender only if the game rules allow it.</li><li>Enable Dealer hits Soft 17 only if the game rules say H17; otherwise leave it off.</li><li>Enter the dealer&apos;s visible card.</li><li>Enter your first two cards using the fast rank picker.</li><li>Follow or check the recommended basic-strategy move.</li><li>After Hit, enter the next card for the updated recommendation.</li></ol><p className="field-hint">Recommendations minimise the house edge over the long run; they do not guarantee an individual hand. Never take Insurance under this strategy.</p></div></details>
       </div>
-      <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
+      <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setSessionModeError(""); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
     </div>
   );
 }
