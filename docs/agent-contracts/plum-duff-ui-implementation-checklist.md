@@ -39,6 +39,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Text and meaningful non-text contrast checked.
 - [ ] Keyboard navigation and visible focus checked.
 - [ ] Every control has a context-specific accessible name.
+- [ ] Time-critical selectors expose authoritative choices directly; decorative variants are hidden
+      from assistive technology and never alter emitted domain values.
 - [ ] Visible labels exist for form controls; placeholders are not labels.
 - [ ] Dialog focus containment, Escape close and trigger-focus return checked.
 - [ ] Important regions and controls have stable `data-pd-id` identifiers.

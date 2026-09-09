@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
+import { clearAuthenticatedSessionState } from "@/lib/authenticated-session-state";
 
 type BootstrapState =
   | { status: "checking"; session: null; error: "" }
@@ -20,6 +21,7 @@ function requestAuthoritativeSession(): Promise<FundManagerSession | null> {
     credentials: "include",
   }).then(async (response) => {
     if (response.status === 401) {
+      clearAuthenticatedSessionState();
       window.location.replace("/login?error=session_expired");
       return null;
     }

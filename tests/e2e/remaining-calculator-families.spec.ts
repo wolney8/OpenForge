@@ -17,6 +17,12 @@ async function assertContained(page: import("@playwright/test").Page, selector: 
   })).toBe(true);
 }
 
+async function chooseBlackjackRank(page: import("@playwright/test").Page, slot: string, rank: string) {
+  const names: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
+  await page.getByRole("button", { name: new RegExp(`^${slot},`) }).click();
+  await page.getByRole("radiogroup", { name: `Choose ${slot}` }).getByRole("radio", { name: names[rank] ?? rank, exact: true }).click();
+}
+
 test("uses the source-backed accumulator, Dutching and Blackjack families without writes", async ({ page }) => {
   await mockSession(page);
   const writes: string[] = [];
@@ -69,23 +75,23 @@ test("uses the source-backed accumulator, Dutching and Blackjack families withou
   await expect(page.getByLabel("First stake")).toHaveValue("");
 
   await page.goto("/fund-manager/calculators?family=blackjack");
-  await page.getByLabel("Dealer up-card").selectOption("10");
-  await page.getByLabel("Player card 1").selectOption("8");
-  await page.getByLabel("Player card 2").selectOption("8");
+  await chooseBlackjackRank(page, "Dealer up-card", "10");
+  await chooseBlackjackRank(page, "Player card 1", "8");
+  await chooseBlackjackRank(page, "Player card 2", "8");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Split");
   await page.getByRole("button", { name: "Hit", exact: true }).click();
-  await expect(page.getByLabel("Player card 3")).toBeVisible();
-  await page.getByLabel("Player card 3").selectOption("2");
+  await expect(page.getByRole("button", { name: /^Player card 3,/ })).toBeVisible();
+  await chooseBlackjackRank(page, "Player card 3", "2");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: STAND");
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.locator('[data-pd-id="calculators.blackjack"]').screenshot({ path: `${process.env.CALCULATOR_E2E_SCREENSHOT_PATH}-blackjack.png` });
   await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
-  await expect(page.getByLabel("Dealer up-card")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
 
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", /light|dark/);
   await page.setViewportSize({ width: 390, height: 844 });
   await assertContained(page, '[data-pd-id="calculators.blackjack"]');
-  await page.getByLabel("Dealer up-card").focus();
-  await expect(page.getByLabel("Dealer up-card")).toBeFocused();
+  await page.getByRole("button", { name: /^Dealer up-card,/ }).focus();
+  await expect(page.getByRole("button", { name: /^Dealer up-card,/ })).toBeFocused();
   expect(writes).toEqual([]);
 });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
+import { clearAuthenticatedSessionState } from "@/lib/authenticated-session-state";
 import {
   DEFAULT_SESSION_SECURITY_PREFERENCE,
   loadSessionSecurityPreference,
@@ -31,6 +32,7 @@ export function SessionInactivityGuard({
   const wasInactiveRef = useRef(false);
 
   const expireClientSession = useCallback((broadcast = true) => {
+    clearAuthenticatedSessionState();
     if (broadcast) {
       window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
     }
@@ -86,10 +88,13 @@ export function SessionInactivityGuard({
     if (logoutStartedRef.current) return;
     logoutStartedRef.current = true;
     try {
-      await fetch("/api/auth/logout", { credentials: "include", method: "POST" });
-    } finally {
+      const response = await fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+      if (!response.ok) throw new Error("Logout failed");
+      clearAuthenticatedSessionState();
       window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
       window.location.replace(reason === "expired" ? "/login?error=session_expired" : "/login?signed_out=1");
+    } catch {
+      logoutStartedRef.current = false;
     }
   }, []);
 
@@ -121,7 +126,7 @@ export function SessionInactivityGuard({
     void fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
       .then((response) => {
         if (!response.ok) {
-          if (response.status === 401) window.location.replace("/login?error=session_expired");
+          if (response.status === 401) expireClientSession();
           throw new Error("Session unavailable");
         }
         return response.json() as Promise<FundManagerSession>;
@@ -131,7 +136,7 @@ export function SessionInactivityGuard({
     return () => {
       active = false;
     };
-  }, [initialSession]);
+  }, [expireClientSession, initialSession]);
 
   useEffect(() => {
     if (!session) return;

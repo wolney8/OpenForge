@@ -143,6 +143,8 @@ use the canonical primitive and computed styling.
   generic result tables are not permitted where contracted scenario outcomes exist.
 - Use a Switch only for genuine binary on/off state. Mutually exclusive named modes use the
   canonical segmented control.
+- Time-critical rank-only selectors use one direct, single-action control per authoritative value;
+  decorative variants must not multiply choices, enter domain state or increase interaction depth.
 - Animated financial digits must inherit the static value's typography, line height and baseline;
   compare animated and plain geometry. Keep currency spaces and punctuation at their natural width.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global

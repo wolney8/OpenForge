@@ -1,3 +1,5 @@
+import { clearAuthenticatedSessionState } from "./authenticated-session-state";
+
 export const SESSION_SECURITY_PREFERENCE_EVENT = "pd-session-security-preference";
 export const SESSION_ACTIVITY_STORAGE_KEY = "pd-session-activity";
 export const SESSION_LOGOUT_STORAGE_KEY = "pd-session-logout";
@@ -29,6 +31,7 @@ export async function redirectExpiredSession(response: Response): Promise<boolea
   if (!(await sessionIsAuthoritativelyUnavailable())) return false;
   if (!sessionExpiryRedirectStarted) {
     sessionExpiryRedirectStarted = true;
+    clearAuthenticatedSessionState();
     window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
     window.location.replace("/login?error=session_expired");
   }

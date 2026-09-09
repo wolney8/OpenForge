@@ -8,10 +8,12 @@ import {
 } from "./blackjack-session";
 
 describe("blackjack session stake accounting", () => {
-  it("validates whole-penny positive stakes without coercion", () => {
+  it("validates whole-penny non-negative stakes without coercion", () => {
+    expect(parseBlackjackStakePence("0")).toBe(BigInt(0));
+    expect(parseBlackjackStakePence("0.00")).toBe(BigInt(0));
     expect(parseBlackjackStakePence("5")).toBe(BigInt(500));
     expect(parseBlackjackStakePence("5.25")).toBe(BigInt(525));
-    for (const invalid of ["", "0", "£5", "5,00", "5.001", " 5", "1e2"]) {
+    for (const invalid of ["", "-1", "£5", "5,00", "5.001", " 5", "1e2"]) {
       expect(parseBlackjackStakePence(invalid)).toBeNull();
     }
   });

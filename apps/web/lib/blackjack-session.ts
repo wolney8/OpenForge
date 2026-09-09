@@ -4,7 +4,7 @@ export function parseBlackjackStakePence(value: string): bigint | null {
   if (!MONEY_INPUT.test(value)) return null;
   const [pounds, fraction = ""] = value.split(".");
   const pence = (BigInt(pounds) * BigInt(100)) + BigInt(fraction.padEnd(2, "0"));
-  return pence > BigInt(0) ? pence : null;
+  return pence >= BigInt(0) ? pence : null;
 }
 
 export function formatBlackjackStakePence(pence: bigint): string {

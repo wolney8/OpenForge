@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
+import { clearAuthenticatedSessionState } from "@/lib/authenticated-session-state";
 import { APP_CONFIRMATION_OPEN_EVENT } from "@/lib/use-unsaved-changes-guard";
 
 export function FundManagerIdentityMenu() {
@@ -56,6 +57,7 @@ export function FundManagerIdentityMenu() {
         method: "POST",
       });
       if (!response.ok) throw new Error("Logout failed");
+      clearAuthenticatedSessionState();
       router.replace("/login?signed_out=1");
     } catch {
       setLogoutError(true);

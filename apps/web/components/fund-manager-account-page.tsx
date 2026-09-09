@@ -15,6 +15,7 @@ import {
   type SessionSecurityPreference,
   type SessionTimeoutMinutes,
 } from "@/lib/session-inactivity";
+import { clearAuthenticatedSessionState } from "@/lib/authenticated-session-state";
 import { COOKIE_NOTICE_OPEN_EVENT } from "@/lib/storage-consent";
 
 export type FundManagerSession = {
@@ -120,10 +121,14 @@ export function FundManagerAccountPage() {
   async function logout() {
     setIsLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { credentials: "include", method: "POST" });
-    } finally {
+      const response = await fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+      if (!response.ok) throw new Error("Logout failed");
+      clearAuthenticatedSessionState();
       window.localStorage.setItem(SESSION_LOGOUT_STORAGE_KEY, String(Date.now()));
       router.replace("/login?signed_out=1");
+    } catch {
+      setStatusMessage("Sign out was not completed. Try again.");
+      setIsLoggingOut(false);
     }
   }
 

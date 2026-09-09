@@ -8838,6 +8838,90 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 1rem;
 }
 
+.blackjack-rank-picker-shell {
+  border-top: 1px solid var(--outline);
+  display: grid;
+  gap: 0.7rem;
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: 1rem;
+}
+
+.blackjack-rank-picker {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(7, minmax(2.75rem, 1fr));
+  min-width: 0;
+}
+
+.blackjack-rank-card {
+  align-items: center;
+  appearance: none;
+  background: linear-gradient(135deg, var(--surface-container) 0 58%, color-mix(in srgb, var(--error) 10%, var(--surface-container)) 100%);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-small);
+  box-sizing: border-box;
+  color: var(--on-surface);
+  cursor: pointer;
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  min-height: 4.25rem;
+  min-width: 0;
+  padding: 0.35rem;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, translate 140ms ease;
+}
+
+.blackjack-rank-card:hover:not(:disabled) {
+  background-color: var(--surface-container-highest);
+  box-shadow: var(--shadow);
+  translate: 0 -1px;
+}
+
+.blackjack-rank-card[aria-checked="true"] {
+  border: 2px solid var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
+}
+
+.blackjack-rank-card:focus-visible,
+.blackjack-card-slot:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.blackjack-rank-card-value {
+  font-size: 1.25rem;
+  font-weight: 820;
+  line-height: 1;
+}
+
+.blackjack-rank-card-suits {
+  display: flex;
+  font-size: 0.66rem;
+  gap: 0.12rem;
+  line-height: 1;
+}
+
+.blackjack-rank-card-suits i {
+  color: var(--on-surface-variant);
+  font-style: normal;
+}
+
+.blackjack-rank-card-suits i:nth-child(2),
+.blackjack-rank-card-suits i:nth-child(3) {
+  color: var(--error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blackjack-rank-card {
+    transition: none;
+  }
+
+  .blackjack-rank-card:hover:not(:disabled) {
+    translate: none;
+  }
+}
+
 .blackjack-table-side {
   background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-high));
   border: 1px solid var(--outline);
@@ -8876,14 +8960,24 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
-.blackjack-card-picker {
+.blackjack-card-slot {
   align-content: start;
+  appearance: none;
+  background: var(--surface-container-highest);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  color: var(--on-surface);
+  cursor: pointer;
   display: grid;
   gap: 0.4rem;
+  height: 5.5rem;
+  justify-items: center;
   min-width: 0;
+  padding: 0.65rem 0.8rem;
+  width: 6.5rem;
 }
 
-.blackjack-card-picker > span {
+.blackjack-card-slot > span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 760;
@@ -8891,31 +8985,30 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   text-transform: uppercase;
 }
 
-.blackjack-card-picker select {
-  appearance: auto;
-  background: var(--surface-container-highest);
-  border: 1px solid var(--outline);
-  border-radius: var(--shape-medium);
-  box-sizing: border-box;
-  color: var(--on-surface);
-  font: inherit;
+.blackjack-card-slot > strong {
   font-size: 1.45rem;
   font-weight: 800;
-  height: 5.5rem;
   line-height: 1;
-  min-width: 5.5rem;
-  padding: 0.75rem;
-  text-align: center;
 }
 
-.blackjack-card-picker select:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+.blackjack-card-slot.is-active {
+  border: 2px solid var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
-.blackjack-card-picker select:disabled {
+.blackjack-card-slot:disabled,
+.blackjack-rank-card:disabled {
   cursor: not-allowed;
   opacity: 0.68;
+}
+
+.blackjack-rule-sensitive,
+.blackjack-rule-common {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin-top: 0.25rem;
 }
 
 .blackjack-result {
@@ -9026,8 +9119,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .blackjack-card-picker select {
+  .blackjack-card-slot {
     width: 100%;
+  }
+
+  .blackjack-rank-picker {
+    grid-template-columns: repeat(4, minmax(3rem, 1fr));
   }
 }
 
