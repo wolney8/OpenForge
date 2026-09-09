@@ -12,11 +12,13 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's live-use hand-state correction is
-  code-verified locally and pending Will's recheck; its calculation matrices and session snapshot are unchanged. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's action banner now uses an explicit
+  primary/status grid: the Current Hand action (with canonical icon) and outcome buttons stay together,
+  while last-action, waiting and completion text remain separate rows. Its calculation matrices and session
+  snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `5d77623` on `main`.
+- Current implementation base before this tranche: `8b9d618` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -119,8 +121,9 @@ durable requirements.
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
   labels share the canonical calculator label hierarchy.
-- Blackjack now groups Deal Again/count at the left, its two M3 rule controls centrally and Reset
-  Hand at the right, with logical narrow reflow. One responsive size/aspect token materially enlarges
+- Blackjack top controls now use three explicit grid rows: Deal Again/Reset Hand, hand count/Surrender,
+  then Soft 17 at the right, with no spacer element and deliberate container-width reflow. The banner's
+  icon-only Undo uses the canonical centred icon box and remains outside layout flow. One responsive size/aspect token materially enlarges
   the 13-rank picker, dealer/player cards and empty/add-card backs; dark mode now uses a tokenised
   charcoal face and high-contrast rank/suit treatment rather than white-card glare. Stake/accounting
   remains removed; completed and split hands retain explicit

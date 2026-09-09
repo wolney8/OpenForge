@@ -224,6 +224,15 @@ function outcomeToneClass(outcome: BlackjackOutcome) {
   return "is-push";
 }
 
+function actionIcon(action: BlackjackAction | "Bust") {
+  if (action === "Hit") return "touch_app";
+  if (action === "Stand") return "front_hand";
+  if (action === "Double") return "double_arrow";
+  if (action === "Split") return "call_split";
+  if (action === "Bust") return "dangerous";
+  return "warning";
+}
+
 function previewResult(value: RulePreview | null): BlackjackResult | null {
   return value?.result ?? null;
 }
@@ -636,22 +645,20 @@ export function BlackjackCalculator({ onState, search }: {
       <div className="calculator-shell blackjack-calculator-shell">
         <section className="calculator-band calculator-band-primary stack blackjack-control-panel" data-pd-id="calculators.blackjack.controls">
           <div className="blackjack-top-rule-bar">
-            <div className="blackjack-session-primary" data-pd-id="calculators.blackjack.session-primary">
+            <div className="blackjack-top-deal" data-pd-id="calculators.blackjack.session-primary">
               <button className="blackjack-deal-again-action" data-pd-id="calculators.blackjack.deal-again" disabled={!round.archived} onClick={startFreshHand} type="button"><span aria-hidden="true" className="material-symbols-outlined">playing_cards</span><span>Deal Again</span></button>
-              <strong aria-live="polite" className="blackjack-session-count">You have played {history.length} {history.length === 1 ? "hand" : "hands"}</strong>
-            </div>
-            <div className="blackjack-rule-controls" data-pd-id="calculators.blackjack.rule-controls">
-              <div className="blackjack-rule-control">
-                <span className="blackjack-rule-label">Surrender allowed <ContextHelp label="Help with Surrender allowed" text="Check the game Help or Rules. If surrender is not stated, leave this set to No." /></span>
-                <button aria-checked={round.surrender} aria-label="Surrender allowed" className={`material-switch${round.surrender ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.surrender" onClick={() => updateRound({ surrender: !round.surrender })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{round.surrender ? "Yes" : "No"}</span></button>
-              </div>
-              <div className="blackjack-rule-control">
-                <span className="blackjack-rule-label">Dealer hits Soft 17 <ContextHelp label="Help with Dealer hits Soft 17" text="Check whether the dealer hits or stands on Soft 17 in the game Help or Rules. If it is not stated, assume the dealer stands." /></span>
-                <button aria-checked={round.soft17Rule === "hits"} aria-label="Dealer hits Soft 17" className={`material-switch${round.soft17Rule === "hits" ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.soft-17" onClick={() => updateRound({ soft17Rule: round.soft17Rule === "hits" ? "stands" : "hits" })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{round.soft17Rule === "hits" ? "Hits" : "Stands"}</span></button>
-              </div>
             </div>
             <div className="blackjack-session-reset" data-pd-id="calculators.blackjack.session-reset">
               <button className="button-link icon-text-action" data-pd-id="calculators.blackjack.reset-hand" onClick={startFreshHand} type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span><span>Reset Hand</span></button>
+            </div>
+            <strong aria-live="polite" className="blackjack-session-count">You have played {history.length} {history.length === 1 ? "hand" : "hands"}</strong>
+            <div className="blackjack-rule-control blackjack-rule-surrender" data-pd-id="calculators.blackjack.rule-controls">
+                <span className="blackjack-rule-label">Surrender allowed <ContextHelp label="Help with Surrender allowed" text="Check the game Help or Rules. If surrender is not stated, leave this set to No." /></span>
+                <button aria-checked={round.surrender} aria-label="Surrender allowed" className={`material-switch${round.surrender ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.surrender" onClick={() => updateRound({ surrender: !round.surrender })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{round.surrender ? "Yes" : "No"}</span></button>
+            </div>
+            <div className="blackjack-rule-control blackjack-rule-soft-17">
+                <span className="blackjack-rule-label">Dealer hits Soft 17 <ContextHelp label="Help with Dealer hits Soft 17" text="Check whether the dealer hits or stands on Soft 17 in the game Help or Rules. If it is not stated, assume the dealer stands." /></span>
+                <button aria-checked={round.soft17Rule === "hits"} aria-label="Dealer hits Soft 17" className={`material-switch${round.soft17Rule === "hits" ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.soft-17" onClick={() => updateRound({ soft17Rule: round.soft17Rule === "hits" ? "stands" : "hits" })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{round.soft17Rule === "hits" ? "Hits" : "Stands"}</span></button>
             </div>
           </div>
         </section>
@@ -685,13 +692,19 @@ export function BlackjackCalculator({ onState, search }: {
         <section className="calculator-band calculator-band-secondary blackjack-table" data-pd-id="calculators.blackjack.table">
           {visiblePreview ? <section className={`blackjack-player-action-panel blackjack-recommendation-${visiblePreview.action.toLowerCase()}${terminalStatuses.includes(activeHand.status) ? " is-complete" : ""}`} data-pd-id="calculators.blackjack.result">
             {undoControl}
-            <div className="blackjack-recommendation-summary">
+            <div className="blackjack-banner-primary">
               <div className="blackjack-hand-summary">Hand <strong>{visiblePreview.total}</strong> · {visiblePreview.hand_kind.toUpperCase()}</div>
-              {visiblePreview.action !== "Bust" && legalActions.includes(visiblePreview.action) ? <button aria-describedby="blackjack-strategy-guidance" aria-label={`Suggested action ${visiblePreview.action}`} className="blackjack-suggested-action" onClick={() => takeAction(visiblePreview.action as BlackjackAction)} type="button"><small>Recommended</small><strong>{visiblePreview.action.toUpperCase()}</strong>{visiblePreview.fallback_action ? <em>Otherwise {visiblePreview.fallback_action}</em> : null}</button> : <div className="blackjack-suggested-action is-static"><small>Current hand</small><strong>{visiblePreview.action.toUpperCase()}</strong></div>}
+              {visiblePreview.action !== "Bust" && legalActions.includes(visiblePreview.action) ? <button aria-describedby="blackjack-strategy-guidance" aria-label={`Suggested action ${visiblePreview.action}`} className="blackjack-suggested-action" onClick={() => takeAction(visiblePreview.action as BlackjackAction)} type="button"><small>Recommended</small><span className="blackjack-action-value"><span aria-hidden="true" className="material-symbols-outlined">{actionIcon(visiblePreview.action)}</span><strong>{visiblePreview.action.toUpperCase()}</strong></span>{visiblePreview.fallback_action ? <em>Otherwise {visiblePreview.fallback_action}</em> : null}</button> : <div className="blackjack-suggested-action is-static"><small>Current hand</small><span className="blackjack-action-value"><span aria-hidden="true" className="material-symbols-outlined">{actionIcon(visiblePreview.action)}</span><strong>{visiblePreview.action.toUpperCase()}</strong></span></div>}
+              {terminalStatuses.includes(activeHand.status) && !activeHand.outcome ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group">{(activeHand.status === "bust" ? ["Bust"] : activeHand.status === "surrendered" ? ["Surrender"] : outcomeChoicesForHand(activeHand, round.splitOccurred)).map((outcome) => <button className={`review-chip blackjack-outcome-button ${outcomeToneClass(outcome as BlackjackOutcome)}`} key={outcome} onClick={() => recordOutcome(outcome as BlackjackOutcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}
             </div>
-            {legalActions.length > 0 ? <div className="blackjack-action-column">{lastAction || waitingState ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : null}<div aria-label="Action taken" className="blackjack-action-group" role="group">
-              {legalActions.map((action) => { const recommended = visiblePreview.action === action; return <button aria-describedby="blackjack-strategy-guidance" className={recommended ? "modal-primary-button" : "button-link"} data-recommended={recommended ? "true" : undefined} key={action} onClick={() => takeAction(action)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{action === "Hit" ? "touch_app" : action === "Stand" ? "front_hand" : action === "Double" ? "double_arrow" : action === "Split" ? "call_split" : "warning"}</span><span>{action}</span>{recommended ? <span className="sr-only"> (recommended)</span> : null}</button>; })}
-            </div></div> : <div className="blackjack-completion-group">{lastAction || waitingState ? <div aria-live="polite" className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : null}<p className="field-hint">This player hand is complete.</p>{terminalStatuses.includes(activeHand.status) && !activeHand.outcome ? <div aria-label={`${activeHand.label} outcome`} className="blackjack-outcome-group" role="group"><span>Record outcome</span>{(activeHand.status === "bust" ? ["Bust"] : activeHand.status === "surrendered" ? ["Surrender"] : outcomeChoicesForHand(activeHand, round.splitOccurred)).map((outcome) => <button className={`review-chip blackjack-outcome-button ${outcomeToneClass(outcome as BlackjackOutcome)}`} key={outcome} onClick={() => recordOutcome(outcome as BlackjackOutcome)} type="button">{outcome}</button>)}</div> : activeHand.outcome ? <p className="blackjack-recorded-outcome">Outcome: <strong>{activeHand.outcome}</strong></p> : null}</div>}
+            <div className="blackjack-banner-secondary">
+              {lastAction ? <strong className="blackjack-status-last-action">Last action · {lastAction}</strong> : null}
+              {waitingState ? <span className="blackjack-status-waiting">{waitingState}</span> : null}
+              {legalActions.length === 0 ? <p className="blackjack-status-complete">This player hand is complete.</p> : null}
+              {legalActions.length > 0 ? <div aria-label="Action taken" className="blackjack-action-group" role="group">
+                {legalActions.map((action) => { const recommended = visiblePreview.action === action; return <button aria-describedby="blackjack-strategy-guidance" className={recommended ? "modal-primary-button" : "button-link"} data-recommended={recommended ? "true" : undefined} key={action} onClick={() => takeAction(action)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{actionIcon(action)}</span><span>{action}</span>{recommended ? <span className="sr-only"> (recommended)</span> : null}</button>; })}
+              </div> : null}
+            </div>
             <p className="sr-only" id="blackjack-strategy-guidance">Basic strategy minimises the house edge over time; it does not guarantee this hand will win.</p>
           </section> : <section aria-live="polite" className="blackjack-player-action-panel blackjack-result-pending" data-pd-id="calculators.blackjack.result-pending">{undoControl}{lastAction || waitingState ? <div className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : <p>Choose the dealer card and all visible player cards to see the recommended move.</p>}</section>}
           {lastHand && showLastHand ? <section aria-label={`Last hand ${lastHand.handNumber}`} className={`blackjack-last-hand${lastHandIsDismissing ? " is-dismissing" : ""}`} data-pd-id="calculators.blackjack.last-hand"><div className="blackjack-last-hand-heading"><span className="eyebrow">Last hand #{lastHand.handNumber}</span></div><div className="blackjack-last-hand-card-line"><div className="blackjack-last-hand-card-group"><span>Dealer up-card</span><BlackjackCardVisual ariaLabel={`Last hand dealer up-card, ${lastHand.dealer}`} className="blackjack-last-hand-card" disabled onClick={() => undefined} rank={lastHand.dealer} /></div>{lastHand.hands.map((hand) => <div className="blackjack-last-hand-card-group" key={hand.id}><span>{hand.label}</span><div className="blackjack-last-hand-player-cards">{hand.cards.filter(isBlackjackCard).map((card, index) => <BlackjackCardVisual ariaLabel={`Last hand ${hand.label} card ${index + 1}, ${card}`} className="blackjack-last-hand-card" disabled key={`${hand.id}-${index}`} onClick={() => undefined} rank={card} />)}</div></div>)}</div><div className="blackjack-last-hand-metadata">{lastHand.hands.map((hand) => <small key={hand.id}>{hand.lastResult ? `${hand.lastResult.total} · ${hand.lastResult.hand_kind.toUpperCase()}` : "—"}<span>Last action: {hand.actions.at(-1) ?? "—"}</span><span>Outcome: {hand.outcome || "—"}</span></small>)}</div></section> : null}

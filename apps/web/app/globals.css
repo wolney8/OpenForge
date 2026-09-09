@@ -1503,6 +1503,16 @@ html[data-theme="dark"] .fund-manager-avatar {
   transition: border-color 170ms ease, background 170ms ease, transform 170ms ease, box-shadow 170ms ease;
 }
 
+.icon-button > .material-symbols-outlined {
+  align-items: center;
+  block-size: 1.25rem;
+  display: inline-flex;
+  inline-size: 1.25rem;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
+}
+
 .icon-button:hover {
   border-color: var(--primary);
   background: var(--primary-soft);
@@ -8827,35 +8837,31 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .blackjack-top-rule-bar {
-  align-items: start;
+  align-items: center;
   display: grid;
-  gap: 1rem 1.5rem;
-  grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  gap: 0.55rem 1.25rem;
+  grid-template-areas:
+    "deal reset"
+    "count surrender"
+    ". soft-17";
+  grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
 }
 
-.blackjack-session-primary {
-  align-items: start;
-  display: grid;
-  gap: 0.45rem;
-  justify-items: start;
-}
+.blackjack-top-deal { grid-area: deal; justify-self: start; }
 
 .blackjack-session-count {
+  grid-area: count;
+  justify-self: start;
   margin: 0;
   white-space: nowrap;
 }
 
-.blackjack-rule-controls {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem 1.25rem;
-  justify-content: center;
-  min-width: 0;
-}
-
-.blackjack-session-reset { justify-self: end; }
+.blackjack-rule-surrender { grid-area: surrender; }
+.blackjack-rule-soft-17 { grid-area: soft-17; }
+.blackjack-session-reset { grid-area: reset; justify-self: end; }
+.blackjack-rule-surrender,
+.blackjack-rule-soft-17 { justify-self: end; }
 
 .blackjack-session-mode-row {
   align-items: end;
@@ -9189,6 +9195,18 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-suggested-action.is-static { cursor: default; }
 
+.blackjack-action-value {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.blackjack-action-value .material-symbols-outlined {
+  color: var(--primary);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
 .blackjack-player-action-panel {
   background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 14%, var(--surface-container-highest)), var(--surface-container-high));
   border: 1px solid var(--outline);
@@ -9204,57 +9222,27 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   position: relative;
 }
 
-.blackjack-completion-group {
+.blackjack-banner-primary,
+.blackjack-banner-secondary {
   display: grid;
   gap: 0.55rem;
-  justify-items: start;
   min-width: 0;
 }
 
-@media (min-width: 761px) {
-  .blackjack-player-action-panel.is-complete {
-    grid-template-rows: auto minmax(4.75rem, auto) auto;
-  }
+.blackjack-banner-primary { align-content: start; justify-items: start; }
+.blackjack-banner-secondary { align-content: center; justify-items: start; }
 
-  .blackjack-player-action-panel.is-complete .blackjack-recommendation-summary,
-  .blackjack-player-action-panel.is-complete .blackjack-completion-group {
-    display: contents;
-  }
-
-  .blackjack-player-action-panel.is-complete .blackjack-hand-summary {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .blackjack-player-action-panel.is-complete .blackjack-suggested-action {
-    align-self: center;
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .blackjack-player-action-panel.is-complete .blackjack-completion-group > .field-hint {
-    align-self: center;
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .blackjack-player-action-panel.is-complete .blackjack-outcome-group,
-  .blackjack-player-action-panel.is-complete .blackjack-recorded-outcome {
-    grid-column: 2;
-    grid-row: 3;
-  }
+.blackjack-status-last-action {
+  color: var(--primary);
+  font-size: 0.78rem;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
 }
 
-.blackjack-completion-group > .field-hint,
-.blackjack-completion-group > .blackjack-recorded-outcome {
-  margin: 0;
-}
-
-.blackjack-recommendation-summary {
-  display: grid;
-  gap: 0.45rem;
-  min-width: 0;
-}
+.blackjack-status-waiting { color: var(--on-surface); }
+.blackjack-status-complete,
+.blackjack-recorded-outcome { margin: 0; }
+.blackjack-result-pending > :not(.blackjack-undo-action) { grid-column: 1 / -1; }
 
 .blackjack-player-action-panel.blackjack-recommendation-hit { border-left-color: var(--success); }
 .blackjack-player-action-panel.blackjack-recommendation-stand { border-left-color: var(--success); }
@@ -9376,26 +9364,21 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-last-action-state span { color: var(--on-surface); }
 
 .icon-button.blackjack-undo-action {
-  align-items: center;
   block-size: 2.75rem;
-  display: inline-flex;
+  display: grid;
   inset-block-start: 0.65rem;
   inset-inline-end: 0.65rem;
-  justify-content: center;
   line-height: 0;
   min-block-size: 2.75rem;
   min-inline-size: 2.75rem;
   padding: 0;
+  place-items: center;
   position: absolute;
   inline-size: 2.75rem;
   z-index: 1;
 }
 
 .blackjack-undo-action .material-symbols-outlined {
-  block-size: 1.25rem;
-  display: inline-grid;
-  inline-size: 1.25rem;
-  line-height: 1;
   place-items: center;
 }
 
@@ -9570,9 +9553,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
     grid-column: 1 / -1;
   }
 
-  .blackjack-top-rule-bar { grid-template-columns: minmax(0, 1fr); }
-  .blackjack-rule-controls { align-items: stretch; flex-direction: column; justify-self: stretch; }
-  .blackjack-session-reset { justify-self: end; }
+  .blackjack-top-rule-bar {
+    grid-template-areas: "deal reset" "count count" "surrender surrender" "soft-17 soft-17";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .blackjack-rule-surrender,
+  .blackjack-rule-soft-17 { justify-self: stretch; }
   .blackjack-rule-control { justify-content: space-between; }
   .blackjack-player-heading,
   .blackjack-section-heading {
@@ -9610,15 +9596,14 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 @container blackjack-calculator (max-width: 47.5rem) {
   .blackjack-table,
   .blackjack-player-action-panel { grid-template-columns: minmax(0, 1fr); }
-  .blackjack-top-rule-bar { grid-template-columns: minmax(0, 1fr); }
-  .blackjack-rule-controls { align-items: stretch; flex-direction: column; justify-self: stretch; }
-  .blackjack-session-reset { justify-self: end; }
+  .blackjack-top-rule-bar {
+    grid-template-areas: "deal reset" "count count" "surrender surrender" "soft-17 soft-17";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .blackjack-rule-surrender,
+  .blackjack-rule-soft-17 { justify-self: stretch; }
   .blackjack-rule-control { justify-content: space-between; }
   .blackjack-action-group { justify-content: flex-start; }
-  .blackjack-player-action-panel.is-complete { grid-template-rows: none; }
-  .blackjack-player-action-panel.is-complete .blackjack-recommendation-summary,
-  .blackjack-player-action-panel.is-complete .blackjack-completion-group { display: grid; }
-  .blackjack-player-action-panel.is-complete :is(.blackjack-hand-summary, .blackjack-suggested-action, .blackjack-completion-group > .field-hint, .blackjack-outcome-group, .blackjack-recorded-outcome) { grid-column: auto; grid-row: auto; }
   .blackjack-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--blackjack-card-inline-size), max-content)); }
   .blackjack-rank-picker { grid-template-columns: repeat(auto-fit, var(--blackjack-card-inline-size)); }
 }
