@@ -10,7 +10,14 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from openforge_api.auth import require_request_session
-from openforge_api.calculators import MatchedBettingPayload, _calculate
+from openforge_api.calculators import (
+    EachWayPayload,
+    MatchedBettingPayload,
+    MultiLayPayload,
+    _calculate,
+    preview_each_way,
+    preview_multi_lay,
+)
 from openforge_api.db import (
     begin_calculator_conversion_target,
     complete_calculator_conversion_target,
@@ -22,6 +29,10 @@ from openforge_api.db import (
     list_accounts,
     list_profile_exchange_commissions,
     profile_module_enabled,
+)
+from openforge_api.each_way_extra_places import (
+    EachWayExtraPlacePayload,
+    create_profile_each_way_extra_place,
 )
 from openforge_api.multi_profile_entry import (
     evaluate_multi_profile_target,
@@ -54,6 +65,25 @@ class StandardConversionPayload(BaseModel):
     bet_type: str = Field(min_length=1, max_length=120)
     offer_name: str = Field(default="", max_length=200)
     fixture_type: str = Field(default="", max_length=120)
+
+
+class MultiLayConversionPayload(BaseModel):
+    source: ConversionEnvelope
+    calculator: MultiLayPayload
+    targets: list[SportsbookTarget] = Field(min_length=1)
+    event_name: str = Field(min_length=1, max_length=200)
+    offer_type: str = Field(default="Qualifying Bet", min_length=1, max_length=120)
+    bet_type: str = Field(default="Single", min_length=1, max_length=120)
+    offer_name: str = Field(default="", max_length=200)
+    fixture_type: str = Field(default="", max_length=120)
+
+
+class EachWayConversionPayload(BaseModel):
+    source: ConversionEnvelope
+    calculator: EachWayPayload
+    targets: list[SportsbookTarget] = Field(min_length=1)
+    runner: str = Field(min_length=1, max_length=240)
+    race: str = Field(min_length=1, max_length=240)
 
 
 class BlackjackConversionPayload(BaseModel):
@@ -149,7 +179,10 @@ def _existing_result(
     if attempt["state"] != "Succeeded" or not attempt["destination_record_id"]:
         return None
     record_id = str(attempt["destination_record_id"])
-    ledger = "sportsbook-bets" if attempt["destination_kind"] == "sportsbook" else "casino-offers"
+    ledger = {
+        "sportsbook": "sportsbook-bets",
+        "each_way_extra_place": "each-way-extra-places",
+    }.get(attempt["destination_kind"], "casino-offers")
     return ConversionTargetResult(
         profile_id=profile_id,
         account=account,
@@ -335,6 +368,336 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
         )
         if succeeded
         else "No Standard opportunities were added.",
+    )
+
+
+def _sportsbook_target_eligibility(
+    *, profile_id: str, bookmaker: str, exchange_name: str, offer_type: str, match_strategy: str
+) -> tuple[Any, list[str]]:
+    profile = get_profile(profile_id)
+    if profile is None:
+        return None, ["Profile not found"]
+    eligibility = evaluate_multi_profile_target(
+        profile=profile,
+        accounts=list_accounts(profile_id),
+        exchange_commissions=list_profile_exchange_commissions(profile_id),
+        bookmaker=bookmaker,
+        offer_type=offer_type,
+        match_strategy=match_strategy,
+    )
+    reasons = list(eligibility.reasons)
+    exchange_names = {item.exchange_name.casefold() for item in eligibility.exchange_options}
+    if exchange_name.casefold() not in exchange_names:
+        reasons.append(
+            "Selected exchange is not active with configured commission for this Profile"
+        )
+    return profile, reasons
+
+
+@router.post("/multi-lay", response_model=ConversionResponse)
+def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> ConversionResponse:
+    _require_fund_manager(request)
+    if payload.source.calculator_family != "multi-lay":
+        raise HTTPException(
+            status_code=422, detail="Multi-Lay conversion requires multi-lay source"
+        )
+    preview_multi_lay(payload.calculator)
+    exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
+    canonical_source = payload.source.model_copy(
+        update={
+            "canonical_inputs": {
+                "calculator": payload.calculator.model_dump(mode="json"),
+                "exchange": exchange_name,
+            }
+        }
+    )
+    source_id, checksum, canonical = _envelope_identity(canonical_source)
+    strategy = "Multilay" if payload.calculator.allocation == "standard" else "Multilay-Underlay"
+    first, *additional = payload.calculator.outcomes
+    results: list[ConversionTargetResult] = []
+    targets = {
+        (item.profile_id, item.bookmaker.casefold()): item for item in payload.targets
+    }.values()
+    for target in targets:
+        attempt = begin_calculator_conversion_target(
+            source_id=source_id,
+            source_checksum=checksum,
+            source_family="multi-lay",
+            source_version=payload.source.calculator_version,
+            source_mode=payload.source.calculator_mode,
+            source_envelope_json=canonical,
+            destination_kind="sportsbook",
+            target_profile_id=target.profile_id,
+            target_account=target.bookmaker,
+        )
+        existing = _existing_result(attempt, target.profile_id, target.bookmaker)
+        if existing:
+            results.append(existing)
+            continue
+        if not attempt["_claimed"]:
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=["Conversion is already in progress; retry after it completes"],
+                )
+            )
+            continue
+        profile, reasons = _sportsbook_target_eligibility(
+            profile_id=target.profile_id,
+            bookmaker=target.bookmaker,
+            exchange_name=exchange_name,
+            offer_type=payload.offer_type,
+            match_strategy=strategy,
+        )
+        if reasons:
+            reason = "; ".join(reasons)
+            fail_calculator_conversion_target(attempt["attempt_id"], reason)
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=reasons,
+                )
+            )
+            continue
+        try:
+            created = create_sportsbook_bet(
+                target.profile_id,
+                {
+                    "event_name": payload.event_name,
+                    "offer_text": payload.event_name,
+                    "bookmaker": target.bookmaker,
+                    "offer_type": payload.offer_type,
+                    "bet_type": payload.bet_type,
+                    "offer_name": payload.offer_name,
+                    "fixture_type": payload.fixture_type,
+                    "market": "",
+                    "status": "Prospecting",
+                    "result": "Pending",
+                    "back_stake": payload.calculator.back_stake,
+                    "back_odds": payload.calculator.back_odds,
+                    "match_strategy": strategy,
+                    "lay_odds_1": first.lay_odds,
+                    "multi_lay_outcome_1_name": first.label,
+                    "multi_lay_outcomes_json": json.dumps(
+                        [
+                            {
+                                "id": f"outcome{index}",
+                                "label": outcome.label,
+                                "layOdds": outcome.lay_odds,
+                            }
+                            for index, outcome in enumerate(additional, start=2)
+                        ],
+                        separators=(",", ":"),
+                    ),
+                    "lay_actual": "",
+                    "lay_matched_stake_1": "",
+                    "exchange_name": exchange_name,
+                    "date_settled": "",
+                    "user_notes": f"Calculator source: {source_id} ({checksum})",
+                    "manual_override_value": "",
+                    "manual_override_reason": "",
+                },
+            )
+            destination = build_sportsbook_response(
+                target.profile_id,
+                get_sportsbook_bet(target.profile_id, created.sportsbook_bet_id),
+                as_of_date=date.today(),
+            )
+            if destination.calculation_state != "resolved":
+                raise ValueError("Destination Multi-Lay calculation did not resolve")
+            href = (
+                f"/profiles/{target.profile_id}/tracker/sportsbook-bets"
+                f"?record={created.sportsbook_bet_id}&source=calculator-conversion"
+            )
+            body = f"Added Multi-Lay opportunity to {profile.display_name}."
+            complete_calculator_conversion_target(
+                attempt["attempt_id"],
+                destination_record_id=created.sportsbook_bet_id,
+                notification_title="Multi-Lay opportunity added",
+                notification_body=body,
+                notification_link=href,
+            )
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="succeeded",
+                    record_id=created.sportsbook_bet_id,
+                    href=href,
+                )
+            )
+        except Exception as error:
+            fail_calculator_conversion_target(attempt["attempt_id"], str(error))
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=[str(error)],
+                )
+            )
+    succeeded = sum(item.state == "succeeded" for item in results)
+    notification = (
+        f"Added Multi-Lay opportunity to {succeeded} Profile{'s' if succeeded != 1 else ''}."
+        if succeeded
+        else "No Multi-Lay opportunities were added."
+    )
+    return ConversionResponse(
+        source_id=source_id, source_checksum=checksum, results=results, notification=notification
+    )
+
+
+@router.post("/each-way-extra-place", response_model=ConversionResponse)
+def convert_each_way_extra_place(
+    payload: EachWayConversionPayload, request: Request
+) -> ConversionResponse:
+    _require_fund_manager(request)
+    if payload.source.calculator_family != "each-way":
+        raise HTTPException(status_code=422, detail="Each Way conversion requires each-way source")
+    preview_each_way(payload.calculator)
+    exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
+    canonical_source = payload.source.model_copy(
+        update={
+            "canonical_inputs": {
+                "calculator": payload.calculator.model_dump(mode="json"),
+                "exchange": exchange_name,
+            }
+        }
+    )
+    source_id, checksum, canonical = _envelope_identity(canonical_source)
+    results: list[ConversionTargetResult] = []
+    targets = {
+        (item.profile_id, item.bookmaker.casefold()): item for item in payload.targets
+    }.values()
+    for target in targets:
+        attempt = begin_calculator_conversion_target(
+            source_id=source_id,
+            source_checksum=checksum,
+            source_family="each-way",
+            source_version=payload.source.calculator_version,
+            source_mode=payload.calculator.mode,
+            source_envelope_json=canonical,
+            destination_kind="each_way_extra_place",
+            target_profile_id=target.profile_id,
+            target_account=target.bookmaker,
+        )
+        existing = _existing_result(attempt, target.profile_id, target.bookmaker)
+        if existing:
+            results.append(existing)
+            continue
+        if not attempt["_claimed"]:
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=["Conversion is already in progress; retry after it completes"],
+                )
+            )
+            continue
+        profile = get_profile(target.profile_id)
+        if profile is None:
+            reason = "Profile not found"
+            fail_calculator_conversion_target(attempt["attempt_id"], reason)
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=[reason],
+                )
+            )
+            continue
+        _, reasons = _sportsbook_target_eligibility(
+            profile_id=target.profile_id,
+            bookmaker=target.bookmaker,
+            exchange_name=exchange_name,
+            offer_type="Qualifying Bet",
+            match_strategy="Standard",
+        )
+        if reasons:
+            reason = "; ".join(reasons)
+            fail_calculator_conversion_target(attempt["attempt_id"], reason)
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=reasons,
+                )
+            )
+            continue
+        try:
+            created = create_profile_each_way_extra_place(
+                target.profile_id,
+                EachWayExtraPlacePayload(
+                    runner=payload.runner,
+                    race=payload.race,
+                    bookmaker=target.bookmaker,
+                    bookmaker_account=target.bookmaker,
+                    mode=payload.calculator.mode,
+                    each_way_stake=payload.calculator.each_way_stake,
+                    back_odds=payload.calculator.back_odds,
+                    place_term_numerator=payload.calculator.place_term_numerator,
+                    place_term_denominator=payload.calculator.place_term_denominator,
+                    bookmaker_places=str(payload.calculator.bookmaker_places),
+                    exchange_places=str(payload.calculator.exchange_places),
+                    win_exchange=exchange_name,
+                    win_lay_odds=payload.calculator.win_lay_odds,
+                    place_exchange=exchange_name,
+                    place_lay_odds=payload.calculator.place_lay_odds,
+                    status="Prospecting",
+                    result="Pending",
+                    user_notes=f"Calculator source: {source_id} ({checksum})",
+                ),
+            )
+            if created.get("calculation_state") != "resolved":
+                raise ValueError("Destination Each Way / Extra Place calculation did not resolve")
+            record_id = str(created["each_way_extra_place_id"])
+            href = (
+                f"/profiles/{target.profile_id}/tracker/each-way-extra-places"
+                f"?record={record_id}&source=calculator-conversion"
+            )
+            body = f"Added {payload.calculator.mode} opportunity to {profile.display_name}."
+            complete_calculator_conversion_target(
+                attempt["attempt_id"],
+                destination_record_id=record_id,
+                notification_title=f"{payload.calculator.mode} opportunity added",
+                notification_body=body,
+                notification_link=href,
+            )
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="succeeded",
+                    record_id=record_id,
+                    href=href,
+                )
+            )
+        except Exception as error:
+            fail_calculator_conversion_target(attempt["attempt_id"], str(error))
+            results.append(
+                ConversionTargetResult(
+                    profile_id=target.profile_id,
+                    account=target.bookmaker,
+                    state="failed",
+                    reasons=[str(error)],
+                )
+            )
+    succeeded = sum(item.state == "succeeded" for item in results)
+    notification = (
+        f"Added {payload.calculator.mode} opportunity to {succeeded} "
+        f"Profile{'s' if succeeded != 1 else ''}."
+        if succeeded
+        else f"No {payload.calculator.mode} opportunities were added."
+    )
+    return ConversionResponse(
+        source_id=source_id, source_checksum=checksum, results=results, notification=notification
     )
 
 

@@ -18,13 +18,13 @@ durable requirements.
   snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `2d5f558` on `main`.
+- Current implementation base before this tranche: `3af0502` on `main`.
 - Interruptions: none within the selected #36 bridge tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
-- Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active until the
-  shared bridge adapter is expanded from the proven Standard and Blackjack paths to the remaining
-  eligible calculator families. Unresolved optional family extensions remain visible under #35/#38.
+- Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active for focused
+  local acceptance, then targeted hosted acceptance. Unresolved destination capabilities remain
+  visible under #36/#38/#39 rather than being flattened into Standard rows.
 - GitHub evidence comments for #36/#77/#40 are `SYNC PENDING`: this handoff environment has no
   authenticated GitHub connector, API token or `gh` executable. Local tracking and pushed code are
   complete; issue state has not been misreported as synchronised.
@@ -48,11 +48,12 @@ durable requirements.
 
 ## Project plan
 
-- Current: #36 calculator-to-ledger bridge. Its first shared slice converts Standard source state
-  into isolated Sportsbook Prospecting rows for one or more reviewed Profiles, and saves one
-  completed Blackjack Free/Live session as one reviewed Casino activity. Durable per-target source
-  identity prevents duplicate retry writes; destination contracts remain authoritative.
-- Next queue: expand #36 across remaining eligible calculator families; then #85 + #106 Account
+- Current: #36 calculator-to-ledger bridge. The same immutable source/review/idempotency path now
+  converts Standard and Multi-Lay to Sportsbook Prospecting rows, Extra Place / Each Way to their
+  native Profile ledger, and completed Blackjack Free/Live to one Casino activity. Odds /
+  Probability is utility-only. Sequential Lay, Early Payout / 2UP, Multiples and Dutching remain
+  blocked on faithful destination contracts.
+- Next queue: local then hosted #36 acceptance; then #85 + #106 Account
   reconciliation/history/trends, and #86 Fund Manager task deck.
 - Reporting roadmap: [#111](https://github.com/wolney8/OpenForge/issues/111) starts with an
   interactive point-aware Profile P&L time series, then one period-P&L Reports preset, followed by
@@ -101,14 +102,18 @@ durable requirements.
 
 ## What changed
 
-- The first #36 bridge slice adds one immutable conversion-source boundary and one guided modal
+- The expanded #36 bridge retains one immutable conversion-source boundary and one guided modal
   based on the existing #77 Profile/Account selection pattern. Standard conversion requests missing
   destination identity, checks Account eligibility, creates Profile-isolated Prospecting rows and
   reruns the destination Sportsbook contract. Completed Blackjack Free/Live sessions choose exactly
   one Profile/Casino Account and retain the verified `blackjack-session-v1` checksum; Simulation is
   ineligible, promotions require identity, and own-cash sessions map to `Manual Play / No Offer`.
   Successful targets emit one durable Notification and retries reuse the created row. Calculator and
-  session state remain intact. Remaining calculator-family adapters are still open under #36.
+  session state remain intact. Multi-Lay now preserves all represented outcome legs in Sportsbook;
+  Extra Place / Each Way preserve mode, stakes, terms, places, exchange/lay state and provenance in
+  their native Prospecting ledger. Sequential Lay, Early Payout / 2UP, Multiples and Dutching have
+  no faithful current destination representation and expose no conversion action; Odds /
+  Probability remains a non-convertible utility.
 
 - Blackjack now has explicit Simulation, Free Play and Live Play session modes. Simulation exposes no
   money and cannot convert; Free Play separates free credit from withdrawable value; Live Play

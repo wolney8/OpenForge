@@ -11,8 +11,8 @@ _Last updated: 2026-09-09_
 - Implemented families: Fund Manager-owned `Standard` (the existing matched-betting
   contract/API), Multi-Lay, and combined Each Way / Extra Place reference calculators
 - Canonical route: `/fund-manager/calculators`; the retired Profile route redirects safely
-- Ledger bridge: first #36 slice implemented for Standard → Sportsbook Prospecting and completed
-  Blackjack Free/Live session → reviewed Casino activity; remaining family adapters stay open
+- Ledger bridge: one #36 adapter now covers Standard/Multi-Lay → Sportsbook Prospecting, Each Way /
+  Extra Place → its native Prospecting ledger, and completed Blackjack Free/Live → Casino activity
 
 ## User goal
 
@@ -85,8 +85,10 @@ The source remains reference-only: the destination API validates required identi
 and its own calculation contract. A successful `(source, destination kind, Profile, Account)` target
 is idempotent; failed independent targets remain retryable and successful targets are not rolled back.
 
-The implemented Standard path permits one or more authorised Profiles and creates isolated
-`Prospecting` Sportsbook rows after bookmaker/Exchange checks. The implemented Blackjack path
+The implemented Standard and Multi-Lay paths permit one or more authorised Profiles and create
+isolated `Prospecting` Sportsbook rows after bookmaker/Exchange checks. Multi-Lay preserves every
+represented outcome branch. Each Way / Extra Place uses its native destination, preserving mode,
+stake, terms, bookmaker/exchange places, exchange/lay inputs and calculator provenance. The Blackjack path
 accepts exactly one Profile and Casino Account for a completed Free/Live session, rejects Simulation,
 requires promotion identity, maps own cash to `Manual Play / No Offer`, and preserves the exact
 `blackjack-session-v1` source checksum. Each successful target produces one durable Notification.
@@ -151,6 +153,14 @@ Place delegates to `each-way-extra-place-ledger-contract`; place fraction and ex
 remain separate inputs. Its reference response exposes the canonical bookmaker-win/bookmaker-place
 and exchange-win/exchange-place components needed by the shared family outcome matrix. Both
 adapters are reference-only and perform no business writes.
+
+Bridge classification is deliberately lossless. Standard, Multi-Lay, Each Way / Extra Place and
+completed Blackjack Free/Live sessions are convertible now. Odds / Probability is a utility and has
+no destination action. Sequential Lay is blocked because Sportsbook cannot persist ordered,
+conditional legs; Early Payout / 2UP is blocked because its trigger, live-position and part-back
+state remain Draft-only; Multiples is blocked because no destination preserves selections and their
+states; Dutching is blocked because no destination preserves multiple bookmaker back positions.
+None may be flattened into an ordinary Standard row.
 
 Every standalone family reuses or extracts its nearest same-family ledger presentation. The Each
 Way / Extra Place wrappers share Back Bet, Place Terms, Lay Win, Lay Place and Outcomes primitives;

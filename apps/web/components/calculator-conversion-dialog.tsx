@@ -13,15 +13,16 @@ import type { BlackjackSessionSourceSnapshot } from "@/lib/blackjack-session";
 type Profile = { profile_id: string; display_name: string; profile_code: string; status: string };
 type Account = { account: string; type: string; status: string; lifecycle_status: string; restrictions: string[] };
 type TargetResult = { profile_id: string; account: string; state: "succeeded" | "failed" | "already_succeeded"; record_id: string; href: string; reasons: string[] };
-type StandardSource = {
-  envelope: { calculator_family: "matched-betting"; calculator_version: string; calculator_mode: string; canonical_inputs: Record<string, unknown>; created_at: string };
+export type CalculatorFinancialSource = {
+  kind: "standard" | "multi-lay" | "each-way-extra-place";
+  envelope: { calculator_family: string; calculator_version: string; calculator_mode: string; canonical_inputs: Record<string, unknown>; created_at: string };
   calculator: Record<string, unknown>;
 };
 
 type Props = {
   blackjack?: BlackjackSessionSourceSnapshot;
+  financial?: CalculatorFinancialSource;
   onClose: () => void;
-  standard?: StandardSource;
 };
 
 const blockedStatuses = new Set(["archived", "blocked", "closed", "inactive", "not using", "suspended"]);
@@ -44,17 +45,19 @@ function accountReview(account: Account, isBlackjack: boolean, promotional: bool
   return { blocked: false, message: "" };
 }
 
-export function CalculatorConversionDialog({ blackjack, onClose, standard }: Props) {
+export function CalculatorConversionDialog({ blackjack, financial, onClose }: Props) {
   const dialogRef = useRef<HTMLElement | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [accounts, setAccounts] = useState<Record<string, Account[]>>({});
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string>>({});
   const [eventName, setEventName] = useState("");
-  const [offerType, setOfferType] = useState(standard?.envelope.calculator_mode === "qualifying" ? "Qualifying Bet" : "");
+  const [offerType, setOfferType] = useState(financial?.envelope.calculator_mode === "qualifying" ? "Qualifying Bet" : financial?.kind === "multi-lay" ? "Qualifying Bet" : "");
   const [betType, setBetType] = useState("Single");
   const [offerName, setOfferName] = useState("");
   const [fixtureType, setFixtureType] = useState("");
+  const [runner, setRunner] = useState("");
+  const [race, setRace] = useState("");
   const [activityName, setActivityName] = useState("Blackjack session");
   const [offerIdentity, setOfferIdentity] = useState("");
   const [busy, setBusy] = useState(true);
@@ -62,6 +65,8 @@ export function CalculatorConversionDialog({ blackjack, onClose, standard }: Pro
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<TargetResult[]>([]);
   const isBlackjack = Boolean(blackjack);
+  const isEachWay = financial?.kind === "each-way-extra-place";
+  const financialLabel = financial?.kind === "standard" ? "Standard" : financial?.kind === "multi-lay" ? "Multi-Lay" : "Each Way / Extra Place";
   useDialogFocusLifecycle(true, dialogRef);
 
   useEffect(() => {
@@ -95,18 +100,22 @@ export function CalculatorConversionDialog({ blackjack, onClose, standard }: Pro
     if (busy || selectedProfiles.length === 0) return false;
     if (selectedProfiles.some((profileId) => !selectedAccounts[profileId])) return false;
     if (isBlackjack) return selectedProfiles.length === 1 && activityName.trim() !== "" && (blackjack?.activity_source !== "promotion" || offerIdentity.trim() !== "");
-    return eventName.trim() !== "" && offerType.trim() !== "" && betType.trim() !== "";
-  }, [activityName, betType, blackjack?.activity_source, busy, eventName, isBlackjack, offerIdentity, offerType, selectedAccounts, selectedProfiles]);
+    return isEachWay ? runner.trim() !== "" && race.trim() !== "" : eventName.trim() !== "" && offerType.trim() !== "" && betType.trim() !== "";
+  }, [activityName, betType, blackjack?.activity_source, busy, eventName, isBlackjack, isEachWay, offerIdentity, offerType, race, runner, selectedAccounts, selectedProfiles]);
 
   async function submit() {
     if (!ready) return;
     setBusy(true); setError(""); setMessage("");
-    const endpoint = isBlackjack ? "blackjack" : "standard";
+    const endpoint = isBlackjack ? "blackjack" : financial!.kind;
     const body = isBlackjack ? {
       snapshot: blackjack, profile_id: selectedProfiles[0], casino_account: selectedAccounts[selectedProfiles[0]],
       activity_name: activityName, offer_identity: offerIdentity,
+    } : isEachWay ? {
+      source: financial!.envelope, calculator: financial!.calculator,
+      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccounts[profile_id] })),
+      runner, race,
     } : {
-      source: standard!.envelope, calculator: standard!.calculator,
+      source: financial!.envelope, calculator: financial!.calculator,
       targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccounts[profile_id] })),
       event_name: eventName, offer_type: offerType, bet_type: betType, offer_name: offerName, fixture_type: fixtureType,
     };
@@ -123,18 +132,20 @@ export function CalculatorConversionDialog({ blackjack, onClose, standard }: Pro
   }
 
   const markup = <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
-    <section aria-label={isBlackjack ? "Save Blackjack session as Casino activity" : "Convert Standard calculation to opportunity"} aria-modal="true" className="modal-panel multi-profile-opportunity-dialog" data-pd-id="calculator-conversion.dialog" onClick={(event) => event.stopPropagation()} ref={dialogRef} role="dialog" tabIndex={-1}>
+    <section aria-label={isBlackjack ? "Save Blackjack session as Casino activity" : `Convert ${financialLabel} calculation to opportunity`} aria-modal="true" className="modal-panel multi-profile-opportunity-dialog" data-pd-id="calculator-conversion.dialog" onClick={(event) => event.stopPropagation()} ref={dialogRef} role="dialog" tabIndex={-1}>
       <header className="modal-sticky-header workflow-panel-header"><div className="stack-tight"><span className="eyebrow">Fund Manager</span><strong>{isBlackjack ? "Save as Casino activity" : "Convert to opportunity"}</strong></div><button aria-label="Close conversion" className="modal-close-button" data-initial-focus onClick={onClose} type="button">×</button></header>
       <div className="multi-profile-opportunity-content stack">
         {busy && profiles.length === 0 ? <LedgerLoadingIndicator label="Loading conversion details" /> : null}
         {error ? <p className="field-validation-text" role="alert">{error}</p> : null}
         {message ? <p className="status-message" role="status">{message}</p> : null}
         {!isBlackjack ? <section className="stack-tight"><h3>Destination details</h3><div className="form-grid opportunity-setup-grid">
+          {isEachWay ? <><label className="field-control"><span>Runner</span><input onChange={(event) => setRunner(event.target.value)} value={runner} /></label><label className="field-control"><span>Race</span><input onChange={(event) => setRace(event.target.value)} value={race} /></label></> : <>
           <label className="field-control field-span-2"><span>Event / fixture</span><input onChange={(event) => setEventName(event.target.value)} value={eventName} /></label>
           <label className="field-control"><span>Offer type</span><input onChange={(event) => setOfferType(event.target.value)} value={offerType} /></label>
           <label className="field-control"><span>Bet type</span><input onChange={(event) => setBetType(event.target.value)} value={betType} /></label>
           <label className="field-control"><span>Offer name</span><input onChange={(event) => setOfferName(event.target.value)} value={offerName} /></label>
           <label className="field-control"><span>Fixture type</span><input onChange={(event) => setFixtureType(event.target.value)} value={fixtureType} /></label>
+          </>}
         </div></section> : <section className="stack-tight"><h3>Activity details</h3><div className="form-grid opportunity-setup-grid"><label className="field-control"><span>Activity name</span><input onChange={(event) => setActivityName(event.target.value)} value={activityName} /></label>{blackjack?.activity_source === "promotion" ? <label className="field-control"><span>Promotion / offer identity</span><input onChange={(event) => setOfferIdentity(event.target.value)} value={offerIdentity} /></label> : null}</div></section>}
         <section className="stack-tight"><h3>{isBlackjack ? "Target Profile and Casino Account" : "Profiles and bookmaker Accounts"}</h3><div className="multi-profile-target-list">
           {profiles.map((profile) => {

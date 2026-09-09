@@ -91,6 +91,68 @@ def standard_payload(profile_ids: list[str]) -> dict[str, object]:
     }
 
 
+def multi_lay_payload(profile_ids: list[str]) -> dict[str, object]:
+    calculator = {
+        "allocation": "standard",
+        "back_stake": "10.00",
+        "back_odds": "4.00",
+        "exchange_commission": "0.02",
+        "outcomes": [
+            {"label": "Home", "lay_odds": "2.50"},
+            {"label": "Away", "lay_odds": "3.20"},
+            {"label": "Draw", "lay_odds": "3.60"},
+        ],
+    }
+    return {
+        "source": {
+            "calculator_family": "multi-lay",
+            "calculator_version": "multi-lay-v1",
+            "calculator_mode": "standard",
+            "canonical_inputs": {"exchange": "Smarkets", "calculator": calculator},
+            "created_at": "2026-09-09T11:00:00Z",
+        },
+        "calculator": calculator,
+        "targets": [
+            {"profile_id": profile_id, "bookmaker": "Bet365"} for profile_id in profile_ids
+        ],
+        "event_name": "Synthetic Multi-Lay fixture",
+        "offer_type": "Qualifying Bet",
+        "bet_type": "Single",
+        "fixture_type": "Football",
+    }
+
+
+def each_way_payload(profile_ids: list[str], mode: str = "Extra Place") -> dict[str, object]:
+    calculator = {
+        "mode": mode,
+        "each_way_stake": "10.00",
+        "back_odds": "9.00",
+        "place_term_numerator": "1",
+        "place_term_denominator": "5",
+        "bookmaker_places": 4,
+        "exchange_places": 3 if mode == "Extra Place" else 4,
+        "win_lay_odds": "9.20",
+        "place_lay_odds": "2.70",
+        "win_commission": "0.02",
+        "place_commission": "0.02",
+    }
+    return {
+        "source": {
+            "calculator_family": "each-way",
+            "calculator_version": "each-way-extra-place-v1",
+            "calculator_mode": mode,
+            "canonical_inputs": {"exchange": "Smarkets", "calculator": calculator},
+            "created_at": "2026-09-09T12:00:00Z",
+        },
+        "calculator": calculator,
+        "targets": [
+            {"profile_id": profile_id, "bookmaker": "Bet365"} for profile_id in profile_ids
+        ],
+        "runner": "Synthetic Runner",
+        "race": "Synthetic 14:30",
+    }
+
+
 def authenticated_client() -> TestClient:
     client = TestClient(app)
     token = create_session_token(
@@ -220,6 +282,106 @@ def test_standard_conversion_keeps_independent_failed_target_retryable(tmp_path:
     )
     assert [item["state"] for item in response.json()["results"]] == ["succeeded", "failed"]
     assert "login restricted" in response.json()["results"][1]["reasons"][0]
+
+
+def test_multi_lay_conversion_preserves_all_legs_and_is_idempotent(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = multi_lay_payload(["profile-demo-001"])
+
+    first = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
+    assert first.status_code == 200, first.text
+    result = first.json()["results"][0]
+    row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}").json()
+    assert row["match_strategy"] == "Multilay"
+    assert row["multi_lay_outcome_1_name"] == "Home"
+    assert [item["label"] for item in json.loads(row["multi_lay_outcomes_json"])] == [
+        "Away",
+        "Draw",
+    ]
+    assert row["calculation_state"] == "resolved"
+
+    retry = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
+    assert retry.json()["results"][0]["state"] == "already_succeeded"
+    assert retry.json()["results"][0]["record_id"] == result["record_id"]
+
+
+def test_extra_place_and_each_way_convert_to_profile_isolated_native_rows(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    for profile_id in ("profile-demo-001", "profile-demo-002"):
+        add_account(client, profile_id, "Bet365", "Bookie")
+        add_account(client, profile_id, "Smarkets", "Exchange")
+
+    extra = client.post(
+        "/fund-manager/calculator-conversions/each-way-extra-place",
+        json=each_way_payload(["profile-demo-001", "profile-demo-002"]),
+    )
+    assert extra.status_code == 200, extra.text
+    assert [item["state"] for item in extra.json()["results"]] == ["succeeded", "succeeded"]
+    for result in extra.json()["results"]:
+        row = client.get(
+            f"/profiles/{result['profile_id']}/each-way-extra-places/{result['record_id']}"
+        ).json()
+        assert row["mode"] == "Extra Place"
+        assert row["status"] == "Prospecting"
+        assert row["result"] == "Pending"
+        assert row["win_exchange"] == "Smarkets"
+        assert row["place_exchange"] == "Smarkets"
+        assert row["calculation_state"] == "resolved"
+        assert "Calculator source:" in row["user_notes"]
+
+    each_way = client.post(
+        "/fund-manager/calculator-conversions/each-way-extra-place",
+        json=each_way_payload(["profile-demo-001"], "Each Way"),
+    )
+    assert each_way.status_code == 200, each_way.text
+    result = each_way.json()["results"][0]
+    row = client.get(
+        f"/profiles/profile-demo-001/each-way-extra-places/{result['record_id']}"
+    ).json()
+    assert row["mode"] == "Each Way"
+    assert row["bookmaker_places"] == "4"
+    assert row["exchange_places"] == "4"
+
+
+def test_extra_place_conversion_keeps_bonus_restricted_planning_and_blocks_hard_access(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(
+        client,
+        "profile-demo-001",
+        "Bet365",
+        "Bookie",
+        restrictions=["Bonus Restricted", "Soft Limited"],
+    )
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    add_account(
+        client,
+        "profile-demo-002",
+        "Bet365",
+        "Bookie",
+        restrictions=["Login Restricted"],
+    )
+    add_account(client, "profile-demo-002", "Smarkets", "Exchange")
+
+    response = client.post(
+        "/fund-manager/calculator-conversions/each-way-extra-place",
+        json=each_way_payload(["profile-demo-001", "profile-demo-002"]),
+    )
+    assert response.status_code == 200, response.text
+    assert [item["state"] for item in response.json()["results"]] == [
+        "succeeded",
+        "failed",
+    ]
+    assert "login restricted" in response.json()["results"][1]["reasons"][0]
+    assert client.get("/profiles/profile-demo-002/each-way-extra-places").json() == []
 
 
 def test_blackjack_conversion_maps_manual_play_and_blocks_duplicate_snapshot(
