@@ -5572,7 +5572,10 @@ html[data-theme="dark"] .notification-count-badge {
 
 .field-control .financial-text-input input {
   color: var(--text);
+  font-size: 1.12rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 .inline-field-action {
@@ -8886,18 +8889,44 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-session-mode-cell > .table-chip { justify-self: start; }
 
-.blackjack-table-type-field {
-  align-content: start;
-  display: grid;
-  gap: 0.45rem;
+.blackjack-activity-source-field {
   justify-self: end;
-  min-width: 0;
   width: min(100%, 15rem);
 }
 
-.blackjack-table-type-field > .material-switch {
-  justify-self: start;
-  max-width: 100%;
+.blackjack-session-mode-error-row {
+  align-items: center;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.field-control .blackjack-session-mode-error-row > .error-text {
+  color: var(--danger);
+  font-size: 0.82rem;
+  letter-spacing: normal;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.blackjack-session-mode-error-row > .icon-button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.blackjack-session-details {
+  align-self: start;
+  display: grid;
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: min(100%, 31rem);
+}
+
+.blackjack-session-details-content {
+  margin-top: 0.7rem;
+  width: min(100%, 31rem);
 }
 
 .blackjack-session-summary-row {
@@ -9645,7 +9674,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 @container blackjack-calculator (max-width: 34rem) {
   .blackjack-session-control-grid { grid-template-columns: minmax(0, 15rem); justify-content: start; }
-  .blackjack-table-type-field { justify-self: start; }
+  .blackjack-activity-source-field { justify-self: start; }
 }
 
 .calculator-popout-shell {

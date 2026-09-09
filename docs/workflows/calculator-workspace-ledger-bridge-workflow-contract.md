@@ -159,11 +159,15 @@ Blackjack strategy remains independent of session mode:
 Only an actually chosen Double doubles committed stake. Each actual split hand carries its own
 starting stake. Recommendations never change money. Complete per-hand returns may be compared with
 balance movement as informational reconciliation; they never silently replace the balance result.
-Digital/RNG versus Live Dealer is optional provenance and does not alter strategy.
+Digital/RNG versus Live Dealer is optional delivery provenance and does not alter strategy. It is
+independent from the session's optional activity/funding source: `free_credit`, `promotion`, or
+`own_cash`. No source is inferred from session mode or table type; an unset source remains `null`.
 
 `buildBlackjackSessionSourceSnapshot` produces canonical sorted JSON and a SHA-256 identity over
-calculator/version, mode, timestamps, rules, table type, immutable hand history, counts and
-mode-appropriate money. It strips money from Simulation. The later `#36` bridge captures this
+calculator/version, mode, timestamps, rules, activity source, table type, immutable hand history,
+counts and mode-appropriate money. It strips money and conversion provenance from Simulation. The
+additive activity-source input is optional so existing `blackjack-session-v1` callers and stored
+browser state continue to load with honest `null` provenance. The later `#36` bridge captures this
 snapshot only at reviewed conversion time and remains responsible for Profile/Account authorization,
 idempotency, notifications and record creation.
 

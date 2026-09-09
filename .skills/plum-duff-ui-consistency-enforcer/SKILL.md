@@ -75,6 +75,8 @@ use the canonical primitive and computed styling.
   explicitly reset so they cannot create a second overlapping control. Size routine money fields
   to their semantic numeric content rather than stretching them like long-form text; verify every
   adornment is fully visible, vertically centred and clear of entered text at supported text scales.
+  Complete leading-decimal money shorthand is normalised only on commit; malformed or ambiguous
+  text remains visible for validation rather than being partially parsed.
 - In a grid, chip-heavy fields must not stretch neighbouring fields vertically. Use `align-items:
   start` and compare every field's input height and top alignment with its adjacent field.
 - Quick-select chips must be visibly actionable, preserve semantic financial colour states, and
@@ -155,6 +157,9 @@ use the canonical primitive and computed styling.
 - Session and hand financial controls that would disturb a primary table/card composition belong in
   an explicit semantic grid above that content. Conditional rows must not change the alignment or
   dimensions of the primary content beneath them.
+- Secondary provenance that does not alter a calculator result belongs in the shared disclosure
+  pattern. Keep independent business provenance explicit; never infer funding/activity source from
+  a delivery-mode field.
 - High-frequency dual-pane tools respond to their containing surface, not only the browser viewport;
   cards, actions and controls reflow without page overflow at half-window widths and text scaling.
 - Operational disclosures use the shared semantic details/summary pattern. When open state is

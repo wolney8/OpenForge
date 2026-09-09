@@ -56,6 +56,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       only one peer field out of alignment.
 - [ ] Conditional session/hand fields use semantic rows outside the primary table/card composition,
       so appearing fields cannot displace or misalign the primary content.
+- [ ] Non-calculating delivery provenance is de-emphasised in the shared disclosure pattern and is
+      never used to infer an independent activity/funding source.
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
 - [ ] Flex/grid ancestors around wide content use `min-width: 0` where required.
@@ -64,6 +66,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       supported viewport and text-scale states.
 - [ ] Financial input widths fit their numeric role; currency adornments remain fully visible,
       vertically centred and clear of input text in every supported responsive/text-scale state.
+- [ ] Leading-decimal money shorthand normalises on commit; malformed/ambiguous money remains
+      visible with associated validation and is never partially parsed.
 - [ ] Dialog header/close action remain visible.
 - [ ] Dialog footer actions remain visible and keyboard reachable.
 - [ ] Enabled, disabled, loading, success and error action conditions are defined.

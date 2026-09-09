@@ -4,6 +4,7 @@ import {
   decimalRateToPercentageInput,
   formatDecimalInput,
   isExplicitZero,
+  normalizeMoneyInput,
   percentageInputToDecimalRate,
   sanitizeDecimalInput,
 } from "./decimal-input";
@@ -15,6 +16,16 @@ describe("decimal input", () => {
     expect(sanitizeDecimalInput(".5")).toBe("0.5");
     expect(sanitizeDecimalInput("-£.30")).toBe("-0.30");
     expect(formatDecimalInput("25.5")).toBe("25.50");
+  });
+
+  it("normalizes only complete, unambiguous money values", () => {
+    expect(normalizeMoneyInput(".50")).toBe("0.50");
+    expect(normalizeMoneyInput(".5")).toBe("0.50");
+    expect(normalizeMoneyInput("0.5")).toBe("0.50");
+    expect(normalizeMoneyInput("1,00")).toBeNull();
+    expect(normalizeMoneyInput("£.50")).toBeNull();
+    expect(normalizeMoneyInput(".5abc")).toBeNull();
+    expect(normalizeMoneyInput("1.")).toBeNull();
   });
 
   it("distinguishes a blank value from an explicit zero", () => {

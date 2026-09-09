@@ -20,6 +20,7 @@ import {
   moneyToCents,
   subtractMoney,
   subtractSignedMoney,
+  type BlackjackActivitySource,
   type BlackjackSessionMode,
   type BlackjackTableType,
 } from "@/lib/blackjack-session";
@@ -68,6 +69,7 @@ type BlackjackHistoryEntry = {
   tableType: BlackjackTableType;
 };
 type BlackjackSessionDetails = {
+  activitySource: BlackjackActivitySource;
   endingBalance: string;
   freeCreditValue: string;
   lastStake: string;
@@ -103,7 +105,7 @@ function emptyRound(handNumber: number, surrender = false, soft17Rule: Soft17Rul
 
 function emptySessionDetails(mode: BlackjackSessionMode = "simulation"): BlackjackSessionDetails {
   return {
-    endingBalance: "", freeCreditValue: "", lastStake: "", mode, startedAt: "",
+    activitySource: "", endingBalance: "", freeCreditValue: "", lastStake: "", mode, startedAt: "",
     startingBalance: "", tableType: mode === "simulation" ? "" : "digital_rng", withdrawableResult: "",
   };
 }
@@ -671,19 +673,19 @@ export function BlackjackCalculator({ onState, search }: {
 
         <section className="calculator-band calculator-band-secondary blackjack-session-mode" data-pd-id="calculators.blackjack.session-mode">
           <div className="blackjack-session-control-grid">
-            <div className="blackjack-session-mode-cell">
-              <label className="field-control blackjack-session-mode-field">
-                <span>Session mode</span>
-                <select aria-describedby={sessionModeError ? "blackjack-session-mode-error" : undefined} aria-invalid={sessionModeError ? "true" : undefined} aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
+            <div className="blackjack-session-mode-cell" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSessionModeError(""); }}>
+              <div className="field-control blackjack-session-mode-field">
+                <label htmlFor="blackjack-session-mode">Session mode</label>
+                <select aria-describedby={sessionModeError ? "blackjack-session-mode-error" : undefined} aria-invalid={sessionModeError ? "true" : undefined} aria-label="Blackjack session mode" data-pd-id="calculators.blackjack.session-mode-control" id="blackjack-session-mode" onChange={(event) => changeSessionMode(event.target.value)} value={details.mode}>
                   <option value="simulation">Simulation</option>
                   <option value="free_play">Free Play</option>
                   <option value="live_play">Live Play</option>
                 </select>
-                {sessionModeError ? <span className="error-text" id="blackjack-session-mode-error" role="alert">{sessionModeError}</span> : null}
-              </label>
+                {sessionModeError ? <span className="blackjack-session-mode-error-row"><span className="error-text" id="blackjack-session-mode-error" role="alert">{sessionModeError}</span><button aria-label="Reset session" className="icon-button" onClick={() => setConfirmClear(true)} title="Reset session" type="button"><span aria-hidden="true" className="material-symbols-outlined">restart_alt</span></button></span> : null}
+              </div>
               <span className="table-chip">{details.mode === "simulation" ? "Not convertible" : "Eligible for later conversion"}</span>
             </div>
-            {details.mode !== "simulation" ? <div className="field-control blackjack-table-type-field"><span>Live Dealer</span><button aria-checked={details.tableType === "live_dealer"} aria-label="Live Dealer table" className={`material-switch${details.tableType === "live_dealer" ? " is-selected" : ""}`} data-pd-id="calculators.blackjack.table-type" onClick={() => updateDetail("tableType", details.tableType === "live_dealer" ? "digital_rng" : "live_dealer")} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>{details.tableType === "live_dealer" ? "Live Dealer" : "Digital / RNG"}</span></button></div> : null}
+            {details.mode !== "simulation" ? <label className="field-control blackjack-activity-source-field"><span>Activity source</span><select aria-label="Blackjack activity source" data-pd-id="calculators.blackjack.activity-source" onChange={(event) => updateDetail("activitySource", event.target.value)} value={details.activitySource}><option value="">Select source</option><option value="free_credit">Free chips / credit</option><option value="promotion">Promotion / offer</option><option value="own_cash">Own cash / manual play</option></select></label> : null}
             {freePlay ? <>
               <FinancialInputField dataPdId="calculators.blackjack.free-credit" error={moneyInputError(details.freeCreditValue, "Free credit value")} help="Free credit is not user cash stake." id="blackjack-free-credit" label="Free credit / chip value (optional)" onChange={(value) => updateDetail("freeCreditValue", value)} value={details.freeCreditValue} />
               <FinancialInputField dataPdId="calculators.blackjack.withdrawable-result" error={moneyInputError(details.withdrawableResult, "Withdrawable result")} help="Enter only real cash or withdrawable value produced." id="blackjack-withdrawable-result" label="Cash / withdrawable result (optional)" onChange={(value) => updateDetail("withdrawableResult", value)} value={details.withdrawableResult} />
@@ -699,6 +701,7 @@ export function BlackjackCalculator({ onState, search }: {
                 {reconciliationDifference !== null && reconciliationDifference !== "0.00" ? <p className="calculator-section-guidance">Recorded hand activity differs from balance movement by <FinancialValue showPositiveSign tone="inherit" value={reconciliationDifference} />.</p> : null}
               </div></FinancialValueReplayGroup>
             </> : null}
+            {details.mode !== "simulation" ? <details className="blackjack-session-details blackjack-disclosure" data-pd-id="calculators.blackjack.session-details"><summary><span><span className="eyebrow">Session details</span><strong>Table type</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary><div className="blackjack-session-details-content"><CalculatorSegmentedControl ariaLabel="Blackjack table type" dataPdId="calculators.blackjack.table-type" onChange={(value) => updateDetail("tableType", value)} options={[{ label: "Digital / RNG", value: "digital_rng" }, { label: "Live Dealer", value: "live_dealer" }]} value={details.tableType || "digital_rng"} /></div></details> : null}
           </div>
         </section>
 

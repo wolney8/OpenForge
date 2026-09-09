@@ -14,6 +14,16 @@ cause, prevention rule and regression test.
 - Regression test: focused Blackjack Playwright checks prefix/input containment and centring,
   compact widths, contextual help, shared label geometry and Player-owned action progression.
 
+## 2026-09-09: Delivery provenance competed with high-frequency session inputs
+
+- Area: Blackjack convertible-session controls and later calculator-to-ledger provenance.
+- Root cause: optional Digital/RNG versus Live Dealer delivery metadata was promoted beside Session
+  Mode, while the independent activity/funding source required by conversion was absent.
+- Prevention: keep non-calculating table type in the shared Session details disclosure; capture an
+  explicit optional activity source without inferring it from mode or delivery. Complete leading-
+  decimal money shorthand normalises only on commit and ambiguous text remains visible for errors.
+- Regression test: focused Blackjack Playwright and shared decimal/session unit tests.
+
 ## 2026-09-08: Icon substitution exposed inherited asymmetric button geometry
 
 - Area: shared copyable financial values across standalone and embedded calculators.

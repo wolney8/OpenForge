@@ -1,5 +1,8 @@
+import { normalizeMoneyInput } from "./decimal-input";
+
 export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
+export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
 
 export type BlackjackSessionHandSnapshot = {
   actual_actions: string[];
@@ -21,6 +24,7 @@ export type BlackjackSessionHistorySnapshot = {
 };
 
 export type BlackjackSessionSourceSnapshot = {
+  activity_source: Exclude<BlackjackActivitySource, ""> | null;
   calculator_family: "blackjack_strategy";
   calculator_version: "blackjack-session-v1";
   conversion_eligible: boolean;
@@ -43,17 +47,16 @@ export type BlackjackSessionSourceSnapshot = {
   total_hands: number;
 };
 
-const moneyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
-
 export function moneyInputError(value: string, label: string): string | null {
   if (!value) return null;
-  return moneyPattern.test(value) ? null : `${label} must be a non-negative amount with at most two decimal places.`;
+  return normalizeMoneyInput(value) !== null ? null : `${label} must be a non-negative amount with at most two decimal places.`;
 }
 
 export function moneyToCents(value: string): bigint | null {
-  if (!moneyPattern.test(value)) return null;
-  const [whole, fraction = ""] = value.split(".");
-  return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0"));
+  const normalized = normalizeMoneyInput(value);
+  if (!normalized) return null;
+  const [whole, fraction] = normalized.split(".");
+  return BigInt(whole) * BigInt(100) + BigInt(fraction);
 }
 
 export function centsToMoney(value: bigint): string {
@@ -115,6 +118,7 @@ async function sha256(value: string): Promise<string> {
 }
 
 export async function buildBlackjackSessionSourceSnapshot(input: {
+  activitySource?: BlackjackActivitySource;
   endedAt: string;
   endingBalance: string;
   freeCreditValue: string;
@@ -137,6 +141,7 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
     : null;
   const immutableHands = JSON.parse(canonicalBlackjackSessionJson(input.hands)) as BlackjackSessionHistorySnapshot[];
   const withoutIdentity = {
+    activity_source: input.mode === "simulation" || !input.activitySource ? null : input.activitySource,
     calculator_family: "blackjack_strategy" as const,
     calculator_version: "blackjack-session-v1" as const,
     conversion_eligible: blackjackConversionEligible(input.mode),

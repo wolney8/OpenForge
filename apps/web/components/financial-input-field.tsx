@@ -2,6 +2,7 @@
 
 import { ContextHelp } from "@/components/context-help";
 import { FinancialTextInput } from "@/components/financial-text-input";
+import { normalizeMoneyInput } from "@/lib/decimal-input";
 
 export function FinancialInputField({
   dataPdId,
@@ -35,7 +36,10 @@ export function FinancialInputField({
         ariaLabel={label}
         dataPdId={dataPdId}
         id={id}
-        onBlur={() => undefined}
+        onBlur={() => {
+          const normalized = normalizeMoneyInput(value);
+          if (normalized !== null && normalized !== value) onChange(normalized);
+        }}
         onChange={onChange}
         sanitizeInput={false}
         value={value}

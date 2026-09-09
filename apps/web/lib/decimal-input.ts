@@ -3,6 +3,21 @@ export type DecimalInputOptions = {
   maximumFractionDigits?: number;
 };
 
+const canonicalMoneyInputPattern = /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/;
+
+/**
+ * Normalise a complete, non-negative money entry without accepting partial or
+ * ambiguous numeric syntax. Invalid text is returned as null so the caller can
+ * preserve it for inline validation.
+ */
+export function normalizeMoneyInput(value: string): string | null {
+  if (value === "") return "";
+  if (!canonicalMoneyInputPattern.test(value)) return null;
+  const [whole = "", fraction = ""] = value.split(".");
+  const canonicalWhole = (whole || "0").replace(/^0+(?=\d)/, "");
+  return `${canonicalWhole}.${fraction.padEnd(2, "0")}`;
+}
+
 export function sanitizeDecimalInput(
   value: string,
   options: DecimalInputOptions = {},
