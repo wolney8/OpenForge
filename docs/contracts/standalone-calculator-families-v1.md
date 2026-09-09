@@ -61,15 +61,12 @@ is allowed, otherwise Hit” for the applicable pairs. This implementation there
 allowed, models one split into two independently played hands, and does not infer resplitting. Once
 a Hit adds a third card, Surrender, Split and Double are no longer legal recommendations. The
 ordinary UI uses compact boolean M3 Switch controls; the strategy request continues to receive the
-same explicit booleans. Session
-stake tracking is temporary authenticated-browser-session reference state: the default stake is
-zero (strategy remains available), normal hand `1 × base stake`, Double `2 ×`, and one split `2 ×`;
-Surrender records an exact half returned and half forfeited without calculating P&L. Deal Again and
-Reset Hand retain the selected stake; Reset Session and authoritative logout/session expiry clear
-stake, active/transient hands, history, and the hand counter. Network failure or a stale 401 is not
-an authoritative session end and must not clear this state.
-When a penny stake produces half a penny, the exact three-decimal amount is retained rather than
-silently rounded.
+same explicit booleans. Blackjack has no stake, committed-stake or P&L model. A completed hand may
+record Win, Loss, Push or Blackjack; Surrender and Bust are derived terminal outcomes, and split
+hands record outcomes independently. Outcomes describe what happened and never grade whether a
+strategy recommendation was correct. Reset Hand preserves history; Reset Session and authoritative
+logout/session expiry clear active/transient hands, history and the hand counter. Network failure
+or a stale 401 is not an authoritative session end and must not clear this state.
 
 Technical input caps (20 accumulator selections, 12 player cards) bound request size only and are
 not financial rules.

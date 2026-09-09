@@ -2,24 +2,12 @@
 
 import { useRef } from "react";
 
+import { BlackjackCard } from "@/components/blackjack-card";
 import {
   BLACKJACK_RANK_NAMES,
   BLACKJACK_RANKS,
   type BlackjackCardValue,
 } from "@/lib/blackjack-ranks";
-
-function DecorativeCardFace({ rank }: { rank: BlackjackCardValue }) {
-  const displayRank = rank || "+";
-  return (
-    <span aria-hidden="true" className="blackjack-card-face">
-      <span className="blackjack-card-corner is-top-left"><b>{displayRank}</b><i>♠</i></span>
-      <span className="blackjack-card-corner is-top-right"><b>{displayRank}</b><i>♥</i></span>
-      <strong className="blackjack-card-face-rank">{displayRank}</strong>
-      <span className="blackjack-card-corner is-bottom-left"><b>{displayRank}</b><i>♦</i></span>
-      <span className="blackjack-card-corner is-bottom-right"><b>{displayRank}</b><i>♣</i></span>
-    </span>
-  );
-}
 
 export function BlackjackRankPicker({
   disabled = false,
@@ -47,9 +35,8 @@ export function BlackjackRankPicker({
   return (
     <div aria-label={label} className="blackjack-rank-picker" role="radiogroup">
       {BLACKJACK_RANKS.map((rank, index) => (
-        <button
-          aria-checked={value === rank}
-          aria-label={BLACKJACK_RANK_NAMES[rank]}
+        <BlackjackCard
+          ariaLabel={BLACKJACK_RANK_NAMES[rank]}
           className="blackjack-rank-card"
           disabled={disabled}
           key={rank}
@@ -60,13 +47,12 @@ export function BlackjackRankPicker({
               moveFocus(index, event.key);
             }
           }}
+          rank={rank}
           ref={(node) => { buttons.current[index] = node; }}
           role="radio"
+          selected={value === rank}
           tabIndex={value === rank || (!value && index === 0) ? 0 : -1}
-          type="button"
-        >
-          <DecorativeCardFace rank={rank} />
-        </button>
+        />
       ))}
     </div>
   );
@@ -88,16 +74,14 @@ export function BlackjackCardSlot({
   return (
     <span className="blackjack-card-slot-wrap">
       <span className="blackjack-card-slot-label">{label}</span>
-      <button
-        aria-label={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
-        aria-pressed={active}
+      <BlackjackCard
+        ariaLabel={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
         className={`blackjack-card-slot${active ? " is-active" : ""}`}
         disabled={disabled}
         onClick={onActivate}
-        type="button"
-      >
-        <DecorativeCardFace rank={value} />
-      </button>
+        rank={value}
+        selected={active}
+      />
     </span>
   );
 }

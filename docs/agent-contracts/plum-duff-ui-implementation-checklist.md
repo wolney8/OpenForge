@@ -79,6 +79,10 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       canonical segmented control.
 - [ ] Shared controls use product-neutral component/class names; reusing a domain-named control in
       another workflow requires extracting the existing implementation rather than leaking semantics.
+- [ ] Help icons use the canonical primitive and their help surface remains immediately anchored to
+      the trigger in both themes, at narrow widths and while scrolling.
+- [ ] Minimal calculator pop-outs use their authenticated shell and contain no hidden/full application
+      navigation, Profile or notification chrome.
 - [ ] Partial lay, where applicable, is represented as a placement state/control rather than a
       standalone calculator mode, with legacy `Partial Lay` rows kept readable.
 - [ ] Unit/Playwright/accessibility tests added or updated.

@@ -12,10 +12,11 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack is in its final user-recheck pass;
+  its calculation matrices are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `2ea7d8afc1181e1a222e783ea95d34e72d82f7e5` on `main`.
+- Current implementation base before this tranche: `43954ffb3d5be7877236f7ba3ffc199c1fbc28cd` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -94,19 +95,15 @@ durable requirements.
 
 ## What changed
 
-- Blackjack now presents a compact rule/session bar with M3 Switches defaulting to no surrender and
-  dealer stands on Soft 17, plus keyboard/tap help for locating both rules. Its one-click 13-rank
-  picker and selected slots use shared portrait playing-card presentation; decorative suits never
-  enter calculator state. Dealer and Player areas remain distinct, Hit exposes Card 3+ in place,
-  and the recommendation plus legal action row is prominent. Base Stake, authenticated-session
-  history and logout/expiry behavior are unchanged. User/hosted acceptance remains pending under
-  [#40](https://github.com/wolney8/OpenForge/issues/40).
-- Blackjack Strategy now follows the current Outplayed 4–8 deck hard/soft/pair matrices with
-  Surrender and H17/S17 controls. The table interaction records legal actions, Hit follow-up cards,
-  Double and one independently played split, exact reference stake commitments and expandable
-  browser-tab session history. Representative public-calculator parity is proven locally; DAS is
-  the published matrix assumption, while resplitting and casino outcome/P&L simulation are not
-  inferred.
+- Blackjack now uses one original shared vector card for the 13-rank picker, dealer/player cards and
+  empty/add-card backs. Stake/accounting was removed; completed and split hands retain explicit
+  session-only outcomes which do not grade strategy recommendations. The M3 rule switches retain
+  their proven booleans, shared help is anchored to its trigger, and Deal Again has a prominent tonal
+  action. Authoritative logout/expiry still clears session history. User/hosted acceptance remains
+  pending under [#40](https://github.com/wolney8/OpenForge/issues/40).
+- Calculator headers no longer repeat `Reference only`. Open in new tab now uses an authenticated
+  minimal shell preserving the active family/state with only calculator-local controls and theme;
+  full navigation, Profiles and notifications remain outside that shell.
 - Odds / Probability now converts exact decimal, fractional, American and implied-probability
   sources without Profile or ledger writes, retains unrounded source precision through conversion,
   rejects malformed input and preserves current state when opened in a new tab.
@@ -140,8 +137,8 @@ commit. Manual status: `NOT RUN`.
 
 1. Open **Fund Manager → Calculators → Blackjack Strategy**. With Surrender enabled, enter dealer
    `10` and player `10, 5`; expect **Surrender**, record it, and inspect the retained history row.
-2. Deal again with `£5`, enter dealer `9` and player `6, 5`, choose the recommended Double, add `9`,
-   and expect Hard 20 with `£10` committed. Reload to confirm history remains in this browser tab.
+2. Open the current calculator in a new tab. Expect the current family/input state in the lean shell
+   with only its title, calculator controls and theme toggle; no normal app navigation or Profiles.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.

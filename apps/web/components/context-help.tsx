@@ -17,7 +17,7 @@ export function ContextHelp({ label, text }: { label: string; text: string }) {
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        <span aria-hidden="true">?</span>
+        <span aria-hidden="true" className="material-symbols-outlined">help</span>
       </button>
       <span className="action-tooltip context-help-tooltip" id={helpId} role="tooltip">
         {text}

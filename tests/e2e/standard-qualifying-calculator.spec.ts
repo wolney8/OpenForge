@@ -43,7 +43,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.locator('[data-pd-id="calculators.workspace"]').getByText("Fund Manager", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Calculators" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Standard" })).toBeVisible();
-  await expect(page.getByText("Reference only", { exact: true })).not.toHaveAttribute("role", "button");
+  await expect(page.getByText("Reference only", { exact: true })).toHaveCount(0);
 
   const boxes = await Promise.all(["Back stake", "Back odds", "Lay odds", "Exchange commission"].map((label) => page.getByLabel(label).boundingBox()));
   expect(boxes.every(Boolean)).toBe(true);
@@ -74,10 +74,8 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.locator('[data-pd-id="calculators.matched-betting.exchange"]').selectOption("Smarkets");
   await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
   const headerActions = page.locator('[data-pd-id="calculators.header-actions"]');
-  const referenceStatus = page.locator('[data-pd-id="calculators.reference-status"]');
   const openAction = page.locator('[data-pd-id="calculators.open-new-tab"]');
-  const [statusBox, openBox] = await Promise.all([referenceStatus.boundingBox(), openAction.boundingBox()]);
-  expect(Math.abs((statusBox?.y ?? 0) + (statusBox?.height ?? 0) / 2 - ((openBox?.y ?? 0) + (openBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
+  const openBox = await openAction.boundingBox();
   expect(await headerActions.evaluate((element) => getComputedStyle(element).display)).toBe("flex");
   const actionPadding = await openAction.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -147,8 +145,13 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByRole("button", { name: "Open in new tab" }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState();
+  await expect(popup).toHaveURL(/\/calculator\?/);
   await expect(popup.getByLabel("Back stake")).toHaveValue("10.00");
   await expect(popup.getByLabel("Bet type")).toHaveValue("profit_boost");
+  await expect(popup.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+  await expect(popup.locator('[data-pd-id="app-navigation.trigger"]')).toHaveCount(0);
+  await expect(popup.locator('[data-pd-id="calculators.family-selector"]')).toHaveCount(0);
+  await expect(popup.locator('[data-pd-id="calculator-popout.shell"]')).toBeVisible();
   await popup.close();
 
   await page.getByLabel("Original / base odds").fill("1,000");
@@ -548,9 +551,11 @@ test("converts odds and probability exactly without ledger writes", async ({ pag
   await page.getByRole("button", { name: "Open in new tab" }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState();
+  await expect(popup).toHaveURL(/\/calculator\?/);
   await expect(popup.getByLabel("Source format")).toHaveValue("probability");
   await expect(popup.getByRole("textbox", { name: "Probability (%)", exact: true })).toHaveValue("62.5");
   await expect(popup.locator('[data-pd-id="calculators.odds-probability.results"]')).toContainText("3/5");
+  await expect(popup.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
   await popup.close();
 
   await probabilityInput.fill("1,000");

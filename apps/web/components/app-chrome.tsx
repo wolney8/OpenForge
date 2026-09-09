@@ -112,13 +112,14 @@ function resolveProfileId(pathname: string): string | null {
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
   return pathname === "/" ||
-    ["/profiles", "/reports", "/performance", "/notifications", "/settings", "/account", "/fund-manager", "/imports"].some(
+    ["/profiles", "/reports", "/performance", "/notifications", "/settings", "/account", "/fund-manager", "/imports", "/calculator"].some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isCalculatorPopout = pathname === "/calculator";
   const isPublicAuthRoute =
     pathname === "/login" ||
     pathname === "/register" ||
@@ -129,11 +130,25 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     <SessionBootstrapGate>
       {(session) => (
         <FinancialMotionPreferenceProvider>
-          <AppChromeContent initialSession={session}>{children}</AppChromeContent>
+          {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
         </FinancialMotionPreferenceProvider>
       )}
     </SessionBootstrapGate>
   );
+}
+
+function CalculatorPopoutChrome({ children, initialSession }: { children: React.ReactNode; initialSession: FundManagerSession }) {
+  return <>
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <div className="calculator-popout-shell" data-pd-id="calculator-popout.shell">
+      <header className="calculator-popout-toolbar">
+        <strong>Calculator</strong>
+        <ThemeToggle />
+      </header>
+      <SessionInactivityGuard initialSession={initialSession} />
+      <main className="calculator-popout-main" id="main-content">{children}</main>
+    </div>
+  </>;
 }
 
 function AppChromeContent({

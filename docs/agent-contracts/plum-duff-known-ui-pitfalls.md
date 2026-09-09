@@ -977,3 +977,13 @@ cause, prevention rule and regression test.
   player regions.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks switch geometry, help, card aspect,
   direct rank selection, repeated Hit continuation, recommendation/action prominence and themes.
+
+## 2026-09-09: Calculator help drifted from its trigger and pop-out retained full application chrome
+
+- Area: contextual rule help and standalone calculator pop-out.
+- Root cause: a generic tooltip inherited an above-trigger offset without composed-layout evidence,
+  while the pop-out reused the ordinary Fund Manager URL and shell.
+- Prevention: anchor the shared help surface to its icon in the same positioned wrapper; render
+  calculator pop-outs through the authenticated minimal shell rather than CSS-hiding app controls.
+- Regression tests: `blackjack-calculator.spec.ts` checks icon/help proximity and
+  `calculator-popout.spec.ts` checks auth, state, theme and absence of application chrome.

@@ -129,14 +129,13 @@ function CalculatorFamilySelector({
   </nav>;
 }
 
-function CalculatorFamilyHeading({ onOpen, title }: { onOpen: () => void; title: string }) {
+function CalculatorFamilyHeading({ onOpen, primary = false, title }: { onOpen?: () => void; primary?: boolean; title: string }) {
   return <div className="calculator-panel-heading" data-pd-id="calculators.active-header">
     <div className="calculator-panel-heading-row">
-      <h2>{title}</h2>
-      <div className="tracker-nav" data-pd-id="calculators.header-actions">
-        <span className="table-chip table-chip-info" data-pd-id="calculators.reference-status">Reference only</span>
+      {primary ? <h1 id="calculator-workspace-title">{title}</h1> : <h2>{title}</h2>}
+      {onOpen ? <div className="tracker-nav" data-pd-id="calculators.header-actions">
         <button className="button-link icon-text-action" data-pd-id="calculators.open-new-tab" onClick={onOpen} type="button"><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span><span>Open in new tab</span></button>
-      </div>
+      </div> : null}
     </div>
   </div>;
 }
@@ -153,7 +152,7 @@ function readInitial(search: URLSearchParams): Inputs {
   return next;
 }
 
-export function CalculatorWorkspace() {
+export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const search = useSearchParams();
   const requestedFamily = search.get("family") as Family | null;
   const [family, setFamily] = useState<Family>(families.some((item) => item.value === requestedFamily) ? requestedFamily! : "matched-betting");
@@ -278,7 +277,7 @@ export function CalculatorWorkspace() {
     const params = new URLSearchParams(popoutStateRef.current);
     params.set("family", family);
     if (family === "matched-betting") for (const [key, value] of Object.entries(inputs)) params.set(key, value);
-    window.open(`/fund-manager/calculators?${params.toString()}`, "_blank", "noopener,noreferrer");
+    window.open(`/calculator?${params.toString()}`, "_blank", "noopener,noreferrer");
   }
 
   function resetMatchedCalculator() {
@@ -293,10 +292,10 @@ export function CalculatorWorkspace() {
   const showPromotion = inputs.betType === "bonus_lock_in" || inputs.betType === "cashback";
   const showManualLay = inputs.strategy === "Partial Lay";
   const activeFamilyLabel = families.find((item) => item.value === family)?.label ?? "Calculator";
-  return <section aria-labelledby="calculator-workspace-title" className="content-panel stack sportsbook-page-shell" data-pd-id="calculators.workspace">
-    <div className="workflow-panel-header"><div><span className="eyebrow">Fund Manager</span><h1 id="calculator-workspace-title">Calculators</h1></div></div>
-    <CalculatorFamilySelector onSelect={(next) => { popoutStateRef.current = new URLSearchParams({ family: next }); setFamily(next); }} selected={family} />
-    <CalculatorFamilyHeading onOpen={openInNewTab} title={activeFamilyLabel} />
+  return <section aria-labelledby="calculator-workspace-title" className={`content-panel stack sportsbook-page-shell${popout ? " calculator-popout-workspace" : ""}`} data-pd-id="calculators.workspace">
+    {!popout ? <><div className="workflow-panel-header"><div><span className="eyebrow">Fund Manager</span><h1 id="calculator-workspace-title">Calculators</h1></div></div>
+    <CalculatorFamilySelector onSelect={(next) => { popoutStateRef.current = new URLSearchParams({ family: next }); setFamily(next); }} selected={family} /></> : null}
+    <CalculatorFamilyHeading onOpen={popout ? undefined : openInNewTab} primary={popout} title={activeFamilyLabel} />
     {family === "matched-betting" ? <div className="calculator-panel-shell"><div className="calculator-shell">
       <div className="calculator-band calculator-band-primary">
         <div className="ledger-calculator-mode-bar">

@@ -145,6 +145,10 @@ use the canonical primitive and computed styling.
   canonical segmented control.
 - Time-critical rank-only selectors use one direct, single-action control per authoritative value;
   decorative variants must not multiply choices, enter domain state or increase interaction depth.
+- Help affordances use the canonical icon and keep their tooltip/popover anchored beside the trigger
+  through scrolling and responsive reflow; theme contrast and focus are verified on the composed UI.
+- Calculator pop-outs use the authenticated minimal shell rather than hiding full application chrome
+  with route CSS; retain only calculator-local controls and the theme control.
 - Animated financial digits must inherit the static value's typography, line height and baseline;
   compare animated and plain geometry. Keep currency spaces and punctuation at their natural width.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
