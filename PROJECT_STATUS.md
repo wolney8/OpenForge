@@ -27,8 +27,8 @@ durable requirements.
 - Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active for focused
   local acceptance, then targeted hosted acceptance. Unresolved destination capabilities remain
   visible under #36/#38/#39 rather than being flattened into Standard rows.
-- Current Blackjack evidence is synced to [#40](https://github.com/wolney8/OpenForge/issues/40#issuecomment-5607974064)
-  and [#36](https://github.com/wolney8/OpenForge/issues/36#issuecomment-5607974198). Earlier #77 evidence
+- Current Blackjack evidence is synced to [#40](https://github.com/wolney8/OpenForge/issues/40#issuecomment-5608374894)
+  and [#36](https://github.com/wolney8/OpenForge/issues/36#issuecomment-5608375042). Earlier #77 evidence
   remains separate; neither issue is closed and Will's local acceptance is still required.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
