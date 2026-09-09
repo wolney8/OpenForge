@@ -12,7 +12,7 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's completed-hand/action-strip correction is
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's live-use hand-state correction is
   code-verified locally and pending Will's recheck; its calculation matrices and session snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
@@ -108,6 +108,10 @@ durable requirements.
   outer edges as their combined row and no reserved Player-side column. In completed state, its status
   and outcome controls align compactly beside Current Hand. Recording an outcome archives exactly once,
   updates the hand count and opens a blank next hand immediately while preserving session-level choices.
+  A shared snapshot-based Undo reverses the latest card/action transition; explicit waiting text and picker
+  emphasis identify the next required card. The compact Last Hand recap uses the shared card artwork at a
+  reduced scale and can restore the archived hand only while the new hand remains pristine. Bust is recognised,
+  shown briefly with reduced-motion protection and archived automatically.
 - Blackjack session mode now uses the compact canonical select. Touched money fields use the shared
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
@@ -155,11 +159,10 @@ durable requirements.
 Environment: local `http://localhost:3010`; this slice's delivery revision is recorded in its
 commit. Manual status: `NOT RUN`.
 
-1. Open **Fund Manager → Calculators → Blackjack Strategy**, complete a hand and confirm the completion
-   text and outcome controls align beside Current Hand. Choose an outcome once; expect one History row,
-   the updated hand count and a blank next hand immediately.
-2. After entering a card, try changing Session mode. Expect the reset requirement directly below the
-   unchanged Session mode field.
+1. Open **Fund Manager → Calculators → Blackjack Strategy**, record Hit/Double/Stand and use Undo; expect
+   the prior cards, recommendation and highlighted waiting target to return.
+2. Record an outcome. Expect one History row, a compact Last Hand recap and a blank new hand; restore it
+   before entering the new dealer card. Also enter player cards totalling over 21 and expect automatic Bust.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.
