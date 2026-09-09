@@ -95,15 +95,19 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await chooseRank(page, "Player card 2", "5");
   await expect(page.locator(".blackjack-suggested-action")).toContainText("DOUBLE");
   const playerResult = page.locator('[data-pd-id="calculators.blackjack.result"]');
-  const playerRegion = page.locator('[data-pd-id="calculators.blackjack.player-region"]');
-  const playerCards = playerRegion.locator(".blackjack-player-side");
-  await expect(playerResult.locator("xpath=ancestor::*[contains(@class, 'blackjack-player-region')]")).toHaveCount(1);
-  const [playerRegionBox, playerCardsBox, playerResultBox] = await Promise.all([
-    playerRegion.boundingBox(), playerCards.boundingBox(), playerResult.boundingBox(),
+  const blackjackTable = page.locator('[data-pd-id="calculators.blackjack.table"]');
+  const dealerRegion = blackjackTable.locator(".blackjack-dealer-side");
+  const playerRegion = blackjackTable.locator(".blackjack-player-side");
+  await expect(playerResult.locator("..")).toHaveAttribute("data-pd-id", "calculators.blackjack.table");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.player-region"]')).toHaveCount(0);
+  const [dealerRegionBox, playerRegionBox, playerResultBox] = await Promise.all([
+    dealerRegion.boundingBox(), playerRegion.boundingBox(), playerResult.boundingBox(),
   ]);
-  expect(Math.abs((playerCardsBox?.y ?? 0) - (playerResultBox?.y ?? 0))).toBeLessThanOrEqual(1);
-  expect((playerResultBox?.x ?? 0)).toBeGreaterThanOrEqual((playerCardsBox?.x ?? 0) + (playerCardsBox?.width ?? 0));
-  expect((playerResultBox?.x ?? 0) + (playerResultBox?.width ?? 0)).toBeLessThanOrEqual((playerRegionBox?.x ?? 0) + (playerRegionBox?.width ?? 0) + 1);
+  expect((playerResultBox?.y ?? 999)).toBeLessThan(dealerRegionBox?.y ?? 0);
+  expect(Math.abs((playerResultBox?.x ?? 0) - (dealerRegionBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs(((playerResultBox?.x ?? 0) + (playerResultBox?.width ?? 0)) - ((playerRegionBox?.x ?? 0) + (playerRegionBox?.width ?? 0)))).toBeLessThanOrEqual(1);
+  expect(Math.abs((dealerRegionBox?.y ?? 0) - (playerRegionBox?.y ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((dealerRegionBox?.height ?? 0) - (playerRegionBox?.height ?? 0))).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Suggested action Double" }).click();
   await expect(committed).toHaveAttribute("aria-label", /£ 10\.00/);
   await chooseRank(page, "Player card 3", "9");

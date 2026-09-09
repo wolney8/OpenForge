@@ -12,7 +12,7 @@ durable requirements.
 - Current feature: [#35 Standalone Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's Player right-column composition pass is
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack's full-width action-strip composition pass is
   code-verified locally and pending Will's recheck; its calculation matrices and session snapshot are unchanged. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
@@ -103,9 +103,9 @@ durable requirements.
   Casino mapping uses existing `Fixed Spins Or Free Play` and the new controlled `Manual Play / No
   Offer` type, so Live Play need not masquerade as a promotion. How to use is collapsed and the
   current recommendation, fallback and legal actions now share the Player region. The recommendation
-  itself invokes the same existing action path as its matching action button. On desktop that single
-  action panel uses the Player region's right column beside the cards; at the narrow/text-scale
-  breakpoint it becomes a full-width strip above both Dealer and Player with aligned outer edges.
+  itself invokes the same existing action path as its matching action button. That single action panel
+  is now a full-width strip above both Dealer and Player at every supported viewport, with the same
+  outer edges as their combined row and no reserved Player-side column.
 - Blackjack session mode now uses the compact canonical select. Touched money fields use the shared
   bounded financial-input surface with centred, unclipped currency adornment; optional routine help
   is anchored to each field instead of permanently occupying calculator space. Dealer and Player card
@@ -155,9 +155,9 @@ commit. Manual status: `NOT RUN`.
 
 1. Open **Fund Manager → Calculators → Blackjack Strategy**, choose Live Play and confirm Session mode
    and £ fields are compact, prefixes are clear, and field help opens beside its label.
-2. Enter dealer/player cards and confirm the action panel sits beside the Player cards on desktop.
-   Narrow the viewport and confirm the same panel moves above the full Dealer/Player row without
-   overlap, then click its recommendation to verify the normal Hit/Double/Split flow.
+2. Enter dealer/player cards and confirm the full-width action panel stays above the aligned
+   Dealer/Player row on desktop and narrow widths. Click its recommendation to verify the normal
+   Hit/Double/Split flow.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.
