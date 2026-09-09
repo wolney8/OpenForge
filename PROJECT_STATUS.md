@@ -26,9 +26,9 @@ durable requirements.
 - Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active for focused
   local acceptance, then targeted hosted acceptance. Unresolved destination capabilities remain
   visible under #36/#38/#39 rather than being flattened into Standard rows.
-- GitHub evidence comments for #36/#77/#40 are `SYNC PENDING`: this handoff environment has no
-  authenticated GitHub connector, API token or `gh` executable. Local tracking and pushed code are
-  complete; issue state has not been misreported as synchronised.
+- Current Blackjack evidence is synced to [#40](https://github.com/wolney8/OpenForge/issues/40#issuecomment-5607974064)
+  and [#36](https://github.com/wolney8/OpenForge/issues/36#issuecomment-5607974198). Earlier #77 evidence
+  remains separate; neither issue is closed and Will's local acceptance is still required.
 - Notification History alignment [#100](https://github.com/wolney8/OpenForge/issues/100) is corrected
   with focused local automated and rendered synthetic evidence; Will reports it “looks better”,
   while #100 remains open and no session/notification acceptance is inferred.
