@@ -45,13 +45,12 @@ Authority: Outplayed's live [Blackjack calculator](https://outplayed.com/blackja
 bundle and [published strategy tables](https://outplayed.com/profit-accumulator-blackjack-strategy/).
 Representative behavior was reverified against the current public implementation on 2026-09-08.
 
-- rules: surrender allowed/not allowed and dealer Soft 17 rule Unknown/stands/hits;
+- rules: surrender allowed/not allowed and dealer Soft 17 stands/hits;
 - dealer up-card and two or more player cards;
 - hard, soft, pair, H17/S17 and surrender matrices return Hit, Stand, Double, Split, Surrender or
   Bust; conditional Double/Split/Surrender actions expose the published fallback;
-- default rules are no surrender and Unknown Soft 17. Unknown evaluates both existing S17 and H17
-  matrices: a shared action is shown normally, while a difference exposes both recommendations and
-  requires the user to check the table rule rather than coercing a default;
+- default rules are no surrender and dealer stands on Soft 17. Compact help directs the user to the
+  game Help/Rules and retains the conservative default when the rule is unavailable;
 - all card entry uses the existing rank-only values `A`, `2`–`10`, `J`, `Q`, `K`; playing-card suit
   marks are decorative and are never sent to the strategy engine;
 - no wager, P&L, automation or outcome guarantee.
@@ -60,7 +59,9 @@ The public calculator exposes Surrender and dealer H17/S17 only. Its matrix trea
 initial two-card action with the published Hit/Stand fallback and uses “Split if double after split
 is allowed, otherwise Hit” for the applicable pairs. This implementation therefore assumes DAS is
 allowed, models one split into two independently played hands, and does not infer resplitting. Once
-a Hit adds a third card, Surrender, Split and Double are no longer legal recommendations. Session
+a Hit adds a third card, Surrender, Split and Double are no longer legal recommendations. The
+ordinary UI uses compact boolean M3 Switch controls; the strategy request continues to receive the
+same explicit booleans. Session
 stake tracking is temporary authenticated-browser-session reference state: the default stake is
 zero (strategy remains available), normal hand `1 × base stake`, Double `2 ×`, and one split `2 ×`;
 Surrender records an exact half returned and half forfeited without calculating P&L. Deal Again and

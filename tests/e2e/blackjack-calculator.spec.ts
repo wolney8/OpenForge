@@ -30,7 +30,8 @@ async function mockSession(page: import("@playwright/test").Page) {
 const rankName: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
 
 async function chooseRank(page: import("@playwright/test").Page, slot: string, rank: string) {
-  await page.getByRole("button", { name: new RegExp(`^${slot},`) }).click();
+  const escapedSlot = slot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await page.getByRole("button", { name: new RegExp(`^${escapedSlot},`) }).click();
   await page.getByRole("radiogroup", { name: `Choose ${slot}` }).getByRole("radio", { name: rankName[rank] ?? rank, exact: true }).click();
 }
 
@@ -54,9 +55,16 @@ test("plays and retains a reference-only Blackjack session", async ({ page }) =>
   expect((dealerBox?.x ?? 0) + (dealerBox?.width ?? 0)).toBeLessThan(playerBox?.x ?? 0);
 
   const surrender = page.getByRole("switch", { name: "Surrender allowed" });
-  const soft17 = page.getByRole("group", { name: "Dealer Soft 17 Rule" });
+  const soft17 = page.getByRole("switch", { name: "Dealer hits Soft 17" });
   await expect(surrender).toHaveAttribute("aria-checked", "false");
-  await expect(soft17.getByRole("button", { name: "Unknown" })).toHaveAttribute("aria-pressed", "true");
+  await expect(soft17).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText("You have played 0 hands", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Help with Surrender allowed" }).focus();
+  await expect(page.getByText(/leave this set to No\.$/)).toBeVisible();
+  await page.getByRole("button", { name: "Help with Dealer hits Soft 17" }).click();
+  await expect(page.getByText(/assume the dealer stands\.$/)).toBeVisible();
+  const soft17Box = await soft17.boundingBox();
+  expect(soft17Box?.width ?? 999).toBeLessThan(180);
   await expect(page.getByRole("textbox", { name: "Base Stake" })).toHaveValue("0.00");
   await page.getByRole("button", { name: "£0.50" }).click();
   await expect(page.getByRole("textbox", { name: "Base Stake" })).toHaveValue("0.50");
@@ -65,37 +73,54 @@ test("plays and retains a reference-only Blackjack session", async ({ page }) =>
   await chooseRank(page, "Dealer up-card", "A");
   await chooseRank(page, "Player card 1", "6");
   await chooseRank(page, "Player card 2", "5");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Check table rule");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("S17: Hit · H17: Double — otherwise Hit");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("HIT");
   expect(strategyPayloads.at(-1)?.player_cards).toEqual(["6", "5"]);
+  expect(strategyPayloads.at(-1)?.dealer_hits_soft_17).toBe(false);
   expect(JSON.stringify(strategyPayloads)).not.toMatch(/[♠♥♦♣]/);
+
+  const selectedCard = page.getByRole("button", { name: "Player card 2, 5 selected" });
+  const selectedCardBox = await selectedCard.boundingBox();
+  expect(selectedCardBox?.height ?? 0).toBeGreaterThan(selectedCardBox?.width ?? 999);
+  await expect(selectedCard.locator(".blackjack-card-corner")).toHaveCount(4);
+
+  await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
+  await chooseRank(page, "Dealer up-card", "9");
+  await chooseRank(page, "Player card 1", "2");
+  await chooseRank(page, "Player card 2", "3");
+  await page.getByRole("button", { name: /Hit \(recommended\)/ }).click();
+  await expect(page.getByRole("button", { name: /^Player card 3,/ })).toBeVisible();
+  await chooseRank(page, "Player card 3", "2");
+  await page.getByRole("button", { name: /Hit \(recommended\)/ }).click();
+  await expect(page.getByRole("button", { name: /^Player card 4,/ })).toBeVisible();
 
   await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
   await chooseRank(page, "Dealer up-card", "9");
   await chooseRank(page, "Player card 1", "10");
   await chooseRank(page, "Player card 2", "7");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: STAND");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Same for H17 / S17");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("STAND");
+  await expect(page.locator(".blackjack-recommendation-stand")).toBeVisible();
 
-  await soft17.getByRole("button", { name: "Hits (H17)" }).click();
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: STAND");
+  await soft17.click();
+  await expect(soft17).toHaveAttribute("aria-checked", "true");
+  await expect.poll(() => strategyPayloads.at(-1)?.dealer_hits_soft_17).toBe(true);
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("STAND");
 
   await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
-  await soft17.getByRole("button", { name: "Stands (S17)" }).click();
+  await soft17.click();
   await surrender.click();
   await page.getByRole("textbox", { name: "Base Stake" }).fill("5.00");
   await chooseRank(page, "Dealer up-card", "10");
   await chooseRank(page, "Player card 1", "10");
   await chooseRank(page, "Player card 2", "5");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: SURRENDER");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("SURRENDER");
   expect(strategyPayloads.at(-1)?.surrender_allowed).toBe(true);
   expect(strategyPayloads.at(-1)?.dealer_hits_soft_17).toBe(false);
   await page.getByRole("button", { name: /Surrender \(recommended\)/ }).click();
-  await expect(page.getByRole("heading", { name: "You have played 1 hand" })).toBeVisible();
+  await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
   await page.getByText("#1", { exact: true }).click();
   await expect(page.getByText("Surrender reference: £ 2.50 returned / £ 2.50 forfeited.")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: "You have played 1 hand" })).toBeVisible();
+  await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
 
   await page.locator('[data-pd-id="calculators.blackjack.deal-again"]').click();
   await expect(page.getByRole("textbox", { name: "Base Stake" })).toHaveValue("5.00");
@@ -103,13 +128,13 @@ test("plays and retains a reference-only Blackjack session", async ({ page }) =>
   await chooseRank(page, "Dealer up-card", "9");
   await chooseRank(page, "Player card 1", "6");
   await chooseRank(page, "Player card 2", "5");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: DOUBLE");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("DOUBLE");
   await page.getByRole("button", { name: /Double \(recommended\)/ }).click();
   await expect(page.getByText("Committed").locator("..")).toContainText("£ 10.00");
   await chooseRank(page, "Player card 3", "9");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Hand: 20");
   await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("complete");
-  await expect(page.getByRole("heading", { name: "You have played 2 hands" })).toBeVisible();
+  await expect(page.getByText("You have played 2 hands", { exact: true })).toBeVisible();
 
   await page.locator('[data-pd-id="calculators.blackjack.deal-again"]').click();
   await chooseRank(page, "Dealer up-card", "7");
@@ -123,7 +148,7 @@ test("plays and retains a reference-only Blackjack session", async ({ page }) =>
   await splitHands.getByRole("button", { name: "Split hand 2" }).click();
   await chooseRank(page, "Split hand 2 card 2", "2");
   await page.getByRole("button", { name: /^Stand(?: \(recommended\))?$/ }).click();
-  await expect(page.getByRole("heading", { name: "You have played 3 hands" })).toBeVisible();
+  await expect(page.getByText("You have played 3 hands", { exact: true })).toBeVisible();
 
   if (process.env.BLACKJACK_E2E_SCREENSHOT_PATH) {
     await page.locator('[data-pd-id="calculators.blackjack"]').screenshot({ path: process.env.BLACKJACK_E2E_SCREENSHOT_PATH });
@@ -135,13 +160,13 @@ test("plays and retains a reference-only Blackjack session", async ({ page }) =>
   }
 
   await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
-  await expect(page.getByRole("heading", { name: "You have played 3 hands" })).toBeVisible();
+  await expect(page.getByText("You have played 3 hands", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Reset Session" }).click();
   await expect(page.getByRole("dialog", { name: "Clear Blackjack history?" })).toBeVisible();
   await page.getByRole("button", { name: "Clear History" }).click();
-  await expect(page.getByRole("heading", { name: "You have played 0 hands" })).toBeVisible();
+  await expect(page.getByText("You have played 0 hands", { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Base Stake" })).toHaveValue("0.00");
-  await expect(soft17.getByRole("button", { name: "Unknown" })).toHaveAttribute("aria-pressed", "true");
+  await expect(soft17).toHaveAttribute("aria-checked", "false");
 
   const ranks = page.getByRole("radiogroup", { name: "Choose Dealer up-card" });
   await ranks.getByRole("radio", { name: "Ace" }).focus();

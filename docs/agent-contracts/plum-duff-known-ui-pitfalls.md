@@ -967,3 +967,13 @@ cause, prevention rule and regression test.
 - Test: `tests/e2e/extra-place-ledger-parity.spec.ts` covers geometry, real selection/clipboard,
   neutral-zero and grouped cascade/replay, rapid restarts, persisted motion-off UI, reduced motion,
   ranking, three/many-choice boundaries, keyboard paging, themes and narrow containment.
+## 2026-09-09: Reused control carried Extra Places semantics into Blackjack
+
+- Area: shared calculator segmented controls and Blackjack rule/table composition.
+- Root cause: a generic segmented component rendered `extra-place-*` classes, while Blackjack rule
+  controls and card selectors retained oversized/box-like composition instead of their own semantics.
+- Prevention: shared controls use product-neutral names; true rules use compact M3 Switches, and
+  time-critical card entry is verified as a one-click portrait-card selector with distinct dealer and
+  player regions.
+- Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks switch geometry, help, card aspect,
+  direct rank selection, repeated Hit continuation, recommendation/action prominence and themes.

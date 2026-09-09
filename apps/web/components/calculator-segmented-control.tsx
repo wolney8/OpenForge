@@ -14,14 +14,14 @@ export function CalculatorSegmentedControl<T extends string>({
   return (
     <div
       aria-label={ariaLabel}
-      className="extra-place-bet-type-toggle"
+      className="calculator-segmented-control"
       data-pd-id={dataPdId}
       role="group"
     >
       {options.map((option) => (
         <button
           aria-pressed={value === option.value}
-          className="extra-place-bet-type-toggle-option"
+          className="calculator-segmented-control-option"
           key={option.value}
           onClick={() => onChange(option.value)}
           type="button"

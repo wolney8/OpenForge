@@ -15,7 +15,7 @@ durable requirements.
   Dutching, Odds / Probability and Blackjack Strategy. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `8f6054a589341c658b4f2f31434dac56ce064f84` on `main`.
+- Current implementation base before this tranche: `2ea7d8afc1181e1a222e783ea95d34e72d82f7e5` on `main`.
 - Interruptions: none within the selected #35 calculator tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -94,12 +94,13 @@ durable requirements.
 
 ## What changed
 
-- Blackjack now uses one direct 13-rank visual picker whose decorative suits never enter calculator
-  state. Surrender is the existing M3 Switch; Soft 17 defaults to honest `Unknown`, comparing the
-  proven S17/H17 paths and exposing both moves when they differ. Base Stake defaults to £0 with
-  £0.50/£1 quick choices. Valid-session refresh retains temporary history, while authoritative
-  logout/expiry clears the active hand, history, counter and stake without reacting to stale/network
-  failures. User/hosted acceptance remains pending under [#40](https://github.com/wolney8/OpenForge/issues/40).
+- Blackjack now presents a compact rule/session bar with M3 Switches defaulting to no surrender and
+  dealer stands on Soft 17, plus keyboard/tap help for locating both rules. Its one-click 13-rank
+  picker and selected slots use shared portrait playing-card presentation; decorative suits never
+  enter calculator state. Dealer and Player areas remain distinct, Hit exposes Card 3+ in place,
+  and the recommendation plus legal action row is prominent. Base Stake, authenticated-session
+  history and logout/expiry behavior are unchanged. User/hosted acceptance remains pending under
+  [#40](https://github.com/wolney8/OpenForge/issues/40).
 - Blackjack Strategy now follows the current Outplayed 4–8 deck hard/soft/pair matrices with
   Surrender and H17/S17 controls. The table interaction records legal actions, Hit follow-up cards,
   Double and one independently played split, exact reference stake commitments and expandable

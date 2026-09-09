@@ -8,6 +8,19 @@ import {
   type BlackjackCardValue,
 } from "@/lib/blackjack-ranks";
 
+function DecorativeCardFace({ rank }: { rank: BlackjackCardValue }) {
+  const displayRank = rank || "+";
+  return (
+    <span aria-hidden="true" className="blackjack-card-face">
+      <span className="blackjack-card-corner is-top-left"><b>{displayRank}</b><i>♠</i></span>
+      <span className="blackjack-card-corner is-top-right"><b>{displayRank}</b><i>♥</i></span>
+      <strong className="blackjack-card-face-rank">{displayRank}</strong>
+      <span className="blackjack-card-corner is-bottom-left"><b>{displayRank}</b><i>♦</i></span>
+      <span className="blackjack-card-corner is-bottom-right"><b>{displayRank}</b><i>♣</i></span>
+    </span>
+  );
+}
+
 export function BlackjackRankPicker({
   disabled = false,
   label,
@@ -52,8 +65,7 @@ export function BlackjackRankPicker({
           tabIndex={value === rank || (!value && index === 0) ? 0 : -1}
           type="button"
         >
-          <span className="blackjack-rank-card-value">{rank}</span>
-          <span aria-hidden="true" className="blackjack-rank-card-suits"><i>♠</i><i>♥</i><i>♦</i><i>♣</i></span>
+          <DecorativeCardFace rank={rank} />
         </button>
       ))}
     </div>
@@ -74,16 +86,18 @@ export function BlackjackCardSlot({
   value: BlackjackCardValue;
 }) {
   return (
-    <button
-      aria-label={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
-      aria-pressed={active}
-      className={`blackjack-card-slot${active ? " is-active" : ""}`}
-      disabled={disabled}
-      onClick={onActivate}
-      type="button"
-    >
-      <span>{label}</span>
-      <strong>{value || "—"}</strong>
-    </button>
+    <span className="blackjack-card-slot-wrap">
+      <span className="blackjack-card-slot-label">{label}</span>
+      <button
+        aria-label={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
+        aria-pressed={active}
+        className={`blackjack-card-slot${active ? " is-active" : ""}`}
+        disabled={disabled}
+        onClick={onActivate}
+        type="button"
+      >
+        <DecorativeCardFace rank={value} />
+      </button>
+    </span>
   );
 }
