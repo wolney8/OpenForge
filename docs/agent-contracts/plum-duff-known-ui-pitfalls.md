@@ -1012,3 +1012,14 @@ cause, prevention rule and regression test.
   calculator pop-outs through the authenticated minimal shell rather than CSS-hiding app controls.
 - Regression tests: `blackjack-calculator.spec.ts` checks icon/help proximity and
   `calculator-popout.spec.ts` checks auth, state, theme and absence of application chrome.
+
+## 2026-09-09: Collapsed recap reserved a ghost table column and expanded history escaped its owner
+
+- Area: Blackjack Last Hand, Session History and player-card correction.
+- Root cause: the collapsed recap was a direct grid child instead of a full-width disclosure, while
+  history details retained intrinsic minimum widths and card correction depended only on global Undo.
+- Prevention: secondary recaps use the shared full-width disclosure without their own grid track;
+  expanded details wrap in bounded cards; local card-clear controls dispatch through the existing
+  undo/reducer path and invalidate dependent cards/actions.
+- Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks disclosure geometry, automatic and
+  manual disclosure state, contained history expansion and dependent player-card clearing.

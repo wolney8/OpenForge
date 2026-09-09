@@ -63,17 +63,19 @@ export function BlackjackCardSlot({
   disabled = false,
   label,
   onActivate,
+  onClear,
   value,
 }: {
   active: boolean;
   disabled?: boolean;
   label: string;
   onActivate: () => void;
+  onClear?: () => void;
   value: BlackjackCardValue;
 }) {
   return (
     <span className="blackjack-card-slot-wrap">
-      <span className="blackjack-card-slot-label">{label}</span>
+      <span className="blackjack-card-slot-heading"><span className="blackjack-card-slot-label">{label}</span>{onClear ? <button aria-label={`Clear ${label}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${label}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}</span>
       <BlackjackCard
         ariaLabel={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
         className={`blackjack-card-slot${active ? " is-active" : ""}`}

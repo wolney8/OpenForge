@@ -1,0 +1,13 @@
+{
+  "rounding": "ROUND_HALF_UP to GBP 0.01",
+  "cases": [
+    { "id": "normal-win", "stake": "1.00", "outcome": "Win", "payout": "", "expected_return": "2.00" },
+    { "id": "natural-three-to-two", "stake": "1.00", "outcome": "Blackjack Win", "payout": "three_to_two", "expected_return": "2.50" },
+    { "id": "natural-six-to-five", "stake": "1.00", "outcome": "Blackjack Win", "payout": "six_to_five", "expected_return": "2.20" },
+    { "id": "push", "stake": "1.00", "outcome": "Push", "payout": "", "expected_return": "1.00" },
+    { "id": "loss", "stake": "1.00", "outcome": "Loss", "payout": "", "expected_return": "0.00" },
+    { "id": "bust", "stake": "1.00", "outcome": "Bust", "payout": "", "expected_return": "0.00" },
+    { "id": "surrender", "stake": "1.00", "outcome": "Surrender", "payout": "", "expected_return": "0.50" },
+    { "id": "double-win", "stake": "2.00", "outcome": "Win", "payout": "", "expected_return": "4.00" }
+  ]
+}

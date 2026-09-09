@@ -4,15 +4,19 @@ export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
 export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
 export type BlackjackPlayLimitMode = "fixed_stake_cap" | "use_winnings";
+export type BlackjackPayoutRule = "" | "three_to_two" | "six_to_five";
+export type BlackjackReturnSource = "calculated" | "entered" | null;
 
 export type BlackjackSessionHandSnapshot = {
   actual_actions: string[];
   actual_return: string | null;
+  actual_return_source?: BlackjackReturnSource;
   cards: string[];
   classification: string | null;
   committed_stake: string | null;
   label: string;
   outcome: string;
+  net_result?: string | null;
   recommendation_sequence: string[];
   starting_stake: string | null;
   total: number | null;
@@ -41,13 +45,23 @@ export type BlackjackSessionSourceSnapshot = {
     gross_staked: string;
     gross_returned: string | null;
   };
+  hand_financials: {
+    gross_returned: string | null;
+    gross_staked: string;
+    net: string | null;
+    unit: "cash" | "credit" | null;
+  };
   play_limit: {
     mode: BlackjackPlayLimitMode;
     remaining_loss_buffer: string | null;
     returns_complete: boolean;
     value: string | null;
   };
-  rules: { dealer_hits_soft_17: boolean; surrender_allowed: boolean };
+  rules: {
+    blackjack_payout: Exclude<BlackjackPayoutRule, ""> | null;
+    dealer_hits_soft_17: boolean;
+    surrender_allowed: boolean;
+  };
   session_mode: BlackjackSessionMode;
   source_checksum: string;
   source_id: string;
@@ -98,6 +112,28 @@ export function multiplyMoney(value: string, multiplier: number): string | null 
 
 export function blackjackCommittedStake(startingStake: string, actualActions: string[]): string | null {
   return multiplyMoney(startingStake, actualActions.includes("Double") ? 2 : 1);
+}
+
+function multiplyMoneyRatio(value: string, numerator: bigint, denominator: bigint): string | null {
+  const cents = moneyToCents(value);
+  if (cents === null) return null;
+  return centsToMoney((cents * numerator * BigInt(2) + denominator) / (denominator * BigInt(2)));
+}
+
+export function blackjackDefaultGrossReturn(
+  committedStake: string,
+  outcome: string,
+  payout: BlackjackPayoutRule,
+): string | null {
+  if (outcome === "Win") return multiplyMoneyRatio(committedStake, BigInt(2), BigInt(1));
+  if (outcome === "Push") return multiplyMoneyRatio(committedStake, BigInt(1), BigInt(1));
+  if (outcome === "Loss" || outcome === "Bust") return multiplyMoneyRatio(committedStake, BigInt(0), BigInt(1));
+  if (outcome === "Surrender") return multiplyMoneyRatio(committedStake, BigInt(1), BigInt(2));
+  if (outcome === "Blackjack Win") {
+    if (payout === "three_to_two") return multiplyMoneyRatio(committedStake, BigInt(5), BigInt(2));
+    if (payout === "six_to_five") return multiplyMoneyRatio(committedStake, BigInt(11), BigInt(5));
+  }
+  return null;
 }
 
 export function blackjackRunningFinancials(hands: BlackjackSessionHandSnapshot[]): {
@@ -170,6 +206,7 @@ async function sha256(value: string): Promise<string> {
 
 export async function buildBlackjackSessionSourceSnapshot(input: {
   activitySource?: BlackjackActivitySource;
+  blackjackPayout?: BlackjackPayoutRule;
   endedAt: string;
   endingBalance: string;
   freeCreditValue: string;
@@ -205,6 +242,12 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
     conversion_eligible: blackjackConversionEligible(input.mode),
     ended_at: input.endedAt,
     hands: immutableHands,
+    hand_financials: {
+      gross_returned: input.mode === "simulation" ? null : running.grossReturned,
+      gross_staked: input.mode === "simulation" ? "0.00" : running.grossStaked,
+      net: input.mode === "simulation" ? null : running.net,
+      unit: input.mode === "live_play" ? "cash" as const : input.mode === "free_play" ? "credit" as const : null,
+    },
     monetary: {
       ending_balance: input.mode === "live_play" ? canonicalMoney(input.endingBalance) : null,
       free_credit_value: input.mode === "free_play" ? canonicalMoney(input.freeCreditValue) : null,
@@ -222,6 +265,7 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
       value: input.mode === "live_play" ? playLimitValue : null,
     },
     rules: {
+      blackjack_payout: input.blackjackPayout || null,
       dealer_hits_soft_17: input.soft17Rule === "hits",
       surrender_allowed: input.surrenderAllowed,
     },

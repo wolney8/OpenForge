@@ -12,15 +12,15 @@ durable requirements.
 - Current feature: [#36 Calculator / session to ledger bridge](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
-  Dutching, Odds / Probability and Blackjack Strategy. Blackjack Live Play now reports entered-value
-  Gross Staked/Returned, Net P&L and Remaining Buffer in a compact main summary. Only per-hand Stake
-  and Actual Return remain in the Live Play flow; slower provenance, balance and limit fields share a
-  bounded Session Setup modal. Deal Again now sits in the Player header beside the cards.
-  Its calculation matrices are unchanged; `blackjack-session-v1` is additively extended with those reviewed
-  running totals and limit provenance. Copy/check glyphs use one geometrically
+  Dutching, Odds / Probability and Blackjack Strategy. Blackjack Live/Free Play now reports
+  contract-derived or explicitly overridden per-hand returns and running cash/credit totals. Natural
+  Blackjack payout stays unknown until 3:2 or 6:5 is selected in Session Setup. Last Hand is a
+  full-width disclosure that leaves Dealer/Player geometry unchanged; Session History is bounded and
+  player-card correction uses the existing undo path. Strategy matrices remain unchanged;
+  `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `3843092` on `main`.
+- Current implementation base before this tranche: `c556673` on `main`.
 - Interruptions: none within the selected #36 bridge tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -135,11 +135,13 @@ durable requirements.
   compact Last Hand recap uses the shared card artwork and fades after the next dealer/two player cards are
   entered. Session History is open by default, collapsible and retained across refresh in the same authenticated
   session. Bust is recognised, shown briefly with reduced-motion protection and archived automatically.
-  Live Play additionally totals committed stakes from actual actions and returns only from entered Actual
-  Return values. Missing returns leave Gross Returned/Net P&L and Use Winnings unavailable rather than
-  inferred. Fixed stake cap and Use Winnings are advisory limits with explicit continue acknowledgement;
-  Rebet, Rebet & Deal and Double & Deal prepare calculator state only. Last Hand briefly auto-collapses,
-  while a manual Keep open choice persists until the next dealer/two-player-card entry. The top controls
+  Live Play additionally totals committed stakes from actual actions. Outcome-based gross returns now
+  derive only from the explicit payout contract (including selected 3:2/6:5 natural Blackjack rules),
+  while a manually entered Actual Return remains authoritative. Free Play reports the same arithmetic as
+  chip/credit value without implying withdrawable cash. Fixed stake cap and Use Winnings remain advisory;
+  Rebet, Rebet & Deal and Double & Deal prepare calculator state only. Last Hand is a full-width shared
+  disclosure that never changes Dealer/Player tracks; it briefly opens, auto-collapses before interaction,
+  and thereafter respects the user's manual state without a separate Keep open control. The top controls
   now use the requested four semantic grid rows with Session Mode and Reset Hand first.
   Card ranks alone use the requested Times serif face. Outcome controls use semantic M3 treatments, and
   `Blackjack Win` appears only for an original two-card natural; Push remains available for a dealer tie.
@@ -167,6 +169,10 @@ durable requirements.
   their proven booleans, shared help is anchored to its trigger, and Deal Again has a prominent tonal
   action. Authoritative logout/expiry still clears session history. User/hosted acceptance remains
   pending under [#40](https://github.com/wolney8/OpenForge/issues/40).
+- Blackjack Session History now reports summaries in classification/total → action → outcome order and
+  expands through bounded responsive detail cards. Player-card clear icons use the shared centred control
+  and the existing undo reducer, clearing dependent later cards/actions. The additive `blackjack-session-v1`
+  envelope preserves payout rule, return source, per-hand net and running cash/credit totals for #36.
 - Calculator headers no longer repeat `Reference only`. Open in new tab now uses an authenticated
   minimal shell preserving the active family/state with only calculator-local controls and theme;
   full navigation, Profiles and notifications remain outside that shell.

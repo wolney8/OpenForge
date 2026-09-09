@@ -58,8 +58,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       so appearing fields cannot displace or misalign the primary content.
 - [ ] Non-calculating delivery provenance is de-emphasised in the shared disclosure pattern and is
       never used to infer an independent activity/funding source.
+- [ ] Recaps and secondary detail use the shared full-width disclosure; collapsed controls do not
+      reserve ghost grid tracks or alter primary sibling geometry.
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
+- [ ] Expanded row details wrap/stack within their owning table or card and never create page-level
+      horizontal overflow or rely on clipping useful content.
 - [ ] Flex/grid ancestors around wide content use `min-width: 0` where required.
 - [ ] Dense calculator columns are sized by semantic need: provider/text controls receive room while
       odds/rate fields stay compact, and every control plus focus ring remains inside its cell at
@@ -95,6 +99,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       and theme-aware illustrated surfaces preserve contrast without light-theme glare in dark mode.
 - [ ] Help icons use the canonical primitive and their help surface remains immediately anchored to
       the trigger in both themes, at narrow widths and while scrolling.
+- [ ] Local field/card clear actions use the shared centred icon control and the workflow's existing
+      undo/reducer path, including deterministic invalidation of dependent state.
 - [ ] Minimal calculator pop-outs use their authenticated shell and contain no hidden/full application
       navigation, Profile or notification chrome.
 - [ ] Partial lay, where applicable, is represented as a placement state/control rather than a

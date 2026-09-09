@@ -174,20 +174,27 @@ Blackjack strategy remains independent of session mode:
   eligible for conversion;
 - `free_play` describes actual free chips/credit. `free_credit_value` is not user cash stake, while
   optional `withdrawable_result` records only real cash/value produced;
-- `live_play` records optional per-hand starting stake and actual return (including returned stake),
-  plus reviewed session starting/ending balances. The authoritative session result is exact
-  `ending_balance - starting_balance`; no return is inferred from outcome labels.
+- `live_play` records optional per-hand starting stake and gross return (including returned stake),
+  plus reviewed session starting/ending balances. Ordinary Win returns `2 × committed stake`, Push
+  returns committed stake, Loss/Bust returns zero and Surrender returns half the committed stake.
+  Natural `Blackjack Win` derives only when the explicit session payout is `3:2` or `6:5`, returning
+  stake plus the configured profit multiplier. Derived returns round half-up to GBP `0.01`; an
+  explicitly entered Actual Return overrides the derived reference and its provenance is retained.
+  The authoritative reviewed session result remains exact `ending_balance - starting_balance`.
 
 Only an actually chosen Double doubles committed stake. Each actual split hand carries its own
-starting stake. Recommendations never change money. Complete per-hand returns may be compared with
-balance movement as informational reconciliation; they never silently replace the balance result.
+starting stake and return. Recommendations never change money. Free Play uses the same arithmetic
+only as chip/credit accounting and never promotes that return to withdrawable cash. Complete
+per-hand returns may be compared with balance movement as informational reconciliation; they never
+silently replace the balance result.
 Digital/RNG versus Live Dealer is optional delivery provenance and does not alter strategy. It is
 independent from the session's optional activity/funding source: `free_credit`, `promotion`, or
 `own_cash`. No source is inferred from session mode or table type; an unset source remains `null`.
 
 `buildBlackjackSessionSourceSnapshot` produces canonical sorted JSON and a SHA-256 identity over
-calculator/version, mode, timestamps, rules, activity source, table type, immutable hand history,
-counts and mode-appropriate money. It strips money and conversion provenance from Simulation. The
+calculator/version, mode, timestamps, rules (including explicit Blackjack payout), activity source,
+table type, immutable hand history, per-hand return provenance/net result, counts and mode-appropriate
+cash or credit totals. It strips money and conversion provenance from Simulation. The
 additive activity-source input is optional so existing `blackjack-session-v1` callers and stored
 browser state continue to load with honest `null` provenance. The later `#36` bridge captures this
 snapshot only at reviewed conversion time and remains responsible for Profile/Account authorization,

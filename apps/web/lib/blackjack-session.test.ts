@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blackjackDefaultGrossReturn,
   blackjackConversionEligible,
   blackjackCommittedStake,
   blackjackPlayLimitStatus,
@@ -13,7 +14,16 @@ import {
   subtractSignedMoney,
 } from "./blackjack-session";
 
+import payoutFixtures from "../../../tests/fixtures/blackjack-session-payout-v1.json";
+
 describe("Blackjack session source contract", () => {
+  it("derives outcome returns from the explicit payout contract", () => {
+    for (const fixture of payoutFixtures.cases) {
+      expect(blackjackDefaultGrossReturn(fixture.stake, fixture.outcome, fixture.payout as "" | "three_to_two" | "six_to_five"), fixture.id).toBe(fixture.expected_return);
+    }
+    expect(blackjackDefaultGrossReturn("1.00", "Blackjack Win", "")).toBeNull();
+    expect(blackjackDefaultGrossReturn("0.01", "Blackjack Win", "three_to_two")).toBe("0.03");
+  });
   it("keeps simulation non-financial and non-convertible", async () => {
     expect(blackjackConversionEligible("simulation")).toBe(false);
     const snapshot = await buildBlackjackSessionSourceSnapshot({
@@ -51,8 +61,9 @@ describe("Blackjack session source contract", () => {
   it("preserves relocated Session Setup values in the stable source provenance", async () => {
     const input = {
       activitySource: "own_cash" as const,
+      blackjackPayout: "three_to_two" as const,
       endedAt: "2026-09-09T11:00:00.000Z", endingBalance: "84.01", freeCreditValue: "",
-      hands: [{ dealer_card: "10", hand_number: 1, hands: [{ actual_actions: ["Double"], actual_return: "24.01", cards: ["6", "5", "10"], classification: "hard", committed_stake: "20.00", label: "Player", outcome: "Win", recommendation_sequence: ["Double"], starting_stake: "10.00", total: 21 }] }],
+      hands: [{ dealer_card: "10", hand_number: 1, hands: [{ actual_actions: ["Double"], actual_return: "24.01", actual_return_source: "entered" as const, cards: ["6", "5", "10"], classification: "hard", committed_stake: "20.00", label: "Player", net_result: "4.01", outcome: "Win", recommendation_sequence: ["Double"], starting_stake: "10.00", total: 21 }] }],
       mode: "live_play" as const, recordedHandNet: "4.01", soft17Rule: "stands" as const,
       startedAt: "2026-09-09T10:00:00.000Z", startingBalance: "100.00",
       surrenderAllowed: false, tableType: "live_dealer" as const, withdrawableResult: "",
@@ -65,6 +76,10 @@ describe("Blackjack session source contract", () => {
     expect(first.table_type).toBe("live_dealer");
     expect(first.monetary.gross_staked).toBe("20.00");
     expect(first.monetary.gross_returned).toBe("24.01");
+    expect(first.rules.blackjack_payout).toBe("three_to_two");
+    expect(first.hand_financials).toEqual({ gross_returned: "24.01", gross_staked: "20.00", net: "4.01", unit: "cash" });
+    expect(first.hands[0].hands[0].actual_return_source).toBe("entered");
+    expect(first.hands[0].hands[0].net_result).toBe("4.01");
     expect(first.play_limit.remaining_loss_buffer).toBe("14.01");
     expect(first.source_checksum).toMatch(/^[a-f0-9]{64}$/);
     expect(second).toEqual(first);
@@ -108,6 +123,7 @@ describe("Blackjack session source contract", () => {
     const complete = { actual_actions: [], actual_return: "9.00", cards: [], classification: null, committed_stake: "5.00", label: "Player", outcome: "Win", recommendation_sequence: [], starting_stake: "5.00", total: 20 };
     expect(blackjackRunningFinancials([complete])).toEqual({ grossReturned: "9.00", grossStaked: "5.00", net: "4.00", returnsComplete: true });
     expect(blackjackRunningFinancials([complete, { ...complete, actual_return: null, committed_stake: "3.00" }])).toEqual({ grossReturned: null, grossStaked: "8.00", net: null, returnsComplete: false });
+    expect(blackjackRunningFinancials([{ ...complete, committed_stake: "2.00", actual_return: "4.00", label: "Split hand 1" }, { ...complete, committed_stake: "2.00", actual_return: "0.00", label: "Split hand 2" }])).toEqual({ grossReturned: "4.00", grossStaked: "4.00", net: "0.00", returnsComplete: true });
   });
 
   it("distinguishes fixed stake caps from use-winnings loss buffers", () => {

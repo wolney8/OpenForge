@@ -9488,21 +9488,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   grid-column: 1 / -1;
   min-width: 0;
   padding: 0.75rem;
-  transition: opacity 220ms ease, transform 220ms ease, max-height 260ms ease, padding 260ms ease, border-width 260ms ease;
-  max-height: 24rem;
+  width: 100%;
 }
 
-.blackjack-last-hand.is-dismissing {
-  border-width: 0;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  padding-block: 0;
-  transform: translateY(-0.35rem);
-}
-
-.blackjack-last-hand-heading { align-items: center; display: flex; }
-.blackjack-last-hand-heading { justify-content: space-between; }
+.blackjack-last-hand-content { display: grid; gap: 0.7rem; margin-top: 0.75rem; min-width: 0; }
 
 .blackjack-last-hand-card-line,
 .blackjack-last-hand-player-cards {
@@ -9546,7 +9535,6 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.65rem 0.75rem;
 }
 
-.blackjack-last-hand-reopen { justify-self: start; }
 .blackjack-conversion-status { align-self: start; grid-column: 1 / -1; justify-self: start; }
 .blackjack-play-limit-mode { min-width: 0; width: min(100%, 15rem); }
 .blackjack-session-setup-hint { grid-column: 1 / -1; margin: 0; }
@@ -9572,6 +9560,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-history .table-scroll {
   max-width: 100%;
+  overflow: visible;
 }
 
 .blackjack-disclosure > summary {
@@ -9595,12 +9584,13 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   .blackjack-disclosure > summary > .material-symbols-outlined { transition: none; }
 }
 
-.blackjack-history-table {
-  min-width: 44rem;
-}
+.blackjack-history-table { table-layout: fixed; width: 100%; }
+.blackjack-history-table th:first-child { width: 58%; }
+.blackjack-history-table th:nth-child(2) { width: 12%; }
+.blackjack-history-table th:last-child { width: 30%; }
 
 .blackjack-history-table details {
-  min-width: 8rem;
+  min-width: 0;
 }
 
 .blackjack-history-table summary {
@@ -9610,15 +9600,30 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-history-detail {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.55rem;
   margin-top: 0.6rem;
-  min-width: 20rem;
+  min-width: 0;
 }
 
-.blackjack-history-detail span {
+.blackjack-history-detail > span,
+.blackjack-history-hand-detail {
   color: var(--muted);
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
+
+.blackjack-history-hand-detail {
+  background: var(--surface-container);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-small);
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.55rem;
+}
+
+.blackjack-card-slot-heading { align-items: center; display: flex; gap: 0.35rem; justify-content: center; }
+.icon-button.blackjack-card-clear { block-size: 2.25rem; min-block-size: 2.25rem; min-inline-size: 2.25rem; inline-size: 2.25rem; }
 
 .blackjack-how-to ol {
   display: grid;
