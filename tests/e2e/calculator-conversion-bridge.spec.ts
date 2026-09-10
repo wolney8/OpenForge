@@ -11,6 +11,8 @@ async function authorizeServerRoute(page: import("@playwright/test").Page) {
 }
 
 test("keeps Standard state while reusing the guided Profile and Account conversion flow", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   await authorizeServerRoute(page);
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
     authenticated: true, email: "bridge-test@example.invalid", name: "Synthetic Fund Manager", role: "fund_manager",
@@ -37,7 +39,8 @@ test("keeps Standard state while reusing the guided Profile and Account conversi
     { profile_id: "profile-synthetic-002", display_name: "Synthetic Profile Two", profile_code: "SYN-002", status: "Active" },
   ] }));
   await page.context().route("**/profiles/*/accounts", (route) => route.fulfill({ json: [
-    { account: "Bet365", type: "Bookie", status: "Active", lifecycle_status: "Active", restrictions: [] },
+    { account_id: "AC-10BET-A", account: "10Bet", type: "Bookie", status: "Active", lifecycle_status: "Active", restrictions: [] },
+    { account_id: "AC-10BET-B", account: "10Bet", type: "Bookie", status: "Active", lifecycle_status: "Active", restrictions: [] },
   ] }));
   let submitted: Record<string, unknown> | null = null;
   await page.context().route("**/fund-manager/calculator-conversions/standard", async (route) => {
@@ -46,8 +49,8 @@ test("keeps Standard state while reusing the guided Profile and Account conversi
       source_id: "matched-betting-demo", source_checksum: "demo",
       notification: "Added Standard opportunity to 2 Profiles.",
       results: [
-        { profile_id: "profile-synthetic-001", account: "Bet365", state: "succeeded", record_id: "SB-DEMO1", href: "/profiles/profile-synthetic-001/tracker/sportsbook-bets?record=SB-DEMO1", reasons: [] },
-        { profile_id: "profile-synthetic-002", account: "Bet365", state: "succeeded", record_id: "SB-DEMO2", href: "/profiles/profile-synthetic-002/tracker/sportsbook-bets?record=SB-DEMO2", reasons: [] },
+        { profile_id: "profile-synthetic-001", account: "10Bet", state: "succeeded", record_id: "SB-DEMO1", href: "/profiles/profile-synthetic-001/tracker/sportsbook-bets?record=SB-DEMO1", reasons: [] },
+        { profile_id: "profile-synthetic-002", account: "10Bet", state: "succeeded", record_id: "SB-DEMO2", href: "/profiles/profile-synthetic-002/tracker/sportsbook-bets?record=SB-DEMO2", reasons: [] },
       ],
     }});
   });
@@ -61,12 +64,30 @@ test("keeps Standard state while reusing the guided Profile and Account conversi
   const dialog = page.getByRole("dialog", { name: "Convert Standard calculation to opportunity" });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Event / fixture").fill("Synthetic United v Example City");
-  await dialog.getByText("Synthetic Profile One").click();
-  await dialog.getByText("Synthetic Profile Two").click();
-  for (const select of await dialog.getByLabel("Bookmaker Account").all()) await select.selectOption("Bet365");
+  const firstProfile = dialog.getByRole("checkbox", { name: "Synthetic Profile One SYN-001" });
+  const secondProfile = dialog.getByRole("checkbox", { name: "Synthetic Profile Two SYN-002" });
+  await firstProfile.check();
+  await secondProfile.check();
+  const firstIdentity = firstProfile.locator("xpath=..").locator(".table-cell-stack");
+  const identityGeometry = await firstIdentity.evaluate((element) => {
+    const primary = element.querySelector("strong")!.getBoundingClientRect();
+    const secondary = element.querySelector("small")!.getBoundingClientRect();
+    return { primaryBottom: primary.bottom, secondaryTop: secondary.top };
+  });
+  expect(identityGeometry.secondaryTop).toBeGreaterThan(identityGeometry.primaryBottom);
+  const accountSelects = await dialog.getByLabel("Bookmaker Account").all();
+  await expect(accountSelects[0].locator("option")).toHaveCount(3);
+  await expect(accountSelects[0].locator("option", { hasText: "10Bet" })).toHaveCount(2);
+  await accountSelects[0].selectOption("AC-10BET-A");
+  await accountSelects[1].selectOption("AC-10BET-B");
+  expect(consoleErrors.filter((message) => message.includes("same key") || message.includes("unique key"))).toEqual([]);
   await dialog.getByRole("button", { name: "Convert to opportunity" }).click();
   await expect(dialog.getByText("Added Standard opportunity to 2 Profiles.")).toBeVisible();
   expect((submitted?.targets as unknown[]).length).toBe(2);
+  expect(submitted?.targets).toEqual([
+    { profile_id: "profile-synthetic-001", bookmaker: "10Bet" },
+    { profile_id: "profile-synthetic-002", bookmaker: "10Bet" },
+  ]);
   await expect(page.getByLabel("Back stake")).toHaveValue("10.00");
   await expect(page.getByLabel("Back odds")).toHaveValue("3.00");
 });
@@ -112,7 +133,7 @@ async function mockEachWayBridge(page: import("@playwright/test").Page, mode: "E
     { profile_id: "profile-synthetic-001", display_name: "Synthetic Profile", profile_code: "SYN-001", status: "Active" },
   ] }));
   await page.context().route("**/profiles/*/accounts", (route) => route.fulfill({ json: [
-    { account: "Bet365", type: "Bookie", status: "Active", lifecycle_status: "Active", restrictions: [] },
+    { account_id: "AC-BET365", account: "Bet365", type: "Bookie", status: "Active", lifecycle_status: "Active", restrictions: [] },
   ] }));
 }
 
@@ -135,7 +156,7 @@ for (const mode of ["Extra Place", "Each Way"] as const) {
     await dialog.getByLabel("Runner").fill("Synthetic Runner");
     await dialog.getByLabel("Race").fill("Synthetic 14:30");
     await dialog.getByText("Synthetic Profile").click();
-    await dialog.getByLabel("Bookmaker Account").selectOption("Bet365");
+    await dialog.getByLabel("Bookmaker Account").selectOption("AC-BET365");
     await dialog.getByRole("button", { name: "Convert to opportunity" }).click();
     await expect(dialog.getByText(`Added ${mode} opportunity to 1 Profile.`)).toBeVisible();
     expect(((submitted?.calculator ?? {}) as { mode?: string }).mode).toBe(mode);
@@ -179,7 +200,7 @@ test("Multi-Lay exposes the same conversion review without losing its legs", asy
   const dialog = page.getByRole("dialog", { name: "Convert Multi-Lay calculation to opportunity" });
   await dialog.getByLabel("Event / fixture").fill("Synthetic Multi-Lay fixture");
   await dialog.getByText("Synthetic Profile").click();
-  await dialog.getByLabel("Bookmaker Account").selectOption("Bet365");
+  await dialog.getByLabel("Bookmaker Account").selectOption("AC-BET365");
   await dialog.getByRole("button", { name: "Convert to opportunity" }).click();
   expect((((submitted?.calculator ?? {}) as { outcomes?: unknown[] }).outcomes ?? []).length).toBe(3);
 });

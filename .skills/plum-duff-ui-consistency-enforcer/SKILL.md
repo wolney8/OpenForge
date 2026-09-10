@@ -189,6 +189,15 @@ use the canonical primitive and computed styling.
   with route CSS; retain only calculator-local controls and the theme control.
 - Animated financial digits must inherit the static value's typography, line height and baseline;
   compare animated and plain geometry. Keep currency spaces and punctuation at their natural width.
+  Compact table cells must not apply generic descendant typography to `FinancialValue` digit,
+  punctuation or canonical-text layers; the value owns a natural, non-squashed inline width inside
+  the table's bounded scroll viewport.
+- Primary entity names and secondary identity codes use the shared stacked-cell/selectable-row
+  hierarchy or an explicit separator. Never concatenate them through incidental inline layout;
+  the owning control's accessible name includes both identities.
+- React collection keys use stable entity identity such as runtime, Account or catalogue ID. Visible
+  names and provider brands are not keys where duplicates are valid; do not deduplicate real entities
+  to conceal a key collision.
 - The canonical application shell uses three stable regions: brand/navigation trigger, global
   search, and account/theme/notification actions. At reduced widths these regions reflow without
   changing control semantics, hiding the search, or creating page-level horizontal overflow.

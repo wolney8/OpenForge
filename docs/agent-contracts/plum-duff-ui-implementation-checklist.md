@@ -119,7 +119,13 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Paged quick-select rails show at most three choices, hide redundant controls and retain all
   choices through working keyboard-accessible boundaries and the authoritative select.
 - [ ] Animated financial values match equivalent static typography, baseline and geometry; digit
-  slots do not compress currency spacing or punctuation.
+      slots do not compress currency spacing or punctuation.
+- [ ] Compact table cells preserve `FinancialValue` natural width and do not leak generic descendant
+      typography into its canonical, punctuation or odometer layers.
+- [ ] Primary entity name and secondary code use a deliberate stacked/separated hierarchy, and the
+      selectable control's accessible name includes both.
+- [ ] Repeated rendered entities use stable runtime/Account/catalogue identity as React keys; valid
+      duplicate display labels remain independently rendered and selectable without console warnings.
 - [ ] Action/icon dimensions, alignment and semantic destructive styling asserted where actions changed.
 - [ ] Light/dark contrast regression updated where colours changed.
 - [ ] Known-mistakes register updated if this fixes a repeated issue.

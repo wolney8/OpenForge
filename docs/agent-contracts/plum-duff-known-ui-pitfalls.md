@@ -1048,3 +1048,17 @@ cause, prevention rule and regression test.
 - Regression test: focused Blackjack Playwright captures console warnings, verifies Player-header
   action ownership, rejects standalone Rebet, and checks financial heading/value centres plus
   desktop, dual-pane and narrow overflow.
+
+## 2026-09-10: Compact table typography and visible labels corrupted entity/value composition
+
+- Area: calculator conversion review and shared ledger value cells.
+- Root cause: the conversion review keyed/select-selected Accounts by their repeatable provider name
+  and nested Profile identity outside the established selectable-row hierarchy. Separately, a broad
+  table descendant `span` rule overrode odometer digit typography while fixed badge minimums exceeded
+  the Casino VALUE cell's usable width.
+- Prevention: Account choices retain stable `account_id` identity through selection, Profile name/code
+  reuse the stacked selectable-row hierarchy, and compact ledger values use canonical text-owned,
+  natural-width geometry with explicit financial-layer typography inheritance.
+- Regression tests: calculator conversion Playwright renders and selects two same-brand Accounts
+  without a React warning; the shared Casino ledger test covers `£ (3.00)` and `£ 3.00`, selection,
+  motion, theme, desktop/half-width containment and typography.

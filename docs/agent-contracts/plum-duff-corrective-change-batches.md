@@ -3,6 +3,14 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-09-10 Calculator-to-Casino Manual Acceptance Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-073 | Shared ledger financial value | Preserve natural currency, accounting punctuation and digit geometry for positive and negative `FinancialValue` content inside compact table cells. | Converted Casino activity VALUE cell (`£ (3.00)`) | COMPLETE |
+| PD-FIX-074 | Calculator conversion Profile choice | Render Profile display name and code as an intentional primary/secondary identity with one combined accessible radio label. | `Frank EastenderBRAVO-002` | COMPLETE |
+| PD-FIX-075 | Calculator conversion Account choice | Key and select legitimate same-brand Accounts by stable Account identity without deduplicating choices. | React duplicate key warning for `10Bet` | COMPLETE |
+
 ## 2026-08-27 Shared Ledger Theme Feedback Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

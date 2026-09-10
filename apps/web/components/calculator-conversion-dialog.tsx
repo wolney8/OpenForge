@@ -11,7 +11,7 @@ import { useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import type { BlackjackSessionSourceSnapshot } from "@/lib/blackjack-session";
 
 type Profile = { profile_id: string; display_name: string; profile_code: string; status: string };
-type Account = { account: string; type: string; status: string; lifecycle_status: string; restrictions: string[] };
+type Account = { account_id: string; account: string; type: string; status: string; lifecycle_status: string; restrictions: string[] };
 type TargetResult = { profile_id: string; account: string; state: "succeeded" | "failed" | "already_succeeded"; record_id: string; href: string; reasons: string[] };
 export type CalculatorFinancialSource = {
   kind: "standard" | "multi-lay" | "each-way-extra-place";
@@ -69,6 +69,11 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
   const financialLabel = financial?.kind === "standard" ? "Standard" : financial?.kind === "multi-lay" ? "Multi-Lay" : "Each Way / Extra Place";
   useDialogFocusLifecycle(true, dialogRef);
 
+  function selectedAccountForProfile(profileId: string) {
+    const selectedAccountId = selectedAccounts[profileId];
+    return (accounts[profileId] ?? []).find((account) => account.account_id === selectedAccountId);
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     void fetch(`${apiBaseUrl}/profiles`, { credentials: "include", signal: controller.signal })
@@ -108,15 +113,15 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
     setBusy(true); setError(""); setMessage("");
     const endpoint = isBlackjack ? "blackjack" : financial!.kind;
     const body = isBlackjack ? {
-      snapshot: blackjack, profile_id: selectedProfiles[0], casino_account: selectedAccounts[selectedProfiles[0]],
+      snapshot: blackjack, profile_id: selectedProfiles[0], casino_account: selectedAccountForProfile(selectedProfiles[0])?.account,
       activity_name: activityName, offer_identity: offerIdentity,
     } : isEachWay ? {
       source: financial!.envelope, calculator: financial!.calculator,
-      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccounts[profile_id] })),
+      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccountForProfile(profile_id)?.account })),
       runner, race,
     } : {
       source: financial!.envelope, calculator: financial!.calculator,
-      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccounts[profile_id] })),
+      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccountForProfile(profile_id)?.account })),
       event_name: eventName, offer_type: offerType, bet_type: betType, offer_name: offerName, fixture_type: fixtureType,
     };
     try {
@@ -151,9 +156,9 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
           {profiles.map((profile) => {
             const selected = selectedProfiles.includes(profile.profile_id);
             const profileAccounts = (accounts[profile.profile_id] ?? []).filter((account) => account.type === "Bookie");
-            const selectedAccount = profileAccounts.find((account) => account.account === selectedAccounts[profile.profile_id]);
+            const selectedAccount = selectedAccountForProfile(profile.profile_id);
             const selectedReview = selectedAccount ? accountReview(selectedAccount, isBlackjack, isBlackjack ? blackjack?.activity_source === "promotion" : !["", "Mug Bet", "No Offer", "Qualifying Bet"].includes(offerType)) : null;
-            return <div className="multi-profile-target-row" key={profile.profile_id}><label><input checked={selected} disabled={isBlackjack && selectedProfiles.length === 1 && !selected} onChange={(event) => toggleProfile(profile.profile_id, event.target.checked)} type={isBlackjack ? "radio" : "checkbox"} /><span><strong>{profile.display_name}</strong><small>{profile.profile_code}</small></span></label>{selected ? <label className="field-control"><span>{isBlackjack ? "Casino Account" : "Bookmaker Account"}</span><select aria-describedby={selectedReview?.message ? `conversion-account-review-${profile.profile_id}` : undefined} onChange={(event) => setSelectedAccounts((current) => ({ ...current, [profile.profile_id]: event.target.value }))} value={selectedAccounts[profile.profile_id] ?? ""}><option value="">Select eligible Account</option>{profileAccounts.map((account) => { const review = accountReview(account, isBlackjack, isBlackjack ? blackjack?.activity_source === "promotion" : !["", "Mug Bet", "No Offer", "Qualifying Bet"].includes(offerType)); return <option disabled={review.blocked} key={account.account} value={account.account}>{account.account} — {review.blocked ? review.message : account.status}</option>; })}</select>{selectedReview?.message ? <small className={selectedReview.blocked ? "field-validation-text" : "field-warning-text"} id={`conversion-account-review-${profile.profile_id}`}>{selectedReview.message}</small> : null}</label> : null}</div>;
+            return <div className="stack-tight" key={profile.profile_id}><label className="multi-profile-target-row"><input checked={selected} disabled={isBlackjack && selectedProfiles.length === 1 && !selected} onChange={(event) => toggleProfile(profile.profile_id, event.target.checked)} type={isBlackjack ? "radio" : "checkbox"} /><span className="table-cell-stack"><strong>{profile.display_name}</strong><small>{profile.profile_code}</small></span></label>{selected ? <label className="field-control"><span>{isBlackjack ? "Casino Account" : "Bookmaker Account"}</span><select aria-describedby={selectedReview?.message ? `conversion-account-review-${profile.profile_id}` : undefined} onChange={(event) => setSelectedAccounts((current) => ({ ...current, [profile.profile_id]: event.target.value }))} value={selectedAccounts[profile.profile_id] ?? ""}><option value="">Select eligible Account</option>{profileAccounts.map((account) => { const review = accountReview(account, isBlackjack, isBlackjack ? blackjack?.activity_source === "promotion" : !["", "Mug Bet", "No Offer", "Qualifying Bet"].includes(offerType)); return <option disabled={review.blocked} key={account.account_id} value={account.account_id}>{account.account} — {review.blocked ? review.message : account.status} · {account.account_id}</option>; })}</select>{selectedReview?.message ? <small className={selectedReview.blocked ? "field-validation-text" : "field-warning-text"} id={`conversion-account-review-${profile.profile_id}`}>{selectedReview.message}</small> : null}</label> : null}</div>;
           })}
         </div></section>
         {results.length ? <section className="stack-tight" aria-label="Conversion results">{results.map((result) => <p className={result.state === "failed" ? "field-validation-text" : "status-message"} key={`${result.profile_id}:${result.account}`}>{result.account}: {result.state === "failed" ? result.reasons.join(" · ") : result.state === "already_succeeded" ? "Already saved" : "Saved"}{result.href ? <> · <Link href={result.href}>Open row</Link></> : null}</p>)}</section> : null}

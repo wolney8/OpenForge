@@ -39,7 +39,12 @@ durable requirements.
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `2e173cf` on `main`.
+- #36 manual-acceptance defects are locally corrected: compact Casino VALUE cells no longer let
+  generic table typography shrink odometer digits or fixed badge minimums clip accounting-negative
+  values; Profile choices deliberately stack name/code; Account choices retain stable `account_id`
+  identity even when provider labels repeat. Bridge source snapshots, destination validation and
+  idempotency are unchanged. Will's recheck remains required.
+- Current implementation base before this tranche: `fc86789` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

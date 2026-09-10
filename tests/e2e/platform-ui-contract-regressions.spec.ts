@@ -547,4 +547,100 @@ test.describe("Plum Duff UI contract regressions", () => {
       );
     }
   });
+
+  test("Casino ledger values preserve natural positive and accounting-negative odometer geometry", async ({ page }) => {
+    test.setTimeout(60_000);
+    const marker = `Casino value geometry ${Date.now()}`;
+    const casinoRow = (suffix: string, value: string) => {
+      const id = `CO-GEOMETRY-${suffix.toUpperCase()}`;
+      return {
+        casino_offer_id: id, profile_id: profileId, offer_group_id: "",
+        date_started: "2026-09-10T12:00:00", date_settling: "2026-09-10T12:30:00", expiry_datetime: "2026-09-10T13:00:00",
+        bookmaker: "Bookmaker A", offer_type: "Manual Play / No Offer", offer_name: `${marker} ${suffix}`, game: `Synthetic Blackjack ${suffix}`,
+        cash_stake: "3.00", credit_amount: "", bonus_amount: "", wager_multiplier: "", wager_target: "", required_spins: "", spin_stake: "", free_spins_awarded: "", free_spins_value: "",
+        wagering_base: "", custom_wager_base: "", wagering_completed: "", rtp_percent: "", reward_type: "", reward_wager_multiplier: "", reward_wager_target: "", reward_required_spins: "", reward_wagering_completed: "", reward_rtp_percent: "", expected_reward_cash_value: "", qualifying_expected_loss: "", reward_expected_loss: "", other_expected_costs: "", campaign_ev: "", own_cash_committed: "3.00", cash_returned: value.startsWith("-") ? "0.00" : "6.00", settlement_other_costs: "",
+        status: "Settled", result: value.startsWith("-") ? "Lose" : "Win", calc_net_pnl: "", final_net_pnl: value, user_notes: "Synthetic FinancialValue table geometry fixture.",
+        created_at: "2026-09-10T12:30:00Z", updated_at: "2026-09-10T12:30:00Z", resolved_net_pnl: value, calculation_state: "resolved", calculation_notes: [], counts_as_open: false, is_overdue: false, week_label: "2026-W37",
+      };
+    };
+    await page.route(`**/profiles/${profileId}/casino-offers`, (route) => route.fulfill({ json: [casinoRow("negative", "-3.00"), casinoRow("positive", "3.00")] }));
+    await page.route(`**/profiles/${profileId}/accounts`, (route) => route.fulfill({ json: [] }));
+    await page.route(`**/profiles/${profileId}/lookup-values`, (route) => route.fulfill({ json: [] }));
+    await page.route(`**/profiles/${profileId}/tracker-settings`, (route) => route.fulfill({ json: { active_date_preset: "All Time", custom_start_date: "", custom_end_date: "", range_back_days: 0, range_forward_days: 0 } }));
+    await page.route("**/account-catalogue/source", (route) => route.fulfill({ json: { records: [], source_hash: "synthetic" } }));
+    await page.route(`**/profiles/${profileId}/bookmaker-display-settings`, (route) => route.fulfill({ json: {} }));
+    await page.route("**/fund-manager/common-bet-combos?active_only=true", (route) => route.fulfill({ json: [] }));
+    await page.route("**/fund-manager/common-bet-combos/profile-overrides/**", (route) => route.fulfill({ json: [] }));
+    await page.route("**/fund-manager/preferences/financial-motion", (route) => route.fulfill({ json: { duration_ms: 520, enabled: true, replay_delay_ms: 1500, stagger_ms: 80 } }));
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto(`/profiles/${profileId}/tracker/casino-offers?search=${encodeURIComponent(marker)}`);
+      const negativeRow = page.locator(".data-table tbody tr", { hasText: `${marker} negative` });
+      const positiveRow = page.locator(".data-table tbody tr", { hasText: `${marker} positive` });
+      await expect(negativeRow).toBeVisible();
+      await expect(positiveRow).toBeVisible();
+      const negativeValue = negativeRow.locator(".ledger-financial-value");
+      const positiveValue = positiveRow.locator(".ledger-financial-value");
+      await expect(negativeValue).toHaveAttribute("aria-label", "Net result: £ (3.00)");
+      await expect(positiveValue).toHaveAttribute("aria-label", "Net result: £ 3.00");
+      await expect(negativeValue).toHaveAttribute("data-money-tone", "negative");
+      await expect(positiveValue).toHaveAttribute("data-money-tone", "positive");
+
+      const geometry = await Promise.all([negativeValue, positiveValue].map((value) => value.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const cell = element.closest("td")!.getBoundingClientRect();
+        const rootStyle = getComputedStyle(element);
+        const descendants = [...element.querySelectorAll<HTMLElement>(".financial-value-character, .financial-value-digit-window")];
+        const range = document.createRange();
+        range.selectNodeContents(element.querySelector(".financial-value-canonical-text")!);
+        const selection = window.getSelection()!;
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const selectedText = selection.toString();
+        selection.removeAllRanges();
+        return {
+          cellLeft: cell.left, cellRight: cell.right,
+          left: rect.left, right: rect.right, width: rect.width,
+          selectedText,
+          typography: descendants.map((child) => {
+            const style = getComputedStyle(child);
+            return { fontSize: style.fontSize, lineHeight: style.lineHeight, textTransform: style.textTransform, letterSpacing: style.letterSpacing };
+          }),
+          rootTypography: { fontSize: rootStyle.fontSize, lineHeight: rootStyle.lineHeight },
+        };
+      })));
+      expect(geometry[0].selectedText).toBe("£ (3.00)");
+      expect(geometry[1].selectedText).toBe("£ 3.00");
+      for (const value of geometry) {
+        expect(value.left).toBeGreaterThanOrEqual(value.cellLeft - 1);
+        expect(value.right).toBeLessThanOrEqual(value.cellRight + 1);
+        for (const typography of value.typography) {
+          expect(typography.fontSize).toBe(value.rootTypography.fontSize);
+          expect(typography.lineHeight).toBe(value.rootTypography.lineHeight);
+          expect(typography.textTransform).toBe("none");
+          expect(["0px", "normal"]).toContain(typography.letterSpacing);
+        }
+      }
+      expect(geometry[0].width).toBeGreaterThan(geometry[1].width);
+      await expect(negativeValue).toHaveAttribute("data-money-motion", "none", { timeout: 4_000 });
+      await page.waitForTimeout(1_550);
+      await negativeRow.hover();
+      await expect(negativeValue).toHaveAttribute("data-money-motion", "down");
+
+      for (const theme of ["light", "dark"] as const) {
+        await page.evaluate((nextTheme) => { document.documentElement.dataset.theme = nextTheme; }, theme);
+        for (const width of [1366, 720]) {
+          await page.setViewportSize({ width, height: 768 });
+          await negativeValue.scrollIntoViewIfNeeded();
+          const containment = await negativeValue.evaluate((element) => {
+            const valueRect = element.getBoundingClientRect();
+            const cellRect = element.closest("td")!.getBoundingClientRect();
+            return {
+              contained: valueRect.left >= cellRect.left - 1 && valueRect.right <= cellRect.right + 1,
+              pageContained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+            };
+          });
+          expect(containment).toEqual({ contained: true, pageContained: true });
+        }
+      }
+  });
 });

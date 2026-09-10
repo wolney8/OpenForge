@@ -6551,7 +6551,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .ledger-value-cell {
   align-items: center;
   position: relative;
-  min-width: 6.25rem;
+  min-width: 0;
+  width: 100%;
   padding-top: 0.28rem;
 }
 
@@ -6561,10 +6562,13 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .ledger-financial-value {
-  min-width: 5.95rem;
+  display: inline-flex;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: max-content;
   min-height: 2.35rem;
   align-items: center;
-  padding: 0.34rem 0.72rem;
+  padding: 0.34rem 0.58rem;
   border: 1px solid transparent;
   border-radius: 0.82rem;
   box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.22);
@@ -6578,6 +6582,17 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .table-value-cell .financial-value-character {
   color: inherit;
   font-size: 0.92rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Generic table descendant typography must not compress odometer digit windows. */
+.table-value-cell .financial-value-canonical-text,
+.table-value-cell .financial-value-digit-window,
+.table-value-cell .financial-value-digit-strip,
+.table-value-cell .financial-value-digit-strip > span {
+  font: inherit;
+  line-height: inherit;
   letter-spacing: 0;
   text-transform: none;
 }
