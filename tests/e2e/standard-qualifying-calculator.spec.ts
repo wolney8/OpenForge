@@ -184,8 +184,8 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   const rail = page.locator('[data-pd-id="calculators.family-selector"]');
   const familyViewport = rail.locator('[data-pd-id="calculators.family-page"]');
   const activeFamilyPage = () => familyViewport.locator('.calculator-family-page[aria-hidden="false"]');
-  const previous = rail.getByRole("button", { name: "Show previous calculator families" });
-  const next = rail.getByRole("button", { name: "Show next calculator families" });
+  const previous = rail.getByRole("button", { name: "Select previous calculator" });
+  const next = rail.getByRole("button", { name: "Select next calculator" });
   const more = rail.getByRole("button", { name: /Show all calculators/ });
   await expect(rail.getByRole("button", { name: "Standard" })).toBeVisible();
   expect(await activeFamilyPage().locator("button").count()).toBe(3);
@@ -206,9 +206,14 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.keyboard.press("Tab");
   await expect(rail.getByRole("button", { name: "Multi-Lay" })).toBeFocused();
   await next.click();
+  await expect(page.getByRole("heading", { name: "Multi-Lay" })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Extra Place / Each Way" })).toBeVisible();
+  await next.click();
   expect(await activeFamilyPage().locator("button").count()).toBe(3);
   await expect(rail.getByRole("button", { name: /Sequential Lay/ })).toBeVisible();
-  await next.click();
+  await more.click();
+  await page.locator("#calculator-family-menu").getByRole("menuitem", { name: "Blackjack Strategy" }).click();
   await expect(next).toBeDisabled();
   await more.click();
   await expect(page.locator("#calculator-family-menu").getByRole("menuitem", { name: "Standard" })).toBeVisible();

@@ -8413,19 +8413,26 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .calculator-paired-segment {
   align-content: start;
-  grid-template-rows: auto auto auto;
+  grid-row: 1 / span var(--calculator-segment-span, 3);
+  grid-template-rows: subgrid;
 }
 
 .calculator-paired-segment-fields {
   display: grid;
+  grid-row: 2 / span var(--calculator-segment-field-rows, 2);
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(var(--calculator-paired-field-rows, 2), 6rem);
+  grid-template-rows: subgrid;
 }
 
-.calculator-paired-segment-fields > .field-control:not(:has(.field-validation-text, .field-support-text))::after {
-  content: "";
-  display: block;
-  min-height: 1.38rem;
+.calculator-paired-rows-2 { grid-template-rows: auto repeat(2, auto); }
+.calculator-paired-rows-3 { grid-template-rows: auto repeat(3, auto); }
+.calculator-paired-rows-4 { grid-template-rows: auto repeat(4, auto); }
+
+.calculator-paired-segment:first-child { grid-column: 1; }
+.calculator-paired-segment:last-child { grid-column: 2; }
+
+.calculator-paired-segment > .calculator-segment-auxiliary-fields {
+  grid-row: -2;
 }
 
 .calculator-segment-auxiliary-fields {
@@ -10945,11 +10952,13 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 }
 
 .calculator-family-page {
+  box-sizing: border-box;
   display: grid;
   flex: 0 0 100%;
   gap: var(--action-group-gap);
   grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
+  padding: 0.5rem;
 }
 
 .calculator-family-page .review-chip {
@@ -11032,12 +11041,20 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 @media (max-width: 860px) {
   .calculator-paired-segments {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .calculator-paired-segment {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-rows: none;
   }
   .calculator-paired-segment-fields {
     grid-auto-rows: minmax(5.25rem, auto);
+    grid-row: auto;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
+  .calculator-paired-segment > .calculator-segment-auxiliary-fields { grid-row: auto; }
   .calculator-panel-control-row { align-items: stretch; }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveBackLayTheme, resolveTheme } from "./theme";
+import { resolveBackLayTheme, resolveEachWayColourScheme, resolveTheme } from "./theme";
 
 describe("resolveTheme", () => {
   it("uses an allowed stored theme when present", () => {
@@ -27,5 +27,14 @@ describe("resolveBackLayTheme", () => {
     expect(resolveBackLayTheme(null)).toBe("smarkets");
     expect(resolveBackLayTheme(undefined)).toBe("smarkets");
     expect(resolveBackLayTheme("custom")).toBe("smarkets");
+  });
+});
+
+describe("resolveEachWayColourScheme", () => {
+  it("restores only supported calculator presentation values", () => {
+    expect(resolveEachWayColourScheme("ep")).toBe("ep");
+    expect(resolveEachWayColourScheme("back-lay")).toBe("back-lay");
+    expect(resolveEachWayColourScheme(null)).toBe("ep");
+    expect(resolveEachWayColourScheme("unknown")).toBe("ep");
   });
 });

@@ -1069,9 +1069,13 @@ cause, prevention rule and regression test.
   family paging.
 - Root cause: independent field grids aligned controls only by coincidence; accepted eyebrow/theme
   primitives were bypassed or ledger-local; table backgrounds exposed square outer corners; family
-  pages were replaced synchronously and numeric overflow chrome was treated as an action.
-- Prevention: compose paired segments on explicit shared rows with reserved message slots, extract
-  accepted family controls, round every exposed surface corner, and use a clipped sliding track with
-  fixed boundary arrows plus the anchored application ellipsis menu.
+  pages were replaced synchronously and numeric overflow chrome was treated as an action. The first
+  shared-row pass reserved fixed-height/trailing tracks, carousel arrows moved pages without changing
+  the active calculator, and the clipped viewport did not reserve the global focus halo.
+- Prevention: compose paired segments on content-driven shared rows, span each panel only through its
+  real content, persist accepted presentation preferences through the established local UI-state
+  boundary, round every exposed surface corner, and use a padded sliding viewport whose fixed arrows
+  select adjacent ordered families without wrapping. Keep the anchored application ellipsis menu.
 - Regression test: `tests/e2e/calculator-ui-parity-pass.spec.ts` checks composed geometry, state
-  retention, corner radii, transition/reduced-motion state, menu anchoring and viewport containment.
+  retention across refresh, panel fit, corner radii, selected/focus containment, adjacent selection,
+  disabled boundaries, transition/reduced-motion state, menu anchoring and viewport containment.

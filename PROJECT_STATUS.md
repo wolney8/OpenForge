@@ -9,6 +9,12 @@ durable requirements.
 
 ## Current state
 
+- Calculator UI follow-up PD-FIX-081–084 is locally verified pending Will's recheck. The shared
+  family carousel now contains the complete active/focus halo and selects adjacent calculators from
+  fixed non-wrapping arrows; Standard and Early Payout use content-driven subgrid rows without tall
+  trailing panel space; and Extra Place / Each Way restores its last presentation scheme through the
+  existing ThemeProvider preference path without resetting mode or inputs. Calculations, validation,
+  #113 audit results and #36 bridge behaviour remain unchanged.
 - Current presentation correction: [#35 Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35)
   and [#92 shared UI consistency](https://github.com/wolney8/OpenForge/issues/92). PD-FIX-076–080
   are locally verified pending Will's recheck: Standard/Early Payout share explicit aligned segment

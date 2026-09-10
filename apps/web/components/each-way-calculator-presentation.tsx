@@ -4,9 +4,11 @@ import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import type { EachWayColourScheme } from "@/lib/theme";
+
+export type { EachWayColourScheme } from "@/lib/theme";
 
 export type EachWayPresentationMode = "Each Way" | "Extra Place";
-export type EachWayColourScheme = "ep" | "back-lay";
 
 export type EachWayOutcomeRow = {
   key: string;

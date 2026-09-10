@@ -94,9 +94,13 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] A standalone calculator was compared with and reuses the nearest same-family ledger
       calculator/workflow presentation; generic calculator geometry alone is not parity evidence.
 - [ ] Side-by-side calculator segments use explicit peer rows: canonical eyebrows, labels, controls
-      and validation/help slots align across the composed segments at supported widths.
+      and validation/help slots align across the composed segments at supported widths; trailing
+      empty tracks do not make a shorter segment unnecessarily tall.
 - [ ] Existing calculator presentation schemes occupy the shared panel-header action slot and retain
-      calculator mode/input state when changed.
+      calculator mode/input state when changed, and restore the existing UI preference on revisit.
+- [ ] Calculator-family Previous/Next selects the adjacent ordered family without wrapping; first
+      and last boundaries are visibly and semantically disabled, and selected/focus halos remain
+      fully inside the animated viewport.
 - [ ] Repeated selection surfaces round every exposed outer corner while preserving intentional
       joined internal edges.
 - [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than

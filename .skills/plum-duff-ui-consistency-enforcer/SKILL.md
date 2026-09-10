@@ -147,10 +147,13 @@ use the canonical primitive and computed styling.
   not establish calculator parity.
 - Side-by-side calculator segments align their canonical eyebrows, corresponding labels, controls
   and validation/help slots through explicit shared rows; independently correct components do not
-  establish composed parity. Existing presentation schemes use the stable shared header action slot.
+  establish composed parity. Shared rows remain content-driven: shorter segments do not inherit
+  empty trailing tracks merely to equalise panel bottoms. Existing presentation schemes use the
+  stable shared header action slot and restore their established browser-local UI preference.
 - Repeated calculator selection surfaces round every exposed outer corner. Calculator-family paging
   uses a clipped reduced-motion-aware slide, visible disabled boundary arrows and an anchored
-  ellipsis menu rather than numeric overflow chrome.
+  ellipsis menu rather than numeric overflow chrome. The viewport reserves the shared focus/selected
+  halo, and arrow actions select the adjacent ordered family rather than moving an unselected page.
 - All calculator scenario results use the shared Outcomes presentation primitive. Family-specific
   generic result tables are not permitted where contracted scenario outcomes exist.
 - Use a Switch only for genuine binary on/off state. Mutually exclusive named modes use the

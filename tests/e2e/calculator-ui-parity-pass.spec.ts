@@ -27,6 +27,14 @@ async function pairedGeometry(page: import("@playwright/test").Page, id: string)
   });
 }
 
+async function pairedPanelFit(page: import("@playwright/test").Page, id: string) {
+  return page.locator(`[data-pd-id="${id}"]`).evaluate((root) => [...root.querySelectorAll<HTMLElement>(".calculator-paired-segment")].map((segment) => {
+    const content = [...segment.querySelectorAll<HTMLElement>("input, select, .field-support-text, .field-validation-text")];
+    const bottom = Math.max(...content.map((item) => item.getBoundingClientRect().bottom));
+    return segment.getBoundingClientRect().bottom - bottom;
+  }));
+}
+
 test("aligns calculator segments, hierarchy, schemes and selection surfaces", async ({ page }) => {
   await mockSession(page);
   await page.goto("/fund-manager/calculators");
@@ -34,6 +42,8 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   let geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
   expect(geometry[0].eyebrow).toBeCloseTo(geometry[1].eyebrow, 0);
   expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
+  expect(geometry[0].fields[1].input - geometry[0].fields[0].input).toBeLessThan(96);
+  expect((await pairedPanelFit(page, "calculators.matched-betting.paired-segments")).every((space) => space < 52)).toBe(true);
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-desktop.png`, fullPage: true });
   }
@@ -57,17 +67,21 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   expect(geometry[0].eyebrow).toBeCloseTo(geometry[1].eyebrow, 0);
   expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
   expect(geometry[0].fields[1]).toEqual(geometry[1].fields[1]);
+  expect((await pairedPanelFit(page, "calculators.early-payout.paired-segments")).every((space) => space < 52)).toBe(true);
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/early-payout-desktop.png`, fullPage: true });
   }
 
   await page.goto("/fund-manager/calculators?family=each-way");
   await page.getByLabel("E/W Stake (each way)").fill("10");
+  await page.getByRole("button", { name: "Use Extra Place colour theme" }).click();
   await page.getByRole("button", { name: "Use Back and Lay colour theme" }).click();
   const eachWay = page.locator('[data-pd-id="calculators.each-way.presentation"]');
   await expect(eachWay).toHaveClass(/extra-place-theme-back-lay/);
   await expect(page.getByLabel("E/W Stake (each way)")).toHaveValue("10");
   await expect(page.getByRole("button", { name: "Extra Place", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(eachWay).toHaveClass(/extra-place-theme-back-lay/);
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/each-way-desktop.png`, fullPage: true });
   }
@@ -104,14 +118,34 @@ test("slides bounded calculator pages and exposes an anchored ellipsis menu", as
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/fund-manager/calculators");
   const rail = page.locator('[data-pd-id="calculators.family-selector"]');
-  const previous = rail.getByRole("button", { name: "Show previous calculator families" });
-  const next = rail.getByRole("button", { name: "Show next calculator families" });
+  const previous = rail.getByRole("button", { name: "Select previous calculator" });
+  const next = rail.getByRole("button", { name: "Select next calculator" });
   const more = rail.getByRole("button", { name: "Show all calculators" });
   const track = rail.locator(".calculator-family-track");
 
   await expect(previous).toBeDisabled();
   await expect(next).toBeEnabled();
   await expect(more.locator(".material-symbols-outlined")).toHaveText("more_horiz");
+  const viewport = rail.locator(".calculator-family-viewport");
+  const standard = rail.getByRole("button", { name: "Standard", exact: true });
+  await standard.focus();
+  const containment = await Promise.all([viewport.boundingBox(), standard.boundingBox()]);
+  expect(containment[1]!.y - containment[0]!.y).toBeGreaterThanOrEqual(6);
+  expect(containment[0]!.y + containment[0]!.height - (containment[1]!.y + containment[1]!.height)).toBeGreaterThanOrEqual(6);
+  expect(containment[1]!.x - containment[0]!.x).toBeGreaterThanOrEqual(6);
+  expect(containment[0]!.x + containment[0]!.width - (containment[1]!.x + containment[1]!.width)).toBeGreaterThanOrEqual(6);
+  const stableHeight = containment[0]!.height;
+  if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
+    await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/carousel-focused-desktop.png`, fullPage: true });
+  }
+  await previous.evaluate((button) => button.click());
+  await expect(page.getByRole("heading", { name: "Standard", exact: true })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Multi-Lay" })).toBeVisible();
+  await expect(previous).toBeEnabled();
+  expect((await viewport.boundingBox())!.height).toBe(stableHeight);
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Extra Place / Each Way" })).toBeVisible();
   await next.click();
   await page.waitForTimeout(80);
   const intermediate = await track.evaluate((element) => getComputedStyle(element).transform);
@@ -126,13 +160,21 @@ test("slides bounded calculator pages and exposes an anchored ellipsis menu", as
   expect(menuBox!.x + menuBox!.width).toBeCloseTo(moreBox!.x + moreBox!.width, 0);
   await menu.getByRole("menuitem", { name: "Blackjack Strategy" }).click();
   await expect(next).toBeDisabled();
+  await next.evaluate((button) => button.click());
+  await expect(page.getByRole("heading", { name: "Blackjack Strategy" })).toBeVisible();
   await expect(previous).toBeEnabled();
+  await previous.click();
+  await expect(page.getByRole("heading", { name: "Odds / Probability" })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Blackjack Strategy" })).toBeVisible();
+  await expect(next).toBeDisabled();
   await more.click();
   await expect(menu.getByRole("menuitem", { name: "Blackjack Strategy" })).toHaveAttribute("aria-current", "page");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await menu.getByRole("menuitem", { name: "Standard" }).click();
   expect(await track.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s");
+  await expect(previous).toBeDisabled();
 
   for (const width of [720, 390]) {
     await page.setViewportSize({ width, height: 900 });

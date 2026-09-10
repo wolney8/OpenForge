@@ -4,9 +4,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   BACK_LAY_THEME_STORAGE_KEY,
   BackLayTheme,
+  EACH_WAY_PRESENTATION_STORAGE_KEY,
+  EachWayColourScheme,
   THEME_STORAGE_KEY,
   ThemeMode,
   resolveBackLayTheme,
+  resolveEachWayColourScheme,
   resolveTheme,
 } from "@/lib/theme";
 
@@ -15,6 +18,8 @@ type ThemeContextValue = {
   backLayTheme: BackLayTheme;
   setTheme: (theme: ThemeMode) => void;
   setBackLayTheme: (theme: BackLayTheme) => void;
+  eachWayColourScheme: EachWayColourScheme;
+  setEachWayColourScheme: (theme: EachWayColourScheme) => void;
   toggleTheme: () => void;
 };
 
@@ -47,6 +52,7 @@ function applyBackLayTheme(theme: BackLayTheme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("light");
   const [backLayTheme, setBackLayThemeState] = useState<BackLayTheme>("smarkets");
+  const [eachWayColourScheme, setEachWayColourSchemeState] = useState<EachWayColourScheme>("ep");
   const [isReady, setIsReady] = useState(false);
 
   const setTheme = (nextTheme: ThemeMode) => {
@@ -65,6 +71,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setBackLayThemeState(nextTheme);
   };
 
+  const setEachWayColourScheme = (nextTheme: EachWayColourScheme) => {
+    window.localStorage.setItem(EACH_WAY_PRESENTATION_STORAGE_KEY, nextTheme);
+    setEachWayColourSchemeState(nextTheme);
+  };
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const nextTheme = resolveTheme(
@@ -74,11 +85,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const nextBackLayTheme = resolveBackLayTheme(
         window.localStorage.getItem(BACK_LAY_THEME_STORAGE_KEY)
       );
+      const nextEachWayColourScheme = resolveEachWayColourScheme(
+        window.localStorage.getItem(EACH_WAY_PRESENTATION_STORAGE_KEY)
+      );
 
       applyTheme(nextTheme);
       applyBackLayTheme(nextBackLayTheme);
       setThemeState(nextTheme);
       setBackLayThemeState(nextBackLayTheme);
+      setEachWayColourSchemeState(nextEachWayColourScheme);
       setIsReady(true);
     });
 
@@ -87,7 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, backLayTheme, setTheme, setBackLayTheme, toggleTheme }}
+      value={{ theme, backLayTheme, eachWayColourScheme, setTheme, setBackLayTheme, setEachWayColourScheme, toggleTheme }}
     >
       <div className={isReady ? "theme-ready" : "theme-pending"}>{children}</div>
     </ThemeContext.Provider>

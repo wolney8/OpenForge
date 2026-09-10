@@ -3,6 +3,15 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-09-10 Calculator UI Parity Follow-up
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-081 | Calculator family carousel | Keep the active chip outline/glow fully visible without movement or clipping. | Selected calculator chip screenshot | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-082 | Shared paired calculator segments | Preserve peer-row alignment while sizing Standard and Early Payout panels to their content. | BACK BET / LAY BET paired panels | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-083 | Extra Place / Each Way presentation | Restore the last presentation style on revisit/refresh without changing calculator mode or inputs. | Existing shared presentation toggle and local UI preference storage | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-084 | Calculator family carousel | Make Previous/Next select the adjacent ordered family with smooth, non-wrapping disabled boundaries. | Shared bounded family selector | COMPLETE LOCALLY — WILL RECHECK PENDING |
+
 ## 2026-09-10 Calculator UI Parity Batch
 
 | ID | Area | Requested change | Supplied reference | Status |
