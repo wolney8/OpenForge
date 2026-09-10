@@ -93,6 +93,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       Adjustments, or a documented reason explains why a ledger is intentionally excluded.
 - [ ] A standalone calculator was compared with and reuses the nearest same-family ledger
       calculator/workflow presentation; generic calculator geometry alone is not parity evidence.
+- [ ] Side-by-side calculator segments use explicit peer rows: canonical eyebrows, labels, controls
+      and validation/help slots align across the composed segments at supported widths.
+- [ ] Existing calculator presentation schemes occupy the shared panel-header action slot and retain
+      calculator mode/input state when changed.
+- [ ] Repeated selection surfaces round every exposed outer corner while preserving intentional
+      joined internal edges.
 - [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than
       family-specific generic result tables.
 - [ ] Copyable calculated stakes use the shared financial-value plus adjacent copy/check action;
@@ -118,6 +124,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Dialog/page top, bottom, left and right visibility asserted where geometry changed.
 - [ ] Paged quick-select rails show at most three choices, hide redundant controls and retain all
   choices through working keyboard-accessible boundaries and the authoritative select.
+- [ ] Calculator family paging uses bounded, reduced-motion-aware horizontal movement, visible
+      disabled boundary arrows and an anchored ellipsis menu rather than numeric overflow chrome.
 - [ ] Animated financial values match equivalent static typography, baseline and geometry; digit
       slots do not compress currency spacing or punctuation.
 - [ ] Compact table cells preserve `FinancialValue` natural width and do not leak generic descendant

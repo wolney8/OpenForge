@@ -6,6 +6,7 @@ import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 
 export type EachWayPresentationMode = "Each Way" | "Extra Place";
+export type EachWayColourScheme = "ep" | "back-lay";
 
 export type EachWayOutcomeRow = {
   key: string;
@@ -35,6 +36,17 @@ export function EachWayModeToggle({ mode, onChange }: { mode: EachWayPresentatio
     options={(["Extra Place", "Each Way"] as const).map((option) => ({ label: option, value: option }))}
     value={mode}
   />;
+}
+
+export function EachWayColourSchemeToggle({ onChange, value }: { onChange: (value: EachWayColourScheme) => void; value: EachWayColourScheme }) {
+  return <div aria-label="Extra Place colour theme" className="extra-place-theme-switch" data-pd-id="calculators.each-way.presentation-style" role="group">
+    <button aria-label="Use Extra Place colour theme" aria-pressed={value === "ep"} className="extra-place-theme-switch-option" onClick={() => onChange("ep")} type="button">
+      <span aria-hidden="true" className="material-symbols-outlined">chess_knight</span>
+    </button>
+    <button aria-label="Use Back and Lay colour theme" aria-pressed={value === "back-lay"} className="extra-place-theme-switch-option" onClick={() => onChange("back-lay")} type="button">
+      <span aria-hidden="true" className="material-symbols-outlined">palette</span>
+    </button>
+  </div>;
 }
 
 export function EachWayBackBetSection({ children, placeTerms }: { children: ReactNode; placeTerms: ReactNode }) {

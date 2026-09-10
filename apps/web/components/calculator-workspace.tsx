@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
@@ -11,12 +11,14 @@ import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import {
   EachWayBackBetSection,
+  EachWayColourSchemeToggle,
   EachWayLaySection,
   EachWayModeToggle,
   EachWayOutcomeMatrix,
   EachWayPlaceTermsSection,
   EachWayStakeSummary,
   EachWayTermField,
+  type EachWayColourScheme,
   type EachWayOutcomeRow,
 } from "@/components/each-way-calculator-presentation";
 import { QuickSelectRail } from "@/components/quick-select-rail";
@@ -87,8 +89,7 @@ function CalculatorFamilySelector({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const page = navigation.selected === selected ? navigation.page : selectedPage;
-  const visibleFamilies = families.slice(page * pageSize, page * pageSize + pageSize);
-  const hiddenCount = families.length - visibleFamilies.length;
+  const familyPages = Array.from({ length: pageCount }, (_, pageIndex) => families.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize));
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -117,17 +118,25 @@ function CalculatorFamilySelector({
 
   return <nav aria-label="Calculator families" className={`calculator-family-selector${hasPages ? "" : " is-static"}`} data-pd-id="calculators.family-selector">
     {hasPages ? <button aria-label="Show previous calculator families" className="icon-button compact-action calculator-family-page-action" disabled={page === 0} onClick={() => setNavigation({ page: Math.max(0, page - 1), selected })} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button> : null}
-    <div className="calculator-family-page" data-pd-id="calculators.family-page">
-      {visibleFamilies.map((item) => <button aria-current={item.value === selected ? "page" : undefined} aria-pressed={item.value === selected} className={`review-chip${item.value === selected ? " is-active" : ""}`} key={item.value} onClick={() => choose(item.value)} type="button">{item.label}</button>)}
+    <div className="calculator-family-viewport" data-pd-id="calculators.family-page">
+      <div className="calculator-family-track" style={{ "--calculator-family-page": page } as CSSProperties}>
+        {familyPages.map((items, pageIndex) => <div aria-hidden={pageIndex !== page} className="calculator-family-page" data-page={pageIndex} key={pageIndex}>
+          {items.map((item) => <button aria-current={item.value === selected ? "page" : undefined} aria-pressed={item.value === selected} className={`review-chip${item.value === selected ? " is-active" : ""}`} key={item.value} onClick={() => choose(item.value)} tabIndex={pageIndex === page ? 0 : -1} type="button">{item.label}</button>)}
+        </div>)}
+      </div>
     </div>
     {hasPages ? <button aria-label="Show next calculator families" className="icon-button compact-action calculator-family-page-action" disabled={page === pageCount - 1} onClick={() => setNavigation({ page: Math.min(pageCount - 1, page + 1), selected })} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button> : null}
     {hasPages ? <div className="app-menu-shell calculator-family-more-shell" ref={menuRef}>
-      <button aria-controls="calculator-family-menu" aria-expanded={menuOpen} aria-haspopup="menu" aria-label={`Show all calculators, ${hiddenCount} outside this page`} className="review-chip calculator-family-more-action" onClick={() => setMenuOpen((current) => !current)} type="button">+{hiddenCount}</button>
+      <button aria-controls="calculator-family-menu" aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Show all calculators" className="icon-button compact-action calculator-family-more-action" onClick={() => setMenuOpen((current) => !current)} type="button"><span aria-hidden="true" className="material-symbols-outlined">more_horiz</span></button>
       <div className={`app-menu-panel app-menu-panel-right calculator-family-menu${menuOpen ? " is-open" : ""}`} id="calculator-family-menu" role="menu">
         {families.map((item) => <button aria-current={item.value === selected ? "page" : undefined} className={`nav-pill${item.value === selected ? " is-active" : ""}`} key={item.value} onClick={() => choose(item.value)} role="menuitem" type="button">{item.label}</button>)}
       </div>
     </div> : null}
   </nav>;
+}
+
+function CalculatorSegmentEyebrow({ children }: { children: string }) {
+  return <div className="calculator-segment-heading"><span className="eyebrow">{children}</span></div>;
 }
 
 function CalculatorFamilyHeading({ onOpen, primary = false, title }: { onOpen?: () => void; primary?: boolean; title: string }) {
@@ -149,6 +158,7 @@ function readInitial(search: URLSearchParams): Inputs {
   }
   if (next.betType === ("money_back" as BetType)) next.betType = "bonus_lock_in";
   if (!["qualifying", "free_bet", "bonus_lock_in", "cashback", "profit_boost"].includes(next.betType)) next.betType = "qualifying";
+  if (next.betType === "bonus_lock_in") next.bonusTrigger = "Lay Wins";
   if (!["Standard", "Underlay", "Overlay", "Custom", "Partial Lay"].includes(next.strategy)) next.strategy = "Standard";
   return next;
 }
@@ -198,6 +208,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
       if (field === "betType" && value === "bonus_lock_in") {
         bonusValueIsDerived.current = true;
         next.promotionValue = current.backStake;
+        next.bonusTrigger = "Lay Wins";
       } else if (field === "backStake" && current.betType === "bonus_lock_in" && bonusValueIsDerived.current) {
         next.promotionValue = String(value);
       } else if (field === "promotionValue" && current.betType === "bonus_lock_in") {
@@ -294,6 +305,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
 
   const showPromotion = inputs.betType === "bonus_lock_in" || inputs.betType === "cashback";
   const showManualLay = inputs.strategy === "Partial Lay";
+  const pairedFieldRows = Math.max(inputs.betType === "profit_boost" ? (inputs.profitBoostMode === "percentage" ? 4 : 3) : 2, showManualLay ? 2 : 1);
   const activeFamilyLabel = families.find((item) => item.value === family)?.label ?? "Calculator";
   return <section aria-labelledby="calculator-workspace-title" className={`content-panel stack sportsbook-page-shell${popout ? " calculator-popout-workspace" : ""}`} data-pd-id="calculators.workspace">
     {!popout ? <><div className="workflow-panel-header"><div><span className="eyebrow">Fund Manager</span><h1 id="calculator-workspace-title">Calculators</h1></div></div>
@@ -305,11 +317,11 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
           <SelectField id="bet-type" label="Bet type" value={inputs.betType} onChange={(value) => update("betType", value as BetType)} options={[["qualifying", "Qualifying Bet"], ["free_bet", "Free Bet"], ["bonus_lock_in", "Bonus Lock-In"], ["cashback", "Cashback"], ["profit_boost", "Profit Boost"]]} />
           <SelectField id="strategy" label="Strategy" value={inputs.strategy} onChange={(value) => update("strategy", value as Strategy)} options={[["Standard", "Standard"], ["Underlay", "Underlay"], ["Overlay", "Overlay"], ["Custom", "Custom"], ["Partial Lay", "Part Lay"]]} />
           {inputs.betType === "free_bet" ? <SelectField id="free-bet-mode" label="Free bet" value={inputs.freeBetMode} onChange={(value) => update("freeBetMode", value as "SNR" | "SR")} options={[["SNR", "Stake Not Returned"], ["SR", "Stake Returned"]]} /> : null}
-          {showPromotion ? <SelectField id="bonus-trigger" label="Award trigger" value={inputs.bonusTrigger} onChange={(value) => update("bonusTrigger", value as Inputs["bonusTrigger"])} options={[["Lay Wins", "Back bet loses"], ["Back Wins", "Back bet wins"]]} /> : null}
+          {showPromotion ? <SelectField id="bonus-trigger" label="Award trigger" value={inputs.bonusTrigger} onChange={(value) => update("bonusTrigger", value as Inputs["bonusTrigger"])} options={inputs.betType === "bonus_lock_in" ? [["Lay Wins", "Back bet loses"]] : [["Lay Wins", "Back bet loses"], ["Back Wins", "Back bet wins"]]} /> : null}
           {inputs.betType === "profit_boost" ? <SelectField id="profit-boost-mode" label="Boosted price source" value={inputs.profitBoostMode} onChange={(value) => update("profitBoostMode", value as ProfitBoostMode)} options={[["displayed_odds", "Displayed boosted odds"], ["total_return", "Total potential return"], ["profit_only", "Potential profit / winnings"], ["percentage", "Base odds + boost %"]]} /> : null}
         </div>
-        <div className="form-grid">
-          <section className="calculator-segment calculator-segment-back"><div className="calculator-segment-heading"><span className="eyebrow">Back bet</span></div><div className="calculator-segment-grid calculator-segment-grid-back">
+        <div className="form-grid calculator-paired-segments" data-pd-id="calculators.matched-betting.paired-segments" style={{ "--calculator-paired-field-rows": pairedFieldRows } as CSSProperties}>
+          <section className="calculator-segment calculator-segment-back calculator-paired-segment"><CalculatorSegmentEyebrow>Back bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-paired-segment-fields">
             <Field error={touched.backStake ? errors.backStake : null} id="back-stake" label={inputs.betType === "free_bet" ? "Free bet value" : "Back stake"} onChange={(value) => update("backStake", value)} value={inputs.backStake} />
             {inputs.betType !== "profit_boost" ? <Field error={touched.backOdds ? errors.backOdds : null} id="back-odds" label="Back odds" onBlur={() => normalizeOdds("backOdds")} onChange={(value) => update("backOdds", value)} value={inputs.backOdds} /> : null}
             {inputs.betType === "profit_boost" && inputs.profitBoostMode === "displayed_odds" ? <Field error={touched.boostedBackOdds ? errors.boostedBackOdds : null} id="boosted-back-odds" label="Boosted odds displayed" onBlur={() => normalizeDerivedOdds("boostedBackOdds")} onChange={(value) => update("boostedBackOdds", value)} value={inputs.boostedBackOdds} /> : null}
@@ -318,14 +330,15 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
             {inputs.betType === "profit_boost" && inputs.profitBoostMode === "percentage" ? <><Field error={touched.baseBackOdds ? errors.baseBackOdds : null} id="base-back-odds" label="Original / base odds" onBlur={() => normalizeDerivedOdds("baseBackOdds")} onChange={(value) => update("baseBackOdds", value)} value={inputs.baseBackOdds} /><Field error={touched.profitBoostPercent ? errors.profitBoostPercent : null} id="profit-boost-percent" label="Profit Boost (%)" onChange={(value) => update("profitBoostPercent", value)} value={inputs.profitBoostPercent} /></> : null}
             {inputs.betType === "profit_boost" ? <Field error={touched.actualAcceptedBackOdds ? errors.actualAcceptedBackOdds : null} id="accepted-back-odds" label="Actual accepted odds (optional)" onBlur={() => normalizeDerivedOdds("actualAcceptedBackOdds")} onChange={(value) => update("actualAcceptedBackOdds", value)} supportingText="Accepted odds take precedence over derived values." value={inputs.actualAcceptedBackOdds} /> : null}
           </div></section>
-          <section className="calculator-segment calculator-segment-lay"><div className="calculator-segment-heading"><span className="eyebrow">Lay bet</span></div><div className="calculator-segment-grid calculator-segment-grid-back">
-            <SelectField id="exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); commissionWasEdited.current = false; updatePatch({ exchange: value, exchangeCommission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} />
+          <section className="calculator-segment calculator-segment-lay calculator-paired-segment"><CalculatorSegmentEyebrow>Lay bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-paired-segment-fields">
             <Field error={touched.layOdds ? errors.layOdds : null} id="lay-odds" label="Lay odds" onBlur={() => normalizeOdds("layOdds")} onChange={(value) => update("layOdds", value)} value={inputs.layOdds} />
+            {showManualLay ? <Field error={touched.manualLayStake ? errors.manualLayStake : null} id="manual-lay-stake" label="Actual lay stake" onChange={(value) => update("manualLayStake", value)} value={inputs.manualLayStake} /> : null}
+          </div><div className="calculator-segment-grid calculator-segment-auxiliary-fields">
+            <SelectField id="exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); commissionWasEdited.current = false; updatePatch({ exchange: value, exchangeCommission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} />
             <Field error={touched.exchangeCommission ? errors.exchangeCommission : null} id="commission" label="Exchange commission" onChange={(value) => { commissionWasEdited.current = true; update("exchangeCommission", value); }} supportingText="Decimal rate, for example 0.02" value={inputs.exchangeCommission} />
           </div></section>
         </div>
-        {(showManualLay || showPromotion || inputs.betType === "profit_boost" || inputs.strategy === "Underlay" || inputs.strategy === "Overlay") ? <div className="form-grid">
-          {showManualLay ? <Field error={touched.manualLayStake ? errors.manualLayStake : null} id="manual-lay-stake" label="Explicit lay stake" onChange={(value) => update("manualLayStake", value)} value={inputs.manualLayStake} /> : null}
+        {(showPromotion || inputs.betType === "profit_boost" || inputs.strategy === "Underlay" || inputs.strategy === "Overlay") ? <div className="form-grid">
           {showPromotion ? <Field error={touched.promotionValue ? errors.promotionValue : null} id="promotion-value" label={inputs.betType === "bonus_lock_in" ? "Bonus / refund value" : "Cashback value"} onChange={(value) => update("promotionValue", value)} value={inputs.promotionValue} /> : null}
           {inputs.betType === "bonus_lock_in" ? <Field error={touched.retentionPercent ? errors.retentionPercent : null} id="retention-percent" label="Bonus retention (%)" onChange={(value) => update("retentionPercent", value)} value={inputs.retentionPercent} /> : null}
           {inputs.betType === "profit_boost" && inputs.profitBoostMode === "percentage" ? <Field error={touched.maximumBoostWinnings ? errors.maximumBoostWinnings : null} id="maximum-boost-winnings" label="Maximum boost winnings (optional)" onChange={(value) => update("maximumBoostWinnings", value)} value={inputs.maximumBoostWinnings} /> : null}
@@ -456,7 +469,7 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
     setResult(null); setError(""); setBusy(false);
   }
   return <div className="calculator-panel-shell" data-pd-id="calculators.multi-lay.presentation"><div className="calculator-shell">
-    <div className="calculator-band calculator-band-primary"><div className="calculator-segment calculator-segment-back"><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} /></div></div></div>
+    <div className="calculator-band calculator-band-primary"><div className="calculator-segment calculator-segment-back"><CalculatorSegmentEyebrow>Back bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} /></div></div></div>
     <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
       <div className="calculator-panel-card calculator-panel-card-multilay">
         <div className="multi-lay-calculator-title-row"><span className="eyebrow">Multi-Lay Calculator</span></div>
@@ -546,7 +559,7 @@ function SequentialLayCalculator({ exchanges, onState, search }: { exchanges: Ex
   return <div className="calculator-panel-shell" data-pd-id="calculators.sequential-lay.presentation"><div className="calculator-shell">
     <div className="calculator-band calculator-band-primary stack">
       <div className="ledger-calculator-mode-bar"><SelectField id="sequential-mode" label="Mode" value={inputs.mode} onChange={(mode) => update({ ...inputs, mode: mode as SequentialLayInputs["mode"] })} options={[["standard", "Standard"], ["lock_in", "Lock In"]]} /></div>
-      <div className="calculator-segment calculator-segment-back"><div className="calculator-segment-title">Back bet</div><div className="calculator-segment-grid calculator-segment-grid-back">
+      <div className="calculator-segment calculator-segment-back"><CalculatorSegmentEyebrow>Back bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-segment-grid-back">
         <Field error={null} id="sequential-back-stake" label="Back stake" onChange={(backStake) => update({ ...inputs, backStake })} value={inputs.backStake} />
         <Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="sequential-back-odds" label="Back odds" onBlur={normalizeBack} onChange={(backOdds) => update({ ...inputs, backOdds })} value={inputs.backOdds} />
         <Field error={commissionError(inputs.backCommission)} id="sequential-back-commission" label="Back commission" onChange={(backCommission) => update({ ...inputs, backCommission })} value={inputs.backCommission} />
@@ -664,9 +677,9 @@ function EarlyPayoutCalculator({ exchanges, onState, search }: { exchanges: Exch
         {inputs.coverMode === "exchange_lay" ? <SelectField id="early-exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); update({ exchange: value, commission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} /> : null}
         <button aria-checked={inputs.triggered} className={`material-switch${inputs.triggered ? " is-selected" : ""}`} data-pd-id="calculators.early-payout.triggered" onClick={() => update({ triggered: !inputs.triggered, inPlayBackOdds: "", maximumPayout: "", lockAdjustmentPercent: "100", partBacks: [] })} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Bookmaker has paid out early</span></button>
       </div>
-      <div className="form-grid">
-        <section className="calculator-segment calculator-segment-back"><div className="calculator-segment-heading"><span className="eyebrow">Back bet</span></div><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={null} id="early-back-stake" label="Back stake" onChange={(backStake) => update({ backStake })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="early-back-odds" label="Back odds" onBlur={() => normalize("backOdds")} onChange={(backOdds) => update({ backOdds })} value={inputs.backOdds} /></div></section>
-        <section className="calculator-segment calculator-segment-lay"><div className="calculator-segment-heading"><span className="eyebrow">{inputs.coverMode === "exchange_lay" ? "Lay bet" : "Bookmaker 2"}</span></div><div className="calculator-segment-grid calculator-segment-grid-back"><Field error={getSportsbookOddsInputError(inputs.layOdds, { required: false })} id="early-initial-odds" label={inputs.coverMode === "exchange_lay" ? "Lay odds" : "Second bookmaker odds"} onBlur={() => normalize("layOdds")} onChange={(layOdds) => update({ layOdds })} value={inputs.layOdds} />{inputs.coverMode === "exchange_lay" ? <Field error={commissionError(inputs.commission)} id="early-commission" label="Exchange commission" onChange={(commission) => update({ commission })} value={inputs.commission} /> : null}<Field error={null} id="early-actual-initial-stake" label={inputs.coverMode === "exchange_lay" ? "Actual lay stake (optional)" : "Actual second stake (optional)"} onChange={(actualInitialStake) => update({ actualInitialStake })} value={inputs.actualInitialStake} /></div></section>
+      <div className="form-grid calculator-paired-segments" data-pd-id="calculators.early-payout.paired-segments" style={{ "--calculator-paired-field-rows": 2 } as CSSProperties}>
+        <section className="calculator-segment calculator-segment-back calculator-paired-segment"><CalculatorSegmentEyebrow>Back bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-paired-segment-fields"><Field error={null} id="early-back-stake" label="Back stake" onChange={(backStake) => update({ backStake })} value={inputs.backStake} /><Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="early-back-odds" label="Back odds" onBlur={() => normalize("backOdds")} onChange={(backOdds) => update({ backOdds })} value={inputs.backOdds} /></div></section>
+        <section className="calculator-segment calculator-segment-lay calculator-paired-segment"><CalculatorSegmentEyebrow>{inputs.coverMode === "exchange_lay" ? "Lay bet" : "Bookmaker 2"}</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-paired-segment-fields"><Field error={getSportsbookOddsInputError(inputs.layOdds, { required: false })} id="early-initial-odds" label={inputs.coverMode === "exchange_lay" ? "Lay odds" : "Second bookmaker odds"} onBlur={() => normalize("layOdds")} onChange={(layOdds) => update({ layOdds })} value={inputs.layOdds} /><Field error={null} id="early-actual-initial-stake" label={inputs.coverMode === "exchange_lay" ? "Actual lay stake (optional)" : "Actual second stake (optional)"} onChange={(actualInitialStake) => update({ actualInitialStake })} value={inputs.actualInitialStake} /></div>{inputs.coverMode === "exchange_lay" ? <div className="calculator-segment-grid calculator-segment-auxiliary-fields"><Field error={commissionError(inputs.commission)} id="early-commission" label="Exchange commission" onChange={(commission) => update({ commission })} value={inputs.commission} /></div> : null}</section>
       </div>
       {inputs.triggered ? <section className="calculator-panel-card stack" data-pd-id="calculators.early-payout.lock-in"><div className="calculator-segment-heading"><span className="eyebrow">Lock in after payout</span></div><div className="form-grid"><Field error={getSportsbookOddsInputError(inputs.inPlayBackOdds, { required: false })} id="early-in-play-odds" label="In-play back odds" onBlur={() => normalize("inPlayBackOdds")} onChange={(inPlayBackOdds) => update({ inPlayBackOdds })} value={inputs.inPlayBackOdds} /><Field error={null} id="early-maximum-payout" label="Maximum payout (optional)" onChange={(maximumPayout) => update({ maximumPayout })} value={inputs.maximumPayout} /></div><div className="calculator-slider-heading"><label className="field-control" htmlFor="calculator-early-lock-adjustment"><span>Lock-in adjustment: {inputs.lockAdjustmentPercent}%</span></label><button className="button-link compact-action" data-pd-id="calculators.early-payout.lock-adjustment-reset" disabled={!inputs.triggered || inputs.lockAdjustmentPercent === "100"} onClick={() => update({ lockAdjustmentPercent: "100" }, true)} type="button">Reset</button></div><input aria-describedby="calculator-early-lock-adjustment-guidance" aria-label="Lock-in adjustment" className="custom-slider-track" data-pd-id="calculators.early-lock-adjustment" disabled={!lockAdjustmentReady} id="calculator-early-lock-adjustment" max="150" min="0" onChange={(event) => update({ lockAdjustmentPercent: event.target.value }, true)} step="1" type="range" value={inputs.lockAdjustmentPercent} /><p className="field-hint" id="calculator-early-lock-adjustment-guidance">Shift the suggested hedge toward more or less profit on the remaining outcome.</p><div className="custom-slider-direction-labels" aria-hidden="true"><span>Conservative</span><span>Equalised</span><span>Aggressive</span></div>
         <div className="multi-lay-grid-wrap"><table className="data-table multi-lay-planner-grid"><thead><tr><th>Part back</th><th>Stake</th><th>Odds</th><th>Action</th></tr></thead><tbody>{inputs.partBacks.map((part, index) => <tr key={index}><td>Part {index + 1}</td><td><label className="field-control"><span className="sr-only">Part back {index + 1} stake</span><input inputMode="decimal" onChange={(event) => updatePart(index, { stake: event.target.value })} value={part.stake} /></label></td><td><label className="field-control"><span className="sr-only">Part back {index + 1} odds</span><input inputMode="decimal" onBlur={() => normalizePart(index)} onChange={(event) => updatePart(index, { odds: event.target.value })} value={part.odds} /></label></td><td><button aria-label={`Remove part back ${index + 1}`} className="icon-button icon-button-destructive multi-lay-action-button" onClick={() => update({ partBacks: inputs.partBacks.filter((_, at) => at !== index) })} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></td></tr>)}</tbody></table></div><div className="tracker-nav multi-lay-add-row"><button className="button-link" onClick={() => update({ partBacks: [...inputs.partBacks, { stake: "", odds: "" }] })} type="button">Add part back</button></div>
@@ -713,12 +726,13 @@ const eachWayDefaults: EachWayInputs = { mode: "Extra Place", stake: "", backOdd
 function readEachWay(search: URLSearchParams): EachWayInputs { try { return { ...eachWayDefaults, ...(JSON.parse(search.get("eachWay") ?? "null") ?? {}) }; } catch { return eachWayDefaults; } }
 function EachWayCalculator({ exchanges, onState, search }: { exchanges: ExchangeOption[]; onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
   const [inputs, setInputs] = useState<EachWayInputs>(() => readEachWay(search));
+  const [colourScheme, setColourScheme] = useState<EachWayColourScheme>(() => search.get("eachWayPresentation") === "back-lay" ? "back-lay" : "ep");
   const [result, setResult] = useState<EachWayResult | null>(null); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
   const requestVersion = useRef(0); const requestAbort = useRef<AbortController | null>(null);
   const [conversionCreatedAt] = useState(() => new Date().toISOString());
   const [conversionOpen, setConversionOpen] = useState(false);
   const invalid = !isPositiveAmount(inputs.stake) || Boolean(getSportsbookOddsInputError(inputs.backOdds, { required: true })) || Boolean(getSportsbookOddsInputError(inputs.winLayOdds, { required: true })) || Boolean(getSportsbookOddsInputError(inputs.placeLayOdds, { required: true })) || !/^\d+$/.test(inputs.term) || Number(inputs.term) <= 0 || !/^\d+$/.test(inputs.bookmakerPlaces) || !/^\d+$/.test(inputs.exchangePlaces) || (inputs.mode === "Each Way" ? inputs.bookmakerPlaces !== inputs.exchangePlaces : Number(inputs.bookmakerPlaces) <= Number(inputs.exchangePlaces)) || commissionError(inputs.winCommission) !== null || commissionError(inputs.placeCommission) !== null;
-  useEffect(() => { onState(new URLSearchParams({ family: "each-way", eachWay: JSON.stringify(inputs) })); }, [inputs, onState]);
+  useEffect(() => { onState(new URLSearchParams({ family: "each-way", eachWay: JSON.stringify(inputs), eachWayPresentation: colourScheme })); }, [colourScheme, inputs, onState]);
   function update(patch: Partial<EachWayInputs>) { requestAbort.current?.abort(); requestVersion.current += 1; setInputs((current) => ({ ...current, ...patch })); setResult(null); setError(""); setBusy(false); }
   function switchMode(mode: EachWayInputs["mode"]) { update(mode === "Each Way" ? { mode, exchangePlaces: inputs.bookmakerPlaces } : { mode, bookmakerPlaces: Number(inputs.bookmakerPlaces) > Number(inputs.exchangePlaces) ? inputs.bookmakerPlaces : String(Number(inputs.exchangePlaces || "4") + 1) }); }
   function normalize(field: "backOdds" | "winLayOdds" | "placeLayOdds") { const normalized = normalizeCalculatorOddsInput(inputs[field]); if (normalized.converted) update({ [field]: normalized.canonicalValue }); }
@@ -746,8 +760,8 @@ function EachWayCalculator({ exchanges, onState, search }: { exchanges: Exchange
   const stakeChoices = ["£ 2.50", "£ 5.00", "£ 10.00"];
   const termChoices = ["1/4", "1/5", "1/6"];
   const placeChoices = ["Paying 4 instead of 3", "Paying 5 instead of 4", "Paying 6 instead of 4", "Paying 6 instead of 5", "Paying 8 instead of 5", "Paying 10 instead of 8"];
-  return <div className="calculator-panel-shell extra-place-calculator-presentation extra-place-theme-ep" data-pd-id="calculators.each-way.presentation"><div className="calculator-shell"><div className="calculator-band calculator-band-primary stack">
-    <EachWayModeToggle mode={inputs.mode} onChange={switchMode} />
+  return <div className={`calculator-panel-shell extra-place-calculator-presentation extra-place-theme-${colourScheme}`} data-pd-id="calculators.each-way.presentation"><div className="calculator-shell"><div className="calculator-band calculator-band-primary stack">
+    <div className="calculator-panel-control-row"><EachWayModeToggle mode={inputs.mode} onChange={switchMode} /><EachWayColourSchemeToggle onChange={setColourScheme} value={colourScheme} /></div>
     <div className="ledger-calculator-mode-bar"><SelectField id="each-way-exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); update({ exchange: value, winCommission: selected?.default_commission_rate ?? "", placeCommission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} /></div>
     <EachWayBackBetSection placeTerms={<EachWayPlaceTermsSection
       summary={inputs.mode === "Extra Place" ? `Paying ${inputs.bookmakerPlaces || "—"} instead of ${inputs.exchangePlaces || "—"}.` : `Paying ${inputs.bookmakerPlaces || "—"} places.`}

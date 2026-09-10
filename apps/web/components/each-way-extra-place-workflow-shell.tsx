@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import {
   EachWayBackBetSection,
+  EachWayColourSchemeToggle,
   EachWayLaySection,
   EachWayModeToggle,
   EachWayOutcomeMatrix,
@@ -1159,34 +1160,7 @@ export function EachWayExtraPlaceWorkflowShell({
           className="extra-place-table-preferences"
           aria-label="Extra Place table presentation"
         >
-          <div
-            aria-label="Extra Place colour theme"
-            className="extra-place-theme-switch"
-            role="group"
-          >
-          <button
-            aria-label="Use Extra Place colour theme"
-            aria-pressed={tableTheme === "ep"}
-            className="extra-place-theme-switch-option"
-            onClick={() => setTableTheme("ep")}
-            type="button"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">
-              chess_knight
-            </span>
-          </button>
-          <button
-            aria-label="Use Back and Lay colour theme"
-            aria-pressed={tableTheme === "back-lay"}
-            className="extra-place-theme-switch-option"
-            onClick={() => setTableTheme("back-lay")}
-            type="button"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">
-              palette
-            </span>
-          </button>
-          </div>
+          <EachWayColourSchemeToggle onChange={setTableTheme} value={tableTheme} />
         </div>
       </div>
       <LedgerPagination

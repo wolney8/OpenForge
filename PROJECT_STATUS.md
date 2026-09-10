@@ -9,6 +9,14 @@ durable requirements.
 
 ## Current state
 
+- Current presentation correction: [#35 Calculator Workspace](https://github.com/wolney8/OpenForge/issues/35)
+  and [#92 shared UI consistency](https://github.com/wolney8/OpenForge/issues/92). PD-FIX-076–080
+  are locally verified pending Will's recheck: Standard/Early Payout share explicit aligned segment
+  rows; Multi-Lay/Sequential Lay reuse the canonical BACK BET eyebrow; Extra Place reuses the
+  embedded presentation selector without resetting state; Multiples/Dutching preserve exposed
+  outer radii; and calculator families use bounded slide paging, fixed disabled boundary arrows and
+  an anchored ellipsis menu. The unsupported Bonus Lock-In back-wins trigger remains absent from
+  normal UI and fail-closed on the server. Financial calculations and #113 results are unchanged.
 - Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
   The durable audit and independent API fixture cover all exposed families/modes: 29 modes are
   `PROVEN PASS`, with zero remaining failures. Shared money quantization canonicalises rounded
@@ -53,7 +61,7 @@ durable requirements.
   values; Profile choices deliberately stack name/code; Account choices retain stable `account_id`
   identity even when provider labels repeat. Bridge source snapshots, destination validation and
   idempotency are unchanged. Will's recheck remains required.
-- Current implementation base before this tranche: `1ef9c4e` on `main`.
+- Current implementation base before this tranche: `80816b4` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

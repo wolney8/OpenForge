@@ -117,9 +117,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByLabel("Back stake").fill("15.00");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("7.00");
   await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("bonus triggers");
-  await page.getByLabel("Award trigger").selectOption("Back Wins");
-  await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("Back wins / bonus triggers");
-  await expect(page.locator('[data-pd-id="calculators.outcomes"] .calculator-outcome-scenario-row')).toHaveCount(2);
+  await expect(page.getByLabel("Award trigger").locator('option[value="Back Wins"]')).toHaveCount(0);
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.locator('[data-pd-id="calculators.matched-betting.results"]').screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-standard-outcomes.png") });
   }
@@ -184,14 +182,15 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.goto("/fund-manager/calculators");
 
   const rail = page.locator('[data-pd-id="calculators.family-selector"]');
-  const familyPage = rail.locator('[data-pd-id="calculators.family-page"]');
+  const familyViewport = rail.locator('[data-pd-id="calculators.family-page"]');
+  const activeFamilyPage = () => familyViewport.locator('.calculator-family-page[aria-hidden="false"]');
   const previous = rail.getByRole("button", { name: "Show previous calculator families" });
   const next = rail.getByRole("button", { name: "Show next calculator families" });
   const more = rail.getByRole("button", { name: /Show all calculators/ });
   await expect(rail.getByRole("button", { name: "Standard" })).toBeVisible();
-  expect(await familyPage.locator("button").count()).toBe(3);
+  expect(await activeFamilyPage().locator("button").count()).toBe(3);
   expect(await rail.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-  expect(await familyPage.evaluate((element) => getComputedStyle(element).overflowX)).toBe("visible");
+  expect(await familyViewport.evaluate((element) => getComputedStyle(element).overflowX)).toBe("hidden");
   const [previousBox, nextBox] = await Promise.all([previous.boundingBox(), next.boundingBox()]);
   const moreBox = await more.boundingBox();
   expect(previousBox?.width).toBeCloseTo(nextBox?.width ?? 0, 0);
@@ -199,15 +198,15 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   expect((moreBox?.x ?? 0) - ((nextBox?.x ?? 0) + (nextBox?.width ?? 0))).toBeGreaterThan(0);
   await expect(previous.locator(".material-symbols-outlined")).toHaveText("chevron_left");
   await expect(next.locator(".material-symbols-outlined")).toHaveText("chevron_right");
-  await expect(more).toHaveText(/^\+\d+$/);
-  for (const chip of await familyPage.locator("button").all()) {
+  await expect(more.locator(".material-symbols-outlined")).toHaveText("more_horiz");
+  for (const chip of await activeFamilyPage().locator("button").all()) {
     expect(await chip.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   }
   await rail.getByRole("button", { name: "Standard" }).focus();
   await page.keyboard.press("Tab");
   await expect(rail.getByRole("button", { name: "Multi-Lay" })).toBeFocused();
   await next.click();
-  expect(await familyPage.locator("button").count()).toBe(3);
+  expect(await activeFamilyPage().locator("button").count()).toBe(3);
   await expect(rail.getByRole("button", { name: /Sequential Lay/ })).toBeVisible();
   await next.click();
   await expect(next).toBeDisabled();
@@ -790,7 +789,6 @@ test("matches the Extra Places calculator presentation for the same family", asy
       outcome: surface(".extra-place-outcome-matrix"),
       outcomeHeading: pick(".extra-place-outcome-matrix .calculator-result-card-heading"),
       outcomeRow: pick(".extra-place-outcome-row"),
-      outcomeValues: Array.from(element.querySelector<HTMLElement>(".extra-place-outcome-matrix")!.querySelectorAll<HTMLElement>(".calculator-outcome-scenario-row")).map((row) => row.getAttribute("aria-label")),
     };
   });
 

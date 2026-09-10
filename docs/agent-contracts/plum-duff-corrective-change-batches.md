@@ -3,6 +3,16 @@
 This register prevents a reported correction from disappearing between report and verification.
 Working IDs are local delivery controls, not automatic GitHub issues.
 
+## 2026-09-10 Calculator UI Parity Batch
+
+| ID | Area | Requested change | Supplied reference | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-076 | Shared paired calculator segments | Align canonical segment eyebrows, peer labels, controls and reserved validation slots on explicit shared rows. | Standard and Early Payout BACK BET / LAY BET | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-077 | Calculator hierarchy and presentation | Reuse the canonical BACK BET eyebrow in Multi-Lay/Sequential Lay and expose the existing Extra Place presentation selector in its stable header action slot. | Standard and embedded Extra Place calculator | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-078 | Repeated calculator surfaces | Preserve intentional joined edges while rounding every exposed outer selection-container corner. | Canonical calculator panel surface | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-079 | Calculator family navigation | Slide bounded family pages, retain disabled boundary arrows and replace numeric overflow chrome with an anchored accessible ellipsis menu. | Canonical bounded paging and app-menu primitives | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-080 | Unsupported Bonus Lock-In trigger | Keep reward-if-back-wins unavailable in normal UI while retaining the server fail-closed contract and tracked requirement. | #37/#113 authority result | COMPLETE LOCALLY — WILL RECHECK PENDING |
+
 ## 2026-09-10 Calculator-to-Casino Manual Acceptance Batch
 
 | ID | Area | Requested change | Supplied reference | Status |

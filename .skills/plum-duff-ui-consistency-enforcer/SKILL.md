@@ -145,6 +145,12 @@ use the canonical primitive and computed styling.
 - A new standalone calculator family must identify and reuse or extract the nearest same-family
   ledger calculator/workflow presentation before creating UI. Generic component reuse alone does
   not establish calculator parity.
+- Side-by-side calculator segments align their canonical eyebrows, corresponding labels, controls
+  and validation/help slots through explicit shared rows; independently correct components do not
+  establish composed parity. Existing presentation schemes use the stable shared header action slot.
+- Repeated calculator selection surfaces round every exposed outer corner. Calculator-family paging
+  uses a clipped reduced-motion-aware slide, visible disabled boundary arrows and an anchored
+  ellipsis menu rather than numeric overflow chrome.
 - All calculator scenario results use the shared Outcomes presentation primitive. Family-specific
   generic result tables are not permitted where contracted scenario outcomes exist.
 - Use a Switch only for genuine binary on/off state. Mutually exclusive named modes use the

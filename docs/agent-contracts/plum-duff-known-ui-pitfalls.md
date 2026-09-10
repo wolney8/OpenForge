@@ -1062,3 +1062,16 @@ cause, prevention rule and regression test.
 - Regression tests: calculator conversion Playwright renders and selects two same-brand Accounts
   without a React warning; the shared Casino ledger test covers `£ (3.00)` and `£ 3.00`, selection,
   motion, theme, desktop/half-width containment and typography.
+
+## 2026-09-10: Calculator primitives matched individually but drifted when composed
+
+- Area: paired calculator segments, family presentation controls, repeated selection surfaces and
+  family paging.
+- Root cause: independent field grids aligned controls only by coincidence; accepted eyebrow/theme
+  primitives were bypassed or ledger-local; table backgrounds exposed square outer corners; family
+  pages were replaced synchronously and numeric overflow chrome was treated as an action.
+- Prevention: compose paired segments on explicit shared rows with reserved message slots, extract
+  accepted family controls, round every exposed surface corner, and use a clipped sliding track with
+  fixed boundary arrows plus the anchored application ellipsis menu.
+- Regression test: `tests/e2e/calculator-ui-parity-pass.spec.ts` checks composed geometry, state
+  retention, corner radii, transition/reduced-motion state, menu anchoring and viewport containment.
