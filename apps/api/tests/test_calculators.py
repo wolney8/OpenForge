@@ -172,28 +172,22 @@ def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(
         "exchange_commission": "0",
         "strategy": "Standard",
     }
-    for trigger in ("Lay Wins", "Back Wins"):
-        response = client.post(
-            "/fund-manager/calculators/matched-betting/preview",
-            json={
-                **base,
-                "bet_type": "bonus_lock_in",
-                "bonus_trigger": trigger,
-                "promotion_value": "10",
-                "retention_percent": "70",
-            },
-        )
-        assert response.status_code == 200, response.text
-        body = response.json()
-        outcomes = body["outcomes"]
-        assert len(outcomes) == 2
-        triggered = next(row for row in outcomes if row["promotion_component"] is not None)
-        assert triggered["promotion_component"] == "7.00"
-        assert "bonus triggers" in triggered["label"].lower()
-        assert triggered["total"] == body["promotion_trigger_result"]
-        ordinary = next(row for row in outcomes if row["promotion_component"] is None)
-        ordinary_key = "pnl_if_back_wins" if ordinary["key"] == "back-wins" else "pnl_if_lay_wins"
-        assert ordinary["total"] == body[ordinary_key]
+    response = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={
+            **base,
+            "bet_type": "bonus_lock_in",
+            "bonus_trigger": "Lay Wins",
+            "promotion_value": "10",
+            "retention_percent": "70",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["selected_lay_stake"] == "7.86"
+    assert body["matched_result"] == "4.85"
+    assert body["outcomes"][1]["promotion_component"] == "7.00"
+    assert body["outcomes"][1]["total"] == body["promotion_trigger_result"]
 
     cashback = client.post(
         "/fund-manager/calculators/matched-betting/preview",

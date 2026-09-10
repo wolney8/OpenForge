@@ -58,11 +58,14 @@ reject them rather than copy the third-party output.
 The TeamProfit band reflects observed provider headline rounding differences;
 it does not change the exact `0.01` tolerance of an owning OpenForge contract.
 
-## Draft family
+## Promoted family
 
 TeamProfit Refund cases `TP-RF-001` to `TP-RF-005` support the candidate
-refund/bonus-lock-in equation. They remain `contract_draft` until the contract's
-award meaning, retention default, and rounding order are approved.
+refund/bonus-lock-in equation. The refund-if-back-loses Standard mode was promoted on 2026-09-10
+after the current source established reward/retention meaning and penny-placement order. Approved
+OpenForge outputs live in `tests/fixtures/bonus-lock-in-reference-fixtures.json`; the retained
+external manifest classification remains historical source evidence. Reward-if-back-wins remains
+blocked and is not promoted.
 
 ## Required validation
 

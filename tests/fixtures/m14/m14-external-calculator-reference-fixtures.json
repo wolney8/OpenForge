@@ -48,20 +48,21 @@
       "fixture_file": "tests/fixtures/sequential-lay-calculation-fixtures.json",
       "live_implementation_sha256": "f7609faae04ff25ffed73c8294efe151f3f96c1e3f0c1d14037788378ded9da7",
       "allowed_use": "directional penny-rounding and branch regression comparison"
-    }
-  ],
-  "contract_draft": [
+    },
     {
       "fixture_id": "M14-FX-TP-REFUND",
       "provider": "TeamProfit",
-      "mode": "Refund",
+      "mode": "Refund if back bet loses",
       "packet": "docs/reference/m14-calculator-research/teamprofit-refund.packet.json",
       "case_ids": ["TP-RF-001", "TP-RF-002", "TP-RF-003", "TP-RF-004", "TP-RF-005"],
       "owning_contract": "docs/contracts/m14-refund-bonus-lock-in-reference-contract.md",
-      "display_tolerance": "0.01 GBP with documented provider penny discrepancy",
-      "promotion_gate": "human approval of award meaning, retention default, and rounding"
+      "fixture_file": "tests/fixtures/bonus-lock-in-reference-fixtures.json",
+      "live_implementation_sha256": "e264b67a9d69542b367a88013f02c720381b0a93be7e972d2e27401a52aa979f",
+      "display_tolerance": "0.01 GBP external comparison; exact OpenForge penny fixture",
+      "allowed_use": "refund-if-back-loses Standard reference regression comparison"
     }
   ],
+  "contract_draft": [],
   "research_only": [
     {
       "fixture_id": "M14-FX-MBB-COMPARISON",

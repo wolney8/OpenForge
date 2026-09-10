@@ -20,7 +20,8 @@ RESULTS_REQUIRING_EXTRA_SCENARIOS = {"Outcome 2 Won", "Outcome 3 Won", "Mixed"}
 
 
 def quantize_money(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    quantized = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return Decimal("0.00") if quantized == 0 else quantized
 
 
 def quantize_ratio(value: Decimal) -> Decimal:
@@ -913,7 +914,11 @@ def calculate_sportsbook_current_value(
         exchange_component_if_back_wins=quantize_money(-liability_1),
         bookmaker_component_if_lay_wins=quantize_money(-back_stake),
         exchange_component_if_lay_wins=quantize_money(lay_returns_after_commission),
-        promotion_component=retained_bonus_value if calculation_input.offer_type in {"Cashback", "Refund", "Bonus Lock-In"} else None,
+        promotion_component=(
+            retained_bonus_value
+            if calculation_input.offer_type in {"Cashback", "Refund", "Bonus Lock-In"}
+            else None
+        ),
     )
 
 

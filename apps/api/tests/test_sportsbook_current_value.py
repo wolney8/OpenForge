@@ -9,6 +9,7 @@ from openforge_api.calculations.sportsbook_current_value import (
     SportsbookCalculationInput,
     calculate_sportsbook_current_value,
     calculate_sportsbook_rows_for_profile,
+    quantize_money,
 )
 
 FIXTURE_PATH = (
@@ -27,6 +28,12 @@ def as_decimal(value: str | None) -> Decimal | None:
     if value is None:
         return None
     return Decimal(value)
+
+
+def test_money_quantization_canonicalises_only_rounded_zero() -> None:
+    assert str(quantize_money(Decimal("-0.004"))) == "0.00"
+    assert str(quantize_money(Decimal("0.004"))) == "0.00"
+    assert str(quantize_money(Decimal("-0.006"))) == "-0.01"
 
 
 def test_supported_fixture_cases_match_expected_contract_outputs() -> None:

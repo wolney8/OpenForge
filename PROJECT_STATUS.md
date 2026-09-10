@@ -10,12 +10,13 @@ durable requirements.
 ## Current state
 
 - Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
-  The durable audit and independent API fixture cover all exposed families/modes: 26 modes are
-  `PROVEN PASS`, Standard Overlay is `FAIL` because its API emits `-0.00` instead of canonical
-  `0.00`, and Bonus Lock-In back-loss/back-win plus the non-UI Money Back compatibility mode are
-  `BLOCKED` on approved financial authority. Current MBB/Outplayed artifacts were re-fetched;
-  source disagreements and 10 unverified external mode comparisons are explicit in
-  `docs/audits/issue-113-independent-calculator-verification-2026-09-10.md`. No formula changed.
+  The durable audit and independent API fixture cover all exposed families/modes: 29 modes are
+  `PROVEN PASS`, with zero remaining failures. Shared money quantization canonicalises rounded
+  signed zero, closing Overlay AUD-STD-03 without changing its arithmetic. Current TeamProfit
+  source promoted the refund-if-back-loses Bonus Lock-In contract and its `money_back`
+  compatibility alias; reward-if-back-wins remains the sole `BLOCKED` mode because no authority
+  defines its reward product or inverse equalisation. Eight external comparisons remain explicit in
+  `docs/audits/issue-113-independent-calculator-verification-2026-09-10.md`. No unrelated formula changed.
   #36 manual acceptance remains on hold until this audit is reviewed.
 - Prior feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),
   a bounded correction before returning to [#36](https://github.com/wolney8/OpenForge/issues/36).

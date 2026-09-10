@@ -16,6 +16,9 @@ from openforge_api.calculations.accumulator_reference import (
     calculate_accumulator_reference,
 )
 from openforge_api.calculations.blackjack_strategy import calculate_blackjack_strategy
+from openforge_api.calculations.bonus_lock_in_reference import (
+    calculate_bonus_lock_in_reference,
+)
 from openforge_api.calculations.dutching_reference import (
     DutchingSelectionInput,
     calculate_simple_dutching_reference,
@@ -169,6 +172,12 @@ class MatchedBettingPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_fields(self) -> "MatchedBettingPayload":
+        if self.bet_type in {"money_back", "bonus_lock_in"} and self.bonus_trigger == "Back Wins":
+            raise PydanticCustomError(
+                "calculator_bonus_trigger_unapproved",
+                "Bonus Lock-In when the back bet wins is not supported by an approved "
+                "calculation contract.",
+            )
         if self.strategy == "Partial Lay" and not self.manual_lay_stake:
             raise PydanticCustomError(
                 "calculator_manual_lay_required", "Enter the explicit lay stake for this strategy."
@@ -947,6 +956,31 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             sportsbook_result.exchange_component_if_lay_wins,
             sportsbook_result.promotion_component,
         )
+        if payload.bet_type in {"money_back", "bonus_lock_in"} and payload.strategy == "Standard":
+            bonus_result = calculate_bonus_lock_in_reference(
+                back_stake=Decimal(payload.back_stake),
+                back_odds=Decimal(effective_back_odds_text),
+                lay_odds=Decimal(payload.lay_odds),
+                lay_commission=Decimal(payload.exchange_commission),
+                reward_amount=Decimal(payload.promotion_value),
+                retention_percent=Decimal(payload.retention_percent),
+            )
+            standard = bonus_result.lay_stake
+            actual_lay_stake = bonus_result.lay_stake
+            liability = bonus_result.liability
+            pnl_back = bonus_result.back_wins_total
+            pnl_lay = quantize_money(
+                bonus_result.bookmaker_if_back_loses + bonus_result.exchange_if_back_loses
+            )
+            matched = bonus_result.matched_result
+            promotion_trigger_result = bonus_result.back_loses_total
+            component_values = (
+                bonus_result.bookmaker_if_back_wins,
+                bonus_result.exchange_if_back_wins,
+                bonus_result.bookmaker_if_back_loses,
+                bonus_result.exchange_if_back_loses,
+                bonus_result.retained_reward,
+            )
 
     assert actual_lay_stake is not None
     assert liability is not None

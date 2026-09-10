@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.main import app
 
-
 FIXTURE_PATH = (
     Path(__file__).parents[3] / "tests/fixtures/calculator-independent-verification-v1.json"
 )
@@ -78,3 +77,45 @@ def test_audit_odds_normalization_is_explicit(
     )
     assert response.status_code == 200
     assert response.json()["canonical_back_odds"] == canonical
+
+
+def test_audit_bonus_back_wins_remains_blocked_without_authority(client: TestClient) -> None:
+    response = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={
+            "bet_type": "bonus_lock_in",
+            "strategy": "Standard",
+            "back_stake": "10",
+            "back_odds": "4",
+            "lay_odds": "4.2",
+            "exchange_commission": "0.02",
+            "promotion_value": "10",
+            "retention_percent": "70",
+            "bonus_trigger": "Back Wins",
+        },
+    )
+    assert response.status_code == 422
+    assert "not supported by an approved calculation contract" in response.text
+
+
+def test_money_back_compatibility_is_the_governed_back_loses_alias(client: TestClient) -> None:
+    payload = {
+        "strategy": "Standard",
+        "back_stake": "10",
+        "back_odds": "4",
+        "lay_odds": "4.2",
+        "exchange_commission": "0.02",
+        "promotion_value": "10",
+        "retention_percent": "70",
+        "bonus_trigger": "Lay Wins",
+    }
+    bonus = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**payload, "bet_type": "bonus_lock_in"},
+    )
+    compatibility = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**payload, "bet_type": "money_back"},
+    )
+    assert bonus.status_code == compatibility.status_code == 200
+    assert compatibility.json() == bonus.json()

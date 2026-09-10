@@ -1,0 +1,25 @@
+{
+  "fixture_set": "bonus-lock-in-reference-v1",
+  "authority": "approved refund-if-back-loses contract; TeamProfit source and black-box evidence",
+  "cases": [
+    {
+      "id": "BONUS-LOCK-001",
+      "inputs": {"back_stake":"10","back_odds":"4","lay_odds":"4.2","lay_commission":"0.02","reward_amount":"10","retention_percent":"70"},
+      "expected": {"retained_reward":"7.00","lay_stake":"7.89","liability":"25.25","back_wins_total":"4.75","back_loses_total":"4.73","matched_result":"4.73"}
+    },
+    {
+      "id": "BONUS-LOCK-002",
+      "inputs": {"back_stake":"10","back_odds":"2.5","lay_odds":"2.6","lay_commission":"0.02","reward_amount":"10","retention_percent":"80"},
+      "expected": {"retained_reward":"8.00","lay_stake":"6.59","liability":"10.54","back_wins_total":"4.46","back_loses_total":"4.46","matched_result":"4.46"}
+    },
+    {
+      "id": "BONUS-LOCK-003",
+      "inputs": {"back_stake":"12.34","back_odds":"3.15","lay_odds":"3.2","lay_commission":"0.015","reward_amount":"12.34","retention_percent":"74.5"},
+      "expected": {"retained_reward":"9.19","lay_stake":"9.32","liability":"20.50","back_wins_total":"6.03","back_loses_total":"6.03","matched_result":"6.03"}
+    }
+  ],
+  "blocked": {
+    "id": "BONUS-LOCK-BACK-WINS",
+    "reason": "No approved source defines the inverse-trigger reward meaning or equalisation equation."
+  }
+}

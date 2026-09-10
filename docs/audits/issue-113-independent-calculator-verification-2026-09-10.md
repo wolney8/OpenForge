@@ -30,6 +30,10 @@ Current external references: [MBB Bet Calculator](https://matchedbettingblog.com
 [Outplayed Dutching guide](https://outplayed.com/dutching-calculator-guide),
 [Outplayed Blackjack calculator](https://outplayed.com/blackjack-strategy-calculator), and
 [Outplayed Blackjack guide](https://outplayed.com/blackjack-basic-strategy-calculator-guide).
+The follow-up authority pass also used the current
+[TeamProfit calculator](https://www.teamprofit.com/calculator),
+[TeamProfit refund guide](https://www.teamprofit.com/welcome-offers/refunds-offers-guaranteed-profit-method),
+and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-betting-calculator/).
 
 ## Independent equations and rounding
 
@@ -39,8 +43,9 @@ Current external references: [MBB Bet Calculator](https://matchedbettingblog.com
 - Free Bet: SNR base `round2(B×(Ob-1)/(Ol-c))`; SR base `round2(B×Ob/(Ol-c))`; under/overlay
   multiply the rounded base by the approved factor and round again. Explicit strategies use entered
   `L`.
-- Cashback adds only its explicit value to the selected trigger branch. Bonus candidate is
-  `R=A×r`, `L=(B×Ob-R)/(Ol-c)`, with unrounded intermediates; it is not approved.
+- Cashback adds only its explicit value to the selected trigger branch. Approved back-loses Bonus
+  Lock-In uses `R=A×r`, then places `L=round2((B×Ob-R)/(Ol-c))`; liability and both branches derive
+  from that placed stake. Reward-if-back-wins remains unapproved.
 - Profit Boost: displayed odds are direct; total-return odds are conservatively floored to 2dp;
   profit-only is `1+profit/B`; percentage is `1+(base-1)×(1+pct)` after the explicit money cap.
 - Multi-Lay Standard uses `round2(B×Ob/(Oli-c))` per branch. Underlay solves the common allocation
@@ -63,14 +68,14 @@ Current external references: [MBB Bet Calculator](https://matchedbettingblog.com
 |---|---|---|---|---|---|---|---|---|---|
 | Standard | Standard | Sportsbook workbook contract | AUD-STD-01 | L 9.57; P&L -0.62/-0.62 | exact | half-up penny | MBB lay-win -0.63; documented authority difference | PASS | none |
 | Standard | Underlay | Sportsbook workbook contract | AUD-STD-02 | L 9.38; P&L -0.02/-0.81 | exact | stake then components | MBB L 9.37; documented | PASS | none |
-| Standard | Overlay | Sportsbook workbook contract | AUD-STD-03 | L 10.20; P&L -2.64/**0.00** | lay branch **-0.00** | half-up penny; zero must canonicalise | MBB L 10.21; documented | **FAIL** | #105: API/display negative-zero normalisation |
+| Standard | Overlay | Sportsbook workbook contract | AUD-STD-03 | L 10.20; P&L -2.64/0.00 | exact | half-up penny; rounded zero canonicalised | MBB L 10.21; documented | PASS | #105 delta verified |
 | Standard | Custom | Sportsbook contract, explicit actual lay | AUD-STD-04 | L 9.00; P&L 1.20/-1.18 | exact | entered stake, penny branches | UNVERIFIED current MBB | PASS | none |
 | Standard | Part Lay (one exposed leg) | Sportsbook contract | AUD-STD-05 | L 4.00; P&L 17.20/-6.08 | exact | entered stake, penny branches | UNVERIFIED current MBB | PASS | multi-part remains outside exposed contract |
 | Standard | Free Bet SNR, all exposed strategies | Free Bet workbook contract | AUD-FB-01/03/04 | base 7.18; under 6.66; over 9.33 | exact | rounded base, then factor | UNVERIFIED current external | PASS | none |
 | Standard | Free Bet SR, all exposed strategies | Free Bet workbook contract | AUD-FB-02/05/06 | base 9.57; Custom 9.00; Part 4.00 | exact | rounded base/entered actual | UNVERIFIED current external | PASS | none |
-| Standard | Bonus Lock-In: back loses | M14 refund **research draft** | AUD-BONUS-LOSE | candidate L 7.89; 4.75/4.73 | L 9.57; -0.62/6.38 | candidate unrounded, display penny | UNVERIFIED | **BLOCKED** | #37: approve award meaning/equalisation/rounding |
-| Standard | Bonus Lock-In: back wins | No approved inverse-trigger equation | AUD-BONUS-WIN | not authoritative | L 9.57; 6.38/-0.62 | unresolved | UNVERIFIED | **BLOCKED** | #37: approve inverse-trigger contract |
-| Standard | Money Back API compatibility | No approved independent contract; not UI-exposed | AUD-MONEY-BACK | not authoritative | Standard hedge + award branch | unresolved | UNVERIFIED | **BLOCKED** | #37: decide/remove compatibility exposure |
+| Standard | Bonus Lock-In: back loses | approved M14 refund contract + current TeamProfit source | AUD-BONUS-LOSE | L 7.89; branches 4.75/4.73 | exact | unrounded reward; placed lay 2dp; components/totals 2dp | current source and retained black-box cases exact | PASS | none |
+| Standard | Bonus Lock-In: back wins | No approved inverse-trigger equation | AUD-BONUS-WIN | not authoritative | rejected 422 | unresolved | UNVERIFIED | **BLOCKED** | #37: define reward product/trigger/equalisation |
+| Standard | Money Back API compatibility | approved back-loses Bonus Lock-In contract | AUD-MONEY-BACK | exact alias: L 7.89; branches 4.75/4.73 | exact | same governed path | MBB/TeamProfit “money back if loses” semantics | PASS | alias retained; not a separate engine |
 | Standard | Cashback | Sportsbook cashback branch | AUD-CB-01 | base -0.62; trigger 4.38 | exact | standard hedge then +5.00 | N/A exact external | PASS | trigger vocabulary remains contract-bounded |
 | Standard | Profit Boost: displayed odds | Profit Boost contract | AUD-PB-01 | 3.2000; L 7.66; result -2.51 | exact | odds 4dp; money 2dp | N/A exact external | PASS | none |
 | Standard | Profit Boost: total return | Profit Boost/payout contract | AUD-PB-02 | floor(27.86/10)=2.78; result -3.48 | exact | odds floor 2dp before hedge | N/A | PASS | none |
@@ -94,8 +99,9 @@ Current external references: [MBB Bet Calculator](https://matchedbettingblog.com
 
 ## Validation and result totals
 
-The independent API harness executed 52 cases: 41 expected-output cases plus 11 strict
-normalisation/rejection cases. It covers fractional and simple-comma odds, malformed/partial
+The independent API harness now executes 56 cases: 43 expected-output cases, 11 strict
+normalisation/rejection cases, one inverse-trigger fail-closed case and one compatibility-equivalence
+case. It covers fractional and simple-comma odds, malformed/partial
 strings, blank odds, commission boundaries through existing contract fixtures, penny-sensitive
 sequential placement, multi-leg states, Winner/Void/Loser, and Blackjack rule branches. The
 focused rendered path additionally exercised Accumulator, Dutching and Blackjack auto-calculation,
@@ -103,11 +109,11 @@ odds normalisation, copy/reset behaviour, narrow containment and zero ledger wri
 isolated audit API. Family-wide numerical evidence comes from the independent API harness, not that
 representative browser path.
 
-- **PROVEN PASS: 26 modes**
-- **FAIL: 1 mode** (`Standard / Overlay`, negative-zero output presentation)
-- **BLOCKED: 3 modes** (Bonus Lock-In loses/wins and Money Back compatibility)
-- **UNVERIFIED external comparisons: 10 matrix modes**
+- **PROVEN PASS: 29 modes**
+- **FAIL: 0 modes**
+- **BLOCKED: 1 mode** (Bonus Lock-In when the reward triggers on a back win)
+- **UNVERIFIED external comparisons: 8 matrix modes**
 
-Exposed calculator scope lacking adequate authoritative fixtures: both Bonus Lock-In triggers and
-the non-UI Money Back API compatibility mode. Optional Accumulator Each Way/Rule 4/folds/bonuses and
+Exposed calculator scope lacking adequate authoritative fixtures: Bonus Lock-In when the reward
+triggers on a back win. Optional Accumulator Each Way/Rule 4/folds/bonuses and
 Advanced Dutching remain deliberately unexposed, so they are not counted as exposed failures.
