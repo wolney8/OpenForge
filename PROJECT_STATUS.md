@@ -25,14 +25,16 @@ durable requirements.
   removed). Last Hand appears only after that explicit transition and never reserves a table column.
   Card correction now preserves the mandatory Card 1/Card 2 slot skeleton: clearing Card 1 or using
   banner Undo after the initial three-card entry cannot remove the Card 2 input.
-  Current acceptance reconciliation also keeps the Last Hand title/chevron on one horizontal row at
-  narrow widths, wraps rather than clips responsive history summaries, and holds the recommendation
-  panel height stable while an outcome settles so the table does not jolt.
+  Current manual-acceptance correction keeps compact card/banner undo targets fixed on hover, groups
+  Reset Session beside Reset Hand, and uses one persistent 480ms recommendation window so pending and
+  current-hand states lift/collapse without replacing the outer panel. Session History now places its
+  disclosure chevron inside HAND, gives OUTCOME the flexible desktop width, and expands details across
+  the complete table width; constrained rows stack without page overflow.
   React now receives `inert` as a boolean, eliminating the disclosure console warning. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `b8c1b55` on `main`.
+- Current implementation base before this tranche: `125ff30` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

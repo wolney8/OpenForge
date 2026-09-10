@@ -1521,19 +1521,22 @@ html[data-theme="dark"] .fund-manager-avatar {
 }
 
 .icon-button.calculator-undo-button {
+  --calculator-undo-target-size: 2.75rem;
   background: transparent;
   border-color: transparent;
-  block-size: 2.75rem;
+  block-size: var(--calculator-undo-target-size);
   display: grid;
-  inline-size: 2.75rem;
+  inline-size: var(--calculator-undo-target-size);
   line-height: 0;
-  min-block-size: 2.75rem;
-  min-inline-size: 2.75rem;
+  min-block-size: var(--calculator-undo-target-size);
+  min-inline-size: var(--calculator-undo-target-size);
   padding: 0;
   place-items: center;
+  transform: none;
+  transition: background 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
 }
 
-.icon-button.calculator-undo-button:hover {
+.icon-button.calculator-undo-button:is(:hover, :focus-visible) {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
@@ -8910,7 +8913,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-rule-surrender { grid-area: surrender; }
 .blackjack-rule-soft-17 { grid-area: soft-17; }
-.blackjack-session-reset { grid-area: reset; justify-self: end; }
+.blackjack-session-reset {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  grid-area: reset;
+  justify-content: flex-end;
+  justify-self: end;
+}
 .blackjack-rule-surrender,
 .blackjack-rule-soft-17 { justify-self: end; }
 
@@ -9243,7 +9254,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
   .blackjack-card:hover:not(:disabled) .blackjack-card-decoration { animation: none; }
   .blackjack-player-action-panel { transition: none; }
-  .blackjack-player-action-panel > :not(.blackjack-undo-action, .sr-only),
+  .blackjack-action-panel-content,
   .blackjack-player-next-actions.is-ready .blackjack-money-deal-action,
   .blackjack-player-action-panel.blackjack-recommendation-bust { animation: none; }
   .blackjack-last-hand,
@@ -9373,27 +9384,57 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border: 1px solid var(--outline);
   border-left: 0.35rem solid var(--primary);
   border-radius: var(--shape-medium);
-  display: grid;
-  gap: 0.7rem;
+  display: block;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+  min-block-size: 4.75rem;
   min-width: 0;
+  overflow: clip;
   padding: 0.8rem;
   padding-inline-end: 4.15rem;
   position: relative;
-  transition: background-color 420ms cubic-bezier(0.2, 0, 0, 1), border-color 420ms cubic-bezier(0.2, 0, 0, 1);
+  transition: min-block-size 480ms cubic-bezier(0.2, 0, 0, 1), background-color 420ms cubic-bezier(0.2, 0, 0, 1), border-color 420ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.blackjack-player-action-panel:not(.blackjack-result-pending) {
+.blackjack-player-action-panel.has-result {
   min-block-size: 11.75rem;
 }
 
-.blackjack-player-action-panel > :not(.blackjack-undo-action, .sr-only) {
+.blackjack-action-panel-window {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-block-size: 100%;
+  overflow: clip;
+}
+
+.blackjack-action-panel-content {
+  align-content: center;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.blackjack-action-panel-content.is-pending {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+
+.blackjack-action-panel-content.has-result {
   animation: blackjack-action-panel-enter 460ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.blackjack-action-panel-content.is-pending {
+  animation: blackjack-action-panel-collapse 460ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes blackjack-action-panel-enter {
   from { opacity: 0; transform: translateY(0.3rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blackjack-action-panel-collapse {
+  from { opacity: 0; transform: translateY(-0.2rem); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -9417,8 +9458,6 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-status-waiting { color: var(--on-surface); }
 .blackjack-status-complete,
 .blackjack-recorded-outcome { margin: 0; }
-.blackjack-result-pending > :not(.blackjack-undo-action) { grid-column: 1 / -1; }
-
 .blackjack-player-action-panel.blackjack-recommendation-hit { border-left-color: var(--success); }
 .blackjack-player-action-panel.blackjack-recommendation-stand { border-left-color: var(--success); }
 .blackjack-player-action-panel.blackjack-recommendation-double { border-left-color: var(--primary); }
@@ -9438,6 +9477,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .blackjack-player-action-panel { transition: none; }
+  .blackjack-action-panel-content { animation: none; }
   .blackjack-player-action-panel.blackjack-recommendation-bust { animation: none; }
 }
 
@@ -9651,9 +9692,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .blackjack-result-pending {
-  grid-template-columns: minmax(0, 1fr);
   min-height: 4.75rem;
-  place-items: center;
 }
 
 .blackjack-result-pending p {
@@ -9690,28 +9729,52 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .blackjack-history-table { table-layout: fixed; width: 100%; }
-.blackjack-history-table th:first-child { width: 58%; }
-.blackjack-history-table th:nth-child(2) { width: 12%; }
-.blackjack-history-table th:last-child { width: 30%; }
-.blackjack-history-table.has-financials th:first-child { width: 29%; }
-.blackjack-history-table.has-financials th:nth-child(2) { width: 9%; }
+.blackjack-history-table th:first-child { width: 12%; }
+.blackjack-history-table th:nth-child(2) { width: 10%; }
+.blackjack-history-table th:last-child { width: 78%; }
+.blackjack-history-table.has-financials th:first-child { width: 10%; }
+.blackjack-history-table.has-financials th:nth-child(2) { width: 8%; }
 .blackjack-history-table.has-financials th:nth-child(3),
 .blackjack-history-table.has-financials th:nth-child(4),
-.blackjack-history-table.has-financials th:nth-child(5) { width: 15%; }
-.blackjack-history-table.has-financials th:last-child { width: 17%; }
+.blackjack-history-table.has-financials th:nth-child(5) { width: 13%; }
+.blackjack-history-table.has-financials th:last-child { width: 43%; }
 
 .blackjack-history-financial-cell { text-align: center; }
 .blackjack-history-financial-cell .financial-value { justify-content: center; }
 
-.blackjack-history-table details {
-  max-width: 100%;
-  min-width: 0;
-  width: 100%;
+.blackjack-history-row-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 780;
+  gap: 0.2rem;
+  min-block-size: 2.75rem;
+  padding: 0;
 }
 
-.blackjack-history-table summary {
-  cursor: pointer;
-  font-weight: 780;
+.blackjack-history-row-toggle:focus-visible {
+  border-radius: var(--shape-small);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.blackjack-history-row-chevron {
+  flex: 0 0 auto;
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: transform 170ms ease;
+}
+
+.blackjack-history-row-toggle[aria-expanded="true"] .blackjack-history-row-chevron { transform: rotate(180deg); }
+
+.blackjack-history-detail-row > td {
+  background: var(--surface-container-low);
+  max-width: 100%;
+  padding: 0.75rem;
+  white-space: normal;
 }
 
 .blackjack-history-detail {
@@ -9783,10 +9846,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .icon-button.blackjack-card-clear {
-  inset-block-start: 50%;
+  inset-block-start: calc(50% - (var(--calculator-undo-target-size) / 2));
   inset-inline-start: calc(100% + 0.1rem);
   position: absolute;
-  transform: translateY(-50%);
+  transform: none;
   z-index: 2;
 }
 
@@ -9826,14 +9889,16 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   }
 
   .blackjack-player-action-panel {
-    grid-template-columns: minmax(0, 1fr);
     grid-column: 1 / -1;
   }
 
+  .blackjack-action-panel-content { grid-template-columns: minmax(0, 1fr); }
+
   .blackjack-top-rule-bar {
-    grid-template-areas: "mode reset" "count count" "surrender surrender" "soft-17 soft-17";
+    grid-template-areas: "mode mode" "reset reset" "count count" "surrender surrender" "soft-17 soft-17";
     grid-template-columns: minmax(0, 1fr) auto;
   }
+  .blackjack-session-reset { justify-content: flex-start; justify-self: start; }
   .blackjack-rule-surrender,
   .blackjack-rule-soft-17 { justify-self: stretch; }
   .blackjack-rule-control { justify-content: space-between; }
@@ -9871,7 +9936,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 @container blackjack-calculator (max-width: 47.5rem) {
   .blackjack-table,
-  .blackjack-player-action-panel { grid-template-columns: minmax(0, 1fr); }
+  .blackjack-action-panel-content { grid-template-columns: minmax(0, 1fr); }
   .blackjack-action-group { justify-content: flex-start; }
   .blackjack-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--blackjack-card-inline-size), max-content)); }
   .blackjack-rank-picker { grid-template-columns: repeat(auto-fit, var(--blackjack-card-inline-size)); }
@@ -10038,12 +10103,14 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   }
 
   .blackjack-history-table tbody tr { grid-template-columns: minmax(0, 1fr); }
+  .blackjack-history-table tbody tr.blackjack-history-detail-row { display: block; }
   .blackjack-history-table tbody td { contain: inline-size; }
   .blackjack-history-table tbody td {
     overflow-wrap: anywhere;
     white-space: normal;
   }
   .blackjack-history-table thead { display: none; }
+  .blackjack-history-detail-row td::before { display: none; }
 }
 
 .multi-lay-results-grid,

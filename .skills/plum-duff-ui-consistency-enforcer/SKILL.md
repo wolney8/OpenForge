@@ -170,6 +170,13 @@ use the canonical primitive and computed styling.
   shims. Rendered UI checks must treat framework console warnings as a failed handoff gate.
 - Compact undo controls use the shared centred icon-button target and a consistent inner glyph
   surface; context-specific placement must not resize the target, shift its label or overlap content.
+  Hover/focus feedback changes surface, elevation or colour without translate/scale/position motion.
+- Expandable data rows place the disclosure control inside the primary semantic cell rather than
+  reserving a blank expander column. Flexible text columns receive remaining width without clipping;
+  constrained layouts stack whole records or contain scrolling without causing page overflow.
+- Panels that reveal different-height operational states retain one wrapper and animate controlled
+  layout height plus content opacity/position; do not swap outer panels in a way that jolts siblings.
+  Reduced motion settles immediately.
 - Undoing or clearing an entry in a fixed minimum workflow must preserve the required empty slot
   skeleton; dependent values may clear, but the next required control must remain available.
 - A shared visual primitive representing the same semantic object in picker and display contexts uses
