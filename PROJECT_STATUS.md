@@ -17,6 +17,7 @@ durable requirements.
   outer radii; and calculator families use bounded slide paging, fixed disabled boundary arrows and
   an anchored ellipsis menu. The unsupported Bonus Lock-In back-wins trigger remains absent from
   normal UI and fail-closed on the server. Financial calculations and #113 results are unchanged.
+  Evidence is synced to #35 and #92; Will's acceptance recheck remains pending.
 - Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
   The durable audit and independent API fixture cover all exposed families/modes: 29 modes are
   `PROVEN PASS`, with zero remaining failures. Shared money quantization canonicalises rounded
