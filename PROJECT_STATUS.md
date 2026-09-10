@@ -17,11 +17,12 @@ durable requirements.
   Blackjack natural payout defaults explicitly to 1:1, with 3:2, 6:5, 2:1 and validated Custom
   presets in Session Setup; ordinary wins remain 1:1. Last Hand is a smoothly animated full-width
   shared disclosure that leaves Dealer/Player geometry unchanged. Session History exposes committed
-  STAKED values in money modes, and UP-CARD/CARD N correction uses the existing undo path. Strategy matrices remain unchanged;
+  STAKED, RETURNED and NET P&L values in money modes, and UP-CARD/CARD N correction uses the existing
+  undo path with a label-anchored overlay. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `b5fda5c` on `main`.
+- Current implementation base before this tranche: `e38f87d` on `main`.
 - Interruptions: none within the selected #36 bridge tranche.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
@@ -173,10 +174,10 @@ durable requirements.
   action. Authoritative logout/expiry still clears session history. User/hosted acceptance remains
   pending under [#40](https://github.com/wolney8/OpenForge/issues/40).
 - Blackjack Session History reports summaries in classification/total → action → outcome order, adds
-  committed STAKED only for Free/Live Play, and expands through bounded responsive detail cards.
+  committed STAKED, RETURNED and NET P&L only for Free/Live Play, and expands through bounded responsive detail cards.
   Dealer UP-CARD and Player CARD N clear icons use the overlaid shared centred control and existing undo
   reducer, clearing dependent state. The additive `blackjack-session-v1` envelope preserves payout preset,
-  custom multiplier, return source, per-hand net and running cash/credit totals for #36.
+  custom multiplier, last deal shortcut, return source, per-hand net and running cash/credit totals for #36.
 - Calculator headers no longer repeat `Reference only`. Open in new tab now uses an authenticated
   minimal shell preserving the active family/state with only calculator-local controls and theme;
   full navigation, Profiles and notifications remain outside that shell.

@@ -195,7 +195,7 @@ independent from the session's optional activity/funding source: `free_credit`, 
 
 `buildBlackjackSessionSourceSnapshot` produces canonical sorted JSON and a SHA-256 identity over
 calculator/version, mode, timestamps, rules (including payout preset and custom multiplier), activity source,
-table type, immutable hand history, per-hand return provenance/net result, counts and mode-appropriate
+table type, immutable hand history, last calculator-only deal shortcut, per-hand return provenance/net result, counts and mode-appropriate
 cash or credit totals. It strips money and conversion provenance from Simulation. The
 additive activity-source input is optional so existing `blackjack-session-v1` callers and stored
 browser state continue to load with honest `null` provenance. The later `#36` bridge captures this

@@ -112,6 +112,7 @@ describe("Blackjack session source contract", () => {
   it("preserves a validated custom natural payout in immutable provenance", async () => {
     const snapshot = await buildBlackjackSessionSourceSnapshot({
       activitySource: "own_cash", blackjackPayout: "custom", blackjackPayoutCustom: "1.25",
+      lastDealShortcut: "double_deal",
       endedAt: "2026-09-10T11:00:00.000Z", endingBalance: "", freeCreditValue: "", hands: [],
       mode: "live_play", recordedHandNet: null, soft17Rule: "stands",
       startedAt: "2026-09-10T10:00:00.000Z", startingBalance: "", surrenderAllowed: false,
@@ -119,6 +120,7 @@ describe("Blackjack session source contract", () => {
     });
     expect(snapshot.rules.blackjack_payout).toBe("custom");
     expect(snapshot.rules.blackjack_payout_profit_multiplier).toBe("1.25");
+    expect(snapshot.last_deal_shortcut).toBe("double_deal");
   });
 
   it("uses exact cents for committed stake and validation", () => {

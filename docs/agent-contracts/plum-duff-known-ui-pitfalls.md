@@ -1023,4 +1023,5 @@ cause, prevention rule and regression test.
   expanded details wrap in bounded cards; local overlaid card-clear controls dispatch through the
   existing undo/reducer path and invalidate dependent cards/actions without shifting labels.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks disclosure geometry, automatic and
-  manual disclosure state, contained history expansion and dependent player-card clearing.
+  manual disclosure state, label-anchored dealer/player clearing, visible money-mode financial
+  columns, contained history expansion and dependent player-card clearing.

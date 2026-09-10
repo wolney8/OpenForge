@@ -78,8 +78,7 @@ export function BlackjackCardSlot({
   const controlLabel = accessibleLabel ?? label;
   return (
     <span className="blackjack-card-slot-wrap">
-      <span className="blackjack-card-slot-label">{label}</span>
-      {onClear ? <button aria-label={`Clear ${controlLabel}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${controlLabel}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}
+      <span className="blackjack-card-slot-heading"><span className="blackjack-card-slot-label">{label}</span>{onClear ? <button aria-label={`Clear ${controlLabel}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${controlLabel}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}</span>
       <BlackjackCard
         ariaLabel={`${controlLabel}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
         className={`blackjack-card-slot${active ? " is-active" : ""}`}

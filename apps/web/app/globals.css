@@ -9494,6 +9494,13 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-last-hand-content { display: grid; gap: 0.7rem; min-width: 0; }
 
+.blackjack-last-hand > .editor-section-content {
+  transform: translateY(-0.25rem);
+  transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.blackjack-last-hand.is-open > .editor-section-content { transform: translateY(0); }
+
 .blackjack-last-hand-card-line,
 .blackjack-last-hand-player-cards {
   align-items: end;
@@ -9582,6 +9589,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 @media (prefers-reduced-motion: reduce) {
   .blackjack-last-hand,
+  .blackjack-last-hand > .editor-section-content,
   .blackjack-disclosure > summary > .material-symbols-outlined { transition: none; }
 }
 
@@ -9589,10 +9597,15 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-history-table th:first-child { width: 58%; }
 .blackjack-history-table th:nth-child(2) { width: 12%; }
 .blackjack-history-table th:last-child { width: 30%; }
-.blackjack-history-table.has-financials th:first-child { width: 42%; }
-.blackjack-history-table.has-financials th:nth-child(2) { width: 12%; }
-.blackjack-history-table.has-financials th:nth-child(3) { width: 19%; }
-.blackjack-history-table.has-financials th:last-child { width: 27%; }
+.blackjack-history-table.has-financials th:first-child { width: 29%; }
+.blackjack-history-table.has-financials th:nth-child(2) { width: 9%; }
+.blackjack-history-table.has-financials th:nth-child(3),
+.blackjack-history-table.has-financials th:nth-child(4),
+.blackjack-history-table.has-financials th:nth-child(5) { width: 15%; }
+.blackjack-history-table.has-financials th:last-child { width: 17%; }
+
+.blackjack-history-financial-cell { text-align: center; }
+.blackjack-history-financial-cell .financial-value { justify-content: center; }
 
 .blackjack-history-table details {
   min-width: 0;
@@ -9647,14 +9660,22 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.55rem;
 }
 
+.blackjack-card-slot-heading {
+  align-items: center;
+  display: inline-grid;
+  justify-self: center;
+  position: relative;
+}
+
 .icon-button.blackjack-card-clear {
   block-size: 2.75rem;
-  inset-block-start: -0.8rem;
-  inset-inline-end: -0.8rem;
+  inset-block-start: 50%;
+  inset-inline-start: calc(100% + 0.1rem);
   min-block-size: 2.75rem;
   min-inline-size: 2.75rem;
   padding: 0;
   position: absolute;
+  transform: translateY(-50%);
   inline-size: 2.75rem;
   z-index: 2;
 }

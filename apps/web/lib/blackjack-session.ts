@@ -4,6 +4,7 @@ export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
 export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
 export type BlackjackPlayLimitMode = "fixed_stake_cap" | "use_winnings";
+export type BlackjackDealShortcut = "" | "rebet" | "rebet_deal" | "double_deal";
 export type BlackjackPayoutRule = "one_to_one" | "three_to_two" | "six_to_five" | "two_to_one" | "custom";
 export type BlackjackReturnSource = "calculated" | "entered" | null;
 
@@ -51,6 +52,7 @@ export type BlackjackSessionSourceSnapshot = {
     net: string | null;
     unit: "cash" | "credit" | null;
   };
+  last_deal_shortcut: Exclude<BlackjackDealShortcut, ""> | null;
   play_limit: {
     mode: BlackjackPlayLimitMode;
     remaining_loss_buffer: string | null;
@@ -228,6 +230,7 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
   activitySource?: BlackjackActivitySource;
   blackjackPayout?: BlackjackPayoutRule;
   blackjackPayoutCustom?: string;
+  lastDealShortcut?: BlackjackDealShortcut;
   endedAt: string;
   endingBalance: string;
   freeCreditValue: string;
@@ -269,6 +272,7 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
       net: input.mode === "simulation" ? null : running.net,
       unit: input.mode === "live_play" ? "cash" as const : input.mode === "free_play" ? "credit" as const : null,
     },
+    last_deal_shortcut: input.lastDealShortcut || null,
     monetary: {
       ending_balance: input.mode === "live_play" ? canonicalMoney(input.endingBalance) : null,
       free_credit_value: input.mode === "free_play" ? canonicalMoney(input.freeCreditValue) : null,

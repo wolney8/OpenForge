@@ -88,7 +88,7 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await mode.selectOption("live_play");
   await page.getByRole("button", { name: "Session Setup" }).click();
   await page.getByRole("combobox", { name: "Blackjack activity source" }).selectOption("own_cash");
-  await page.getByRole("combobox", { name: "Blackjack payout" }).selectOption("three_to_two");
+  await page.getByRole("combobox", { name: "Natural Blackjack payout" }).selectOption("three_to_two");
   const startingBalance = page.getByRole("textbox", { name: "Session starting balance", exact: true });
   await startingBalance.fill(".50");
   await startingBalance.blur();
@@ -225,8 +225,10 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await page.getByRole("group", { name: "Player outcome" }).getByRole("button", { name: "Win" }).evaluate((button) => { button.click(); button.click(); });
   await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
   await expect(page.locator(".blackjack-history-table tbody tr")).toHaveCount(1);
-  await expect(page.locator(".blackjack-history-table thead")).toContainText("Staked");
+  await expect(page.locator(".blackjack-history-table thead")).toContainText("StakedReturnedNet P&L");
   await expect(page.locator(".blackjack-history-table tbody tr").first().getByLabel("Hand 1 staked")).toHaveAttribute("aria-label", /£ 10\.00/);
+  await expect(page.locator(".blackjack-history-table tbody tr").first().getByLabel("Hand 1 returned")).toHaveAttribute("aria-label", /£ 12\.00/);
+  await expect(page.locator(".blackjack-history-table tbody tr").first().getByLabel("Hand 1 net P and L")).toHaveAttribute("aria-label", /£ 2\.00/);
   await expect(page.getByLabel("Gross staked")).toHaveAttribute("aria-label", /£ 10\.00/);
   await expect(page.getByLabel("Gross returned")).toHaveAttribute("aria-label", /£ 12\.00/);
   await expect(page.getByLabel("Net P and L")).toHaveAttribute("aria-label", /£ 2\.00/);
@@ -347,9 +349,15 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   const dealerClear = page.getByRole("button", { name: "Clear Dealer up-card" });
   await expect(dealerClear).toHaveCSS("position", "absolute");
   const dealerClearGlyph = dealerClear.locator(".material-symbols-outlined");
-  const [dealerClearBox, dealerClearGlyphBox] = await Promise.all([dealerClear.boundingBox(), dealerClearGlyph.boundingBox()]);
+  const [dealerClearBox, dealerClearGlyphBox, dealerUndoLabelBox, dealerRankBox] = await Promise.all([
+    dealerClear.boundingBox(), dealerClearGlyph.boundingBox(),
+    page.locator(".blackjack-dealer-side .blackjack-card-slot-label").boundingBox(),
+    page.locator(".blackjack-dealer-side .blackjack-card-main-rank").boundingBox(),
+  ]);
   expect(Math.abs(((dealerClearGlyphBox?.x ?? 0) + (dealerClearGlyphBox?.width ?? 0) / 2) - ((dealerClearBox?.x ?? 0) + (dealerClearBox?.width ?? 0) / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs(((dealerClearGlyphBox?.y ?? 0) + (dealerClearGlyphBox?.height ?? 0) / 2) - ((dealerClearBox?.y ?? 0) + (dealerClearBox?.height ?? 0) / 2))).toBeLessThanOrEqual(1);
+  expect((dealerClearBox?.x ?? 999) - ((dealerUndoLabelBox?.x ?? 0) + (dealerUndoLabelBox?.width ?? 0))).toBeLessThanOrEqual(4);
+  expect((dealerClearBox?.y ?? 0) + (dealerClearBox?.height ?? 0)).toBeLessThan(dealerRankBox?.y ?? 999);
   await dealerClear.click();
   await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
   await chooseRank(page, "Dealer up-card", "Q");
@@ -389,6 +397,7 @@ test("uses shared cards, anchored help and outcome-based Blackjack history", asy
   await expect(outcome).toBeVisible();
   await outcome.getByRole("button", { name: "Win" }).click();
   await expect(page.getByText("You have played 1 hand", { exact: true })).toBeVisible();
+  await expect(page.locator(".blackjack-history-table thead")).not.toContainText("Staked");
   await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
 
   const dealStyle = await dealAgain.evaluate((node) => ({ weight: getComputedStyle(node).fontWeight, height: node.getBoundingClientRect().height, background: getComputedStyle(node).backgroundColor }));
@@ -556,6 +565,7 @@ test("supports current-hand undo, temporary Last Hand and automatic Bust", async
   expect(await bustPanel.evaluate((node) => getComputedStyle(node).animationName)).toBe("blackjack-bust-settle");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await bustPanel.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
+  expect(await animatedContent.evaluate((node) => getComputedStyle(node).transitionDuration)).toBe("0s");
   await expect(page.getByText("You have played 2 hands", { exact: true })).toBeVisible();
   await expect(lastHand).toContainText("Outcome: Bust");
   await expect(lastHand).toContainText("UP-CARD");
@@ -577,7 +587,7 @@ test("derives reviewed Live Play returns from the explicit payout rule", async (
 
   await page.getByRole("combobox", { name: "Blackjack session mode" }).selectOption("live_play");
   await page.getByRole("button", { name: "Session Setup" }).click();
-  const payout = page.getByRole("combobox", { name: "Blackjack payout" });
+  const payout = page.getByRole("combobox", { name: "Natural Blackjack payout" });
   await expect(payout).toHaveValue("one_to_one");
   await expect(payout.locator("option")).toHaveText(["1:1", "3:2", "6:5", "2:1", "Custom"]);
   await payout.selectOption("three_to_two");
