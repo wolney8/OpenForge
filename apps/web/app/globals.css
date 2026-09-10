@@ -1520,6 +1520,54 @@ html[data-theme="dark"] .fund-manager-avatar {
   box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 26%, transparent);
 }
 
+.icon-button.calculator-undo-button {
+  background: transparent;
+  border-color: transparent;
+  block-size: 2.75rem;
+  display: grid;
+  inline-size: 2.75rem;
+  line-height: 0;
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  padding: 0;
+  place-items: center;
+}
+
+.icon-button.calculator-undo-button:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.icon-button.calculator-undo-button:hover .calculator-undo-button-glyph {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.calculator-undo-button-glyph {
+  align-items: center;
+  background: var(--surface-strong);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  block-size: 1.55rem;
+  display: inline-flex;
+  inline-size: 1.55rem;
+  justify-content: center;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.calculator-undo-button-glyph > .material-symbols-outlined {
+  align-items: center;
+  block-size: 1rem;
+  display: inline-flex;
+  font-size: 0.95rem;
+  inline-size: 1rem;
+  justify-content: center;
+  line-height: 1;
+}
+
 .palette-icon-wrap {
   display: inline-flex;
   align-items: center;
@@ -9194,6 +9242,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   }
 
   .blackjack-card:hover:not(:disabled) .blackjack-card-decoration { animation: none; }
+  .blackjack-player-action-panel { transition: none; }
+  .blackjack-player-action-panel > :not(.blackjack-undo-action, .sr-only),
+  .blackjack-player-next-actions.is-ready .blackjack-money-deal-action,
   .blackjack-player-action-panel.blackjack-recommendation-bust { animation: none; }
   .blackjack-last-hand,
   .blackjack-disclosure > summary > .material-symbols-outlined { transition: none; }
@@ -9233,11 +9284,20 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
-.blackjack-double-deal-action {
+.blackjack-money-deal-action {
   background: color-mix(in srgb, var(--warning) 18%, var(--surface-container-high));
   border-color: color-mix(in srgb, var(--warning) 68%, var(--outline));
   color: color-mix(in srgb, var(--warning) 76%, var(--text));
   font-weight: 800;
+}
+
+.blackjack-player-next-actions.is-ready .blackjack-money-deal-action {
+  animation: blackjack-next-hand-ready 1100ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes blackjack-next-hand-ready {
+  0%, 100% { box-shadow: none; }
+  45% { box-shadow: 0 0 0 0.28rem color-mix(in srgb, var(--warning) 22%, transparent); }
 }
 
 .blackjack-section-heading {
@@ -9321,6 +9381,16 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.8rem;
   padding-inline-end: 4.15rem;
   position: relative;
+  transition: background-color 420ms cubic-bezier(0.2, 0, 0, 1), border-color 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.blackjack-player-action-panel > :not(.blackjack-undo-action, .sr-only) {
+  animation: blackjack-action-panel-enter 460ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes blackjack-action-panel-enter {
+  from { opacity: 0; transform: translateY(0.3rem); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .blackjack-banner-primary,
@@ -9466,22 +9536,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-last-action-state span { color: var(--on-surface); }
 
 .icon-button.blackjack-undo-action {
-  block-size: 2.75rem;
-  display: grid;
   inset-block-start: 0.65rem;
   inset-inline-end: 0.65rem;
-  line-height: 0;
-  min-block-size: 2.75rem;
-  min-inline-size: 2.75rem;
-  padding: 0;
-  place-items: center;
   position: absolute;
-  inline-size: 2.75rem;
   z-index: 1;
-}
-
-.blackjack-undo-action .material-symbols-outlined {
-  place-items: center;
 }
 
 .blackjack-outcome-group {
@@ -9522,11 +9580,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.3rem;
 }
 
-.blackjack-last-hand-title small { color: var(--muted); font-size: 0.82rem; }
-
 .blackjack-last-hand > .editor-section-content {
   transform: translateY(-0.25rem);
-  transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease;
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0, 0, 1), opacity 260ms ease, transform 320ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .blackjack-last-hand.is-open > .editor-section-content { transform: translateY(0); }
@@ -9710,19 +9766,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .icon-button.blackjack-card-clear {
-  block-size: 2.75rem;
   inset-block-start: 50%;
   inset-inline-start: calc(100% + 0.1rem);
-  min-block-size: 2.75rem;
-  min-inline-size: 2.75rem;
-  padding: 0;
   position: absolute;
   transform: translateY(-50%);
-  inline-size: 2.75rem;
   z-index: 2;
 }
-
-.blackjack-card-clear .material-symbols-outlined { font-size: 0.95rem; line-height: 1; }
 
 .blackjack-how-to ol {
   display: grid;

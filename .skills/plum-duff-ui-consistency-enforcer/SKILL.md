@@ -166,6 +166,10 @@ use the canonical primitive and computed styling.
   session-local, normal refresh may retain it but authoritative logout/reset must clear it.
 - Status, waiting, completion and action content that belongs on separate rows uses structural
   blocks; incidental inline wrapping is not an accepted responsive layout mechanism.
+- React boolean DOM attributes use boolean values (or are omitted), never string/empty-string
+  shims. Rendered UI checks must treat framework console warnings as a failed handoff gate.
+- Compact undo controls use the shared centred icon-button target and a consistent inner glyph
+  surface; context-specific placement must not resize the target, shift its label or overlap content.
 - A shared visual primitive representing the same semantic object in picker and display contexts uses
   one aspect/size token at each responsive state; composed layouts must not quietly shrink one context.
 - Theme-aware illustrative controls use semantic surfaces and foregrounds for each theme; a light-mode

@@ -46,6 +46,10 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Visible labels exist for form controls; placeholders are not labels.
 - [ ] Dialog focus containment, Escape close and trigger-focus return checked.
 - [ ] Important regions and controls have stable `data-pd-id` identifiers.
+- [ ] Boolean DOM attributes receive booleans or are omitted, and the rendered path emits no
+      framework console warnings.
+- [ ] Compact undo affordances reuse the shared centred target/glyph geometry without shifting
+      labels or overlapping the controlled content.
 
 ## Layout and process state
 

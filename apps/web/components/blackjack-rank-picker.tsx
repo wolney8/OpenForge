@@ -3,6 +3,7 @@
 import { useRef } from "react";
 
 import { BlackjackCard } from "@/components/blackjack-card";
+import { CalculatorUndoButton } from "@/components/calculator-undo-button";
 import {
   BLACKJACK_RANK_NAMES,
   BLACKJACK_RANKS,
@@ -78,7 +79,7 @@ export function BlackjackCardSlot({
   const controlLabel = accessibleLabel ?? label;
   return (
     <span className="blackjack-card-slot-wrap">
-      <span className="blackjack-card-slot-heading"><span className="blackjack-card-slot-label">{label}</span>{onClear ? <button aria-label={`Clear ${controlLabel}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${controlLabel}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}</span>
+      <span className="blackjack-card-slot-heading"><span className="blackjack-card-slot-label">{label}</span>{onClear ? <CalculatorUndoButton className="blackjack-card-clear" label={`Clear ${controlLabel}`} onClick={onClear} /> : null}</span>
       <BlackjackCard
         ariaLabel={`${controlLabel}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
         className={`blackjack-card-slot${active ? " is-active" : ""}`}

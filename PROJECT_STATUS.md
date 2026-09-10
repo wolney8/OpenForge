@@ -19,13 +19,15 @@ durable requirements.
   presets in Session Setup; ordinary wins remain 1:1. Last Hand is a smoothly animated full-width
   shared disclosure that leaves Dealer/Player geometry unchanged. Session History exposes committed
   STAKED, RETURNED and NET P&L values in money modes, and UP-CARD/CARD N correction uses the existing
-  undo path with a label-anchored overlay. Money-mode next-hand actions are limited to Player-header
-  `Rebet & Deal Again` and emphasized `Double & Deal Again`; the standalone Rebet path is removed.
+  undo path through one shared, label-neutral overlay control. Live/Free outcome settlement now keeps
+  the completed cards and outcome visible while updating history and running totals; a new hand starts
+  only from Player-header `Rebet & Deal Again` or `Double & Deal Again` (with the standalone Rebet path
+  removed). Last Hand appears only after that explicit transition and never reserves a table column.
   React now receives `inert` as a boolean, eliminating the disclosure console warning. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `a2e7189` on `main`.
+- Current implementation base before this tranche: `51905a6` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
