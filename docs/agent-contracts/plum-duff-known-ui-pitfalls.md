@@ -1019,7 +1019,8 @@ cause, prevention rule and regression test.
 - Root cause: the collapsed recap was a direct grid child instead of a full-width disclosure, while
   history details retained intrinsic minimum widths and card correction depended only on global Undo.
 - Prevention: secondary recaps use the shared full-width disclosure without their own grid track;
-  expanded details wrap in bounded cards; local card-clear controls dispatch through the existing
-  undo/reducer path and invalidate dependent cards/actions.
+  automatic and manual state changes use its height/opacity motion rather than native snapping;
+  expanded details wrap in bounded cards; local overlaid card-clear controls dispatch through the
+  existing undo/reducer path and invalidate dependent cards/actions without shifting labels.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks disclosure geometry, automatic and
   manual disclosure state, contained history expansion and dependent player-card clearing.

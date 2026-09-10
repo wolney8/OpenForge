@@ -177,8 +177,10 @@ Blackjack strategy remains independent of session mode:
 - `live_play` records optional per-hand starting stake and gross return (including returned stake),
   plus reviewed session starting/ending balances. Ordinary Win returns `2 × committed stake`, Push
   returns committed stake, Loss/Bust returns zero and Surrender returns half the committed stake.
-  Natural `Blackjack Win` derives only when the explicit session payout is `3:2` or `6:5`, returning
-  stake plus the configured profit multiplier. Derived returns round half-up to GBP `0.01`; an
+  Natural `Blackjack Win` uses the explicit session payout, defaulting to `1:1`, with common `3:2`,
+  `6:5`, `2:1` and validated positive custom profit-multiplier choices. It returns stake plus the
+  selected profit multiplier. This selector never changes an ordinary Win's fixed `1:1` return.
+  Derived returns round half-up to GBP `0.01`; an
   explicitly entered Actual Return overrides the derived reference and its provenance is retained.
   The authoritative reviewed session result remains exact `ending_balance - starting_balance`.
 
@@ -192,7 +194,7 @@ independent from the session's optional activity/funding source: `free_credit`, 
 `own_cash`. No source is inferred from session mode or table type; an unset source remains `null`.
 
 `buildBlackjackSessionSourceSnapshot` produces canonical sorted JSON and a SHA-256 identity over
-calculator/version, mode, timestamps, rules (including explicit Blackjack payout), activity source,
+calculator/version, mode, timestamps, rules (including payout preset and custom multiplier), activity source,
 table type, immutable hand history, per-hand return provenance/net result, counts and mode-appropriate
 cash or credit totals. It strips money and conversion provenance from Simulation. The
 additive activity-source input is optional so existing `blackjack-session-v1` callers and stored

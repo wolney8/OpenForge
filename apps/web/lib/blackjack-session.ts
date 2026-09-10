@@ -4,7 +4,7 @@ export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
 export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
 export type BlackjackPlayLimitMode = "fixed_stake_cap" | "use_winnings";
-export type BlackjackPayoutRule = "" | "three_to_two" | "six_to_five";
+export type BlackjackPayoutRule = "one_to_one" | "three_to_two" | "six_to_five" | "two_to_one" | "custom";
 export type BlackjackReturnSource = "calculated" | "entered" | null;
 
 export type BlackjackSessionHandSnapshot = {
@@ -58,7 +58,8 @@ export type BlackjackSessionSourceSnapshot = {
     value: string | null;
   };
   rules: {
-    blackjack_payout: Exclude<BlackjackPayoutRule, ""> | null;
+    blackjack_payout: BlackjackPayoutRule | null;
+    blackjack_payout_profit_multiplier: string | null;
     dealer_hits_soft_17: boolean;
     surrender_allowed: boolean;
   };
@@ -120,18 +121,37 @@ function multiplyMoneyRatio(value: string, numerator: bigint, denominator: bigin
   return centsToMoney((cents * numerator * BigInt(2) + denominator) / (denominator * BigInt(2)));
 }
 
+export function normalizeBlackjackPayoutMultiplier(value: string): string | null {
+  if (!/^\d+(?:\.\d{1,4})?$/.test(value)) return null;
+  const [whole, fraction = ""] = value.split(".");
+  if (BigInt(`${whole}${fraction}`) <= BigInt(0)) return null;
+  return fraction ? `${BigInt(whole)}.${fraction}` : BigInt(whole).toString();
+}
+
+function payoutMultiplierRatio(value: string): [bigint, bigint] | null {
+  const normalized = normalizeBlackjackPayoutMultiplier(value);
+  if (normalized === null) return null;
+  const [whole, fraction = ""] = normalized.split(".");
+  return [BigInt(`${whole}${fraction}`), BigInt(10) ** BigInt(fraction.length)];
+}
+
 export function blackjackDefaultGrossReturn(
   committedStake: string,
   outcome: string,
   payout: BlackjackPayoutRule,
+  customProfitMultiplier = "",
 ): string | null {
   if (outcome === "Win") return multiplyMoneyRatio(committedStake, BigInt(2), BigInt(1));
   if (outcome === "Push") return multiplyMoneyRatio(committedStake, BigInt(1), BigInt(1));
   if (outcome === "Loss" || outcome === "Bust") return multiplyMoneyRatio(committedStake, BigInt(0), BigInt(1));
   if (outcome === "Surrender") return multiplyMoneyRatio(committedStake, BigInt(1), BigInt(2));
   if (outcome === "Blackjack Win") {
+    if (payout === "one_to_one") return multiplyMoneyRatio(committedStake, BigInt(2), BigInt(1));
     if (payout === "three_to_two") return multiplyMoneyRatio(committedStake, BigInt(5), BigInt(2));
     if (payout === "six_to_five") return multiplyMoneyRatio(committedStake, BigInt(11), BigInt(5));
+    if (payout === "two_to_one") return multiplyMoneyRatio(committedStake, BigInt(3), BigInt(1));
+    const customRatio = payout === "custom" ? payoutMultiplierRatio(customProfitMultiplier) : null;
+    if (customRatio) return multiplyMoneyRatio(committedStake, customRatio[0] + customRatio[1], customRatio[1]);
   }
   return null;
 }
@@ -207,6 +227,7 @@ async function sha256(value: string): Promise<string> {
 export async function buildBlackjackSessionSourceSnapshot(input: {
   activitySource?: BlackjackActivitySource;
   blackjackPayout?: BlackjackPayoutRule;
+  blackjackPayoutCustom?: string;
   endedAt: string;
   endingBalance: string;
   freeCreditValue: string;
@@ -266,6 +287,9 @@ export async function buildBlackjackSessionSourceSnapshot(input: {
     },
     rules: {
       blackjack_payout: input.blackjackPayout || null,
+      blackjack_payout_profit_multiplier: input.blackjackPayout === "custom"
+        ? normalizeBlackjackPayoutMultiplier(input.blackjackPayoutCustom ?? "")
+        : null,
       dealer_hits_soft_17: input.soft17Rule === "hits",
       surrender_allowed: input.surrenderAllowed,
     },

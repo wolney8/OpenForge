@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
@@ -26,6 +26,7 @@ import {
   moneyInputError,
   moneyToCents,
   multiplyMoney,
+  normalizeBlackjackPayoutMultiplier,
   subtractMoney,
   subtractSignedMoney,
   type BlackjackActivitySource,
@@ -83,6 +84,7 @@ type BlackjackHistoryEntry = {
 type BlackjackSessionDetails = {
   activitySource: BlackjackActivitySource;
   blackjackPayout: BlackjackPayoutRule;
+  blackjackPayoutCustom: string;
   endingBalance: string;
   freeCreditValue: string;
   lastStake: string;
@@ -120,9 +122,20 @@ function emptyRound(handNumber: number, surrender = false, soft17Rule: Soft17Rul
 
 function emptySessionDetails(mode: BlackjackSessionMode = "simulation"): BlackjackSessionDetails {
   return {
-    activitySource: "", blackjackPayout: "", endingBalance: "", freeCreditValue: "", lastStake: "", mode, startedAt: "",
+    activitySource: "", blackjackPayout: "one_to_one", blackjackPayoutCustom: "", endingBalance: "", freeCreditValue: "", lastStake: "", mode, startedAt: "",
     playLimitMode: "fixed_stake_cap", playLimitValue: "", startingBalance: "",
     tableType: mode === "simulation" ? "" : "digital_rng", withdrawableResult: "",
+  };
+}
+
+function normalizeSessionDetails(value: Partial<BlackjackSessionDetails>): BlackjackSessionDetails {
+  const merged = { ...emptySessionDetails(value.mode), ...value };
+  return {
+    ...merged,
+    blackjackPayout: ["one_to_one", "three_to_two", "six_to_five", "two_to_one", "custom"].includes(String(merged.blackjackPayout))
+      ? merged.blackjackPayout as BlackjackPayoutRule
+      : "one_to_one",
+    blackjackPayoutCustom: merged.blackjackPayoutCustom ?? "",
   };
 }
 
@@ -130,7 +143,7 @@ function readSessionDetails(search: URLSearchParams): BlackjackSessionDetails {
   try {
     const parsed = JSON.parse(search.get("blackjackSession") ?? "null") as Partial<BlackjackSessionDetails> | null;
     if (parsed && ["simulation", "free_play", "live_play"].includes(parsed.mode ?? "")) {
-      return { ...emptySessionDetails(parsed.mode), ...parsed };
+      return normalizeSessionDetails(parsed);
     }
   } catch {
     // Invalid URL state falls back to Simulation.
@@ -184,7 +197,7 @@ function normalizeStoredSession(value: StoredBlackjackSession): StoredBlackjackS
   const legacyRound = value.round as BlackjackRound & { hitSoft17?: boolean };
   const soft17Rule: Soft17Rule = legacyRound.soft17Rule === "hits" || legacyRound.hitSoft17 ? "hits" : "stands";
   return {
-    details: { ...emptySessionDetails(), ...value.details },
+    details: normalizeSessionDetails(value.details ?? {}),
     history: value.history.map((entry) => {
       const legacy = entry as BlackjackHistoryEntry & { hitSoft17?: boolean };
       return {
@@ -264,7 +277,7 @@ function withDefaultReturn(hand: BlackjackHand, details: BlackjackSessionDetails
   if (details.mode === "simulation" || hand.actualReturnSource === "entered" || !hand.outcome) return hand;
   const committed = committedStake(hand);
   if (committed === null) return hand;
-  const derived = blackjackDefaultGrossReturn(committed, hand.outcome, details.blackjackPayout);
+  const derived = blackjackDefaultGrossReturn(committed, hand.outcome, details.blackjackPayout, details.blackjackPayoutCustom);
   return derived === null ? hand : { ...hand, actualReturn: derived, actualReturnSource: "calculated" };
 }
 
@@ -296,6 +309,13 @@ function historyFinancials(history: BlackjackHistoryEntry[]) {
   }))));
 }
 
+function historyEntryStake(entry: BlackjackHistoryEntry): string | null {
+  if (entry.mode === "simulation") return null;
+  const stakes = entry.hands.map(committedStake);
+  if (stakes.some((stake) => stake === null)) return null;
+  return centsToMoney(stakes.reduce((total, stake) => total + (moneyToCents(stake!) ?? BigInt(0)), BigInt(0)));
+}
+
 export function BlackjackCalculator({ onState, search }: {
   onState: (params: URLSearchParams) => void;
   search: URLSearchParams;
@@ -321,6 +341,7 @@ export function BlackjackCalculator({ onState, search }: {
   const abort = useRef<AbortController | null>(null);
   const sessionSetupRef = useRef<HTMLElement | null>(null);
   const outcomeSubmission = useRef("");
+  const lastHandMotionFrame = useRef<number | null>(null);
   const activeHand = round.hands.find((hand) => hand.id === round.activeHandId) ?? round.hands[0];
   const selectedCards = useMemo(() => activeHand.cards.filter(isBlackjackCard), [activeHand.cards]);
   const hasPendingCard = activeHand.cards.some((card) => card === "");
@@ -361,9 +382,24 @@ export function BlackjackCalculator({ onState, search }: {
     details.activitySource === "own_cash" ? "Own cash" : details.activitySource === "promotion" ? "Promotion" : details.activitySource === "free_credit" ? "Free credit" : "Source not set",
     details.playLimitValue ? `£${details.playLimitValue} limit` : "No play limit",
   ].join(" · ");
+  const customPayoutError = details.blackjackPayout === "custom" && normalizeBlackjackPayoutMultiplier(details.blackjackPayoutCustom) === null
+    ? "Enter a positive natural-Blackjack profit multiplier, for example 1.25."
+    : "";
 
   useDialogFocusLifecycle(sessionSetupOpen, sessionSetupRef);
   useBodyScrollLock(sessionSetupOpen);
+
+  const openLastHandWithMotion = useCallback(() => {
+    if (lastHandMotionFrame.current !== null) window.cancelAnimationFrame(lastHandMotionFrame.current);
+    setLastHandInteracted(false);
+    setLastHandOpen(false);
+    lastHandMotionFrame.current = window.requestAnimationFrame(() => {
+      lastHandMotionFrame.current = window.requestAnimationFrame(() => {
+        setLastHandOpen(true);
+        lastHandMotionFrame.current = null;
+      });
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -428,6 +464,10 @@ export function BlackjackCalculator({ onState, search }: {
     const timer = window.setTimeout(() => setLastHandOpen(false), 4500);
     return () => window.clearTimeout(timer);
   }, [lastHand, lastHandInteracted, lastHandOpen]);
+
+  useEffect(() => () => {
+    if (lastHandMotionFrame.current !== null) window.cancelAnimationFrame(lastHandMotionFrame.current);
+  }, []);
 
   useEffect(() => {
     const shareable = { ...round, archived: false };
@@ -506,14 +546,13 @@ export function BlackjackCalculator({ onState, search }: {
       setHistory((entries) => entries.some((entry) => entry.handNumber === round.handNumber)
         ? entries
         : [...entries, historyEntry(round, details)]);
-      setLastHandOpen(true);
-      setLastHandInteracted(false);
+      openLastHandWithMotion();
       setRound(emptyRound(round.handNumber + 1, round.surrender, round.soft17Rule, details.mode !== "simulation" ? details.lastStake : ""));
       setPreview(null);
       setCardTarget({ kind: "dealer" });
     }, round.hands.some((hand) => hand.status === "bust") ? 1300 : 0);
     return () => window.clearTimeout(timer);
-  }, [details, round]);
+  }, [details, openLastHandWithMotion, round]);
 
   useEffect(() => () => abort.current?.abort(), []);
 
@@ -620,6 +659,22 @@ export function BlackjackCalculator({ onState, search }: {
     setCardTarget({ handId: activeHand.id, index, kind: "hand" });
   }
 
+  function clearDealerCard() {
+    updateRound({
+      dealer: "",
+      hands: round.hands.map((hand) => ({
+        ...hand,
+        actions: round.splitOccurred ? hand.actions.slice(0, 1) : [],
+        lastResult: null,
+        lastRulePreview: null,
+        outcome: "",
+        recommendations: [],
+        status: "playing",
+      })),
+    });
+    setCardTarget({ kind: "dealer" });
+  }
+
   function takeAction(action: BlackjackAction) {
     if (!visiblePreview) return;
     if (action === "Hit") {
@@ -672,8 +727,7 @@ export function BlackjackCalculator({ onState, search }: {
     setHistory((entries) => entries.some((entry) => entry.handNumber === completedRound.handNumber)
       ? entries
       : [...entries, historyEntry(completedRound, details)]);
-    setLastHandOpen(true);
-    setLastHandInteracted(false);
+    openLastHandWithMotion();
     setPendingNextHandAction(null);
     setRound(emptyRound(completedRound.handNumber + 1, completedRound.surrender, completedRound.soft17Rule, details.mode !== "simulation" ? details.lastStake : ""));
     setCardTarget({ kind: "dealer" });
@@ -687,8 +741,7 @@ export function BlackjackCalculator({ onState, search }: {
     outcomeSubmission.current = "";
     setUndoStack((entries) => entries.slice(0, -1));
     if (snapshot.history.length !== history.length) {
-      setLastHandOpen(true);
-      setLastHandInteracted(false);
+      openLastHandWithMotion();
     }
     setHistory(snapshot.history);
     setRound(snapshot.round);
@@ -739,6 +792,7 @@ export function BlackjackCalculator({ onState, search }: {
       const snapshot = await buildBlackjackSessionSourceSnapshot({
         activitySource: details.activitySource,
         blackjackPayout: details.blackjackPayout,
+        blackjackPayoutCustom: details.blackjackPayoutCustom,
         endedAt: new Date().toISOString(),
         endingBalance: details.endingBalance,
         freeCreditValue: details.freeCreditValue,
@@ -788,8 +842,8 @@ export function BlackjackCalculator({ onState, search }: {
     ? round.dealer
     : round.hands.find((hand) => hand.id === cardTarget.handId)?.cards[cardTarget.index] ?? "";
   const selectedTargetLabel = cardTarget.kind === "dealer"
-    ? "Dealer up-card"
-    : `${round.hands.find((hand) => hand.id === cardTarget.handId)?.label ?? "Player"} card ${cardTarget.index + 1}`;
+    ? "Up-Card"
+    : `Card ${cardTarget.index + 1}`;
   const sessionHasState = history.length > 0
     || round.dealer !== ""
     || round.surrender
@@ -868,16 +922,16 @@ export function BlackjackCalculator({ onState, search }: {
             </div>
             <p className="sr-only" id="blackjack-strategy-guidance">Basic strategy minimises the house edge over time; it does not guarantee this hand will win.</p>
           </section> : <section aria-live="polite" className="blackjack-player-action-panel blackjack-result-pending" data-pd-id="calculators.blackjack.result-pending">{undoControl}{lastAction || waitingState ? <div className="blackjack-last-action-state">{lastAction ? <strong>Last action · {lastAction}</strong> : null}{waitingState ? <span>{waitingState}</span> : null}</div> : <p>Choose the dealer card and all visible player cards to see the recommended move.</p>}</section>}
-          {lastHand ? <details aria-label={`Last hand ${lastHand.handNumber}`} className="calculator-band calculator-band-secondary blackjack-last-hand blackjack-disclosure" data-pd-id="calculators.blackjack.last-hand" onToggle={(event) => setLastHandOpen(event.currentTarget.open)} open={lastHandOpen}><summary onClick={() => setLastHandInteracted(true)}><span><span className="eyebrow">Last hand #{lastHand.handNumber}</span><strong>Previous round</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary><div className="blackjack-last-hand-content"><div className="blackjack-last-hand-card-line"><div className="blackjack-last-hand-card-group"><span>Dealer up-card</span><BlackjackCardVisual ariaLabel={`Last hand dealer up-card, ${lastHand.dealer}`} className="blackjack-last-hand-card" disabled onClick={() => undefined} rank={lastHand.dealer} /></div>{lastHand.hands.map((hand) => <div className="blackjack-last-hand-card-group" key={hand.id}><span>{hand.label}</span><div className="blackjack-last-hand-player-cards">{hand.cards.filter(isBlackjackCard).map((card, index) => <BlackjackCardVisual ariaLabel={`Last hand ${hand.label} card ${index + 1}, ${card}`} className="blackjack-last-hand-card" disabled key={`${hand.id}-${index}`} onClick={() => undefined} rank={card} />)}</div></div>)}</div><div className="blackjack-last-hand-metadata">{lastHand.hands.map((hand) => <small key={hand.id}>{hand.lastResult ? `${lastHand.hands.length > 1 ? `${hand.label} · ` : ""}${hand.lastResult.hand_kind.toUpperCase()} ${hand.lastResult.total}` : "—"}<span>Last action: {hand.actions.at(-1) ?? "—"}</span><span>Outcome: {hand.outcome || "—"}</span>{lastHand.mode !== "simulation" ? <><span>{hand.startingStake ? `£${hand.startingStake} staked` : "Stake —"}</span><span>{hand.actualReturn ? `£${hand.actualReturn} returned` : "Return —"}</span>{handNet(hand) !== null ? <span>Net £{handNet(hand)}</span> : null}</> : null}</small>)}</div>{lastHand.mode !== "simulation" ? <div className="blackjack-next-hand-controls"><span className="eyebrow">Next hand</span><div className="blackjack-action-group"><button className="button-link" onClick={() => prepareNextHand("rebet")} type="button">Rebet</button><button className="button-link" onClick={() => prepareNextHand("rebet_deal")} type="button">Rebet &amp; Deal</button><button className="button-link" onClick={() => prepareNextHand("double_deal")} type="button">Double &amp; Deal</button></div>{pendingNextHandAction ? <div className="blackjack-limit-acknowledgement" role="alert"><span>This next hand would exceed the session play limit.</span><button className="modal-primary-button" onClick={() => prepareNextHand(pendingNextHandAction, true)} type="button">Continue anyway</button></div> : null}</div> : null}</div></details> : null}
+          {lastHand ? <section aria-label={`Last hand ${lastHand.handNumber}`} className={`calculator-band calculator-band-secondary blackjack-last-hand editor-section${lastHandOpen ? " is-open" : ""}`} data-pd-id="calculators.blackjack.last-hand"><button aria-controls="blackjack-last-hand-content" aria-expanded={lastHandOpen} className="section-heading-row editor-section-summary" onClick={() => { setLastHandInteracted(true); setLastHandOpen((open) => !open); }} type="button"><span><span className="eyebrow">Last hand #{lastHand.handNumber}</span><strong>Previous round</strong></span><span aria-hidden="true" className="material-symbols-outlined editor-section-toggle-icon">{lastHandOpen ? "collapse_content" : "expand_content"}</span></button><div aria-hidden={!lastHandOpen} className="editor-section-content" id="blackjack-last-hand-content" {...(!lastHandOpen ? { inert: "" as never } : {})}><div className="editor-section-content-inner"><div className="blackjack-last-hand-content"><div className="blackjack-last-hand-card-line"><div className="blackjack-last-hand-card-group"><span>UP-CARD</span><BlackjackCardVisual ariaLabel={`Last hand dealer up-card, ${lastHand.dealer}`} className="blackjack-last-hand-card" disabled onClick={() => undefined} rank={lastHand.dealer} /></div>{lastHand.hands.map((hand) => <div className="blackjack-last-hand-card-group" key={hand.id}><span>{hand.label}</span><div className="blackjack-last-hand-player-cards">{hand.cards.filter(isBlackjackCard).map((card, index) => <BlackjackCardVisual ariaLabel={`Last hand ${hand.label} card ${index + 1}, ${card}`} className="blackjack-last-hand-card" disabled key={`${hand.id}-${index}`} onClick={() => undefined} rank={card} />)}</div></div>)}</div><div className="blackjack-last-hand-metadata">{lastHand.hands.map((hand) => <small key={hand.id}>{hand.lastResult ? `${lastHand.hands.length > 1 ? `${hand.label} · ` : ""}${hand.lastResult.hand_kind.toUpperCase()} ${hand.lastResult.total}` : "—"}<span>Last action: {hand.actions.at(-1) ?? "—"}</span><span>Outcome: {hand.outcome || "—"}</span>{lastHand.mode !== "simulation" ? <><span>{committedStake(hand) ? `£${committedStake(hand)} staked` : "Stake —"}</span><span>{hand.actualReturn ? `£${hand.actualReturn} returned` : "Return —"}</span>{handNet(hand) !== null ? <span>Net £{handNet(hand)}</span> : null}</> : null}</small>)}</div>{lastHand.mode !== "simulation" && lastHand.hands[0]?.startingStake ? <div className="blackjack-next-hand-controls"><span className="eyebrow">Next hand</span><div className="blackjack-action-group"><button className="button-link" onClick={() => prepareNextHand("rebet")} type="button">Rebet</button><button className="button-link" onClick={() => prepareNextHand("rebet_deal")} type="button">Rebet &amp; Deal Again</button><button className="button-link" onClick={() => prepareNextHand("double_deal")} type="button">Double &amp; Deal Again</button></div>{pendingNextHandAction ? <div className="blackjack-limit-acknowledgement" role="alert"><span>This next hand would exceed the session play limit.</span><button className="modal-primary-button" onClick={() => prepareNextHand(pendingNextHandAction, true)} type="button">Continue anyway</button></div> : null}</div> : null}</div></div></div></section> : null}
           <div className="blackjack-table-side blackjack-dealer-side">
             <h3>Dealer</h3>
-            <BlackjackCardSlot active={cardTarget.kind === "dealer"} label="Dealer up-card" onActivate={() => setCardTarget({ kind: "dealer" })} value={round.dealer} />
+            <BlackjackCardSlot accessibleLabel="Dealer up-card" active={cardTarget.kind === "dealer"} label="UP-CARD" onActivate={() => setCardTarget({ kind: "dealer" })} onClear={isBlackjackCard(round.dealer) ? clearDealerCard : undefined} value={round.dealer} />
           </div>
           <div className="blackjack-table-side blackjack-player-side">
             <div className="blackjack-player-heading"><h3>Player</h3><button className="blackjack-deal-again-action" data-pd-id="calculators.blackjack.deal-again" disabled={round.dealer === "" && round.hands.every((hand) => hand.cards.every((card) => card === ""))} onClick={startFreshHand} type="button"><span aria-hidden="true" className="material-symbols-outlined">playing_cards</span><span>Deal Again</span></button></div>
             {round.hands.length > 1 ? <CalculatorSegmentedControl ariaLabel="Active split hand" dataPdId="calculators.blackjack.split-hands" onChange={(activeHandId) => { updateRound({ activeHandId }, false); const hand = round.hands.find((item) => item.id === activeHandId); const index = hand?.cards.findIndex((card) => card === "") ?? -1; if (index >= 0) setCardTarget({ handId: activeHandId, index, kind: "hand" }); }} options={round.hands.map((hand) => ({ label: hand.label, value: hand.id }))} value={round.activeHandId} /> : null}
             <div className="blackjack-card-row">
-              {activeHand.cards.map((card, index) => <BlackjackCardSlot active={cardTarget.kind === "hand" && cardTarget.handId === activeHand.id && cardTarget.index === index} disabled={terminalStatuses.includes(activeHand.status)} key={`${activeHand.id}-${index}`} label={`${activeHand.label} card ${index + 1}`} onActivate={() => setCardTarget({ handId: activeHand.id, index, kind: "hand" })} onClear={isBlackjackCard(card) ? () => clearPlayerCard(index) : undefined} value={card} />)}
+              {activeHand.cards.map((card, index) => <BlackjackCardSlot accessibleLabel={`${activeHand.label} card ${index + 1}`} active={cardTarget.kind === "hand" && cardTarget.handId === activeHand.id && cardTarget.index === index} disabled={terminalStatuses.includes(activeHand.status)} key={`${activeHand.id}-${index}`} label={`CARD ${index + 1}`} onActivate={() => setCardTarget({ handId: activeHand.id, index, kind: "hand" })} onClear={isBlackjackCard(card) ? () => clearPlayerCard(index) : undefined} value={card} />)}
             </div>
           </div>
           <div className={`blackjack-rank-picker-shell${waitingState && cardTarget.kind === "hand" ? " is-waiting" : ""}`}>
@@ -891,7 +945,7 @@ export function BlackjackCalculator({ onState, search }: {
         <details className="calculator-band calculator-band-secondary blackjack-history blackjack-disclosure" data-pd-id="calculators.blackjack.history" onToggle={(event) => setHistoryOpen(event.currentTarget.open)} open={historyOpen}>
           <summary><span><span className="eyebrow">Session history</span><strong>Played hands</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary>
           <div className="stack blackjack-history-content"><div className="blackjack-section-heading"><span className="field-hint">Completed hands remain available for this authenticated browser session.</span><button className="button-link destructive-action" disabled={!sessionHasState} onClick={() => setConfirmClear(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span><span>Reset Session</span></button></div>
-            {history.length === 0 ? <p className="field-hint">Completed hands appear here for this authenticated browser session only.</p> : <div className="table-scroll"><table className="data-table blackjack-history-table"><thead><tr><th>Hand</th><th>Dealer</th><th>Outcome</th></tr></thead><tbody>{history.map((entry) => <tr key={entry.handNumber}><td data-label="Hand"><details><summary>#{entry.handNumber}</summary><div className="blackjack-history-detail"><span>{entry.mode === "simulation" ? "Simulation" : entry.mode === "free_play" ? "Free Play" : "Live Play"}{entry.tableType ? ` · ${entry.tableType === "digital_rng" ? "Digital / RNG" : "Live Dealer"}` : ""} · Surrender {entry.surrender ? "allowed" : "not allowed"}; Soft 17 rule {entry.soft17Rule === "hits" ? "Hits (H17)" : "Stands (S17)"}.</span>{entry.hands.map((hand) => <div className="blackjack-history-hand-detail" key={hand.id}><strong>{handSummary(hand)}</strong><span>{hand.label}: {hand.cards.join(", ")}</span><span>Recommended {hand.recommendations.map((item) => item.ruleComparison ?? item.action).join(" → ") || "—"}</span><span>Chosen {hand.actions.join(" → ") || "—"}</span>{entry.mode !== "simulation" ? <span>{hand.startingStake ? `£${hand.startingStake}` : "—"} staked · {committedStake(hand) ? `£${committedStake(hand)}` : "—"} committed · {hand.actualReturn ? `£${hand.actualReturn}` : "—"} returned{handNet(hand) === null ? "" : ` · £${handNet(hand)} net`}</span> : null}</div>)}</div></details></td><td data-label="Dealer">{entry.dealer}</td><td data-label="Outcome">{entry.hands.map(handSummary).join("; ")}</td></tr>)}</tbody></table></div>}
+            {history.length === 0 ? <p className="field-hint">Completed hands appear here for this authenticated browser session only.</p> : <div className="table-scroll"><table className={`data-table blackjack-history-table${history.some((entry) => entry.mode !== "simulation") ? " has-financials" : ""}`}><thead><tr><th>Hand</th><th>Dealer</th>{history.some((entry) => entry.mode !== "simulation") ? <th>Staked</th> : null}<th>Outcome</th></tr></thead><tbody>{history.map((entry) => <tr key={entry.handNumber}><td data-label="Hand"><details><summary>#{entry.handNumber}</summary><div className="blackjack-history-detail"><span>{entry.mode === "simulation" ? "Simulation" : entry.mode === "free_play" ? "Free Play" : "Live Play"}{entry.tableType ? ` · ${entry.tableType === "digital_rng" ? "Digital / RNG" : "Live Dealer"}` : ""} · Surrender {entry.surrender ? "allowed" : "not allowed"}; Soft 17 rule {entry.soft17Rule === "hits" ? "Hits (H17)" : "Stands (S17)"}.</span>{entry.hands.map((hand) => <div className="blackjack-history-hand-detail" key={hand.id}><strong>{handSummary(hand)}</strong><span>{hand.label}: {hand.cards.join(", ")}</span><span>Recommended {hand.recommendations.map((item) => item.ruleComparison ?? item.action).join(" → ") || "—"}</span><span>Chosen {hand.actions.join(" → ") || "—"}</span>{entry.mode !== "simulation" ? <div className="blackjack-history-financial-detail"><span><b>Staked</b>{committedStake(hand) ? <FinancialValue label={`${hand.label} staked`} value={committedStake(hand)!} /> : "—"}</span><span><b>Returned</b>{hand.actualReturn ? <FinancialValue label={`${hand.label} returned`} value={hand.actualReturn} /> : "—"}</span><span><b>Net P&amp;L</b>{handNet(hand) !== null ? <FinancialValue label={`${hand.label} net P and L`} showPositiveSign value={handNet(hand)!} /> : "—"}</span></div> : null}</div>)}</div></details></td><td data-label="Dealer">{entry.dealer}</td>{history.some((item) => item.mode !== "simulation") ? <td data-label="Staked">{historyEntryStake(entry) ? <FinancialValue label={`Hand ${entry.handNumber} staked`} value={historyEntryStake(entry)!} /> : "—"}</td> : null}<td data-label="Outcome">{entry.hands.map(handSummary).join("; ")}</td></tr>)}</tbody></table></div>}
             <p className="field-hint">Recorded outcomes describe what happened; they do not grade whether the strategy recommendation was correct.</p>
           </div>
         </details>
@@ -902,7 +956,8 @@ export function BlackjackCalculator({ onState, search }: {
         <header className="workflow-editor-modal-header"><div><span className="eyebrow">Blackjack</span><h2>Session Setup</h2></div><button aria-label="Close Session Setup" className="modal-close-button" onClick={() => setSessionSetupOpen(false)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
         <div className="workflow-editor-modal-body stack settings-adaptive-modal-body"><div className="form-grid settings-dialog-form-grid">
           <label className="field-control"><span>Activity source</span><select aria-label="Blackjack activity source" data-initial-focus data-pd-id="calculators.blackjack.activity-source" onChange={(event) => updateDetail("activitySource", event.target.value)} value={details.activitySource}><option value="">Select source</option><option value="free_credit">Free chips / credit</option><option value="promotion">Promotion / offer</option><option value="own_cash">Own cash / manual play</option></select></label>
-          <label className="field-control"><span>Blackjack payout</span><select aria-label="Blackjack payout" data-pd-id="calculators.blackjack.payout" onChange={(event) => updateDetail("blackjackPayout", event.target.value)} value={details.blackjackPayout}><option value="">Select payout</option><option value="three_to_two">3:2</option><option value="six_to_five">6:5</option></select></label>
+          <label className="field-control"><span>Blackjack payout</span><select aria-label="Blackjack payout" data-pd-id="calculators.blackjack.payout" onChange={(event) => updateDetail("blackjackPayout", event.target.value)} value={details.blackjackPayout}><option value="one_to_one">1:1</option><option value="three_to_two">3:2</option><option value="six_to_five">6:5</option><option value="two_to_one">2:1</option><option value="custom">Custom</option></select></label>
+          {details.blackjackPayout === "custom" ? <label className="field-control"><span>Custom profit multiplier</span><input aria-describedby={customPayoutError ? "blackjack-payout-custom-error" : undefined} aria-invalid={Boolean(customPayoutError)} aria-label="Custom Blackjack profit multiplier" inputMode="decimal" onBlur={() => { const normalized = normalizeBlackjackPayoutMultiplier(details.blackjackPayoutCustom); if (normalized !== null) updateDetail("blackjackPayoutCustom", normalized); }} onChange={(event) => updateDetail("blackjackPayoutCustom", event.target.value)} value={details.blackjackPayoutCustom} />{customPayoutError ? <span className="error-text" id="blackjack-payout-custom-error" role="alert">{customPayoutError}</span> : null}</label> : null}
           {livePlay ? <><FinancialInputField dataPdId="calculators.blackjack.starting-balance" error={moneyInputError(details.startingBalance, "Starting balance")} help="Enter the reviewed balance before play." id="blackjack-starting-balance" label="Session starting balance" onChange={(value) => updateDetail("startingBalance", value)} value={details.startingBalance} /><FinancialInputField dataPdId="calculators.blackjack.ending-balance" error={moneyInputError(details.endingBalance, "Ending balance")} help="Enter the reviewed balance after play." id="blackjack-ending-balance" label="Session ending balance" onChange={(value) => updateDetail("endingBalance", value)} value={details.endingBalance} /><FinancialInputField dataPdId="calculators.blackjack.play-limit" error={moneyInputError(details.playLimitValue, "Session play limit")} help="Optional reference limit; it never places or blocks a wager." id="blackjack-play-limit" label="Session play limit (optional)" onChange={(value) => updateDetail("playLimitValue", value)} value={details.playLimitValue} /><div className="field-control blackjack-play-limit-mode"><span>Play limit mode</span><CalculatorSegmentedControl ariaLabel="Blackjack play limit mode" dataPdId="calculators.blackjack.play-limit-mode" onChange={(value) => updateDetail("playLimitMode", value)} options={[{ label: "Fixed stake cap", value: "fixed_stake_cap" }, { label: "Use winnings", value: "use_winnings" }]} value={details.playLimitMode} /></div></> : null}
           {freePlay ? <><FinancialInputField dataPdId="calculators.blackjack.free-credit" error={moneyInputError(details.freeCreditValue, "Free credit value")} help="Free credit is not user cash stake." id="blackjack-free-credit" label="Free credit / chip value (optional)" onChange={(value) => updateDetail("freeCreditValue", value)} value={details.freeCreditValue} /><FinancialInputField dataPdId="calculators.blackjack.withdrawable-result" error={moneyInputError(details.withdrawableResult, "Withdrawable result")} help="Enter only real cash or withdrawable value produced." id="blackjack-withdrawable-result" label="Cash / withdrawable result (optional)" onChange={(value) => updateDetail("withdrawableResult", value)} value={details.withdrawableResult} /></> : null}
           <div className="field-control field-span-2"><span>Table type</span><CalculatorSegmentedControl ariaLabel="Blackjack table type" dataPdId="calculators.blackjack.table-type" onChange={(value) => updateDetail("tableType", value)} options={[{ label: "Digital / RNG", value: "digital_rng" }, { label: "Live Dealer", value: "live_dealer" }]} value={details.tableType || "digital_rng"} /></div>

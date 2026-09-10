@@ -60,6 +60,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       never used to infer an independent activity/funding source.
 - [ ] Recaps and secondary detail use the shared full-width disclosure; collapsed controls do not
       reserve ghost grid tracks or alter primary sibling geometry.
+- [ ] Automatic and user-triggered disclosure changes use the shared controlled transition;
+      reduced-motion changes state immediately and repeated toggles remain usable.
 - [ ] No unintended page-level horizontal scroll.
 - [ ] Tables/wide content use a contained `table-scroll`/scroll viewport.
 - [ ] Expanded row details wrap/stack within their owning table or card and never create page-level

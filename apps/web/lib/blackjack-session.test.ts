@@ -10,6 +10,7 @@ import {
   moneyInputError,
   moneyToCents,
   multiplyMoney,
+  normalizeBlackjackPayoutMultiplier,
   subtractMoney,
   subtractSignedMoney,
 } from "./blackjack-session";
@@ -19,9 +20,12 @@ import payoutFixtures from "../../../tests/fixtures/blackjack-session-payout-v1.
 describe("Blackjack session source contract", () => {
   it("derives outcome returns from the explicit payout contract", () => {
     for (const fixture of payoutFixtures.cases) {
-      expect(blackjackDefaultGrossReturn(fixture.stake, fixture.outcome, fixture.payout as "" | "three_to_two" | "six_to_five"), fixture.id).toBe(fixture.expected_return);
+      expect(blackjackDefaultGrossReturn(fixture.stake, fixture.outcome, fixture.payout as "one_to_one" | "three_to_two" | "six_to_five" | "two_to_one"), fixture.id).toBe(fixture.expected_return);
     }
-    expect(blackjackDefaultGrossReturn("1.00", "Blackjack Win", "")).toBeNull();
+    expect(blackjackDefaultGrossReturn("1.00", "Blackjack Win", "custom", "1.25")).toBe("2.25");
+    expect(blackjackDefaultGrossReturn("1.00", "Blackjack Win", "custom", "bad")).toBeNull();
+    expect(normalizeBlackjackPayoutMultiplier("1.2500")).toBe("1.2500");
+    expect(normalizeBlackjackPayoutMultiplier("0")).toBeNull();
     expect(blackjackDefaultGrossReturn("0.01", "Blackjack Win", "three_to_two")).toBe("0.03");
   });
   it("keeps simulation non-financial and non-convertible", async () => {
@@ -103,6 +107,18 @@ describe("Blackjack session source contract", () => {
     expect(liveDealer.table_type).toBe("live_dealer");
     expect(digital.monetary.free_credit_value).toBe("0.50");
     expect(legacy.activity_source).toBeNull();
+  });
+
+  it("preserves a validated custom natural payout in immutable provenance", async () => {
+    const snapshot = await buildBlackjackSessionSourceSnapshot({
+      activitySource: "own_cash", blackjackPayout: "custom", blackjackPayoutCustom: "1.25",
+      endedAt: "2026-09-10T11:00:00.000Z", endingBalance: "", freeCreditValue: "", hands: [],
+      mode: "live_play", recordedHandNet: null, soft17Rule: "stands",
+      startedAt: "2026-09-10T10:00:00.000Z", startingBalance: "", surrenderAllowed: false,
+      tableType: "digital_rng", withdrawableResult: "",
+    });
+    expect(snapshot.rules.blackjack_payout).toBe("custom");
+    expect(snapshot.rules.blackjack_payout_profit_multiplier).toBe("1.25");
   });
 
   it("uses exact cents for committed stake and validation", () => {

@@ -9373,6 +9373,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   gap: 0.4rem;
   justify-items: center;
   min-width: 0;
+  position: relative;
 }
 
 .blackjack-card-slot {
@@ -9491,7 +9492,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   width: 100%;
 }
 
-.blackjack-last-hand-content { display: grid; gap: 0.7rem; margin-top: 0.75rem; min-width: 0; }
+.blackjack-last-hand-content { display: grid; gap: 0.7rem; min-width: 0; }
 
 .blackjack-last-hand-card-line,
 .blackjack-last-hand-player-cards {
@@ -9588,6 +9589,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .blackjack-history-table th:first-child { width: 58%; }
 .blackjack-history-table th:nth-child(2) { width: 12%; }
 .blackjack-history-table th:last-child { width: 30%; }
+.blackjack-history-table.has-financials th:first-child { width: 42%; }
+.blackjack-history-table.has-financials th:nth-child(2) { width: 12%; }
+.blackjack-history-table.has-financials th:nth-child(3) { width: 19%; }
+.blackjack-history-table.has-financials th:last-child { width: 27%; }
 
 .blackjack-history-table details {
   min-width: 0;
@@ -9612,6 +9617,26 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   overflow-wrap: anywhere;
 }
 
+.blackjack-history-financial-detail {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.blackjack-history-financial-detail > span {
+  align-content: start;
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.blackjack-history-financial-detail b {
+  color: var(--text);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
 .blackjack-history-hand-detail {
   background: var(--surface-container);
   border: 1px solid var(--outline);
@@ -9622,8 +9647,23 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.55rem;
 }
 
-.blackjack-card-slot-heading { align-items: center; display: flex; gap: 0.35rem; justify-content: center; }
-.icon-button.blackjack-card-clear { block-size: 2.25rem; min-block-size: 2.25rem; min-inline-size: 2.25rem; inline-size: 2.25rem; }
+.icon-button.blackjack-card-clear {
+  block-size: 2.75rem;
+  inset-block-start: -0.8rem;
+  inset-inline-end: -0.8rem;
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  padding: 0;
+  position: absolute;
+  inline-size: 2.75rem;
+  z-index: 2;
+}
+
+.blackjack-card-clear .material-symbols-outlined { font-size: 0.95rem; line-height: 1; }
+
+@container blackjack-workspace (max-width: 42rem) {
+  .blackjack-history-financial-detail { grid-template-columns: 1fr; }
+}
 
 .blackjack-how-to ol {
   display: grid;

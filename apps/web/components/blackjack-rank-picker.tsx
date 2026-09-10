@@ -59,6 +59,7 @@ export function BlackjackRankPicker({
 }
 
 export function BlackjackCardSlot({
+  accessibleLabel,
   active,
   disabled = false,
   label,
@@ -66,6 +67,7 @@ export function BlackjackCardSlot({
   onClear,
   value,
 }: {
+  accessibleLabel?: string;
   active: boolean;
   disabled?: boolean;
   label: string;
@@ -73,11 +75,13 @@ export function BlackjackCardSlot({
   onClear?: () => void;
   value: BlackjackCardValue;
 }) {
+  const controlLabel = accessibleLabel ?? label;
   return (
     <span className="blackjack-card-slot-wrap">
-      <span className="blackjack-card-slot-heading"><span className="blackjack-card-slot-label">{label}</span>{onClear ? <button aria-label={`Clear ${label}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${label}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}</span>
+      <span className="blackjack-card-slot-label">{label}</span>
+      {onClear ? <button aria-label={`Clear ${controlLabel}`} className="icon-button blackjack-card-clear" onClick={onClear} title={`Clear ${controlLabel}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">undo</span></button> : null}
       <BlackjackCard
-        ariaLabel={`${label}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
+        ariaLabel={`${controlLabel}, ${value ? `${BLACKJACK_RANK_NAMES[value]} selected` : "not selected"}`}
         className={`blackjack-card-slot${active ? " is-active" : ""}`}
         disabled={disabled}
         onClick={onActivate}
