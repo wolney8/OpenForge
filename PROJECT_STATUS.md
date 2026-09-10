@@ -9,7 +9,15 @@ durable requirements.
 
 ## Current state
 
-- Current feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),
+- Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
+  The durable audit and independent API fixture cover all exposed families/modes: 26 modes are
+  `PROVEN PASS`, Standard Overlay is `FAIL` because its API emits `-0.00` instead of canonical
+  `0.00`, and Bonus Lock-In back-loss/back-win plus the non-UI Money Back compatibility mode are
+  `BLOCKED` on approved financial authority. Current MBB/Outplayed artifacts were re-fetched;
+  source disagreements and 10 unverified external mode comparisons are explicit in
+  `docs/audits/issue-113-independent-calculator-verification-2026-09-10.md`. No formula changed.
+  #36 manual acceptance remains on hold until this audit is reviewed.
+- Prior feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),
   a bounded correction before returning to [#36](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
@@ -44,7 +52,7 @@ durable requirements.
   values; Profile choices deliberately stack name/code; Account choices retain stable `account_id`
   identity even when provider labels repeat. Bridge source snapshots, destination validation and
   idempotency are unchanged. Will's recheck remains required.
-- Current implementation base before this tranche: `fc86789` on `main`.
+- Current implementation base before this tranche: `1ef9c4e` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

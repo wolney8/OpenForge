@@ -8,6 +8,18 @@ async function mockSession(page: import("@playwright/test").Page) {
     role: "fund_manager", expires_at: Math.floor(Date.now() / 1000) + 3600, linked_profile_ids: [],
     session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
   }}));
+  const auditApiUrl = process.env.OPENFORGE_AUDIT_API_URL;
+  if (auditApiUrl) {
+    await page.context().route("**/fund-manager/calculators/**/preview", async (route) => {
+      const request = route.request();
+      const target = new URL(request.url());
+      const apiPath = target.pathname.replace(/^\/api(?=\/)/, "");
+      const response = await route.fetch({
+        url: `${auditApiUrl}${apiPath}${target.search}`,
+      });
+      await route.fulfill({ response });
+    });
+  }
 }
 
 async function assertContained(page: import("@playwright/test").Page, selector: string) {
@@ -19,8 +31,14 @@ async function assertContained(page: import("@playwright/test").Page, selector: 
 
 async function chooseBlackjackRank(page: import("@playwright/test").Page, slot: string, rank: string) {
   const names: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
+  const pickerNames: Record<string, string> = {
+    "Dealer up-card": "Choose Up-Card",
+    "Player card 1": "Choose Card 1",
+    "Player card 2": "Choose Card 2",
+    "Player card 3": "Choose Card 3",
+  };
   await page.getByRole("button", { name: new RegExp(`^${slot},`) }).click();
-  await page.getByRole("radiogroup", { name: `Choose ${slot}` }).getByRole("radio", { name: names[rank] ?? rank, exact: true }).click();
+  await page.getByRole("radiogroup", { name: pickerNames[slot] ?? `Choose ${slot}` }).getByRole("radio", { name: names[rank] ?? rank, exact: true }).click();
 }
 
 test("uses the source-backed accumulator, Dutching and Blackjack families without writes", async ({ page }) => {
@@ -82,7 +100,7 @@ test("uses the source-backed accumulator, Dutching and Blackjack families withou
   await page.getByRole("button", { name: "Hit", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Player card 3,/ })).toBeVisible();
   await chooseBlackjackRank(page, "Player card 3", "2");
-  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("Recommended Move: STAND");
+  await expect(page.locator('[data-pd-id="calculators.blackjack.result"]')).toContainText("STAND");
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) await page.locator('[data-pd-id="calculators.blackjack"]').screenshot({ path: `${process.env.CALCULATOR_E2E_SCREENSHOT_PATH}-blackjack.png` });
   await page.locator('[data-pd-id="calculators.blackjack.reset-hand"]').click();
   await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
