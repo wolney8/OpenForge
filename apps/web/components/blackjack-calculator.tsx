@@ -161,6 +161,7 @@ function normalizeHand(hand: BlackjackHand): BlackjackHand {
   const legacyOutcome = hand.outcome as BlackjackOutcome | "Blackjack" | undefined;
   return {
     ...hand,
+    cards: ensureInitialCardSlots(hand.cards),
     actualReturn: hand.actualReturn ?? "",
     actualReturnSource: hand.actualReturnSource ?? (hand.actualReturn ? "entered" : ""),
     outcome: legacyOutcome === "Blackjack"
@@ -168,6 +169,12 @@ function normalizeHand(hand: BlackjackHand): BlackjackHand {
       : legacyOutcome ?? (hand.status === "bust" ? "Bust" : hand.status === "surrendered" ? "Surrender" : ""),
     startingStake: hand.startingStake ?? "",
   };
+}
+
+function ensureInitialCardSlots(cards: CardValue[]): CardValue[] {
+  const normalized = [...cards];
+  while (normalized.length < 2) normalized.push("");
+  return normalized;
 }
 
 function readRound(search: URLSearchParams): BlackjackRound {
@@ -677,7 +684,7 @@ export function BlackjackCalculator({ onState, search }: {
       return {
         ...hand,
         actions: preservedActions,
-        cards: hand.cards.slice(0, index + 1).map((card, at) => at === index ? "" : card),
+        cards: ensureInitialCardSlots(hand.cards.slice(0, index + 1).map((card, at) => at === index ? "" : card)),
         lastResult: null,
         lastRulePreview: null,
         outcome: "",
@@ -782,7 +789,10 @@ export function BlackjackCalculator({ onState, search }: {
       openLastHandWithMotion();
     }
     setHistory(snapshot.history);
-    setRound(snapshot.round);
+    setRound({
+      ...snapshot.round,
+      hands: snapshot.round.hands.map((hand) => ({ ...hand, cards: ensureInitialCardSlots(hand.cards) })),
+    });
     setCardTarget(snapshot.cardTarget);
     const restoredHand = snapshot.round.hands.find((hand) => hand.id === snapshot.round.activeHandId) ?? snapshot.round.hands[0];
     setPreview(restoredHand.lastRulePreview);

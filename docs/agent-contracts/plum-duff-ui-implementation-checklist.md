@@ -50,6 +50,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       framework console warnings.
 - [ ] Compact undo affordances reuse the shared centred target/glyph geometry without shifting
       labels or overlapping the controlled content.
+- [ ] Clearing an earlier value preserves every mandatory empty input/card slot needed to resume
+      the workflow, while safely invalidating only dependent state.
 
 ## Layout and process state
 

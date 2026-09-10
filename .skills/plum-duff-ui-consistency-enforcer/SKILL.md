@@ -170,6 +170,8 @@ use the canonical primitive and computed styling.
   shims. Rendered UI checks must treat framework console warnings as a failed handoff gate.
 - Compact undo controls use the shared centred icon-button target and a consistent inner glyph
   surface; context-specific placement must not resize the target, shift its label or overlap content.
+- Undoing or clearing an entry in a fixed minimum workflow must preserve the required empty slot
+  skeleton; dependent values may clear, but the next required control must remain available.
 - A shared visual primitive representing the same semantic object in picker and display contexts uses
   one aspect/size token at each responsive state; composed layouts must not quietly shrink one context.
 - Theme-aware illustrative controls use semantic surfaces and foregrounds for each theme; a light-mode

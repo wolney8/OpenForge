@@ -178,6 +178,14 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await page.getByRole("button", { name: "Clear Player card 2" }).click();
   await expect(page.getByRole("button", { name: "Player card 2, not selected" })).toBeVisible();
   await chooseRank(page, "Player card 2", "5");
+  await page.getByRole("button", { name: "Clear Player card 1" }).click();
+  await expect(page.getByRole("button", { name: "Player card 1, not selected" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Player card 2, not selected" })).toBeVisible();
+  await chooseRank(page, "Player card 1", "6");
+  await chooseRank(page, "Player card 2", "5");
+  await page.getByRole("button", { name: "Undo last Blackjack action" }).click();
+  await expect(page.getByRole("button", { name: "Player card 2, not selected" })).toBeVisible();
+  await chooseRank(page, "Player card 2", "5");
   await expect(page.locator(".blackjack-suggested-action")).toContainText("DOUBLE");
   const playerResult = page.locator('[data-pd-id="calculators.blackjack.result"]');
   const blackjackTable = page.locator('[data-pd-id="calculators.blackjack.table"]');

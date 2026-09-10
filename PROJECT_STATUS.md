@@ -23,6 +23,8 @@ durable requirements.
   the completed cards and outcome visible while updating history and running totals; a new hand starts
   only from Player-header `Rebet & Deal Again` or `Double & Deal Again` (with the standalone Rebet path
   removed). Last Hand appears only after that explicit transition and never reserves a table column.
+  Card correction now preserves the mandatory Card 1/Card 2 slot skeleton: clearing Card 1 or using
+  banner Undo after the initial three-card entry cannot remove the Card 2 input.
   React now receives `inert` as a boolean, eliminating the disclosure console warning. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
