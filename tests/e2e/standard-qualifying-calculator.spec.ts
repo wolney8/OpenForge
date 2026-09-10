@@ -525,7 +525,9 @@ test("converts odds and probability exactly without ledger writes", async ({ pag
   });
   await page.goto("/fund-manager/calculators?family=odds-converter");
   await expect(page.getByRole("heading", { name: "Odds / Probability" })).toBeVisible();
+  await expect(page.getByLabel("Source format")).toHaveValue("fractional");
 
+  await page.getByLabel("Source format").selectOption("decimal");
   await page.getByRole("textbox", { name: "Decimal odds", exact: true }).fill("3.75");
   const results = page.locator('[data-pd-id="calculators.odds-probability.results"]');
   await expect(results).toContainText("11/4");
@@ -563,8 +565,8 @@ test("converts odds and probability exactly without ledger writes", async ({ pag
   await expect(results).toHaveCount(0);
   await expect(page.getByText("Enter complete probability using digits and a full stop.")).toBeVisible();
   await page.locator('[data-pd-id="calculators.odds-probability.reset"]').click();
-  await expect(page.getByLabel("Source format")).toHaveValue("decimal");
-  await expect(page.getByRole("textbox", { name: "Decimal odds", exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Source format")).toHaveValue("fractional");
+  await expect(page.getByRole("textbox", { name: "Fractional odds", exact: true })).toHaveValue("");
   await expect(results).toHaveCount(0);
 
   const initialTheme = await page.locator("html").getAttribute("data-theme");
@@ -573,8 +575,8 @@ test("converts odds and probability exactly without ledger writes", async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("html").evaluate((element) => { element.style.fontSize = "125%"; });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
-  await page.getByRole("textbox", { name: "Decimal odds", exact: true }).focus();
-  await expect(page.getByRole("textbox", { name: "Decimal odds", exact: true })).toBeFocused();
+  await page.getByRole("textbox", { name: "Fractional odds", exact: true }).focus();
+  await expect(page.getByRole("textbox", { name: "Fractional odds", exact: true })).toBeFocused();
   expect(businessMutations).toEqual([]);
 });
 

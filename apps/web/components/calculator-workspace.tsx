@@ -813,7 +813,7 @@ function oddsProbabilityError(source: OddsProbabilitySource, value: string): str
 
 function OddsProbabilityCalculator({ onState, search }: { onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
   const requestedSource = search.get("oddsSource") as OddsProbabilitySource | null;
-  const [source, setSource] = useState<OddsProbabilitySource>(requestedSource && ["decimal", "fractional", "probability", "american"].includes(requestedSource) ? requestedSource : "decimal");
+  const [source, setSource] = useState<OddsProbabilitySource>(requestedSource && ["decimal", "fractional", "probability", "american"].includes(requestedSource) ? requestedSource : "fractional");
   const [value, setValue] = useState(search.get("oddsValue") ?? "");
   const [result, setResult] = useState<OddsProbabilityResult | null>(null);
   const [error, setError] = useState("");
@@ -850,7 +850,7 @@ function OddsProbabilityCalculator({ onState, search }: { onState: (params: URLS
 
   function reset() {
     requestAbort.current?.abort(); requestAbort.current = null; requestVersion.current += 1;
-    setSource("decimal"); setValue(""); setResult(null); setError(""); setTouched(false);
+    setSource("fractional"); setValue(""); setResult(null); setError(""); setTouched(false);
   }
 
   function normalizeDecimalComma() {

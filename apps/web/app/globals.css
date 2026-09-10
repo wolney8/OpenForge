@@ -8999,15 +8999,16 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .blackjack-session-summary-row {
   align-items: start;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.75rem;
   grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   min-width: 0;
+  width: 100%;
 }
 
-.blackjack-session-summary-row > .blackjack-session-result { width: min(100%, 15rem); }
-.blackjack-session-summary-row > .calculator-section-guidance { flex-basis: 100%; margin: 0; }
+.blackjack-session-summary-row > .blackjack-session-result { min-width: 0; width: 100%; }
+.blackjack-session-summary-row > .calculator-section-guidance { grid-column: 1 / -1; margin: 0; }
 
 .blackjack-session-result {
   align-items: center;
@@ -9392,18 +9393,14 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.8rem;
   padding-inline-end: 4.15rem;
   position: relative;
-  transition: min-block-size 480ms cubic-bezier(0.2, 0, 0, 1), background-color 420ms cubic-bezier(0.2, 0, 0, 1), border-color 420ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.blackjack-player-action-panel.has-result {
-  min-block-size: 11.75rem;
+  transition: background-color 520ms cubic-bezier(0.2, 0, 0, 1), border-color 520ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .blackjack-action-panel-window {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  min-block-size: 100%;
+  block-size: auto;
   overflow: clip;
+  transition: block-size 540ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: block-size;
 }
 
 .blackjack-action-panel-content {
@@ -9421,11 +9418,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .blackjack-action-panel-content.has-result {
-  animation: blackjack-action-panel-enter 460ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: blackjack-action-panel-enter 540ms cubic-bezier(0.2, 0, 0, 1) both;
+  min-block-size: 10.15rem;
 }
 
 .blackjack-action-panel-content.is-pending {
-  animation: blackjack-action-panel-collapse 460ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: blackjack-action-panel-collapse 540ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes blackjack-action-panel-enter {
@@ -9478,6 +9476,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 @media (prefers-reduced-motion: reduce) {
   .blackjack-player-action-panel { transition: none; }
+  .blackjack-action-panel-window { transition: none; }
   .blackjack-action-panel-content { animation: none; }
   .blackjack-player-action-panel.blackjack-recommendation-bust { animation: none; }
 }
@@ -9680,10 +9679,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.65rem 0.75rem;
 }
 
-.blackjack-conversion-status { align-self: start; grid-column: 1 / -1; justify-self: start; }
 .blackjack-play-limit-mode { min-width: 0; width: min(100%, 15rem); }
 .blackjack-session-setup-hint { grid-column: 1 / -1; margin: 0; }
 .blackjack-session-reconciliation { margin-top: 0.25rem; }
+.blackjack-session-summary-row.blackjack-session-reconciliation { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .blackjack-rank-picker-shell.is-waiting {
   border: 2px solid color-mix(in srgb, var(--primary) 68%, var(--outline));
@@ -9937,6 +9936,9 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 @container blackjack-calculator (max-width: 47.5rem) {
   .blackjack-table,
   .blackjack-action-panel-content { grid-template-columns: minmax(0, 1fr); }
+  .blackjack-action-panel-content.has-result { min-block-size: 18rem; }
+  .blackjack-session-summary-row,
+  .blackjack-session-summary-row.blackjack-session-reconciliation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .blackjack-action-group { justify-content: flex-start; }
   .blackjack-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--blackjack-card-inline-size), max-content)); }
   .blackjack-rank-picker { grid-template-columns: repeat(auto-fit, var(--blackjack-card-inline-size)); }
@@ -9948,6 +9950,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   .blackjack-activity-source-field { justify-self: start; }
   .blackjack-player-heading { align-items: start; grid-template-columns: minmax(0, 1fr); }
   .blackjack-player-heading .blackjack-deal-again-action { justify-self: start; }
+  .blackjack-session-summary-row,
+  .blackjack-session-summary-row.blackjack-session-reconciliation { grid-template-columns: minmax(0, 1fr); }
 }
 
 .calculator-popout-shell {

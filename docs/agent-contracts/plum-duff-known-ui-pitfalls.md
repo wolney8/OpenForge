@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-10: Dynamic calculator panels and fixed-width stats jolted or wasted space
+
+- Area: high-frequency Blackjack recommendation and running-financial surfaces.
+- Root cause: changing content relied on a minimum-height transition while intrinsic content still
+  changed the parent immediately, and summary cards retained fixed widths inside a wrapping row.
+- Prevention: measure one persistent operational panel wrapper and animate its controlled height
+  with the shared motion tokens; repeated summaries fill equal flexible tracks before deliberate
+  container-responsive 2/1-column reflow. Reduced motion settles immediately.
+- Regression test: focused Blackjack Playwright samples an intermediate panel frame, compares stable
+  result-state geometry and verifies equal 4/2/1-column summary tracks without page overflow.
+
 ## 2026-09-09: Generic money rows stretched routine fields and clipped currency adornments
 
 - Area: high-frequency standalone calculator fields and Blackjack Player composition.

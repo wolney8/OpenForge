@@ -26,15 +26,20 @@ durable requirements.
   Card correction now preserves the mandatory Card 1/Card 2 slot skeleton: clearing Card 1 or using
   banner Undo after the initial three-card entry cannot remove the Card 2 input.
   Current manual-acceptance correction keeps compact card/banner undo targets fixed on hover, groups
-  Reset Session beside Reset Hand, and uses one persistent 480ms recommendation window so pending and
+  Reset Session beside Reset Hand, and uses one measured persistent 540ms recommendation window so pending and
   current-hand states lift/collapse without replacing the outer panel. Session History now places its
   disclosure chevron inside HAND, gives OUTCOME the flexible desktop width, and expands details across
-  the complete table width; constrained rows stack without page overflow.
+  the complete table width; constrained rows stack without page overflow. Compact history now reports
+  final class/total, the complete chosen action sequence and the outcome independently; terminal Bust
+  is no longer appended to recommendations. Money modes retain plain Deal Again when no valid previous
+  stake exists, and only expose rebet/double shortcuts for a proven stake. Running summaries fill equal
+  4/2/1-column tracks, redundant conversion/history copy is removed, and Odds / Probability defaults
+  and resets to Fractional odds while explicit saved/pop-out state remains authoritative.
   React now receives `inert` as a boolean, eliminating the disclosure console warning. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `125ff30` on `main`.
+- Current implementation base before this tranche: `2e173cf` on `main`.
 - On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.

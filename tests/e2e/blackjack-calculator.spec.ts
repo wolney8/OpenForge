@@ -22,6 +22,7 @@ async function mockSession(page: import("@playwright/test").Page) {
     let fallback: string | null = null;
     let kind = "hard";
     if (body.player_cards.length === 2 && body.player_cards[0] === body.player_cards[1]) { action = "Split"; kind = "pair"; }
+    if (body.player_cards.join(",") === "2,A,K") action = "Stand";
     if (total > 21) { action = "Bust"; kind = "bust"; }
     if (body.player_cards.join(",") === "6,5") { action = "Double"; fallback = "Hit"; }
     if (body.surrender_allowed && body.dealer_card === "10" && body.player_cards.join(",") === "10,5") action = "Surrender";
@@ -52,7 +53,10 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   await expect(page.getByLabel("Chip stake", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Blackjack activity source" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Session Setup" })).toHaveCount(0);
-  await expect(page.getByText("Not convertible", { exact: true })).toBeVisible();
+  await expect(page.getByText("Not convertible", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Eligible for later conversion", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Completed hands (?:remain available|appear here)/)).toHaveCount(0);
+  await expect(page.getByText(/Recorded outcomes describe what happened/)).toHaveCount(0);
   await expect(page.locator('[data-pd-id="calculators.blackjack.how-to"]')).not.toHaveAttribute("open", "");
   const resetActions = page.locator('[data-pd-id="calculators.blackjack.session-reset"]');
   await expect(resetActions.getByRole("button", { name: "Reset Hand" })).toBeVisible();
@@ -199,8 +203,9 @@ test("separates Simulation, Free Play and Live Play session money", async ({ pag
   const pendingHeight = (await pendingRecommendation.boundingBox())?.height ?? 0;
   await chooseRank(page, "Player card 2", "5");
   const persistentRecommendation = page.locator(".blackjack-player-action-panel");
-  expect(await persistentRecommendation.evaluate((node) => getComputedStyle(node).transitionDuration)).toContain("0.48s");
-  await page.waitForTimeout(120);
+  const recommendationWindow = persistentRecommendation.locator(".blackjack-action-panel-window");
+  expect(await recommendationWindow.evaluate((node) => getComputedStyle(node).transitionDuration)).toContain("0.54s");
+  await page.waitForTimeout(220);
   const transitionHeight = (await persistentRecommendation.boundingBox())?.height ?? 0;
   await page.waitForTimeout(450);
   const expandedHeight = (await persistentRecommendation.boundingBox())?.height ?? 0;
@@ -380,6 +385,76 @@ test("settles a Free Play hand without dealing and waits for the explicit next-h
   await page.getByRole("button", { name: "Undo last Blackjack action" }).click();
   await expect(page.getByText("You have played 0 hands", { exact: true })).toBeVisible();
   await expect(page.getByRole("group", { name: "Player outcome" })).toBeVisible();
+});
+
+test("keeps strategy-only Deal Again available in money modes without inventing a stake", async ({ page }) => {
+  await mockSession(page);
+  await page.goto("/fund-manager/calculators?family=blackjack");
+  await page.evaluate(() => sessionStorage.removeItem("calculator.blackjack.session.v1"));
+  await page.reload();
+
+  await page.getByRole("combobox", { name: "Blackjack session mode" }).selectOption("free_play");
+  await chooseRank(page, "Dealer up-card", "9");
+  await chooseRank(page, "Player card 1", "10");
+  await chooseRank(page, "Player card 2", "7");
+  await page.getByRole("button", { name: /^Stand/ }).click();
+  await page.getByRole("group", { name: "Player outcome" }).getByRole("button", { name: "Loss" }).click();
+
+  await expect(page.getByRole("button", { name: "Deal Again", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rebet & Deal Again" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Double & Deal Again" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Deal Again", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Dealer up-card, not selected" })).toBeVisible();
+  await expect(page.getByLabel("Chip stake", { exact: true })).toHaveValue("");
+});
+
+test("uses final hand, chosen actions and outcome as distinct history semantics", async ({ page }) => {
+  await mockSession(page);
+  await page.goto("/fund-manager/calculators?family=blackjack");
+  await page.evaluate(() => sessionStorage.removeItem("calculator.blackjack.session.v1"));
+  await page.reload();
+
+  await chooseRank(page, "Dealer up-card", "2");
+  await chooseRank(page, "Player card 1", "2");
+  await chooseRank(page, "Player card 2", "A");
+  await page.getByRole("button", { name: /^Hit/ }).click();
+  await chooseRank(page, "Player card 3", "K");
+  await page.getByRole("button", { name: /^Hit/ }).click();
+  await chooseRank(page, "Player card 4", "K");
+
+  const historyRow = page.locator(".blackjack-history-table tbody > tr").first();
+  await expect(historyRow).toContainText("HARD 23 · HIT → HIT · BUST", { timeout: 4000 });
+  await historyRow.locator(".blackjack-history-row-toggle").click();
+  const detail = page.locator(".blackjack-history-detail-row").first();
+  await expect(detail).toContainText("Recommended: Hit → Stand");
+  await expect(detail).toContainText("Chosen: Hit → Hit");
+  await expect(detail).toContainText("Outcome: Bust");
+  await expect(detail).not.toContainText("Recommended: Hit → Stand → Bust");
+});
+
+test("fills running financial summaries with responsive equal tracks", async ({ page }) => {
+  await mockSession(page);
+  await page.goto("/fund-manager/calculators?family=blackjack");
+  await page.evaluate(() => sessionStorage.removeItem("calculator.blackjack.session.v1"));
+  await page.reload();
+  await page.getByRole("combobox", { name: "Blackjack session mode" }).selectOption("live_play");
+
+  const summary = page.locator(".blackjack-session-mode .blackjack-session-summary-row");
+  const cards = summary.locator(":scope > .blackjack-session-result");
+  await expect(cards).toHaveCount(4);
+  const desktopWidths = await cards.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().width));
+  expect(Math.max(...desktopWidths) - Math.min(...desktopWidths)).toBeLessThanOrEqual(1);
+  const [summaryBox, firstBox, lastBox] = await Promise.all([summary.boundingBox(), cards.first().boundingBox(), cards.last().boundingBox()]);
+  expect(Math.abs((firstBox?.x ?? 0) - (summaryBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs(((lastBox?.x ?? 0) + (lastBox?.width ?? 0)) - ((summaryBox?.x ?? 0) + (summaryBox?.width ?? 0)))).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 740, height: 900 });
+  const twoColumnY = await cards.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().y));
+  expect(new Set(twoColumnY.map(Math.round)).size).toBe(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const oneColumnY = await cards.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().y));
+  expect(new Set(oneColumnY.map(Math.round)).size).toBe(4);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
 });
 
 test("uses shared cards, anchored help and outcome-based Blackjack history", async ({ page }) => {
