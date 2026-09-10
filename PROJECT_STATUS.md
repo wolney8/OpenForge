@@ -9,7 +9,8 @@ durable requirements.
 
 ## Current state
 
-- Current feature: [#36 Calculator / session to ledger bridge](https://github.com/wolney8/OpenForge/issues/36).
+- Current feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),
+  a bounded correction before returning to [#36](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,
   Extra Place / Each Way, Sequential Lay, Early Payout / 2UP, Multiples / Accumulator, Simple
   Dutching, Odds / Probability and Blackjack Strategy. Blackjack Live/Free Play now reports
@@ -18,12 +19,14 @@ durable requirements.
   presets in Session Setup; ordinary wins remain 1:1. Last Hand is a smoothly animated full-width
   shared disclosure that leaves Dealer/Player geometry unchanged. Session History exposes committed
   STAKED, RETURNED and NET P&L values in money modes, and UP-CARD/CARD N correction uses the existing
-  undo path with a label-anchored overlay. Strategy matrices remain unchanged;
+  undo path with a label-anchored overlay. Money-mode next-hand actions are limited to Player-header
+  `Rebet & Deal Again` and emphasized `Double & Deal Again`; the standalone Rebet path is removed.
+  React now receives `inert` as a boolean, eliminating the disclosure console warning. Strategy matrices remain unchanged;
   `blackjack-session-v1` is additively extended with payout/return provenance and totals. Copy/check glyphs use one geometrically
   centred 44px shared action. Optional Accumulator Each Way/Rule 4/fold/bonus rules and Advanced
   Dutching weighting remain blocked rather than inferred. User/hosted acceptance is pending.
-- Current implementation base before this tranche: `e38f87d` on `main`.
-- Interruptions: none within the selected #36 bridge tranche.
+- Current implementation base before this tranche: `a2e7189` on `main`.
+- On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
   Notification/session user acceptance and captured visual work remain tracked, but are not the
   active feature.
 - Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active for focused
@@ -143,7 +146,7 @@ durable requirements.
   derive only from the explicit payout contract (default 1:1 plus 3:2/6:5/2:1/Custom natural-Blackjack rules),
   while a manually entered Actual Return remains authoritative. Free Play reports the same arithmetic as
   chip/credit value without implying withdrawable cash. Fixed stake cap and Use Winnings remain advisory;
-  Rebet, Rebet & Deal Again and Double & Deal Again prepare calculator state only. Last Hand is a full-width shared
+  Rebet & Deal Again and Double & Deal Again prepare calculator state only. Last Hand is a full-width shared
   disclosure using the canonical height/opacity transition; it never changes Dealer/Player tracks, briefly opens, auto-collapses before interaction,
   and thereafter respects the user's manual state without a separate Keep open control. The top controls
   now use the requested four semantic grid rows with Session Mode and Reset Hand first.

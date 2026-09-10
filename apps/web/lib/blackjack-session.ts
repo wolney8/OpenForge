@@ -4,7 +4,7 @@ export type BlackjackSessionMode = "simulation" | "free_play" | "live_play";
 export type BlackjackTableType = "" | "digital_rng" | "live_dealer";
 export type BlackjackActivitySource = "" | "free_credit" | "promotion" | "own_cash";
 export type BlackjackPlayLimitMode = "fixed_stake_cap" | "use_winnings";
-export type BlackjackDealShortcut = "" | "rebet" | "rebet_deal" | "double_deal";
+export type BlackjackDealShortcut = "" | "rebet_deal" | "double_deal";
 export type BlackjackPayoutRule = "one_to_one" | "three_to_two" | "six_to_five" | "two_to_one" | "custom";
 export type BlackjackReturnSource = "calculated" | "entered" | null;
 

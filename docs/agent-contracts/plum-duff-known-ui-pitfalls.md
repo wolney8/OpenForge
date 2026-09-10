@@ -1025,3 +1025,15 @@ cause, prevention rule and regression test.
 - Regression test: `tests/e2e/blackjack-calculator.spec.ts` checks disclosure geometry, automatic and
   manual disclosure state, label-anchored dealer/player clearing, visible money-mode financial
   columns, contained history expansion and dependent player-card clearing.
+
+## 2026-09-10: Disclosure state and next-hand actions drifted from their semantic owners
+
+- Area: shared controlled disclosures and Blackjack money-mode next-hand actions.
+- Root cause: a controlled disclosure passed React's boolean `inert` attribute as an empty string,
+  while next-hand actions lived inside the recap and retained a redundant setup-only Rebet branch.
+- Prevention: controlled boolean DOM attributes receive booleans; next-hand actions live in the
+  owning Player header, and only actions with distinct user outcomes remain. Expanded financial
+  values centre beneath their headings at every supported container width.
+- Regression test: focused Blackjack Playwright captures console warnings, verifies Player-header
+  action ownership, rejects standalone Rebet, and checks financial heading/value centres plus
+  desktop, dual-pane and narrow overflow.
