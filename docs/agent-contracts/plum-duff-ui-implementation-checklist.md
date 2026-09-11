@@ -105,6 +105,9 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       joined internal edges.
 - [ ] Contracted calculator scenarios use the shared Outcomes shell and row primitive rather than
       family-specific generic result tables.
+- [ ] Advanced calculator allocation controls state their financial unit, keep the canonical
+      Standard anchor at the visual centre where the contract requires it, update valid previews
+      during drag without unmounting the last result, and reject stale responses.
 - [ ] Copyable calculated stakes use the shared financial-value plus adjacent copy/check action;
       a copy-only operation does not create a separate Actions column.
 - [ ] Switches represent genuine binary on/off state; named mutually exclusive modes use the

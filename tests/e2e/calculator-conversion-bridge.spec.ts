@@ -294,12 +294,17 @@ test("unsupported financial families and Odds utility expose no conversion actio
 test("Multi-Lay exposes the same conversion review without losing its legs", async ({ page }) => {
   await mockEachWayBridge(page, "Extra Place");
   await page.context().route("**/fund-manager/calculators/multi-lay/preview", (route) => route.fulfill({ json: {
-    result_kind: "reference", calculation_state: "resolved", no_selection_value: "-0.20",
-    matched_result: "-0.20", total_liability: "25.00", branches: [
-      { label: "Home", lay_odds: "2.50", lay_stake: "4.10", liability: "6.15", outcome_value: "-0.20" },
-      { label: "Away", lay_odds: "3.20", lay_stake: "3.20", liability: "7.04", outcome_value: "-0.20" },
-      { label: "Draw", lay_odds: "3.60", lay_stake: "2.84", liability: "7.38", outcome_value: "-0.20" },
+    result_kind: "reference", calculation_state: "resolved", calculation_version: "multi-lay-v2",
+    backing_type: "normal", strategy: "standard", effective_back_odds: "4.0000", retained_refund: "0.00",
+    selected_multiplier: "1.0000", default_minimum_multiplier: "0.2000", default_maximum_multiplier: "2.0000",
+    references: [{ strategy: "underlay", multiplier: "0.4000", total_lay_stake: "4.00" }, { strategy: "standard", multiplier: "1.0000", total_lay_stake: "10.14" }, { strategy: "overlay", multiplier: "2.0000", total_lay_stake: "20.28" }],
+    branches: [
+      { label: "Home", lay_odds: "2.50", lay_stake: "4.10", liability: "6.15" },
+      { label: "Away", lay_odds: "3.20", lay_stake: "3.20", liability: "7.04" },
+      { label: "Draw", lay_odds: "3.60", lay_stake: "2.84", liability: "7.38" },
     ],
+    scenarios: [{ key: "back-loses", label: "Back bet loses", bookmaker_component: "-10.00", lay_components: ["4.10", "3.20", "2.84"], reward_component: "0.00", total: "0.14" }, { key: "lay-1-wins", label: "Home wins", bookmaker_component: "30.00", lay_components: ["-6.15", "3.20", "2.84"], reward_component: "0.00", total: "29.89" }, { key: "lay-2-wins", label: "Away wins", bookmaker_component: "30.00", lay_components: ["4.10", "-7.04", "2.84"], reward_component: "0.00", total: "29.90" }, { key: "lay-3-wins", label: "Draw wins", bookmaker_component: "30.00", lay_components: ["4.10", "3.20", "-7.38"], reward_component: "0.00", total: "29.92" }],
+    maximum_exchange_exposure: "0.14", reference_result: "0.14",
   } }));
   let submitted: Record<string, unknown> | null = null;
   await page.context().route("**/fund-manager/calculator-conversions/multi-lay", async (route) => {

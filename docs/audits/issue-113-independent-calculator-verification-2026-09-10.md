@@ -51,8 +51,10 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
   displayed branch components, and the displayed total is the sum of those placed components.
 - Profit Boost: displayed odds are direct; total-return odds are conservatively floored to 2dp;
   profit-only is `1+profit/B`; percentage is `1+(base-1)×(1+pct)` after the explicit money cap.
-- Multi-Lay Standard uses `round2(B×Ob/(Oli-c))` per branch. Underlay solves the common allocation
-  denominator `Σ((1-c)/(Oli-c))`; placed stakes/liabilities/returns then round to pennies.
+- Multi-Lay v2 uses effective odds `1+(Ob-1)×(1+boost/100)` and a backing basis of `B×O`
+  (Normal), `B×(O-1)` (SNR), or `B×O-retained refund` (Money Back). Each unrounded Standard leg is
+  `basis/(Oli-ci)`; source Underlay/Overlay or an explicit Custom multiplier scales all legs before
+  stake/liability/return penny placement. The retained reward remains a separate outcome component.
 - Each Way derives `place odds=1+(Ob-1)×numerator/denominator`, places win/place lay stakes to
   pennies, rounds each component, then sums scenario components.
 - Sequential Standard uses `ceil2((B+prior floored liabilities)/(1-ci))`; Lock In replaces the
@@ -86,8 +88,10 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
 | Standard | Profit Boost: profit-only | Profit Boost contract | AUD-PB-03 | 1+22/10=3.2000 | exact | exact derive then 4dp | N/A | PASS | none |
 | Standard | Profit Boost: percentage | Profit Boost contract | AUD-PB-04 | 1+(3-1)×1.10=3.2000 | exact | capped extra profit penny, odds 4dp | N/A | PASS | none |
 | Standard | Profit Boost: accepted precedence | Profit Boost contract | existing API fixture | accepted 3.1800 overrides derivation | exact | accepted odds 4dp | N/A | PASS | none |
-| Multi-Lay | Standard, 2/3 outcomes | Sportsbook workbook contract | AUD-ML-01 | stakes 16.33/13.56; min 18.38 | exact | per-branch penny placement | N/A exact external | PASS | none |
-| Multi-Lay | Underlay, 2/3 outcomes | Sportsbook workbook contract | AUD-ML-02 | stakes 5.75/4.78; min 0.00 | exact | common allocation then penny | N/A | PASS | none |
+| Multi-Lay | Normal × Standard/Underlay/Overlay/Custom | MBB current bundle + `multi-lay-v2` contract | ML2-N-STD/U/O/C | stakes 16.33/13.56; 5.75/4.78; 42.19/35.04; custom 1.10× 17.96/14.92 | exact | unrounded allocation; stake/component half-up penny | live MBB Standard stakes exact; liability/outcomes/exposure differ 1p at half-penny fixture | PASS | embedded/conversion supports only compatible Standard/Underlay subset |
+| Multi-Lay | Free Bet SNR × all four strategies | MBB current bundle + `multi-lay-v2` contract | ML2-SNR-STD/U/O/C | Standard 12.24/10.17; Underlay 0/0; Overlay 42.19/35.04; Custom 13.47/11.19 | exact | SNR stake excluded, then common allocation | MBB control present; exact black-box values pending worksheet | PASS | external exact comparison UNVERIFIED |
+| Multi-Lay | Money Back × all four strategies | MBB current bundle + `multi-lay-v2` contract | ML2-MB-STD/U/O/C | retained £7; Standard 13.47/11.19; Underlay 1.73/1.43; Overlay 42.19/35.04; Custom 14.82/12.31 | exact | retained refund penny before allocation | MBB Cashback accepts already-retained £7; exact black-box values pending worksheet | PASS | destination cannot preserve reward provenance |
+| Multi-Lay | Profit Boost + per-leg commission + 3/20 legs | MBB current bundle + `multi-lay-v2` contract | ML2-BOOST/VARIED/CAP | 10% makes 4.3000; varied custom stakes 17.74/14.92/7.46; cap 20 accepted/21 rejected | exact | boost before allocation; each commission independent | source controls/bundle verified; exact multi-axis black box UNVERIFIED | PASS | technical cap only |
 | Extra Place / Each Way | Each Way | approved EWP fixture/contract | AUD-EW-01 | stakes 26.09/4.44; scenarios 10.54/10.55/10.53 | exact | component-first penny | MBB current first-place 10.55: 1p disagreement | PASS | retain authority difference |
 | Extra Place / Each Way | Extra Place | approved EWP fixture/contract | AUD-EP-01 | extra-place 30.53; current 10.53 | exact | component-first penny, conservative min | current bundle/captured source documented | PASS | none |
 | Sequential Lay | Standard | current MBB bundle + approved contract | AUD-SL-01 | 10.53/27.15/55.73; all-win 9.20 | exact | ceil stake; floor liability/win | current browser exact; bundle hash exact | PASS | none |
@@ -137,9 +141,9 @@ odds normalisation, copy/reset behaviour, narrow containment and zero ledger wri
 isolated audit API. Family-wide numerical evidence comes from the independent API harness, not that
 representative browser path.
 
-- **REQUIRED CONFIGURATION CELLS: 95** (85 supported fixtures plus 10 required blocked SR cells)
-- **TESTED: 85; PROVEN PASS: 85; FAIL: 0; BLOCKED: 10**
-- **UNVERIFIED external comparisons: 8 matrix modes** (login-only, unavailable control, or no equivalent)
+- **REQUIRED CONFIGURATION CELLS: 106** (96 supported fixtures plus 10 required blocked SR cells)
+- **TESTED: 96; PROVEN PASS: 96; FAIL: 0; BLOCKED: 10**
+- **UNVERIFIED external comparisons: 10 matrix modes** (login-only, unavailable control, or no equivalent)
 
 Assurance correction (2026-09-11): the earlier aggregate PASS count described representative
 fixtures only. The new bounded matrix establishes the discrete exposed Standard routing cross-product
@@ -147,3 +151,32 @@ at its stated fixtures, including commission/retention and penny-edge regression
 every possible numeric input. Bonus SR remains fail-closed pending authority. Optional Accumulator
 Each Way/Rule 4/folds/bonuses and Advanced Dutching remain deliberately unexposed, so they are not
 counted as exposed failures.
+
+## Reference feature coverage inventory — Multi-Lay tranche, 2026-09-11
+
+This bounded inventory records reference controls even when Plum Duff does not expose them. It does
+not turn representative fixtures into exhaustive numeric proof.
+
+| Feature/configuration | Reference | Status here | Standalone consumer | Embedded consumer | Contract/test | Follow-up issue |
+|---|---|---|---|---|---|---|
+| Normal/SNR/SR; Simple/Advanced; Custom/Part Lay; commission/copy/reset | MBB Standard + Outplayed | Present; external penny differences documented | Standard | Sportsbook/Free Bet | Standard contracts/config matrix | #35/#113 |
+| Bonus Normal/SNR × loses/wins; 70% retention | Outplayed Bonus | Present; Bonus SR blocked | Standard Bonus | Sportsbook subset | Bonus contract/config matrix | #37 |
+| Profit Boost four sources/cap/accepted odds | platform #83 + current references | Present | Standard | Sportsbook | Profit Boost contract/tests | #35 |
+| Multi-Lay Normal/SNR/Money Back; boost; per-leg commission | MBB; Outplayed Normal/SNR subset | Present in v2 standalone; embedded partial | Multi-Lay + pop-out | Normal Standard/Underlay v1 only | `multi-lay-v2`; ML2 fixtures | #38/#36 |
+| Multi-Lay editable labels; 2–20 technical legs; copy/reset/help | MBB (20 source cap); Outplayed 2–4 | Present | Multi-Lay + pop-out | Dynamic v1 planner | API/UI cap and zero-write tests | #38 |
+| Multi-Lay Underlay/Standard/Overlay/Custom; editable bounds/live slider | MBB | Present standalone; save/reopen blocked outside v1 subset | Multi-Lay + pop-out | Standard/Underlay only | ML2 strategy matrix/UI routing | #38/#36 |
+| Multi-Lay component Outcomes and source exposure convention | MBB | Present standalone; embedded historical presentation retained | Multi-Lay + pop-out | v1 shared Outcomes shell | ML2 scenarios/exposure fixtures | #38/#113 |
+| Extra Place/Each Way modes, terms, two commissions, Outcomes/copy/reset | MBB + workbook | Present | Extra Place / Each Way | native ledger | Each Way contract/audit | #35 |
+| Sequential Standard/Lock In, per-leg commission, dynamic legs | MBB | Present | Sequential Lay | no equivalent new planner | Sequential contract/source fixtures | #39 |
+| Early Payout trigger, lock-in slider, part backs, 2-way Dutch | MBB | Present | Early Payout / 2UP | Sportsbook reference subset | Early Payout contract | #38 |
+| Accumulator core Winner/Loser/Void | MBB bet calculator | Present | Multiples | destination missing | Accumulator contract | #38/#36 |
+| Accumulator Each Way/Rule 4/folds/acca bonus | MBB | Missing/blocked authority | none | none | no approved fixture | #38 |
+| Dutching Normal/SNR Simple + rounding | Outplayed guide | Present | Dutching | destination missing | Dutching contract | #38/#36 |
+| Dutching Advanced weighting/breakeven | Outplayed | Missing/blocked exact behaviour | none | none | no approved fixture | #38 |
+| Fractional/decimal/American/probability conversion | MBB | Present utility | Odds / Probability | N/A | odds contract/audit | #35 |
+| Blackjack hard/soft/pair/surrender/H17/S17/session | Outplayed tables | Present | Blackjack | Casino session destination | matrix/session fixtures | #40/#36 |
+
+Multi-Lay delta totals: **13 required configuration cells; 13 tested; 13 PASS; 0 FAIL;
+0 calculation BLOCKED**. Persistence/conversion is separately **PARTIAL**: two compatible Normal
+strategies remain supported, while SNR, Money Back, boost, Overlay, Custom and differing per-leg
+commission are fail-closed because the current Sportsbook destination cannot retain those fields.

@@ -228,3 +228,16 @@ Baseline: `44f152bed78ed9b82540ea70ba9adca9cb720706`
 | PD-FIX-098 | Configuration audit | Extend #113 with the exposed family × backing × trigger × strategy matrix, independent expectations and scoped external evidence. | COMPLETE LOCALLY — 85 PASS / 10 BLOCKED |
 | PD-FIX-099 | Manual comparison | Create the editable calculator comparison worksheet with stable case IDs and blank external observations. | COMPLETE LOCALLY — WILL INPUT PENDING |
 | PD-FIX-100 | Regression/delivery | Verify shared UI parity, isolated data boundaries, tracking, commits, push and local service health. | COMPLETE LOCALLY — 181 focused API/configuration and 22 rendered browser checks pass; GitHub comment sync remains pending |
+
+## PD-FIX-101 to PD-FIX-106 — Reference-led Multi-Lay expansion (2026-09-11)
+
+Baseline: `21b30f0371866fd94bbd68218de8874725e23236`
+
+| ID | Section | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-101 | Reference inventory | Extend the existing #113 readiness matrix with bounded MBB/Outplayed feature coverage, consumers and gaps. | COMPLETE LOCALLY — bounded inventory retained; GitHub sync pending |
+| PD-FIX-102 | Financial contract | Version and independently fixture Normal/SNR/Money Back, boost, per-leg commission and advanced allocation without changing historical rows. | COMPLETE LOCALLY — 13/13 independent configuration cells pass |
+| PD-FIX-103 | Multi-Lay controls | Deliver reference-backed backing type, boost/refund, dynamic legs, advanced endpoints/bounds/slider and shared copy/Outcomes UX. | COMPLETE LOCALLY — rendered recheck pending |
+| PD-FIX-104 | Consumer parity | Reuse the verified calculation/interaction path in standalone, pop-out and the embedded ledger planner. | PARTIAL — standalone/pop-out use v2; embedded ledger remains the governed v1 Normal Standard/Underlay subset |
+| PD-FIX-105 | Persistence/conversion | Preserve v2 source state on supported save/reopen paths and fail closed where a destination cannot represent it. | COMPLETE LOCALLY — compatible v1 provenance converts; richer v2 configurations fail closed pending destination support |
+| PD-FIX-106 | Evidence/delivery | Add independent fixtures, UI/API/consumer regressions, external observations, worksheet cases, tracking and checkpoint. | COMPLETE LOCALLY — MBB stake parity proven with documented 1p component difference; Outplayed exact capture remains UNVERIFIED |

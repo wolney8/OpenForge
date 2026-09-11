@@ -9,12 +9,23 @@ durable requirements.
 
 ## Current state
 
+- Multi-Lay reference expansion PD-FIX-101–106 is locally implemented at the 2026-09-11 source
+  snapshots. Versioned `multi-lay-v2` supports Normal, Free Bet SNR and Money Back, zero/non-zero
+  Profit Boost, two to 20 named legs, per-leg commission and Standard/Underlay/Overlay/Custom
+  allocation with editable multiplier bounds. It exposes component Outcomes, source-defined maximum
+  exchange exposure, live copy/slider updates, Reset/help and pop-out state. Thirteen bounded v2
+  configuration fixtures pass; the live MBB penny-boundary comparison is documented rather than
+  called exact parity. Existing persisted Sportsbook rows remain on v1. Embedded/save/conversion is
+  intentionally limited to the representable Normal Standard/Underlay uniform-commission subset;
+  richer v2 configurations fail closed until the destination contract can retain them. The existing
+  [#113 audit](docs/audits/issue-113-independent-calculator-verification-2026-09-10.md) and
+  [manual worksheet](docs/audits/calculator-manual-comparison.md) carry the evidence and gaps.
 - Standard control/parity tranche PD-FIX-093–100 is locally verified pending Will's comparison.
   Standard now separates Normal/Free Bet SNR/Free Bet SR `Bet Type` from Simple/Advanced
   presentation; Simple is explicitly equalised Standard, while Advanced exposes the shared
   Underlay/Overlay references, Custom slider and Part Lay path. Bonus Lock-In exposes Normal/SNR,
   Loses/Wins, 70% retention and canonical Smarkets 0% defaults, with one offer-aware strategy
-  engine. The bounded #113 extension passes 85 supported configuration fixtures and keeps 10 Bonus
+  engine. The bounded #113 extension now passes 96 supported configuration fixtures and keeps 10 Bonus
   Free Bet SR cells blocked. Will's editable observation worksheet is
   [Calculator manual comparison](docs/audits/calculator-manual-comparison.md). GitHub #35/#37/#113,
   shared-containment evidence for #92, and the unchanged SNR conversion blocker for #36 are pending

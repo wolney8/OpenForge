@@ -396,9 +396,9 @@ Independent expected basis: half-up penny placement; `Lstd=B×Ob/(Ol-c)`,
 - Bonus trigger, where relevant: N/A
 - Platform commit: TODO
 - Test date: TODO
-- Outplayed URL: TODO
-- MBB URL: TODO
-- Notes / screenshot reference: Repeat with 2 and 3 legs and non-uniform commissions.
+- Outplayed URL: https://outplayed.com/calculators/multi-lay-calculator
+- MBB URL: https://matchedbettingblog.com/multi-lay-calculator/
+- Notes / screenshot reference: Repeat with 2 and 3 legs and non-uniform commissions. Automated MBB capture, 2026-09-11, bundle `bf394d…01b4`: stakes £16.33/£13.56, liabilities £24.49/£27.12, every total £18.39, exposure £10.93. This is separate from Will's blank observations below.
 
 | Input | Platform | Outplayed | MBB |
 |---|---|---|---|
@@ -410,6 +410,91 @@ Independent expected basis: half-up penny placement; `Lstd=B×Ob/(Ol-c)`,
 | Standard leg stakes/liabilities | £16.33/£24.50; £13.56/£27.12 | TODO | TODO | TODO |
 | Standard no-selection / minimum result | £18.39 / £18.38 | TODO | TODO | TODO |
 | Underlay leg stakes | £5.75 / £4.78 | TODO | TODO | TODO |
+
+### Case MULTI-LAY-002
+
+- Case ID: `MULTI-LAY-002`
+- Calculator / offer: Multi-Lay Free Bet SNR
+- Backing type: Free Bet (SNR)
+- Simple/Advanced mode: Advanced
+- Actual selected strategy: Standard, Underlay, Overlay, Custom 1.10×
+- Bonus trigger, where relevant: N/A
+- Platform commit: TODO
+- Test date: TODO
+- Outplayed URL: https://outplayed.com/calculators/multi-lay-calculator
+- MBB URL: https://matchedbettingblog.com/multi-lay-calculator/
+- Notes / screenshot reference: TODO
+
+| Input | Platform | Outplayed | MBB |
+|---|---|---|---|
+| Back stake / odds / boost | £10 / 4.00 / 0% | TODO | TODO |
+| Lay A odds / commission | 2.50 / 5% | TODO | TODO |
+| Lay B odds / commission | 3.00 / 5% | TODO | TODO |
+| Custom min / selected / max | source default / 1.10× / source default | TODO | TODO |
+
+| Output | Independent expected | Platform observed | Outplayed observed | MBB observed |
+|---|---|---|---|---|
+| Standard lay stakes | £12.24 / £10.17 | TODO | TODO | TODO |
+| Underlay lay stakes | £0.00 / £0.00 | TODO | TODO | TODO |
+| Overlay lay stakes | £42.19 / £35.04 | TODO | TODO | TODO |
+| Custom lay stakes / copied stakes | £13.47 / £11.19 | TODO | TODO | TODO |
+| Custom outcomes | £23.43 / £20.42 / £20.42 | TODO | TODO | TODO |
+
+### Case MULTI-LAY-003
+
+- Case ID: `MULTI-LAY-003`
+- Calculator / offer: Multi-Lay Money Back if bet loses
+- Backing type: Normal cash backing bet with future refund
+- Simple/Advanced mode: Advanced
+- Actual selected strategy: Standard, Underlay, Overlay, Custom 1.10×
+- Bonus trigger, where relevant: Back bet loses
+- Platform commit: TODO
+- Test date: TODO
+- Outplayed URL: N/A — current Outplayed UI does not expose Money Back
+- MBB URL: https://matchedbettingblog.com/multi-lay-calculator/
+- Notes / screenshot reference: Enter retained Cashback £7.00 at MBB; Plum Duff input is £10 reward × 70% retention. Leave observations TODO.
+
+| Input | Platform | Outplayed | MBB |
+|---|---|---|---|
+| Back stake / odds / boost | £10 / 4.00 / 0% | N/A | TODO |
+| Refund / retention | £10 / 70% | N/A | Cashback £7.00 |
+| Lay A odds / commission | 2.50 / 5% | N/A | TODO |
+| Lay B odds / commission | 3.00 / 5% | N/A | TODO |
+
+| Output | Independent expected | Platform observed | Outplayed observed | MBB observed |
+|---|---|---|---|---|
+| Retained refund | £7.00 | TODO | N/A | TODO |
+| Standard lay stakes / outcomes | £13.47/£11.19; £20.43/£20.42/£20.42 | TODO | N/A | TODO |
+| Underlay lay stakes / outcomes | £1.73/£1.43; £0.00/£28.76/£28.78 | TODO | N/A | TODO |
+| Overlay lay stakes / outcomes | £42.19/£35.04; £70.37/£0.00/£0.00 | TODO | N/A | TODO |
+| Custom lay stakes / copied stakes | £14.82 / £12.31 | TODO | N/A | TODO |
+
+### Case MULTI-LAY-004
+
+- Case ID: `MULTI-LAY-004`
+- Calculator / offer: Multi-Lay Profit Boost / varying commission / 3+ legs
+- Backing type: Normal
+- Simple/Advanced mode: Advanced
+- Actual selected strategy: Standard then Custom 1.10×
+- Bonus trigger, where relevant: N/A
+- Platform commit: TODO
+- Test date: TODO
+- Outplayed URL: N/A — current Outplayed UI does not expose boost/advanced custom
+- MBB URL: https://matchedbettingblog.com/multi-lay-calculator/
+- Notes / screenshot reference: Add further legs through 4 and optionally 20 to check control/persistence boundaries.
+
+| Input | Platform | Outplayed | MBB |
+|---|---|---|---|
+| Back stake / odds / Profit Boost | £10 / 4.00 / 10% | N/A | TODO |
+| Lay A / B | 2.50 at 5%; 3.00 at 5% | N/A | TODO |
+| Varying 3-leg repeat | 2.50 at 2%; 3.00 at 5%; 6.00 at 10% | N/A | TODO |
+
+| Output | Independent expected | Platform observed | Outplayed observed | MBB observed |
+|---|---|---|---|---|
+| Effective back odds | 4.3000 | TODO | N/A | TODO |
+| Boosted Standard stakes / outcomes | £17.55/£14.58; £20.52/£20.52/£20.51 | TODO | N/A | TODO |
+| Varying-commission Custom stakes | £17.74 / £14.92 / £7.46 | TODO | N/A | TODO |
+| Varying-commission outcomes | £28.27 / £24.27 / £24.26 / £24.26 | TODO | N/A | TODO |
 
 ### Case EACH-WAY-EXTRA-PLACE-001
 

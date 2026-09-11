@@ -275,7 +275,7 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
   await page.getByLabel("Back odds").fill("11/4");
   await page.locator('[data-pd-id="calculators.multi-outcome-1-odds"]').fill("5,9");
   await page.locator('[data-pd-id="calculators.multi-outcome-2-odds"]').fill("4.9");
-  await page.getByLabel("Exchange commission").focus();
+  await page.getByLabel("Outcome 1 commission").focus();
   await expect(page.getByLabel("Back odds")).toHaveValue("3.75");
   await expect(page.locator('[data-pd-id="calculators.multi-outcome-1-odds"]')).toHaveValue("5.9");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
@@ -347,6 +347,81 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-each-way.png"), fullPage: true });
   }
   expect(businessMutations).toEqual([]);
+});
+
+test("Multi-Lay v2 routes backing type, boost, per-leg commission, advanced allocation and live copy", async ({ page }) => {
+  await mockSession(page);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
+  const previewBodies: Array<Record<string, unknown>> = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/fund-manager/calculators/multi-lay/preview") && request.method() === "POST") {
+      previewBodies.push(request.postDataJSON() as Record<string, unknown>);
+    }
+  });
+  await page.goto("/fund-manager/calculators?family=multi-lay");
+  await expect(page.getByLabel("Back type")).toHaveValue("normal");
+  await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Profit Boost %")).toHaveValue("0");
+  await expect(page.getByLabel("Outcome 1 commission")).toHaveValue("0");
+
+  await page.getByLabel("Back stake").fill("10");
+  await page.getByLabel("Back odds").fill("4");
+  await page.getByLabel("Outcome 1 lay odds").fill("2.5");
+  await page.getByLabel("Outcome 2 lay odds").fill("3");
+  await page.getByLabel("Outcome 1 commission").fill("0.05");
+  await page.getByLabel("Outcome 2 commission").fill("0.05");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 16.33");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toContainText("£ 18.38");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toContainText("£ 10.94");
+  await page.getByLabel("Profit Boost %").fill("10");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 17.55");
+  await page.getByLabel("Profit Boost %").fill("0");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 16.33");
+
+  await page.getByRole("button", { name: "Advanced" }).click();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.advanced"]')).toContainText("0.3522×");
+  await page.getByRole("button", { name: "Underlay", exact: true }).click();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 5.75");
+  await page.getByRole("button", { name: "Overlay", exact: true }).click();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 42.19");
+  await page.getByRole("button", { name: "Custom", exact: true }).click();
+  await page.getByLabel("Custom multiplier").fill("1.1");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 17.96");
+  await page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"] button').click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("17.96");
+
+  await page.getByLabel("Back type").selectOption("money_back");
+  await page.getByLabel("Refund amount").fill("10");
+  await expect(page.getByLabel("Retention %")).toHaveValue("70");
+  await expect.poll(() => previewBodies.at(-1)).toMatchObject({ backing_type: "money_back", strategy: "custom", refund_amount: "10", retention_percent: "70" });
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.convert"]')).toHaveCount(0);
+  await expect(page.getByText(/destination cannot preserve this Multi-Lay configuration/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Add lay" }).click();
+  await page.getByLabel("Outcome 3 lay odds").fill("6");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-3"]')).toBeVisible();
+  await page.getByRole("button", { name: "Remove Outcome 3" }).click();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-3"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "Add lay" }).click();
+  await page.getByLabel("Outcome 3 lay odds").fill("6");
+  await page.getByLabel("Custom Multi-Lay multiplier").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
+  for (const width of [720, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.locator("body").evaluate((body) => body.scrollWidth <= body.clientWidth + 1)).toBe(true);
+    for (const input of await page.locator('[data-pd-id="calculators.multi-lay.presentation"] input').all()) {
+      const box = await input.boundingBox();
+      expect(box?.x ?? 0).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width + 1);
+    }
+  }
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByLabel("Custom Multi-Lay multiplier").focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
 });
 
 test("calculates a Sequential Lay sequence and lock-in without ledger writes", async ({ page }) => {
