@@ -85,25 +85,29 @@ def _placed_result(
     placed_lay = quantize_money(lay_stake)
     if placed_lay <= 0:
         raise ValueError(f"{strategy} does not produce a positive lay stake for these inputs.")
-    liability_raw = placed_lay * (lay_odds - Decimal("1"))
-    lay_return_raw = placed_lay * (Decimal("1") - lay_commission)
+    liability = quantize_money(placed_lay * (lay_odds - Decimal("1")))
+    lay_return = quantize_money(placed_lay * (Decimal("1") - lay_commission))
     reward_back = retained_reward if trigger == "back_wins" else Decimal("0")
     reward_lay = retained_reward if trigger == "back_loses" else Decimal("0")
-    back_total_raw = back_win_base - liability_raw + reward_back
-    lay_total_raw = back_lose_base + lay_return_raw + reward_lay
+    bookmaker_back = quantize_money(back_win_base)
+    bookmaker_lay = quantize_money(back_lose_base)
+    promotion_back = quantize_money(reward_back)
+    promotion_lay = quantize_money(reward_lay)
+    back_total = quantize_money(bookmaker_back - liability + promotion_back)
+    lay_total = quantize_money(bookmaker_lay + lay_return + promotion_lay)
     return BonusLockInStrategyResult(
         strategy=strategy,
         lay_stake=placed_lay,
-        liability=quantize_money(liability_raw),
-        bookmaker_if_back_wins=quantize_money(back_win_base),
-        exchange_if_back_wins=quantize_money(-liability_raw),
-        bookmaker_if_back_loses=quantize_money(back_lose_base),
-        exchange_if_back_loses=quantize_money(lay_return_raw),
-        promotion_if_back_wins=quantize_money(reward_back),
-        promotion_if_back_loses=quantize_money(reward_lay),
-        back_wins_total=quantize_money(back_total_raw),
-        back_loses_total=quantize_money(lay_total_raw),
-        matched_result=min(quantize_money(back_total_raw), quantize_money(lay_total_raw)),
+        liability=liability,
+        bookmaker_if_back_wins=bookmaker_back,
+        exchange_if_back_wins=-liability,
+        bookmaker_if_back_loses=bookmaker_lay,
+        exchange_if_back_loses=lay_return,
+        promotion_if_back_wins=promotion_back,
+        promotion_if_back_loses=promotion_lay,
+        back_wins_total=back_total,
+        back_loses_total=lay_total,
+        matched_result=min(back_total, lay_total),
     )
 
 
@@ -134,13 +138,18 @@ def calculate_bonus_lock_in_reference(
     back_lose_base = -back_stake if backing_basis == "normal" else Decimal("0")
     reward_back = retained_reward_raw if trigger == "back_wins" else Decimal("0")
     reward_lay = retained_reward_raw if trigger == "back_loses" else Decimal("0")
-    standard_stake = (
-        back_win_base - back_lose_base + reward_back - reward_lay
-    ) / (lay_odds - lay_commission)
+    standard_stake = (back_win_base - back_lose_base + reward_back - reward_lay) / (
+        lay_odds - lay_commission
+    )
     standard = _placed_result(
-        strategy="Standard", lay_stake=standard_stake, back_win_base=back_win_base,
-        back_lose_base=back_lose_base, lay_odds=lay_odds, lay_commission=lay_commission,
-        retained_reward=retained_reward_raw, trigger=trigger,
+        strategy="Standard",
+        lay_stake=standard_stake,
+        back_win_base=back_win_base,
+        back_lose_base=back_lose_base,
+        lay_odds=lay_odds,
+        lay_commission=lay_commission,
+        retained_reward=retained_reward_raw,
+        trigger=trigger,
     )
 
     underlay: BonusLockInStrategyResult | None = None
@@ -148,21 +157,47 @@ def calculate_bonus_lock_in_reference(
     if backing_basis == "normal":
         lay_branch_zero = -(back_lose_base + reward_lay) / (Decimal("1") - lay_commission)
         back_branch_zero = (back_win_base + reward_back) / (lay_odds - Decimal("1"))
-        lower, upper = sorted((lay_branch_zero, back_branch_zero))
-        if lower > 0:
-            underlay = _placed_result(
-                strategy="Underlay", lay_stake=lower, back_win_base=back_win_base,
-                back_lose_base=back_lose_base, lay_odds=lay_odds,
-                lay_commission=lay_commission, retained_reward=retained_reward_raw,
-                trigger=trigger,
-            )
-        if upper > 0:
-            overlay = _placed_result(
-                strategy="Overlay", lay_stake=upper, back_win_base=back_win_base,
-                back_lose_base=back_lose_base, lay_odds=lay_odds,
-                lay_commission=lay_commission, retained_reward=retained_reward_raw,
-                trigger=trigger,
-            )
+        endpoints = (lay_branch_zero, back_branch_zero)
+    elif trigger == "back_loses":
+        # Outplayed's SNR losing-trigger range preserves the free-bet face value on
+        # the lay-winning branch at one end and reaches zero on the back-winning
+        # branch at the other. Commission is solved exactly rather than using the
+        # public bundle's first-order `(1 + c)` approximation.
+        lay_branch_face_value = (back_stake - reward_lay) / (Decimal("1") - lay_commission)
+        back_branch_zero = back_win_base / (lay_odds - Decimal("1"))
+        endpoints = (lay_branch_face_value, back_branch_zero)
+    else:
+        # For an SNR winning-trigger offer the public range targets the free-bet
+        # face value on each branch in turn.
+        back_branch_face_value = (back_win_base + reward_back - back_stake) / (
+            lay_odds - Decimal("1")
+        )
+        lay_branch_face_value = back_stake / (Decimal("1") - lay_commission)
+        endpoints = (back_branch_face_value, lay_branch_face_value)
+
+    positive_endpoints = sorted(endpoint for endpoint in endpoints if endpoint > 0)
+    if positive_endpoints:
+        underlay = _placed_result(
+            strategy="Underlay",
+            lay_stake=positive_endpoints[0],
+            back_win_base=back_win_base,
+            back_lose_base=back_lose_base,
+            lay_odds=lay_odds,
+            lay_commission=lay_commission,
+            retained_reward=retained_reward_raw,
+            trigger=trigger,
+        )
+    if len(positive_endpoints) > 1:
+        overlay = _placed_result(
+            strategy="Overlay",
+            lay_stake=positive_endpoints[-1],
+            back_win_base=back_win_base,
+            back_lose_base=back_lose_base,
+            lay_odds=lay_odds,
+            lay_commission=lay_commission,
+            retained_reward=retained_reward_raw,
+            trigger=trigger,
+        )
 
     if strategy == "Standard":
         selected = standard
@@ -179,9 +214,13 @@ def calculate_bonus_lock_in_reference(
             selected = standard
         else:
             selected = _placed_result(
-                strategy=strategy, lay_stake=manual_lay_stake,
-                back_win_base=back_win_base, back_lose_base=back_lose_base,
-                lay_odds=lay_odds, lay_commission=lay_commission,
-                retained_reward=retained_reward_raw, trigger=trigger,
+                strategy=strategy,
+                lay_stake=manual_lay_stake,
+                back_win_base=back_win_base,
+                back_lose_base=back_lose_base,
+                lay_odds=lay_odds,
+                lay_commission=lay_commission,
+                retained_reward=retained_reward_raw,
+                trigger=trigger,
             )
     return BonusLockInReferenceResult(retained_reward, standard, underlay, overlay, selected)

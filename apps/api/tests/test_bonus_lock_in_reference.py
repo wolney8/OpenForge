@@ -29,25 +29,40 @@ def test_bonus_lock_in_reference_matches_independent_fixtures(case: dict[str, ob
 def test_bonus_lock_in_rejects_non_positive_reference_stake() -> None:
     with pytest.raises(ValueError, match="positive lay stake"):
         calculate_bonus_lock_in_reference(
-            back_stake=Decimal("5"), back_odds=Decimal("2"), lay_odds=Decimal("3"),
-            lay_commission=Decimal("0"), reward_amount=Decimal("20"),
-            retention_percent=Decimal("100"), trigger="back_loses",
+            back_stake=Decimal("5"),
+            back_odds=Decimal("2"),
+            lay_odds=Decimal("3"),
+            lay_commission=Decimal("0"),
+            reward_amount=Decimal("20"),
+            retention_percent=Decimal("100"),
+            trigger="back_loses",
         )
 
 
-def test_bonus_lock_in_snr_standard_and_explicit_lay_are_deterministic() -> None:
+def test_bonus_lock_in_snr_all_references_and_explicit_lay_are_deterministic() -> None:
     standard = calculate_bonus_lock_in_reference(
-        back_stake=Decimal("10"), back_odds=Decimal("4"), lay_odds=Decimal("4.2"),
-        lay_commission=Decimal("0.02"), reward_amount=Decimal("10"),
-        retention_percent=Decimal("70"), backing_basis="free_bet_snr",
+        back_stake=Decimal("10"),
+        back_odds=Decimal("4"),
+        lay_odds=Decimal("4.2"),
+        lay_commission=Decimal("0.02"),
+        reward_amount=Decimal("10"),
+        retention_percent=Decimal("70"),
+        backing_basis="free_bet_snr",
         trigger="back_wins",
     )
     assert standard.standard.lay_stake == Decimal("8.85")
-    assert standard.underlay is None and standard.overlay is None
+    assert standard.underlay is not None and standard.underlay.lay_stake == Decimal("8.44")
+    assert standard.overlay is not None and standard.overlay.lay_stake == Decimal("10.20")
     explicit = calculate_bonus_lock_in_reference(
-        back_stake=Decimal("10"), back_odds=Decimal("4"), lay_odds=Decimal("4.2"),
-        lay_commission=Decimal("0.02"), reward_amount=Decimal("10"),
-        retention_percent=Decimal("70"), backing_basis="free_bet_snr",
-        trigger="back_wins", strategy="Partial Lay", manual_lay_stake=Decimal("8"),
+        back_stake=Decimal("10"),
+        back_odds=Decimal("4"),
+        lay_odds=Decimal("4.2"),
+        lay_commission=Decimal("0.02"),
+        reward_amount=Decimal("10"),
+        retention_percent=Decimal("70"),
+        backing_basis="free_bet_snr",
+        trigger="back_wins",
+        strategy="Partial Lay",
+        manual_lay_stake=Decimal("8"),
     )
     assert explicit.selected.lay_stake == Decimal("8.00")

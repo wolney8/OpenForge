@@ -20,7 +20,7 @@
     {
       "id": "BONUS-LOCK-OUTPLAYED-NORMAL-LOSE-STANDARD",
       "inputs": {"back_stake":"5","back_odds":"9.24","lay_odds":"10.5","lay_commission":"0","reward_amount":"5","retention_percent":"70","backing_basis":"normal","trigger":"back_loses","strategy":"Standard"},
-      "expected": {"retained_reward":"3.50","lay_stake":"4.07","liability":"38.67","back_wins_total":"2.54","back_loses_total":"2.57","matched_result":"2.54"}
+      "expected": {"retained_reward":"3.50","lay_stake":"4.07","liability":"38.67","back_wins_total":"2.53","back_loses_total":"2.57","matched_result":"2.53"}
     },
     {
       "id": "BONUS-LOCK-OUTPLAYED-NORMAL-LOSE-UNDERLAY",
@@ -41,10 +41,35 @@
       "id": "BONUS-LOCK-COMMISSION-UNDERLAY",
       "inputs": {"back_stake":"10","back_odds":"4","lay_odds":"4.2","lay_commission":"0.02","reward_amount":"10","retention_percent":"70","backing_basis":"normal","trigger":"back_loses","strategy":"Underlay"},
       "expected": {"retained_reward":"7.00","lay_stake":"3.06","liability":"9.79","back_wins_total":"20.21","back_loses_total":"0.00","matched_result":"0.00"}
+    },
+    {
+      "id": "BONUS-LOCK-SNR-LOSE-UNDERLAY",
+      "inputs": {"back_stake":"5","back_odds":"9.24","lay_odds":"10.5","lay_commission":"0","reward_amount":"5","retention_percent":"70","backing_basis":"free_bet_snr","trigger":"back_loses","strategy":"Underlay"},
+      "expected": {"retained_reward":"3.50","lay_stake":"1.50","liability":"14.25","back_wins_total":"26.95","back_loses_total":"5.00","matched_result":"5.00"}
+    },
+    {
+      "id": "BONUS-LOCK-SNR-LOSE-OVERLAY",
+      "inputs": {"back_stake":"5","back_odds":"9.24","lay_odds":"10.5","lay_commission":"0","reward_amount":"5","retention_percent":"70","backing_basis":"free_bet_snr","trigger":"back_loses","strategy":"Overlay"},
+      "expected": {"retained_reward":"3.50","lay_stake":"4.34","liability":"41.23","back_wins_total":"-0.03","back_loses_total":"7.84","matched_result":"-0.03"}
+    },
+    {
+      "id": "BONUS-LOCK-SNR-WIN-UNDERLAY",
+      "inputs": {"back_stake":"5","back_odds":"9.24","lay_odds":"10.5","lay_commission":"0","reward_amount":"5","retention_percent":"70","backing_basis":"free_bet_snr","trigger":"back_wins","strategy":"Underlay"},
+      "expected": {"retained_reward":"3.50","lay_stake":"4.18","liability":"39.71","back_wins_total":"4.99","back_loses_total":"4.18","matched_result":"4.18"}
+    },
+    {
+      "id": "BONUS-LOCK-SNR-WIN-OVERLAY",
+      "inputs": {"back_stake":"5","back_odds":"9.24","lay_odds":"10.5","lay_commission":"0","reward_amount":"5","retention_percent":"70","backing_basis":"free_bet_snr","trigger":"back_wins","strategy":"Overlay"},
+      "expected": {"retained_reward":"3.50","lay_stake":"5.00","liability":"47.50","back_wins_total":"-2.80","back_loses_total":"5.00","matched_result":"-2.80"}
+    },
+    {
+      "id": "BONUS-LOCK-SNR-LOSE-COMMISSION-EXACT",
+      "inputs": {"back_stake":"10","back_odds":"4","lay_odds":"4.2","lay_commission":"0.02","reward_amount":"10","retention_percent":"70","backing_basis":"free_bet_snr","trigger":"back_loses","strategy":"Underlay"},
+      "expected": {"retained_reward":"7.00","lay_stake":"3.06","liability":"9.79","back_wins_total":"20.21","back_loses_total":"10.00","matched_result":"10.00"}
     }
   ],
   "blocked": {
-    "ids": ["BONUS-LOCK-FREE-BET-SR", "BONUS-LOCK-SNR-ADVANCED"],
-    "reason": "The public source does not expose SR and does not explain the SNR Advanced capital-target policy sufficiently for approval."
+    "ids": ["BONUS-LOCK-FREE-BET-SR"],
+    "reason": "The public source does not expose a Stake Returned free-bet basis."
   }
 }

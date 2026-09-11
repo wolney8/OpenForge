@@ -4,18 +4,15 @@ _Last updated: 2026-09-11_
 
 ## 0. Contract status
 
-- Status: Approved for Normal backing bets with Back Loses/Back Wins rewards across
-  Standard, Underlay, Overlay, Custom and explicit Part Lay; approved for Free Bet
-  (SNR) Standard and explicit Part Lay only
+- Status: Approved for Normal and Free Bet (SNR) backing bets with Back Loses/Back Wins
+  rewards across Standard, Underlay, Overlay, Custom and explicit Part Lay
 - Owner: OpenForge M14 Calculator Workspace
 - Related evidence: `docs/reference/m14-calculator-research/teamprofit-refund.packet.json`
 - Current authority: the public Outplayed Bonus Lock-In calculator and its linked
   `bonusaccumulator.com/calc/outplayed/bonuslockin` implementation, independently
   reconciled with the branch equations below
 - Tracker authority: workbook cash-first sportsbook contract remains authoritative
-- Explicit exclusions: Free Bet (SR), and SNR Underlay/Overlay/Custom bounds remain
-  blocked because the public source exposes only Normal and Free Bet (SNR), while its
-  SNR Advanced capital-target policy is not explained sufficiently to govern those bounds.
+- Explicit exclusion: Free Bet (SR), which the public calculator does not expose.
 
 ## 1. Purpose
 
@@ -66,6 +63,24 @@ For a Normal backing bet, the Advanced endpoints solve the two cash break-even b
 
 `L_overlay = max(L_lay_branch_zero, L_back_branch_zero)`
 
+For Free Bet SNR, the current public source uses capital-target endpoints rather than generic
+qualifying endpoints. When the reward applies if the back loses:
+
+`L_lay_branch_face_value = (B - R) / (1 - c)`
+
+`L_back_branch_zero = BW / (O_l - 1)`
+
+When the reward applies if the back wins:
+
+`L_back_branch_face_value = (BW + R - B) / (O_l - 1)`
+
+`L_lay_branch_face_value = B / (1 - c)`
+
+The lower positive endpoint is Underlay and the upper positive endpoint is Overlay. A non-positive
+endpoint is unavailable rather than invented. These equations reproduce the public calculator at
+zero commission. At non-zero commission OpenForge solves the target exactly with division by
+`(1-c)`; the public bundle uses a first-order `(1+c)` approximation for one losing-trigger endpoint.
+
 For the supplied Back Loses example (`B=5`, `O_b=9.24`, `O_l=10.5`, `c=0`,
 `A=5`, retention `70%`), these produce Standard `4.07`, Underlay `1.50`, and
 Overlay `4.34`. A Custom or explicit Part Lay uses the entered lay stake and the
@@ -96,7 +111,7 @@ lay is placed to two decimals. Exchange commission applies only to a winning lay
 - missing retention is invalid in OpenForge; do not silently coerce it to zero
 - every selected/reference stake must be finite and greater than zero; an infeasible endpoint is
   unavailable rather than coerced to a penny or passed to the generic calculator
-- Free Bet SR and SNR Advanced reference bounds fail closed with a specific unsupported message
+- Free Bet SR fails closed with a specific unsupported message
 
 ## 5. Cash-first tracker boundary
 
@@ -112,8 +127,10 @@ lay is placed to two decimals. Exchange commission applies only to a winning lay
 
 - calculate `R` and the equalisation equation from unrounded decimal inputs;
 - round the recommended lay stake half-up to 2dp because it is the placed reference stake;
-- calculate liability, lay return and both branch totals from that placed 2dp lay stake;
-- round monetary components and totals half-up to 2dp for serialization/display;
+- calculate and round liability, lay return, bookmaker and promotion components half-up to 2dp
+  from that placed stake;
+- calculate each displayed branch total from those displayed penny components, so component columns
+  always reconcile exactly to Total;
 - canonical rounded zero has no negative sign;
 - OpenForge expected-output tolerance is exact at the serialized penny.
 
@@ -122,9 +139,10 @@ lay is placed to two decimals. Exchange commission applies only to a winning lay
 The linked public Outplayed implementation retrieved 2026-09-11 (JavaScript SHA-256
 `522ebe7f06386f13c44e0c493609776dbf50a77c86d41750b11b000bcd784124`) exposes Normal/Free Bet
 (SNR), Back Wins/Back Loses, Standard/Underlay/Overlay/Custom, and calculates outcomes from its
-placed two-decimal lay. Its non-zero-commission lower endpoint multiplies by `(1+c)`; the approved
-contract instead uses the independently exact division by `(1-c)`. This deliberate source
-difference is recorded rather than silently copying an approximation.
+placed two-decimal lay. Its branch conditions and formulas establish the SNR face-value target
+policy above. Its non-zero-commission lower endpoint multiplies by `(1+c)`; the approved contract
+instead uses the independently exact division by `(1-c)`. This deliberate source difference is
+recorded rather than silently copying an approximation.
 
 ## 8. Fixtures and compatibility
 

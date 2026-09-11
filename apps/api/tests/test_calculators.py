@@ -244,10 +244,15 @@ def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_referenc
     configure_temp_database(tmp_path)
     client = TestClient(app)
     base = {
-        "bet_type": "bonus_lock_in", "bonus_backing_bet": "Normal",
-        "back_stake": "5", "back_odds": "9.24", "lay_odds": "10.5",
-        "exchange_commission": "0", "promotion_value": "5",
-        "retention_percent": "70", "bonus_trigger": "Lay Wins",
+        "bet_type": "bonus_lock_in",
+        "bonus_backing_bet": "Normal",
+        "back_stake": "5",
+        "back_odds": "9.24",
+        "lay_odds": "10.5",
+        "exchange_commission": "0",
+        "promotion_value": "5",
+        "retention_percent": "70",
+        "bonus_trigger": "Lay Wins",
     }
     expected = {"Standard": "4.07", "Underlay": "1.50", "Overlay": "4.34"}
     for strategy, stake in expected.items():
@@ -258,7 +263,9 @@ def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_referenc
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["selected_lay_stake"] == stake
-        assert {item["strategy"]: item["lay_stake"] for item in body["strategy_references"]} == expected
+        assert {
+            item["strategy"]: item["lay_stake"] for item in body["strategy_references"]
+        } == expected
         assert body["outcomes"][1]["promotion_component"] == "3.50"
 
     custom = client.post(
@@ -272,24 +279,35 @@ def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_referenc
 @pytest.mark.parametrize(
     ("backing", "trigger", "expected_stake", "expected_back", "expected_lay"),
     [
-        ("Normal", "Lay Wins", "4.07", "2.54", "2.57"),
+        ("Normal", "Lay Wins", "4.07", "2.53", "2.57"),
         ("Normal", "Back Wins", "4.73", "-0.24", "-0.27"),
-        ("SNR", "Lay Wins", "3.59", "7.10", "7.09"),
+        ("SNR", "Lay Wins", "3.59", "7.09", "7.09"),
         ("SNR", "Back Wins", "4.26", "4.23", "4.26"),
     ],
 )
 def test_bonus_lock_in_verified_basis_and_trigger_grid(
-    tmp_path: Path, backing: str, trigger: str, expected_stake: str,
-    expected_back: str, expected_lay: str,
+    tmp_path: Path,
+    backing: str,
+    trigger: str,
+    expected_stake: str,
+    expected_back: str,
+    expected_lay: str,
 ) -> None:
     configure_temp_database(tmp_path)
     response = TestClient(app).post(
         "/fund-manager/calculators/matched-betting/preview",
-        json={"bet_type": "bonus_lock_in", "bonus_backing_bet": backing,
-              "strategy": "Standard", "back_stake": "5", "back_odds": "9.24",
-              "lay_odds": "10.5", "exchange_commission": "0",
-              "promotion_value": "5", "retention_percent": "70",
-              "bonus_trigger": trigger},
+        json={
+            "bet_type": "bonus_lock_in",
+            "bonus_backing_bet": backing,
+            "strategy": "Standard",
+            "back_stake": "5",
+            "back_odds": "9.24",
+            "lay_odds": "10.5",
+            "exchange_commission": "0",
+            "promotion_value": "5",
+            "retention_percent": "70",
+            "bonus_trigger": trigger,
+        },
     )
     assert response.status_code == 200, response.text
     assert response.json()["selected_lay_stake"] == expected_stake
@@ -297,15 +315,21 @@ def test_bonus_lock_in_verified_basis_and_trigger_grid(
     assert response.json()["outcomes"][1]["total"] == expected_lay
 
 
-def test_bonus_lock_in_back_wins_and_unsupported_free_bet_variants_fail_closed(
+def test_bonus_lock_in_back_wins_snr_advanced_and_unsupported_sr_fail_closed(
     tmp_path: Path,
 ) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
     base = {
-        "bet_type": "bonus_lock_in", "back_stake": "5", "back_odds": "9.24",
-        "lay_odds": "10.5", "exchange_commission": "0", "promotion_value": "5",
-        "retention_percent": "70", "bonus_trigger": "Back Wins", "strategy": "Standard",
+        "bet_type": "bonus_lock_in",
+        "back_stake": "5",
+        "back_odds": "9.24",
+        "lay_odds": "10.5",
+        "exchange_commission": "0",
+        "promotion_value": "5",
+        "retention_percent": "70",
+        "bonus_trigger": "Back Wins",
+        "strategy": "Standard",
     }
     response = client.post("/fund-manager/calculators/matched-betting/preview", json=base)
     assert response.status_code == 200, response.text
@@ -321,7 +345,8 @@ def test_bonus_lock_in_back_wins_and_unsupported_free_bet_variants_fail_closed(
         "/fund-manager/calculators/matched-betting/preview",
         json={**base, "bonus_backing_bet": "SNR", "strategy": "Underlay"},
     )
-    assert snr_advanced.status_code == 422 and "capital-target" in snr_advanced.text
+    assert snr_advanced.status_code == 200, snr_advanced.text
+    assert snr_advanced.json()["selected_lay_stake"] == "4.18"
 
 
 def test_calculator_exchange_default_uses_master_catalogue(tmp_path: Path) -> None:

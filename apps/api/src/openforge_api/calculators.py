@@ -179,16 +179,6 @@ class MatchedBettingPayload(BaseModel):
                 "Bonus Lock-In with a Stake Returned free bet is not supported by the "
                 "current Outplayed source contract.",
             )
-        if (
-            self.bet_type in {"money_back", "bonus_lock_in"}
-            and self.bonus_backing_bet == "SNR"
-            and self.strategy in {"Underlay", "Overlay", "Custom"}
-        ):
-            raise PydanticCustomError(
-                "calculator_bonus_snr_advanced_unapproved",
-                "Advanced Bonus Lock-In references for a Stake Not Returned free bet need "
-                "an approved capital-target rule. Standard and explicit Part Lay are supported.",
-            )
         if self.strategy == "Partial Lay" and not self.manual_lay_stake:
             raise PydanticCustomError(
                 "calculator_manual_lay_required", "Enter the explicit lay stake for this strategy."
@@ -898,7 +888,9 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     profit_boost = None
     bonus_result = None
     strategy_references: list[CalculatorStrategyReferenceResponse] = []
-    component_values: tuple[Decimal | None, Decimal | None, Decimal | None, Decimal | None, Decimal | None]
+    component_values: tuple[
+        Decimal | None, Decimal | None, Decimal | None, Decimal | None, Decimal | None
+    ]
     effective_back_odds_text = payload.back_odds
     if payload.bet_type == "profit_boost":
         profit_boost = calculate_profit_boost(
@@ -961,6 +953,38 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             free_result.exchange_component_if_lay_wins,
             None,
         )
+        strategy_references = []
+        for reference_strategy in ("Standard", "Underlay", "Overlay"):
+            free_reference = calculate_free_bet_current_value(
+                FreeBetCalculationInput(
+                    profile_id="standalone",
+                    record_id=f"standalone-{reference_strategy.lower()}-reference",
+                    status="Placed",
+                    result="Pending",
+                    retention_mode=payload.free_bet_mode,
+                    free_bet_value=payload.back_stake,
+                    back_odds=effective_back_odds_text,
+                    match_strategy=reference_strategy,
+                    lay_odds_1=payload.lay_odds,
+                    lay_commission_1=payload.exchange_commission,
+                    default_underlay_factor=payload.underlay_factor,
+                    default_overlay_factor=payload.overlay_factor,
+                ),
+                as_of_datetime=datetime.now(timezone.utc),
+            )
+            assert free_reference.actual_lay_stake_1 is not None
+            assert free_reference.calculated_liability_1 is not None
+            assert free_reference.scenario_pnl_if_back_wins is not None
+            assert free_reference.scenario_pnl_if_lay_wins is not None
+            strategy_references.append(
+                CalculatorStrategyReferenceResponse(
+                    strategy=reference_strategy,
+                    lay_stake=_money(free_reference.actual_lay_stake_1),
+                    liability=_money(free_reference.calculated_liability_1),
+                    back_wins_total=_money(free_reference.scenario_pnl_if_back_wins),
+                    back_loses_total=_money(free_reference.scenario_pnl_if_lay_wins),
+                )
+            )
     else:
         offer_type = ""
         if payload.bet_type in {"money_back", "bonus_lock_in"}:
@@ -1009,6 +1033,37 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             sportsbook_result.exchange_component_if_lay_wins,
             sportsbook_result.promotion_component,
         )
+        if payload.bet_type == "qualifying":
+            strategy_references = []
+            for reference_strategy in ("Standard", "Underlay", "Overlay"):
+                sportsbook_reference = calculate_sportsbook_current_value(
+                    SportsbookCalculationInput(
+                        profile_id="standalone",
+                        record_id=f"standalone-{reference_strategy.lower()}-reference",
+                        status="Placed",
+                        result="Pending",
+                        offer_type="",
+                        back_stake=payload.back_stake,
+                        back_odds=effective_back_odds_text,
+                        match_strategy=reference_strategy,
+                        lay_odds_1=payload.lay_odds,
+                        lay_commission_1=payload.exchange_commission,
+                    ),
+                    as_of_date=date.today(),
+                )
+                assert sportsbook_reference.actual_lay_stake_1 is not None
+                assert sportsbook_reference.calculated_liability_1 is not None
+                assert sportsbook_reference.scenario_pnl_if_back_wins is not None
+                assert sportsbook_reference.scenario_pnl_if_lay_wins is not None
+                strategy_references.append(
+                    CalculatorStrategyReferenceResponse(
+                        strategy=reference_strategy,
+                        lay_stake=_money(sportsbook_reference.actual_lay_stake_1),
+                        liability=_money(sportsbook_reference.calculated_liability_1),
+                        back_wins_total=_money(sportsbook_reference.scenario_pnl_if_back_wins),
+                        back_loses_total=_money(sportsbook_reference.scenario_pnl_if_lay_wins),
+                    )
+                )
         if payload.bet_type in {"money_back", "bonus_lock_in"}:
             try:
                 bonus_result = calculate_bonus_lock_in_reference(
@@ -1099,11 +1154,14 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         profit_boost_source=profit_boost.boost_source if profit_boost else None,
         profit_boost_raw_odds=profit_boost.raw_derived_odds if profit_boost else None,
         profit_boost_bookmaker_return=_money(profit_boost.bookmaker_total_return)
-        if profit_boost and profit_boost.bookmaker_total_return is not None else None,
+        if profit_boost and profit_boost.bookmaker_total_return is not None
+        else None,
         profit_boost_effective_return=_money(profit_boost.effective_odds_return)
-        if profit_boost and profit_boost.effective_odds_return is not None else None,
+        if profit_boost and profit_boost.effective_odds_return is not None
+        else None,
         profit_boost_potential_profit=_money(profit_boost.potential_profit)
-        if profit_boost and profit_boost.potential_profit is not None else None,
+        if profit_boost and profit_boost.potential_profit is not None
+        else None,
         profit_boost_equation=profit_boost.equation if profit_boost else None,
         strategy_references=strategy_references,
         outcomes=outcomes,
@@ -1122,17 +1180,29 @@ def preview_matched_betting(payload: MatchedBettingPayload) -> MatchedBettingRes
     response_model=ProfitBoostPreviewResponse,
 )
 def preview_profit_boost(payload: ProfitBoostPreviewPayload) -> ProfitBoostPreviewResponse:
-    result = calculate_profit_boost(ProfitBoostInput(profile_id="fund-manager", **payload.model_dump()))
+    result = calculate_profit_boost(
+        ProfitBoostInput(profile_id="fund-manager", **payload.model_dump())
+    )
     return ProfitBoostPreviewResponse(
         calculation_state=result.calculation_state,
         notes=list(result.calculation_notes),
         source=result.boost_source,
-        reference_odds=f"{result.reference_boosted_odds:.4f}" if result.reference_boosted_odds is not None else None,
+        reference_odds=f"{result.reference_boosted_odds:.4f}"
+        if result.reference_boosted_odds is not None
+        else None,
         raw_derived_odds=result.raw_derived_odds,
-        effective_odds=f"{result.effective_back_odds:.4f}" if result.effective_back_odds is not None else None,
-        bookmaker_total_return=_money(result.bookmaker_total_return) if result.bookmaker_total_return is not None else None,
-        effective_odds_return=_money(result.effective_odds_return) if result.effective_odds_return is not None else None,
-        potential_profit=_money(result.potential_profit) if result.potential_profit is not None else None,
+        effective_odds=f"{result.effective_back_odds:.4f}"
+        if result.effective_back_odds is not None
+        else None,
+        bookmaker_total_return=_money(result.bookmaker_total_return)
+        if result.bookmaker_total_return is not None
+        else None,
+        effective_odds_return=_money(result.effective_odds_return)
+        if result.effective_odds_return is not None
+        else None,
+        potential_profit=_money(result.potential_profit)
+        if result.potential_profit is not None
+        else None,
         equation=result.equation,
     )
 
