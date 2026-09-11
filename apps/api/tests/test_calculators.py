@@ -530,6 +530,105 @@ def test_multi_lay_preview_matches_canonical_engine_without_writes(tmp_path: Pat
     assert len(list_sportsbook_bets("profile-demo-001")) == before
 
 
+def test_multi_lay_v2_supports_reference_modes_per_leg_commission_and_twenty_legs(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    before = len(list_sportsbook_bets("profile-demo-001"))
+    base = {
+        "backing_type": "money_back",
+        "strategy": "standard",
+        "back_stake": "10",
+        "back_odds": "4",
+        "profit_boost_percent": "0",
+        "refund_amount": "10",
+        "retention_percent": "70",
+        "custom_multiplier": "1",
+        "outcomes": [
+            {"label": "A", "lay_odds": "2.5", "commission": "0.05"},
+            {"label": "B", "lay_odds": "3", "commission": "0.05"},
+        ],
+    }
+    response = client.post("/fund-manager/calculators/multi-lay/preview", json=base)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["calculation_version"] == "multi-lay-v2"
+    assert result["retained_refund"] == "7.00"
+    assert [item["lay_stake"] for item in result["branches"]] == ["13.47", "11.19"]
+    assert [item["total"] for item in result["scenarios"]] == ["20.43", "20.42", "20.42"]
+    assert result["scenarios"][0]["bookmaker_component"] == "-10.00"
+    assert result["scenarios"][0]["reward_component"] == "7.00"
+    assert result["maximum_exchange_exposure"] == "9.02"
+
+    varied = client.post(
+        "/fund-manager/calculators/multi-lay/preview",
+        json={
+            **base,
+            "backing_type": "normal",
+            "refund_amount": "0",
+            "strategy": "custom",
+            "custom_multiplier": "1.1",
+            "outcomes": [
+                {"label": "A", "lay_odds": "2.5", "commission": "0.02"},
+                {"label": "B", "lay_odds": "3", "commission": "0.05"},
+                {"label": "C", "lay_odds": "6", "commission": "0.10"},
+            ],
+        },
+    )
+    assert varied.status_code == 200, varied.text
+    assert [item["lay_stake"] for item in varied.json()["branches"]] == ["17.74", "14.92", "7.46"]
+    assert (
+        len(
+            client.post(
+                "/fund-manager/calculators/multi-lay/preview",
+                json={
+                    **base,
+                    "outcomes": [
+                        {"label": f"Outcome {index}", "lay_odds": "3", "commission": "0"}
+                        for index in range(20)
+                    ],
+                },
+            ).json()["branches"]
+        )
+        == 20
+    )
+    assert (
+        client.post(
+            "/fund-manager/calculators/multi-lay/preview",
+            json={
+                **base,
+                "outcomes": [
+                    {"label": f"Outcome {index}", "lay_odds": "3", "commission": "0"}
+                    for index in range(21)
+                ],
+            },
+        ).status_code
+        == 422
+    )
+    normalized = client.post(
+        "/fund-manager/calculators/multi-lay/preview",
+        json={
+            **base,
+            "back_odds": "3/1",
+            "outcomes": [
+                {"label": "A", "lay_odds": "2,5", "commission": "0"},
+                {"label": "B", "lay_odds": "3,0", "commission": "0"},
+            ],
+        },
+    )
+    assert normalized.status_code == 200, normalized.text
+    for invalid in ("", "0", "1", "3.0abc", "1,000"):
+        assert (
+            client.post(
+                "/fund-manager/calculators/multi-lay/preview",
+                json={**base, "back_odds": invalid},
+            ).status_code
+            == 422
+        )
+    assert len(list_sportsbook_bets("profile-demo-001")) == before
+
+
 def test_each_way_modes_match_canonical_engine_without_writes(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)

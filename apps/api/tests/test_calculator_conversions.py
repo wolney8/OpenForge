@@ -461,9 +461,7 @@ def test_bonus_lock_in_conversion_uses_offer_aware_selected_strategy_stake(
     response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
     assert response.status_code == 200, response.text
     result = response.json()["results"][0]
-    row = client.get(
-        f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
-    ).json()
+    row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}").json()
     assert row["match_strategy"] == "Underlay"
     assert row["lay_actual"] == "1.50"
 
@@ -607,6 +605,36 @@ def test_multi_lay_conversion_preserves_all_legs_and_is_idempotent(tmp_path: Pat
     retry = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
     assert retry.json()["results"][0]["state"] == "already_succeeded"
     assert retry.json()["results"][0]["record_id"] == result["record_id"]
+
+
+def test_multi_lay_v2_conversion_fails_closed_when_destination_would_drop_configuration(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = multi_lay_payload(["profile-demo-001"])
+    calculator = payload["calculator"]
+    assert isinstance(calculator, dict)
+    calculator.update(
+        {
+            "backing_type": "free_bet_snr",
+            "strategy": "standard",
+            "profit_boost_percent": "0",
+            "refund_amount": "0",
+            "retention_percent": "70",
+            "custom_multiplier": "1",
+        }
+    )
+    source = payload["source"]
+    assert isinstance(source, dict)
+    source["calculator_version"] = "multi-lay-v2"
+    before = client.get("/profiles/profile-demo-001/sportsbook-bets").json()
+    response = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
+    assert response.status_code == 422
+    assert "cannot yet preserve" in response.text
+    assert client.get("/profiles/profile-demo-001/sportsbook-bets").json() == before
 
 
 def test_extra_place_and_each_way_convert_to_profile_isolated_native_rows(

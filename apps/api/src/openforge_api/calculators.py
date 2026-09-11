@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -35,6 +34,10 @@ from openforge_api.calculations.early_payout import (
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     calculate_free_bet_current_value,
+)
+from openforge_api.calculations.multi_lay_reference import (
+    MultiLayLegInput,
+    calculate_multi_lay_reference,
 )
 from openforge_api.calculations.odds_probability import calculate_odds_probability
 from openforge_api.calculations.profit_boost import ProfitBoostInput, calculate_profit_boost
@@ -291,19 +294,34 @@ CALCULATOR_EXCHANGE_DEFAULTS = {"EXCHANGE-SMARKETS": "0"}
 class MultiLayOutcomePayload(BaseModel):
     label: str = Field(min_length=1, max_length=80)
     lay_odds: str = Field(max_length=40)
+    commission: str = Field(default="0", max_length=40)
 
     @field_validator("lay_odds", mode="before")
     @classmethod
     def validate_lay_odds(cls, value: Any) -> str:
         return normalize_calculator_odds(value)
 
+    @field_validator("commission", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
+        if not Decimal("0") <= Decimal(parsed) < Decimal("1"):
+            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+        return parsed
+
 
 class MultiLayPayload(BaseModel):
-    allocation: Literal["standard", "underlay"] = "standard"
+    allocation: Literal["standard", "underlay"] | None = None
+    exchange_commission: str | None = Field(default=None, max_length=40)
+    backing_type: Literal["normal", "free_bet_snr", "money_back"] = "normal"
+    strategy: Literal["standard", "underlay", "overlay", "custom"] = "standard"
     back_stake: str = Field(max_length=40)
     back_odds: str = Field(max_length=40)
-    exchange_commission: str = Field(max_length=40)
-    outcomes: list[MultiLayOutcomePayload] = Field(min_length=2, max_length=3)
+    profit_boost_percent: str = Field(default="0", max_length=40)
+    refund_amount: str = Field(default="0", max_length=40)
+    retention_percent: str = Field(default="70", max_length=40)
+    custom_multiplier: str = Field(default="1", max_length=40)
+    outcomes: list[MultiLayOutcomePayload] = Field(min_length=2, max_length=20)
 
     @field_validator("back_stake", mode="before")
     @classmethod
@@ -320,13 +338,47 @@ class MultiLayPayload(BaseModel):
     def validate_back_odds(cls, value: Any) -> str:
         return normalize_calculator_odds(value)
 
-    @field_validator("exchange_commission", mode="before")
+    @field_validator(
+        "profit_boost_percent",
+        "refund_amount",
+        "retention_percent",
+        "custom_multiplier",
+        mode="before",
+    )
     @classmethod
-    def validate_commission(cls, value: Any) -> str:
-        parsed = validate_complete_decimal_string(value, message=COMMISSION_MESSAGE)
-        if not Decimal("0") <= Decimal(parsed) <= Decimal("1"):
-            raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+    def validate_non_negative(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) < 0:
+            raise PydanticCustomError(
+                "calculator_amount_non_negative",
+                "Enter zero or a positive value.",
+            )
         return parsed
+
+    @model_validator(mode="after")
+    def validate_ranges(self) -> "MultiLayPayload":
+        if Decimal(self.retention_percent) > 100:
+            raise PydanticCustomError("calculator_retention_range", PERCENT_MESSAGE)
+        if self.exchange_commission is not None:
+            commission = validate_complete_decimal_string(
+                self.exchange_commission, message=COMMISSION_MESSAGE
+            )
+            if not Decimal("0") <= Decimal(commission) < Decimal("1"):
+                raise PydanticCustomError("calculator_commission_range", COMMISSION_MESSAGE)
+            self.exchange_commission = commission
+            self.outcomes = [
+                outcome.model_copy(
+                    update={
+                        "commission": (
+                            commission if outcome.commission == "0" else outcome.commission
+                        )
+                    }
+                )
+                for outcome in self.outcomes
+            ]
+        if self.allocation is not None:
+            self.strategy = self.allocation
+        return self
 
 
 class MultiLayBranchResponse(BaseModel):
@@ -337,10 +389,37 @@ class MultiLayBranchResponse(BaseModel):
     outcome_value: str
 
 
+class MultiLayScenarioResponse(BaseModel):
+    key: str
+    label: str
+    bookmaker_component: str
+    lay_components: list[str]
+    reward_component: str
+    total: str
+
+
+class MultiLayStrategyReferenceResponse(BaseModel):
+    strategy: str
+    multiplier: str | None
+    total_lay_stake: str | None
+
+
 class MultiLayResponse(BaseModel):
     result_kind: Literal["reference"] = "reference"
     calculation_state: str
+    calculation_version: str
+    backing_type: str
+    strategy: str
+    effective_back_odds: str
+    retained_refund: str
+    selected_multiplier: str
+    default_minimum_multiplier: str
+    default_maximum_multiplier: str
+    references: list[MultiLayStrategyReferenceResponse]
     branches: list[MultiLayBranchResponse]
+    scenarios: list[MultiLayScenarioResponse]
+    maximum_exchange_exposure: str
+    reference_result: str
     no_selection_value: str
     matched_result: str
     total_liability: str
@@ -1226,51 +1305,73 @@ def list_calculator_exchanges() -> list[CalculatorExchangeResponse]:
 
 @router.post("/fund-manager/calculators/multi-lay/preview", response_model=MultiLayResponse)
 def preview_multi_lay(payload: MultiLayPayload) -> MultiLayResponse:
-    first, *additional = payload.outcomes
-    result = calculate_sportsbook_current_value(
-        SportsbookCalculationInput(
-            profile_id="standalone",
-            record_id="standalone-multi-lay-preview",
-            status="Placed",
-            result="Pending",
-            offer_type="Bet & Get",
-            back_stake=payload.back_stake,
-            back_odds=payload.back_odds,
-            match_strategy="Multilay" if payload.allocation == "standard" else "Multilay-Underlay",
-            lay_odds_1=first.lay_odds,
-            multi_lay_outcome_1_name=first.label,
-            multi_lay_outcomes_json=json.dumps(
-                [
-                    {"id": f"outcome{index}", "label": outcome.label, "layOdds": outcome.lay_odds}
-                    for index, outcome in enumerate(additional, start=2)
-                ],
-                separators=(",", ":"),
+    try:
+        result = calculate_multi_lay_reference(
+            backing_type=payload.backing_type,
+            back_stake=Decimal(payload.back_stake),
+            back_odds=Decimal(payload.back_odds),
+            profit_boost_percent=Decimal(payload.profit_boost_percent),
+            refund_amount=Decimal(payload.refund_amount),
+            retention_percent=Decimal(payload.retention_percent),
+            strategy=payload.strategy,
+            custom_multiplier=Decimal(payload.custom_multiplier),
+            legs=tuple(
+                MultiLayLegInput(
+                    label=outcome.label,
+                    lay_odds=Decimal(outcome.lay_odds),
+                    commission=Decimal(outcome.commission),
+                )
+                for outcome in payload.outcomes
             ),
-            lay_commission_1=payload.exchange_commission,
-        ),
-        as_of_date=date.today(),
-    )
-    if result.calculation_state != "resolved" or not result.multi_lay_branches:
-        raise HTTPException(
-            status_code=422, detail="The Multi-Lay inputs did not produce a complete result."
         )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     return MultiLayResponse(
-        calculation_state=result.calculation_state,
+        calculation_state="resolved",
+        calculation_version=result.calculation_version,
+        backing_type=result.backing_type,
+        strategy=result.strategy,
+        effective_back_odds=str(result.effective_back_odds),
+        retained_refund=_money(result.retained_refund),
+        selected_multiplier=str(result.selected_multiplier),
+        default_minimum_multiplier=str(result.default_minimum_multiplier),
+        default_maximum_multiplier=str(result.default_maximum_multiplier),
+        references=[
+            MultiLayStrategyReferenceResponse(
+                strategy=reference.strategy,
+                multiplier=str(reference.multiplier) if reference.multiplier is not None else None,
+                total_lay_stake=_money(reference.total_lay_stake)
+                if reference.total_lay_stake is not None
+                else None,
+            )
+            for reference in result.references
+        ],
         branches=[
             MultiLayBranchResponse(
-                label=branch.label,
-                lay_odds=str(branch.lay_odds),
-                lay_stake=_money(branch.lay_stake),
-                liability=_money(branch.liability),
-                outcome_value=_money(branch.scenario_pnl),
+                label=leg.label,
+                lay_odds=str(leg.lay_odds),
+                lay_stake=_money(leg.lay_stake),
+                liability=_money(leg.liability),
+                outcome_value=_money(result.scenarios[index + 1].total),
             )
-            for branch in result.multi_lay_branches
+            for index, leg in enumerate(result.legs)
         ],
-        no_selection_value=_money(result.scenario_pnl_if_lay_wins),
-        matched_result=_money(result.projected_current_pnl),
-        total_liability=_money(
-            sum((branch.liability for branch in result.multi_lay_branches), Decimal("0"))
-        ),
+        scenarios=[
+            MultiLayScenarioResponse(
+                key=scenario.key,
+                label=scenario.label,
+                bookmaker_component=_money(scenario.bookmaker_component),
+                lay_components=[_money(component) for component in scenario.lay_components],
+                reward_component=_money(scenario.reward_component),
+                total=_money(scenario.total),
+            )
+            for scenario in result.scenarios
+        ],
+        maximum_exchange_exposure=_money(result.maximum_exchange_exposure),
+        reference_result=_money(result.reference_result),
+        no_selection_value=_money(result.scenarios[0].total),
+        matched_result=_money(result.reference_result),
+        total_liability=_money(sum((leg.liability for leg in result.legs), Decimal("0"))),
     )
 
 

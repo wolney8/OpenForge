@@ -609,9 +609,24 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
         raise HTTPException(
             status_code=422, detail="Multi-Lay conversion requires multi-lay source"
         )
-    if payload.source.calculator_mode != payload.calculator.allocation:
+    allocation = payload.calculator.allocation or payload.calculator.strategy
+    if payload.source.calculator_mode != allocation:
         raise HTTPException(
             status_code=422, detail="Multi-Lay source mode does not match calculator"
+        )
+    commissions = {outcome.commission for outcome in payload.calculator.outcomes}
+    if (
+        payload.calculator.backing_type != "normal"
+        or Decimal(payload.calculator.profit_boost_percent) != 0
+        or allocation not in {"standard", "underlay"}
+        or len(commissions) != 1
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "The Sportsbook destination cannot yet preserve this Multi-Lay backing type, "
+                "boost, advanced allocation, or per-leg commission configuration."
+            ),
         )
     preview = preview_multi_lay(payload.calculator)
     exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
@@ -625,7 +640,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
         }
     )
     source_id, checksum, canonical = _envelope_identity(canonical_source)
-    strategy = "Multilay" if payload.calculator.allocation == "standard" else "Multilay-Underlay"
+    strategy = "Multilay" if allocation == "standard" else "Multilay-Underlay"
     first, *additional = payload.calculator.outcomes
     results: list[ConversionTargetResult] = []
     canonical_targets = [
