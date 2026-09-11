@@ -48,6 +48,11 @@ export function CalculatorOutcomes({
     <div className="calculator-result-card-heading"><h3>Outcomes</h3></div>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
+      {columns.length > 0 ? <div className={`extra-place-outcome-row extra-place-outcome-row-heading calculator-outcome-columns-${Math.min(columns.length, 3)}`} role="row">
+        <strong role="columnheader">Scenario</strong>
+        {columns.map((column) => <span key={column} role="columnheader">{column}</span>)}
+        <strong role="columnheader">Total</strong>
+      </div> : null}
       {rows.map((row) => {
         const components = row.components ?? [];
         const accessibleComponents = components.map((values, index) => `${columns[index] ?? `component ${index + 1}`} ${values.map(accessibleValue).join(" and ")}`).join("; ");

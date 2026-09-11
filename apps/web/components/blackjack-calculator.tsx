@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CalculatorUndoButton } from "@/components/calculator-undo-button";
@@ -352,6 +353,7 @@ export function BlackjackCalculator({ onState, search }: {
   const [confirmClear, setConfirmClear] = useState(false);
   const [conversionSnapshot, setConversionSnapshot] = useState<BlackjackSessionSourceSnapshot | null>(null);
   const [conversionBusy, setConversionBusy] = useState(false);
+  const [conversionReceipt, setConversionReceipt] = useState<Array<{ profile: string; account: string; href: string; state: string }>>([]);
   const [sessionSetupOpen, setSessionSetupOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [expandedHistoryHands, setExpandedHistoryHands] = useState<number[]>([]);
@@ -1031,7 +1033,7 @@ export function BlackjackCalculator({ onState, search }: {
         </section>
 
         {error ? <p className="error-text" role="alert">{error}</p> : null}
-        {details.mode !== "simulation" ? <div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="calculators.blackjack.save-activity" disabled={conversionBusy || history.length === 0 || !details.activitySource || (details.mode === "live_play" ? balanceResult === null : !details.withdrawableResult)} onClick={() => void openCasinoConversion()} type="button"><span aria-hidden="true" className="material-symbols-outlined">save</span><span>{conversionBusy ? "Preparing…" : "Save as Casino activity"}</span></button></div> : null}
+        {details.mode !== "simulation" ? <><div className="tracker-nav"><button className="modal-primary-button icon-text-action" data-pd-id="calculators.blackjack.save-activity" disabled={conversionBusy || history.length === 0 || !details.activitySource || (details.mode === "live_play" ? balanceResult === null : !details.withdrawableResult)} onClick={() => { setConversionReceipt([]); void openCasinoConversion(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">save</span><span>{conversionBusy ? "Preparing…" : "Save as Casino activity"}</span></button></div>{conversionReceipt.length ? <section className="calculator-conversion-receipt" role="status"><strong>Casino activity saved</strong>{conversionReceipt.map((item) => <span key={`${item.profile}:${item.href}`}>{item.profile} · {item.account} · Casino {item.href ? <Link href={item.href}>Open row</Link> : null}</span>)}</section> : null}</> : null}
         <details className="calculator-band calculator-band-secondary blackjack-history blackjack-disclosure" data-pd-id="calculators.blackjack.history" onToggle={(event) => setHistoryOpen(event.currentTarget.open)} open={historyOpen}>
           <summary><span><span className="eyebrow">Session history</span><strong>Played hands</strong></span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></summary>
           <div className="stack blackjack-history-content">
@@ -1067,7 +1069,7 @@ export function BlackjackCalculator({ onState, search }: {
         <footer className="workflow-editor-modal-footer"><button className="modal-primary-button" onClick={() => setSessionSetupOpen(false)} type="button">Done</button></footer>
       </section></div>, document.body) : null}
       <ConfirmationDialog cancelLabel="Keep history" confirmLabel="Clear History" description="Clear this authenticated browser session's Blackjack hand history and restart the session counter?" onCancel={() => setConfirmClear(false)} onConfirm={() => { try { sessionStorage.removeItem(storageKey); } catch { /* Session storage is optional. */ } setHistory([]); setRound(emptyRound(1)); setDetails({ ...emptySessionDetails(), startedAt: new Date().toISOString() }); setPreview(null); setSessionModeError(""); setUndoStack([]); setHistoryOpen(true); setExpandedHistoryHands([]); setLastHandOpen(true); setLastHandInteracted(false); setCardTarget({ kind: "dealer" }); setConfirmClear(false); }} open={confirmClear} title="Clear Blackjack history?" />
-      {conversionSnapshot ? <CalculatorConversionDialog blackjack={conversionSnapshot} onClose={() => setConversionSnapshot(null)} /> : null}
+      {conversionSnapshot ? <CalculatorConversionDialog blackjack={conversionSnapshot} onClose={() => setConversionSnapshot(null)} onComplete={setConversionReceipt} /> : null}
     </div>
   );
 }

@@ -10,6 +10,7 @@ from openforge_api.calculations.free_bet_current_value import (
     calculate_free_bet_current_value,
     calculate_free_bet_rows_for_profile,
 )
+from openforge_api.free_bets import serialize_calculation
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[3]
@@ -208,6 +209,12 @@ def test_open_free_bet_keeps_current_and_final_values_separate() -> None:
     assert result.final_net_pnl is None
     assert result.reporting_value == Decimal("7.57")
 
+    serialized = serialize_calculation(result)
+    assert serialized["bookmaker_component_if_back_wins"] == "40.00"
+    assert serialized["exchange_component_if_back_wins"] == "-32.42"
+    assert serialized["bookmaker_component_if_lay_wins"] == "0.00"
+    assert serialized["exchange_component_if_lay_wins"] == "7.57"
+
 
 def test_manual_override_without_reason_stays_review_required_for_free_bets() -> None:
     result = calculate_free_bet_current_value(
@@ -279,8 +286,7 @@ def test_available_free_bet_without_matching_plan_resolves_as_zero_value_placeho
     assert result.lay_status == "Not Laid"
     assert (
         "Available free-bet row has no matching plan yet; current value remains "
-        "0.00 until conversion inputs are entered."
-        in result.calculation_notes
+        "0.00 until conversion inputs are entered." in result.calculation_notes
     )
 
 

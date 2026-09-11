@@ -38,6 +38,7 @@ from openforge_api.each_way_extra_places import (
     create_profile_each_way_extra_place,
 )
 from openforge_api.free_bets import build_response as build_free_bet_response
+from openforge_api.fund_manager_lookup_values import DEFAULT_AUTHORITIES, SPORTSBOOK_OFFER_BET_TYPES
 from openforge_api.multi_profile_entry import (
     evaluate_multi_profile_target,
     get_account_restrictions,
@@ -57,7 +58,8 @@ class ConversionEnvelope(BaseModel):
 
 class SportsbookTarget(BaseModel):
     profile_id: str = Field(min_length=1, max_length=64)
-    bookmaker: str = Field(min_length=1, max_length=120)
+    account_id: str = Field(default="", max_length=64)
+    bookmaker: str = Field(default="", max_length=120)
 
 
 class StandardConversionPayload(BaseModel):
@@ -69,6 +71,7 @@ class StandardConversionPayload(BaseModel):
     bet_type: str = Field(min_length=1, max_length=120)
     offer_name: str = Field(default="", max_length=200)
     fixture_type: str = Field(default="", max_length=120)
+    conversion_intent_id: str = Field(default="legacy", min_length=1, max_length=80)
 
 
 class MultiLayConversionPayload(BaseModel):
@@ -80,6 +83,7 @@ class MultiLayConversionPayload(BaseModel):
     bet_type: str = Field(default="Single", min_length=1, max_length=120)
     offer_name: str = Field(default="", max_length=200)
     fixture_type: str = Field(default="", max_length=120)
+    conversion_intent_id: str = Field(default="legacy", min_length=1, max_length=80)
 
 
 class EachWayConversionPayload(BaseModel):
@@ -88,6 +92,7 @@ class EachWayConversionPayload(BaseModel):
     targets: list[SportsbookTarget] = Field(min_length=1)
     runner: str = Field(min_length=1, max_length=240)
     race: str = Field(min_length=1, max_length=240)
+    conversion_intent_id: str = Field(default="legacy", min_length=1, max_length=80)
 
 
 class BlackjackConversionPayload(BaseModel):
@@ -96,6 +101,7 @@ class BlackjackConversionPayload(BaseModel):
     casino_account: str = Field(min_length=1, max_length=120)
     activity_name: str = Field(default="Blackjack session", min_length=1, max_length=400)
     offer_identity: str = Field(default="", max_length=400)
+    casino_account_id: str = Field(default="", max_length=64)
 
 
 class ConversionTargetResult(BaseModel):
@@ -199,6 +205,14 @@ def _existing_result(
 
 def _standard_destination(payload: StandardConversionPayload) -> tuple[str, str]:
     calculator = payload.calculator
+    if calculator.bet_type == "bonus_lock_in" and calculator.bonus_backing_bet != "Normal":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Bonus Lock-In conversion currently requires a Normal backing bet because "
+                "the destination ledger has no governed free-bet-basis field."
+            ),
+        )
     if calculator.bet_type == "free_bet":
         return "free_bet", payload.offer_type
     expected_offer = {
@@ -216,6 +230,55 @@ def _standard_destination(payload: StandardConversionPayload) -> tuple[str, str]
             f"Offer type {expected_offer}.",
         )
     return "sportsbook", payload.offer_type
+
+
+def _resolve_account_identity(
+    *, profile_id: str, account_id: str, legacy_name: str, expected_type: str = "Bookie"
+) -> Any:
+    candidates = [item for item in list_accounts(profile_id) if item.type == expected_type]
+    if account_id:
+        account = next((item for item in candidates if item.account_id == account_id), None)
+        if account is None:
+            raise HTTPException(
+                status_code=422, detail="Selected Account identity is invalid for this Profile"
+            )
+        return account
+    legacy_matches = [
+        item for item in candidates if item.account.casefold() == legacy_name.casefold()
+    ]
+    if len(legacy_matches) != 1:
+        raise HTTPException(status_code=422, detail="Canonical Account identity is required")
+    return legacy_matches[0]
+
+
+def _validate_destination_classification(payload: StandardConversionPayload) -> None:
+    if payload.offer_type not in DEFAULT_AUTHORITIES["offer_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Offer Type")
+    if payload.bet_type not in DEFAULT_AUTHORITIES["bet_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Bet Type")
+    if payload.fixture_type and payload.fixture_type not in DEFAULT_AUTHORITIES["fixture_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Fixture Type")
+    allowed = SPORTSBOOK_OFFER_BET_TYPES.get(payload.offer_type)
+    if allowed and payload.bet_type not in allowed:
+        raise HTTPException(
+            status_code=422, detail="Bet Type is incompatible with the selected Offer Type"
+        )
+
+
+def _validate_sportsbook_classification(
+    *, offer_type: str, bet_type: str, fixture_type: str
+) -> None:
+    if offer_type not in DEFAULT_AUTHORITIES["offer_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Offer Type")
+    if bet_type not in DEFAULT_AUTHORITIES["bet_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Bet Type")
+    if fixture_type and fixture_type not in DEFAULT_AUTHORITIES["fixture_type"]:
+        raise HTTPException(status_code=422, detail="Select a canonical Fixture Type")
+    allowed = SPORTSBOOK_OFFER_BET_TYPES.get(offer_type)
+    if allowed and bet_type not in allowed:
+        raise HTTPException(
+            status_code=422, detail="Bet Type is incompatible with the selected Offer Type"
+        )
 
 
 def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[str, str]:
@@ -250,6 +313,7 @@ def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[
 @router.post("/standard", response_model=ConversionResponse)
 def convert_standard(payload: StandardConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
+    _validate_destination_classification(payload)
     if payload.source.calculator_family != "matched-betting":
         raise HTTPException(
             status_code=422, detail="Standard conversion requires matched-betting source"
@@ -273,11 +337,22 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
     )
     source_id, checksum, canonical = _envelope_identity(canonical_source)
     results: list[ConversionTargetResult] = []
-    for target in list(
-        {(item.profile_id, item.bookmaker.casefold()): item for item in payload.targets}.values()
+    canonical_targets: list[tuple[SportsbookTarget, Any]] = []
+    for target in payload.targets:
+        account = _resolve_account_identity(
+            profile_id=target.profile_id, account_id=target.account_id, legacy_name=target.bookmaker
+        )
+        canonical_targets.append((target, account))
+    for target, target_account in list(
+        {
+            (item.profile_id, account.account_id): (item, account)
+            for item, account in canonical_targets
+        }.values()
     ):
+        bookmaker = target_account.account
+        operation_source_id = f"{source_id}:{payload.conversion_intent_id}"
         attempt = begin_calculator_conversion_target(
-            source_id=source_id,
+            source_id=operation_source_id,
             source_checksum=checksum,
             source_family="matched-betting",
             source_version=payload.source.calculator_version,
@@ -285,9 +360,9 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             source_envelope_json=canonical,
             destination_kind=destination_kind,
             target_profile_id=target.profile_id,
-            target_account=target.bookmaker,
+            target_account=target_account.account_id,
         )
-        existing = _existing_result(attempt, target.profile_id, target.bookmaker)
+        existing = _existing_result(attempt, target.profile_id, bookmaker)
         if existing:
             results.append(existing)
             continue
@@ -295,7 +370,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=["Conversion is already in progress; retry after it completes"],
                 )
@@ -308,7 +383,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=[reason],
                 )
@@ -318,7 +393,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             profile=profile,
             accounts=list_accounts(target.profile_id),
             exchange_commissions=list_profile_exchange_commissions(target.profile_id),
-            bookmaker=target.bookmaker,
+            bookmaker=bookmaker,
             offer_type=destination_offer_type,
             match_strategy=payload.calculator.strategy,
         )
@@ -334,7 +409,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=reasons,
                 )
@@ -343,7 +418,9 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
         try:
             source_note = f"Calculator source: {source_id} ({checksum})"
             explicit_lay = (
-                payload.calculator.manual_lay_stake
+                preview.selected_lay_stake
+                if payload.calculator.bet_type in {"bonus_lock_in", "money_back"}
+                else payload.calculator.manual_lay_stake
                 if payload.calculator.strategy in {"Custom", "Partial Lay"}
                 else ""
             )
@@ -353,7 +430,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                     {
                         "event_name": payload.event_name,
                         "offer_text": payload.event_name,
-                        "bookmaker": target.bookmaker,
+                        "bookmaker": bookmaker,
                         "offer_type": destination_offer_type,
                         "bet_type": payload.bet_type,
                         "offer_name": payload.offer_name,
@@ -405,7 +482,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                 results.append(
                     ConversionTargetResult(
                         profile_id=target.profile_id,
-                        account=target.bookmaker,
+                        account=bookmaker,
                         state="succeeded",
                         record_id=created_free_bet.free_bet_id,
                         href=href,
@@ -418,7 +495,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                 {
                     "event_name": payload.event_name,
                     "offer_text": payload.event_name,
-                    "bookmaker": target.bookmaker,
+                    "bookmaker": bookmaker,
                     "offer_type": destination_offer_type,
                     "bet_type": payload.bet_type,
                     "offer_name": payload.offer_name,
@@ -468,7 +545,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="succeeded",
                     record_id=created.sportsbook_bet_id,
                     href=href,
@@ -479,7 +556,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=[str(error)],
                 )
@@ -525,6 +602,9 @@ def _sportsbook_target_eligibility(
 @router.post("/multi-lay", response_model=ConversionResponse)
 def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
+    _validate_sportsbook_classification(
+        offer_type=payload.offer_type, bet_type=payload.bet_type, fixture_type=payload.fixture_type
+    )
     if payload.source.calculator_family != "multi-lay":
         raise HTTPException(
             status_code=422, detail="Multi-Lay conversion requires multi-lay source"
@@ -548,12 +628,23 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
     strategy = "Multilay" if payload.calculator.allocation == "standard" else "Multilay-Underlay"
     first, *additional = payload.calculator.outcomes
     results: list[ConversionTargetResult] = []
+    canonical_targets = [
+        (
+            item,
+            _resolve_account_identity(
+                profile_id=item.profile_id, account_id=item.account_id, legacy_name=item.bookmaker
+            ),
+        )
+        for item in payload.targets
+    ]
     targets = {
-        (item.profile_id, item.bookmaker.casefold()): item for item in payload.targets
+        (item.profile_id, account.account_id): (item, account)
+        for item, account in canonical_targets
     }.values()
-    for target in targets:
+    for target, target_account in targets:
+        bookmaker = target_account.account
         attempt = begin_calculator_conversion_target(
-            source_id=source_id,
+            source_id=f"{source_id}:{payload.conversion_intent_id}",
             source_checksum=checksum,
             source_family="multi-lay",
             source_version=payload.source.calculator_version,
@@ -561,9 +652,9 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             source_envelope_json=canonical,
             destination_kind="sportsbook",
             target_profile_id=target.profile_id,
-            target_account=target.bookmaker,
+            target_account=target_account.account_id,
         )
-        existing = _existing_result(attempt, target.profile_id, target.bookmaker)
+        existing = _existing_result(attempt, target.profile_id, bookmaker)
         if existing:
             results.append(existing)
             continue
@@ -571,7 +662,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=["Conversion is already in progress; retry after it completes"],
                 )
@@ -579,7 +670,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             continue
         profile, reasons = _sportsbook_target_eligibility(
             profile_id=target.profile_id,
-            bookmaker=target.bookmaker,
+            bookmaker=bookmaker,
             exchange_name=exchange_name,
             offer_type=payload.offer_type,
             match_strategy=strategy,
@@ -590,7 +681,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=reasons,
                 )
@@ -602,7 +693,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
                 {
                     "event_name": payload.event_name,
                     "offer_text": payload.event_name,
-                    "bookmaker": target.bookmaker,
+                    "bookmaker": bookmaker,
                     "offer_type": payload.offer_type,
                     "bet_type": payload.bet_type,
                     "offer_name": payload.offer_name,
@@ -657,7 +748,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="succeeded",
                     record_id=created.sportsbook_bet_id,
                     href=href,
@@ -668,7 +759,7 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=[str(error)],
                 )
@@ -708,12 +799,23 @@ def convert_each_way_extra_place(
     )
     source_id, checksum, canonical = _envelope_identity(canonical_source)
     results: list[ConversionTargetResult] = []
+    canonical_targets = [
+        (
+            item,
+            _resolve_account_identity(
+                profile_id=item.profile_id, account_id=item.account_id, legacy_name=item.bookmaker
+            ),
+        )
+        for item in payload.targets
+    ]
     targets = {
-        (item.profile_id, item.bookmaker.casefold()): item for item in payload.targets
+        (item.profile_id, account.account_id): (item, account)
+        for item, account in canonical_targets
     }.values()
-    for target in targets:
+    for target, target_account in targets:
+        bookmaker = target_account.account
         attempt = begin_calculator_conversion_target(
-            source_id=source_id,
+            source_id=f"{source_id}:{payload.conversion_intent_id}",
             source_checksum=checksum,
             source_family="each-way",
             source_version=payload.source.calculator_version,
@@ -721,9 +823,9 @@ def convert_each_way_extra_place(
             source_envelope_json=canonical,
             destination_kind="each_way_extra_place",
             target_profile_id=target.profile_id,
-            target_account=target.bookmaker,
+            target_account=target_account.account_id,
         )
-        existing = _existing_result(attempt, target.profile_id, target.bookmaker)
+        existing = _existing_result(attempt, target.profile_id, bookmaker)
         if existing:
             results.append(existing)
             continue
@@ -731,7 +833,7 @@ def convert_each_way_extra_place(
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=["Conversion is already in progress; retry after it completes"],
                 )
@@ -744,7 +846,7 @@ def convert_each_way_extra_place(
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=[reason],
                 )
@@ -752,7 +854,7 @@ def convert_each_way_extra_place(
             continue
         _, reasons = _sportsbook_target_eligibility(
             profile_id=target.profile_id,
-            bookmaker=target.bookmaker,
+            bookmaker=bookmaker,
             exchange_name=exchange_name,
             offer_type="Qualifying Bet",
             match_strategy="Standard",
@@ -763,7 +865,7 @@ def convert_each_way_extra_place(
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=reasons,
                 )
@@ -775,8 +877,8 @@ def convert_each_way_extra_place(
                 EachWayExtraPlacePayload(
                     runner=payload.runner,
                     race=payload.race,
-                    bookmaker=target.bookmaker,
-                    bookmaker_account=target.bookmaker,
+                    bookmaker=bookmaker,
+                    bookmaker_account=bookmaker,
                     mode=payload.calculator.mode,
                     each_way_stake=payload.calculator.each_way_stake,
                     back_odds=payload.calculator.back_odds,
@@ -811,7 +913,7 @@ def convert_each_way_extra_place(
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="succeeded",
                     record_id=record_id,
                     href=href,
@@ -822,7 +924,7 @@ def convert_each_way_extra_place(
             results.append(
                 ConversionTargetResult(
                     profile_id=target.profile_id,
-                    account=target.bookmaker,
+                    account=bookmaker,
                     state="failed",
                     reasons=[str(error)],
                 )
@@ -902,8 +1004,14 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
     mode, activity_source, final = _validated_blackjack_source(snapshot)
     if activity_source == "promotion" and not payload.offer_identity.strip():
         raise HTTPException(status_code=422, detail="Promotion / offer identity is required")
+    selected_account = _resolve_account_identity(
+        profile_id=payload.profile_id,
+        account_id=payload.casino_account_id,
+        legacy_name=payload.casino_account,
+    )
+    account_name = selected_account.account
     profile, reasons, _warnings = _casino_eligibility(
-        payload.profile_id, payload.casino_account, str(activity_source)
+        payload.profile_id, account_name, str(activity_source)
     )
     if reasons:
         raise HTTPException(status_code=409, detail="; ".join(reasons))
@@ -917,9 +1025,9 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
         source_envelope_json=canonical,
         destination_kind="casino",
         target_profile_id=payload.profile_id,
-        target_account=payload.casino_account,
+        target_account=selected_account.account_id,
     )
-    existing = _existing_result(attempt, payload.profile_id, payload.casino_account)
+    existing = _existing_result(attempt, payload.profile_id, account_name)
     if existing:
         return ConversionResponse(
             source_id=source_id,
@@ -947,7 +1055,7 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
                 "date_started": started,
                 "date_settling": ended,
                 "expiry_datetime": "",
-                "bookmaker": payload.casino_account,
+                "bookmaker": account_name,
                 "offer_type": offer_type,
                 "offer_name": payload.offer_identity.strip() or payload.activity_name,
                 "game": "Blackjack",
@@ -973,7 +1081,7 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
             f"/profiles/{payload.profile_id}/tracker/casino-offers"
             f"?record={created.casino_offer_id}&source=calculator-conversion"
         )
-        body = f"Saved Blackjack session to {profile.display_name} · {payload.casino_account}."
+        body = f"Saved Blackjack session to {profile.display_name} · {account_name}."
         complete_calculator_conversion_target(
             attempt["attempt_id"],
             destination_record_id=created.casino_offer_id,
@@ -983,7 +1091,7 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
         )
         result_row = ConversionTargetResult(
             profile_id=payload.profile_id,
-            account=payload.casino_account,
+            account=account_name,
             state="succeeded",
             record_id=created.casino_offer_id,
             href=href,

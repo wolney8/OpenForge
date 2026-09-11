@@ -9,6 +9,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import type { BlackjackSessionSourceSnapshot } from "@/lib/blackjack-session";
+import { fixtureTypeOptions, getAllowedBetTypesForOfferType, getDefaultBetTypeForOfferType, getOfferTypeOptions } from "@/lib/workbook-options";
 
 type Profile = { profile_id: string; display_name: string; profile_code: string; status: string };
 type Account = { account_id: string; account: string; type: string; status: string; lifecycle_status: string; restrictions: string[] };
@@ -23,13 +24,14 @@ type Props = {
   blackjack?: BlackjackSessionSourceSnapshot;
   financial?: CalculatorFinancialSource;
   onClose: () => void;
+  onComplete?: (receipt: Array<{ profile: string; account: string; href: string; state: string }>) => void;
 };
 
 function standardDestinationOfferType(financial?: CalculatorFinancialSource) {
-  if (financial?.kind !== "standard") return financial?.kind === "multi-lay" ? "Qualifying Bet" : "";
+  if (financial?.kind !== "standard") return financial?.kind === "multi-lay" ? "Bet & Get" : "";
   const betType = String(financial.calculator.bet_type ?? "");
   if (betType === "qualifying" && financial.calculator.promotion_mode === "cashback") return "Cashback";
-  if (betType === "qualifying") return "Qualifying Bet";
+  if (betType === "qualifying") return "";
   if (betType === "cashback") return "Cashback";
   if (betType === "money_back" || betType === "bonus_lock_in") return "Bonus Lock-In";
   if (betType === "profit_boost") return "Profit Boost";
@@ -56,7 +58,7 @@ function accountReview(account: Account, isBlackjack: boolean, promotional: bool
   return { blocked: false, message: "" };
 }
 
-export function CalculatorConversionDialog({ blackjack, financial, onClose }: Props) {
+export function CalculatorConversionDialog({ blackjack, financial, onClose, onComplete }: Props) {
   const dialogRef = useRef<HTMLElement | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [accounts, setAccounts] = useState<Record<string, Account[]>>({});
@@ -75,10 +77,13 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<TargetResult[]>([]);
+  const [conversionIntentId] = useState(() => globalThis.crypto?.randomUUID?.() ?? `intent-${Date.now()}`);
   const isBlackjack = Boolean(blackjack);
   const isEachWay = financial?.kind === "each-way-extra-place";
   const standardBetType = financial?.kind === "standard" ? String(financial.calculator.bet_type ?? "") : "";
-  const offerTypeIsSourceGoverned = standardBetType !== "" && standardBetType !== "free_bet";
+  const offerTypeIsSourceGoverned = standardBetType !== "" && !["free_bet", "qualifying"].includes(standardBetType);
+  const offerTypeOptions = getOfferTypeOptions(offerType);
+  const allowedBetTypes = getAllowedBetTypesForOfferType(offerType, betType);
   const financialLabel = standardBetType === "free_bet" ? "Free Bet" : financial?.kind === "standard" ? "Standard" : financial?.kind === "multi-lay" ? "Multi-Lay" : "Each Way / Extra Place";
   useDialogFocusLifecycle(true, dialogRef);
 
@@ -125,17 +130,19 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
     if (!ready) return;
     setBusy(true); setError(""); setMessage("");
     const endpoint = isBlackjack ? "blackjack" : financial!.kind;
+    const unresolvedProfiles = selectedProfiles.filter((profileId) => !results.some((item) => item.profile_id === profileId && item.state !== "failed"));
     const body = isBlackjack ? {
       snapshot: blackjack, profile_id: selectedProfiles[0], casino_account: selectedAccountForProfile(selectedProfiles[0])?.account,
+      casino_account_id: selectedAccountForProfile(selectedProfiles[0])?.account_id,
       activity_name: activityName, offer_identity: offerIdentity,
     } : isEachWay ? {
       source: financial!.envelope, calculator: financial!.calculator,
-      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccountForProfile(profile_id)?.account })),
-      runner, race,
+      targets: unresolvedProfiles.map((profile_id) => ({ profile_id, account_id: selectedAccounts[profile_id] })),
+      runner, race, conversion_intent_id: conversionIntentId,
     } : {
       source: financial!.envelope, calculator: financial!.calculator,
-      targets: selectedProfiles.map((profile_id) => ({ profile_id, bookmaker: selectedAccountForProfile(profile_id)?.account })),
-      event_name: eventName, offer_type: offerType, bet_type: betType, offer_name: offerName, fixture_type: fixtureType,
+      targets: unresolvedProfiles.map((profile_id) => ({ profile_id, account_id: selectedAccounts[profile_id] })),
+      event_name: eventName, offer_type: offerType, bet_type: betType, offer_name: offerName, fixture_type: fixtureType, conversion_intent_id: conversionIntentId,
     };
     try {
       const response = await fetch(`${apiBaseUrl}/fund-manager/calculator-conversions/${endpoint}`, {
@@ -143,7 +150,12 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
       });
       if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Unable to complete conversion."));
       const converted = await response.json() as { notification: string; results: TargetResult[] };
-      setResults(converted.results); setMessage(converted.notification);
+      const combined = [...results.filter((prior) => !converted.results.some((item) => item.profile_id === prior.profile_id)), ...converted.results];
+      setResults(combined); setMessage(converted.notification);
+      if (selectedProfiles.length > 0 && selectedProfiles.every((profileId) => combined.some((item) => item.profile_id === profileId && item.state !== "failed"))) {
+        const receipt = combined.map((item) => ({ profile: profiles.find((profile) => profile.profile_id === item.profile_id)?.display_name ?? item.profile_id, account: item.account, href: item.href, state: item.state }));
+        onComplete?.(receipt); onClose();
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to complete conversion.");
     } finally { setBusy(false); }
@@ -159,12 +171,12 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
         {!isBlackjack ? <section className="stack-tight"><h3>Destination details</h3><div className="form-grid opportunity-setup-grid">
           {isEachWay ? <><label className="field-control"><span>Runner</span><input onChange={(event) => setRunner(event.target.value)} value={runner} /></label><label className="field-control"><span>Race</span><input onChange={(event) => setRace(event.target.value)} value={race} /></label></> : <>
           <label className="field-control field-span-2"><span>Event / fixture</span><input onChange={(event) => setEventName(event.target.value)} value={eventName} /></label>
-          <label className="field-control"><span>Offer type</span><input onChange={(event) => setOfferType(event.target.value)} readOnly={offerTypeIsSourceGoverned} value={offerType} /></label>
-          <label className="field-control"><span>Bet type</span><input onChange={(event) => setBetType(event.target.value)} value={betType} /></label>
+          <label className="field-control"><span>Offer type</span><select disabled={offerTypeIsSourceGoverned} onChange={(event) => { const next = event.target.value; setOfferType(next); setBetType(getDefaultBetTypeForOfferType(next, betType)); }} value={offerType}><option value="">Select offer type</option>{offerTypeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="field-control"><span>Bet type</span><select onChange={(event) => setBetType(event.target.value)} value={betType}>{allowedBetTypes.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="field-control"><span>Offer name</span><input onChange={(event) => setOfferName(event.target.value)} value={offerName} /></label>
-          <label className="field-control"><span>Fixture type</span><input onChange={(event) => setFixtureType(event.target.value)} value={fixtureType} /></label>
+          <label className="field-control"><span>Fixture type</span><select onChange={(event) => setFixtureType(event.target.value)} value={fixtureType}><option value="">Select fixture type</option>{fixtureTypeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           </>}
-        </div></section> : <section className="stack-tight"><h3>Activity details</h3><div className="form-grid opportunity-setup-grid"><label className="field-control"><span>Activity name</span><input onChange={(event) => setActivityName(event.target.value)} value={activityName} /></label>{blackjack?.activity_source === "promotion" ? <label className="field-control"><span>Promotion / offer identity</span><input onChange={(event) => setOfferIdentity(event.target.value)} value={offerIdentity} /></label> : null}</div></section>}
+        </div>{standardBetType === "profit_boost" ? <p className="field-hint">Effective odds to be saved: <strong>{String(financial?.envelope.canonical_inputs.effective_back_odds ?? "Not available")}</strong></p> : null}</section> : <section className="stack-tight"><h3>Activity details</h3><div className="form-grid opportunity-setup-grid"><label className="field-control"><span>Activity name</span><input onChange={(event) => setActivityName(event.target.value)} value={activityName} /></label>{blackjack?.activity_source === "promotion" ? <label className="field-control"><span>Promotion / offer identity</span><input onChange={(event) => setOfferIdentity(event.target.value)} value={offerIdentity} /></label> : null}</div></section>}
         <section className="stack-tight"><h3>{isBlackjack ? "Target Profile and Casino Account" : "Profiles and bookmaker Accounts"}</h3><div className="multi-profile-target-list">
           {profiles.map((profile) => {
             const selected = selectedProfiles.includes(profile.profile_id);

@@ -423,8 +423,9 @@ test.describe("Plum Duff UI contract regressions", () => {
     };
 
     try {
-      await page.route(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, async (route) => {
-        if (route.request().method() === "GET") {
+      await page.route(`**/profiles/${profileId}/sportsbook-bets**`, async (route) => {
+        const url = new URL(route.request().url());
+        if (route.request().method() === "GET" && url.pathname.endsWith("/sportsbook-bets")) {
           await route.fulfill({
             body: JSON.stringify([createdRow, finalRow]),
             contentType: "application/json",
@@ -541,6 +542,20 @@ test.describe("Plum Duff UI contract regressions", () => {
       expect(iconStyles.className).toMatch(
         /ledger-value-state-(current|final|neutral)/
       );
+      await row.click();
+      const editor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+      await expect(editor).toBeVisible();
+      const summaryValue = editor.locator(".editor-summary-value-chip");
+      const summaryGeometry = await summaryValue.evaluate((element) => {
+        const badge = element.getBoundingClientRect();
+        const value = element.querySelector(".financial-value-visual")!.getBoundingClientRect();
+        return {
+          x: Math.abs((badge.left + badge.right) / 2 - (value.left + value.right) / 2),
+          y: Math.abs((badge.top + badge.bottom) / 2 - (value.top + value.bottom) / 2),
+        };
+      });
+      expect(summaryGeometry.x).toBeLessThanOrEqual(1);
+      expect(summaryGeometry.y).toBeLessThanOrEqual(1);
     } finally {
       await request.delete(
         `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${createdRow.sportsbook_bet_id}`
@@ -563,15 +578,19 @@ test.describe("Plum Duff UI contract regressions", () => {
         created_at: "2026-09-10T12:30:00Z", updated_at: "2026-09-10T12:30:00Z", resolved_net_pnl: value, calculation_state: "resolved", calculation_notes: [], counts_as_open: false, is_overdue: false, week_label: "2026-W37",
       };
     };
-    await page.route(`**/profiles/${profileId}/casino-offers`, (route) => route.fulfill({ json: [casinoRow("negative", "-3.00"), casinoRow("positive", "3.00")] }));
+    await page.route(`**/profiles/${profileId}/casino-offers**`, (route) => route.fulfill({ json: [casinoRow("negative", "-3.00"), casinoRow("positive", "3.00")] }));
     await page.route(`**/profiles/${profileId}/accounts`, (route) => route.fulfill({ json: [] }));
     await page.route(`**/profiles/${profileId}/lookup-values`, (route) => route.fulfill({ json: [] }));
-    await page.route(`**/profiles/${profileId}/tracker-settings`, (route) => route.fulfill({ json: { active_date_preset: "All Time", custom_start_date: "", custom_end_date: "", range_back_days: 0, range_forward_days: 0 } }));
+    await page.route(`**/profiles/${profileId}/tracker-settings`, (route) => route.fulfill({ json: { active_date_preset: "All Dates", custom_start_date: "", custom_end_date: "", range_back_days: 0, range_forward_days: 0 } }));
     await page.route("**/account-catalogue/source", (route) => route.fulfill({ json: { records: [], source_hash: "synthetic" } }));
     await page.route(`**/profiles/${profileId}/bookmaker-display-settings`, (route) => route.fulfill({ json: {} }));
     await page.route("**/fund-manager/common-bet-combos?active_only=true", (route) => route.fulfill({ json: [] }));
     await page.route("**/fund-manager/common-bet-combos/profile-overrides/**", (route) => route.fulfill({ json: [] }));
     await page.route("**/fund-manager/preferences/financial-motion", (route) => route.fulfill({ json: { duration_ms: 520, enabled: true, replay_delay_ms: 1500, stagger_ms: 80 } }));
+    await page.addInitScript((keys) => keys.forEach((key) => window.localStorage.removeItem(key)), [
+      `openforge-ledger-table-mode:${profileId}:casino-offers`,
+      `openforge-ledger-table-filters:${profileId}:casino-offers`,
+    ]);
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto(`/profiles/${profileId}/tracker/casino-offers?search=${encodeURIComponent(marker)}`);
       const negativeRow = page.locator(".data-table tbody tr", { hasText: `${marker} negative` });

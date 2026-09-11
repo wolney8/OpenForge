@@ -110,6 +110,10 @@ class FreeBetResponse(FreeBetPayload):
     calculated_liability_1: str | None
     scenario_pnl_if_back_wins: str | None
     scenario_pnl_if_lay_wins: str | None
+    bookmaker_component_if_back_wins: str | None
+    exchange_component_if_back_wins: str | None
+    bookmaker_component_if_lay_wins: str | None
+    exchange_component_if_lay_wins: str | None
     projected_current_pnl: str | None
     actual_net_pnl: str | None
     final_net_pnl: str | None
@@ -159,6 +163,10 @@ class FreeBetCalculationPreviewResponse(BaseModel):
     calculated_liability_1: str | None
     scenario_pnl_if_back_wins: str | None
     scenario_pnl_if_lay_wins: str | None
+    bookmaker_component_if_back_wins: str | None
+    exchange_component_if_back_wins: str | None
+    bookmaker_component_if_lay_wins: str | None
+    exchange_component_if_lay_wins: str | None
     projected_current_pnl: str | None
     actual_net_pnl: str | None
     final_net_pnl: str | None
@@ -193,6 +201,18 @@ def serialize_calculation(calculation: FreeBetCalculationResult) -> dict[str, ob
         ),
         "scenario_pnl_if_lay_wins": format_decimal(
             calculation.scenario_pnl_if_lay_wins, decimals=2
+        ),
+        "bookmaker_component_if_back_wins": format_decimal(
+            calculation.bookmaker_component_if_back_wins, decimals=2
+        ),
+        "exchange_component_if_back_wins": format_decimal(
+            calculation.exchange_component_if_back_wins, decimals=2
+        ),
+        "bookmaker_component_if_lay_wins": format_decimal(
+            calculation.bookmaker_component_if_lay_wins, decimals=2
+        ),
+        "exchange_component_if_lay_wins": format_decimal(
+            calculation.exchange_component_if_lay_wins, decimals=2
         ),
         "projected_current_pnl": format_decimal(calculation.projected_current_pnl, decimals=2),
         "actual_net_pnl": format_decimal(calculation.actual_net_pnl, decimals=2),

@@ -9,12 +9,20 @@ durable requirements.
 
 ## Current state
 
+- Current corrective tranche PD-FIX-085–092 repairs the Bonus Lock-In routing defect, exposes the
+  governed Profit Boost derivation, and tightens the existing #36 review/completion boundary. Normal
+  Bonus Lock-In now uses one offer-aware engine for both triggers and Standard/Underlay/Overlay/
+  Custom/Part Lay; the synthetic £5 @ 9.24/10.5, £5 reward, 70%, 0% fixture resolves to £4.07,
+  £1.50 and £4.34. Free Bet SNR Standard/Part Lay is calculator-supported but conversion-blocked
+  because the Sportsbook destination has no backing-basis field; SR and SNR advanced capital-target
+  references remain explicit unsupported combinations. This supersedes earlier broad “29 modes”
+  assurance: #113 proves representative fixtures, not every cross-product.
 - Current #36 conversion reconciliation records one authoritative family/mode matrix in the
   existing bridge contract. The shared Standard adapter now creates native Free Bets Prospecting
   rows for governed SNR/SR modes; maps Cashback, back-loses Bonus Lock-In/Money Back and every
   Profit Boost derivation into their supported destination fields; preserves explicit Custom/Part
   Lay input; and embeds the audited reference result in the immutable SHA-256 source envelope.
-  Source/envelope mode mismatches and Bonus Lock-In back-wins fail before any write. Existing
+  Source/envelope mode mismatches and unsupported Bonus backing bases fail before any write. Existing
   Multi-Lay, Each Way / Extra Place and completed Blackjack adapters retain their Profile rules,
   source identity, linked Notifications and retry idempotency. Sequential Lay, Early Payout / 2UP,
   Multiples and Dutching remain losslessly blocked; Odds / Probability and Blackjack Simulation
@@ -36,12 +44,12 @@ durable requirements.
   normal UI and fail-closed on the server. Financial calculations and #113 results are unchanged.
   Evidence is synced to #35 and #92; Will's acceptance recheck remains pending.
 - Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
-  The durable audit and independent API fixture cover all exposed families/modes: 29 modes are
-  `PROVEN PASS`, with zero remaining failures. Shared money quantization canonicalises rounded
+  The durable audit and independent API fixture cover 29 representative family/mode fixtures,
+  not every exposed input/strategy cross-product. Shared money quantization canonicalises rounded
   signed zero, closing Overlay AUD-STD-03 without changing its arithmetic. Current TeamProfit
-  source promoted the refund-if-back-loses Bonus Lock-In contract and its `money_back`
-  compatibility alias; reward-if-back-wins remains the sole `BLOCKED` mode because no authority
-  defines its reward product or inverse equalisation. Eight external comparisons remain explicit in
+  source plus the current Outplayed calculator/source govern Normal backing for both reward triggers,
+  and the `money_back` compatibility alias. Free Bet SR and SNR advanced capital-target variants
+  remain unsupported. Eight external comparisons remain explicit in
   `docs/audits/issue-113-independent-calculator-verification-2026-09-10.md`. No unrelated formula changed.
   #36 manual acceptance remains on hold until this audit is reviewed.
 - Prior feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),

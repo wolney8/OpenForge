@@ -1,5 +1,10 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
+async function authorizeServerRoute(page: import("@playwright/test").Page) {
+  const token = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (token) await page.context().addCookies([{ name: "pd_session", value: token, url: process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010" }]);
+}
+
 async function deleteFreeBetFixture(
   request: APIRequestContext,
   profileId: string,
@@ -121,6 +126,7 @@ test("Free Bets settlement uses unique result options and one step edit chip", a
   page,
   request,
 }) => {
+  await authorizeServerRoute(page);
   test.setTimeout(90_000);
   const profileId = "profile-demo-001";
   const createResponse = await request.post(
@@ -185,13 +191,21 @@ test("Free Bets settlement uses unique result options and one step edit chip", a
     await expect(
       settlementPanel.locator('[data-pd-id="free-bets.editor.edit-settled-row"]')
     ).toHaveCount(0);
-    const footerPrimaryActions = editor.locator(".workflow-editor-footer-primary");
-    await expect(footerPrimaryActions.getByRole("button", { exact: true, name: "Save Edits" })).toBeDisabled();
-    await expect(footerPrimaryActions.getByRole("button", { exact: true, name: "Cancel" })).toBeVisible();
-    await footerPrimaryActions.getByRole("button", { exact: true, name: "Cancel" }).click();
-    await expect(
-      settlementPanel.locator('[data-pd-id="free-bets.editor.edit-settled-row"]')
-    ).toHaveCount(1);
+    await resultSelect.selectOption("Pending");
+    const outcomes = settlementPanel.locator('[data-pd-id="free-bets.settlement.shared-outcomes"]');
+    await expect(outcomes).toBeVisible();
+    await expect(outcomes).toContainText("Bookmaker");
+    await expect(outcomes).toContainText("Exchange");
+    const outcomeGeometry = await settlementPanel.locator('[data-pd-id="free-bets.editor.settlement-outcomes"]').evaluate((panel) => {
+      const matrix = panel.querySelector('[data-pd-id="free-bets.settlement.shared-outcomes"]')!.getBoundingClientRect();
+      const outer = panel.getBoundingClientRect();
+      return { matrixWidth: matrix.width, outerWidth: outer.width };
+    });
+    expect(outcomeGeometry.matrixWidth / outcomeGeometry.outerWidth).toBeGreaterThan(0.9);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await resultSelect.selectOption("Back Won");
+    await editor.getByRole("button", { name: "Close free-bet editor" }).click();
+    await expect(editor).toHaveCount(0);
   } finally {
     await deleteFreeBetFixture(request, profileId, createdRow.free_bet_id);
   }

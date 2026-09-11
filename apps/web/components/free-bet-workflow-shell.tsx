@@ -145,6 +145,10 @@ type FreeBetCalculationPreview = {
   underlay_reference_lay_stake: string | null;
   overlay_reference_lay_stake: string | null;
   calculated_liability_1: string | null;
+  bookmaker_component_if_back_wins: string | null;
+  exchange_component_if_back_wins: string | null;
+  bookmaker_component_if_lay_wins: string | null;
+  exchange_component_if_lay_wins: string | null;
   scenario_pnl_if_back_wins: string | null;
   scenario_pnl_if_lay_wins: string | null;
   projected_current_pnl: string | null;
@@ -203,6 +207,10 @@ type FreeBetRecord = {
   underlay_reference_lay_stake: string | null;
   overlay_reference_lay_stake: string | null;
   calculated_liability_1: string | null;
+  bookmaker_component_if_back_wins: string | null;
+  exchange_component_if_back_wins: string | null;
+  bookmaker_component_if_lay_wins: string | null;
+  exchange_component_if_lay_wins: string | null;
   scenario_pnl_if_back_wins: string | null;
   scenario_pnl_if_lay_wins: string | null;
   projected_current_pnl: string | null;
@@ -4661,9 +4669,9 @@ export function FreeBetWorkflowShell({
                   {isNoLayStrategy ? (
                   <div className="calculator-panel-card calculator-result-panel">
                     {previewReady ? (
-                      <CalculatorOutcomes inspectionId="free-bets.matching.outcomes" rows={[
-                        { key: "back-wins", label: getFreeBetBackLabel(formState.result), tone: "positive", total: activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins },
-                        { key: "lay-wins", label: getFreeBetLayLabel(formState.result, isNoLayStrategy), tone: "exchange", total: activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins },
+                      <CalculatorOutcomes columns={["Bookmaker", "Exchange"]} inspectionId="free-bets.matching.outcomes" rows={[
+                        { key: "back-wins", label: getFreeBetBackLabel(formState.result), tone: "positive", components: [[activePreviewCalculation?.bookmaker_component_if_back_wins ?? selectedRow?.bookmaker_component_if_back_wins], [activePreviewCalculation?.exchange_component_if_back_wins ?? selectedRow?.exchange_component_if_back_wins]], total: activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins },
+                        { key: "lay-wins", label: getFreeBetLayLabel(formState.result, isNoLayStrategy), tone: "exchange", components: [[activePreviewCalculation?.bookmaker_component_if_lay_wins ?? selectedRow?.bookmaker_component_if_lay_wins], [activePreviewCalculation?.exchange_component_if_lay_wins ?? selectedRow?.exchange_component_if_lay_wins]], total: activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins },
                       ]} summary={<span>{activeDisplayedValueLabel} <CalculatorOutcomeValueDisplay label={activeDisplayedValueLabel} value={activeDisplayedNumericValue} /></span>} />
                     ) : (
                       <p className="lede">
@@ -4837,9 +4845,9 @@ export function FreeBetWorkflowShell({
                 data-pd-id="free-bets.editor.settlement-outcomes"
               >
                 {formState.result === "Pending" ? (
-                  <CalculatorOutcomes inspectionId="free-bets.settlement.shared-outcomes" rows={[
-                    { key: "back-wins", label: getFreeBetBackLabel(formState.result), tone: "positive", total: activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins },
-                    { key: "lay-wins", label: getFreeBetLayLabel(formState.result, isNoLayStrategy), tone: "exchange", total: activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins },
+                  (activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins) == null ? <p className="field-hint">Enter the required stake and matching odds to preview Outcomes.</p> : <CalculatorOutcomes columns={["Bookmaker", "Exchange"]} inspectionId="free-bets.settlement.shared-outcomes" rows={[
+                    { key: "back-wins", label: getFreeBetBackLabel(formState.result), tone: "positive", components: [[activePreviewCalculation?.bookmaker_component_if_back_wins ?? selectedRow?.bookmaker_component_if_back_wins], [activePreviewCalculation?.exchange_component_if_back_wins ?? selectedRow?.exchange_component_if_back_wins]], total: activePreviewCalculation?.scenario_pnl_if_back_wins ?? selectedRow?.scenario_pnl_if_back_wins },
+                    { key: "lay-wins", label: getFreeBetLayLabel(formState.result, isNoLayStrategy), tone: "exchange", components: [[activePreviewCalculation?.bookmaker_component_if_lay_wins ?? selectedRow?.bookmaker_component_if_lay_wins], [activePreviewCalculation?.exchange_component_if_lay_wins ?? selectedRow?.exchange_component_if_lay_wins]], total: activePreviewCalculation?.scenario_pnl_if_lay_wins ?? selectedRow?.scenario_pnl_if_lay_wins },
                   ]} summary={<span>{activeDisplayedValueLabel} <CalculatorOutcomeValueDisplay label={activeDisplayedValueLabel} value={activeDisplayedNumericValue} /></span>} />
                 ) : (
                   <><div className="settlement-outcome-primary"><span className="summary-label">{activeDisplayedValueLabel}</span><strong>{renderPreviewFinancialValue(activeDisplayedNumericValue)}</strong></div><div className="settlement-outcome-status">

@@ -85,7 +85,7 @@ def standard_payload(profile_ids: list[str]) -> dict[str, object]:
             {"profile_id": profile_id, "bookmaker": "Bet365"} for profile_id in profile_ids
         ],
         "event_name": "Synthetic United v Example City",
-        "offer_type": "Qualifying Bet",
+        "offer_type": "Bet & Get",
         "bet_type": "Single",
         "offer_name": "",
         "fixture_type": "Football",
@@ -117,7 +117,7 @@ def multi_lay_payload(profile_ids: list[str]) -> dict[str, object]:
             {"profile_id": profile_id, "bookmaker": "Bet365"} for profile_id in profile_ids
         ],
         "event_name": "Synthetic Multi-Lay fixture",
-        "offer_type": "Qualifying Bet",
+        "offer_type": "Bet & Get",
         "bet_type": "Single",
         "fixture_type": "Football",
     }
@@ -270,6 +270,54 @@ def test_standard_conversion_is_profile_isolated_recalculated_and_idempotent(
     assert {item["href"] for item in notices} == {item["href"] for item in first.json()["results"]}
 
 
+def test_standard_new_intent_creates_new_opportunity_but_retry_does_not(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = standard_payload(["profile-demo-001"])
+    payload["conversion_intent_id"] = "intent-one"
+    first = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    retry = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    payload["conversion_intent_id"] = "intent-two"
+    second = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    assert first.json()["results"][0]["state"] == "succeeded"
+    assert retry.json()["results"][0]["state"] == "already_succeeded"
+    assert second.json()["results"][0]["state"] == "succeeded"
+    assert first.json()["results"][0]["record_id"] != second.json()["results"][0]["record_id"]
+
+
+def test_standard_uses_account_id_and_rejects_noncanonical_classification(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Betfred", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    with connect() as connection:
+        connection.execute(
+            "UPDATE accounts SET account = 'Same Brand' WHERE profile_id = ? AND type = 'Bookie'",
+            ("profile-demo-001",),
+        )
+    accounts = [
+        row
+        for row in client.get("/profiles/profile-demo-001/accounts").json()
+        if row["account"] == "Same Brand"
+    ]
+    payload = standard_payload(["profile-demo-001"])
+    payload["targets"] = [
+        {"profile_id": "profile-demo-001", "account_id": accounts[1]["account_id"]}
+    ]
+    assert (
+        client.post("/fund-manager/calculator-conversions/standard", json=payload).status_code
+        == 200
+    )
+    payload["offer_type"] = "made-up offer"
+    assert (
+        client.post("/fund-manager/calculator-conversions/standard", json=payload).status_code
+        == 422
+    )
+
+
 def test_standard_conversion_keeps_independent_failed_target_retryable(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = authenticated_client()
@@ -359,9 +407,7 @@ def test_standard_governed_offer_modes_map_to_authoritative_sportsbook_fields(
         assert response.status_code == 200, response.text
         result = response.json()["results"][0]
         assert result["state"] == "succeeded"
-        row = client.get(
-            f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
-        ).json()
+        row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}").json()
         assert row["offer_type"] == offer_type
         assert row["profit_boost_mode"] == destination_boost_mode
         assert row["calculation_state"] == "resolved"
@@ -382,11 +428,53 @@ def test_standard_custom_and_part_lay_preserve_explicit_stake(tmp_path: Path) ->
         response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
         assert response.status_code == 200, response.text
         result = response.json()["results"][0]
-        row = client.get(
-            f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
-        ).json()
+        row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}").json()
         assert row["lay_actual"] == "8.75"
         assert row["calculation_state"] == "resolved"
+
+
+def test_bonus_lock_in_conversion_uses_offer_aware_selected_strategy_stake(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = standard_payload(["profile-demo-001"])
+    calculator = payload["calculator"]
+    source = payload["source"]
+    assert isinstance(calculator, dict) and isinstance(source, dict)
+    calculator.update(
+        bet_type="bonus_lock_in",
+        bonus_backing_bet="Normal",
+        strategy="Underlay",
+        back_stake="5.00",
+        back_odds="9.24",
+        lay_odds="10.50",
+        exchange_commission="0",
+        promotion_value="5.00",
+        retention_percent="70",
+        bonus_trigger="Lay Wins",
+    )
+    source["calculator_mode"] = "bonus_lock_in"
+    payload["offer_type"] = "Bonus Lock-In"
+    response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    assert response.status_code == 200, response.text
+    result = response.json()["results"][0]
+    row = client.get(
+        f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
+    ).json()
+    assert row["match_strategy"] == "Underlay"
+    assert row["lay_actual"] == "1.50"
+
+    with connect() as connection:
+        target = connection.execute(
+            "SELECT source_envelope_json FROM calculator_conversion_targets "
+            "WHERE destination_record_id = ?",
+            (result["record_id"],),
+        ).fetchone()
+    envelope = json.loads(target["source_envelope_json"])
+    assert envelope["canonical_inputs"]["reference_result"]["selected_lay_stake"] == "1.50"
 
 
 def test_free_bet_snr_and_sr_convert_to_native_prospecting_rows(tmp_path: Path) -> None:
@@ -406,9 +494,7 @@ def test_free_bet_snr_and_sr_convert_to_native_prospecting_rows(tmp_path: Path) 
         assert response.status_code == 200, response.text
         result = response.json()["results"][0]
         assert "/free-bets?" in result["href"]
-        row = client.get(
-            f"/profiles/profile-demo-001/free-bets/{result['record_id']}"
-        ).json()
+        row = client.get(f"/profiles/profile-demo-001/free-bets/{result['record_id']}").json()
         assert row["status"] == "Prospecting"
         assert row["retention_mode"] == retention_mode
         assert row["calculation_state"] == "resolved"
@@ -438,8 +524,8 @@ def test_conversion_envelope_retains_audited_reference_result(tmp_path: Path) ->
     assert response.status_code == 200, response.text
     with connect() as connection:
         row = connection.execute(
-            "SELECT source_envelope_json FROM calculator_conversion_targets WHERE source_id = ?",
-            (response.json()["source_id"],),
+            "SELECT source_envelope_json FROM calculator_conversion_targets WHERE source_id LIKE ?",
+            (f"{response.json()['source_id']}:%",),
         ).fetchone()
     assert row is not None
     envelope = json.loads(row["source_envelope_json"])
@@ -471,13 +557,25 @@ def test_standard_source_mode_and_unsupported_bonus_trigger_fail_before_writes(
     unsupported = standard_payload(["profile-demo-001"])
     unsupported["source"]["calculator_mode"] = "bonus_lock_in"  # type: ignore[index]
     unsupported["calculator"].update(  # type: ignore[union-attr]
-        bet_type="bonus_lock_in", bonus_trigger="Back Wins", promotion_value="10.00"
+        bet_type="bonus_lock_in",
+        bonus_backing_bet="SR",
+        bonus_trigger="Back Wins",
+        promotion_value="10.00",
     )
     unsupported["offer_type"] = "Bonus Lock-In"
     assert (
         client.post("/fund-manager/calculator-conversions/standard", json=unsupported).status_code
         == 422
     )
+    unsupported_snr = standard_payload(["profile-demo-001"])
+    unsupported_snr["source"]["calculator_mode"] = "bonus_lock_in"  # type: ignore[index]
+    unsupported_snr["calculator"].update(  # type: ignore[union-attr]
+        bet_type="bonus_lock_in", bonus_backing_bet="SNR", promotion_value="10.00"
+    )
+    unsupported_snr["offer_type"] = "Bonus Lock-In"
+    response = client.post("/fund-manager/calculator-conversions/standard", json=unsupported_snr)
+    assert response.status_code == 422
+    assert "destination ledger has no governed free-bet-basis field" in response.text
     assert {
         row["sportsbook_bet_id"]
         for row in client.get("/profiles/profile-demo-001/sportsbook-bets").json()

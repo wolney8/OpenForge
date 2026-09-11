@@ -90,8 +90,9 @@ activity is always `Single`.
 |---|---|---|---|---|---|
 | Standard: Qualifying, Standard / Underlay / Overlay / Custom / one Part Lay | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native strategy and explicit custom/part stake fields |
 | Standard: Free Bet SNR / SR | `CONVERTIBLE NOW` | Free Bets Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native retention mode and matching fields |
-| Standard: Cashback; Money Back compatibility; Bonus Lock-In when back loses | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Governed Cashback or Bonus Lock-In destination branches |
-| Standard: Bonus Lock-In when back wins | `BLOCKED — SOURCE MODE UNSUPPORTED` | None | None | None | #37/#113 has no approved inverse-trigger equation; server rejects it |
+| Standard: Cashback; Money Back compatibility; governed Bonus Lock-In Normal back-loses/back-wins | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Offer-aware selected lay is preserved and destination classification is locked to Bonus Lock-In |
+| Standard: Bonus Lock-In Free Bet SNR Standard/Part Lay | `BLOCKED — DESTINATION CONTRACT MISSING` | None | None | None | Calculator maths is governed, but Sportsbook has no backing-bet-basis field and flattening it would change the financial meaning |
+| Standard: Bonus Lock-In Free Bet SNR advanced; Free Bet SR | `BLOCKED — SOURCE MODE UNSUPPORTED` | None | None | None | Capital-target endpoint/SR reward basis is not governed; API fails closed |
 | Standard: Profit Boost, displayed / return-derived / profit-derived / percentage-derived | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native displayed/percentage path; temporary return/profit derivation is preserved in source and applied as explicit derived odds |
 | Multi-Lay: Standard / Underlay, two or three outcomes | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native multi-outcome fields preserve every exposed branch |
 | Extra Place / Each Way | `CONVERTIBLE NOW` | Each Way / Extra Place Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native mode, terms, places and win/place legs |
@@ -105,8 +106,11 @@ activity is always `Single`.
 
 The shared bridge stores one canonical source envelope and SHA-256 identity per conversion target.
 The source remains reference-only: the destination API validates required identity, Account access
-and its own calculation contract. A successful `(source, destination kind, Profile, Account)` target
-is idempotent; failed independent targets remain retryable and successful targets are not rolled back.
+and its own calculation contract. Account selection and persistence use canonical `account_id`; the
+display name is resolved server-side. A retry is idempotent by `(source snapshot, conversion intent,
+destination kind, Profile, Account)`, while a deliberate new exploratory conversion creates a new
+intent. Failed independent targets remain retryable and successful targets are not rolled back.
+Completed Blackjack retains source-snapshot idempotency and cannot be cloned by a new intent.
 
 The implemented Standard and Multi-Lay paths permit one or more authorised Profiles. Governed
 Sportsbook modes create isolated `Prospecting` Sportsbook rows, while SNR/SR creates its native
@@ -180,7 +184,10 @@ adapters are reference-only and perform no business writes.
 
 Bridge classification is deliberately lossless. Governed Standard modes (including native Free Bet
 SNR/SR), Multi-Lay, Each Way / Extra Place and completed Blackjack Free/Live sessions are
-convertible now. Bonus Lock-In when the back wins is source-blocked. Odds / Probability is a utility and has
+convertible now. Governed Normal Bonus Lock-In supports both reward triggers. Free Bet SNR
+Standard/Part Lay is calculator-supported but conversion-blocked until a destination can preserve
+the backing basis; Free Bet SR and SNR advanced capital-target strategies remain source-blocked.
+Odds / Probability is a utility and has
 no destination action. Sequential Lay is blocked because Sportsbook cannot persist ordered,
 conditional legs; Early Payout / 2UP is blocked because its trigger, live-position and part-back
 state remain Draft-only; Multiples is blocked because no destination preserves selections and their

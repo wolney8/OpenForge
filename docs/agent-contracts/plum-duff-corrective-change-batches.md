@@ -10,14 +10,18 @@ Baseline: `579fe8a`. GitHub authority: #36 `5636998406`, #37 `5636991492`,
 
 | ID | Section | Area | Requested outcome | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-085 | A | Bonus Lock-In financial model | Route every supported basis/trigger/strategy through one offer-aware reference contract, with governed penny placement and explicit unsupported combinations. | IN PROGRESS — REPRODUCTION REQUIRED |
-| PD-FIX-086 | B | Bonus Lock-In presentation | Standard equalised view; Advanced Underlay/Overlay/Custom references before shared Outcomes, with one selected/copy/conversion value. | IN PROGRESS — RENDERED REPRODUCTION REQUIRED |
-| PD-FIX-087 | C | Conversion review authority | Reuse destination Bet Type, Offer Type and Fixture Type selectors and preserve canonical Account identity through save. | IN PROGRESS — REPRODUCTION REQUIRED |
-| PD-FIX-088 | D | Conversion completion | Close successful review, restore focus, retain calculator state, render linked receipt, distinguish retry from deliberate new intent, and retain partial failures. | IN PROGRESS — REPRODUCTION REQUIRED |
-| PD-FIX-089 | E | Shared embedded rendering | Contain the application header, centre modal FinancialValue badges, and restore full-width Free Bet Settlement Outcomes with honest incomplete states. | IN PROGRESS — RENDERED REPRODUCTION REQUIRED |
-| PD-FIX-090 | F | Profit Boost explanation | Expose entered/derived/accepted odds, back-return/profit quantities and the selected source equation independently of lay completeness. | IN PROGRESS — REPRODUCTION REQUIRED |
-| PD-FIX-091 | G | Independent regression evidence | Prove independent numeric expectations and the rendered control-to-request-to-copy-to-destination chain using isolated synthetic data. | NOT STARTED |
-| PD-FIX-092 | H | Tracking and delivery | Correct prior assurance scope, update linked issues/status/register, isolate calculation and UI/conversion commits, and keep services healthy. | NOT STARTED |
+| PD-FIX-085 | A | Bonus Lock-In financial model | Route every supported basis/trigger/strategy through one offer-aware reference contract, with governed penny placement and explicit unsupported combinations. | COMPLETE LOCALLY — SR AND SNR ADVANCED REMAIN EXPLICITLY UNSUPPORTED |
+| PD-FIX-086 | B | Bonus Lock-In presentation | Standard equalised view; Advanced Underlay/Overlay/Custom references before shared Outcomes, with one selected/copy/conversion value. | COMPLETE LOCALLY — RENDERED RECHECK PENDING |
+| PD-FIX-087 | C | Conversion review authority | Reuse destination Bet Type, Offer Type and Fixture Type selectors and preserve canonical Account identity through save. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-088 | D | Conversion completion | Close successful review, restore focus, retain calculator state, render linked receipt, distinguish retry from deliberate new intent, and retain partial failures. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-089 | E | Shared embedded rendering | Contain the application header, centre modal FinancialValue badges, and restore full-width Free Bet Settlement Outcomes with honest incomplete states. | COMPLETE LOCALLY — RENDERED RECHECK PENDING |
+| PD-FIX-090 | F | Profit Boost explanation | Expose entered/derived/accepted odds, back-return/profit quantities and the selected source equation independently of lay completeness. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-091 | G | Independent regression evidence | Prove independent numeric expectations and the rendered control-to-request-to-copy-to-destination chain using isolated synthetic data. | COMPLETE LOCALLY — REPRESENTATIVE PARAMETRISED EVIDENCE ONLY |
+| PD-FIX-092 | H | Tracking and delivery | Correct prior assurance scope, update linked issues/status/register, isolate calculation and UI/conversion commits, and keep services healthy. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+
+Evidence note: a read-only query of the normal local database found no prior calculator-source
+Bonus Lock-In sportsbook rows or Bonus Lock-In conversion attempts, so this repair has no identified
+local historical rows to migrate. No historical record was recalculated or edited.
 
 ## 2026-09-10 Calculator UI Parity Follow-up
 
