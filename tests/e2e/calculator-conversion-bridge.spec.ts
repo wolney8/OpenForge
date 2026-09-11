@@ -135,26 +135,32 @@ test("Bonus Lock-In advanced references drive selected, copied, and converted st
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: { authenticated: true, role: "fund_manager", email: "owner@example.invalid", name: "Owner", expires_at: Date.now() / 1000 + 3600, linked_profile_ids: [], session_policy: { auto_logout_enabled: false } } }));
   await page.context().route("**/fund-manager/calculators/exchanges", (route) => route.fulfill({ json: [{ catalogue_id: "sm", name: "Smarkets", default_commission_rate: "0" }] }));
+  const previewRequests: Array<Record<string, string>> = [];
   await page.context().route("**/fund-manager/calculators/matched-betting/preview", async (route) => {
-    const request = route.request().postDataJSON() as { strategy: string };
+    const request = route.request().postDataJSON() as Record<string, string>;
+    previewRequests.push(request);
     const selected = request.strategy === "Underlay" ? "1.50" : request.strategy === "Overlay" ? "4.34" : "4.07";
-    await route.fulfill({ json: { result_kind: "reference", calculation_state: "resolved", calculator_family: "matched-betting", canonical_back_odds: "9.24", canonical_lay_odds: "10.5", selected_lay_stake: selected, reference_lay_stake_standard: "4.07", reference_lay_stake_underlay: "1.50", reference_lay_stake_overlay: "4.34", liability: request.strategy === "Underlay" ? "14.25" : "38.67", pnl_if_back_wins: "2.54", pnl_if_lay_wins: "-0.93", matched_result: "2.54", promotion_trigger_result: "2.57", effective_back_odds: "9.2400", profit_boost_source: null, strategy_references: [
-      { strategy: "Standard", lay_stake: "4.07", liability: "38.67", back_wins_total: "2.54", back_loses_total: "2.57" },
+    await route.fulfill({ json: { result_kind: "reference", calculation_state: "resolved", calculator_family: "matched-betting", canonical_back_odds: "9.24", canonical_lay_odds: "10.5", selected_lay_stake: selected, reference_lay_stake_standard: "4.07", reference_lay_stake_underlay: "1.50", reference_lay_stake_overlay: "4.34", liability: request.strategy === "Underlay" ? "14.25" : "38.67", pnl_if_back_wins: "2.53", pnl_if_lay_wins: "2.57", matched_result: "2.53", promotion_trigger_result: "2.57", effective_back_odds: "9.2400", profit_boost_source: null, strategy_references: [
+      { strategy: "Standard", lay_stake: "4.07", liability: "38.67", back_wins_total: "2.53", back_loses_total: "2.57" },
       { strategy: "Underlay", lay_stake: "1.50", liability: "14.25", back_wins_total: "26.95", back_loses_total: "0.00" },
       { strategy: "Overlay", lay_stake: "4.34", liability: "41.23", back_wins_total: "-0.03", back_loses_total: "2.84" },
-    ], outcomes: [{ key: "back", label: "Back bet wins", bookmaker_component: "41.20", exchange_component: "-38.67", promotion_component: null, total: "2.54" }, { key: "lay", label: "Back loses / bonus triggers", bookmaker_component: "-5.00", exchange_component: "4.07", promotion_component: "3.50", total: "2.57" }] } });
+    ], outcomes: [{ key: "back", label: "Back bet wins", bookmaker_component: "41.20", exchange_component: "-38.67", promotion_component: null, total: "2.53" }, { key: "lay", label: "Back loses / bonus triggers", bookmaker_component: "-5.00", exchange_component: "4.07", promotion_component: "3.50", total: "2.57" }] } });
   });
   await page.goto("/fund-manager/calculators");
-  await page.getByLabel("Bet type").selectOption("bonus_lock_in");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
   await page.getByLabel("Back stake").fill("5"); await page.getByLabel("Back odds").fill("9.24"); await page.getByLabel("Lay odds").fill("10.5");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("5");
-  await page.getByLabel("Reference view").selectOption("Advanced");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
-  await page.getByLabel("Strategy").selectOption("Underlay");
+  await page.getByLabel("Actual selected strategy").selectOption("Underlay");
   await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]')).toContainText("£ 1.50");
   await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]').getByRole("button").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("1.50");
+  expect(previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Underlay", retention_percent: "70", exchange_commission: "0" });
+  await page.getByLabel("Bet Type").selectOption("SNR");
+  await page.getByLabel("Bonus Applied If Bet").selectOption("Back Wins");
+  await page.getByLabel("Actual selected strategy").selectOption("Overlay");
+  await expect.poll(() => previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "SNR", bonus_trigger: "Back Wins", strategy: "Overlay" });
 });
 
 test("Profit Boost explains payout-derived odds before lay inputs are complete", async ({ page }) => {
@@ -163,7 +169,7 @@ test("Profit Boost explains payout-derived odds before lay inputs are complete",
   await page.context().route("**/fund-manager/calculators/exchanges", (route) => route.fulfill({ json: [{ catalogue_id: "sm", name: "Smarkets", default_commission_rate: "0" }] }));
   await page.context().route("**/fund-manager/calculators/profit-boost/preview", (route) => route.fulfill({ json: { calculation_state: "resolved", notes: [], source: "calculated", reference_odds: "2.7800", raw_derived_odds: "2.786", effective_odds: "2.7800", bookmaker_total_return: "27.86", effective_odds_return: "27.80", potential_profit: "17.86", equation: "Raw odds = bookmaker total return / stake; hedge odds = floor(raw odds, 2dp)" } }));
   await page.goto("/fund-manager/calculators");
-  await page.getByLabel("Bet type").selectOption("profit_boost");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("profit_boost");
   await page.getByLabel("Boosted price source").selectOption("total_return");
   await page.getByLabel("Back stake").fill("10"); await page.getByRole("textbox", { name: "Total potential return" }).fill("27.86");
   const breakdown = page.locator('[data-pd-id="calculators.profit-boost.breakdown"]');
@@ -228,7 +234,7 @@ test("Profit Boost conversion keeps its governed mode and works in the shared ha
   });
   await page.goto("/fund-manager/calculators");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByLabel("Bet type").selectOption("profit_boost");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("profit_boost");
   await page.getByLabel("Back stake").fill("10.00");
   await page.getByLabel("Boosted odds displayed").fill("3.20");
   await page.getByLabel("Lay odds").fill("3.10");

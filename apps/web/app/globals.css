@@ -5566,12 +5566,16 @@ html[data-theme="dark"] .notification-count-badge {
 .field-control input,
 .field-control select,
 .field-control textarea {
+  box-sizing: border-box;
+  max-width: 100%;
   min-height: 2.75rem;
+  min-width: 0;
   padding: 0.7rem 0.95rem;
   border-radius: 0.95rem;
   border: 1px solid var(--outline);
   background: var(--surface-strong);
   color: var(--text);
+  width: 100%;
 }
 
 .field-control select {
@@ -11050,7 +11054,9 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
-  .calculator-paired-segment {
+  .calculator-paired-segment,
+  .calculator-paired-segment:first-child,
+  .calculator-paired-segment:last-child {
     grid-column: 1;
     grid-row: auto;
     grid-template-rows: none;

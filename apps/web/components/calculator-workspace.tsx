@@ -7,6 +7,7 @@ import Link from "next/link";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { CalculatorReferenceSection } from "@/components/calculator-reference-section";
 import { CalculatorConversionDialog } from "@/components/calculator-conversion-dialog";
+import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { BlackjackCalculator } from "@/components/blackjack-calculator";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -36,6 +37,7 @@ type ProfitBoostMode = "displayed_odds" | "total_return" | "profit_only" | "perc
 type Family = "matched-betting" | "multi-lay" | "each-way" | "sequential-lay" | "early-payout" | "multiples" | "dutching" | "odds-converter" | "blackjack";
 type Inputs = {
   betType: BetType; freeBetMode: "SNR" | "SR"; promotionMode: "standard" | "cashback";
+  presentationMode: "Simple" | "Advanced";
   strategy: Strategy; backStake: string; backOdds: string; layOdds: string;
   exchange: string; exchangeCommission: string; manualLayStake: string; promotionValue: string;
   customMinimum: string; customMaximum: string;
@@ -64,7 +66,7 @@ type Result = {
 };
 
 const defaults: Inputs = {
-  betType: "qualifying", freeBetMode: "SNR", promotionMode: "standard", strategy: "Standard",
+  betType: "qualifying", freeBetMode: "SNR", promotionMode: "standard", presentationMode: "Simple", strategy: "Standard",
   backStake: "", backOdds: "", layOdds: "", exchange: "Smarkets", exchangeCommission: "0", manualLayStake: "",
   promotionValue: "", customMinimum: "", customMaximum: "", bonusTrigger: "Lay Wins", bonusBackingBet: "Normal", retentionPercent: "70", underlayFactor: "0.928", overlayFactor: "1.300",
   profitBoostMode: "displayed_odds", boostedBackOdds: "", totalPotentialReturn: "", potentialProfit: "",
@@ -168,6 +170,7 @@ function readInitial(search: URLSearchParams): Inputs {
   if (next.betType === ("money_back" as BetType)) next.betType = "bonus_lock_in";
   if (!["qualifying", "free_bet", "bonus_lock_in", "cashback", "profit_boost"].includes(next.betType)) next.betType = "qualifying";
   if (!["Normal", "SNR", "SR"].includes(next.bonusBackingBet)) next.bonusBackingBet = "Normal";
+  if (!["Simple", "Advanced"].includes(next.presentationMode)) next.presentationMode = "Simple";
   if (!["Standard", "Underlay", "Overlay", "Custom", "Partial Lay"].includes(next.strategy)) next.strategy = "Standard";
   return next;
 }
@@ -185,13 +188,11 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const [conversion, setConversion] = useState("");
   const [conversionOpen, setConversionOpen] = useState(false);
   const [conversionReceipt, setConversionReceipt] = useState<Array<{ profile: string; account: string; href: string; state: string }>>([]);
-  const [bonusView, setBonusView] = useState<"Standard" | "Advanced">("Standard");
   const [profitBoostPreview, setProfitBoostPreview] = useState<ProfitBoostPreview | null>(null);
   const [exchanges, setExchanges] = useState<ExchangeOption[]>([]);
-  const commissionWasEdited = useRef(false);
+  const commissionWasEdited = useRef(search.has("exchangeCommission"));
   const [isCalculating, setIsCalculating] = useState(false);
-  const [customReference, setCustomReference] = useState("");
-  const bonusValueIsDerived = useRef(true);
+  const bonusValueIsDerived = useRef(!search.has("promotionValue"));
   const requestVersionRef = useRef(0);
   const requestAbortRef = useRef<AbortController | null>(null);
   const errors = useMemo(() => validate(inputs), [inputs]);
@@ -256,7 +257,21 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   function updateBonusCustomStake(value: number) {
     requestAbortRef.current?.abort(); requestAbortRef.current = null; requestVersionRef.current += 1;
     setInputs((current) => ({ ...current, strategy: "Custom", manualLayStake: value.toFixed(2) }));
-    setCustomReference(value.toFixed(2)); setError(""); setConversion("");
+    setError(""); setConversion("");
+  }
+
+  function updatePresentationMode(mode: Inputs["presentationMode"]) {
+    if (mode === "Simple" && inputs.strategy !== "Standard") {
+      updatePatch({ presentationMode: mode, strategy: "Standard" });
+      setConversion("Simple mode uses the equalised Standard strategy. Your Advanced stake draft is preserved.");
+      return;
+    }
+    updatePatch({ presentationMode: mode });
+  }
+
+  function updateQualifyingBackingType(value: "Normal" | "SNR" | "SR") {
+    if (value === "Normal") updatePatch({ betType: "qualifying", freeBetMode: "SNR" });
+    else updatePatch({ betType: "free_bet", freeBetMode: value });
   }
 
   function normalizeOdds(field: "backOdds" | "layOdds") {
@@ -303,7 +318,6 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
       const next = (await response.json()) as Result;
       if (version === requestVersionRef.current) {
         setResult(next);
-        setCustomReference(inputs.strategy === "Custom" ? next.selected_lay_stake : next.reference_lay_stake_standard);
       }
     } catch (caught) {
       if (version === requestVersionRef.current && !(caught instanceof DOMException && caught.name === "AbortError")) {
@@ -337,8 +351,8 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
     commissionWasEdited.current = false;
     bonusValueIsDerived.current = true;
     setInputs({ ...defaults, exchange: smarkets?.name ?? defaults.exchange, exchangeCommission: smarkets?.default_commission_rate ?? defaults.exchangeCommission });
-    setTouched({}); setResult(null); setError(""); setConversion(""); setCustomReference(""); setIsCalculating(false);
-    setBonusView("Standard"); setConversionReceipt([]);
+    setTouched({}); setResult(null); setError(""); setConversion(""); setIsCalculating(false);
+    setConversionReceipt([]);
   }
 
   const showPromotion = inputs.betType === "bonus_lock_in" || inputs.betType === "cashback";
@@ -347,8 +361,16 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const layFieldRows = showManualLay ? 2 : 1;
   const pairedFieldRows = Math.max(backFieldRows, layFieldRows + 1);
   const activeFamilyLabel = families.find((item) => item.value === family)?.label ?? "Calculator";
-  const bonusUnderlay = result?.strategy_references?.find((item) => item.strategy === "Underlay");
-  const bonusOverlay = result?.strategy_references?.find((item) => item.strategy === "Overlay");
+  const referenceUnderlay = result?.strategy_references?.find((item) => item.strategy === "Underlay");
+  const referenceOverlay = result?.strategy_references?.find((item) => item.strategy === "Overlay");
+  const referenceStandard = result?.strategy_references?.find((item) => item.strategy === "Standard");
+  const advancedMinimumText = inputs.customMinimum || result?.reference_lay_stake_underlay || result?.reference_lay_stake_standard || "0.01";
+  const advancedMaximumText = inputs.customMaximum || result?.reference_lay_stake_overlay || result?.reference_lay_stake_standard || "0.02";
+  const advancedMinimum = Number(advancedMinimumText);
+  const advancedMaximum = Math.max(advancedMinimum + 0.01, Number(advancedMaximumText));
+  const advancedCurrent = Math.min(advancedMaximum, Math.max(advancedMinimum, Number(inputs.manualLayStake || result?.reference_lay_stake_standard || advancedMinimumText)));
+  const qualifyingBackingType = inputs.betType === "free_bet" ? inputs.freeBetMode : "Normal";
+  const showAdvancedReferences = inputs.betType === "bonus_lock_in" || ((inputs.betType === "qualifying" || inputs.betType === "free_bet") && inputs.presentationMode === "Advanced");
   const canConvertMatchedResult = Boolean(result) && !(inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet !== "Normal");
   const profitBoostExample = inputs.profitBoostMode === "displayed_odds"
     ? "Example: £10 at 3.20 → total return £32; profit £22."
@@ -364,12 +386,12 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
     {family === "matched-betting" ? <div className="calculator-panel-shell"><div className="calculator-shell">
       <div className="calculator-band calculator-band-primary">
         <div className="ledger-calculator-mode-bar">
-          <SelectField id="bet-type" label="Bet type" value={inputs.betType} onChange={(value) => update("betType", value as BetType)} options={[["qualifying", "Qualifying Bet"], ["free_bet", "Free Bet"], ["bonus_lock_in", "Bonus Lock-In"], ["cashback", "Cashback"], ["profit_boost", "Profit Boost"]]} />
-          <SelectField id="strategy" label="Strategy" value={inputs.strategy} onChange={(value) => update("strategy", value as Strategy)} options={inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet !== "Normal" ? [["Standard", "Standard"], ["Partial Lay", "Part Lay"]] : [["Standard", "Standard"], ["Underlay", "Underlay"], ["Overlay", "Overlay"], ["Custom", "Custom"], ["Partial Lay", "Part Lay"]]} />
-          {inputs.betType === "free_bet" ? <SelectField id="free-bet-mode" label="Free bet" value={inputs.freeBetMode} onChange={(value) => update("freeBetMode", value as "SNR" | "SR")} options={[["SNR", "Stake Not Returned"], ["SR", "Stake Returned"]]} /> : null}
-          {inputs.betType === "bonus_lock_in" ? <SelectField id="bonus-backing-bet" label="Backing bet" value={inputs.bonusBackingBet} onChange={(value) => { const next = value as Inputs["bonusBackingBet"]; if (next !== "Normal") setBonusView("Standard"); updatePatch({ bonusBackingBet: next, strategy: next === "Normal" || inputs.strategy === "Partial Lay" ? inputs.strategy : "Standard" }); }} options={[["Normal", "Normal"], ["SNR", "Free Bet SNR"], ["SR", "Free Bet SR — unsupported"]]} /> : null}
-          {showPromotion ? <SelectField id="bonus-trigger" label="Award trigger" value={inputs.bonusTrigger} onChange={(value) => update("bonusTrigger", value as Inputs["bonusTrigger"])} options={[["Lay Wins", "Back bet loses"], ["Back Wins", "Back bet wins"]]} /> : null}
-          {inputs.betType === "bonus_lock_in" ? <SelectField id="bonus-view" label="Reference view" value={bonusView} onChange={(value) => { const next = value as "Standard" | "Advanced"; setBonusView(next); if (next === "Standard") update("strategy", "Standard"); }} options={inputs.bonusBackingBet === "Normal" ? [["Standard", "Standard"], ["Advanced", "Advanced"]] : [["Standard", "Standard"]]} /> : null}
+          <SelectField id="calculator-offer" label="Calculator" value={inputs.betType === "free_bet" ? "qualifying" : inputs.betType} onChange={(value) => update("betType", value as BetType)} options={[["qualifying", "Qualifying / Free Bet"], ["bonus_lock_in", "Bonus Lock-In"], ["cashback", "Cashback"], ["profit_boost", "Profit Boost"]]} />
+          {inputs.betType === "qualifying" || inputs.betType === "free_bet" ? <SelectField id="bet-type" label="Bet Type" value={qualifyingBackingType} onChange={(value) => updateQualifyingBackingType(value as "Normal" | "SNR" | "SR")} options={[["Normal", "Normal"], ["SNR", "Free Bet SNR"], ["SR", "Free Bet SR"]]} /> : null}
+          {inputs.betType === "qualifying" || inputs.betType === "free_bet" ? <div className="field-control ledger-calculator-mode-field"><span>Mode</span><CalculatorSegmentedControl ariaLabel="Standard calculator mode" dataPdId="calculators.matched-betting.mode" onChange={updatePresentationMode} options={[{ label: "Simple", value: "Simple" }, { label: "Advanced", value: "Advanced" }]} value={inputs.presentationMode} /></div> : null}
+          {inputs.betType === "bonus_lock_in" ? <SelectField id="bonus-backing-bet" label="Bet Type" value={inputs.bonusBackingBet} onChange={(value) => updatePatch({ bonusBackingBet: value as Inputs["bonusBackingBet"] })} options={[["Normal", "Normal"], ["SNR", "Free Bet SNR"]]} /> : null}
+          {showPromotion ? <SelectField id="bonus-trigger" label={inputs.betType === "bonus_lock_in" ? "Bonus Applied If Bet" : "Cashback applies if bet"} value={inputs.bonusTrigger} onChange={(value) => update("bonusTrigger", value as Inputs["bonusTrigger"])} options={[["Lay Wins", "Loses"], ["Back Wins", "Wins"]]} /> : null}
+          {(inputs.betType === "bonus_lock_in" || inputs.betType === "cashback" || inputs.betType === "profit_boost" || ((inputs.betType === "qualifying" || inputs.betType === "free_bet") && inputs.presentationMode === "Advanced")) ? <SelectField id="strategy" label="Actual selected strategy" value={inputs.strategy} onChange={(value) => update("strategy", value as Strategy)} options={[["Standard", "Standard"], ["Underlay", "Underlay"], ["Overlay", "Overlay"], ["Custom", "Custom"], ["Partial Lay", "Part Lay"]]} /> : null}
           {inputs.betType === "profit_boost" ? <SelectField id="profit-boost-mode" label="Boosted price source" value={inputs.profitBoostMode} onChange={(value) => update("profitBoostMode", value as ProfitBoostMode)} options={[["displayed_odds", "Displayed boosted odds"], ["total_return", "Total potential return"], ["profit_only", "Potential profit / winnings"], ["percentage", "Base odds + boost %"]]} /> : null}
         </div>
         <div className={`form-grid calculator-paired-segments calculator-paired-rows-${pairedFieldRows}`} data-pd-id="calculators.matched-betting.paired-segments">
@@ -397,20 +419,8 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
           {inputs.betType === "free_bet" && inputs.strategy === "Underlay" ? <Field error={touched.underlayFactor ? errors.underlayFactor : null} id="underlay-factor" label="Underlay factor" onChange={(value) => update("underlayFactor", value)} value={inputs.underlayFactor} /> : null}
           {inputs.betType === "free_bet" && inputs.strategy === "Overlay" ? <Field error={touched.overlayFactor ? errors.overlayFactor : null} id="overlay-factor" label="Overlay factor" onChange={(value) => update("overlayFactor", value)} value={inputs.overlayFactor} /> : null}
         </div> : null}
-        {inputs.strategy === "Custom" && customReference && inputs.betType !== "bonus_lock_in" ? <SingleLayCustomSlider
-          current={Number(inputs.manualLayStake || customReference)}
-          maximum={Number(inputs.customMaximum || (Number(customReference) + 1).toFixed(2))}
-          maximumText={inputs.customMaximum || (Number(customReference) + 1).toFixed(2)}
-          minimum={Number(inputs.customMinimum || Math.max(0.01, Number(customReference) - 1).toFixed(2))}
-          minimumText={inputs.customMinimum || Math.max(0.01, Number(customReference) - 1).toFixed(2)}
-          onCommit={(value) => update("manualLayStake", Number(value).toFixed(2))}
-          onDraft={(value) => update("manualLayStake", Number(value).toFixed(2))}
-          onMaximumChange={(value) => update("customMaximum", value)}
-          onMinimumChange={(value) => update("customMinimum", value)}
-        /> : null}
         {inputs.betType === "profit_boost" && profitBoostPreview?.calculation_state === "resolved" ? <article className="calculator-result-card" data-pd-id="calculators.profit-boost.breakdown"><div className="calculator-result-card-heading"><strong>Boosted odds breakdown</strong></div><p className="calculator-section-guidance">Shows what the bookmaker supplied and the effective odds used for hedging.</p><dl className="calculator-result-card-values"><ResultValue label="Original odds" money={false} value={inputs.baseBackOdds || "Not provided"} /><ResultValue label="Raw derived boosted odds" money={false} value={profitBoostPreview.raw_derived_odds ?? "Cannot derive from these inputs"} /><ResultValue label="Effective odds used" money={false} value={profitBoostPreview.effective_odds ?? "-"} /><ResultValue label="Bookmaker total return" value={profitBoostPreview.bookmaker_total_return ?? "-"} /><ResultValue label="Odds-based conservative return" value={profitBoostPreview.effective_odds_return ?? "-"} /><ResultValue label="Potential profit" value={profitBoostPreview.potential_profit ?? "-"} /></dl></article> : null}
         {inputs.betType === "profit_boost" && profitBoostPreview?.calculation_state === "resolved" ? <details className="calculator-guidance-disclosure"><summary>How this price was calculated</summary><p>{profitBoostPreview.equation}. {inputs.actualAcceptedBackOdds ? `Actual accepted odds ${profitBoostPreview.effective_odds} take precedence.` : "No accepted-odds override is applied."}</p><p>{profitBoostExample}</p></details> : null}
-        {inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet === "SNR" ? <p className="field-hint">Free Bet SNR Standard and Part Lay are verified. Advanced capital-target references require a separate governed contract.</p> : null}
         {inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet === "SR" ? <p className="error-text" role="status">Free Bet SR backing is not currently supported by the verified Bonus Lock-In contract.</p> : null}
         {inputs.strategy === "Partial Lay" ? <p className="field-hint">One explicit part-lay amount is supported by the current contract. Multiple execution legs remain pending contract evidence.</p> : null}
         {conversion ? <p className="field-hint" role="status">{conversion}</p> : null}
@@ -420,7 +430,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
         {conversionReceipt.length ? <section className="calculator-conversion-receipt" data-pd-id="calculators.matched-betting.conversion-receipt" role="status"><strong>Opportunity saved</strong>{conversionReceipt.map((item) => <span key={`${item.profile}:${item.account}:${item.href}`}>{item.profile} · {item.account} · Sportsbook {item.href ? <Link href={item.href}>Open row</Link> : null}</span>)}</section> : null}
       </div>
       {result ? <div className="calculator-band calculator-band-secondary" data-pd-id="calculators.matched-betting.results">
-        {inputs.betType === "bonus_lock_in" && bonusView === "Advanced" && bonusUnderlay && bonusOverlay ? <section className="stack" data-pd-id="calculators.bonus-lock-in.advanced"><div className="form-grid"><CalculatorReferenceSection description="Lower lay endpoint; penny placement can leave a small residual." inspectionId="calculators.bonus-lock-in.underlay" rows={[{ label: "Lay stake", value: bonusUnderlay.lay_stake, copyable: true }, { label: "Liability", value: bonusUnderlay.liability }, { label: "Back wins", value: bonusUnderlay.back_wins_total }, { label: "Back loses", value: bonusUnderlay.back_loses_total }]} title="Underlay reference" /><CalculatorReferenceSection description="Upper lay endpoint; penny placement can leave a small residual." inspectionId="calculators.bonus-lock-in.overlay" rows={[{ label: "Lay stake", value: bonusOverlay.lay_stake, copyable: true }, { label: "Liability", value: bonusOverlay.liability }, { label: "Back wins", value: bonusOverlay.back_wins_total }, { label: "Back loses", value: bonusOverlay.back_loses_total }]} title="Overlay reference" /></div><SingleLayCustomSlider current={Number(customReference || result.reference_lay_stake_standard)} maximum={Number(result.reference_lay_stake_overlay ?? result.reference_lay_stake_standard)} maximumText={result.reference_lay_stake_overlay ?? result.reference_lay_stake_standard} minimum={Number(result.reference_lay_stake_underlay ?? result.reference_lay_stake_standard)} minimumText={result.reference_lay_stake_underlay ?? result.reference_lay_stake_standard} onCommit={(value) => updateBonusCustomStake(Number(value))} onDraft={(value) => updateBonusCustomStake(Number(value))} onMaximumChange={() => undefined} onMinimumChange={() => undefined} /></section> : null}
+        {showAdvancedReferences ? <section className="stack" data-pd-id={inputs.betType === "bonus_lock_in" ? "calculators.bonus-lock-in.advanced" : "calculators.matched-betting.advanced"}>{inputs.betType === "bonus_lock_in" && referenceStandard ? <CalculatorReferenceSection description="Equalised reference after the selected bonus assumption and penny placement." inspectionId="calculators.bonus-lock-in.standard" rows={[{ label: "Lay stake", value: referenceStandard.lay_stake, copyable: true }, { label: "Liability", value: referenceStandard.liability }, { label: "Back wins", value: referenceStandard.back_wins_total }, { label: "Back loses", value: referenceStandard.back_loses_total }]} title="Standard reference" /> : null}<div className="form-grid">{referenceUnderlay ? <CalculatorReferenceSection description="Lower lay reference; penny placement can leave a small residual." inspectionId={inputs.betType === "bonus_lock_in" ? "calculators.bonus-lock-in.underlay" : "calculators.matched-betting.underlay"} rows={[{ label: "Lay stake", value: referenceUnderlay.lay_stake, copyable: true }, { label: "Liability", value: referenceUnderlay.liability }, { label: "Back wins", value: referenceUnderlay.back_wins_total }, { label: "Back loses", value: referenceUnderlay.back_loses_total }]} title="Underlay reference" /> : <CalculatorReferenceSection description="No valid non-negative endpoint exists for these inputs." inspectionId="calculators.matched-betting.underlay-unavailable" rows={[]} title="Underlay unavailable" />}{referenceOverlay ? <CalculatorReferenceSection description="Upper lay reference; penny placement can leave a small residual." inspectionId={inputs.betType === "bonus_lock_in" ? "calculators.bonus-lock-in.overlay" : "calculators.matched-betting.overlay"} rows={[{ label: "Lay stake", value: referenceOverlay.lay_stake, copyable: true }, { label: "Liability", value: referenceOverlay.liability }, { label: "Back wins", value: referenceOverlay.back_wins_total }, { label: "Back loses", value: referenceOverlay.back_loses_total }]} title="Overlay reference" /> : <CalculatorReferenceSection description="No valid non-negative endpoint exists for these inputs." inspectionId="calculators.matched-betting.overlay-unavailable" rows={[]} title="Overlay unavailable" />}</div><SingleLayCustomSlider current={advancedCurrent} maximum={advancedMaximum} maximumText={advancedMaximumText} minimum={advancedMinimum} minimumText={advancedMinimumText} onCommit={(value) => updateBonusCustomStake(Number(value))} onDraft={(value) => updateBonusCustomStake(Number(value))} onMaximumChange={(value) => update("customMaximum", value)} onMinimumChange={(value) => update("customMinimum", value)} /></section> : null}
         <div className="calculator-panel-card calculator-result-panel"><FinancialValueReplayGroup><article className="calculator-result-card"><div className="calculator-result-card-heading"><strong>{inputs.strategy} reference</strong></div><dl className="calculator-result-card-values"><ResultValue copyable dataPdId="calculators.matched-betting.copy-lay-stake" label="Lay stake required" value={result.selected_lay_stake} /><ResultValue label="Liability" value={result.liability} /><ResultValue label="Matched result" value={result.matched_result} />{inputs.betType === "profit_boost" ? <ResultValue label="Effective boosted odds" value={result.effective_back_odds} money={false} /> : null}</dl></article></FinancialValueReplayGroup></div><CalculatorOutcomes columns={["Bookmaker", "Exchange", "Bonus / cashback"]} inspectionId="calculators.outcomes" rows={result.outcomes.map((outcome, index) => ({ key: outcome.key, label: outcome.label, tone: index === 0 ? "positive" : "exchange", components: [[outcome.bookmaker_component], [outcome.exchange_component], [outcome.promotion_component]], total: outcome.total }))} summary={<span>Matched result <CalculatorOutcomeValueDisplay label="Matched result" value={result.matched_result} /></span>} /></div> : null}
     </div></div> : family === "multi-lay" ? <MultiLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "each-way" ? <EachWayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "sequential-lay" ? <SequentialLayCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "early-payout" ? <EarlyPayoutCalculator exchanges={exchanges} onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "multiples" ? <AccumulatorCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "dutching" ? <DutchingCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : family === "odds-converter" ? <OddsProbabilityCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} /> : <BlackjackCalculator onState={(params) => { popoutStateRef.current = params; }} search={search} />}
     {conversionOpen && result ? <CalculatorConversionDialog financial={{ kind: "standard", envelope: { calculator_family: "matched-betting", calculator_version: "matched-betting-v1", calculator_mode: inputs.betType, canonical_inputs: { ...inputs, exchange: inputs.exchange, selected_strategy: inputs.strategy, selected_lay_stake: result.selected_lay_stake, effective_back_odds: result.effective_back_odds }, created_at: conversionCreatedAt }, calculator: { bet_type: inputs.betType, free_bet_mode: inputs.freeBetMode, bonus_backing_bet: inputs.bonusBackingBet, promotion_mode: inputs.promotionMode, strategy: inputs.strategy, back_stake: inputs.backStake, back_odds: inputs.backOdds, lay_odds: inputs.layOdds, exchange_commission: inputs.exchangeCommission, manual_lay_stake: inputs.manualLayStake, promotion_value: inputs.promotionValue, bonus_trigger: inputs.bonusTrigger, retention_percent: inputs.retentionPercent, underlay_factor: inputs.underlayFactor, overlay_factor: inputs.overlayFactor, profit_boost_mode: inputs.profitBoostMode, boosted_back_odds: inputs.boostedBackOdds, total_potential_return: inputs.totalPotentialReturn, potential_profit: inputs.potentialProfit, base_back_odds: inputs.baseBackOdds, profit_boost_percent: inputs.profitBoostPercent, actual_accepted_back_odds: inputs.actualAcceptedBackOdds, maximum_boost_winnings: inputs.maximumBoostWinnings } }} onClose={() => setConversionOpen(false)} onComplete={setConversionReceipt} /> : null}

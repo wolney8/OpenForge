@@ -1079,3 +1079,15 @@ cause, prevention rule and regression test.
 - Regression test: `tests/e2e/calculator-ui-parity-pass.spec.ts` checks composed geometry, state
   retention across refresh, panel fit, corner radii, selected/focus containment, adjacent selection,
   disabled boundaries, transition/reduced-motion state, menu anchoring and viewport containment.
+
+## 2026-09-11: Native field intrinsic widths escaped narrow calculator grids
+
+- Area: canonical `.field-control` inputs, selects and textareas at narrow/text-scaled widths.
+- Root cause: grid tracks allowed shrinking but native controls retained an intrinsic minimum width;
+  the narrow one-column rule also failed to override the more-specific first/last peer placement.
+  Field surfaces could therefore escape their segment while paired panels stayed squeezed side by side.
+- Prevention: canonical field controls own border-box sizing with `min-width: 0`, `max-width: 100%`
+  and `width: 100%`, and narrow placement must explicitly reset both peer selectors; do not patch
+  individual calculator fields or hide the overflow.
+- Regression test: `calculator-ui-parity-pass.spec.ts` checks every Standard control against its
+  workspace at desktop, half-width and 390px with scaled text, both themes and reduced motion.

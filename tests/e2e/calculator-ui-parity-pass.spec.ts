@@ -47,15 +47,16 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-desktop.png`, fullPage: true });
   }
-  await page.getByLabel("Strategy").selectOption("Partial Lay");
+  await page.getByRole("button", { name: "Advanced" }).click();
+  await page.getByLabel("Actual selected strategy").selectOption("Partial Lay");
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
   expect(geometry[0].fields[1]).toEqual(geometry[1].fields[1]);
   await page.getByLabel("Back stake").fill("invalid");
   await page.getByLabel("Back odds").focus();
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
   expect(geometry[0].fields[1]).toEqual(geometry[1].fields[1]);
-  await page.getByLabel("Bet type").selectOption("bonus_lock_in");
-  await expect(page.getByLabel("Award trigger").locator('option[value="Back Wins"]')).toHaveCount(0);
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
+  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(1);
 
   await page.goto("/fund-manager/calculators?family=multi-lay");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.presentation"] .calculator-segment-back .eyebrow')).toHaveText("Back bet");
@@ -178,6 +179,47 @@ test("slides bounded calculator pages and exposes an anchored ellipsis menu", as
 
   for (const width of [720, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `Standard overflow at ${width}px`).toBe(true);
   }
+});
+
+test("keeps the exact Standard controls contained across themes and calculator widths", async ({ page }) => {
+  await mockSession(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [1280, 720, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/fund-manager/calculators");
+    await page.evaluate(() => { document.documentElement.style.fontSize = "18px"; });
+    await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
+    await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Advanced" }).click();
+    await page.getByLabel("Actual selected strategy").focus();
+    await expect(page.getByLabel("Actual selected strategy")).toBeFocused();
+    const overflow = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      offenders: [...document.querySelectorAll<HTMLElement>("body *")]
+        .filter((element) => {
+          const box = element.getBoundingClientRect();
+          return box.width > 0 && (box.right > document.documentElement.clientWidth + 1 || box.left < -1);
+        })
+        .slice(0, 12)
+        .map((element) => `${element.tagName}.${element.className}:${Math.round(element.getBoundingClientRect().right)}`),
+    }));
+    expect(overflow.scroll, `Standard overflow at ${width}px: ${overflow.offenders.join(", ")}`).toBeLessThanOrEqual(overflow.client + 1);
+    const workspace = await page.locator('[data-pd-id="calculators.workspace"]').boundingBox();
+    for (const control of await page.locator('[data-pd-id="calculators.workspace"] .calculator-shell input, [data-pd-id="calculators.workspace"] .calculator-shell select, [data-pd-id="calculators.workspace"] .calculator-shell button').all()) {
+      const box = await control.boundingBox();
+      if (!box) continue;
+      expect(box.x).toBeGreaterThanOrEqual((workspace?.x ?? 0) - 1);
+      expect(box.x + box.width).toBeLessThanOrEqual((workspace?.x ?? 0) + (workspace?.width ?? width) + 1);
+    }
+    if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-advanced-${width}.png`, fullPage: true });
+    }
+  }
+  const themeBefore = await page.locator("html").getAttribute("data-theme");
+  await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+  await expect.poll(() => page.locator("html").getAttribute("data-theme")).not.toBe(themeBefore);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
 });

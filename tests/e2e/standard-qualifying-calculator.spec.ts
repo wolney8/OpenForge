@@ -44,6 +44,9 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.getByRole("heading", { level: 1, name: "Calculators" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Standard" })).toBeVisible();
   await expect(page.getByText("Reference only", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]')).toHaveValue("qualifying");
+  await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
+  await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
 
   const boxes = await Promise.all(["Back stake", "Back odds", "Lay odds", "Exchange commission"].map((label) => page.getByLabel(label).boundingBox()));
   expect(boxes.every(Boolean)).toBe(true);
@@ -99,17 +102,27 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
   await page.emulateMedia({ reducedMotion: "no-preference" });
 
-  await page.getByLabel("Bet type").selectOption("free_bet");
-  await page.locator('[data-pd-id="calculators.matched-betting.free-bet-mode"]').selectOption("SR");
+  await page.getByLabel("Bet Type").selectOption("SR");
+  await page.getByRole("button", { name: "Advanced" }).click();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
-  await page.getByLabel("Strategy").selectOption("Custom");
+  await page.getByLabel("Actual selected strategy").selectOption("Custom");
   const customSlider = page.getByRole("slider", { name: "Custom lay stake slider" });
   await expect(customSlider).toBeVisible();
   expect(Number(await customSlider.getAttribute("aria-valuemin"))).toBeLessThan(Number(await customSlider.getAttribute("aria-valuenow")));
   expect(Number(await customSlider.getAttribute("aria-valuemax"))).toBeGreaterThan(Number(await customSlider.getAttribute("aria-valuenow")));
   await customSlider.press("ArrowLeft");
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
-  await page.getByLabel("Bet type").selectOption("bonus_lock_in");
+  const preservedAdvancedStake = await customSlider.getAttribute("aria-valuenow");
+  await page.getByRole("button", { name: "Simple" }).click();
+  await expect(page.getByText("Simple mode uses the equalised Standard strategy.")).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toContainText("Standard reference");
+  await page.getByRole("button", { name: "Advanced" }).click();
+  await page.getByLabel("Actual selected strategy").selectOption("Custom");
+  await expect(customSlider).toHaveAttribute("aria-valuenow", preservedAdvancedStake ?? "");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
+  await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
+  await expect(page.getByLabel("Bonus Applied If Bet")).toHaveValue("Lay Wins");
+  await expect(page.getByLabel("Bonus retention (%)")).toHaveValue("70");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("10.00");
   await page.getByLabel("Back stake").fill("12.00");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("12.00");
@@ -117,26 +130,27 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByLabel("Back stake").fill("15.00");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("7.00");
   await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("bonus triggers");
-  await expect(page.getByLabel("Award trigger").locator('option[value="Back Wins"]')).toHaveCount(0);
+  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(1);
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.locator('[data-pd-id="calculators.matched-betting.results"]').screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-standard-outcomes.png") });
   }
   await page.locator('[data-pd-id="calculators.matched-betting.reset"]').click();
-  await expect(page.getByLabel("Bet type")).toHaveValue("qualifying");
+  await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
+  await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Back stake")).toHaveValue("");
   await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
   await page.waitForTimeout(250);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
-  await page.getByLabel("Bet type").selectOption("bonus_lock_in");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
   await page.getByLabel("Back stake").fill("10.00");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("10.00");
-  await page.getByLabel("Bet type").selectOption("profit_boost");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("profit_boost");
   await page.getByLabel("Lay odds").fill("3.81");
   await page.getByLabel("Boosted price source").selectOption("percentage");
   await page.getByLabel("Original / base odds").fill("3.00");
   await page.getByLabel("Profit Boost (%)").fill("10");
-  await expect(page.getByText("3.2000", { exact: true })).toBeVisible();
+  await expect(page.getByText("3.2000", { exact: true }).first()).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("Back bet wins");
 
   const popupPromise = page.waitForEvent("popup");
@@ -145,7 +159,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await popup.waitForLoadState();
   await expect(popup).toHaveURL(/\/calculator\?/);
   await expect(popup.getByLabel("Back stake")).toHaveValue("10.00");
-  await expect(popup.getByLabel("Bet type")).toHaveValue("profit_boost");
+  await expect(popup.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]')).toHaveValue("profit_boost");
   await expect(popup.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
   await expect(popup.locator('[data-pd-id="app-navigation.trigger"]')).toHaveCount(0);
   await expect(popup.locator('[data-pd-id="calculators.family-selector"]')).toHaveCount(0);
@@ -170,6 +184,43 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
   }
   expect(ledgerMutations).toEqual([]);
+});
+
+test("routes the governed Bonus controls to the displayed and copied strategy", async ({ page, context }) => {
+  await mockSession(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const previewBodies: Array<Record<string, string>> = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/fund-manager/calculators/matched-betting/preview")) {
+      previewBodies.push(request.postDataJSON() as Record<string, string>);
+    }
+  });
+  await page.goto("/fund-manager/calculators");
+  await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
+  await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
+  await expect(page.getByLabel("Bonus Applied If Bet")).toHaveValue("Lay Wins");
+  await expect(page.getByLabel("Bonus retention (%)")).toHaveValue("70");
+  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await page.getByLabel("Back stake").fill("5");
+  await page.getByLabel("Back odds").fill("9.24");
+  await page.getByLabel("Lay odds").fill("10.5");
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.standard"]')).toContainText("£ 4.07");
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.standard"]')).toContainText("£ 38.67");
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ (0.03)");
+  await page.getByLabel("Actual selected strategy").selectOption("Overlay");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]')).toContainText("£ 4.34");
+  await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button').click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("4.34");
+  expect(previewBodies.at(-1)).toMatchObject({
+    bet_type: "bonus_lock_in",
+    bonus_backing_bet: "Normal",
+    bonus_trigger: "Lay Wins",
+    strategy: "Overlay",
+    retention_percent: "70",
+    exchange_commission: "0",
+  });
 });
 
 test("pages calculator families and calculates Multi-Lay and Each Way modes", async ({ page }) => {
