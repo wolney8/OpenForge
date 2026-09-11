@@ -1,6 +1,6 @@
 # Fixture Spec: Calculator Workspace and Ledger Bridge
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-11_
 
 ## Contract covered
 
@@ -10,11 +10,11 @@ _Last updated: 2026-09-09_
 | ID | Scenario | Expected result |
 |---|---|---|
 | CALC-001 | Standalone standard calculator | Reference result only; no ledger mutation |
-| CALC-002 | SNR calculator bridged to free bets | Inputs mapped; row remains unsaved |
+| CALC-002 | SNR/SR calculator bridged to Free Bets | Reviewed source becomes an idempotent native Prospecting row; retention mode and source identity are preserved |
 | CALC-003 | Target profile commission differs | Recalculate using target profile setting |
 | CALC-004 | Suggested lay copied | Clipboard value labelled; no actual stake inferred |
-| CALC-005 | Calculator lacks approved contract | Calculator unavailable |
-| CALC-006 | Ambiguous destination offer mapping | User review required |
+| CALC-005 | Dutching has an approved calculator contract but no lossless ledger destination | Calculator remains usable; conversion action is absent and no row is created |
+| CALC-006 | Governed Cashback source converted to Sportsbook | Offer type is locked to Cashback, destination recalculates, and retry is idempotent |
 | CALC-007 | Advanced sportsbook calculator exposes underlay/standard/overlay/custom | All branches render as reference values; no ledger placement |
 | CALC-008 | Profit Boost percentage-only calculator | Reference boosted odds calculated from base odds, stake and percentage |
 | CALC-009 | Profit Boost displayed-odds calculator | Displayed boosted odds become effective reference odds |

@@ -137,6 +137,48 @@ async function mockEachWayBridge(page: import("@playwright/test").Page, mode: "E
   ] }));
 }
 
+test("Profit Boost conversion keeps its governed mode and works in the shared half-width review", async ({ page }) => {
+  await page.setViewportSize({ width: 720, height: 900 });
+  await page.addInitScript(() => window.localStorage.setItem("openforge-theme", "dark"));
+  await mockEachWayBridge(page, "Extra Place");
+  await page.context().route("**/fund-manager/calculators/matched-betting/preview", (route) => route.fulfill({ json: {
+    result_kind: "reference", calculation_state: "resolved", calculator_family: "matched-betting",
+    canonical_back_odds: "3.2000", canonical_lay_odds: "3.10", selected_lay_stake: "10.33",
+    reference_lay_stake_standard: "10.33", reference_lay_stake_underlay: "9.00",
+    reference_lay_stake_overlay: "10.20", liability: "21.69", pnl_if_back_wins: "0.31",
+    pnl_if_lay_wins: "0.33", matched_result: "0.31", promotion_trigger_result: null,
+    effective_back_odds: "3.2000", profit_boost_source: "displayed",
+    outcomes: [
+      { key: "back", label: "Back bet wins", bookmaker_component: "22.00", exchange_component: "-21.69", promotion_component: null, total: "0.31" },
+      { key: "lay", label: "Lay bet wins", bookmaker_component: "-10.00", exchange_component: "10.33", promotion_component: null, total: "0.33" },
+    ],
+  } }));
+  let submitted: Record<string, unknown> | null = null;
+  await page.context().route("**/fund-manager/calculator-conversions/standard", async (route) => {
+    submitted = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ json: { source_id: "profit-boost-demo", source_checksum: "demo", notification: "Added Standard opportunity to 1 Profile.", results: [
+      { profile_id: "profile-synthetic-001", account: "Bet365", state: "succeeded", record_id: "SB-PB1", href: "/profiles/profile-synthetic-001/tracker/sportsbook-bets?record=SB-PB1", reasons: [] },
+    ] } });
+  });
+  await page.goto("/fund-manager/calculators");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByLabel("Bet type").selectOption("profit_boost");
+  await page.getByLabel("Back stake").fill("10.00");
+  await page.getByLabel("Boosted odds displayed").fill("3.20");
+  await page.getByLabel("Lay odds").fill("3.10");
+  await page.locator('[data-pd-id="calculators.matched-betting.convert"]').click();
+  const dialog = page.getByRole("dialog", { name: "Convert Standard calculation to opportunity" });
+  await expect(dialog.getByLabel("Offer type")).toHaveValue("Profit Boost");
+  await expect(dialog.getByLabel("Offer type")).toHaveAttribute("readonly", "");
+  await dialog.getByLabel("Event / fixture").fill("Synthetic boost fixture");
+  await dialog.getByText("Synthetic Profile").click();
+  await dialog.getByLabel("Bookmaker Account").selectOption("AC-BET365");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await dialog.getByRole("button", { name: "Convert to opportunity" }).click();
+  expect(((submitted?.calculator ?? {}) as { bet_type?: string }).bet_type).toBe("profit_boost");
+  await expect(page.getByLabel("Boosted odds displayed")).toHaveValue("3.20");
+});
+
 for (const mode of ["Extra Place", "Each Way"] as const) {
   test(`${mode} state converts through the shared bridge and remains intact`, async ({ page }) => {
     await mockEachWayBridge(page, mode);

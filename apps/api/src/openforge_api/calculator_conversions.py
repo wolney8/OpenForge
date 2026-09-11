@@ -22,9 +22,12 @@ from openforge_api.db import (
     begin_calculator_conversion_target,
     complete_calculator_conversion_target,
     create_casino_offer,
+    create_free_bet,
     create_sportsbook_bet,
     fail_calculator_conversion_target,
+    get_free_bet,
     get_profile,
+    get_profile_tracker_settings,
     get_sportsbook_bet,
     list_accounts,
     list_profile_exchange_commissions,
@@ -34,6 +37,7 @@ from openforge_api.each_way_extra_places import (
     EachWayExtraPlacePayload,
     create_profile_each_way_extra_place,
 )
+from openforge_api.free_bets import build_response as build_free_bet_response
 from openforge_api.multi_profile_entry import (
     evaluate_multi_profile_target,
     get_account_restrictions,
@@ -181,6 +185,7 @@ def _existing_result(
     record_id = str(attempt["destination_record_id"])
     ledger = {
         "sportsbook": "sportsbook-bets",
+        "free_bet": "free-bets",
         "each_way_extra_place": "each-way-extra-places",
     }.get(attempt["destination_kind"], "casino-offers")
     return ConversionTargetResult(
@@ -192,6 +197,56 @@ def _existing_result(
     )
 
 
+def _standard_destination(payload: StandardConversionPayload) -> tuple[str, str]:
+    calculator = payload.calculator
+    if calculator.bet_type == "free_bet":
+        return "free_bet", payload.offer_type
+    expected_offer = {
+        "cashback": "Cashback",
+        "money_back": "Bonus Lock-In",
+        "bonus_lock_in": "Bonus Lock-In",
+        "profit_boost": "Profit Boost",
+    }.get(calculator.bet_type)
+    if calculator.bet_type == "qualifying" and calculator.promotion_mode == "cashback":
+        expected_offer = "Cashback"
+    if expected_offer and payload.offer_type != expected_offer:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{calculator.bet_type.replace('_', ' ').title()} conversion requires "
+            f"Offer type {expected_offer}.",
+        )
+    return "sportsbook", payload.offer_type
+
+
+def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[str, str]:
+    if calculator.bet_type != "profit_boost":
+        return {
+            "profit_boost_mode": "",
+            "base_back_odds": "",
+            "profit_boost_percent": "",
+            "maximum_boost_winnings": "",
+            "actual_accepted_back_odds": "",
+        }
+    if calculator.profit_boost_mode == "percentage":
+        return {
+            "profit_boost_mode": "percentage",
+            "base_back_odds": calculator.base_back_odds,
+            "profit_boost_percent": calculator.profit_boost_percent,
+            "maximum_boost_winnings": calculator.maximum_boost_winnings,
+            "actual_accepted_back_odds": calculator.actual_accepted_back_odds,
+        }
+    # Total-return and profit-only inputs are temporary by contract. Their audited
+    # effective odds enter the destination's explicit displayed-odds path while the
+    # immutable source envelope retains the original derivation.
+    return {
+        "profit_boost_mode": "displayed_odds",
+        "base_back_odds": "",
+        "profit_boost_percent": "",
+        "maximum_boost_winnings": "",
+        "actual_accepted_back_odds": calculator.actual_accepted_back_odds,
+    }
+
+
 @router.post("/standard", response_model=ConversionResponse)
 def convert_standard(payload: StandardConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
@@ -199,14 +254,20 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
         raise HTTPException(
             status_code=422, detail="Standard conversion requires matched-betting source"
         )
+    if payload.source.calculator_mode != payload.calculator.bet_type:
+        raise HTTPException(
+            status_code=422, detail="Standard source mode does not match calculator"
+        )
     # Revalidate the complete calculator state before any destination write.
     preview = _calculate(payload.calculator)
+    destination_kind, destination_offer_type = _standard_destination(payload)
     exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
     canonical_source = payload.source.model_copy(
         update={
             "canonical_inputs": {
                 "calculator": payload.calculator.model_dump(mode="json"),
                 "exchange": exchange_name,
+                "reference_result": preview.model_dump(mode="json"),
             },
         }
     )
@@ -222,7 +283,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             source_version=payload.source.calculator_version,
             source_mode=payload.source.calculator_mode,
             source_envelope_json=canonical,
-            destination_kind="sportsbook",
+            destination_kind=destination_kind,
             target_profile_id=target.profile_id,
             target_account=target.bookmaker,
         )
@@ -258,7 +319,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             accounts=list_accounts(target.profile_id),
             exchange_commissions=list_profile_exchange_commissions(target.profile_id),
             bookmaker=target.bookmaker,
-            offer_type=payload.offer_type,
+            offer_type=destination_offer_type,
             match_strategy=payload.calculator.strategy,
         )
         reasons = list(eligibility.reasons)
@@ -281,13 +342,84 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             continue
         try:
             source_note = f"Calculator source: {source_id} ({checksum})"
+            explicit_lay = (
+                payload.calculator.manual_lay_stake
+                if payload.calculator.strategy in {"Custom", "Partial Lay"}
+                else ""
+            )
+            if destination_kind == "free_bet":
+                created_free_bet = create_free_bet(
+                    target.profile_id,
+                    {
+                        "event_name": payload.event_name,
+                        "offer_text": payload.event_name,
+                        "bookmaker": target.bookmaker,
+                        "offer_type": destination_offer_type,
+                        "bet_type": payload.bet_type,
+                        "offer_name": payload.offer_name,
+                        "fixture_type": payload.fixture_type,
+                        "status": "Prospecting",
+                        "result": "Pending",
+                        "retention_mode": payload.calculator.free_bet_mode,
+                        "free_bet_value": payload.calculator.back_stake,
+                        "back_odds": preview.canonical_back_odds,
+                        "match_strategy": payload.calculator.strategy,
+                        "lay_odds_1": preview.canonical_lay_odds,
+                        "lay_actual": explicit_lay,
+                        "lay_matched_stake_1": "",
+                        "exchange_name": exchange_name,
+                        "expiry_datetime": "",
+                        "date_settled": "",
+                        "origin_qual_bet_id": "",
+                        "offer_group_id": source_id,
+                        "source_award_group_id": "",
+                        "source_award_split_index": "0",
+                        "source_award_split_total": "0",
+                        "source_award_expected_value": "",
+                        "source_award_variance_reason": "",
+                        "user_notes": source_note,
+                        "manual_override_value": "",
+                        "manual_override_reason": "",
+                    },
+                )
+                free_bet_record = get_free_bet(target.profile_id, created_free_bet.free_bet_id)
+                assert free_bet_record is not None
+                destination_free_bet = build_free_bet_response(
+                    free_bet_record,
+                    tracker_settings=get_profile_tracker_settings(target.profile_id),
+                )
+                if destination_free_bet.calculation_state != "resolved":
+                    raise ValueError("Destination Free Bet calculation did not resolve")
+                href = (
+                    f"/profiles/{target.profile_id}/tracker/free-bets"
+                    f"?record={created_free_bet.free_bet_id}&source=calculator-conversion"
+                )
+                body = f"Added Free Bet opportunity to {profile.display_name}."
+                complete_calculator_conversion_target(
+                    attempt["attempt_id"],
+                    destination_record_id=created_free_bet.free_bet_id,
+                    notification_title="Free Bet opportunity added",
+                    notification_body=body,
+                    notification_link=href,
+                )
+                results.append(
+                    ConversionTargetResult(
+                        profile_id=target.profile_id,
+                        account=target.bookmaker,
+                        state="succeeded",
+                        record_id=created_free_bet.free_bet_id,
+                        href=href,
+                    )
+                )
+                continue
+            profit_boost_fields = _profit_boost_destination_fields(payload.calculator)
             created = create_sportsbook_bet(
                 target.profile_id,
                 {
                     "event_name": payload.event_name,
                     "offer_text": payload.event_name,
                     "bookmaker": target.bookmaker,
-                    "offer_type": payload.offer_type,
+                    "offer_type": destination_offer_type,
                     "bet_type": payload.bet_type,
                     "offer_name": payload.offer_name,
                     "fixture_type": payload.fixture_type,
@@ -296,19 +428,13 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                     "result": "Pending",
                     "back_stake": payload.calculator.back_stake,
                     "back_odds": preview.canonical_back_odds,
-                    "profit_boost_mode": payload.calculator.profit_boost_mode
-                    if payload.calculator.bet_type == "profit_boost"
-                    else "",
-                    "base_back_odds": payload.calculator.base_back_odds,
-                    "profit_boost_percent": payload.calculator.profit_boost_percent,
-                    "maximum_boost_winnings": payload.calculator.maximum_boost_winnings,
-                    "actual_accepted_back_odds": payload.calculator.actual_accepted_back_odds,
+                    **profit_boost_fields,
                     "bonus_trigger": payload.calculator.bonus_trigger,
                     "maximum_bonus": payload.calculator.promotion_value,
                     "bonus_retention_rate": payload.calculator.retention_percent,
                     "match_strategy": payload.calculator.strategy,
                     "lay_odds_1": preview.canonical_lay_odds,
-                    "lay_actual": "",
+                    "lay_actual": explicit_lay,
                     "lay_matched_stake_1": "",
                     "exchange_name": exchange_name,
                     "date_settled": "",
@@ -359,15 +485,17 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                 )
             )
     succeeded = sum(item.state == "succeeded" for item in results)
+    source_label = "Free Bet" if destination_kind == "free_bet" else "Standard"
     return ConversionResponse(
         source_id=source_id,
         source_checksum=checksum,
         results=results,
         notification=(
-            f"Added Standard opportunity to {succeeded} Profile{'s' if succeeded != 1 else ''}."
+            f"Added {source_label} opportunity to {succeeded} "
+            f"Profile{'s' if succeeded != 1 else ''}."
         )
         if succeeded
-        else "No Standard opportunities were added.",
+        else f"No {source_label} opportunities were added.",
     )
 
 
@@ -401,13 +529,18 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
         raise HTTPException(
             status_code=422, detail="Multi-Lay conversion requires multi-lay source"
         )
-    preview_multi_lay(payload.calculator)
+    if payload.source.calculator_mode != payload.calculator.allocation:
+        raise HTTPException(
+            status_code=422, detail="Multi-Lay source mode does not match calculator"
+        )
+    preview = preview_multi_lay(payload.calculator)
     exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
     canonical_source = payload.source.model_copy(
         update={
             "canonical_inputs": {
                 "calculator": payload.calculator.model_dump(mode="json"),
                 "exchange": exchange_name,
+                "reference_result": preview.model_dump(mode="json"),
             }
         }
     )
@@ -558,13 +691,18 @@ def convert_each_way_extra_place(
     _require_fund_manager(request)
     if payload.source.calculator_family != "each-way":
         raise HTTPException(status_code=422, detail="Each Way conversion requires each-way source")
-    preview_each_way(payload.calculator)
+    if payload.source.calculator_mode != payload.calculator.mode:
+        raise HTTPException(
+            status_code=422, detail="Each Way source mode does not match calculator"
+        )
+    preview = preview_each_way(payload.calculator)
     exchange_name = str(payload.source.canonical_inputs.get("exchange", ""))
     canonical_source = payload.source.model_copy(
         update={
             "canonical_inputs": {
                 "calculator": payload.calculator.model_dump(mode="json"),
                 "exchange": exchange_name,
+                "reference_result": preview.model_dump(mode="json"),
             }
         }
     )

@@ -25,6 +25,17 @@ type Props = {
   onClose: () => void;
 };
 
+function standardDestinationOfferType(financial?: CalculatorFinancialSource) {
+  if (financial?.kind !== "standard") return financial?.kind === "multi-lay" ? "Qualifying Bet" : "";
+  const betType = String(financial.calculator.bet_type ?? "");
+  if (betType === "qualifying" && financial.calculator.promotion_mode === "cashback") return "Cashback";
+  if (betType === "qualifying") return "Qualifying Bet";
+  if (betType === "cashback") return "Cashback";
+  if (betType === "money_back" || betType === "bonus_lock_in") return "Bonus Lock-In";
+  if (betType === "profit_boost") return "Profit Boost";
+  return "";
+}
+
 const blockedStatuses = new Set(["archived", "blocked", "closed", "inactive", "not using", "suspended"]);
 const blockedLifecycles = new Set(["archived", "closed", "not signed up", "suspended"]);
 
@@ -52,7 +63,7 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string>>({});
   const [eventName, setEventName] = useState("");
-  const [offerType, setOfferType] = useState(financial?.envelope.calculator_mode === "qualifying" ? "Qualifying Bet" : financial?.kind === "multi-lay" ? "Qualifying Bet" : "");
+  const [offerType, setOfferType] = useState(() => standardDestinationOfferType(financial));
   const [betType, setBetType] = useState("Single");
   const [offerName, setOfferName] = useState("");
   const [fixtureType, setFixtureType] = useState("");
@@ -66,7 +77,9 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
   const [results, setResults] = useState<TargetResult[]>([]);
   const isBlackjack = Boolean(blackjack);
   const isEachWay = financial?.kind === "each-way-extra-place";
-  const financialLabel = financial?.kind === "standard" ? "Standard" : financial?.kind === "multi-lay" ? "Multi-Lay" : "Each Way / Extra Place";
+  const standardBetType = financial?.kind === "standard" ? String(financial.calculator.bet_type ?? "") : "";
+  const offerTypeIsSourceGoverned = standardBetType !== "" && standardBetType !== "free_bet";
+  const financialLabel = standardBetType === "free_bet" ? "Free Bet" : financial?.kind === "standard" ? "Standard" : financial?.kind === "multi-lay" ? "Multi-Lay" : "Each Way / Extra Place";
   useDialogFocusLifecycle(true, dialogRef);
 
   function selectedAccountForProfile(profileId: string) {
@@ -146,7 +159,7 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose }: Pr
         {!isBlackjack ? <section className="stack-tight"><h3>Destination details</h3><div className="form-grid opportunity-setup-grid">
           {isEachWay ? <><label className="field-control"><span>Runner</span><input onChange={(event) => setRunner(event.target.value)} value={runner} /></label><label className="field-control"><span>Race</span><input onChange={(event) => setRace(event.target.value)} value={race} /></label></> : <>
           <label className="field-control field-span-2"><span>Event / fixture</span><input onChange={(event) => setEventName(event.target.value)} value={eventName} /></label>
-          <label className="field-control"><span>Offer type</span><input onChange={(event) => setOfferType(event.target.value)} value={offerType} /></label>
+          <label className="field-control"><span>Offer type</span><input onChange={(event) => setOfferType(event.target.value)} readOnly={offerTypeIsSourceGoverned} value={offerType} /></label>
           <label className="field-control"><span>Bet type</span><input onChange={(event) => setBetType(event.target.value)} value={betType} /></label>
           <label className="field-control"><span>Offer name</span><input onChange={(event) => setOfferName(event.target.value)} value={offerName} /></label>
           <label className="field-control"><span>Fixture type</span><input onChange={(event) => setFixtureType(event.target.value)} value={fixtureType} /></label>

@@ -8,7 +8,7 @@
     {
       "case_id": "CALC-002",
       "inputs": {"calculator_family": "free_bet_snr", "calculator_contract": "free-bet-current-value-contract", "free_bet_value": "10.00", "back_odds": "5.00", "lay_odds": "5.20", "destination": "free_bets", "target_profile_id": "PROFILE-001"},
-      "expected": {"bridge_state": "requires_ledger_completion", "row_saved": false, "mapped_fields": ["free_bet_value", "back_odds", "lay_odds", "retention_mode"]}
+      "expected": {"bridge_state": "prospecting_created", "row_saved": true, "status": "Prospecting", "mapped_fields": ["free_bet_value", "back_odds", "lay_odds", "retention_mode"], "idempotent": true}
     },
     {
       "case_id": "CALC-003",
@@ -22,13 +22,13 @@
     },
     {
       "case_id": "CALC-005",
-      "inputs": {"calculator_family": "dutching", "calculator_contract": null},
-      "expected": {"available": false, "reason": "approved_contract_required"}
+      "inputs": {"calculator_family": "dutching", "calculator_contract": "m14-dutching-reference-contract", "destination_contract": null},
+      "expected": {"available": true, "conversion_available": false, "reason": "destination_contract_missing", "row_saved": false}
     },
     {
       "case_id": "CALC-006",
-      "inputs": {"calculator_family": "cashback", "destination": "sportsbook", "offer_mapping_matches": 2},
-      "expected": {"bridge_state": "human_review_required", "row_saved": false}
+      "inputs": {"calculator_family": "cashback", "destination": "sportsbook", "governed_offer_type": "Cashback"},
+      "expected": {"bridge_state": "prospecting_created", "row_saved": true, "offer_type": "Cashback", "idempotent": true}
     },
     {
       "case_id": "CALC-007",

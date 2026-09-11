@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-11_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -8,6 +8,17 @@ sequencing and the [request register](docs/planning/plum-duff-next-issue-trackin
 durable requirements.
 
 ## Current state
+
+- Current #36 conversion reconciliation records one authoritative family/mode matrix in the
+  existing bridge contract. The shared Standard adapter now creates native Free Bets Prospecting
+  rows for governed SNR/SR modes; maps Cashback, back-loses Bonus Lock-In/Money Back and every
+  Profit Boost derivation into their supported destination fields; preserves explicit Custom/Part
+  Lay input; and embeds the audited reference result in the immutable SHA-256 source envelope.
+  Source/envelope mode mismatches and Bonus Lock-In back-wins fail before any write. Existing
+  Multi-Lay, Each Way / Extra Place and completed Blackjack adapters retain their Profile rules,
+  source identity, linked Notifications and retry idempotency. Sequential Lay, Early Payout / 2UP,
+  Multiples and Dutching remain losslessly blocked; Odds / Probability and Blackjack Simulation
+  remain utilities. Will's local/hosted acceptance is pending; #36 stays open.
 
 - Calculator UI follow-up PD-FIX-081–084 is locally verified pending Will's recheck. The shared
   family carousel now contains the complete active/focus halo and selects adjacent calculators from
@@ -69,9 +80,8 @@ durable requirements.
   identity even when provider labels repeat. Bridge source snapshots, destination validation and
   idempotency are unchanged. Will's recheck remains required.
 - Current implementation base before this tranche: `80816b4` on `main`.
-- On hold: #36 bridge expansion and acceptance; no bridge architecture changed in this correction.
-  Notification/session user acceptance and captured visual work remain tracked, but are not the
-  active feature.
+- On hold: calculator redesign and audited financial maths. Notification/session user acceptance
+  and captured visual work remain tracked, but are not the active feature.
 - Return point: [#36](https://github.com/wolney8/OpenForge/issues/36) remains active for focused
   local acceptance, then targeted hosted acceptance. Unresolved destination capabilities remain
   visible under #36/#38/#39 rather than being flattened into Standard rows.
@@ -101,8 +111,9 @@ durable requirements.
 ## Project plan
 
 - Current: #36 calculator-to-ledger bridge. The same immutable source/review/idempotency path now
-  converts Standard and Multi-Lay to Sportsbook Prospecting rows, Extra Place / Each Way to their
-  native Profile ledger, and completed Blackjack Free/Live to one Casino activity. Odds /
+  converts Standard Sportsbook modes and Free Bet SNR/SR to their native Prospecting ledgers,
+  Multi-Lay to Sportsbook, Extra Place / Each Way to their native Profile ledger, and completed
+  Blackjack Free/Live to one Casino activity. Odds /
   Probability is utility-only. Sequential Lay, Early Payout / 2UP, Multiples and Dutching remain
   blocked on faithful destination contracts.
 - Next queue: local then hosted #36 acceptance; then #85 + #106 Account
