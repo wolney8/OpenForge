@@ -4,6 +4,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from openforge_api.calculations.each_way_extra_place import (
@@ -266,6 +267,34 @@ def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_referenc
     )
     assert custom.status_code == 200
     assert custom.json()["selected_lay_stake"] == "2.25"
+
+
+@pytest.mark.parametrize(
+    ("backing", "trigger", "expected_stake", "expected_back", "expected_lay"),
+    [
+        ("Normal", "Lay Wins", "4.07", "2.54", "2.57"),
+        ("Normal", "Back Wins", "4.73", "-0.24", "-0.27"),
+        ("SNR", "Lay Wins", "3.59", "7.10", "7.09"),
+        ("SNR", "Back Wins", "4.26", "4.23", "4.26"),
+    ],
+)
+def test_bonus_lock_in_verified_basis_and_trigger_grid(
+    tmp_path: Path, backing: str, trigger: str, expected_stake: str,
+    expected_back: str, expected_lay: str,
+) -> None:
+    configure_temp_database(tmp_path)
+    response = TestClient(app).post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={"bet_type": "bonus_lock_in", "bonus_backing_bet": backing,
+              "strategy": "Standard", "back_stake": "5", "back_odds": "9.24",
+              "lay_odds": "10.5", "exchange_commission": "0",
+              "promotion_value": "5", "retention_percent": "70",
+              "bonus_trigger": trigger},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["selected_lay_stake"] == expected_stake
+    assert response.json()["outcomes"][0]["total"] == expected_back
+    assert response.json()["outcomes"][1]["total"] == expected_lay
 
 
 def test_bonus_lock_in_back_wins_and_unsupported_free_bet_variants_fail_closed(

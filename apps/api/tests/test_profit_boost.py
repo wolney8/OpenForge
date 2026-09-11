@@ -97,3 +97,17 @@ def test_accepted_odds_precede_derived_payout_sources() -> None:
     )
     assert result.effective_back_odds == Decimal("2.8700")
     assert result.boost_source == "accepted"
+    assert result.raw_derived_odds == "2.9"
+    assert result.bookmaker_total_return == Decimal("29.00")
+    assert result.effective_odds_return == Decimal("28.70")
+
+
+def test_profit_boost_breakdown_keeps_bookmaker_return_distinct_from_floor() -> None:
+    result = calculate_profit_boost(
+        ProfitBoostInput("PROFILE-001", "total_return", "10", total_potential_return="27.86")
+    )
+    assert result.raw_derived_odds == "2.786"
+    assert result.effective_back_odds == Decimal("2.78")
+    assert result.bookmaker_total_return == Decimal("27.86")
+    assert result.effective_odds_return == Decimal("27.80")
+    assert result.potential_profit == Decimal("17.86")

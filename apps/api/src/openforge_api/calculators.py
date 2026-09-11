@@ -255,6 +255,11 @@ class MatchedBettingResponse(BaseModel):
     promotion_trigger_result: str | None = None
     effective_back_odds: str
     profit_boost_source: str | None = None
+    profit_boost_raw_odds: str | None = None
+    profit_boost_bookmaker_return: str | None = None
+    profit_boost_effective_return: str | None = None
+    profit_boost_potential_profit: str | None = None
+    profit_boost_equation: str | None = None
     strategy_references: list[CalculatorStrategyReferenceResponse] = Field(default_factory=list)
     outcomes: list[CalculatorOutcomeResponse]
 
@@ -263,6 +268,31 @@ class CalculatorExchangeResponse(BaseModel):
     catalogue_id: str
     name: str
     default_commission_rate: str
+
+
+class ProfitBoostPreviewPayload(BaseModel):
+    mode: Literal["displayed_odds", "total_return", "profit_only", "percentage"]
+    back_stake: str = Field(max_length=40)
+    base_back_odds: str = Field(default="", max_length=40)
+    profit_boost_percent: str = Field(default="", max_length=40)
+    boosted_back_odds: str = Field(default="", max_length=40)
+    total_potential_return: str = Field(default="", max_length=40)
+    potential_profit: str = Field(default="", max_length=40)
+    actual_accepted_back_odds: str = Field(default="", max_length=40)
+    maximum_boost_winnings: str = Field(default="", max_length=40)
+
+
+class ProfitBoostPreviewResponse(BaseModel):
+    calculation_state: str
+    notes: list[str]
+    source: str
+    reference_odds: str | None
+    raw_derived_odds: str | None
+    effective_odds: str | None
+    bookmaker_total_return: str | None
+    effective_odds_return: str | None
+    potential_profit: str | None
+    equation: str
 
 
 CALCULATOR_EXCHANGE_DEFAULTS = {"EXCHANGE-SMARKETS": "0"}
@@ -866,7 +896,9 @@ def _matched_outcomes(
 
 def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     profit_boost = None
+    bonus_result = None
     strategy_references: list[CalculatorStrategyReferenceResponse] = []
+    component_values: tuple[Decimal | None, Decimal | None, Decimal | None, Decimal | None, Decimal | None]
     effective_back_odds_text = payload.back_odds
     if payload.bet_type == "profit_boost":
         profit_boost = calculate_profit_boost(
@@ -1043,6 +1075,10 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         exchange_if_lay=component_values[3] or Decimal("0"),
         promotion=component_values[4],
     )
+    if bonus_result is not None:
+        selected = bonus_result.selected
+        outcomes[0].total = _money(selected.back_wins_total)
+        outcomes[1].total = _money(selected.back_loses_total)
 
     return MatchedBettingResponse(
         calculation_state=calculation_state,
@@ -1061,6 +1097,14 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         else None,
         effective_back_odds=f"{effective_back_odds:.4f}",
         profit_boost_source=profit_boost.boost_source if profit_boost else None,
+        profit_boost_raw_odds=profit_boost.raw_derived_odds if profit_boost else None,
+        profit_boost_bookmaker_return=_money(profit_boost.bookmaker_total_return)
+        if profit_boost and profit_boost.bookmaker_total_return is not None else None,
+        profit_boost_effective_return=_money(profit_boost.effective_odds_return)
+        if profit_boost and profit_boost.effective_odds_return is not None else None,
+        profit_boost_potential_profit=_money(profit_boost.potential_profit)
+        if profit_boost and profit_boost.potential_profit is not None else None,
+        profit_boost_equation=profit_boost.equation if profit_boost else None,
         strategy_references=strategy_references,
         outcomes=outcomes,
     )
@@ -1071,6 +1115,26 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
 )
 def preview_matched_betting(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     return _calculate(payload)
+
+
+@router.post(
+    "/fund-manager/calculators/profit-boost/preview",
+    response_model=ProfitBoostPreviewResponse,
+)
+def preview_profit_boost(payload: ProfitBoostPreviewPayload) -> ProfitBoostPreviewResponse:
+    result = calculate_profit_boost(ProfitBoostInput(profile_id="fund-manager", **payload.model_dump()))
+    return ProfitBoostPreviewResponse(
+        calculation_state=result.calculation_state,
+        notes=list(result.calculation_notes),
+        source=result.boost_source,
+        reference_odds=f"{result.reference_boosted_odds:.4f}" if result.reference_boosted_odds is not None else None,
+        raw_derived_odds=result.raw_derived_odds,
+        effective_odds=f"{result.effective_back_odds:.4f}" if result.effective_back_odds is not None else None,
+        bookmaker_total_return=_money(result.bookmaker_total_return) if result.bookmaker_total_return is not None else None,
+        effective_odds_return=_money(result.effective_odds_return) if result.effective_odds_return is not None else None,
+        potential_profit=_money(result.potential_profit) if result.potential_profit is not None else None,
+        equation=result.equation,
+    )
 
 
 @router.get("/fund-manager/calculators/exchanges", response_model=list[CalculatorExchangeResponse])
