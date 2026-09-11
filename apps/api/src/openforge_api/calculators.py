@@ -74,6 +74,7 @@ class MatchedBettingPayload(BaseModel):
     manual_lay_stake: str = Field(default="", max_length=40)
     promotion_value: str = Field(default="", max_length=40)
     bonus_trigger: Literal["Lay Wins", "Back Wins"] = "Lay Wins"
+    bonus_backing_bet: Literal["Normal", "SNR", "SR"] = "Normal"
     retention_percent: str = Field(default="70", max_length=40)
     underlay_factor: str = Field(default="0.928", max_length=40)
     overlay_factor: str = Field(default="1.300", max_length=40)
@@ -172,11 +173,21 @@ class MatchedBettingPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_fields(self) -> "MatchedBettingPayload":
-        if self.bet_type in {"money_back", "bonus_lock_in"} and self.bonus_trigger == "Back Wins":
+        if self.bet_type in {"money_back", "bonus_lock_in"} and self.bonus_backing_bet == "SR":
             raise PydanticCustomError(
-                "calculator_bonus_trigger_unapproved",
-                "Bonus Lock-In when the back bet wins is not supported by an approved "
-                "calculation contract.",
+                "calculator_bonus_sr_unapproved",
+                "Bonus Lock-In with a Stake Returned free bet is not supported by the "
+                "current Outplayed source contract.",
+            )
+        if (
+            self.bet_type in {"money_back", "bonus_lock_in"}
+            and self.bonus_backing_bet == "SNR"
+            and self.strategy in {"Underlay", "Overlay", "Custom"}
+        ):
+            raise PydanticCustomError(
+                "calculator_bonus_snr_advanced_unapproved",
+                "Advanced Bonus Lock-In references for a Stake Not Returned free bet need "
+                "an approved capital-target rule. Standard and explicit Part Lay are supported.",
             )
         if self.strategy == "Partial Lay" and not self.manual_lay_stake:
             raise PydanticCustomError(
@@ -219,6 +230,14 @@ class CalculatorOutcomeResponse(BaseModel):
     total: str
 
 
+class CalculatorStrategyReferenceResponse(BaseModel):
+    strategy: str
+    lay_stake: str
+    liability: str
+    back_wins_total: str
+    back_loses_total: str
+
+
 class MatchedBettingResponse(BaseModel):
     result_kind: Literal["reference"] = "reference"
     calculation_state: str
@@ -227,8 +246,8 @@ class MatchedBettingResponse(BaseModel):
     canonical_lay_odds: str
     selected_lay_stake: str
     reference_lay_stake_standard: str
-    reference_lay_stake_underlay: str
-    reference_lay_stake_overlay: str
+    reference_lay_stake_underlay: str | None
+    reference_lay_stake_overlay: str | None
     liability: str
     pnl_if_back_wins: str
     pnl_if_lay_wins: str
@@ -236,6 +255,7 @@ class MatchedBettingResponse(BaseModel):
     promotion_trigger_result: str | None = None
     effective_back_odds: str
     profit_boost_source: str | None = None
+    strategy_references: list[CalculatorStrategyReferenceResponse] = Field(default_factory=list)
     outcomes: list[CalculatorOutcomeResponse]
 
 
@@ -846,6 +866,7 @@ def _matched_outcomes(
 
 def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
     profit_boost = None
+    strategy_references: list[CalculatorStrategyReferenceResponse] = []
     effective_back_odds_text = payload.back_odds
     if payload.bet_type == "profit_boost":
         profit_boost = calculate_profit_boost(
@@ -956,31 +977,60 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             sportsbook_result.exchange_component_if_lay_wins,
             sportsbook_result.promotion_component,
         )
-        if payload.bet_type in {"money_back", "bonus_lock_in"} and payload.strategy == "Standard":
-            bonus_result = calculate_bonus_lock_in_reference(
-                back_stake=Decimal(payload.back_stake),
-                back_odds=Decimal(effective_back_odds_text),
-                lay_odds=Decimal(payload.lay_odds),
-                lay_commission=Decimal(payload.exchange_commission),
-                reward_amount=Decimal(payload.promotion_value),
-                retention_percent=Decimal(payload.retention_percent),
-            )
-            standard = bonus_result.lay_stake
-            actual_lay_stake = bonus_result.lay_stake
-            liability = bonus_result.liability
-            pnl_back = bonus_result.back_wins_total
+        if payload.bet_type in {"money_back", "bonus_lock_in"}:
+            try:
+                bonus_result = calculate_bonus_lock_in_reference(
+                    back_stake=Decimal(payload.back_stake),
+                    back_odds=Decimal(effective_back_odds_text),
+                    lay_odds=Decimal(payload.lay_odds),
+                    lay_commission=Decimal(payload.exchange_commission),
+                    reward_amount=Decimal(payload.promotion_value),
+                    retention_percent=Decimal(payload.retention_percent),
+                    backing_basis=(
+                        "free_bet_snr" if payload.bonus_backing_bet == "SNR" else "normal"
+                    ),
+                    trigger=("back_wins" if payload.bonus_trigger == "Back Wins" else "back_loses"),
+                    strategy=payload.strategy,
+                    manual_lay_stake=(
+                        Decimal(payload.manual_lay_stake) if payload.manual_lay_stake else None
+                    ),
+                )
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+            standard = bonus_result.standard.lay_stake
+            underlay = bonus_result.underlay.lay_stake if bonus_result.underlay else None
+            overlay = bonus_result.overlay.lay_stake if bonus_result.overlay else None
+            actual_lay_stake = bonus_result.selected.lay_stake
+            liability = bonus_result.selected.liability
+            pnl_back = bonus_result.selected.back_wins_total
             pnl_lay = quantize_money(
-                bonus_result.bookmaker_if_back_loses + bonus_result.exchange_if_back_loses
+                bonus_result.selected.bookmaker_if_back_loses
+                + bonus_result.selected.exchange_if_back_loses
             )
-            matched = bonus_result.matched_result
-            promotion_trigger_result = bonus_result.back_loses_total
+            matched = bonus_result.selected.matched_result
+            promotion_trigger_result = (
+                bonus_result.selected.back_wins_total
+                if payload.bonus_trigger == "Back Wins"
+                else bonus_result.selected.back_loses_total
+            )
             component_values = (
-                bonus_result.bookmaker_if_back_wins,
-                bonus_result.exchange_if_back_wins,
-                bonus_result.bookmaker_if_back_loses,
-                bonus_result.exchange_if_back_loses,
+                bonus_result.selected.bookmaker_if_back_wins,
+                bonus_result.selected.exchange_if_back_wins,
+                bonus_result.selected.bookmaker_if_back_loses,
+                bonus_result.selected.exchange_if_back_loses,
                 bonus_result.retained_reward,
             )
+            strategy_references = [
+                CalculatorStrategyReferenceResponse(
+                    strategy=item.strategy,
+                    lay_stake=_money(item.lay_stake),
+                    liability=_money(item.liability),
+                    back_wins_total=_money(item.back_wins_total),
+                    back_loses_total=_money(item.back_loses_total),
+                )
+                for item in (bonus_result.standard, bonus_result.underlay, bonus_result.overlay)
+                if item is not None
+            ]
 
     assert actual_lay_stake is not None
     assert liability is not None
@@ -1000,8 +1050,8 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         canonical_lay_odds=payload.lay_odds,
         selected_lay_stake=_money(actual_lay_stake),
         reference_lay_stake_standard=_money(standard),
-        reference_lay_stake_underlay=_money(underlay),
-        reference_lay_stake_overlay=_money(overlay),
+        reference_lay_stake_underlay=_money(underlay) if underlay is not None else None,
+        reference_lay_stake_overlay=_money(overlay) if overlay is not None else None,
         liability=_money(liability),
         pnl_if_back_wins=_money(pnl_back),
         pnl_if_lay_wins=_money(pnl_lay),
@@ -1011,6 +1061,7 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         else None,
         effective_back_odds=f"{effective_back_odds:.4f}",
         profit_boost_source=profit_boost.boost_source if profit_boost else None,
+        strategy_references=strategy_references,
         outcomes=outcomes,
     )
 

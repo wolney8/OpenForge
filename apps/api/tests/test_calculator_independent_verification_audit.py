@@ -79,7 +79,7 @@ def test_audit_odds_normalization_is_explicit(
     assert response.json()["canonical_back_odds"] == canonical
 
 
-def test_audit_bonus_back_wins_remains_blocked_without_authority(client: TestClient) -> None:
+def test_audit_bonus_back_wins_uses_the_governed_normal_basis(client: TestClient) -> None:
     response = client.post(
         "/fund-manager/calculators/matched-betting/preview",
         json={
@@ -94,8 +94,24 @@ def test_audit_bonus_back_wins_remains_blocked_without_authority(client: TestCli
             "bonus_trigger": "Back Wins",
         },
     )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["selected_lay_stake"] == "11.24"
+    assert body["outcomes"][0]["promotion_component"] == "7.00"
+
+
+def test_audit_bonus_free_bet_sr_remains_explicitly_blocked(client: TestClient) -> None:
+    response = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={
+            "bet_type": "bonus_lock_in", "bonus_backing_bet": "SR",
+            "strategy": "Standard", "back_stake": "10", "back_odds": "4",
+            "lay_odds": "4.2", "exchange_commission": "0.02",
+            "promotion_value": "10", "retention_percent": "70",
+        },
+    )
     assert response.status_code == 422
-    assert "not supported by an approved calculation contract" in response.text
+    assert "Stake Returned" in response.text
 
 
 def test_money_back_compatibility_is_the_governed_back_loses_alias(client: TestClient) -> None:

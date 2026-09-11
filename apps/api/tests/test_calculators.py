@@ -237,6 +237,64 @@ def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(
     assert len(list_sportsbook_bets("profile-demo-001")) == before
 
 
+def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_references(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    base = {
+        "bet_type": "bonus_lock_in", "bonus_backing_bet": "Normal",
+        "back_stake": "5", "back_odds": "9.24", "lay_odds": "10.5",
+        "exchange_commission": "0", "promotion_value": "5",
+        "retention_percent": "70", "bonus_trigger": "Lay Wins",
+    }
+    expected = {"Standard": "4.07", "Underlay": "1.50", "Overlay": "4.34"}
+    for strategy, stake in expected.items():
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={**base, "strategy": strategy},
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["selected_lay_stake"] == stake
+        assert {item["strategy"]: item["lay_stake"] for item in body["strategy_references"]} == expected
+        assert body["outcomes"][1]["promotion_component"] == "3.50"
+
+    custom = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**base, "strategy": "Custom", "manual_lay_stake": "2.25"},
+    )
+    assert custom.status_code == 200
+    assert custom.json()["selected_lay_stake"] == "2.25"
+
+
+def test_bonus_lock_in_back_wins_and_unsupported_free_bet_variants_fail_closed(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    base = {
+        "bet_type": "bonus_lock_in", "back_stake": "5", "back_odds": "9.24",
+        "lay_odds": "10.5", "exchange_commission": "0", "promotion_value": "5",
+        "retention_percent": "70", "bonus_trigger": "Back Wins", "strategy": "Standard",
+    }
+    response = client.post("/fund-manager/calculators/matched-betting/preview", json=base)
+    assert response.status_code == 200, response.text
+    assert response.json()["selected_lay_stake"] == "4.73"
+    assert response.json()["outcomes"][0]["promotion_component"] == "3.50"
+
+    sr = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**base, "bonus_backing_bet": "SR"},
+    )
+    assert sr.status_code == 422 and "Stake Returned" in sr.text
+    snr_advanced = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**base, "bonus_backing_bet": "SNR", "strategy": "Underlay"},
+    )
+    assert snr_advanced.status_code == 422 and "capital-target" in snr_advanced.text
+
+
 def test_calculator_exchange_default_uses_master_catalogue(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
