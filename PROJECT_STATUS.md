@@ -9,13 +9,24 @@ durable requirements.
 
 ## Current state
 
+- Standard control/parity tranche PD-FIX-093–100 is locally verified pending Will's comparison.
+  Standard now separates Normal/Free Bet SNR/Free Bet SR `Bet Type` from Simple/Advanced
+  presentation; Simple is explicitly equalised Standard, while Advanced exposes the shared
+  Underlay/Overlay references, Custom slider and Part Lay path. Bonus Lock-In exposes Normal/SNR,
+  Loses/Wins, 70% retention and canonical Smarkets 0% defaults, with one offer-aware strategy
+  engine. The bounded #113 extension passes 85 supported configuration fixtures and keeps 10 Bonus
+  Free Bet SR cells blocked. Will's editable observation worksheet is
+  [Calculator manual comparison](docs/audits/calculator-manual-comparison.md). GitHub #35/#37/#113,
+  shared-containment evidence for #92, and the unchanged SNR conversion blocker for #36 are pending
+  sync because `gh` and an authenticated token are unavailable in this environment; no hosted claim
+  is made.
 - Current corrective tranche PD-FIX-085–092 repairs the Bonus Lock-In routing defect, exposes the
   governed Profit Boost derivation, and tightens the existing #36 review/completion boundary. Normal
   Bonus Lock-In now uses one offer-aware engine for both triggers and Standard/Underlay/Overlay/
   Custom/Part Lay; the synthetic £5 @ 9.24/10.5, £5 reward, 70%, 0% fixture resolves to £4.07,
-  £1.50 and £4.34. Free Bet SNR Standard/Part Lay is calculator-supported but conversion-blocked
-  because the Sportsbook destination has no backing-basis field; SR and SNR advanced capital-target
-  references remain explicit unsupported combinations. This supersedes earlier broad “29 modes”
+  £1.50 and £4.34. Free Bet SNR is calculator-supported across all five strategies but remains
+  conversion-blocked because the Sportsbook destination has no backing-basis field; Free Bet SR
+  Bonus remains explicitly unsupported. This supersedes earlier broad “29 modes”
   assurance: #113 proves representative fixtures, not every cross-product.
 - Current #36 conversion reconciliation records one authoritative family/mode matrix in the
   existing bridge contract. The shared Standard adapter now creates native Free Bets Prospecting
@@ -40,18 +51,18 @@ durable requirements.
   rows; Multi-Lay/Sequential Lay reuse the canonical BACK BET eyebrow; Extra Place reuses the
   embedded presentation selector without resetting state; Multiples/Dutching preserve exposed
   outer radii; and calculator families use bounded slide paging, fixed disabled boundary arrows and
-  an anchored ellipsis menu. The unsupported Bonus Lock-In back-wins trigger remains absent from
-  normal UI and fail-closed on the server. Financial calculations and #113 results are unchanged.
+  an anchored ellipsis menu. Its earlier back-wins hiding decision is superseded by the current
+  Outplayed-backed Normal/SNR trigger contract. Other financial calculations remain unchanged.
   Evidence is synced to #35 and #92; Will's acceptance recheck remains pending.
 - Current feature: [#113 independent calculator verification audit](https://github.com/wolney8/OpenForge/issues/113).
-  The durable audit and independent API fixture cover 29 representative family/mode fixtures,
-  not every exposed input/strategy cross-product. Shared money quantization canonicalises rounded
-  signed zero, closing Overlay AUD-STD-03 without changing its arithmetic. Current TeamProfit
-  source plus the current Outplayed calculator/source govern Normal backing for both reward triggers,
-  and the `money_back` compatibility alias. Free Bet SR and SNR advanced capital-target variants
-  remain unsupported. Eight external comparisons remain explicit in
+  The durable audit now combines 25 existing non-Standard independent cases with a 60-cell
+  Standard backing/trigger/source/strategy matrix. The result is 85 supported configuration
+  fixtures passing, with 10 required Bonus Free Bet SR configurations blocked rather than omitted.
+  Shared money quantization still canonicalises rounded signed zero. Current Outplayed source plus
+  independent branch equations now govern Normal and SNR backing for both reward triggers; the
+  `money_back` compatibility alias remains governed. Eight external comparisons remain explicit in
   `docs/audits/issue-113-independent-calculator-verification-2026-09-10.md`. No unrelated formula changed.
-  #36 manual acceptance remains on hold until this audit is reviewed.
+  #36 manual acceptance remains on hold until this audit and worksheet are reviewed.
 - Prior feature: [#40 Blackjack acceptance reconciliation](https://github.com/wolney8/OpenForge/issues/40),
   a bounded correction before returning to [#36](https://github.com/wolney8/OpenForge/issues/36).
   The Fund Manager hub now contains the locally verified core catalogue: Standard, Multi-Lay,

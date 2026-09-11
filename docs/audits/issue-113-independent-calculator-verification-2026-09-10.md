@@ -43,9 +43,12 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
 - Free Bet: SNR base `round2(B×(Ob-1)/(Ol-c))`; SR base `round2(B×Ob/(Ol-c))`; under/overlay
   multiply the rounded base by the approved factor and round again. Explicit strategies use entered
   `L`.
-- Cashback adds only its explicit value to the selected trigger branch. Approved back-loses Bonus
-  Lock-In uses `R=A×r`, then places `L=round2((B×Ob-R)/(Ol-c))`; liability and both branches derive
-  from that placed stake. Reward-if-back-wins remains unapproved.
+- Cashback adds only its explicit value to the selected trigger branch. Bonus Lock-In first keeps
+  backing basis, reward and trigger separate. With retained value `R=A×r`, it solves
+  `L=(back-win basis − back-lose basis + reward-on-back − reward-on-lay)/(Ol-c)`. Normal and SNR
+  Underlay/Overlay endpoints target their governed zero/face-value branch; invalid non-positive
+  endpoints remain unavailable. The selected lay is placed half-up to pennies before liability and
+  displayed branch components, and the displayed total is the sum of those placed components.
 - Profit Boost: displayed odds are direct; total-return odds are conservatively floored to 2dp;
   profit-only is `1+profit/B`; percentage is `1+(base-1)×(1+pct)` after the explicit money cap.
 - Multi-Lay Standard uses `round2(B×Ob/(Oli-c))` per branch. Underlay solves the common allocation
@@ -75,7 +78,7 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
 | Standard | Free Bet SR, all exposed strategies | Free Bet workbook contract | AUD-FB-02/05/06 | base 9.57; Custom 9.00; Part 4.00 | exact | rounded base/entered actual | UNVERIFIED current external | PASS | none |
 | Standard | Bonus Lock-In: Normal, back loses | Outplayed Bonus Lock-In calculator/source + signed M14 contract | AUD-BONUS-LOSE; £5 @ 9.24/10.5, £5 reward, 70%, 0% | Standard 4.07; Underlay 1.50; Overlay 4.34 | exact | selected lay rounded half-up to penny before liability/outcomes | live source controls/formulas and independent branch equations agree at 0% | PASS | nonzero-commission lower endpoint follows exact division, documented against source approximation |
 | Standard | Bonus Lock-In: Normal, back wins | Outplayed Bonus Lock-In calculator/source + signed M14 contract | AUD-BONUS-WIN; same fixture | Standard 4.73; branches -0.24/-0.27 | exact | selected lay rounded half-up to penny before liability/outcomes | current source explicitly exposes Wins and independently derived inverse branch agrees | PASS | none |
-| Standard | Bonus Lock-In: Free Bet SNR | Outplayed public calculator/source + signed M14 contract | same fixture, loses/wins | loses L 3.59, branches 7.10/7.09; wins L 4.26, branches 4.23/4.26 | exact | same placement order | source explicitly exposes Free Bet SNR | PASS | advanced capital-target endpoints unsupported; SR unsupported |
+| Standard | Bonus Lock-In: Free Bet SNR | Outplayed public calculator/source + signed M14 contract | same fixture, loses/wins | loses Standard/U/O 3.59/1.50/4.34; wins 4.26/4.18/5.00 | exact | exact Decimal stake/component placement | source strategy stakes agree at 0%; source binary liability and negative-sign presentation differences are documented | PASS | SR unsupported; exact `(1-c)` differs from source's nonzero-commission endpoint approximation |
 | Standard | Money Back API compatibility | approved back-loses Bonus Lock-In contract | AUD-MONEY-BACK | exact alias: L 7.89; branches 4.75/4.73 | exact | same governed path | MBB/TeamProfit “money back if loses” semantics | PASS | alias retained; not a separate engine |
 | Standard | Cashback | Sportsbook cashback branch | AUD-CB-01 | base -0.62; trigger 4.38 | exact | standard hedge then +5.00 | N/A exact external | PASS | trigger vocabulary remains contract-bounded |
 | Standard | Profit Boost: displayed odds | Profit Boost contract | AUD-PB-01 | 3.2000; L 7.66; result -2.51 | exact | odds 4dp; money 2dp | N/A exact external | PASS | none |
@@ -98,6 +101,30 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
 | Odds / Probability | Fractional/decimal/American/probability | approved M14 odds contract | AUD-ODDS-01..04 | 5/2↔3.50↔+250↔28.57; other exact cases | exact | retain source precision, display 2dp | current MBB bundle + accepted cases | PASS | none |
 | Blackjack | Hard/soft/pair/surrender/H17/S17/Hit/fallback | current Outplayed matrices | AUD-BJ-01..07 | all published moves/fallbacks | exact | discrete lookup; Ace revaluation | current public JS exact | PASS | session/P&L deliberately excluded |
 
+## Configuration-matrix extension — 2026-09-11
+
+`test_standard_calculator_configuration_matrix.py` independently derives, then calls the public
+preview API for, these 60 exposed Standard configurations: Normal/SNR/SR × five strategies (15),
+Bonus Normal/SNR × two triggers × five strategies (20), Cashback × five strategies (5), and four
+Profit Boost sources × five strategies (20). It deliberately does not call production calculation
+helpers to construct expected values. The prior independent fixture set supplies 25 non-Standard
+family cases, for 85 distinct exercised configuration fixtures in the combined matrix.
+
+The current public Outplayed Bonus calculator (bundle SHA-256
+`522ebe7f06386f13c44e0c493609776dbf50a77c86d41750b11b000bcd784124`) black-boxed the required
+£5/9.24/10.5/£5/70%/0% Normal case at Standard/Underlay/Overlay `4.07/1.50/4.34`, matching the
+independent equations and platform. The same capture matched all six SNR trigger/strategy stakes.
+It displayed `34.10` rather than exact half-up `34.11` for one SNR liability because its JavaScript
+uses binary `toFixed`, and removes a genuine minus sign from two endpoint P&Ls; these are external
+presentation mismatches, not OpenForge parity. Current MBB remains an additional comparison: its
+Normal Standard/Underlay/Overlay outputs retain the already documented 1p authority differences.
+
+Ten required Bonus Free Bet SR cells (two triggers × five strategies) remain **BLOCKED**: neither
+current Outplayed controls nor an approved product contract defines that backing/reward combination.
+Unexposed optional Accumulator Each Way/Rule 4/folds/bonus and Advanced Dutching stay listed below
+but are not counted as exposed configuration cells. The editable observation worksheet is
+[`calculator-manual-comparison.md`](calculator-manual-comparison.md).
+
 ## Validation and result totals
 
 The independent API harness covers expected-output and strict normalisation/rejection cases,
@@ -110,13 +137,13 @@ odds normalisation, copy/reset behaviour, narrow containment and zero ledger wri
 isolated audit API. Family-wide numerical evidence comes from the independent API harness, not that
 representative browser path.
 
-- **PROVEN PASS: 29 representative mode fixtures plus the bounded Bonus Lock-In basis/trigger grid above.** This is fixture evidence, not proof of every exposed strategy/input combination.
-- **FAIL: 0 modes**
-- **BLOCKED: 0 audited representative modes.** Bonus Lock-In Free Bet SR and SNR advanced capital-target strategies remain unsupported combinations, not silently covered by this count.
-- **UNVERIFIED external comparisons: 8 matrix modes**
+- **REQUIRED CONFIGURATION CELLS: 95** (85 supported fixtures plus 10 required blocked SR cells)
+- **TESTED: 85; PROVEN PASS: 85; FAIL: 0; BLOCKED: 10**
+- **UNVERIFIED external comparisons: 8 matrix modes** (login-only, unavailable control, or no equivalent)
 
 Assurance correction (2026-09-11): the earlier aggregate PASS count described representative
-fixtures only. It did not establish every cross-product of backing basis, reward trigger, strategy,
-commission and retention. The bounded grid above now covers Normal/SNR triggers; SR and SNR
-advanced strategies remain fail-closed pending authority. Optional Accumulator Each Way/Rule 4/folds/bonuses and
-Advanced Dutching remain deliberately unexposed, so they are not counted as exposed failures.
+fixtures only. The new bounded matrix establishes the discrete exposed Standard routing cross-product
+at its stated fixtures, including commission/retention and penny-edge regressions; it is not proof of
+every possible numeric input. Bonus SR remains fail-closed pending authority. Optional Accumulator
+Each Way/Rule 4/folds/bonuses and Advanced Dutching remain deliberately unexposed, so they are not
+counted as exposed failures.

@@ -10,7 +10,7 @@ Baseline: `579fe8a`. GitHub authority: #36 `5636998406`, #37 `5636991492`,
 
 | ID | Section | Area | Requested outcome | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-085 | A | Bonus Lock-In financial model | Route every supported basis/trigger/strategy through one offer-aware reference contract, with governed penny placement and explicit unsupported combinations. | COMPLETE LOCALLY — SR AND SNR ADVANCED REMAIN EXPLICITLY UNSUPPORTED |
+| PD-FIX-085 | A | Bonus Lock-In financial model | Route every supported basis/trigger/strategy through one offer-aware reference contract, with governed penny placement and explicit unsupported combinations. | SUPERSEDED BY PD-FIX-093–100 — SNR advanced is governed; SR remains explicitly unsupported |
 | PD-FIX-086 | B | Bonus Lock-In presentation | Standard equalised view; Advanced Underlay/Overlay/Custom references before shared Outcomes, with one selected/copy/conversion value. | COMPLETE LOCALLY — RENDERED RECHECK PENDING |
 | PD-FIX-087 | C | Conversion review authority | Reuse destination Bet Type, Offer Type and Fixture Type selectors and preserve canonical Account identity through save. | COMPLETE LOCALLY — WILL RECHECK PENDING |
 | PD-FIX-088 | D | Conversion completion | Close successful review, restore focus, retain calculator state, render linked receipt, distinguish retry from deliberate new intent, and retain partial failures. | COMPLETE LOCALLY — WILL RECHECK PENDING |
@@ -40,7 +40,7 @@ local historical rows to migrate. No historical record was recalculated or edite
 | PD-FIX-077 | Calculator hierarchy and presentation | Reuse the canonical BACK BET eyebrow in Multi-Lay/Sequential Lay and expose the existing Extra Place presentation selector in its stable header action slot. | Standard and embedded Extra Place calculator | COMPLETE LOCALLY — WILL RECHECK PENDING |
 | PD-FIX-078 | Repeated calculator surfaces | Preserve intentional joined edges while rounding every exposed outer selection-container corner. | Canonical calculator panel surface | COMPLETE LOCALLY — WILL RECHECK PENDING |
 | PD-FIX-079 | Calculator family navigation | Slide bounded family pages, retain disabled boundary arrows and replace numeric overflow chrome with an anchored accessible ellipsis menu. | Canonical bounded paging and app-menu primitives | COMPLETE LOCALLY — WILL RECHECK PENDING |
-| PD-FIX-080 | Unsupported Bonus Lock-In trigger | Keep reward-if-back-wins unavailable in normal UI while retaining the server fail-closed contract and tracked requirement. | #37/#113 authority result | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-080 | Unsupported Bonus Lock-In trigger | Historical fail-closed presentation pending authority. | #37/#113 authority result | SUPERSEDED by PD-FIX-093–100: current Outplayed source governs Normal/SNR back-wins |
 
 ## 2026-09-10 Calculator-to-Casino Manual Acceptance Batch
 
@@ -214,3 +214,17 @@ local historical rows to migrate. No historical record was recalculated or edite
 | --- | --- | --- | --- | --- |
 | PD-FIX-030 | Extra Place EP theme | Use dark-mode Back `#174583`, Win Lay `#7C1E2F`, and Place Lay `#7B281E` surfaces with contrast-safe foreground text. | EP dark theme swatches | VERIFIED |
 | PD-FIX-031 | Extra Place Back/Lay theme | Brighten modal section headings, labels, calculated stakes, and helper copy for the Smarkets/Betfair palette in dark mode. | EP modal Back/Lay text | VERIFIED |
+## PD-FIX-093 to PD-FIX-100 — Standard controls, external parity and manual comparison (2026-09-11)
+
+Baseline: `44f152bed78ed9b82540ea70ba9adca9cb720706`
+
+| ID | Section | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-093 | Standard controls | Separate backing Bet Type (Normal/SNR/SR) from Simple/Advanced presentation without hiding the selected financial strategy. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-094 | Bonus controls | Expose Normal/SNR, Loses/Wins, 70% retention and 0% commission defaults with editable stake-derived reward. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-095 | Bonus authority | Govern Normal/SNR × Loses/Wins × supported strategies from current Outplayed source plus independent branch equations. | COMPLETE LOCALLY — Bonus SR remains separately BLOCKED |
+| PD-FIX-096 | Advanced presentation | Reuse shared reference, custom-slider, copyable-value and Outcomes primitives for qualifying/free-bet and Bonus alternatives. | COMPLETE LOCALLY — WILL RECHECK PENDING |
+| PD-FIX-097 | Routing chain | Prove control → request → result → clipboard → conversion envelope consistency and preserve part-lay drafts. | COMPLETE LOCALLY — Normal conversion proven; SNR destination remains BLOCKED |
+| PD-FIX-098 | Configuration audit | Extend #113 with the exposed family × backing × trigger × strategy matrix, independent expectations and scoped external evidence. | COMPLETE LOCALLY — 85 PASS / 10 BLOCKED |
+| PD-FIX-099 | Manual comparison | Create the editable calculator comparison worksheet with stable case IDs and blank external observations. | COMPLETE LOCALLY — WILL INPUT PENDING |
+| PD-FIX-100 | Regression/delivery | Verify shared UI parity, isolated data boundaries, tracking, commits, push and local service health. | COMPLETE LOCALLY — 181 focused API/configuration and 22 rendered browser checks pass; GitHub comment sync remains pending |
