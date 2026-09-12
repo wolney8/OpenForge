@@ -23,6 +23,25 @@ The current audit is executing in batches A–D. Untested areas below must not b
 No application implementation, financial revision, migration, real-record write, credential rotation,
 hosted scan or issue closure is authorised by this report.
 
+### Batch 2 executive addendum — populated financial flows
+
+Audit parent `e5218bc1156e1d15ca115219cd4b912e436b8c21`; exercised application source remains
+main `f7a3b35073ecc87cdf8f8f881129f221ec44d395`, not unmerged development. On 2026-09-12,
+independent synthetic Account, SNR/SR Free Bet and conversion probes establish **financial integrity
+failures**, not whole-platform readiness. Invalid Account values persist and incomplete cash totals
+look complete; invalid Free Bet creation commits before its 500 response and subsequently breaks
+reads/reports; the same completed Blackjack snapshot creates Casino activity in two Profiles.
+Clean SNR/SR preview/copy/save/reopen and explicit actual-stake settlement agree with independent
+fixtures. Standard conversion retry/new-intent and desktop receipt/focus work in sampled paths;
+half-width pointer Save is intercepted by navigation chrome, while keyboard recovery succeeds.
+
+The affected image optimizer is anonymously reachable locally, but attacker-controlled AVIF input
+and actual deployed platform/exposure are **UNVERIFIED**. No exploit, upgrade, migration, production
+scan, secret rotation or product fix was performed. First proposed implementation: bounded Account
+monetary write validation and incomplete-aggregation safety; urgently clarify #115 deployment/input
+exposure separately. Free Bet atomic validation and completed-session global duplicate protection
+are subsequent independent high-priority repairs, not cosmetic work.
+
 ## Protected checkpoint and runtime ownership
 
 | Layer | Full SHA / branch | Runtime and data | Protection |
@@ -50,7 +69,8 @@ Original capture links (local only): [HTML](</Users/will_work/Scripts/Homelab/Op
 | A Goals / inventory / requests | #114 full brief, #113 current deferral, README/status/register/roadmap; protected branch/runtime checkpoint; original #1–114 identities; explicit Account/balance/analytics/task/import requests/clarifications | DOCUMENTED; detailed remaining historical clarification triage pending | Remaining issue-specific clarification triage, no invented missing requests |
 | B Functional / rendered / accessibility | Actual isolated API/native rows/refresh and 17 route shells; geometry/themes, lean guard and modal focus/Escape; named auth/restore/backup/eligibility tests | PROVEN scoped PASS/FAIL; full workflows incomplete | Populated Free Bet SNR/SR complete lifecycle first, then other ledgers/bridge/recovery |
 | C Architecture / operations / standards / competitors | API/router/Account/summary/SQLite/PG/migration sources, dependency registry/maintainer advisories, official WCAG/WAI/web.dev/ASVS and public vendor pages | CODE-VERIFIED / DOCUMENTED; actual PG/field performance/member journeys UNVERIFIED | True isolated PG recovery, larger-data production benchmark and assistive technology |
-| D Priorities / next tranches | PD-QA-001–013 and three bounded proposed tranches, evidence/result kept distinct | DOCUMENTED recommendations, not implementation | Reprioritise if remaining journey probes find higher integrity risks |
+| B2 Financial flows / exposure | Eight Account money forms; pending withdrawals; native SNR/SR and converted SNR; populated Standard/Free Bet/Blackjack conversion, retry/partial failure/new intent; desktop/light and half-width/dark dialog | PROVEN scoped PASS/FAIL; blocked and unattempted branches below | Other populated ledgers; actual award-split lineage; stale/timeout/concurrent browser paths; PostgreSQL/large data/reader |
+| D Priorities / next tranches | PD-QA-001–015, refined after financial-flow failures | DOCUMENTED recommendations, not implementation | Keep each repair bounded; unknown security exposure remains visible |
 
 ## Evidence convention
 
@@ -119,15 +139,15 @@ operations**. Enumeration is CODE-VERIFIED, not a test of every operation.
 | Search / navigation / Quick Actions / filters/loadouts | `/search` is protected by server middleware; canonical global search/header rendered at half width | CODE-VERIFIED authority; keyboard search, saved loadouts, stale results, deep-link routing NOT TESTED |
 | Dashboard / `/performance` | Profile/combined routes rendered; first rapid probe saw unresolved shell, later probe settled on Dashboard | PASS, PROVEN settled shell; finance semantics/point interaction NOT TESTED; do not label intermediate load empty |
 | Sportsbook / opportunity / placement / settlement / undo | 30 synthetic Prospecting rows created, isolated and retained through real browser refresh; native Add Row opened | PASS for persistence; FAIL modal focus/Escape; lifecycle/actual settlement/history/undo NOT TESTED end-to-end |
-| Free Bets / lineage / SNR/SR / settlement | Empty Profile ledger rendered; existing contracts/workflow inventoried | NOT TESTED populated native/imported/converted settlement and lineage removal this pass |
-| Casino / activity / fees / manual override | Empty Profile ledger rendered; session bridge source/provenance inspected | NOT TESTED populated settlement/cash reconciliation and converted Blackjack activity this pass |
+| Free Bets / lineage / SNR/SR / settlement | Batch2 native SNR/SR real UI preview/copy/Save/reopen; actual7.00 settlement/report31.20; converted SNR API settlement7.40; malformed retained rows break read | PASS scoped numerical/persistence; FAIL atomic malformed write and dangling source; imported/automatic split lineage, stale/concurrent UI NOT TESTED |
+| Casino / activity / fees / manual override | Batch2 signed completed Blackjack snapshot saves reviewed10.00 activity and same-target retry; same snapshot other Profile creates duplicate | FAIL completed-session uniqueness; PASS scoped API mapping/provenance; actual played UI conversion and other fee/override journeys NOT TESTED |
 | Extra Places / Each Way | Dedicated empty ledger rendered; `NotChecked` capability source inspected | NOT TESTED placement/void/dead-heat/manual override journey; unavailable branches stay tracked |
 | Cash Adjustments / fees / cash movements | Ledger shell rendered; fixture-backed cash/Casino/eligibility suite 7 PASS | PASS, PROVEN selected pure fixtures only; complete fee crystallisation/withdrawal/reports workflow NOT TESTED |
-| Current Account balances / pending withdrawals / snapshots | Account malformed POST 201 and update 200 observed; separate snapshot API inspected | FAIL validation; #85/#106 freshness/atomic observation remains planned, NOT TESTED |
+| Current Account balances / pending withdrawals / snapshots | Batch2 eight balance forms traced persistence/read/Profile cash/export; four invalid withdrawal strings accepted | FAIL validation/incomplete cash aggregation; combined summary BLOCKED, Account UI input probe BLOCKED; #85/#106 atomic observation remains planned |
 | Standalone calculator hub | Standard rendered at 1440/760/390; four widths × two themes measured; one literal independent stake fixture | PASS bounded integration; FAIL 320px/200% reflow; other families integration NOT TESTED; no #113 rerun |
 | Embedded calculators / matching/copy | Native editor rendered, shared engines/primitives inventoried | NOT TESTED complete input→preview→copy→save→reopen for every ledger/family |
 | Authenticated lean `/calculator` | Authenticated Standard shell rendered; anonymous client revalidation redirects to login | PASS, PROVEN sampled guard; server matcher omits `/calculator` but client auth guard denies it—no API bypass observed |
-| Calculator conversion / #77 | Source envelopes, account IDs, operation idempotency and source-mode checks inventoried | CODE-VERIFIED; current-revision multi-Profile retry/partial failure and receipt end-to-end NOT TESTED here |
+| Calculator conversion / #77 | Batch2 API partial/retry/new-intent/source/Account denial plus lean dialog saves at1440light/760dark | PASS scoped API and desktop receipt/focus; FAIL half-width pointer interception and Casino clone; keyboard recovery PASS; injected timeout/concurrent and hub/partial UI NOT TESTED |
 | Blackjack / current/Last Hand/history/snapshot | Existing proven matrix and session snapshot code inventoried | NOT TESTED live/session financial UI this pass; strategy correctness remains bounded #113 evidence, not UX acceptance |
 | `/reports`, Profile Reports/Profit Tracker | Report route shells rendered; approved settled-date/retained-profit sources identified | NOT TESTED all metric aggregates, date/grain/account filters, charts/table drilldown |
 | Imports / founder review / checkpoint / recovery | Import/review/recovery pages and API inventory; Account map gap inspected | CODE-VERIFIED; native XLSX/import fallback/browser resume and larger imported dataset NOT TESTED |
@@ -213,6 +233,150 @@ Registry advisory entries are not distinct exploited vulnerabilities. Three crit
 - Next 16.3.2: [Windows-hosted filesystem advisory](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36), patched 16.3.3. Local macOS is not the described Windows condition; other deployments UNVERIFIED.
 - Vitest 4.0.4: [maintainer UI/API advisory](https://github.com/vitest-dev/vitest/security/advisories/GHSA-5xrq-8626-4rwp), patched 4.1.0 for this advisory. Applies to exposed UI/API or Windows Browser/UI conditions; no such server observed. Other advisory minima must also be checked before choosing a version.
 
+## Batch 2 — financial data flow, populated journeys and applicability
+
+All following observations use disposable `AUDIT2-*` Profiles/Accounts in the dedicated 8024 DB.
+No operational or manual-candidate records were read or changed. Intentionally invalid values
+remain intact; clean lifecycle evidence uses a separate Profile, not repaired corruption.
+Original checkpoint SHAs and private comparison files are preserved. Reusing a factory does not
+prove native onboarding; UI/API expectations are assessed separately.
+
+### #115 applicability — bounded read-only check
+
+Official maintainer advisories accessed 2026-09-12; versions below are installed/locked evidence,
+not a recommendation to bundle upgrades into financial work.
+
+| Dependency / authority | Applicable conditions / local evidence | Reachability / deployment | Supported patch |
+|---|---|---|---|
+| Next 16.3.2; [AVIF advisory](https://github.com/vercel/next.js/security/advisories/GHSA-2xp9-vwfh-vxw4) | Affected; sharp HEIF loader enabled in image optimizer. Installed sharp 0.35.3 reports heif 1.23.1. No global `images.unoptimized` in Next config; remote patterns empty, local patterns unrestricted by explicit config | Anonymous benign `/_next/image?url=%2Fbrand%2Fplum-duff-wordmark-cropped-v2.png&w=640&q=75` →200 PNG, 28,073 bytes on 3024: PROVEN reachable. Attacker AVIF delivery/exploitability and hosted runtime UNVERIFIED | Next 16.3.3 / 15.5.24 per advisory |
+| Next 16.3.2; [Windows advisory](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36) | Windows filesystem/runtime condition; local installed platform is Darwin, so that condition is NOT APPLICABLE locally | Deployment OS/config unknown; do not extrapolate local platform | Next 16.3.3 / 15.5.24 |
+| sharp 0.35.3; [HEIF advisory](https://github.com/lovell/sharp/security/advisories/GHSA-rgj7-g3m4-5g8c) | Affected version; Linux/glibc exploitation prerequisites not established by Darwin check | HEIF loader CODE-VERIFIED enabled; untrusted image route/input and deployed prerequisites UNVERIFIED | sharp >=0.35.4; libheif 1.23.2 |
+| Vitest 4.0.4; [UI/API advisory](https://github.com/vitest-dev/vitest/security/advisories/GHSA-5xrq-8626-4rwp) | Affected version; checked config uses jsdom and `vitest run`, no explicit API host/UI exposure | Applicable UI/API/browser configuration not observed in checked config; deployment/process exposure NOT exhaustively verified | 4.1.0 / 3.2.5 for this advisory; not an all-advisory clean-version claim |
+
+Unoptimized consumers do **not** prove optimizer absence. Immediate risk notice was given during
+the audit. No urgent exploitable RCE was established, and unknown exposure is not “safe.” Separate
+bounded proposal: owner-authorised deployment OS/version/image-input inventory and patched-version
+remediation with representative auth/image/financial regressions; no exploit or production scan.
+
+#96 remains separately BLOCKED pending the owner/provider action: rotate/reset the exposed Google
+OAuth client secret in Google Cloud Console, invalidate the old secret, securely update authorised
+runtime configuration and verify sign-in/callback plus old-secret invalidation. This audit neither
+reads out secret values nor performs rotation; provider permissions and completion remain unverified.
+
+### Account money — PD-QA-002 and PD-QA-007
+
+Independent expectation: a supplied balance must be contract-valid finite money or explicitly
+supported absence. Malformed/non-finite money must fail before writes; an invalid constituent must
+not produce an apparently complete cash total. This adds no rounding, coercion or null policy.
+
+Each tested Profile has a valid £10 Bank A plus a separate tested Lloyds Bank Account. The null
+POST fails; a separate valid £0 control is then used to test null PUT rejection, not to repair
+invalid data. Read-only SQLite queries establish persistence after each actual API mutation.
+
+| Supplied `current_balance` | POST / PUT | Persisted / Account read / summary sources | Profile cash UI / export | Result / evidence |
+|---|---|---|---|---|
+| `12.34` | 201 / 200 | exact string; GET200; sources200 | Bankroll and dashboard £22.34; XLSX200 | PASS / PROVEN |
+| `0.00` | 201 / 200 | explicit zero preserved; GET200 | £10.00; XLSX200 | PASS / PROVEN |
+| blank `""` | 201 / 200 | blank retained; GET200 | £10.00; XLSX200 | Supported write observed; absence/zero aggregate semantics require product clarification |
+| null | 422 / 422 | null rejected; valid control unchanged | control £10.00; XLSX200 | PASS rejection / PROVEN; no claim null is supported |
+| `not-money` | 201 / 200 | invalid string retained; GET200; sources200 | Individual cell “Unavailable”; Bankroll £10.00 and “2 accounts included”; dashboard cash £10.00; XLSX409 invalid decimal | FAIL / PROVEN |
+| `NaN` | 201 / 200 | same invalid persistence/read | “Unavailable”; apparent complete £10.00; dashboard £10.00; XLSX409 non-finite | FAIL / PROVEN |
+| `Infinity` | 201 / 200 | same invalid persistence/read | first Account capture still loading, not valid cell evidence; settled dashboard £10.00; XLSX409 non-finite | FAIL write/export/aggregation / PROVEN; individual rendered cell UNVERIFIED |
+| `-Infinity` | 201 / 200 | same invalid persistence/read | “Unavailable”; Bankroll £10.00 / 2 included; initial settled dashboard £10.00; XLSX409 non-finite | FAIL / PROVEN |
+
+`pending_withdrawal_amount` PUT also accepts all four malformed/non-finite strings (200), verified
+persisted exactly. UI money entry attempt did **not** reach Save: audited page remained in loading
+state before the Account edit button appeared. Thus UI enforcement is BLOCKED by probe/runtime
+readiness, not inferred from API acceptance or source inspection. Profile Reports P&L zero is **not**
+an Account cash balance; no assertion that it coerces cash to P&L. Combined Fund Manager summary was
+attempted but not settled before subsequent malformed Free Bet rows caused source reads to fail:
+combined aggregate numeric result remains BLOCKED, rather than claimed £0 or complete.
+
+Impact: authenticated malformed balances/withdrawals survive successful writes, cash totals omit
+them without an incomplete warning, and portable export later fails. Account writes do not crash;
+export rejects later. Traceable individual “Unavailable” display does not fix aggregate truth.
+Future regression: finite £12.34 + £10 = £22.34; explicit zero control; each invalid input rejects
+atomically; previously invalid constituent makes cash summary explicitly incomplete; report/export
+give controlled diagnostics. Null/blank policy must be explicit, not guessed.
+
+### Populated Free Bets — independent fixtures and persistence
+
+Inputs: £10 free stake, back5.00, lay5.20, commission **2% = 0.02**, Standard; actual stake remains
+unset until Save/placement. Independent penny placement: SNR `10*(5-1)/(5.2-.02)` →7.72;
+SR `10*5/(5.2-.02)` →9.65; liability placed stake *4.2 then monetary rounding.
+
+| Journey / input distinction | Expected | Actual | Result / evidence |
+|---|---|---|---|
+| Native SNR preview | lay7.72; liability32.42; back-win7.58 / lay-win7.57 | exact API components; UI clipboard7.72 | PASS / PROVEN |
+| Native SR preview | lay9.65; liability40.53; back-win9.47 / lay-win9.46 | exact API components; UI clipboard9.65 | PASS / PROVEN |
+| Both: copy → Save → reread | actual draft not persisted before Save; saved actual equals copied stake | UI Save closes, API statusPlaced with7.72/9.65; subsequent reopen | PASS / PROVEN sampled path |
+| Explicit actual7.00 → Back Won settlement | liability29.40; SNR40-29.40=10.60; SR50-29.40=20.60; lay branch6.86 | API/reopened Settlement display10.60/20.60; combined Profile Free Bet report31.20 | PASS / PROVEN; reference != actual != final |
+| Repeated settlement / cross-Profile read / missing required identity | one row; denied foreign read; invalid identity no row | repeated PUT200 one ID; foreign GET404; missing event/strategy422 | PASS / PROVEN scoped |
+| Converted SNR: stake10, back3, lay3.1, c.02 | reference20/3.08 →6.49, liability13.63; actual6.00 settledBackWon gives20-12.60=7.40 | preview/placement/settlement/retry200; provenance unchanged; one row7.40 | PASS / PROVEN API; converted-row full browser lifecycle NOT TESTED |
+| Malformed native Placed valueNaN | controlled422, zero writes | POST500 **after persistence**; row/list/source-summary500; later UI/reports blocked | FAIL / PROVEN, PD-QA-014 |
+| Separate malformed `not-money` / missing Profile | malformed422 zero writes; missing Profile controlled denial | malformed500 after persistence; missing Profile500 with zero row | FAIL / PROVEN; no partially-created missing-Profile record |
+| Blank stake / foreign-only brand name | incomplete preview truthful; new placement authority needs review | blank Placed201, calculation incomplete/null; foreign-only bookmaker name201, commission missing/null calculation | CODE-VERIFIED contract gap / PROVEN response, not evidence of cross-Profile data disclosure |
+| Archived Profile mutation | deny no write |409, zero row | PASS / PROVEN |
+| Award source deletion / linkage | preserved auditable award lineage or governed safe-removal response | synthetic source DELETE204, two linked free rows survive pointing at removed source ID | FAIL audit linkage / PROVEN; actual award-split path/deletion policy BLOCKED pending dedicated authority |
+
+Clean Profile C was introduced only after the original Profile A's invalid persisted Free Bets
+broke reads. That blockage is a product failure, not private-seed setup failure. Original A remains
+unchanged as evidence. Native source linkage used an explicit synthetic qualification source;
+automatic award splitting, imported workbook lineage and transactional source removal were NOT
+TESTED. Notifications endpoint was read, but a settlement-specific notification requirement was not
+established; no claim of full settlement notification coverage. Stale-preview and concurrent-submit
+browser assertions remain NOT TESTED. No actual casino/bookmaker wager is executed by these probes.
+
+### #36/#77 conversion — retries, identity, receipts and failure
+
+| Probe | Actual / independent invariant | Result / evidence |
+|---|---|---|
+| Standard10/back3/lay3.1/c.02 | reference30/3.08 →9.74; destinationProspecting; canonical Profile/Account IDs and SHA-256 source retained | PASS / PROVEN API + browser sampled save |
+| Two targets, second Bonus Restricted | HTTP200 contains succeeded A / failed B; B no row. Retry keeps A same record and B failure | PASS partial-result semantics / PROVEN API; partial-review browser recovery NOT TESTED |
+| Deliberate new intent, identical fixed source/hash | second operation creates a distinct exploratory row; successful targets not recreated on same-operation retry | PASS / PROVEN API |
+| Foreign Account ID / unsupported Bonus SR |422 before target/business rows | PASS / PROVEN |
+| Native Free Bet destination | SNR source → Free Bet Prospecting with provenance; subsequent explicit actual placement and settlement above | PASS / PROVEN API |
+| Completed Blackjack Live own_cash | signed synthetic one-hand snapshot, balances100→110: settled Casino Manual Play / No Offer, result10.00; checksum retained; same-target retry one record/event | PASS / PROVEN API; actual played Blackjack UI-to-save NOT TESTED |
+| Same completed Blackjack snapshot, other Profile | **200 creates second Casino row**, same source/checksum and+10 result. Should409/already-saved globally, no duplicate real activity | FAIL / PROVEN, PD-QA-015 |
+| Tampered Blackjack mode with original checksum |422 checksum guard | PASS tamper rejection only; correctly signed Simulation guard NOT TESTED by this probe |
+| Desktop1440/light conversion | modalfocus inside; Save200 closes once; focus returns; inputs10/back3 intact; calculator receipt identifies Profile/Account/Sportsbook and Open row link | PASS / PROVEN sampled path |
+| Half-width760/dark conversion | modal `[24,752]`, top16/bottom984; Save44px target atx522.6/y917.4; `elementFromPoint` finds `tracker-nav tracker-nav-right`; pointer click times out. KeyboardEnter saves/closes/returnsfocus with receipt | FAIL pointer access / PROVEN; keyboard recovery PASS; extends PD-QA-004/#92 |
+| Notification / retry | one source-linked conversion notification for each created record; exact replay does not add another row/event; href retained | PASS scoped / PROVEN API/source evidence |
+
+Blackjack failure root is CODE-VERIFIED: `save_blackjack` starts idempotency with target Profile and
+Account identity; there is no completed-source global claim before that target-specific operation.
+Single-Profile UI selection prevents cloning in one dialog but does not enforce single real activity
+across API calls. No Casino P&L is silently repaired. Same visible brand in different Profiles is
+tested with distinct canonical IDs; same-brand distinct Accounts **within** one Profile remain NOT
+TESTED. Timeout/ambiguous network delivery and simultaneous double-submit were not injected:
+replays occurred after confirmed commits. Normal hub bridge and actual Blackjack UI completion are
+remaining browser paths; sampled rendered conversions were on authenticated lean `/calculator`.
+
+### Probe execution / harness and reflow boundaries
+
+Reusable observation runner: `scripts/audit_platform_quality_batch2.mjs` modes `money`, `boundaries`,
+`lifecycle`, `lifecycle-clean`, `conversion`, `api-followup`, `ui`, `money-ui`, `money-ui-direct`,
+`reflow`, `verify`. Runtime/fixed owner guards prevent fallback to operational8010. It does not
+reset/repair data and emits diagnostic JSON only to the isolated runtime, not committed secrets.
+`verify` rechecks captured synthetic outputs against fixed independent assertions, never production
+calculation functions. 28 bounded assertions:19PASS/9FAIL (four invalid balances, four invalid
+withdrawals, one cross-Profile completed-session duplicate). These are **not** whole-journey totals.
+
+Fixture/probe failures separately recorded: early exact-label mismatch in canonical select locator,
+initial unhandled response-wait error, reading plain500 as JSON, and later20s navigation/load or
+8s/20s Account readiness timeouts (including a follow-up after login/health recovered). No
+assertions were weakened to call pointer interception a PASS;
+keyboard recovery was exercised and labelled separately. Switching navigation wait to DOM content
+readiness avoids waiting on unrelated resource completion, but does not fix slow product requests.
+
+Reflow observations on sampled Standard lean page:320px at100% document305px; desktop1440 at200%
+document1425px: no page overflow observed in these two conditions. Combined320/200% was attempted
+but navigation stalled before usable content: BLOCKED, not a WCAG failure/pass. Separate batch1
+399px overflow remains historical sampled evidence; untested populated-modal combined stress,
+all focus states, animation intermediate frames and screen-reader output remain UNVERIFIED.
+Audit and protected web processes remained listening; later login health requests timed out during
+local stalls. This is not proof that normal services stopped, and none were terminated/restarted.
+
 ## D. Prioritised findings and bounded next tranches
 
 Every row applies to main f7 unless explicitly development/planned. Severity is impact potential;
@@ -221,37 +385,48 @@ exposure and evidence prevent assuming a critical advisory means current exploit
 | ID / area | Expected versus actual / reproducible evidence | Result / evidence | Severity; likelihood/exposure; impact | Effort/dependencies / recommendation / acceptance test | Issue |
 |---|---|---|---|---|---|
 | PD-QA-001 Dependencies | `pnpm audit --json`: affected Next/sharp and dev packages, 3 critical/13 high/4 moderate entries | FAIL / PROVEN lockfile; DOCUMENTED advisory, UNVERIFIED exploitability | Critical potential; conditional exposure; security/data integrity | Small–medium: authorised patched upgrade + exposure review; scoped auth/finance/restore regressions and fresh audit | #115, parent #114 |
-| PD-QA-002 Account money | POST current_balance=`not-money` →201; PUT=`NaN` →200, string retained; should reject before write | FAIL / PROVEN isolated API | High; authorised malformed/import input plausible; misleading bankroll | Small per-surface contract; reject complete malformed/non-finite inputs, atomic no-write, current/summary explicitly incomplete rather than zero | #91/#85 |
+| PD-QA-002 Account money | Batch2 POST/PUT accept not-money/NaN/±Infinity, retained; withdrawalPUT accepts same; Account GET200, export409 later | FAIL / PROVEN isolated API/persistence/downstream; UI write BLOCKED readiness | High; authenticated malformed/import input plausible; misleading bankroll/export failure | Small per-surface contract; reject before write; incomplete summaries explicit; no coercion or historical rewrite | #91/#85 |
 | PD-QA-003 Missing Profile write | Valid-shaped Sportsbook POST to AUDIT-MISSING-PROFILE →500/FK failure rather than 404/422 | FAIL / PROVEN API | Medium; stale URL/direct request plausible; reliability, no successful phantom write observed | Small: canonical parent existence validation/error boundary; verify all ledgers with missing/stale Profile zero-write fixture | #114 |
-| PD-QA-004 Modal focus/Escape | Native Add sportsbook row; at 760px after700ms actual focus remains toolbar button, Escape after1000ms leaves visible Create dialog | FAIL / PROVEN DOM + private render | High accessibility; every native add; keyboard task obstruction | Medium shared shell; focus containment/Escape/focus return and no competing invisible dialogs, both themes/widths | #57/#61/#92 |
+| PD-QA-004 Modal focus/Escape/pointer containment | Batch1 native editor focus/EscapeFAIL; batch2 lean conversion760dark Save hit belongs to tracker-nav-right; keyboardEnter recovers, closes and restoresfocus | FAIL / PROVEN DOM/hit geometry; recoveryPASS | High keyboard/native workflow; medium pointer conversion obstruction; half-width use | Medium shared shell; portal/stacking/viewport/focus/Escape regressions; don't force-click or hide navigation | #57/#61/#92/#36 |
 | PD-QA-005 Text reflow | Standard at320px with root32px (200%) →document width399px in light/dark; 16px at390/760/1440 contained | FAIL / PROVEN geometry; exact offending track not yet isolated | Medium; narrow/enlarged use; unreadable/offscreen controls | Small–medium shared fields/rail; separate320px normal,200% desktop,combined stress, no page overflow/label clipping | #35/#92 |
 | PD-QA-006 Synthetic test independence | Fresh audit worktree 74 selected tests →31pass/43fail; missing private seed makes demo Profile writes FK-fail. Independent auth/security/restore21pass; backups/PG9pass/5setupfail | FAIL harness / PROVEN | High assurance debt; new checkout/CI likely; hides product failures or sensitive-data dependency | Medium: explicit synthetic factories/catalogue/settings; fresh checkout with no private inputs passes focused suites; do not rewrite expectations | #113/#114/#93 |
-| PD-QA-007 Financial aggregation authority | tracker-summary.ts:390 Number parse returns0 for malformed/non-finite; sums money separately from Decimal engines | FAIL invariant / CODE-VERIFIED; numeric divergence NOT TESTED | High potential; malformed value proven storable; misleading total/precision | Medium: independent aggregate/penny/large-value fixtures and explicit incomplete values before consolidation; preserve cash-first distinctions | #91/#11/#114 |
+| PD-QA-007 Financial aggregation authority | Batch2 invalid stored balance + valid£10 yields apparent complete£10 cash / two Accounts included; source API retains invalid string, export409 | FAIL / PROVEN Profile runtime; combined summary BLOCKED | High; malformed balance accepted; understated/unknown bankroll looks reviewed | Small bounded incomplete-aggregation handling alongside Account validation; independent known/unknown/null fixtures, no silent coercion | #91/#11/#114 |
 | PD-QA-008 Account access import | ACCOUNT_SOURCE_MAP omits Stake/Promo Access and LastPromoUsed not recomputed | BLOCKED mapping / CODE-VERIFIED + DOCUMENTED | High workflow; imports; lost eligibility evidence | Small–medium contract vocabulary/provenance first; synthetic restricted/unknown labels review + roundtrip isolated | #109/#82 |
 | PD-QA-009 Balance intelligence | Mutable latest Account balance plus separate snapshot API do not establish atomic observations/freshness UI | NOT TESTED requested scope / CODE-VERIFIED partial | High operational; all manual balances; stale cash / misleading trends | Medium #85/#106 contract; preserve unexplained changes, same-value confirmation and auditable timestamps; no fake ledger activity | #85/#106 |
 | PD-QA-010 Ledger/planner version gap | Rich v2 Multi-Lay standalone not wholly saveable/settleable; dev Normal per-leg planning slice not main | BLOCKED remaining contract / CODE-VERIFIED | High money workflow; new configs; silent flattening risk if guards bypassed | Contract-gated slice/explicit UI eligibility; v1 actual/history untouched, unsupported configurations zero writes, create-preview-copy-save-reopen | #36/#38/#113 |
 | PD-QA-011 Durable notifications | Source completion/removal can end source-derived history despite reliable clear tombstones | NOT TESTED full requirement / DOCUMENTED gap | Medium; lifecycle completion; lost task/event context | Approved smallest event boundary; completion/removal keeps viewer-authorised history without source mutation | #90/#99 |
 | PD-QA-012 Request truth / stale docs | Overview says capabilities deferred/open contrary to current code/live issue states; 18 unlocated requests remain | FAIL docs / CODE-VERIFIED; BLOCKED missing original text | Medium; every handoff; scope lost/false assurance | Small routed status update proposal, preserve history/IDs; link authority/current evidence; user supplies original text for #102 | #93/#98/#102/#113 |
 | PD-QA-013 Credential rotation | #96 still open/current register NOT STARTED; no verification of invalidation | BLOCKED authorised remediation / DOCUMENTED | High potential; previously exposed credential; provider/security | Small separate secret-provider operation; invalidate old credential and verify secure new config without publishing values | #96 |
+| PD-QA-014 Free Bet atomic financial validation | PlacedNaN and not-money POST500 **after commit**; retained rows cause list/source/report500. Missing Profile500 no row. Clean SNR/SR fixtures pass separately | FAIL / PROVEN API + persistence + UI downstream; mainf7 | High; authorised malformed input; ledger/report availability and unknown financial state | Small dedicated Free Bet pre-write finite validation/calculation and transaction boundary; each invalid submission controlled4xx + zero writes; independent SNR/SR actual settlement/report regressions | #91/#114; Free Bet/bridge #36 |
+| PD-QA-015 Completed Casino duplicate activity | Same Blackjack checksum+session saves+£10 Casino result into two Profiles; same-target retry dedup works | FAIL / PROVEN API/SQL; root CODE-VERIFIED target-only claim | High; authorised repeated/cross-target save; double recognised activity/P&L | Small independent bridge global completed-source claim; reject second target while preserving same-target retry and new exploratory intent | #36/#40/#114 |
 
 No product fixes were made. Recurring UI findings reuse existing #92/#57/#61 rather than create a
 new style/policy system. New dependency remediation #115 was deduplicated against existing issue titles.
 
 ### Three proposed implementation tranches (approval required)
 
-1. **Security/dependency and reproducible safety foundation:** #115 exposure/patched-version review;
-   separately authorised #96 rotation; explicit synthetic test factories/settings and safe audit
-   harness guards. Gates: protected f7 candidate unchanged, no real DB writes, auth/owner/expiry,
-   source hashes, money fixtures, portable rollback and dependency triage. No hosted PASS.
-2. **Financial input/API integrity + core ledger recovery:** #91 Account money first, canonical
-   missing-Profile rejection, malformed-source summary must not become authoritative zero; shared
-   native dialog focus/Escape containment. Gates: independent finite/blank/signed/penny fixtures,
-   all touched ledger zero-write validation, both themes/half-width/keyboard/reflow and restore history.
-3. **Account observation/access slice, then analytics:** #109 exact access mapping + provenance,
-   #85/#106 atomic balance observation/current update and ledger-context confirmation. Gates:
-   Profile isolation, same-value confirmation, unexplained balance changes, audit/roundtrip and
-   no forced P&L reconciliation. #111 point-aware P&L can follow independently; broader #82/#86
-   evidence/tasks depend on explicit sources. Do not substitute animation work for these outcomes.
+Batch1's bundled recommendations are superseded in priority/scope, not erased as historical
+evidence. Each recommendation below is a separate implementation approval; no upgrade/harness/modal
+redesign bundled into money validation.
+
+1. **Account monetary input and incomplete aggregation (#91, PD-QA-002/007):** first repair unless
+   #115 review establishes urgent reachable exploit conditions. Finite complete-string validation
+   on create/update/withdrawals; controlled unknown summaries for already-invalid sources. Gates:
+   UI/directAPI invalid zero-write, explicit zero/blank/null policy, £22.34 independent control,
+   export diagnostics, Profile isolation, no historical balance rewrite. No framework refactor.
+2. **Free Bet atomic validation (#91/#36, PD-QA-014):** validate/calculation failure before commit,
+   controlled missing Profile and invalid money response. Gates: NaN/Infinity/not-money zero writes;
+   populated SNR/SR preview/copy/actual placement/finalreport; award lineage safely retained; no
+   silent recalculation of historical rows. Separate from Account implementation.
+3. **Completed-session global idempotency (#36, PD-QA-015):** one real Blackjack snapshot cannot
+   create multiple Casino activities. Gates: same-target retry stable, second Profile/Account no
+   write, concurrent claim test, exploratory new-intent remains legitimate, source checksum and
+   Notifications unchanged. Modal pointer/focus fixes belong in another focused #92 tranche.
+
+Conditional urgent security repair remains separate #115: maintainer patch + exposure evidence and
+scoped regressions only. Credential rotation #96 is its own provider/owner operation. Subsequent
+Account access/observations #109/#85/#106, analytics #111 and advisory tasks #82/#86 remain visible;
+these audit priorities do not delete or silently deprioritise the original requests.
 
 Product decisions still unresolved: Account access vocabulary/historical promo fallback; same-value
 balance confirmations; capability evidence confidence/expiry; subscriber/fee-role exposure; saved
@@ -286,13 +461,15 @@ Focused commands/results:
   Standard reflow widths/themes, lean auth and native editor focus/Escape. No console errors observed
   on these sampled paths; this does not clear all runtime warnings everywhere.
 
-**Exact next audit area:** B populated native/imported Free Bet SNR/SR → matching → copy → placement
-→ settlement → lineage/report/notification, with controlled failures/retry; then Casino/Extra Places/
-Cash fee journeys and full #77/#36 retry/partial-save receipts. Extend the same runner/report, using
-explicit synthetic factories, not missing private demo seeds. Inspect all route containers both
-themes at1440/760/390 and200% text, intermediate motion, stale reads and denied cross-Account IDs.
-Then C true synthetic PostgreSQL/export/backup recovery and larger-data production-build performance;
-finish remaining issue clarification triage, manual screen-reader checks (currentlyUNVERIFIED).
+**Exact next audit area after batch2:** first complete the blocked Account UI finite-input and
+combined-summary probes without repairing retained invalid synthetic rows; then native award-split/
+imported Free Bet lineage and safe removal, correctly signed Simulation denial, actual Blackjack
+UI-to-Casino save, normal-hub bridge and partial-review recovery. Test concurrent/ambiguous delivery,
+stale previews and same-brand distinct Accounts within one Profile. Then populated Casino/Extra
+Places/Cash-fee workflows, complete modalfocus/Escape/reflow/intermediate motion both themes,
+true isolated PostgreSQL recovery, larger-data production performance, remaining historical request
+clarifications and actual screen-reader testing (UNVERIFIED). These are not passed by indexing titles
+or by the28 independent assertion checks above.
 
 ### #113 return instructions — no scheduled date
 
@@ -313,6 +490,17 @@ Authenticated sync succeeded: [#114 checkpoint comment](https://github.com/wolne
 deduplicated dependency remediation [#115](https://github.com/wolney8/OpenForge/issues/115).
 No closure, hosted deployment or product implementation. Intended checkpoint files are this report,
 PROJECT_STATUS, the existing canonical register and the isolated audit observation runner only.
+
+Batch2 authenticated sync: [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5646667540),
+[#91](https://github.com/wolney8/OpenForge/issues/91#issuecomment-5646667609),
+[#36](https://github.com/wolney8/OpenForge/issues/36#issuecomment-5646667680),
+[#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5646667760),
+[#115](https://github.com/wolney8/OpenForge/issues/115#issuecomment-5646667823),
+[#96](https://github.com/wolney8/OpenForge/issues/96#issuecomment-5646667890).
+No new competing issue/report, product implementation, merge, issue closure or hosted claim.
+Final read-only health recheck: normal3010/8010, development3013/8013, manual3020/8020 and
+audit3024/8024 all returned200 on `/login` (web) / `/healthz` (API), after earlier transient stalls.
+No service was restarted or data reset; earlier probe blockers remain evidence of their attempt.
 
 ## Original issue scope index — identities preserved, not completion claims
 

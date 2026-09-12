@@ -16,6 +16,17 @@ durable requirements.
   route/API coverage, executed evidence, explicit untested journeys and priorities. No product
   implementation or merge is part of this tranche. Affected dependencies are tracked in #115;
   credential rotation stays separate #96. Normal services and private inputs remain untouched.
+- **#114 batch 2 financial-flow checkpoint:** native SNR/SR preview/copy/Save/reopen and actual
+  settlement/report agree with independent fixtures; converted SNR provenance/settlement/retry
+  also checked. Persisted invalid Account money yields incomplete cash totals without warning;
+  invalid Free Bet POST commits before500 and breaks reads; the same completed Blackjack snapshot
+  saves Casino activity in two Profiles. Desktop conversion receipts/focus work, half-width pointer
+  Save is intercepted by navigation chrome (keyboard recovery succeeds). See the same audit report,
+  PD-QA-002/004/007/014/015. First proposed repair is bounded Account monetary validation and
+  incomplete aggregation, not a cosmetic or general-harness tranche. Local image optimizer is
+  reachable on affected dependencies; attacker AVIF/deployed exposure remains UNVERIFIED. No
+  product fixes. UI money/combined summary, imported award lineage, real Blackjack UI conversion,
+  PostgreSQL, large data, screen-reader and remaining request clarification checks stay explicit.
 - **Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
   request.** Final calculator sign-off remains pending. Historical Monday references are not a
   current commitment. Preserve the frozen `manual/calculator-candidate-2026-09-12` full f7 SHA,

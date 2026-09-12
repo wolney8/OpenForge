@@ -18,7 +18,13 @@ entry without a verified issue link must remain explicitly `SYNC PENDING`.
 inventories original goals/requests and current/main versus unmerged development, records isolated
 API/rendered/restore/security/dependency evidence, and keeps unexamined journeys explicitly NOT TESTED.
 No product redesign, financial revision, credential rotation, hosted scan, merge or issue closure.
-PD-QA-001–013 remain findings/proposals, not implementation delivery. Dependency remediation is
+PD-QA-001–015 remain findings/proposals, not implementation delivery. Batch2 extends002/007 with
+persisted invalid Account money → apparently complete Profile cash → export409; extends004 with
+half-width conversion pointer interception; adds014 committed invalid Free Bet despite500 with
+downstream read/report failure, and015 completed Blackjack source duplicated across Profiles.
+Clean native SNR/SR and converted SNR fixtures/persistence passed in their stated scope, not all
+lifecycle branches. Account UI/combined aggregation and other untested journeys remain explicit.
+Dependency remediation is
 [#115](https://github.com/wolney8/OpenForge/issues/115); existing #91/#92/#85/#96/#109 and #36/#113
 retain their own scopes. Detailed remaining historical clarification triage is explicit in the report.
 
@@ -30,6 +36,8 @@ Monday is historical evidence only. Final calculator sign-off remains pending. D
 
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.
+Earlier locally-verified bridge/Blackjack descriptions below retain their dated scope; they do not
+override batch2's PROVEN completed-session duplicate failure or imply financial-input safety.
 
 | ID | Intended outcome / type | Current status and remaining scope | Source / GitHub |
 |---|---|---|---|
