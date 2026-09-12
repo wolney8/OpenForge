@@ -39,6 +39,7 @@ import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutco
 import { CommissionInput } from "@/components/commission-input";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
+import { MultiLayCalculator } from "@/components/calculator-workspace";
 import {
   BookmakerIdentity,
   catalogueIdForBookmaker,
@@ -397,6 +398,9 @@ type ScenarioBranchLabels = {
 type MultiLayPlacementState = "pending" | "placed";
 
 type MultiLayOutcomeInput = {
+  commission?: string;
+  calculationVersion?: string;
+  backingType?: string;
   id: string;
   label: string;
   layOdds: string;
@@ -410,6 +414,9 @@ type MultiLayOutcomeInput = {
 };
 
 type MultiLayPrimaryPlacementState = {
+  commission?: string;
+  calculationVersion?: string;
+  backingType?: string;
   placedExchange: string;
   placedLayOdds: string;
   placedMatchedStake: string;
@@ -1568,6 +1575,7 @@ function serializeMultiLayOutcomes(
     [
       {
         id: "outcome1",
+        ...(primaryPlacement.calculationVersion ? { calculationVersion: primaryPlacement.calculationVersion, backingType: primaryPlacement.backingType, commission: primaryPlacement.commission } : {}),
         label: getMultiLayOutcomeLabel(outcome1Label),
         layOdds: formState.lay_odds_1,
         standardLayStake: plannerLegs.get("outcome1")?.standardLay ?? "",
@@ -1580,6 +1588,7 @@ function serializeMultiLayOutcomes(
       },
       ...outcomes.map((outcome, index) => ({
         id: outcome.id || createMultiLayOutcomeId(index + 2),
+        ...(outcome.commission !== undefined ? { commission: outcome.commission } : {}),
         label: outcome.label,
         layOdds: outcome.layOdds,
         standardLayStake:
@@ -1636,6 +1645,9 @@ function parseMultiLayOutcomes(
             : createMultiLayOutcomeId(index + 1);
 
         const normalized = {
+          commission: typeof record.commission === "string" ? record.commission : undefined,
+          calculationVersion: typeof record.calculationVersion === "string" ? record.calculationVersion : undefined,
+          backingType: typeof record.backingType === "string" ? record.backingType : undefined,
           id: resolvedId,
           label: typeof record.label === "string" ? record.label : "",
           layOdds: typeof record.layOdds === "string" ? record.layOdds : "",
@@ -1657,6 +1669,9 @@ function parseMultiLayOutcomes(
 
         if (resolvedId === "outcome1") {
           primaryPlacement = {
+            commission: normalized.commission,
+            calculationVersion: normalized.calculationVersion,
+            backingType: normalized.backingType,
             placedExchange: normalized.placedExchange || fallback.exchangeName,
             placedLayOdds: normalized.placedLayOdds || fallback.layOdds1,
             placedMatchedStake: normalized.placedMatchedStake || fallback.layActual,
@@ -2510,6 +2525,7 @@ function getMultiLayPlannerSummary(
   primaryPlacement: MultiLayPrimaryPlacementState,
   exchangeCommissionLookup: ExchangeCommissionLookup
 ): MultiLayPlannerSummary | null {
+  if (primaryPlacement.calculationVersion === "multi-lay-v2") return null;
   if (
     formState.match_strategy !== "Multilay" &&
     formState.match_strategy !== "Multilay-Underlay"
@@ -2849,6 +2865,11 @@ function getPersistableSportsbookForm(
       : "",
     multi_lay_outcomes_json: serializedMatchingData,
   };
+  if (options.primaryPlacement.calculationVersion === "multi-lay-v2") {
+    // The legacy form seeds a dormant Profit Boost mode even for ordinary Bet & Get.
+    // It is not a source input for this explicitly unboosted planning contract.
+    return { ...nextBaseState, profit_boost_mode: "" };
+  }
   if (
     plannerSummary === null ||
     (nextBaseState.match_strategy !== "Multilay" &&
@@ -3642,6 +3663,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   const isNoLayStrategy = formState.match_strategy === "No Lay";
   const usesMultiLayStrategy = isMultiLayStrategy(formState.match_strategy);
+  const usesV2MultiLayPlanning = usesMultiLayStrategy && multiLayPrimaryPlacement.calculationVersion === "multi-lay-v2";
+  const versionedPlannerSearch = new URLSearchParams({ multiLay: JSON.stringify({
+    backingType: multiLayPrimaryPlacement.backingType ?? "normal", presentationMode: formState.match_strategy === "Multilay" ? "simple" : "advanced",
+    strategy: formState.match_strategy === "Multilay" ? "standard" : "underlay", backStake: formState.back_stake, backOdds: formState.back_odds,
+    profitBoostPercent: "0", refundAmount: "", retentionPercent: "70", customMultiplier: "1", customMinimum: "", customMaximum: "", exchange: formState.exchange_name,
+    outcomes: [{ label: multiLayOutcome1Label, layOdds: formState.lay_odds_1, commission: multiLayPrimaryPlacement.commission ?? "0", commissionManual: true }, ...multiLayOutcomes.map((entry) => ({ label: entry.label, layOdds: entry.layOdds, commission: entry.commission ?? "0", commissionManual: true }))],
+  }) });
+  const updateVersionedPlanner = useCallback((params: URLSearchParams) => {
+    const next = JSON.parse(params.get("multiLay") ?? "{}");
+    const legs = next.outcomes as Array<{ label: string; layOdds: string; commission: string }>;
+    if (!legs?.length) return;
+    setFormState((current) => ({ ...current, back_stake: next.backStake, back_odds: next.backOdds, lay_odds_1: legs[0].layOdds, exchange_name: next.exchange,
+      match_strategy: next.strategy === "standard" ? "Multilay" : next.strategy === "underlay" ? "Multilay-Underlay" : current.match_strategy }));
+    setMultiLayOutcome1Label(legs[0].label);
+    setMultiLayPrimaryPlacement({ ...createDefaultMultiLayPrimaryPlacementState(), calculationVersion: "multi-lay-v2", backingType: next.backingType, commission: legs[0].commission });
+    setMultiLayOutcomes(legs.slice(1).map((leg, index) => ({ id: createMultiLayOutcomeId(index + 2), ...leg })));
+  }, []);
   const canUseFootballSettlesAssist =
     formState.fixture_type === "Football" && formState.date_settled.trim().length > 0;
   const showsLayMatchedStake = formState.match_strategy === "Partial Lay";
@@ -8151,6 +8189,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 className="section-fieldset stack"
                 disabled={!calculatorUnlocked || isSettledReadOnly}
               >
+                {usesV2MultiLayPlanning ? <MultiLayCalculator planning key={selectedId || "new-v2"} exchanges={exchangeSettings.map((entry) => ({ catalogue_id: entry.exchange_name, name: entry.exchange_name, default_commission_rate: entry.commission_rate }))} onState={updateVersionedPlanner} search={versionedPlannerSearch} /> : <>
                 <div className="calculator-panel-shell">
                   <div className="calculator-panel-heading">
                       <div className="calculator-panel-heading-row">
@@ -9533,6 +9572,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   </div>
                   )}
                 </div>
+                </>}
               </fieldset>
             </EditorSection>
             </LedgerEditorTabPanel>

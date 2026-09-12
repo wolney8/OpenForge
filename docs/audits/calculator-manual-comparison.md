@@ -685,6 +685,35 @@ Independent expected basis: half-up penny placement; `Lstd=B×Ob/(Ol-c)`,
 | Pair 8s | Split | TODO | TODO | N/A |
 | Continued hard 17 | Stand | TODO | TODO | N/A |
 
+## Explicit repeat inputs for the Monday capture plan
+
+Keep each original parent case ID; identify repeats with the run suffix below. Record the full
+tested commit/date in the chosen capture file. Observations remain TODO, including explicit zero.
+The revised HTML/Excel/guide are pending local supply; this is not a replacement recorder.
+These finite repeats do not make the 79-run plan exhaustive. Bonus SR remains separately deferred.
+
+| Parent / run | Suggested complete inputs | Separate results to capture |
+|---|---|---|
+| MULTI-LAY-001 / mixed-commission | Normal; £10 @ 4.00; Home 2.50 at 5%, Away 3.00 at 2%; boost 0%; Standard, then Underlay | Each stake/liability; every component/total; copied stake; conversion/native reopen commission; no actual placement |
+| MULTI-LAY-001 / explicit-zero | Same inputs; first commission 5%, second 0% | Explicit zero survives source/request/save/reopen; not overwritten by first commission |
+| SEQUENTIAL-LAY-001 / two-leg | Normal £10 @ 3.00; lays 1.60 / 2.00; 5% each; back commission 0%; Standard then Lock In | Both stakes/liabilities; each first-loss and all-win branch |
+| SEQUENTIAL-LAY-001 / four-leg | Normal £10 @ 12.00; lays 2.50 / 2.00 / 1.50 / 1.40; 5% each; back commission 0%; Standard then Lock In | All four stakes/liabilities; five branches; Add/Remove fourth leg |
+| EARLY-PAYOUT-001 / dutch | 2-Way Dutch; first £50 @ 2.25; second odds 1.80; actual second stake blank (recommended); trigger Off then On; in-play third odds 1.20; cap blank; no part backs | Pre-trigger second stake; post-trigger third stake; all backed components/branches |
+| EARLY-PAYOUT-001 / slider-edges | Exchange Lay; £50 @ 2.25; lay 2.32 at 2%; actual lay blank; trigger On; in-play 1.20; cap blank; no part backs; adjustment 0% / 100% (equalised) / 150% | Stake and each outcome at both endpoints/centre; exact active slider units |
+| DUTCHING-001 / snr-two | Free Bet SNR; first free stake £10; odds 2.00 / 3.00; commissions 0% / 0%; nearest penny | Each selection stake; cash versus free-credit stake; each return/net branch |
+| DUTCHING-001 / normal-three | Normal; first £10; odds 2.00 / 3.00 / 4.00; commissions 0% each; nearest penny, then £1 increment | Three stakes/returns; combined stake; each net branch/rounding |
+| DUTCHING-001 / snr-three | Free Bet SNR; first free stake £10; odds 2.00 / 3.00 / 4.00; commissions 0% each; nearest penny | Three operational stakes and free-bet basis/outcomes; external availability |
+| PROFIT-BOOST-PERCENT-004 / strategy-cap | Normal £10; original 3.00; boost 10%; lay 3.30 at 2%; accepted odds blank; cap blank then £1; Standard / Underlay / Overlay / Custom midpoint | Raw/effective odds, bookmaker gross return, conservative hedge return if applicable; stakes/each branch; cap units |
+| PROFIT-BOOST-RETURN-002 / accepted-cap | £10; displayed total £27.86; lay 3.00 at 2%; cap blank; accepted odds blank then 2.80; Standard / Underlay / Overlay / Custom midpoint | Displayed £27.86 versus floored 2.78 odds; accepted 2.80 precedence; copied stake |
+| BLACKJACK-001 / rule-grid | Dealer 6; Player A,7; Surrender No/Yes × S17/H17; repeat Dealer 10 Player 10,5; Dealer 9 Player 5,6; Dealer 6 Player 8,8 | All four rule combinations for each hand; recommendation and conditional fallback separately |
+| BLACKJACK-001 / continuation | Dealer 9; Player 5,6; Surrender No then Yes × S17/H17; actually Hit; add 6 | Initial hard 11 recommendation/fallback; continued hard 17; no illegal Double/Surrender after Hit |
+
+Independent expectations for mixed-commission Standard (not observations): stakes £16.33/£13.42,
+liabilities £24.50/£26.84, totals £18.66/£18.65/£18.67 after governed penny placement.
+External observations MUST be entered from the external calculator, never copied from these values.
+Other repeats intentionally leave expectations/observations for independent review rather than
+infer exact external outputs from this platform. Identify unavailable external configurations.
+
 ## Copy this block to add a case
 
 ### Case `CASE-ID-TODO`

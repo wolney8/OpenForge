@@ -354,3 +354,26 @@ and actual PostgreSQL execution remain explicitly NOT TESTED, not whole-platform
 Main/normal is unfixed until approved integration. Same audit report retains pre-fix evidence.
 Fix102848a1214730e5065e9db04a66047dce6cd82b pushed; GitHub #91/#114/#92 updates synced as
 comments5648267278/5648268451/5648268545. No issue closure or automatic integration.
+## PD-FIX-107 to PD-FIX-110 — Protected manual baseline and Normal Multi-Lay planning parity (2026-09-12)
+
+Baseline verified: `f7a3b35073ecc87cdf8f8f881129f221ec44d395`. Development is isolated in
+`calculator/multi-lay-normal-parity`; the main/manual build and its database are not changed.
+
+| ID | Surface / canonical equivalent | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-107 | Existing #113 audit and capture worksheet | Immutable candidate, isolated launch, preserve manual observations and parent IDs | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-108 | Normal v2 engine / native Sportsbook payload | Versioned per-leg-commission planning save/reopen; retain legacy cash truth | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-109 | Shared Multi-Lay calculator / embedded Matching / bridge | Same reference controls, engine, copy and Outcomes; fail closed outside planning slice | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-110 | Existing API/Playwright fixtures / #35/#36/#113 | Independent parity, v1 regressions, rendered themes/containment and retest list | COMPLETE (bounded slice; Will acceptance pending) |
+
+Evidence: 23 focused Multi-Lay-related tests; independent mixed-commission Std/U stakes,
+liabilities and every outcome; explicit zero; retry; fail-closed placement/boost/version removal;
+legacy v1 references/placement regressions. Two isolated real-browser paths cover shared dense
+Sequential/Dutch fields and same-input standalone/embedded Normal stakes, commission edit, copy,
+UI save/reopen, desktop/half-width/narrow, light/dark, focus/containment and reduced motion. A
+private synthetic 760px dark render was inspected. No real/private database or baseline service
+was changed. The observed intrinsic responsive grid-cell overflow was fixed on the shared dense
+cell track, not via local widths/clipping; prevention and representative tests retain the rule.
+Ordinary unstamped Add Row remains v1; v2 new creation is through the existing conversion bridge
+or explicit API stamp. Native Add Row opt-in, full actual per-leg reconciliation and richer v2
+save modes remain follow-up scope. Mathematical/external/manual acceptance remain separate.

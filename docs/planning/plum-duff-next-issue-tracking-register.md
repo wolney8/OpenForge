@@ -213,7 +213,7 @@ imports/cloud/browser recovery or hosted integration proven. Those gaps remain, 
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 See the same platform-quality-audit.md for denominator definitions and retained prior failure evidence.
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-12_
 
 ## Purpose
 
@@ -293,6 +293,22 @@ Fix102848a1214730e5065e9db04a66047dce6cd82b pushed. GitHub synced #91 comment564
 #114 comment5648268451 and #92 comment5648268545; issues remain open.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
 request. Launcher, parent case IDs, frozen candidate and original observations remain unchanged.
+### PD-FIX-107–110 — protected manual baseline / Normal v2 planning persistence
+
+User scope: preserve full candidate `f7a3b35073ecc87cdf8f8f881129f221ec44d395` for Monday;
+continue isolated development; retain capture parent IDs/observations and all reference gaps;
+close a coherent Normal per-leg commission creation/reopen slice, without migrating v1 cash rows.
+Protected worktree/launch and affected retests are in the
+[#113 audit](../audits/issue-113-independent-calculator-verification-2026-09-10.md#2026-09-12-manual-checkpoint-and-normal-planning-persistence).
+Capture HTML/Excel/guide are pending local supply. Explicit repeat inputs have been added to
+the existing worksheet without filling observation cells. Bonus SR remains separately deferred.
+Versioned new plans share the v2 engine/presentation and preserve each commission. Actual
+placement/settlement, SNR/refund/boost/Overlay/Custom persistence remain blocked with their full
+requirements visible. No historical row/source/hash/idempotency migration. Development branch
+`calculator/multi-lay-normal-parity` remains separate from main/manual build. Will acceptance is
+pending comparisons and unexplained external differences, not inferred from test counts.
+Relevant coverage: #35/#36/#38/#113; existing UI tokens for #92 reused. Live sync receipt follows
+the branch checkpoint; do not assume these issues closed.
 
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.

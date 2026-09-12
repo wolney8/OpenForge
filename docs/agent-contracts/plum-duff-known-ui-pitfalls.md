@@ -62,6 +62,15 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
   and separately labelled known subtotal. Keep excluded cash scope and ledger P&L independent.
 - Regression: account_money_safety API tests, account-money-safety web tests and actual isolated
   Account editor browser path at desktop/light and half-width/dark; legacy source preserved.
+## 2026-09-12: Dense responsive cells retained intrinsic auto-track width
+
+- Area: shared dense calculator tables, observed in embedded Normal v2 planning at 390px.
+- Root cause: a grid cell had `min-width: 0` but its implicit auto column grew to the commission
+  heading's intrinsic width, exceeding the cell by 56px and carrying its input along with it.
+- Prevention: dense responsive cells use an explicit `minmax(0, 1fr)` inner track and wrap long
+  semantic headings; preserve control geometry instead of hiding overflow.
+- Regression: isolated Multi-Lay native save/reopen Playwright focuses each numeric field and
+  compares field/cell bounds at 1440/760/390px in both themes, with page overflow checks.
 
 ## 2026-09-10: Dynamic calculator panels and fixed-width stats jolted or wasted space
 
