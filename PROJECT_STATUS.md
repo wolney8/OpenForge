@@ -16,11 +16,18 @@ durable requirements.
   [Baseline launch and evidence boundary](docs/audits/issue-113-independent-calculator-verification-2026-09-10.md#2026-09-12-manual-checkpoint-and-normal-planning-persistence)
   uses separate ports/database. Will's Monday results remain the acceptance gate.
   The [editable worksheet](docs/audits/calculator-manual-comparison.md) retains parent case IDs;
-  HTML/Excel/guide files have not been supplied locally and are pending links, not rebuilt.
+  Supplied HTML/Excel/guide originals are linked from the audit without copying private inputs.
+  [One-command manual access](docs/audits/issue-113-independent-calculator-verification-2026-09-10.md#simple-manual-access--use-this-command-not-the-first-time-seed-recipe-below)
+  reuses the existing authenticated browser/runtime on 3020/8020; no repeat seed/reset.
   Normal v2 Standard/Underlay new-record planning now retains per-leg commission through the
   existing bridge and shared embedded calculator. Placement/settlement and richer v2 save modes
   remain blocked rather than flattened; unstamped v1 rows retain their prior workflow.
+  Native Add Row now has explicit v2 planning opt-in for that same bounded slice; default remains
+  v1. Development-specific MULTI-LAY-001/002 retests do not borrow Monday build acceptance.
   Pushed checkpoints: `7028126` (contract/API), `e360cb1` (shared UI/manual baseline).
+  Native opt-in delta: `4cb2624`; PD-FIX-111–113 passes 25 focused API/engine/v1 tests and
+  three browser paths, including native three-leg creation/copy/save/reopen with explicit zero.
+  Typecheck/scoped ESLint/Ruff and launcher checks pass; no hosted acceptance is claimed.
   Current-scope GitHub tracking is synced to #35/#36/#38/#92/#113; earlier unavailable-auth notes
   remain historical, not the current sync state. No issue is closed. Normal services remain on main.
 

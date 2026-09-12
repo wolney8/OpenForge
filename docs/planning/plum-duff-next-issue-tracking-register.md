@@ -13,6 +13,25 @@ entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
 
+### PD-FIX-111–113 — manual access / native Normal Multi-Lay planning
+
+User scope: preserve protected f7a3b35 branch/build and original capture observations; one-command
+authenticated manual access preserving runtime/data; explicit native Add Row opt-in for v2 Normal,
+no boost/reward, Standard/Underlay with every leg/commission retained through preview/copy/save/
+reopen. Reuse shared planner and existing engine; retain v1 defaults/history/actual cash and bridge
+idempotency. Status/evidence reconciliation is in the existing corrective register and #113 audit.
+No placement/settlement or richer v2 persistence is authorised. Native Add Row development cases
+under MULTI-LAY-001/002 require later retest; Monday baseline and Will acceptance are unchanged.
+Recording originals are linked, not copied; no private input file is staged. #35/#36/#38/#113 sync
+will record the intended branch checkpoint. No hosted claim, baseline merge or issue closure.
+
+2026-09-12 scoped sync: #35 comment 5645181071; #36 5645181200; #38 5645181326;
+#113 5645181414. Native implementation `4cb2624`; 25 focused API/engine/v1 tests and three
+real isolated browser paths pass. The opt-in target/focus is verified in both themes at desktop/
+half-width; shared planner fields at 1440/760/390px, scaled text and reduced motion remain
+contained. Scoped ESLint, TypeScript, Ruff and launcher checks pass. PD-FIX-111–113 is locally
+verified for the bounded slice; no mathematical/external/manual evidence is broadened.
+
 ### PD-FIX-107–110 — protected manual baseline / Normal v2 planning persistence
 
 User scope: preserve full candidate `f7a3b35073ecc87cdf8f8f881129f221ec44d395` for Monday;

@@ -265,3 +265,29 @@ cell track, not via local widths/clipping; prevention and representative tests r
 Ordinary unstamped Add Row remains v1; v2 new creation is through the existing conversion bridge
 or explicit API stamp. Native Add Row opt-in, full actual per-leg reconciliation and richer v2
 save modes remain follow-up scope. Mathematical/external/manual acceptance remain separate.
+
+## PD-FIX-111–113 — Native Multi-Lay planning opt-in and manual launcher (2026-09-12)
+
+Development baseline: `eb6c13009d3b9cd311402bd23cf1696ba1948454`; protected manual baseline remains
+`f7a3b35073ecc87cdf8f8f881129f221ec44d395`. No baseline merge or runtime/data reset is authorised.
+
+| ID | Surface / canonical equivalent | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-111 | Existing authenticated notification fixture / #113 worksheet | One-command persistent manual environment; link original private recording files, never copy observations | COMPLETE — scoped evidence; Will acceptance pending |
+| PD-FIX-112 | Native Sportsbook Add Row / shared MultiLayCalculator planning | Explicit new-row v2 Normal Standard/Underlay opt-in preserving every leg/commission; retain v1 default | COMPLETE — bounded planning slice only |
+| PD-FIX-113 | Existing parameterised API/browser parity fixtures | Create/preview/copy/save/reopen, v1 gates, both themes and half-width; development-specific retests | COMPLETE — finite local evidence; Will acceptance pending |
+
+Evidence: 25 focused API/engine/v1 tests, including independent native-create Standard/Underlay
+stakes, liabilities and every total, preview/save/reopen equality and rejected unsupported writes.
+The native Add Row browser flow checks explicit opt-in and canonical Exchange seed, adds a third
+named leg with explicit zero commission, copies 13.42, saves all three legs and reopens them.
+Its independent three-leg totals are 26.66 / 26.65 / 26.67 / 26.66 (third lay £8 @5, 0%).
+Existing standalone/embedded and shared dense-cell browser paths pass. Authenticated 3020 browser
+opened and repeated launcher reused its existing tab; protected commit and API/web PIDs retained.
+No private input content was read, copied or staged. Typecheck, scoped Ruff and launcher syntax
+pass. The UI checklist uses the existing secondary icon/text action, shared planner controls,
+FinancialValue/copy/Outcomes; no new CSS, icon or calculator. Other ledgers are intentionally
+unchanged because this is new Sportsbook planning opt-in, not a shared presentation redesign.
+No production build is needed for the additive control; the existing webpack runtime recompiled
+the real route. External comparison status remains unchanged (retained MBB penny mismatch;
+Outplayed exact comparison unverified), and Monday baseline acceptance is not borrowed.

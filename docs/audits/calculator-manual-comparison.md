@@ -5,6 +5,14 @@ below after this tranche lands._
 
 ## How to use
 
+Supplied capture originals are available without duplication:
+[HTML](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-comparison.html),
+[Excel](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-comparison.xlsx),
+[guide](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-manual-comparison-repaired.md).
+The [single-command protected baseline launch](issue-113-independent-calculator-verification-2026-09-10.md#simple-manual-access--use-this-command-not-the-first-time-seed-recipe-below)
+reuses 3020/8020. Keep Monday baseline observations separate from development native Add Row
+retests under `MULTI-LAY-001`/`MULTI-LAY-002`; record full commit/date on each run.
+
 1. Open the same case in Plum Duff and the linked public calculator, preserving every unit and
    toggle. Enter observations in the blank/TODO cells; enter an actual zero as `0.00`.
 2. Record the displayed value, not a value inferred from another column. Add a screenshot filename

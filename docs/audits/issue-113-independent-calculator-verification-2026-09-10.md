@@ -15,10 +15,34 @@ Development stays in `.worktrees/multi-lay-normal-parity`, branch
 Do not pull/rebuild the baseline during Will's test session, reuse a mutable database across
 revisions, or substitute the daily-use 3010/8010 database. No hosted acceptance evidence is claimed.
 
-Launch the protected baseline using the existing authenticated synthetic acceptance fixture
-(dependency/venv links already prepared). Start a fresh session before Monday's comparisons;
-do not restart it during a test session. A cookie-free E2E bypass alone does not satisfy the
-authoritative client bootstrap, so the signed synthetic session below is required.
+### Simple manual access — use this command, not the first-time seed recipe below
+
+```sh
+node /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/multi-lay-normal-parity/scripts/open-manual-calculator.mjs
+```
+
+This verifies the full protected commit, reuses the existing synthetic fixture/runtime on
+3020/8020 and brings an existing manual browser forward without navigating away from its hand.
+If the browser was closed, its dedicated browser profile is reopened with the existing signed
+synthetic session. Stopped services resume against the same database; no seed/reset runs.
+An expired synthetic token is reissued using the existing session implementation without deleting
+records or revoking another valid browser. Unknown occupied services fail closed, never get killed.
+Current runtime: `/tmp/openforge-manual-f7a3b35.hUMolA/runtime`. Keep it for Monday. `--check`
+verifies access without opening a window. No token is printed. No normal service is changed.
+
+Original supplied recording files (private, not committed/copied):
+
+- [HTML capture form](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-comparison.html)
+- [Excel alternative](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-comparison.xlsx)
+- [Supplied Markdown guide/worksheet](/Users/will_work/Scripts/Homelab/OpenForge/_input/calculator-manual-comparison-repaired.md)
+
+Choose one capture format; retain parent case ID, tested full commit and date, and never overwrite
+observations. The 79-run plan is bounded, not exhaustive. Bonus SR stays separately deferred.
+
+#### Historical first-time provisioning recipe — do not run against the current session
+
+The existing authenticated synthetic acceptance fixture prepared the baseline as follows. The
+recipe is retained only for reproducibility on a genuinely new isolated runtime, not repeat access:
 
 ```sh
 cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline
@@ -50,10 +74,8 @@ is test data, not a calculator oracle. Comparisons use existing worksheet inputs
 600-mode files and expire under the existing policy. Keep the runtime for the same test session;
 use a fresh directory for another revision. No normal auth implementation, OAuth or hosting changes.
 
-Capture files: revised HTML, Excel alternative and guide are **not present locally**. Link Will's
-chosen supplied file here when available without replacing observations or constructing another
-recorder. Every run must carry parent case ID + full commit + date. A 79-run plan is bounded,
-not exhaustive. Bonus SR is deferred separately from requested Normal/SNR Bonus functionality.
+Capture files are now linked above from their original `_input` location; no private contents or
+observations have been copied into this audit or the development worktree.
 
 New slice: Normal, no boost/reward, Standard/Underlay, 2–20 legs; each leg commission survives
 new creation/reopen with `multi-lay-v2` stamped in the existing JSON array. The shared v2 preview
@@ -65,6 +87,24 @@ mathematics are unchanged. External parity evidence remains the retained MBB 1p 
 Outplayed UNVERIFIED; mathematical/save parity does not change either status or Will acceptance.
 Remaining priority gaps include full v2 actual per-leg cash reconciliation, SNR/refund/boost/
 Overlay/Custom persistence, and the existing Accumulator specialised bet/Each Way/Rule 4 coverage.
+
+Native opt-in delta PD-FIX-112: Add Row remains v1 by default. In a new Bet & Get Normal
+Multi Lay planning row, `Use v2 per-leg commission planning` explicitly selects the existing
+versioned reference slice. Compatible draft odds/labels are retained; per-leg commission starts
+from the current canonical Exchange setting, including explicit zero. Actual placements/overrides
+cannot be opted in or overwritten. Existing rows have no opt-in. Shared v2 controls restrict the
+saved strategy to Standard/Underlay; server validation blocks unsupported transitions.
+Development retests under parents `MULTI-LAY-001` / `MULTI-LAY-002`: native Add Row default,
+explicit opt-in, mixed/zero commissions, every leg, Standard/Underlay preview/copy/save/reopen,
+blocked placement and v1 legacy default. Monday's f7 baseline does not contain this delta.
+
+Delta evidence PD-FIX-111–113: 25 focused independent engine/API/v1 tests pass; native API
+Standard/Underlay create→preview→save→reopen retains stakes/liabilities/all totals. Three isolated
+browser paths pass: native Add Row opt-in→three legs→5%/2%/0%→copy→save→reopen; same-input
+standalone/embedded parity; shared dense controls. Geometry is checked at desktop/half-width/
+narrow, both themes, focus and reduced motion. Repeated manual launcher reuse retains its browser
+tab, services and database, while validating real signed session authority (no mocked manual auth).
+These are finite local fixtures/workflows, not external parity or Will acceptance.
 
 Focused evidence: 23 Multi-Lay-related engine/API/v1 regression tests pass, including two
 independently derived mixed-commission Standard/Underlay creation/save/reopen fixtures, explicit
