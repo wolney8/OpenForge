@@ -326,6 +326,11 @@ automatic award splitting, imported workbook lineage and transactional source re
 TESTED. Notifications endpoint was read, but a settlement-specific notification requirement was not
 established; no claim of full settlement notification coverage. Stale-preview and concurrent-submit
 browser assertions remain NOT TESTED. No actual casino/bookmaker wager is executed by these probes.
+The native button's actual accessible name is **“Copy Standard free-bet lay stake and mark placed”**:
+its handler applies the reference to actual-stake draft fields and sets draftPlaced; Save persists
+that explicit combined action. This is not evidence of clipboard-only behaviour or a separately
+confirmed placement step. Pure-copy versus combined apply/mark semantics need explicit workflow
+review; later actual£7 placement in this audit was a separate directAPI entry, not a real wager.
 
 ### #36/#77 conversion — retries, identity, receipts and failure
 
