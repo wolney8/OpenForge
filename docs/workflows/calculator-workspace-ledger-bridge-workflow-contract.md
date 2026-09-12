@@ -112,6 +112,17 @@ destination kind, Profile, Account)`, while a deliberate new exploratory convers
 intent. Failed independent targets remain retryable and successful targets are not rolled back.
 Completed Blackjack retains source-snapshot idempotency and cannot be cloned by a new intent.
 
+PD-QA-015 persistence invariant (stacked repair): completed Blackjack's validated full SHA-256
+checksum reserves one deterministic primary-key claim in the existing conversion-target table,
+independent of Profile/Account. Target identity remains stored, not flattened or substituted.
+Existing successful/pending legacy claims and Casino rows with that source are checked read-only;
+conflicting targets receive409 without disclosing another Profile's details. Same-target successful
+retry returns the existing activity. Failed claims may be atomically retried, including a reviewed
+new target, only when no Casino activity was committed. Casino row, business audit, successful claim,
+notification and response JSON preparation commit together. A crash before this transaction can
+leave Pending (controlled409; recovery remains an explicit operational gate), never a false success.
+No index migration or historical deduplication. Exploratory source/intent/target identities are unchanged.
+
 The implemented Standard and Multi-Lay paths permit one or more authorised Profiles. Governed
 Sportsbook modes create isolated `Prospecting` Sportsbook rows, while SNR/SR creates its native
 `Prospecting` Free Bets row after the same bookmaker/Exchange checks. Multi-Lay preserves every

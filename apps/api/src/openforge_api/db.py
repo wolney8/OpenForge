@@ -27,6 +27,10 @@ class DuplicateProfileAccountError(ValueError):
     """Raised when a Profile already references the same canonical provider."""
 
 
+class CompletedSourceConflictError(ValueError):
+    """A real completed activity is already claimed; do not disclose its target."""
+
+
 @dataclass(frozen=True)
 class ProfileDeletionResult:
     profile_id: str
@@ -4353,6 +4357,54 @@ def begin_calculator_conversion_target(
     timestamp = utc_now()
     attempt_id = f"CCT-{uuid4().hex[:12].upper()}"
     with connect() as connection:
+        if source_family == "blackjack_strategy" and destination_kind == "casino":
+            # Full checksum primary-key identity protects concurrent first saves across
+            # processes/Profiles. Existing target-scoped claims are reused, not migrated.
+            attempt_id = f"CCT-BJ-{source_checksum}"
+            previous = connection.execute(
+                """SELECT * FROM calculator_conversion_targets
+                   WHERE source_family = 'blackjack_strategy' AND destination_kind = 'casino'
+                     AND (source_checksum = ? OR source_id = ?)
+                   ORDER BY CASE state WHEN 'Succeeded' THEN 0 WHEN 'Pending' THEN 1 ELSE 2 END,
+                            created_at, attempt_id LIMIT 1""",
+                (source_checksum, source_id),
+            ).fetchone()
+            if previous is not None and previous["source_checksum"] != source_checksum:
+                raise CompletedSourceConflictError("Completed Blackjack source identity conflicts")
+            if previous is not None and previous["state"] in {"Succeeded", "Pending"}:
+                if (previous["target_profile_id"] != target_profile_id
+                        or previous["target_account"] != target_account):
+                    raise CompletedSourceConflictError(
+                        "This completed Blackjack session is already saved or in progress"
+                    )
+                return {**dict(previous), "_claimed": False}
+            # Also refuse legacy orphaned activities; never silently clean/recreate them.
+            if connection.execute(
+                "SELECT casino_offer_id FROM casino_offers WHERE offer_group_id = ? LIMIT 1",
+                (source_id,),
+            ).fetchone() is not None:
+                raise CompletedSourceConflictError(
+                    "This completed Blackjack session already has a Casino activity"
+                )
+            if previous is not None:
+                retried = connection.execute(
+                    """UPDATE calculator_conversion_targets SET state = 'Pending',
+                         failure_reason = '', target_profile_id = ?, target_account = ?,
+                         updated_at = ?
+                       WHERE attempt_id = ? AND state = 'Failed'""",
+                    (target_profile_id, target_account, timestamp, previous["attempt_id"]),
+                )
+                row = connection.execute(
+                    "SELECT * FROM calculator_conversion_targets WHERE attempt_id = ?",
+                    (previous["attempt_id"],),
+                ).fetchone()
+                assert row is not None
+                if (row["target_profile_id"] != target_profile_id
+                        or row["target_account"] != target_account):
+                    raise CompletedSourceConflictError(
+                        "This completed Blackjack session is already saved or in progress"
+                    )
+                return {**dict(row), "_claimed": retried.rowcount > 0}
         inserted = connection.execute(
             """
             INSERT INTO calculator_conversion_targets (
@@ -4361,8 +4413,7 @@ def begin_calculator_conversion_target(
               target_account, destination_record_id, state, failure_reason,
               notification_title, notification_body, notification_link, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'Pending', '', '', '', '', ?, ?)
-            ON CONFLICT(source_id, destination_kind, target_profile_id, target_account)
-            DO NOTHING
+            ON CONFLICT DO NOTHING
             """,
             (
                 attempt_id, source_id, source_checksum, source_family, source_version,
@@ -4371,6 +4422,17 @@ def begin_calculator_conversion_target(
             ),
         )
         claimed = inserted.rowcount > 0
+        if source_family == "blackjack_strategy" and destination_kind == "casino":
+            row = connection.execute(
+                "SELECT * FROM calculator_conversion_targets WHERE attempt_id = ?", (attempt_id,),
+            ).fetchone()
+            assert row is not None
+            if (row["target_profile_id"] != target_profile_id
+                    or row["target_account"] != target_account):
+                raise CompletedSourceConflictError(
+                    "This completed Blackjack session is already saved or in progress"
+                )
+            return {**dict(row), "_claimed": claimed}
         if not claimed:
             retried = connection.execute(
                 """
@@ -4401,8 +4463,17 @@ def complete_calculator_conversion_target(
     notification_title: str,
     notification_body: str,
     notification_link: str,
+    connection: Any | None = None,
 ) -> None:
-    with connect() as connection:
+    if connection is None:
+        with connect() as transaction:
+            complete_calculator_conversion_target(
+                attempt_id, destination_record_id=destination_record_id,
+                notification_title=notification_title, notification_body=notification_body,
+                notification_link=notification_link, connection=transaction,
+            )
+        return
+    if connection is not None:
         connection.execute(
             """
             UPDATE calculator_conversion_targets
@@ -5528,6 +5599,7 @@ def delete_each_way_extra_place(
 def create_casino_offer(
     profile_id: str,
     payload: dict[str, str],
+    prepare_response: Callable[[CasinoOfferRecord, Any], Any] | None = None,
 ) -> CasinoOfferRecord:
     record = {
         "casino_offer_id": payload.get("casino_offer_id") or f"CO-{uuid4().hex[:8].upper()}",
@@ -5637,6 +5709,10 @@ def create_casino_offer(
             action="created",
             payload=record,
         )
+        if prepare_response is not None:
+            created = CasinoOfferRecord(**record)
+            prepare_response(created, connection)
+            return created
     created = get_casino_offer(profile_id, record["casino_offer_id"])
     assert created is not None
     return created

@@ -19,6 +19,7 @@ from openforge_api.calculators import (
     preview_multi_lay,
 )
 from openforge_api.db import (
+    CompletedSourceConflictError,
     begin_calculator_conversion_target,
     complete_calculator_conversion_target,
     create_casino_offer,
@@ -1027,17 +1028,20 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
     if reasons:
         raise HTTPException(status_code=409, detail="; ".join(reasons))
     monetary = snapshot["monetary"]
-    attempt = begin_calculator_conversion_target(
-        source_id=source_id,
-        source_checksum=checksum,
-        source_family="blackjack_strategy",
-        source_version=str(snapshot.get("calculator_version", "blackjack-session-v1")),
-        source_mode=mode,
-        source_envelope_json=canonical,
-        destination_kind="casino",
-        target_profile_id=payload.profile_id,
-        target_account=selected_account.account_id,
-    )
+    try:
+        attempt = begin_calculator_conversion_target(
+            source_id=source_id,
+            source_checksum=checksum,
+            source_family="blackjack_strategy",
+            source_version=str(snapshot.get("calculator_version", "blackjack-session-v1")),
+            source_mode=mode,
+            source_envelope_json=canonical,
+            destination_kind="casino",
+            target_profile_id=payload.profile_id,
+            target_account=selected_account.account_id,
+        )
+    except CompletedSourceConflictError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     existing = _existing_result(attempt, payload.profile_id, account_name)
     if existing:
         return ConversionResponse(
@@ -1055,11 +1059,34 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
         if activity_source == "free_credit"
         else "Casino Promotion"
     )
+    prepared: ConversionResponse | None = None
+
+    def prepare_completed_activity(created: Any, connection: Any) -> None:
+        nonlocal prepared
+        href = (
+            f"/profiles/{payload.profile_id}/tracker/casino-offers"
+            f"?record={created.casino_offer_id}&source=calculator-conversion"
+        )
+        body = f"Saved Blackjack session to {profile.display_name} · {account_name}."
+        complete_calculator_conversion_target(
+            attempt["attempt_id"], destination_record_id=created.casino_offer_id,
+            notification_title="Blackjack session saved", notification_body=body,
+            notification_link=href, connection=connection,
+        )
+        prepared = ConversionResponse(
+            source_id=source_id, source_checksum=checksum,
+            results=[ConversionTargetResult(
+                profile_id=payload.profile_id, account=account_name, state="succeeded",
+                record_id=created.casino_offer_id, href=href,
+            )], notification=body,
+        )
+        prepared.model_dump_json()
+
     try:
         result = "Win" if final > 0 else "Lose" if final < 0 else "Mixed"
         started = str(snapshot.get("started_at", ""))
         ended = str(snapshot.get("ended_at", ""))
-        created = create_casino_offer(
+        create_casino_offer(
             payload.profile_id,
             {
                 "offer_group_id": source_id,
@@ -1087,29 +1114,12 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
                 "final_net_pnl": f"{final:.2f}",
                 "user_notes": f"Blackjack session source: {source_id} ({checksum})",
             },
+            prepare_response=prepare_completed_activity,
         )
-        href = (
-            f"/profiles/{payload.profile_id}/tracker/casino-offers"
-            f"?record={created.casino_offer_id}&source=calculator-conversion"
-        )
-        body = f"Saved Blackjack session to {profile.display_name} · {account_name}."
-        complete_calculator_conversion_target(
-            attempt["attempt_id"],
-            destination_record_id=created.casino_offer_id,
-            notification_title="Blackjack session saved",
-            notification_body=body,
-            notification_link=href,
-        )
-        result_row = ConversionTargetResult(
-            profile_id=payload.profile_id,
-            account=account_name,
-            state="succeeded",
-            record_id=created.casino_offer_id,
-            href=href,
-        )
-        return ConversionResponse(
-            source_id=source_id, source_checksum=checksum, results=[result_row], notification=body
-        )
+        assert prepared is not None
+        return prepared
     except Exception as error:
         fail_calculator_conversion_target(attempt["attempt_id"], str(error))
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        if isinstance(error, HTTPException):
+            raise
+        raise
