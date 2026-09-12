@@ -6637,7 +6637,9 @@ def create_profile_with_onboarding(
     """Create the Profile, settings, and selected catalogue accounts atomically."""
     timestamp = utc_now()
     profile_id = payload.get("profile_id") or f"profile-{uuid4().hex[:12]}"
-    accounts = payload.get("accounts", [])
+    from openforge_api.money_input import validate_account_money_payload
+
+    accounts = [validate_account_money_payload(account) for account in payload.get("accounts", [])]
     exchange_commissions = payload.get("exchange_commissions", [])
     quick_actions = payload.get("quick_actions", [])
     with connect() as connection:
@@ -8853,10 +8855,17 @@ def confirm_account_import_batch(
         if not selected_staged_row_ids.issubset(selectable_ids):
             raise ValueError("Selected rows must be new or changed rows from this import batch")
 
+        from openforge_api.money_input import validate_account_money_payload
+
+        # Preflight the complete selected set before Account/audit/source mutations.
+        for staged_row in staged_rows:
+            if staged_row["import_staged_row_id"] in selected_staged_row_ids:
+                validate_account_money_payload(json.loads(staged_row["mapped_payload_json"]))
+
         for staged_row in staged_rows:
             if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
                 continue
-            payload = json.loads(staged_row["mapped_payload_json"])
+            payload = validate_account_money_payload(json.loads(staged_row["mapped_payload_json"]))
             timestamp = utc_now()
             is_update = staged_row["staged_action"] == "update"
             source = connection.execute(
@@ -9183,6 +9192,9 @@ def create_account_with_exchange_commission(
     payload: dict[str, Any],
     commission_rate: str | None,
 ) -> AccountRecord:
+    from openforge_api.money_input import validate_account_money_payload
+
+    payload = validate_account_money_payload(payload)
     record = {
         "account_id": payload.get("account_id") or f"AC-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -9283,6 +9295,10 @@ def update_account(
     if existing is None:
         return None
 
+    from openforge_api.money_input import validate_account_money_payload
+
+    payload = validate_account_money_payload(payload)
+
     updated = {
         "catalogue_id": payload.get("catalogue_id"),
         "bookmaker_id": payload.get("bookmaker_id"),
@@ -9294,9 +9310,11 @@ def update_account(
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
         "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
         "restrictions_json": payload.get("restrictions_json", "[]"),
-        "current_balance": payload["current_balance"],
-        "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
-        "last_balance_update": payload["last_balance_update"],
+        "current_balance": payload.get("current_balance", existing.current_balance),
+        "pending_withdrawal_amount": payload.get(
+            "pending_withdrawal_amount", existing.pending_withdrawal_amount
+        ),
+        "last_balance_update": payload.get("last_balance_update", existing.last_balance_update),
         "group_name": payload["group_name"],
         "platform": payload["platform"],
         "sign_up_date": payload.get("sign_up_date", ""),

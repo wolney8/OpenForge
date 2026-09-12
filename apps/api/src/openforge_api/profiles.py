@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.auth import AuthSession, require_request_session
@@ -153,6 +153,16 @@ class ProfileOnboardingAccountPayload(BaseModel):
     restrictions: list[str] = Field(default_factory=list, max_length=12)
     notes: str = Field(default="", max_length=1000)
     commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+
+    @field_validator("opening_balance", "pending_withdrawal_amount", mode="before")
+    @classmethod
+    def validate_account_money(cls, value: object, info: ValidationInfo) -> Decimal:
+        from openforge_api.money_input import normalize_money_input
+
+        text = normalize_money_input(str(value), info.field_name or "money")
+        if not text:
+            raise ValueError(f"{info.field_name}: enter an amount")
+        return Decimal(text)
 
     @field_validator("commission_rate", mode="before")
     @classmethod

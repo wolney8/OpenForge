@@ -63,6 +63,36 @@ into the account row as another source of provider or offer metadata.
 
 ## Transfer rules
 
+### Account money policy — #91 / PD-QA-002/007 (2026-09-12)
+
+Applies to new business writes, not historical restore/seed rewriting. GBP monetary entries use
+complete decimal strings, an optional minus sign, full-stop separator and at most two fractional
+digits. Surrounding whitespace and leading-decimal shorthand normalise exactly to two digits;
+commas, exponents, partial strings, NaN and infinities are rejected. No rounding or new magnitude
+cap is introduced; existing40-character field limit remains. Signed balance/withdrawal entries
+remain allowed in the Account editor; onboarding retains its existing non-negative restriction.
+
+| Field | Omitted update | Zero | Blank | Null | Precision / sign |
+|---|---|---|---|---|---|
+| current_balance | Preserve stored value | Valid observed0.00 | Explicit unknown, never zero | Reject | Exact cents; signed |
+| pending_withdrawal_amount | Preserve stored value | Known no pending withdrawal | Unknown, never zero | Reject | Exact cents; signed (existing edit contract) |
+| opening_balance (onboarding) | Existing fresh default0 | Valid | Reject | Reject | Exact cents; existing non-negative rule |
+| last_balance_update | Preserve if omitted | Not money | Existing explicit blank allowed | Existing rejection | No timestamp change on rejected writes |
+
+Validate before Account/audit/commission writes on API, catalogue selection, onboarding and shared
+persistence; staged Account import confirmation revalidates selected money before business writes.
+Immutable historical restore and legacy seed preserve raw history, which reads must diagnose.
+Omitted invalid historical money is not reinterpreted during an unrelated metadata update.
+
+Included Account blank/invalid balances make that cash total Incomplete/Unavailable. Known subtotal
+is separately labelled; the affected Account/field is identified within authorised Profile scope.
+Excluded Accounts do not contaminate included cash, while the Accounts page's all-account pending
+withdrawal metric retains its existing scope. Profile/combined summary pending withdrawals retain
+their included-Account scope. Bookmaker/Exchange/Bank totals have independent completeness.
+Cash uses exact integer cents; unsafe numeric display ranges are unavailable, never approximated.
+Ledger P&L/settlement is unrelated and remains independently calculated. Invalid export is controlled
+and rejected, never zero-substituted. Explicit correction restores completeness without auto repair.
+
 - Global catalogue export returns the validated master source with stable IDs.
 - Import must validate the whole replacement catalogue before any write, reject duplicate IDs
   or type/name pairs, and report changed/removed/archived IDs and profile-reference impact.

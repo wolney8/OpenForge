@@ -5,6 +5,7 @@ import type {
   TrackerSummaryResult,
 } from "./tracker-summary";
 import type { OperationalActionCounts } from "./operational-actions";
+import { sumAccountMoney, type AccountMoneyIssue } from "./account-money";
 
 export type ProfileReportingInput = {
   profileId: string;
@@ -37,6 +38,7 @@ export type ProfileComparisonRow = {
 };
 
 export type CrossProfileReportingResult = {
+  cashIssues?: AccountMoneyIssue[];
   profileRows: ProfileComparisonRow[];
   totals: Omit<
     ProfileComparisonRow,
@@ -89,6 +91,7 @@ function aggregateReportRows(rows: ReportRow[]): ReportRow[] {
 export function aggregateCrossProfileReporting(
   profiles: ProfileReportingInput[]
 ): CrossProfileReportingResult {
+  const cashIssues=profiles.flatMap(p=>(p.summary.accountQuickView.moneyIssues??[]).map(issue=>({...issue,accountName:`${p.displayName} · ${issue.accountName}`})));
   // Current lifecycle status is display/scope metadata, not a historical-report exclusion.
   const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
     const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0, extraPlaces: 0 };
@@ -147,6 +150,7 @@ export function aggregateCrossProfileReporting(
   );
 
   const moduleMap = new Map<string, ModuleBreakdownRow>();
+  totals.cashSnapshot=sumAccountMoney(profileRows.map(row=>({account_id:row.profileId,account:row.displayName,current_balance:String(row.cashSnapshot),pending_withdrawal_amount:"0.00"})),"current_balance").value;
   const bookmakerMap = new Map<string, BookmakerBreakdownRow>();
 
   for (const profile of profiles) {
@@ -193,6 +197,7 @@ export function aggregateCrossProfileReporting(
 
   return {
     profileRows,
+    cashIssues,
     totals,
     moduleBreakdown: [...moduleMap.values()],
     bookmakerBreakdown: [...bookmakerMap.values()].sort(

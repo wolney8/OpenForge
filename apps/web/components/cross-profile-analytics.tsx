@@ -1,4 +1,5 @@
 "use client";
+import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1081,6 +1082,7 @@ export function CrossProfileAnalytics({
       </div>
 
       {blockingReportingLoad ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
+      {!blockingReportingLoad ? <AccountMoneyStatus issues={trackerRangeAllProfilesCombined.cashIssues} /> : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (
         <div className="validation-message" role="alert">

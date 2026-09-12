@@ -1,4 +1,5 @@
 "use client";
+import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -603,6 +604,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
   return (
     <section aria-busy={isCriticalLoading} className="stack tracker-summary-shell">
+      {!isCriticalLoading ? <AccountMoneyStatus issues={summary?.accountQuickView.moneyIssues} /> : null}
       <section className="content-panel stack" inert={isCriticalLoading ? true : undefined}>
         <div className="panel-header">
           <div className="section-heading-row">

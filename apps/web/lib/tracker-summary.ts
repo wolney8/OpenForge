@@ -1,4 +1,5 @@
 import { formatFinancialValue } from "./financial-display";
+import { sumAccountMoney, type AccountMoneyIssue } from "./account-money";
 
 export type DatePreset =
   | "Today"
@@ -264,6 +265,8 @@ export type TrackerSummaryResult = {
     bankBalance: number;
     pendingWithdrawals: number;
     cashSnapshot: number;
+    moneyIssues?: AccountMoneyIssue[];
+    knownCashSubtotal?: string;
   };
   profitQuickView: {
     sportsbook: ModuleMetric;
@@ -707,18 +710,13 @@ export function summarizeTrackerData(
       ? Number(settings?.freeBetExpiryAlertWindowDays)
       : defaultFreeBetExpiryAlertWindowDays;
   const expiryAlertCutoff = endOfDay(addDays(startOfDay(asOf), freeBetExpiryAlertWindowDays));
-  const bookieBalance = dataset.accounts
-    .filter((row) => row.counts_in_cash_total && row.type === "Bookie")
-    .reduce((sum, row) => sum + parseMoney(row.current_balance), 0);
-  const exchangeBalance = dataset.accounts
-    .filter((row) => row.counts_in_cash_total && row.type === "Exchange")
-    .reduce((sum, row) => sum + parseMoney(row.current_balance), 0);
-  const bankBalance = dataset.accounts
-    .filter((row) => row.counts_in_cash_total && row.type === "Bank")
-    .reduce((sum, row) => sum + parseMoney(row.current_balance), 0);
-  const pendingWithdrawals = dataset.accounts
-    .filter((row) => row.counts_in_cash_total)
-    .reduce((sum, row) => sum + parseMoney(row.pending_withdrawal_amount), 0);
+  const includedAccounts=dataset.accounts.filter(row=>row.counts_in_cash_total);
+  const cash=sumAccountMoney(includedAccounts,"current_balance");
+  const bookieBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance").value;
+  const exchangeBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance").value;
+  const bankBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bank"),"current_balance").value;
+  const pending=sumAccountMoney(includedAccounts,"pending_withdrawal_amount");
+  const pendingWithdrawals=pending.value;
 
   const sportsbookInRange = dataset.sportsbookBets.filter((row) =>
     dateWithinRange(parseDateInput(row.date_settled) ?? parseDateInput(row.created_at), resolvedDateRange)
@@ -1163,7 +1161,9 @@ export function summarizeTrackerData(
       exchangeBalance,
       bankBalance,
       pendingWithdrawals,
-      cashSnapshot: bookieBalance + exchangeBalance + bankBalance,
+      cashSnapshot: cash.value,
+      moneyIssues: [...cash.issues,...pending.issues],
+      knownCashSubtotal: cash.knownSubtotal,
     },
     profitQuickView: {
       sportsbook: {

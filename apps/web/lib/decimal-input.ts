@@ -10,7 +10,11 @@ const canonicalMoneyInputPattern = /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/;
  * ambiguous numeric syntax. Invalid text is returned as null so the caller can
  * preserve it for inline validation.
  */
-export function normalizeMoneyInput(value: string): string | null {
+export function normalizeMoneyInput(value: string, options: { allowNegative?: boolean } = {}): string | null {
+  if (options.allowNegative && value.startsWith("-")) {
+    const positive = normalizeMoneyInput(value.slice(1));
+    return positive === null || positive === "" ? null : positive === "0.00" ? positive : `-${positive}`;
+  }
   if (value === "") return "";
   if (!canonicalMoneyInputPattern.test(value)) return null;
   const [whole = "", fraction = ""] = value.split(".");

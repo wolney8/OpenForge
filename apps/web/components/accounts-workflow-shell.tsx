@@ -8,6 +8,8 @@ import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue"
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
+import { AccountMoneyStatus } from "@/components/account-money-status";
+import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -280,8 +282,7 @@ function parseAmount(value: string) {
 }
 
 function normalizedFinancialInput(value: string) {
-  const parsed = Number(value.trim());
-  return Number.isFinite(parsed) ? parsed.toFixed(2) : value;
+  return normalizeAccountMoney(value);
 }
 
 function financialInputTone(value: string): "positive" | "negative" | "neutral" {
@@ -621,14 +622,10 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       ["Bonus Restricted", "Limited", "Gubbed", "Inactive"].includes(row.status)
     ).length;
     const cashTotalAccounts = resolvedRows.filter((row) => row.counts_in_cash_total);
-    const cashIncludedBalance = cashTotalAccounts.reduce(
-      (sum, row) => sum + parseAmount(row.current_balance),
-      0
-    );
-    const pendingWithdrawals = resolvedRows.reduce(
-      (sum, row) => sum + parseAmount(row.pending_withdrawal_amount),
-      0
-    );
+    const cash=sumAccountMoney(cashTotalAccounts,"current_balance");
+    const pending=sumAccountMoney(resolvedRows,"pending_withdrawal_amount");
+    const cashIncludedBalance=cash.value;
+    const pendingWithdrawals=pending.value;
     const bookieCount = resolvedRows.filter((row) => row.type === "Bookie").length;
     const exchangeCount = resolvedRows.filter((row) => row.type === "Exchange").length;
     const bankCount = resolvedRows.filter((row) => row.type === "Bank").length;
@@ -639,6 +636,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       cashIncludedBalance,
       cashTotalCount: cashTotalAccounts.length,
       pendingWithdrawals,
+      moneyIssues:[...cash.issues,...pending.issues],
+      knownSubtotal:cash.knownSubtotal,
       bookieCount,
       exchangeCount,
       bankCount,
@@ -882,6 +881,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     if (saveInFlightRef.current || isSaving || isArchiving) return;
     setErrorMessage("");
     const isEditing = Boolean(selectedId);
+    if(accountMoneyError(formState.current_balance)||accountMoneyError(formState.pending_withdrawal_amount)) {
+      setErrorMessage("Correct the Account money fields before saving.");return;
+    }
     if (!isEditing && !formState.catalogue_id) {
       setErrorMessage("Select an account from the Fund Manager Account Catalogue.");
       return;
@@ -1057,16 +1059,16 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
           <article className="stat-card">
             <span className="eyebrow">Bankroll</span>
             <strong><FinancialValue value={accountQuickView.cashIncludedBalance} /></strong>
-            <p className="lede">{accountQuickView.cashTotalCount} accounts included</p>
+            <p className="lede">{Number.isNaN(accountQuickView.cashIncludedBalance) ? <>Incomplete · Known subtotal <FinancialValue value={accountQuickView.knownSubtotal} /></> : `${accountQuickView.cashTotalCount} accounts included`}</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Bookmaker balances</span>
-            <strong><FinancialValue value={resolvedRows.filter((row) => row.type === "Bookie").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <strong><FinancialValue value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Bookie"),"current_balance").value} /></strong>
             <p className="lede">Profile bookmaker cash</p>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Exchange balances</span>
-            <strong><FinancialValue value={resolvedRows.filter((row) => row.type === "Exchange").reduce((sum, row) => sum + parseAmount(row.current_balance), 0)} /></strong>
+            <strong><FinancialValue value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Exchange"),"current_balance").value} /></strong>
             <p className="lede">Profile exchange cash</p>
           </article>
           <article className="stat-card">
@@ -1075,6 +1077,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article>
         </section>
+        <AccountMoneyStatus issues={accountQuickView.moneyIssues} />
         <ProfileOpportunityQueue profileId={profileId} />
         <>
             <div
@@ -1249,7 +1252,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                                   ))}
                                 </span>
                               ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
-                                <span className="table-chip accounts-financial-chip"><FinancialValue value={String(row[column.key] || "0")} /></span>
+                                <span className="table-chip accounts-financial-chip"><FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} /></span>
                               ) : column.key === "actions" ? (
                                 <button
                                   aria-label={`Edit ${String(row.account ?? "account")}`}
@@ -1383,9 +1386,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Current balance</span>
-                  <strong><FinancialValue value={selectedRow.current_balance || "0"} /></strong>
+                  <strong><FinancialValue value={accountMoneyDisplayValue(selectedRow.current_balance)} /></strong>
                   <p className="lede">
-                    Pending withdrawal: <FinancialValue value={selectedRow.pending_withdrawal_amount || "0"} />
+                    Pending withdrawal: <FinancialValue value={accountMoneyDisplayValue(selectedRow.pending_withdrawal_amount)} />
                   </p>
                 </article>
                 <article className="stat-card">
@@ -1597,6 +1600,9 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             <span>Current balance</span>
             <FinancialTextInput
               ariaLabel="Current balance"
+              sanitizeInput={false}
+              ariaInvalid={Boolean(accountMoneyError(formState.current_balance))}
+              ariaDescribedBy={accountMoneyError(formState.current_balance)?"account-current-balance-error":undefined}
               dataPdId="accounts.editor.current-balance"
               id="account-current-balance"
               onBlur={() => setFormState((current) => ({ ...current, current_balance: normalizedFinancialInput(current.current_balance) }))}
@@ -1604,11 +1610,15 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               value={formState.current_balance}
               valueTone={financialInputTone(formState.current_balance)}
             />
+            {accountMoneyError(formState.current_balance)?<span className="error-text" id="account-current-balance-error" role="alert">{accountMoneyError(formState.current_balance)}</span>:null}
           </label>
           <label className="field-control">
             <span>Pending withdrawal</span>
             <FinancialTextInput
               ariaLabel="Pending withdrawal"
+              sanitizeInput={false}
+              ariaInvalid={Boolean(accountMoneyError(formState.pending_withdrawal_amount))}
+              ariaDescribedBy={accountMoneyError(formState.pending_withdrawal_amount)?"account-pending-withdrawal-error":undefined}
               dataPdId="accounts.editor.pending-withdrawal"
               id="account-pending-withdrawal"
               onBlur={() => setFormState((current) => ({ ...current, pending_withdrawal_amount: normalizedFinancialInput(current.pending_withdrawal_amount) }))}
@@ -1616,6 +1626,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               value={formState.pending_withdrawal_amount}
               valueTone={financialInputTone(formState.pending_withdrawal_amount)}
             />
+            {accountMoneyError(formState.pending_withdrawal_amount)?<span className="error-text" id="account-pending-withdrawal-error" role="alert">{accountMoneyError(formState.pending_withdrawal_amount)}</span>:null}
           </label>
           <MaterialDateTimeField
             dataPdId="accounts.editor.last-balance-update"
@@ -1665,7 +1676,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               {errorMessage ? <p className="field-span-2 error-text" role="alert">{errorMessage}</p> : null}
               <div className="field-span-2 workflow-editor-footer" data-pd-id="accounts.editor.footer">
                 <div className="workflow-editor-footer-primary">
-                <button className="modal-primary-button" disabled={isPending || isSaving || isArchiving} type="submit">
+                <button className="modal-primary-button" disabled={isPending || isSaving || isArchiving || Boolean(accountMoneyError(formState.current_balance)) || Boolean(accountMoneyError(formState.pending_withdrawal_amount))} type="submit">
                   {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
                   <span>{isSaving ? "Saving" : selectedId ? "Save" : "Create"}</span>
                 </button>

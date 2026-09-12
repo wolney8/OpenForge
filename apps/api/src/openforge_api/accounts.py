@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
@@ -23,6 +23,7 @@ from openforge_api.db import (
     upsert_profile_exchange_commission,
 )
 from openforge_api.extra_place_account_health import resolve_extra_place_account_health
+from openforge_api.money_input import AccountMoneyError, normalize_money_input
 
 router = APIRouter(prefix="/profiles/{profile_id}/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -159,7 +160,14 @@ class AccountResponse(AccountPayload):
     extra_places_allows_operational_use: bool
 
 
-class AccountCreatePayload(AccountPayload):
+class AccountWritePayload(AccountPayload):
+    @field_validator("current_balance", "pending_withdrawal_amount")
+    @classmethod
+    def validate_money(cls, value: str, info: ValidationInfo) -> str:
+        return normalize_money_input(value, info.field_name or "money")
+
+
+class AccountCreatePayload(AccountWritePayload):
     commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
 
 
@@ -196,6 +204,11 @@ class ProfileAccountCatalogueSelectionPayload(BaseModel):
     current_balance: str = Field(default="0.00", max_length=40)
     counts_in_cash_total: bool = True
     commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+
+    @field_validator("current_balance")
+    @classmethod
+    def validate_balance(cls, value: str) -> str:
+        return normalize_money_input(value, "current_balance")
 
 
 def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
@@ -384,6 +397,12 @@ def set_profile_catalogue_account_selection(
         notes=existing.notes if existing else "",
     )
     resolved = resolve_catalogue_fields(account_payload)
+    if existing:
+        # Selection toggles are metadata operations, not new balance observations.
+        if "current_balance" not in payload.model_fields_set or not payload.selected:
+            resolved.pop("current_balance", None)
+        resolved.pop("pending_withdrawal_amount", None)
+        resolved.pop("last_balance_update", None)
     try:
         saved = (
             update_account(profile_id, existing.account_id, resolved)
@@ -392,6 +411,8 @@ def set_profile_catalogue_account_selection(
         )
     except DuplicateProfileAccountError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    except AccountMoneyError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     assert saved is not None
     if payload.selected and provider.account_type == "Exchange":
         assert payload.commission_rate is not None
@@ -451,10 +472,16 @@ def create_profile_account(profile_id: str, payload: AccountCreatePayload) -> Ac
 def update_profile_account(
     profile_id: str,
     account_id: str,
-    payload: AccountPayload,
+    payload: AccountWritePayload,
 ) -> AccountResponse:
     try:
-        updated = update_account(profile_id, account_id, resolve_catalogue_fields(payload))
+        resolved = resolve_catalogue_fields(payload)
+        for field in ("current_balance", "pending_withdrawal_amount", "last_balance_update"):
+            if field not in payload.model_fields_set:
+                resolved.pop(field, None)
+        updated = update_account(profile_id, account_id, resolved)
+    except AccountMoneyError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except HTTPException:
         raise
     except Exception as error:
