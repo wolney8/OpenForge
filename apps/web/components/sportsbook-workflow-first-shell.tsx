@@ -7872,6 +7872,35 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 className="section-fieldset stack"
                 disabled={!calculatorUnlocked || isSettledReadOnly}
               >
+                {!selectedId && usesMultiLayStrategy && !usesV2MultiLayPlanning &&
+                  formState.offer_type === "Bet & Get" &&
+                  ["Prospecting", "Not Placed"].includes(formState.status) &&
+                  formState.result === "Pending" ? (
+                    <button
+                      className="button-link icon-text-action"
+                      data-pd-id="sportsbook.multi-lay.enable-v2-planning"
+                      type="button"
+                      disabled={Boolean(formState.lay_actual || formState.lay_matched_stake_1 ||
+                        !["", "0"].includes(formState.profit_boost_percent) || formState.actual_accepted_back_odds ||
+                        formState.base_back_odds || formState.maximum_boost_winnings || formState.bonus_trigger ||
+                        formState.maximum_bonus || formState.manual_override_value || partialLayLegs.length ||
+                        multiLayPrimaryPlacement.placementState === "placed" || multiLayPrimaryPlacement.placedMatchedStake ||
+                        multiLayOutcomes.some((entry) => entry.placementState === "placed" || entry.placedMatchedStake))}
+                      title="New Normal Standard/Underlay reference plan only. Placement and settlement remain unsupported."
+                      onClick={() => {
+                        setMultiLayPrimaryPlacement((current) => ({ ...current,
+                          calculationVersion: "multi-lay-v2", backingType: "normal",
+                          commission: current.commission ?? resolvedCommission,
+                        }));
+                        setMultiLayOutcomes((current) => current.map((entry) => ({ ...entry,
+                          commission: entry.commission ?? resolvedCommission,
+                        })));
+                      }}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">calculate</span>
+                      Use v2 per-leg commission planning
+                    </button>
+                  ) : null}
                 {usesV2MultiLayPlanning ? <MultiLayCalculator planning key={selectedId || "new-v2"} exchanges={exchangeSettings.map((entry) => ({ catalogue_id: entry.exchange_name, name: entry.exchange_name, default_commission_rate: entry.commission_rate }))} onState={updateVersionedPlanner} search={versionedPlannerSearch} /> : <>
                 <div className="calculator-panel-shell">
                   <div className="calculator-panel-heading">

@@ -726,6 +726,57 @@ def test_normal_v2_mixed_commissions_save_reopen_and_retry(
     assert client.get(url).json()["multi_lay_reference"] == zero_saved.json()["multi_lay_reference"]
 
 
+@pytest.mark.parametrize(
+    ("strategy", "stakes", "liabilities", "totals"),
+    [
+        ("Multilay", ["16.33", "13.42"], ["24.50", "26.84"], ["18.66", "18.65", "18.67"]),
+        ("Multilay-Underlay", ["5.70", "4.68"], ["8.55", "9.36"], ["0.01", "26.04", "26.06"]),
+    ],
+)
+def test_native_normal_v2_create_preview_save_reopen(
+    tmp_path: Path, strategy: str, stakes: list[str], liabilities: list[str], totals: list[str]
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    entries = [
+        {"id": "outcome1", "label": "Home", "layOdds": "2.50", "commission": "0.05",
+         "calculationVersion": "multi-lay-v2", "backingType": "normal"},
+        {"id": "outcome2", "label": "Away", "layOdds": "3.00", "commission": "0.02"},
+    ]
+    payload = dict(
+        event_name="Synthetic native plan", bookmaker="Bookmaker A", offer_type="Bet & Get",
+        bet_type="Single", fixture_type="Football", match_strategy=strategy,
+        status="Prospecting", result="Pending", back_stake="10.00", back_odds="4.00",
+        lay_odds_1="2.50", exchange_name="Smarkets", multi_lay_outcome_1_name="Home",
+        multi_lay_outcomes_json=json.dumps(entries),
+    )
+    base = "/profiles/profile-demo-001/sportsbook-bets"
+    preview = client.post(f"{base}/preview", json=payload)
+    assert preview.status_code == 200, preview.text
+    created = client.post(base, json=payload)
+    assert created.status_code == 201, created.text
+    row = created.json()
+    reference = row["multi_lay_reference"]
+    # Independent fixed oracle: Standard_i=40/(odds_i-commission_i), Underlay
+    # multiplier=10/sum(Standard_i*(1-commission_i)), penny placement then components.
+    assert [leg["lay_stake"] for leg in reference["branches"]] == stakes
+    assert [leg["liability"] for leg in reference["branches"]] == liabilities
+    assert [scenario["total"] for scenario in reference["scenarios"]] == totals
+    assert preview.json()["multi_lay_reference"] == reference
+    url = f"{base}/{row['sportsbook_bet_id']}"
+    assert client.put(url, json=row).status_code == 200
+    reopened = client.get(url).json()
+    assert json.loads(reopened["multi_lay_outcomes_json"]) == entries
+    assert reopened["multi_lay_reference"] == reference
+    assert reopened["lay_actual"] == reopened["lay_matched_stake_1"] == ""
+    assert reopened["reporting_value"] is None
+    for unsupported in (
+        {"status": "Placed"}, {"profit_boost_percent": "10"}, {"result": "Back Win"}
+    ):
+        assert client.put(url, json={**row, **unsupported}).status_code == 422
+    assert client.get(url).json()["multi_lay_reference"] == reference
+
+
 def test_extra_place_and_each_way_convert_to_profile_isolated_native_rows(
     tmp_path: Path,
 ) -> None:
