@@ -93,6 +93,10 @@ New records may opt into a **reference-only planning** slice by storing
 `calculationVersion: "multi-lay-v2"`, `backingType: "normal"` and explicit `commission`
 (decimal fraction) in the `outcome1` entry of the existing `multi_lay_outcomes_json` array.
 Every other outcome stores its own `commission`; zero is explicit. This adds no database column.
+Native Add Row retains v1 defaults and exposes explicit v2 opt-in only for new compatible planning
+rows. It reuses `MultiLayCalculator planning`, retaining compatible inputs and seeding individual
+commissions from the currently selected Exchange authority. Existing rows cannot be restamped;
+actual placement/override data disables opt-in. No financial formula or rounding changes here.
 The slice supports Standard/Underlay, 2–20 legs, no boost/reward/custom allocation, and only
 Prospecting/Not Placed + Pending. Back stake/odds remain native row fields. Existing v2 engine
 inputs, penny-placed references and component Outcomes are revalidated on native save and reopen.
