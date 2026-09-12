@@ -3,6 +3,16 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-12: Dense responsive cells retained intrinsic auto-track width
+
+- Area: shared dense calculator tables, observed in embedded Normal v2 planning at 390px.
+- Root cause: a grid cell had `min-width: 0` but its implicit auto column grew to the commission
+  heading's intrinsic width, exceeding the cell by 56px and carrying its input along with it.
+- Prevention: dense responsive cells use an explicit `minmax(0, 1fr)` inner track and wrap long
+  semantic headings; preserve control geometry instead of hiding overflow.
+- Regression: isolated Multi-Lay native save/reopen Playwright focuses each numeric field and
+  compares field/cell bounds at 1440/760/390px in both themes, with page overflow checks.
+
 ## 2026-09-10: Dynamic calculator panels and fixed-width stats jolted or wasted space
 
 - Area: high-frequency Blackjack recommendation and running-financial surfaces.

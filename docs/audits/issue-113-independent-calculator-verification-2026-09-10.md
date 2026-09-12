@@ -5,6 +5,62 @@ Fund Manager Calculator Workspace at commit `1ef9c4e`. This is evidence, not a f
 
 ## Method and evidence boundary
 
+### 2026-09-12 manual checkpoint and Normal planning persistence
+
+Verified baseline: `f7a3b35073ecc87cdf8f8f881129f221ec44d395` (matches fetched `origin/main`).
+Protected branch: `manual/calculator-candidate-2026-09-12`.
+Pristine worktree: `/Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline`.
+Development stays in `.worktrees/multi-lay-normal-parity`, branch
+`calculator/multi-lay-normal-parity`, on 3013/8013 with a separate synthetic database.
+Do not pull/rebuild the baseline during Will's test session, reuse a mutable database across
+revisions, or substitute the daily-use 3010/8010 database. No hosted acceptance evidence is claimed.
+
+Launch the protected baseline in two terminals (dependency/venv links already prepared):
+
+```sh
+cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline
+git rev-parse HEAD
+manual_runtime=$(mktemp -d /tmp/openforge-manual-f7a3b35.XXXXXX)
+OPENFORGE_AUTH_REQUIRED=false OPENFORGE_DATABASE_URL="sqlite:///$manual_runtime/manual.sqlite3" ./scripts/run-python.sh -m uvicorn openforge_api.main:app --app-dir apps/api/src --host 127.0.0.1 --port 8020
+```
+
+```sh
+cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline/apps/web
+OPENFORGE_AUTH_REQUIRED=false OPENFORGE_E2E_AUTH_BYPASS=true OPENFORGE_INTERNAL_API_BASE_URL=http://127.0.0.1:8020 node node_modules/next/dist/bin/next dev --webpack --port 3020
+```
+
+Open `http://localhost:3020/fund-manager/calculators`; health is
+`http://127.0.0.1:8020/healthz`. This reuses the existing local E2E bypass, not new auth/hosting.
+The fresh isolated database contains no real ledger records; profile-independent comparisons use
+the existing synthetic worksheet inputs and `tests/fixtures/calculator-independent-verification-v1.json`.
+Retain the printed runtime directory if repeating the same run; create a different one for another
+revision. Use localhost for the established bypass cookie guard.
+
+Capture files: revised HTML, Excel alternative and guide are **not present locally**. Link Will's
+chosen supplied file here when available without replacing observations or constructing another
+recorder. Every run must carry parent case ID + full commit + date. A 79-run plan is bounded,
+not exhaustive. Bonus SR is deferred separately from requested Normal/SNR Bonus functionality.
+
+New slice: Normal, no boost/reward, Standard/Underlay, 2–20 legs; each leg commission survives
+new creation/reopen with `multi-lay-v2` stamped in the existing JSON array. The shared v2 preview
+supplies the embedded planning result. Actual placement, settlement and financial overrides fail
+closed; v1 rows are not migrated. Source snapshot and retry identity remain unchanged.
+Retest parent `MULTI-LAY-001`/`MULTI-LAY-002` on the development revision, including mixed/zero
+commission, bridge/save/reopen/copy, and representative v1 embedded placement. Other calculator
+mathematics are unchanged. External parity evidence remains the retained MBB 1p mismatch and
+Outplayed UNVERIFIED; mathematical/save parity does not change either status or Will acceptance.
+Remaining priority gaps include full v2 actual per-leg cash reconciliation, SNR/refund/boost/
+Overlay/Custom persistence, and the existing Accumulator specialised bet/Each Way/Rule 4 coverage.
+
+Focused evidence: 23 Multi-Lay-related engine/API/v1 regression tests pass, including two
+independently derived mixed-commission Standard/Underlay creation/save/reopen fixtures, explicit
+zero, retry, no recognised cash and fail-closed placement/version removal/boost. The full existing
+bridge family regression file passed 18 tests before the additional Underlay parameter (no other
+family engine changed). TypeScript and scoped Ruff pass. The real isolated Playwright path checks
+native creation → embedded shared v2 → commission edit → live result → copy 16.33 → UI Save →
+refresh/reopen at 1440/760/390px, light/dark, with no page overflow. This is finite local evidence,
+not all-number proof, external parity, hosted verification or Will acceptance.
+
 - Expected values in `calculator-independent-verification-v1.json` were hand-derived from the
   signed-off equations below. Production calculation functions were used only as the system under
   test. The public preview APIs supplied actual values.
@@ -162,7 +218,7 @@ not turn representative fixtures into exhaustive numeric proof.
 | Normal/SNR/SR; Simple/Advanced; Custom/Part Lay; commission/copy/reset | MBB Standard + Outplayed | Present; external penny differences documented | Standard | Sportsbook/Free Bet | Standard contracts/config matrix | #35/#113 |
 | Bonus Normal/SNR × loses/wins; 70% retention | Outplayed Bonus | Present; Bonus SR blocked | Standard Bonus | Sportsbook subset | Bonus contract/config matrix | #37 |
 | Profit Boost four sources/cap/accepted odds | platform #83 + current references | Present | Standard | Sportsbook | Profit Boost contract/tests | #35 |
-| Multi-Lay Normal/SNR/Money Back; boost; per-leg commission | MBB; Outplayed Normal/SNR subset | Present in v2 standalone; embedded partial | Multi-Lay + pop-out | Normal Standard/Underlay v1 only | `multi-lay-v2`; ML2 fixtures | #38/#36 |
+| Multi-Lay Normal/SNR/Money Back; boost; per-leg commission | MBB; Outplayed Normal/SNR subset | Present in v2 standalone; embedded partial | Multi-Lay + pop-out | Legacy v1; Normal Standard/Underlay v2 planning with per-leg commission | `multi-lay-v2`; ML2 fixtures | #38/#36 |
 | Multi-Lay editable labels; 2–20 technical legs; copy/reset/help | MBB (20 source cap); Outplayed 2–4 | Present | Multi-Lay + pop-out | Dynamic v1 planner | API/UI cap and zero-write tests | #38 |
 | Multi-Lay Underlay/Standard/Overlay/Custom; editable bounds/live slider | MBB | Present standalone; save/reopen blocked outside v1 subset | Multi-Lay + pop-out | Standard/Underlay only | ML2 strategy matrix/UI routing | #38/#36 |
 | Multi-Lay component Outcomes and source exposure convention | MBB | Present standalone; embedded historical presentation retained | Multi-Lay + pop-out | v1 shared Outcomes shell | ML2 scenarios/exposure fixtures | #38/#113 |

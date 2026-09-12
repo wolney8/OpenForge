@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-12_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -9,6 +9,18 @@ durable requirements.
 
 ## Current state
 
+- Monday comparison checkpoint is verified as full commit
+  `f7a3b35073ecc87cdf8f8f881129f221ec44d395`, protected by
+  `manual/calculator-candidate-2026-09-12` and a separate pristine worktree. Development is on
+  `calculator/multi-lay-normal-parity`; main/daily-use services are not updated in this tranche.
+  [Baseline launch and evidence boundary](docs/audits/issue-113-independent-calculator-verification-2026-09-10.md#2026-09-12-manual-checkpoint-and-normal-planning-persistence)
+  uses separate ports/database. Will's Monday results remain the acceptance gate.
+  The [editable worksheet](docs/audits/calculator-manual-comparison.md) retains parent case IDs;
+  HTML/Excel/guide files have not been supplied locally and are pending links, not rebuilt.
+  Normal v2 Standard/Underlay new-record planning now retains per-leg commission through the
+  existing bridge and shared embedded calculator. Placement/settlement and richer v2 save modes
+  remain blocked rather than flattened; unstamped v1 rows retain their prior workflow.
+
 - Multi-Lay reference expansion PD-FIX-101–106 is locally implemented at the 2026-09-11 source
   snapshots. Versioned `multi-lay-v2` supports Normal, Free Bet SNR and Money Back, zero/non-zero
   Profit Boost, two to 20 named legs, per-leg commission and Standard/Underlay/Overlay/Custom
@@ -16,7 +28,7 @@ durable requirements.
   exchange exposure, live copy/slider updates, Reset/help and pop-out state. Thirteen bounded v2
   configuration fixtures pass; the live MBB penny-boundary comparison is documented rather than
   called exact parity. Existing persisted Sportsbook rows remain on v1. Embedded/save/conversion is
-  intentionally limited to the representable Normal Standard/Underlay uniform-commission subset;
+  limited to Normal Standard/Underlay planning (v2 now retains individual commissions);
   richer v2 configurations fail closed until the destination contract can retain them. The existing
   [#113 audit](docs/audits/issue-113-independent-calculator-verification-2026-09-10.md) and
   [manual worksheet](docs/audits/calculator-manual-comparison.md) carry the evidence and gaps.

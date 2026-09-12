@@ -521,7 +521,7 @@ function readMultiLay(search: URLSearchParams): MultiLayInputs {
   } catch { return fallback; }
 }
 
-function MultiLayCalculator({ exchanges, onState, search }: { exchanges: ExchangeOption[]; onState: (params: URLSearchParams) => void; search: URLSearchParams }) {
+export function MultiLayCalculator({ exchanges, onState, search, planning = false }: { exchanges: ExchangeOption[]; onState: (params: URLSearchParams) => void; search: URLSearchParams; planning?: boolean }) {
   const [inputs, setInputs] = useState<MultiLayInputs>(() => readMultiLay(search));
   const [result, setResult] = useState<MultiLayResult | null>(null);
   const [error, setError] = useState("");
@@ -542,8 +542,13 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
     const params = new URLSearchParams({ family: "multi-lay", multiLay: JSON.stringify(inputs) });
     onState(params);
   }, [inputs, onState]);
-  function update(next: MultiLayInputs) { requestAbort.current?.abort(); requestVersion.current += 1; setInputs(next); setResult(null); setError(""); setBusy(false); }
-  function updateLive(next: MultiLayInputs) { requestAbort.current?.abort(); requestVersion.current += 1; setInputs(next); setError(""); setBusy(false); }
+  function update(next: MultiLayInputs) {
+    if (planning && (next.backingType !== "normal" || Number(next.profitBoostPercent) !== 0 || !["standard", "underlay"].includes(next.strategy))) {
+      setError("This saved planning contract supports Normal, no boost, Standard or Underlay only."); return;
+    }
+    requestAbort.current?.abort(); requestVersion.current += 1; setInputs(next); setResult(null); setError(""); setBusy(false);
+  }
+  function updateLive(next: MultiLayInputs) { if (planning) { update(next); return; } requestAbort.current?.abort(); requestVersion.current += 1; setInputs(next); setError(""); setBusy(false); }
   function updateOutcome(index: number, field: "label" | "layOdds" | "commission", value: string) {
     update({ ...inputs, outcomes: inputs.outcomes.map((outcome, at) => at === index ? { ...outcome, [field]: value, ...(field === "commission" ? { commissionManual: true } : {}) } : outcome) });
   }
@@ -579,14 +584,14 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
   const minimum = Number(inputs.customMinimum || result?.default_minimum_multiplier || "0");
   const maximum = Number(inputs.customMaximum || result?.default_maximum_multiplier || "2");
   const current = Math.min(maximum, Math.max(minimum, Number(inputs.customMultiplier || "1")));
-  const conversionCompatible = inputs.backingType === "normal" && Number(inputs.profitBoostPercent) === 0 && (inputs.strategy === "standard" || inputs.strategy === "underlay") && inputs.outcomes.every((outcome) => Number(outcome.commission) === Number(inputs.outcomes[0]?.commission));
+  const conversionCompatible = !planning && inputs.backingType === "normal" && Number(inputs.profitBoostPercent) === 0 && (inputs.strategy === "standard" || inputs.strategy === "underlay");
   const setStrategy = (strategy: MultiLayInputs["strategy"]) => update({ ...inputs, strategy, presentationMode: strategy === "standard" && inputs.presentationMode === "simple" ? "simple" : "advanced" });
   return <div className="calculator-panel-shell" data-pd-id="calculators.multi-lay.presentation"><div className="calculator-shell">
     <div className="calculator-band calculator-band-primary"><div className="calculator-segment calculator-segment-back"><CalculatorSegmentEyebrow>Back bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-segment-grid-back">
-      <SelectField id="multi-backing-type" label="Back type" value={inputs.backingType} onChange={(value) => update({ ...inputs, backingType: value as MultiLayInputs["backingType"] })} options={[["normal", "Normal"], ["free_bet_snr", "Free Bet (SNR)"], ["money_back", "Money Back if bet loses"]]} />
+      <SelectField disabled={planning} id="multi-backing-type" label="Back type" value={inputs.backingType} onChange={(value) => update({ ...inputs, backingType: value as MultiLayInputs["backingType"] })} options={[["normal", "Normal"], ["free_bet_snr", "Free Bet (SNR)"], ["money_back", "Money Back if bet loses"]]} />
       <Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} />
       <Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} />
-      <Field error={multiRangeError(inputs.profitBoostPercent, 0, Infinity, "Enter zero or a positive percentage.")} id="multi-profit-boost" label="Profit Boost %" onChange={(value) => update({ ...inputs, profitBoostPercent: value })} value={inputs.profitBoostPercent} />
+      {!planning ? <Field error={multiRangeError(inputs.profitBoostPercent, 0, Infinity, "Enter zero or a positive percentage.")} id="multi-profit-boost" label="Profit Boost %" onChange={(value) => update({ ...inputs, profitBoostPercent: value })} value={inputs.profitBoostPercent} /> : null}
       {inputs.backingType === "money_back" ? <><Field error={inputs.refundAmount && !isPositiveAmount(inputs.refundAmount) ? "Enter a refund amount greater than zero." : null} id="multi-refund" label="Refund amount" onChange={(value) => update({ ...inputs, refundAmount: value })} value={inputs.refundAmount} /><Field error={multiRangeError(inputs.retentionPercent, 0, 100, "Enter a percentage from 0 to 100.")} id="multi-retention" label="Retention %" onChange={(value) => update({ ...inputs, retentionPercent: value })} value={inputs.retentionPercent} /></> : null}
       {result ? <div className="calculator-reference-inline"><span>Effective odds</span><strong>{result.effective_back_odds}</strong></div> : null}
     </div></div></div>
@@ -599,13 +604,13 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
             <SelectField id="multi-exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); update({ ...inputs, exchange: value, outcomes: inputs.outcomes.map((outcome) => outcome.commissionManual ? outcome : { ...outcome, commission: selected?.default_commission_rate ?? "" }) }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} />
           </div>
           {inputs.presentationMode === "advanced" ? <section className="calculator-result-card" data-pd-id="calculators.multi-lay.advanced"><div className="calculator-result-card-heading"><h3>Advanced allocation</h3></div><div className="tracker-nav">
-            {(["underlay", "standard", "overlay"] as const).map((strategy) => <button className={inputs.strategy === strategy ? "modal-primary-button" : "button-link"} disabled={strategy !== "standard" && !result?.references.find((reference) => reference.strategy === strategy)?.multiplier} key={strategy} onClick={() => setStrategy(strategy)} type="button">{strategy[0].toUpperCase() + strategy.slice(1)}</button>)}
-            <button className={inputs.strategy === "custom" ? "modal-primary-button" : "button-link"} onClick={() => setStrategy("custom")} type="button">Custom</button>
+            {(["underlay", "standard", "overlay"] as const).filter((strategy) => !planning || strategy !== "overlay").map((strategy) => <button className={inputs.strategy === strategy ? "modal-primary-button" : "button-link"} disabled={strategy !== "standard" && !result?.references.find((reference) => reference.strategy === strategy)?.multiplier} key={strategy} onClick={() => setStrategy(strategy)} type="button">{strategy[0].toUpperCase() + strategy.slice(1)}</button>)}
+            {!planning ? <button className={inputs.strategy === "custom" ? "modal-primary-button" : "button-link"} onClick={() => setStrategy("custom")} type="button">Custom</button> : null}
           </div>
           <dl className="calculator-reference-rows">{result?.references.map((reference) => <div className="calculator-reference-row" key={reference.strategy}><dt><span>{reference.strategy[0].toUpperCase() + reference.strategy.slice(1)} {reference.multiplier ? `· ${reference.multiplier}×` : "· Unavailable"}</span></dt><dd>{reference.total_lay_stake ? <FinancialValue label={`${reference.strategy} total lay stake`} value={reference.total_lay_stake} /> : "—"}</dd></div>)}</dl>
           <p className="calculator-section-guidance">Custom allocation is a multiplier of every unrounded Standard lay stake; 1.00× is Standard.</p>
-          <div className="calculator-reference-action"><Field error={multiRangeError(inputs.customMultiplier, 0, Infinity, "Enter zero or a positive multiplier.")} id="multi-custom-multiplier" label="Custom multiplier" onChange={(value) => update({ ...inputs, strategy: "custom", customMultiplier: value })} value={inputs.customMultiplier} /></div>
-          {result ? <SingleLayCustomSlider ariaLabel="Custom Multi-Lay multiplier" centre={1} current={current} maximum={maximum} maximumText={inputs.customMaximum || result.default_maximum_multiplier} minimum={minimum} minimumText={inputs.customMinimum || result.default_minimum_multiplier} onCommit={(value) => updateLive({ ...inputs, strategy: "custom", customMultiplier: value })} onDraft={(value) => updateLive({ ...inputs, strategy: "custom", customMultiplier: value })} onMaximumChange={(value) => update({ ...inputs, customMaximum: value })} onMinimumChange={(value) => update({ ...inputs, customMinimum: value })} unit="multiplier" /> : null}
+          {!planning ? <div className="calculator-reference-action"><Field error={multiRangeError(inputs.customMultiplier, 0, Infinity, "Enter zero or a positive multiplier.")} id="multi-custom-multiplier" label="Custom multiplier" onChange={(value) => update({ ...inputs, strategy: "custom", customMultiplier: value })} value={inputs.customMultiplier} /></div> : null}
+          {result && !planning ? <SingleLayCustomSlider ariaLabel="Custom Multi-Lay multiplier" centre={1} current={current} maximum={maximum} maximumText={inputs.customMaximum || result.default_maximum_multiplier} minimum={minimum} minimumText={inputs.customMinimum || result.default_minimum_multiplier} onCommit={(value) => updateLive({ ...inputs, strategy: "custom", customMultiplier: value })} onDraft={(value) => updateLive({ ...inputs, strategy: "custom", customMultiplier: value })} onMaximumChange={(value) => update({ ...inputs, customMaximum: value })} onMinimumChange={(value) => update({ ...inputs, customMinimum: value })} unit="multiplier" /> : null}
           </section> : null}
           <div className="multi-lay-grid-wrap"><div className="multi-lay-table-heading">Outcome Table</div><table className={`data-table dense-calculator-grid multi-lay-reference-grid${inputs.outcomes.length > 2 ? " has-remove" : ""}`}><thead><tr><th>#</th><th>Outcome</th><th>Lay odds</th><th>Commission (decimal)</th><th>Lay stake</th><th>Liability</th>{inputs.outcomes.length > 2 ? <th>Remove</th> : null}</tr></thead><tbody>
             {inputs.outcomes.map((outcome, index) => { const branch = result?.branches[index]; return <tr data-pd-id={`calculators.multi-lay.outcome-${index + 1}`} key={index}>
@@ -626,7 +631,7 @@ function MultiLayCalculator({ exchanges, onState, search }: { exchanges: Exchang
         </div>
       </div>
     </div>
-    {conversionOpen && result && conversionCompatible ? <CalculatorConversionDialog financial={{ kind: "multi-lay", envelope: { calculator_family: "multi-lay", calculator_version: "multi-lay-v2", calculator_mode: inputs.strategy, canonical_inputs: { ...inputs, referenceResult: result }, created_at: conversionCreatedAt }, calculator: { allocation: inputs.strategy as "standard" | "underlay", backing_type: inputs.backingType, strategy: inputs.strategy, back_stake: inputs.backStake, back_odds: inputs.backOdds, profit_boost_percent: inputs.profitBoostPercent, refund_amount: "0", retention_percent: inputs.retentionPercent, custom_multiplier: inputs.customMultiplier, exchange_commission: inputs.outcomes[0].commission, outcomes: inputs.outcomes.map((outcome) => ({ label: outcome.label, lay_odds: outcome.layOdds, commission: outcome.commission })) } }} onClose={() => setConversionOpen(false)} onComplete={setConversionReceipt} /> : null}
+    {conversionOpen && result && conversionCompatible ? <CalculatorConversionDialog financial={{ kind: "multi-lay", envelope: { calculator_family: "multi-lay", calculator_version: "multi-lay-v2", calculator_mode: inputs.strategy, canonical_inputs: { ...inputs, referenceResult: result }, created_at: conversionCreatedAt }, calculator: { allocation: inputs.strategy as "standard" | "underlay", backing_type: inputs.backingType, strategy: inputs.strategy, back_stake: inputs.backStake, back_odds: inputs.backOdds, profit_boost_percent: inputs.profitBoostPercent, refund_amount: "0", retention_percent: inputs.retentionPercent, custom_multiplier: inputs.customMultiplier, outcomes: inputs.outcomes.map((outcome) => ({ label: outcome.label, lay_odds: outcome.layOdds, commission: outcome.commission })) } }} onClose={() => setConversionOpen(false)} onComplete={setConversionReceipt} /> : null}
   </div></div>;
 }
 

@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-12_
 
 ## Purpose
 
@@ -12,6 +12,23 @@ Live GitHub issue state was reconciled through an authenticated integration on 2
 entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
+
+### PD-FIX-107–110 — protected manual baseline / Normal v2 planning persistence
+
+User scope: preserve full candidate `f7a3b35073ecc87cdf8f8f881129f221ec44d395` for Monday;
+continue isolated development; retain capture parent IDs/observations and all reference gaps;
+close a coherent Normal per-leg commission creation/reopen slice, without migrating v1 cash rows.
+Protected worktree/launch and affected retests are in the
+[#113 audit](../audits/issue-113-independent-calculator-verification-2026-09-10.md#2026-09-12-manual-checkpoint-and-normal-planning-persistence).
+Capture HTML/Excel/guide are pending local supply. Explicit repeat inputs have been added to
+the existing worksheet without filling observation cells. Bonus SR remains separately deferred.
+Versioned new plans share the v2 engine/presentation and preserve each commission. Actual
+placement/settlement, SNR/refund/boost/Overlay/Custom persistence remain blocked with their full
+requirements visible. No historical row/source/hash/idempotency migration. Development branch
+`calculator/multi-lay-normal-parity` remains separate from main/manual build. Will acceptance is
+pending comparisons and unexplained external differences, not inferred from test counts.
+Relevant coverage: #35/#36/#38/#113; existing UI tokens for #92 reused. Live sync receipt follows
+the branch checkpoint; do not assume these issues closed.
 
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.

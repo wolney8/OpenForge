@@ -241,3 +241,27 @@ Baseline: `21b30f0371866fd94bbd68218de8874725e23236`
 | PD-FIX-104 | Consumer parity | Reuse the verified calculation/interaction path in standalone, pop-out and the embedded ledger planner. | PARTIAL — standalone/pop-out use v2; embedded ledger remains the governed v1 Normal Standard/Underlay subset |
 | PD-FIX-105 | Persistence/conversion | Preserve v2 source state on supported save/reopen paths and fail closed where a destination cannot represent it. | COMPLETE LOCALLY — compatible v1 provenance converts; richer v2 configurations fail closed pending destination support |
 | PD-FIX-106 | Evidence/delivery | Add independent fixtures, UI/API/consumer regressions, external observations, worksheet cases, tracking and checkpoint. | COMPLETE LOCALLY — MBB stake parity proven with documented 1p component difference; Outplayed exact capture remains UNVERIFIED |
+
+## PD-FIX-107 to PD-FIX-110 — Protected manual baseline and Normal Multi-Lay planning parity (2026-09-12)
+
+Baseline verified: `f7a3b35073ecc87cdf8f8f881129f221ec44d395`. Development is isolated in
+`calculator/multi-lay-normal-parity`; the main/manual build and its database are not changed.
+
+| ID | Surface / canonical equivalent | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-107 | Existing #113 audit and capture worksheet | Immutable candidate, isolated launch, preserve manual observations and parent IDs | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-108 | Normal v2 engine / native Sportsbook payload | Versioned per-leg-commission planning save/reopen; retain legacy cash truth | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-109 | Shared Multi-Lay calculator / embedded Matching / bridge | Same reference controls, engine, copy and Outcomes; fail closed outside planning slice | COMPLETE (bounded slice; Will acceptance pending) |
+| PD-FIX-110 | Existing API/Playwright fixtures / #35/#36/#113 | Independent parity, v1 regressions, rendered themes/containment and retest list | COMPLETE (bounded slice; Will acceptance pending) |
+
+Evidence: 23 focused Multi-Lay-related tests; independent mixed-commission Std/U stakes,
+liabilities and every outcome; explicit zero; retry; fail-closed placement/boost/version removal;
+legacy v1 references/placement regressions. Two isolated real-browser paths cover shared dense
+Sequential/Dutch fields and same-input standalone/embedded Normal stakes, commission edit, copy,
+UI save/reopen, desktop/half-width/narrow, light/dark, focus/containment and reduced motion. A
+private synthetic 760px dark render was inspected. No real/private database or baseline service
+was changed. The observed intrinsic responsive grid-cell overflow was fixed on the shared dense
+cell track, not via local widths/clipping; prevention and representative tests retain the rule.
+Ordinary unstamped Add Row remains v1; v2 new creation is through the existing conversion bridge
+or explicit API stamp. Native Add Row opt-in, full actual per-leg reconciliation and richer v2
+save modes remain follow-up scope. Mathematical/external/manual acceptance remain separate.
