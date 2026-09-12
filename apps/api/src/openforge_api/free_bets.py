@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from typing import Callable, Literal
 
 from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
@@ -18,14 +25,25 @@ from openforge_api.db import (
     create_free_bet,
     delete_free_bet,
     get_free_bet,
+    get_profile,
     get_profile_exchange_commission,
     get_profile_exchange_commission_map,
     get_profile_tracker_settings,
+    get_sportsbook_bet,
+    list_accounts,
     list_free_bet_follow_up_reminder_audit,
     list_free_bets,
     update_free_bet,
     update_free_bet_follow_up_reminder,
 )
+from openforge_api.free_bet_input import (
+    MONEY_FIELDS,
+    validate_free_bet_commission,
+    validate_free_bet_date,
+    validate_free_bet_money,
+    validate_legacy_free_bet_money,
+)
+from openforge_api.sportsbook_odds_input import validate_sportsbook_odds
 
 router = APIRouter(prefix="/profiles/{profile_id}/free-bets", tags=["free-bets"])
 
@@ -45,7 +63,7 @@ RetentionModeValue = Literal["SNR", "SR"]
 MatchStrategyValue = Literal["Standard", "Underlay", "Overlay", "Custom", "No Lay", "Partial Lay"]
 
 
-class FreeBetPayload(BaseModel):
+class FreeBetFields(BaseModel):
     free_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(default="", max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -78,6 +96,28 @@ class FreeBetPayload(BaseModel):
     manual_override_value: str = Field(default="", max_length=40)
     manual_override_reason: str = Field(default="", max_length=500)
 
+
+class FreeBetPayload(FreeBetFields):
+    @field_validator(*MONEY_FIELDS)
+    @classmethod
+    def validate_money(cls, value: str, info: ValidationInfo) -> str:
+        return validate_free_bet_money(value, info.field_name or "money")
+
+    @field_validator("back_odds", "lay_odds_1")
+    @classmethod
+    def validate_odds(cls, value: str) -> str:
+        return validate_sportsbook_odds(value)
+
+    @field_validator("lay_commission_1")
+    @classmethod
+    def validate_commission(cls, value: str) -> str:
+        return validate_free_bet_commission(value)
+
+    @field_validator("expiry_datetime", "date_settled")
+    @classmethod
+    def validate_date(cls, value: str) -> str:
+        return validate_free_bet_date(value)
+
     @model_validator(mode="after")
     def validate_override_reason(self) -> "FreeBetPayload":
         if self.manual_override_value and not self.manual_override_reason.strip():
@@ -88,10 +128,21 @@ class FreeBetPayload(BaseModel):
             raise ValueError("match_strategy is required once a Free Bet is placed or resolved")
         if self.status not in pre_execution and not self.event_name:
             raise ValueError("event_name is required once a Free Bet is placed or resolved")
+        if self.status in {"Placed", "Settled"} and not self.manual_override_value:
+            if not self.free_bet_value or not self.back_odds:
+                raise ValueError("free_bet_value and back_odds are required for Placed/Settled")
+        if (
+            self.lay_actual
+            and Decimal(self.lay_actual) > 0
+            or self.lay_matched_stake_1
+            and Decimal(self.lay_matched_stake_1) > 0
+        ):
+            if not self.lay_odds_1 or not self.exchange_name:
+                raise ValueError("lay_odds_1 and exchange_name are required for an actual lay")
         return self
 
 
-class FreeBetResponse(FreeBetPayload):
+class FreeBetResponse(FreeBetFields):
     free_bet_id: str
     profile_id: str
     created_at: str
@@ -261,6 +312,7 @@ def build_response(
     *,
     tracker_settings: ProfileTrackerSettingsRecord,
     commission_lookup: Callable[[str], str] | None = None,
+    strict: bool = False,
 ) -> FreeBetResponse:
     record = row.__dict__
     resolved_commission = (
@@ -268,21 +320,110 @@ def build_response(
         if commission_lookup
         else get_profile_exchange_commission(record["profile_id"], record["exchange_name"])
     )
-    calculation = calculate_free_bet_current_value(
-        build_calculation_input(
-            row,
-            tracker_settings=tracker_settings,
-            resolved_commission=resolved_commission,
-        ),
-        as_of_datetime=datetime.now(),
-    )
+    try:
+        for field in MONEY_FIELDS:
+            validate_legacy_free_bet_money(record[field], field)
+        for field in ("back_odds", "lay_odds_1"):
+            validate_sportsbook_odds(record[field])
+        validate_free_bet_commission(resolved_commission)
+        calculation = calculate_free_bet_current_value(
+            build_calculation_input(
+                row,
+                tracker_settings=tracker_settings,
+                resolved_commission=resolved_commission,
+            ),
+            as_of_datetime=datetime.now(),
+        )
+        serialized = serialize_calculation(calculation)
+        for field, value in serialized.items():
+            if (
+                isinstance(value, str)
+                and field not in {"calculation_state", "lay_status"}
+                and value in {"NaN", "Infinity", "-Infinity"}
+            ):
+                raise ValueError(f"{field}: non-finite calculated result")
+    except (ValueError, DecimalException) as error:
+        if strict:
+            raise HTTPException(
+                status_code=422, detail=f"Free Bet calculation requires correction: {error}"
+            ) from error
+        serialized = {
+            key: None
+            for key in FreeBetCalculationPreviewResponse.model_fields
+            if key
+            not in {
+                "lay_commission_1",
+                "calculation_state",
+                "calculation_notes",
+                "lay_status",
+                "counts_as_open",
+                "is_overdue",
+            }
+        }
+        serialized.update(
+            calculation_state="review_required",
+            calculation_notes=[f"Free Bet {row.free_bet_id} requires correction: {error}"],
+            lay_status="Unavailable",
+            counts_as_open=row.status in {"Placed", "Available", "Prospecting", "Not Yet Awarded"},
+            is_overdue=False,
+        )
     return FreeBetResponse.model_validate(
         {
             **record,
             "lay_commission_1": resolved_commission,
-            **serialize_calculation(calculation),
+            **serialized,
         }
     )
+
+
+def validate_write_payload(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
+    """Shared new-business-write policy; historical restore/read models remain separate."""
+    profile = get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if profile.status == "Archived":
+        raise HTTPException(status_code=409, detail="Profile is archived")
+    try:
+        parsed = FreeBetPayload.model_validate(payload)
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail=error.errors(include_context=False)) from error
+    accounts = list_accounts(profile_id)
+    for name, kind, field in [
+        (parsed.bookmaker, "Bookie", "bookmaker"),
+        (parsed.exchange_name, "Exchange", "exchange_name"),
+    ]:
+        if not name:
+            continue
+        account = next((a for a in accounts if a.account == name and a.type == kind), None)
+        if account is None:
+            raise HTTPException(
+                status_code=422, detail=f"{field}: select an Account belonging to this Profile"
+            )
+        if account.lifecycle_status == "Archived" or account.status == "Archived":
+            raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
+    if (
+        parsed.origin_qual_bet_id
+        and get_sportsbook_bet(profile_id, parsed.origin_qual_bet_id) is None
+    ):
+        raise HTTPException(
+            status_code=422, detail="origin_qual_bet_id: source does not belong to this Profile"
+        )
+    return parsed.model_dump()
+
+
+def prepare_write_response(
+    row: FreeBetRecord,
+    tracker_settings: ProfileTrackerSettingsRecord,
+    commission_cache: dict[str, str],
+) -> FreeBetResponse:
+    response = build_response(
+        row,
+        tracker_settings=tracker_settings,
+        commission_lookup=lambda name: commission_cache.get(name, ""),
+        strict=True,
+    )
+    response.model_dump_json()
+    return response
 
 
 @router.get("", response_model=list[FreeBetResponse])
@@ -351,20 +492,53 @@ def get_profile_free_bet(profile_id: str, free_bet_id: str) -> FreeBetResponse:
 
 @router.post("", response_model=FreeBetResponse, status_code=201)
 def create_profile_free_bet(profile_id: str, payload: FreeBetPayload) -> FreeBetResponse:
-    created = create_free_bet(profile_id, payload.model_dump())
-    tracker_settings = get_profile_tracker_settings(profile_id)
-    return build_response(created, tracker_settings=tracker_settings)
+    responses: list[FreeBetResponse] = []
+    create_free_bet(
+        profile_id,
+        payload.model_dump(),
+        prepare_response=lambda row, settings, commissions: responses.append(
+            prepare_write_response(row, settings, commissions)
+        ),
+    )
+    return responses[0]
 
 
 @router.put("/{free_bet_id}", response_model=FreeBetResponse)
 def update_profile_free_bet(
-    profile_id: str, free_bet_id: str, payload: FreeBetPayload
+    profile_id: str, free_bet_id: str, payload: FreeBetFields
 ) -> FreeBetResponse:
-    updated = update_free_bet(profile_id, free_bet_id, payload.model_dump())
+    responses: list[FreeBetResponse] = []
+    updated = update_free_bet(
+        profile_id,
+        free_bet_id,
+        payload.model_dump(exclude_unset=True),
+        prepare_response=lambda row, settings, commissions: responses.append(
+            prepare_write_response(row, settings, commissions)
+        ),
+    )
     if updated is None:
         raise HTTPException(status_code=404, detail="Free bet not found for this profile")
-    tracker_settings = get_profile_tracker_settings(profile_id)
-    return build_response(updated, tracker_settings=tracker_settings)
+    return responses[0]
+
+
+@router.patch("/{free_bet_id}", response_model=FreeBetResponse)
+def patch_profile_free_bet(
+    profile_id: str, free_bet_id: str, payload: dict[str, object]
+) -> FreeBetResponse:
+    if set(payload) - set(FreeBetFields.model_fields):
+        raise HTTPException(status_code=422, detail="Unknown Free Bet update field")
+    responses: list[FreeBetResponse] = []
+    updated = update_free_bet(
+        profile_id,
+        free_bet_id,
+        payload,
+        prepare_response=lambda row, settings, commissions: responses.append(
+            prepare_write_response(row, settings, commissions)
+        ),
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Free bet not found for this Profile")
+    return responses[0]
 
 
 def reminder_timestamp(value: str) -> float:

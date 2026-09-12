@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator, cast
+from typing import Any, Callable, Iterator, cast
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
@@ -4740,7 +4740,19 @@ def get_most_used_profile_exchange(profile_id: str) -> str:
     return "" if row is None else str(row["exchange_name"])
 
 
-def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
+def create_free_bet(
+    profile_id: str,
+    payload: dict[str, Any],
+    *,
+    prepare_response: Callable[
+        [FreeBetRecord, ProfileTrackerSettingsRecord, dict[str, str]], object
+    ] | None = None,
+) -> FreeBetRecord:
+    from openforge_api.free_bets import prepare_write_response, validate_write_payload
+
+    payload = validate_write_payload(profile_id, payload)
+    tracker_settings = get_profile_tracker_settings(profile_id)
+    commission_cache = get_profile_exchange_commission_map(profile_id)
     record = {
         "free_bet_id": payload.get("free_bet_id") or f"FB-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -4845,19 +4857,34 @@ def create_free_bet(profile_id: str, payload: dict[str, str]) -> FreeBetRecord:
             action="created",
             payload=record,
         )
-    created = get_free_bet(profile_id, created_free_bet_id)
-    assert created is not None
+        stored = connection.execute(
+            "SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?",
+            (profile_id, created_free_bet_id),
+        ).fetchone()
+        assert stored is not None
+        created = map_free_bet_row(stored)
+        # Calculation, response validation and serialization must finish before commit.
+        (prepare_response or prepare_write_response)(created, tracker_settings, commission_cache)
     return created
 
 
 def update_free_bet(
     profile_id: str,
     free_bet_id: str,
-    payload: dict[str, str],
+    payload: dict[str, Any],
+    *,
+    prepare_response: Callable[
+        [FreeBetRecord, ProfileTrackerSettingsRecord, dict[str, str]], object
+    ] | None = None,
 ) -> FreeBetRecord | None:
     existing = get_free_bet(profile_id, free_bet_id)
     if existing is None:
         return None
+    from openforge_api.free_bets import prepare_write_response, validate_write_payload
+
+    payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    tracker_settings = get_profile_tracker_settings(profile_id)
+    commission_cache = get_profile_exchange_commission_map(profile_id)
 
     updated = {
         "event_name": payload["event_name"],
@@ -4983,7 +5010,14 @@ def update_free_bet(
             action="updated",
             payload={"free_bet_id": free_bet_id, "profile_id": profile_id, **updated},
         )
-    return get_free_bet(profile_id, free_bet_id)
+        stored = connection.execute(
+            "SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?",
+            (profile_id, free_bet_id),
+        ).fetchone()
+        assert stored is not None
+        saved = map_free_bet_row(stored)
+        (prepare_response or prepare_write_response)(saved, tracker_settings, commission_cache)
+    return saved
 
 
 def update_free_bet_follow_up_reminder(
@@ -8341,6 +8375,22 @@ def confirm_free_bet_import_batch(
     backup_snapshot_id: str,
     selected_staged_row_ids: set[str],
 ) -> list[str]:
+    from openforge_api.free_bet_input import (
+        MONEY_FIELDS,
+        validate_free_bet_commission,
+        validate_free_bet_date,
+        validate_free_bet_money,
+    )
+    from openforge_api.free_bets import prepare_write_response
+    from openforge_api.sportsbook_odds_input import validate_sportsbook_odds
+
+    # Preserve imported source/legacy lifecycle semantics, but do not admit
+    # malformed supplied finances through this alternate transactional writer.
+    profile = get_profile(profile_id)
+    if profile is None or profile.status == "Archived":
+        raise ValueError("Select an existing, non-archived Profile for this import")
+    tracker_settings = get_profile_tracker_settings(profile_id)
+    commission_cache = get_profile_exchange_commission_map(profile_id)
     imported_ids: list[str] = []
     with connect() as connection:
         batch = connection.execute(
@@ -8383,6 +8433,13 @@ def confirm_free_bet_import_batch(
             if staged_row["import_staged_row_id"] not in selected_staged_row_ids:
                 continue
             payload = json.loads(staged_row["mapped_payload_json"])
+            for field in MONEY_FIELDS:
+                validate_free_bet_money(payload.get(field, ""), field)
+            for field in ("back_odds", "lay_odds_1"):
+                validate_sportsbook_odds(payload.get(field, ""))
+            validate_free_bet_commission(payload.get("lay_commission_1", ""))
+            for field in ("date_settled", "expiry_datetime"):
+                validate_free_bet_date(payload.get(field, ""))
             timestamp = utc_now()
             record = {
                 "free_bet_id": f"FB-{uuid4().hex[:8].upper()}",
@@ -8444,6 +8501,11 @@ def confirm_free_bet_import_batch(
                     "backup_snapshot_id": backup_snapshot_id,
                 },
             )
+            inserted = connection.execute(
+                "SELECT * FROM free_bets WHERE profile_id = ? AND free_bet_id = ?",
+                (profile_id, record["free_bet_id"]),
+            ).fetchone()
+            prepare_write_response(map_free_bet_row(inserted), tracker_settings, commission_cache)
             connection.execute(
                 """
                 INSERT INTO import_source_records (

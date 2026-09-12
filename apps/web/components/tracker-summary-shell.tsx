@@ -605,6 +605,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   return (
     <section aria-busy={isCriticalLoading} className="stack tracker-summary-shell">
       {!isCriticalLoading ? <AccountMoneyStatus issues={summary?.accountQuickView.moneyIssues} /> : null}
+      {!isCriticalLoading && summary?.freeBetFinancialIssues?.length ? (
+        <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
+          Free Bet P&amp;L incomplete. {summary.freeBetFinancialIssues.join(" · ")}
+        </p>
+      ) : null}
       <section className="content-panel stack" inert={isCriticalLoading ? true : undefined}>
         <div className="panel-header">
           <div className="section-heading-row">

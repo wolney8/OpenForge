@@ -53,6 +53,8 @@ export type SportsbookSummaryRecord = {
 };
 
 export type FreeBetSummaryRecord = {
+  calculation_state?: string;
+  calculation_notes?: string[];
   free_bet_id: string;
   bookmaker: string;
   event_name: string;
@@ -258,6 +260,7 @@ export type BookmakerBreakdownRow = {
 };
 
 export type TrackerSummaryResult = {
+  freeBetFinancialIssues?: string[];
   resolvedDateRange: ResolvedDateRange;
   accountQuickView: {
     bookieBalance: number;
@@ -408,8 +411,14 @@ function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
   return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
 }
 
-function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
-  return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
+export function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
+  const value = [row.reporting_value, row.final_net_pnl, row.projected_current_pnl]
+    .find((item) => item != null && item.trim() !== "");
+  if (value != null) return Number.isFinite(Number(value)) ? Number(value) : NaN;
+  // Unknown is not zero. Empty drafts retain their governed zero reference;
+  // historical reasoned overrides remain known.
+  return row.calculation_state === "review_required"
+    || row.status === "Placed" || row.status === "Settled" ? NaN : 0;
 }
 
 function eachWayExtraPlaceDisplayValue(row: EachWayExtraPlaceSummaryRecord): number {
@@ -762,12 +771,14 @@ export function summarizeTrackerData(
     (sum, row) => sum + freeBetDisplayValue(row),
     0
   );
+  const freeBetFinancialIssues = freeBetsInRange.filter((row) => !Number.isFinite(freeBetDisplayValue(row)))
+    .map((row) => `${row.free_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
   const freeBetOpenCurrentValue = freeBetsInRange
     .filter((row) => row.counts_as_open)
-    .reduce((sum, row) => sum + parseMoney(row.projected_current_pnl), 0);
+    .reduce((sum, row) => sum + (Number.isFinite(freeBetDisplayValue(row)) ? parseMoney(row.projected_current_pnl) : NaN), 0);
   const freeBetSettledFinalValue = freeBetsInRange
     .filter((row) => !row.counts_as_open)
-    .reduce((sum, row) => sum + parseMoney(row.final_net_pnl), 0);
+    .reduce((sum, row) => sum + (Number.isFinite(freeBetDisplayValue(row)) ? parseMoney(row.final_net_pnl) : NaN), 0);
   const casinoReportingValue = casinoInRange.reduce(
     (sum, row) => sum + parseMoney(row.resolved_net_pnl),
     0
@@ -817,7 +828,7 @@ export function summarizeTrackerData(
 
   const currentLiability =
     openSportsbook.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0) +
-    openFreeBets.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0) +
+    openFreeBets.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
     openEachWayExtraPlaces.reduce(
       (sum, row) => sum + parseMoney(row.win_liability) + parseMoney(row.place_liability),
       0
@@ -1156,6 +1167,7 @@ export function summarizeTrackerData(
 
   return {
     resolvedDateRange,
+    freeBetFinancialIssues,
     accountQuickView: {
       bookieBalance,
       exchangeBalance,

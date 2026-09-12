@@ -38,6 +38,7 @@ export type ProfileComparisonRow = {
 };
 
 export type CrossProfileReportingResult = {
+  freeBetFinancialIssues?: string[];
   cashIssues?: AccountMoneyIssue[];
   profileRows: ProfileComparisonRow[];
   totals: Omit<
@@ -197,6 +198,7 @@ export function aggregateCrossProfileReporting(
 
   return {
     profileRows,
+    freeBetFinancialIssues: profiles.flatMap((profile) => (profile.summary.freeBetFinancialIssues ?? []).map((issue) => `${profile.displayName} · ${issue}`)),
     cashIssues,
     totals,
     moduleBreakdown: [...moduleMap.values()],

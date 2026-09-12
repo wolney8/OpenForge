@@ -25,9 +25,7 @@ from openforge_api.db import (
     create_free_bet,
     create_sportsbook_bet,
     fail_calculator_conversion_target,
-    get_free_bet,
     get_profile,
-    get_profile_tracker_settings,
     get_sportsbook_bet,
     list_accounts,
     list_profile_exchange_commissions,
@@ -37,7 +35,7 @@ from openforge_api.each_way_extra_places import (
     EachWayExtraPlacePayload,
     create_profile_each_way_extra_place,
 )
-from openforge_api.free_bets import build_response as build_free_bet_response
+from openforge_api.free_bets import prepare_write_response
 from openforge_api.fund_manager_lookup_values import DEFAULT_AUTHORITIES, SPORTSBOOK_OFFER_BET_TYPES
 from openforge_api.multi_profile_entry import (
     evaluate_multi_profile_target,
@@ -425,6 +423,11 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                 else ""
             )
             if destination_kind == "free_bet":
+                def prepare_free_bet_destination(row: Any, settings: Any, commissions: Any) -> None:
+                    destination = prepare_write_response(row, settings, commissions)
+                    if destination.calculation_state != "resolved":
+                        raise ValueError("Destination Free Bet calculation did not resolve")
+
                 created_free_bet = create_free_bet(
                     target.profile_id,
                     {
@@ -458,15 +461,8 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                         "manual_override_value": "",
                         "manual_override_reason": "",
                     },
+                    prepare_response=prepare_free_bet_destination,
                 )
-                free_bet_record = get_free_bet(target.profile_id, created_free_bet.free_bet_id)
-                assert free_bet_record is not None
-                destination_free_bet = build_free_bet_response(
-                    free_bet_record,
-                    tracker_settings=get_profile_tracker_settings(target.profile_id),
-                )
-                if destination_free_bet.calculation_state != "resolved":
-                    raise ValueError("Destination Free Bet calculation did not resolve")
                 href = (
                     f"/profiles/{target.profile_id}/tracker/free-bets"
                     f"?record={created_free_bet.free_bet_id}&source=calculator-conversion"

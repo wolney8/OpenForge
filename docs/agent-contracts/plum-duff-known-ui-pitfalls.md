@@ -5,6 +5,13 @@ cause, prevention rule and regression test.
 
 ## 2026-09-12: Malformed Account money became unknown individual values but complete cash totals
 
+Related PD-QA-014: Free Bet write/response preparation must finish inside the transaction.
+Legacy invalid finances retain identity/raw correction data, and included P&L/liability is explicitly
+unavailable, not zero. An error nested in a label must not change the field's accessible name:
+use the established explicit name plus associated error description. Regressions:
+free_bet_atomic_safety, free-bet-input and isolated populated native editor/legacy report probes.
+Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not whole-modal acceptance.
+
 - Area: Account editor, Account cash cards, Profile and authorised combined summaries.
 - Root cause: permissive Number conversion/blank-to-zero input formatting and finite-only sum
   reductions accepted or omitted unreadable included balances.

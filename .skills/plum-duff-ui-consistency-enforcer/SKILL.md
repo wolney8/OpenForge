@@ -81,6 +81,9 @@ use the canonical primitive and computed styling.
   preserve editable raw text, associate inline validation and propagate included-source
   incompleteness across Account/Profile/authorised combined summaries. Label known subtotals,
   respect excluded Account scope and leave unrelated ledger P&L independently valid.
+  Invalid included ledger money likewise propagates an unavailable affected P&L/exposure rather
+  than a complete zero subtotal. Inline errors must not alter the field's accessible name;
+  retain its explicit visible-name association and attach validation with described-by semantics.
 - In a grid, chip-heavy fields must not stretch neighbouring fields vertically. Use `align-items:
   start` and compare every field's input height and top alignment with its adjacent field.
 - Quick-select chips must be visibly actionable, preserve semantic financial colour states, and

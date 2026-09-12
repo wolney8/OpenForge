@@ -1,5 +1,7 @@
 "use client";
 
+import { getFreeBetInputErrors } from "@/lib/free-bet-input";
+
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -70,6 +72,7 @@ import {
   formatHumanDisplayDate,
   formatResolvedDateRange,
   formatResolvedDateRangeContext,
+  freeBetDisplayValue,
   resolveDateRange,
   type DatePreset,
 } from "@/lib/tracker-summary";
@@ -1707,7 +1710,15 @@ export function FreeBetWorkflowShell({
       formState.bookmaker.trim()
   );
   const calculatorUnlocked = offerSetupComplete && !isAwaitingAwardStatus;
+  const financialInputErrors = getFreeBetInputErrors(formState);
+  const hasInvalidFinancialInput = Object.keys(financialInputErrors).length > 0;
+  const renderFinancialInputError = (field: string) => financialInputErrors[field]
+    ? <span className="error-text" role="alert" id={`free-bet-${field}-error`}>{financialInputErrors[field]}</span> : null;
+  const financialDescribedBy = (field: string) =>
+    [getGuidedDescribedBy(field as Parameters<typeof getGuidedDescribedBy>[0]),
+      financialInputErrors[field] ? `free-bet-${field}-error` : ""].filter(Boolean).join(" ") || undefined;
   const previewReady = Boolean(
+    !hasInvalidFinancialInput &&
     calculatorUnlocked &&
       formState.offer_type.trim() &&
       formState.event_name.trim() &&
@@ -2177,8 +2188,11 @@ export function FreeBetWorkflowShell({
       return;
     }
 
+    const controller = new AbortController();
+    let current = true;
     const timeoutId = window.setTimeout(() => {
       void fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets/preview`, {
+        signal: controller.signal,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -2196,11 +2210,11 @@ export function FreeBetWorkflowShell({
           }
           return (await response.json()) as FreeBetCalculationPreview;
         })
-        .then((payload) => setPreviewCalculation(payload))
-        .catch(() => setPreviewCalculation(null));
+        .then((payload) => { if(current)setPreviewCalculation(payload); })
+        .catch(() => { if(current)setPreviewCalculation(null); });
     }, 250);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => { current=false; controller.abort(); window.clearTimeout(timeoutId); };
   }, [formState, previewReady, profileId]);
 
   const reviewRows = useMemo(() => {
@@ -2597,7 +2611,7 @@ export function FreeBetWorkflowShell({
           isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
         );
     const totalReportingValue = rangeRows.reduce(
-      (sum, row) => sum + parseFreeBetAmount(row.reporting_value ?? row.final_net_pnl ?? row.projected_current_pnl),
+      (sum, row) => sum + freeBetDisplayValue(row),
       0
     );
     const expiryWatchRows = rangeRows.filter(
@@ -2605,6 +2619,7 @@ export function FreeBetWorkflowShell({
     );
 
     return {
+      financialIssues: rangeRows.filter((row) => !Number.isFinite(freeBetDisplayValue(row))),
       openCount: rangeRows.filter((row) => row.counts_as_open).length,
       overdueCount: rangeRows.filter((row) => row.is_overdue).length,
       placedCount: rangeRows.filter((row) => row.status === "Placed").length,
@@ -2730,6 +2745,7 @@ export function FreeBetWorkflowShell({
       nextFormState.exchange_name
     );
     return (
+      Object.keys(getFreeBetInputErrors(nextFormState)).length === 0 &&
       getMissingRequiredFields(nextFormState).length === 0 &&
       getMissingPlacementFields(nextFormState, nextResolvedCommission).length === 0
     );
@@ -3380,6 +3396,12 @@ export function FreeBetWorkflowShell({
             <span>Selected-range free-bet P&L</span>
           </article>
         </section>
+        {quickView.financialIssues.length ? (
+          <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
+            Free Bet P&amp;L incomplete. {quickView.financialIssues.map((row) =>
+              `${row.free_bet_id}: ${row.calculation_notes.join("; ")}`).join(" · ")}
+          </p>
+        ) : null}
         <div className="sportsbook-review-bar" aria-label="Free-bet ledger controls" role="toolbar">
           <label className="field-control table-search-field">
             <span className="visually-hidden">Search free-bet rows</span>
@@ -4414,13 +4436,16 @@ export function FreeBetWorkflowShell({
                         >
                           <span>Free-bet value</span>
                           <input
-                            aria-describedby={getGuidedDescribedBy("free_bet_value")}
-                            aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Free-bet value")}
+                            aria-describedby={financialDescribedBy("free_bet_value")}
+                            aria-invalid={Boolean(financialInputErrors.free_bet_value) || (calculatorUnlocked && missingCalculatorFields.includes("Free-bet value"))}
                             onChange={(event) =>
                               setFormState((current) => ({ ...current, free_bet_value: event.target.value }))
                             }
                             value={formState.free_bet_value}
+                            aria-label="Free-bet value"
+                            aria-errormessage={financialInputErrors.free_bet_value ? "free-bet-free_bet_value-error" : undefined}
                           />
+                          {renderFinancialInputError("free_bet_value")}
                         </label>
                         <label
                           className={`${getGuidedFieldClass("back_odds")}${
@@ -4432,13 +4457,15 @@ export function FreeBetWorkflowShell({
                         >
                           <span>Back odds</span>
                           <input
-                            aria-describedby={getGuidedDescribedBy("back_odds")}
-                            aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Back odds")}
+                            aria-describedby={financialDescribedBy("back_odds")}
+                            aria-invalid={Boolean(financialInputErrors.back_odds) || (calculatorUnlocked && missingCalculatorFields.includes("Back odds"))}
                             onChange={(event) =>
                               setFormState((current) => ({ ...current, back_odds: event.target.value }))
                             }
                             value={formState.back_odds}
+                            aria-label="Back odds"
                           />
+                          {renderFinancialInputError("back_odds")}
                         </label>
                       </div>
                     </div>
@@ -4495,13 +4522,15 @@ export function FreeBetWorkflowShell({
                           >
                             <span>Lay odds 1</span>
                             <input
-                              aria-describedby={getGuidedDescribedBy("lay_odds_1")}
-                              aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1")}
+                            aria-describedby={financialDescribedBy("lay_odds_1")}
+                            aria-invalid={Boolean(financialInputErrors.lay_odds_1) || (calculatorUnlocked && missingCalculatorFields.includes("Lay odds 1"))}
                               onChange={(event) =>
                                 setFormState((current) => ({ ...current, lay_odds_1: event.target.value }))
                               }
                               value={formState.lay_odds_1}
+                              aria-label="Lay odds 1"
                             />
+                            {renderFinancialInputError("lay_odds_1")}
                           </label>
                           <label
                             className={`${getGuidedFieldClass("lay_actual")}${
@@ -4513,13 +4542,15 @@ export function FreeBetWorkflowShell({
                           >
                             <span>Lay actual</span>
                             <input
-                              aria-describedby={getGuidedDescribedBy("lay_actual")}
-                              aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
+                            aria-describedby={financialDescribedBy("lay_actual")}
+                            aria-invalid={Boolean(financialInputErrors.lay_actual) || (calculatorUnlocked && missingCalculatorFields.includes("Lay actual"))}
                               onChange={(event) =>
                                 setFormState((current) => ({ ...current, lay_actual: event.target.value }))
                               }
                               value={formState.lay_actual}
+                              aria-label="Lay actual"
                             />
+                            {renderFinancialInputError("lay_actual")}
                           </label>
                           {showsLayMatchedStake ? (
                             <label className="field-control">
@@ -4529,7 +4560,11 @@ export function FreeBetWorkflowShell({
                                   setFormState((current) => ({ ...current, lay_matched_stake_1: event.target.value }))
                                 }
                                 value={formState.lay_matched_stake_1}
+                                aria-label="Lay matched stake 1"
+                                aria-invalid={Boolean(financialInputErrors.lay_matched_stake_1)}
+                                aria-describedby={financialInputErrors.lay_matched_stake_1 ? "free-bet-lay_matched_stake_1-error" : undefined}
                               />
+                              {renderFinancialInputError("lay_matched_stake_1")}
                             </label>
                           ) : null}
                         </div>
@@ -5077,7 +5112,11 @@ export function FreeBetWorkflowShell({
                     setFormState((current) => ({ ...current, manual_override_value: event.target.value }))
                   }
                   value={formState.manual_override_value}
+                  aria-label="Manual override value"
+                  aria-invalid={Boolean(financialInputErrors.manual_override_value)}
+                  aria-describedby={financialInputErrors.manual_override_value ? "free-bet-manual_override_value-error" : undefined}
                 />
+                {renderFinancialInputError("manual_override_value")}
               </label>
               <label className="field-control field-span-2">
                 <span>Manual override reason</span>
@@ -5134,7 +5173,7 @@ export function FreeBetWorkflowShell({
                 <>
                   <button
                     className="review-chip review-chip-copy"
-                    disabled={isPending || isPersisting || !isDirty}
+                    disabled={isPending || isPersisting || !isDirty || hasInvalidFinancialInput}
                     type="submit"
                   >
                     {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}

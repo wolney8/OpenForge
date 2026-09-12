@@ -87,6 +87,43 @@ It supports:
 
 ## 6. Inputs
 
+### PD-QA-014 field/write policy (2026-09-12; formulas unchanged)
+
+| Field | Supplied format / range | Absence, zero, sign and update policy |
+|---|---|---|
+| free_bet_value; source_award_expected_value | Complete GBP decimal; exact cents, existing40-character field limit | Non-negative, zero valid; blank unknown. Free-bet value required for Placed/Settled unless an audited final override supplies value; source award expected value optional |
+| lay_actual; lay_matched_stake_1 | Complete GBP decimal; exact cents | Non-negative; zero is an explicit unlaid observation; blank is not guessed/placed stake. Positive actual lay requires its odds and Profile Exchange, not a fully matched position |
+| back_odds; lay_odds_1 | Existing canonical Sportsbook complete decimal odds, >=1.01; decimal precision retained, not capped to money precision | Blank allowed for incomplete pre-execution records; back odds required for Placed/Settled unless explicit reasoned override; no fractional/comma/exponent syntax at ledger API boundary |
+| lay_commission_1 | Complete finite decimal ratio,0..1 inclusive, precision retained | Optional/blank. Supplied values validated, but authoritative calculation still resolves Profile Exchange commission; row field is not a new commission override |
+| manual_override_value | Complete signed GBP decimal; exact cents | Blank means no override; explicit zero valid; nonblank requires reason. No unsupported precision silently rounded |
+| expiry_datetime; date_settled | Existing ISO date/date-time parsing | Blank remains supported; malformed supplied date rejected before business writes |
+
+Null is rejected for string input fields. Leading-decimal money shorthand normalises exactly;
+malformed/non-finite/exponent/comma money and unsupported precision reject rather than partially
+parse or become zero. PATCH omission preserves the effective stored record; explicit blank clears
+only where allowed, and the complete merged record is validated. Native PUT retains its required
+identity/lifecycle fields but preserves omitted optional fields. Draft/Prospecting/Available remain
+legitimately incomplete; no complete hedge is required to record a real unlaid/part-laid bet.
+
+Native, conversion and opportunity/award writers share the Free Bet business-write boundary:
+Profile/Account/source-scope checks and field validation precede Free Bet writes. Existing current
+value engine, response validation and JSON preparation finish inside the Account-independent
+Free Bet/audit transaction before commit. Known input/domain errors are controlled4xx; unexpected
+internal failures remain500 and roll back. The route returns that prepared response, not a second
+post-commit calculation. Lost delivery after a successful commit is not rolled back; existing
+conversion/operation identity remains authoritative.
+
+Historical seed/restore is lossless.
+Existing finite historical money precision remains readable through the unchanged governed engine;
+the new exact-cent write policy is not a historical monetary quantization/migration.
+New staged Free Bet imports validate selected monetary/odds inputs and prepare responses inside
+their existing transaction without rewriting source snapshots.
+Malformed legacy financial records remain readable with identity/raw inputs, review_required
+notes and unresolved/null financial results. Their relevant included report totals must be
+unavailable/incomplete rather than silently treating the row as zero. Valid incomplete drafts and
+reasoned historical overrides retain their existing semantics. Award dangling-source removal is
+a separately tracked finding, not redesigned here.
+
 | Field | Type | Required? | Source | User-entered or calculated? | Profile-scoped? | Notes |
 |---|---|---:|---|---|---:|---|
 | `profile_id` | id | Yes | app context | derived from selected profile | Yes | mandatory isolation key |
