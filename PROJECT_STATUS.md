@@ -20,6 +20,9 @@ durable requirements.
   Normal v2 Standard/Underlay new-record planning now retains per-leg commission through the
   existing bridge and shared embedded calculator. Placement/settlement and richer v2 save modes
   remain blocked rather than flattened; unstamped v1 rows retain their prior workflow.
+  Pushed checkpoints: `7028126` (contract/API), `e360cb1` (shared UI/manual baseline).
+  Current-scope GitHub tracking is synced to #35/#36/#38/#92/#113; earlier unavailable-auth notes
+  remain historical, not the current sync state. No issue is closed. Normal services remain on main.
 
 - Multi-Lay reference expansion PD-FIX-101–106 is locally implemented at the 2026-09-11 source
   snapshots. Versioned `multi-lay-v2` supports Normal, Free Bet SNR and Money Back, zero/non-zero

@@ -15,26 +15,40 @@ Development stays in `.worktrees/multi-lay-normal-parity`, branch
 Do not pull/rebuild the baseline during Will's test session, reuse a mutable database across
 revisions, or substitute the daily-use 3010/8010 database. No hosted acceptance evidence is claimed.
 
-Launch the protected baseline in two terminals (dependency/venv links already prepared):
+Launch the protected baseline using the existing authenticated synthetic acceptance fixture
+(dependency/venv links already prepared). Start a fresh session before Monday's comparisons;
+do not restart it during a test session. A cookie-free E2E bypass alone does not satisfy the
+authoritative client bootstrap, so the signed synthetic session below is required.
 
 ```sh
 cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline
 git rev-parse HEAD
 manual_runtime=$(mktemp -d /tmp/openforge-manual-f7a3b35.XXXXXX)
-OPENFORGE_AUTH_REQUIRED=false OPENFORGE_DATABASE_URL="sqlite:///$manual_runtime/manual.sqlite3" ./scripts/run-python.sh -m uvicorn openforge_api.main:app --app-dir apps/api/src --host 127.0.0.1 --port 8020
+printf '%s\n' "$manual_runtime/runtime"
+./scripts/run-python.sh scripts/run_notification_persistence_acceptance_api.py --port 8020 --runtime-directory "$manual_runtime/runtime"
 ```
 
 ```sh
 cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline/apps/web
-OPENFORGE_AUTH_REQUIRED=false OPENFORGE_E2E_AUTH_BYPASS=true OPENFORGE_INTERNAL_API_BASE_URL=http://127.0.0.1:8020 node node_modules/next/dist/bin/next dev --webpack --port 3020
+OPENFORGE_AUTH_REQUIRED=true OPENFORGE_AUTH_OWNER_EMAILS=notification-acceptance@example.invalid OPENFORGE_AUTH_SESSION_SECRET=synthetic-notification-acceptance-secret-not-used-in-production OPENFORGE_INTERNAL_API_BASE_URL=http://127.0.0.1:8020 node node_modules/next/dist/bin/next dev --webpack --port 3020
 ```
 
-Open `http://localhost:3020/fund-manager/calculators`; health is
-`http://127.0.0.1:8020/healthz`. This reuses the existing local E2E bypass, not new auth/hosting.
-The fresh isolated database contains no real ledger records; profile-independent comparisons use
-the existing synthetic worksheet inputs and `tests/fixtures/calculator-independent-verification-v1.json`.
-Retain the printed runtime directory if repeating the same run; create a different one for another
-revision. Use localhost for the established bypass cookie guard.
+In a third terminal, replace `PRINTED-RUNTIME` with the first terminal's printed directory. The
+existing Playwright Chromium opens an interactive browser with the synthetic session without
+printing/copying a token into this document or using OAuth:
+
+```sh
+cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/manual-calculator-baseline
+MANUAL_TOKEN_FILE=PRINTED-RUNTIME/session-token node --input-type=module -e 'import { chromium } from "@playwright/test"; import { readFileSync } from "node:fs"; const browser=await chromium.launch({headless:false}); const context=await browser.newContext(); await context.addCookies([{name:"pd_session",value:readFileSync(process.env.MANUAL_TOKEN_FILE,"utf8"),url:"http://localhost:3020"}]); const page=await context.newPage(); await page.goto("http://localhost:3020/fund-manager/calculators"); await new Promise(()=>{});'
+```
+
+URL: `http://localhost:3020/fund-manager/calculators`; health:
+`http://127.0.0.1:8020/healthz`. Fixture `acceptance.sqlite3`, Profile/accounts/session are synthetic
+and isolated; no real ledger records are loaded. The fixture's historical notification/reminder row
+is test data, not a calculator oracle. Comparisons use existing worksheet inputs and
+`tests/fixtures/calculator-independent-verification-v1.json`. Session tokens remain runtime-only
+600-mode files and expire under the existing policy. Keep the runtime for the same test session;
+use a fresh directory for another revision. No normal auth implementation, OAuth or hosting changes.
 
 Capture files: revised HTML, Excel alternative and guide are **not present locally**. Link Will's
 chosen supplied file here when available without replacing observations or constructing another
@@ -55,11 +69,17 @@ Overlay/Custom persistence, and the existing Accumulator specialised bet/Each Wa
 Focused evidence: 23 Multi-Lay-related engine/API/v1 regression tests pass, including two
 independently derived mixed-commission Standard/Underlay creation/save/reopen fixtures, explicit
 zero, retry, no recognised cash and fail-closed placement/version removal/boost. The full existing
-bridge family regression file passed 18 tests before the additional Underlay parameter (no other
-family engine changed). TypeScript and scoped Ruff pass. The real isolated Playwright path checks
+bridge family regression file passes 19 tests (no other family engine changed). TypeScript and
+scoped Ruff pass. Two real isolated Playwright paths check the shared dense-cell track in
+Sequential Lay/Dutching and same-input standalone versus embedded stakes, plus
 native creation → embedded shared v2 → commission edit → live result → copy 16.33 → UI Save →
 refresh/reopen at 1440/760/390px, light/dark, with no page overflow. This is finite local evidence,
 not all-number proof, external parity, hosted verification or Will acceptance.
+
+Branch checkpoints: `7028126732a3ba78f9333cb24de168d5f68637ee` (contract/API) and
+`e360cb130015a74ce0b95b9e3ad2575db4c13364` (shared UI/docs), pushed separately from main.
+Retest Sequential/Dutching narrow dense geometry alongside MULTI-LAY-001/002; their equations
+are unchanged. Current-scope #35/#36/#38/#92/#113 comments are synced; issues remain open.
 
 - Expected values in `calculator-independent-verification-v1.json` were hand-derived from the
   signed-off equations below. Production calculation functions were used only as the system under

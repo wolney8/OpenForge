@@ -30,6 +30,13 @@ pending comparisons and unexplained external differences, not inferred from test
 Relevant coverage: #35/#36/#38/#113; existing UI tokens for #92 reused. Live sync receipt follows
 the branch checkpoint; do not assume these issues closed.
 
+2026-09-12 current-scope sync: #35 comment 5644939782; #36 5644939846; #38 5644939915;
+#92 5644939983; #113 5644940038. Commits `7028126` / `e360cb1` pushed on the development branch;
+protected baseline branch pushed at the unchanged full f7a3b35 SHA. All remain open.
+Retest MULTI-LAY-001/002 financial/input/save/copy/reopen cases on the new build, plus
+SEQUENTIAL-LAY-001 and DUTCHING-001 shared dense-field geometry at narrow widths. These latter
+retests concern the shared layout fix, not changed equations. Manual observations are untouched.
+
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.
 
