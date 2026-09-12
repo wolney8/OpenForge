@@ -9,6 +9,14 @@ durable requirements.
 
 ## Current state
 
+The Account, Free Bet and completed-Blackjack duplicate repairs are stacked on separate reviewable
+branches; the normal app does not contain them yet. Blackjack retry/concurrency/rollback evidence
+is recorded in the [existing audit](docs/audits/platform-quality-audit.md). Next: shared modal repair,
+independent combined-candidate verification, then an integration proposal and post-integration smoke.
+No action needed from Will for this repair. Calculator comparison remains deferred without a date.
+Current repair: `repair/blackjack-source-91`, fix `c03470a`;19 focused completed-source cases and135
+inherited tests pass. Actual PostgreSQL/new browser acceptance remain untested.
+
 - **#91 / #114 Free Bet repair (stacked, not integrated):** `repair/free-bet-atomic-91`
   starts at Account checkpoint `c4b9bb4412cb0e29c78df4919624c58db57633d6`, containing
   Account fix102848a. Added fix `b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f` validates effective Free Bet inputs and prepares
@@ -19,7 +27,7 @@ durable requirements.
   execution and full keyboard/Escape acceptance remain NOT TESTED. See the
   [same audit / Free Bet addendum](docs/audits/platform-quality-audit.md).
   **Main/normal services remain unfixed pending approved Account-first, Free-Bet-second integration.**
-  Next implementation is PD-QA-015, not calculator manual sign-off. GitHub #91/#114/#36/#92 evidence synced on 2026-09-12; issues remain open.
+  PD-QA-015 is now stacked above this checkpoint; shared modal repair remains next. GitHub #91/#114/#36/#92 evidence synced on 2026-09-12; issues remain open.
 
 - **#91 Account repair (not integrated):** branch `repair/account-money-91` based on application
   `f7a3b35073ecc87cdf8f8f881129f221ec44d395`; original audit checkpoints c65169f/7d75b5a

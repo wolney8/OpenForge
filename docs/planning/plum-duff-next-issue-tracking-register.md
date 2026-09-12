@@ -13,6 +13,33 @@ entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
 
+### #91 / #114 / #36 / #40 PD-QA-015 completed-source repair — 2026-09-12
+
+IMPLEMENTED ON STACKED BRANCH ONLY; evidence checkpoint/integration pending.
+`repair/blackjack-source-91` starts exactly at
+`c84b9eda268b3cfae7b45d74d583a44ce46f11df`, inheriting unchanged Account and Free Bet checkpoints.
+Added fix `c03470a338eeebf9ef89e2e3fcf0ed6d189ef5c6`.19 new completed-source cases and135 inherited
+focused backend cases PASS; SQLite threaded and separate-process HTTP races/rollback are proven
+within these fixtures. Actual PostgreSQL/new rendered acceptance remain NOT TESTED.
+Full validated snapshot SHA-256 now reserves one global claim in the existing target table;
+Profile/Account identity remains canonical and stored. Casino row/audit/success/notification and
+response JSON preparation share one transaction. Same-target retry returns the existing row;
+other targets receive409. Failed transactions are retryable without an orphan or false success.
+Legacy successful claims/orphans are guarded read-only, never deduplicated or financially repaired.
+Exploratory operation identities remain independent and can deliberately create new opportunities.
+See the [same audit / PD-QA-015 addendum](../audits/platform-quality-audit.md).
+
+Remaining engineering sequence: PD-QA-004 shared modal/focus/half-width pointer Save repair;
+independent combined repair-candidate verification; reviewed integration proposal; post-integration
+smoke. Main remains f7 and unfixed. Actual PostgreSQL, crash-Pending/network-loss browser recovery,
+other populated ledgers, award lineage/import/restore, combined reports, larger datasets, accessibility,
+security exposure and issue-specific historical reconciliation remain explicit audit gates.
+The addendum assigns each a next test or exact blocker, not a PASS. #115/#96 stay separate;
+unavailable deployment/provider access is not clearance. #113 comparison deferred without a date.
+GitHub #91/#114/#36/#40 evidence synced on2026-09-12; no automatic merge/deployment/issue closure
+or user testing assignment. Final protected web/API health checks200; builds/data unchanged.
+This replaces PD-QA-015 as the queued NEXT task below, not the preserved earlier failure evidence.
+
 ### #91 / #114 PD-QA-014 Free Bet repair — 2026-09-12
 
 IMPLEMENTED ON STACKED BRANCH ONLY; browser handoff incomplete under PD-QA-004, integration pending.

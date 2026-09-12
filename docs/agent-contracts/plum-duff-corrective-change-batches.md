@@ -2,6 +2,20 @@
 
 This register prevents a reported correction from disappearing between report and verification.
 
+## PD-QA-015 completed Blackjack source repair — 2026-09-12
+
+IMPLEMENTED ON STACKED BRANCH; integration and remaining audit gates pending.
+Branch repair/blackjack-source-91, exact base
+c84b9eda268b3cfae7b45d74d583a44ce46f11df, inherits unchanged Account and Free Bet repairs.
+No UI/formula/schema migration, historical cleanup or integration authorised here.
+
+| Item | Required outcome | Status |
+|---|---|---|
+| PD-QA-015.1 | Same-target retry, cross-Profile/Account exclusion | PASS / PROVEN Live/Free API/SQL; same ID, second targets409; legacy success/orphan read-only guards |
+| PD-QA-015.2 | Concurrent global claim; failed transaction has no successful claim | PASS / PROVEN SQLite threaded and independent-process HTTP races; three injected faults rollback Casino/audit/Succeeded/notification. Actual PostgreSQL NOT TESTED |
+| PD-QA-015.3 | Source/permission/notification/P&L and exploratory-intent preservation | PASS / PROVEN finite fixtures: checksums, six zero-write denials, one linked event, Profile report-source15.00/4.00 and no other-Profile activity; deliberate new Standard intent preserved |
+| PD-QA-015.4 | Audit/status/GitHub and queued gates | DOCUMENTED — fix c03470a338eeebf9ef89e2e3fcf0ed6d189ef5c6;154 tests pass. Main unintegrated; PD-QA-004 then combined verification. No new rendered evidence, crash-Pending/network-loss/actual PG open; #91/#114/#36/#40 synced; services200 |
+
 ## PD-QA-014 Free Bet atomic repair — 2026-09-12
 
 IMPLEMENTED ON REPAIR BRANCH; NEEDS VERIFICATION for browser/remaining backend acceptance.

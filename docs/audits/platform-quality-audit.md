@@ -71,6 +71,7 @@ Original capture links (local only): [HTML](</Users/will_work/Scripts/Homelab/Op
 | C Architecture / operations / standards / competitors | API/router/Account/summary/SQLite/PG/migration sources, dependency registry/maintainer advisories, official WCAG/WAI/web.dev/ASVS and public vendor pages | CODE-VERIFIED / DOCUMENTED; actual PG/field performance/member journeys UNVERIFIED | True isolated PG recovery, larger-data production benchmark and assistive technology |
 | B2 Financial flows / exposure | Eight Account money forms; pending withdrawals; native SNR/SR and converted SNR; populated Standard/Free Bet/Blackjack conversion, retry/partial failure/new intent; desktop/light and half-width/dark dialog | PROVEN scoped PASS/FAIL; blocked and unattempted branches below | Other populated ledgers; actual award-split lineage; stale/timeout/concurrent browser paths; PostgreSQL/large data/reader |
 | D Priorities / next tranches | PD-QA-001–015, refined after financial-flow failures | DOCUMENTED recommendations, not implementation | Keep each repair bounded; unknown security exposure remains visible |
+| B3 Stacked completed-source repair | PD-QA-015 global target exclusion, same-target retry, independent-process SQLite concurrency and atomic Casino/audit/success rollback; inherited Account/Free Bet regression suites | PROVEN scoped SQLite/API; main still FAIL/unintegrated. No new rendered or actual PostgreSQL execution | PD-QA-004, independent combined candidate, reviewed integration proposal and post-integration smoke; open-gate tests in PD-QA-015 addendum |
 
 ## Evidence convention
 
@@ -869,3 +870,104 @@ half-width Save; #115 exposure/dependencies and #96 owner/provider credential ro
 Other populated ledgers, PostgreSQL recovery, large datasets, screen-reader and historical request
 clarifications remain outstanding. GitHub evidence synced on 2026-09-12: #91 comment5648522825,
 #114 comment5648522892, #36 comment5648522984, #92 comment5648523060. No automatic issue closure.
+
+## PD-QA-015 repair addendum — completed Blackjack source uniqueness / 2026-09-12
+
+### Revision, scope and root cause
+
+Separately reviewable branch `repair/blackjack-source-91`, worktree
+`/Users/will_work/Scripts/Homelab/OpenForge/.worktrees/blackjack-source-repair`.
+Exact base **c84b9eda268b3cfae7b45d74d583a44ce46f11df**, verified descendant of Account fix
+102848a1214730e5065e9db04a66047dce6cd82b and Free Bet fix
+b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f. Added fix
+**c03470a338eeebf9ef89e2e3fcf0ed6d189ef5c6**. The Account and Free Bet branch tips remain
+c4b9bb4412cb0e29c78df4919624c58db57633d6 and c84b9eda268b3cfae7b45d74d583a44ce46f11df.
+Main/manual stay f7a3b35073ecc87cdf8f8f881129f221ec44d395; development stays
+215193b7fcb5b11a28e23a4531d2a45434545dc1; audit branch stays
+7d75b5a54db466b1a47c6d7786ddc633f3dc7122. No protected runtime/DB/input/observation was changed.
+Only pytest-owned disposable SQLite fixtures were used; no new shared persistent runtime or DB.
+
+The prior unique target tuple included Profile and Account, so one completed source reserved multiple
+claims. Casino creation and successful claim/notification updates also committed independently.
+Pre-fix API regressions reproduced a second Account save200 and simultaneous cross-Profile200/200;
+the existing Batch2 independent SQL duplication evidence remains above. The initial test setup
+failed404 because an older test helper assumed absent demo Profiles. That was a **harness blocker**,
+not a product result; explicit synthetic factories and the inherited isolated Account fixture removed
+that dependency before reproducing/fixing the product defect. A missing synthetic Exchange commission
+also produced expected failed exploratory targets; the factory now explicitly supplies2%.
+
+### Persistence invariant and evidence
+
+No financial equations, Blackjack session schema/UI, destination model, table/index migration or
+historical cleanup. Existing signed SHA-256 snapshot verification and Account/Profile permissions
+run before claiming. New completed-source claims use the full checksum as a deterministic existing
+table **primary key**, independent of target; actual Profile/Account IDs remain stored. Primary-key
+conflict and conditional Failed→Pending retry enforce exclusion across connections/processes, not
+just a browser flag or SQLite process lock. Legacy successful/pending claims are checked globally;
+legacy orphaned Casino rows are refused read-only. No cross-Profile target details enter the409.
+Historical duplicates are not deleted, recalculated or retrospectively corrected.
+
+Casino row, Casino business audit, Succeeded claim, linked notification fields and prepared response
+JSON now use the same connection/transaction. Injected internal failures, including ValueError at
+response preparation, produce an honest500 and rollback; only the diagnostic Failed claim remains.
+Same-target successful retry returns the existing record, other targets409, and a failed no-row
+transaction may retry a reviewed target. Exploratory source/intent/per-target identity is unchanged.
+
+| Probe | Independent expected behaviour | Actual | Result / evidence |
+|---|---|---|---|
+| Live completed source: second Account/other Profile/retry | One15.00 activity (115−100); other targets409; same retry same ID | One Casino row/Succeeded claim, preserved checksum; Profile report source15.00, other Profile empty | PASS / PROVEN API + SQL + report-source transport |
+| Free Play equivalent | One4.00 withdrawable-result activity; no cash loss from10 credit | Second targets409; one4.00 row; separate source/monetary provenance retained | PASS / PROVEN finite fixture |
+| Concurrent requests, same or different Profile, Live/Free | One activity/event; same-target in-flight409 or existing-ID200; other target409 | Four barrier-driven threaded HTTP cases pass | PASS / PROVEN SQLite/FastAPI |
+| Separate process requests | Same exclusion without a shared in-process lock | Two spawn-interpreter HTTP cases, independent DB connections: one activity/Succeeded claim/notification | PASS / PROVEN SQLite, **not PostgreSQL evidence** |
+| Failure after success-claim SQL / JSON / internal response ValueError | No row/audit/success/link; retry safely creates one row | Three injected failures500, Casino/audit0, claim Failed/destination NULL/notification empty; retry other Profile200 | PASS / PROVEN transaction rollback |
+| Legacy random-ID Succeeded claim / orphaned activity | Reuse legacy success; no cross-target clone or silent orphan recreation | Same ID returned; cross-target409; orphan409; original synthetic legacy ID/row unchanged | PASS / PROVEN isolated fixture |
+| Integrity, identities, denial | Tampered checksum/foreign Account/missing identity/auth/archival/Simulation: zero business writes | Signature and six denial cases precede claim; unauthenticated/nonapproved sessions401, archived409, foreign ID/Simulation422 | PASS / PROVEN tested boundaries; future subscriber authority is not certified |
+| Retry notification/provenance | One linked event after repeated retry; canonical source retained | Three retries same ID, one source-completion notification/link, exact canonical monetary result/checksum retained | PASS / PROVEN API/SQL; no new rendered receipt evidence |
+| Deliberate new exploratory opportunity | Retry one intent reuses row; new intent creates another | Standard results succeeded→already_succeeded→succeeded, two distinct rows | PASS / PROVEN finite API fixture; not a new Blackjack activity intent |
+
+Focused command:
+
+```sh
+./scripts/run-python.sh -m pytest apps/api/tests/test_blackjack_source_safety.py apps/api/tests/test_free_bet_atomic_safety.py apps/api/tests/test_account_money_safety.py apps/api/tests/test_free_bet_current_value.py apps/api/tests/test_postgres_runtime.py -q
+```
+
+**154 PASS**:19 new completed-source cases +95 Free Bet +25 Account +13 unchanged Free Bet engine
++2 PostgreSQL mapping/placeholder adapter tests. Ruff changed Python paths PASS; mypy changed bridge
+module with follow-imports=silent PASS. Counts describe only these fixtures, not all modes/inputs,
+whole-platform readiness or calculator acceptance. No new UI code: browser/theme/focus/half-width
+acceptance is **NOT TESTED on this repair**, inherited Free Bet half-width Save remains **BLOCKED
+PD-QA-004**. Actual PostgreSQL transactions/concurrency are **NOT TESTED**.
+
+### Original audit coverage retained — next tests / exact blockers
+
+The original whole-product matrix and Batch2 failures remain authoritative for their recorded
+revision. B3 adds repair-branch evidence, not main PASS. No title-index inventory is promoted to
+full historical-requirement reconciliation. The following checkpoints retain all remaining coverage:
+
+| Existing gap / issue | Current result | Exact next test or blocker |
+|---|---|---|
+| PD-QA-004 shared modals | FAIL / PROVEN previous desktop focus/Escape + half-width Save | Repair shared pointer/focus boundary, then populated Free Bet native invalid→correct→Save/reopen at desktop/half-width both themes; no forced clicks |
+| Combined repair candidate / integration | NOT TESTED | Independently run Account/Free Bet/Blackjack API→browser→report paths on the stacked candidate after PD-QA-004; propose reviewed Account→Free Bet→Blackjack→modal integration; post-integration smoke before claiming main fixed |
+| Other populated ledgers #1–13/#88 | NOT TESTED end-to-end | Native/imported Sportsbook, Casino promotion/manual/free-credit, Extra Place/Each Way, Cash Adjustment: preview/copy/save/reopen/place/settle/void/undo/report with independent values; unavailable special branches retain exact contract blockers |
+| Award lineage / dangling source | NOT TESTED full group lifecycle; existing FAIL retained | Explicit SNR/SR award factories: source→split awards→partial failure/retry→placement→settlement→source removal; inspect child/business audit/notification state, preserve existing deletion policy until approved repair |
+| Imports / restores #104/#109 | NOT TESTED full browser/import scope | Synthetic staged workbook mapping→confirm→reopen; whole portable restore retry/rollback/browser; missing Account access vocabulary/historical promo fallback is a product-contract blocker, not zero/default permission |
+| Actual PostgreSQL / backup recovery | NOT TESTED / UNVERIFIED | Requires a genuinely isolated authorised PostgreSQL environment; no available configured test DB used. Run concurrent claim/rollback, full restore/retry and SQLite-equivalent fixtures there, never hosted/operational substitutes |
+| Concurrent/network-loss/recovery | PARTIAL: new SQLite request races PASS; other paths NOT TESTED | Kill disposable worker after Pending reservation; lose response after committed Casino save then retry; disconnect during exploratory partial multi-Profile save; confirm same intent, one destination/event and controlled Pending recovery. Automatic timeout takeover is deliberately not added |
+| Combined reports / reconciliation #85/#106/#111 | NOT TESTED complete browser flow | Two Profiles with valid/invalid included balances, Free Bets and unique Casino activity: authorised combined cash/P&L completeness, filters/drilldown/export, refresh/correction, reviewed balance vs hand-result distinction; planned observation/explorer features are not runtime PASS |
+| Large data / performance | NOT TESTED | Isolated1000+ native/imported synthetic rows across modules; measure first render, filtering/scroll/pagination/charts/request count, half-width responsiveness; existing30-row fixture is not a scale benchmark |
+| Accessibility / themes / responsive / motion | PARTIAL old rendered probes; reader UNVERIFIED | PD-QA-004 first, then keyboard/focus/Escape/tooltips/targets/announcements, both themes, half-width,320px, desktop200% text and combined stress separately; inspect intermediate motion; actual reader required before claiming screen-reader verification |
+| Auth / lifecycle / catalogue / search / settings | NOT TESTED complete journeys | Synthetic authorised/denied onboarding, duplicate brands, archive/recover, search stale results/loadouts, settings rollback; real Google callback/provider outage unavailable to synthetic-only execution, explicitly UNVERIFIED |
+| Notifications / source-history #90/#99 | PARTIAL new completion idempotency PASS | Clear/remove-source/refresh/retry races, preference persistence and every destination link with viewer isolation; durable source-independent history remains separate requested scope |
+| #115 dependency/deployment exposure | UNVERIFIED deployment/input exposure; existing applicability evidence retained | Separate bounded remediation: maintainer-supported patch and reachability/input/deployment evidence with authorisation; unavailable deployment access is not safe/clearance; no exploit or dependency change in this repair |
+| #96 credentials | BLOCKED owner/provider operation | Owner/provider must revoke/rotate the separately identified credential and record completion; never read out, request or commit its value. Not bundled or cleared by this repair |
+| Historical requests / plans | DOCUMENTED index, remaining bodies/clarifications NOT TESTED | Reconcile next bounded original issue-body/clarification set against canonical register, including18 orphaned-source ideas; retain contradictions/dependencies. Subscriber/billing/AI/Oddsmatcher deferred scope stays NOT APPLICABLE runtime, not delivered |
+| Calculator integration / #113 | PARTIAL existing finite evidence; manual DEFERRED | Engineering combined hub/pop-out/embedded/conversion regressions separate from external/manual parity; preserve main-v1 vs unmerged-v2 planning/placement/settlement gaps. Resume manual comparison only on supplied results or explicit request; unchanged launcher/files/parent IDs, no date or assignment |
+
+No automatic merge/deployment. Normal app still lacks all stacked repairs. Review Account first,
+Free Bet second, Blackjack source third; modal fix/independent combined-candidate gate precede any
+integration proposal. Rollback is a reviewed revert of the applicable source repair(s), not data
+deletion, historical recalculation or source cleanup. All normal/protected services are left running.
+Next work is PD-QA-004, not another calculator feature or manual-comparison request.
+GitHub evidence synced on2026-09-12: #91 comment5648926365, #114 comment5648926454,
+#36 comment5648926501, #40 comment5648926573. Issues remain open. Read-only final health checks:
+8010/8020/8013/8024/8026/8030 healthz200;3010/3020/3013/3024/3026/3030 login200.
