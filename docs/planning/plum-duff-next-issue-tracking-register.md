@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-12_
 
 ## Purpose
 
@@ -12,6 +12,21 @@ Live GitHub issue state was reconciled through an authenticated integration on 2
 entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
+
+`PLATFORM-QUALITY-AUDIT-001` / [#114](https://github.com/wolney8/OpenForge/issues/114):
+`IN PROGRESS — RESUMABLE EVIDENCE CHECKPOINT`. The [single audit report](../audits/platform-quality-audit.md)
+inventories original goals/requests and current/main versus unmerged development, records isolated
+API/rendered/restore/security/dependency evidence, and keeps unexamined journeys explicitly NOT TESTED.
+No product redesign, financial revision, credential rotation, hosted scan, merge or issue closure.
+PD-QA-001–013 remain findings/proposals, not implementation delivery. Dependency remediation is
+[#115](https://github.com/wolney8/OpenForge/issues/115); existing #91/#92/#85/#96/#109 and #36/#113
+retain their own scopes. Detailed remaining historical clarification triage is explicit in the report.
+
+**Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
+request.** Preserve frozen candidate `f7a3b35073ecc87cdf8f8f881129f221ec44d395`, its branch and
+3020/8020 authenticated runtime/data, original private capture files/observations and launcher/case IDs.
+Monday is historical evidence only. Final calculator sign-off remains pending. Development
+`215193b7fcb5b11a28e23a4531d2a45434545dc1` remains unmerged on `calculator/multi-lay-normal-parity`.
 
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.

@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-12_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -8,6 +8,27 @@ sequencing and the [request register](docs/planning/plum-duff-next-issue-trackin
 durable requirements.
 
 ## Current state
+
+- **Current: #114 whole-platform audit**, on `audit/platform-quality-114` in
+  `.worktrees/platform-quality-audit`, based on main
+  `f7a3b35073ecc87cdf8f8f881129f221ec44d395`. See the resumable
+  [platform quality audit](docs/audits/platform-quality-audit.md) for request traceability,
+  route/API coverage, executed evidence, explicit untested journeys and priorities. No product
+  implementation or merge is part of this tranche. Affected dependencies are tracked in #115;
+  credential rotation stays separate #96. Normal services and private inputs remain untouched.
+- **Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
+  request.** Final calculator sign-off remains pending. Historical Monday references are not a
+  current commitment. Preserve the frozen `manual/calculator-candidate-2026-09-12` full f7 SHA,
+  authenticated 3020/8020 runtime/data and original `_input` HTML/XLSX/guide/observations.
+  The existing development launcher and worksheet parent case IDs remain unchanged.
+- Development `calculator/multi-lay-normal-parity` is separately pushed at
+  `215193b7fcb5b11a28e23a4531d2a45434545dc1`, five commits ahead of main. Its native Normal v2
+  per-leg-commission planning Add Row/save/reopen slice is **unmerged**, not main functionality.
+  Its 3013/8013 synthetic DB is separate from the audit's 3024/8024 synthetic DB. Remaining richer
+  v2 placement/settlement and other reference gaps remain visible; no acceptance borrowed from f7.
+
+The entries below retain previous-tranche evidence and historical current-state wording. They do
+not supersede the audit/deferral block above or imply fresh whole-workflow verification.
 
 - Multi-Lay reference expansion PD-FIX-101–106 is locally implemented at the 2026-09-11 source
   snapshots. Versioned `multi-lay-v2` supports Normal, Free Bet SNR and Money Back, zero/non-zero
