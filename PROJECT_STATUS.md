@@ -9,6 +9,19 @@ durable requirements.
 
 ## Current state
 
+- **#91 Account repair (not integrated):** branch `repair/account-money-91` based on application
+  `f7a3b35073ecc87cdf8f8f881129f221ec44d395`; original audit checkpoints c65169f/7d75b5a
+  remain evidence. Canonical exact-cent validation and incomplete cash totals have focused API/unit
+  and actual Account-editor checks. **Main/normal services remain unfixed until approved integration.**
+  [Same audit report / repair addendum](docs/audits/platform-quality-audit.md) records evidence limits.
+  Fix `102848a1214730e5065e9db04a66047dce6cd82b` pushed; #91/#114/#92 comments5648267278/5648268451/5648268545 synced.
+- Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
+  request. Frozen manual f7/3020/8020, original observations and unmerged Multi-Lay
+  `215193b7fcb5b11a28e23a4531d2a45434545dc1` remain protected; no calculator sign-off.
+- Next separate repairs: PD-QA-014 Free Bet atomic validation; PD-QA-015 completed-source
+  uniqueness/concurrency; PD-QA-004 modal focus/Escape/pointer access; #115 dependency exposure;
+  #96 owner/provider rotation. #114 remaining audit coverage is not complete.
+
 - Multi-Lay reference expansion PD-FIX-101–106 is locally implemented at the 2026-09-11 source
   snapshots. Versioned `multi-lay-v2` supports Normal, Free Bet SNR and Money Back, zero/non-zero
   Profit Boost, two to 20 named legs, per-leg commission and Standard/Underlay/Overlay/Custom

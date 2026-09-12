@@ -3,6 +3,17 @@
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 
+## 2026-09-12: Malformed Account money became unknown individual values but complete cash totals
+
+- Area: Account editor, Account cash cards, Profile and authorised combined summaries.
+- Root cause: permissive Number conversion/blank-to-zero input formatting and finite-only sum
+  reductions accepted or omitted unreadable included balances.
+- Prevention: complete-string exact-cent validation at write/UI boundaries, raw invalid edit text
+  with associated errors, unavailable individual values, explicit included-source incompleteness
+  and separately labelled known subtotal. Keep excluded cash scope and ledger P&L independent.
+- Regression: account_money_safety API tests, account-money-safety web tests and actual isolated
+  Account editor browser path at desktop/light and half-width/dark; legacy source preserved.
+
 ## 2026-09-10: Dynamic calculator panels and fixed-width stats jolted or wasted space
 
 - Area: high-frequency Blackjack recommendation and running-financial surfaces.

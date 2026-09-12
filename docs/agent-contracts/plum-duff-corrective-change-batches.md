@@ -241,3 +241,26 @@ Baseline: `21b30f0371866fd94bbd68218de8874725e23236`
 | PD-FIX-104 | Consumer parity | Reuse the verified calculation/interaction path in standalone, pop-out and the embedded ledger planner. | PARTIAL — standalone/pop-out use v2; embedded ledger remains the governed v1 Normal Standard/Underlay subset |
 | PD-FIX-105 | Persistence/conversion | Preserve v2 source state on supported save/reopen paths and fail closed where a destination cannot represent it. | COMPLETE LOCALLY — compatible v1 provenance converts; richer v2 configurations fail closed pending destination support |
 | PD-FIX-106 | Evidence/delivery | Add independent fixtures, UI/API/consumer regressions, external observations, worksheet cases, tracking and checkpoint. | COMPLETE LOCALLY — MBB stake parity proven with documented 1p component difference; Outplayed exact capture remains UNVERIFIED |
+## #91 Account monetary repair — base f7a3b35073ecc87cdf8f8f881129f221ec44d395
+
+| ID | Requested repair / canonical equivalent | Status |
+|---|---|---|
+| PD-QA-002 | Account money create/update/catalogue/onboarding/persistence validation; FinancialTextInput with unchanged raw invalid text and existing inline error-text | IMPLEMENTED REPAIR BRANCH — API/UI proven; full import confirmation and real PostgreSQL execution NOT TESTED |
+| PD-QA-007 | Exact-cent included cash totals with explicit incomplete state; existing FinancialValue unavailable presentation and status text across Accounts/Profile/combined | IMPLEMENTED REPAIR BRANCH — scoped units and Account/Profile UI proven; whole combined browser flow NOT TESTED |
+
+Branch repair/account-money-91 from verified origin/mainf7, separate disposable synthetic DB only.
+Audit7d75b5a, manualf7/3020/8020 and unmerged215193b/3013/8013 remain unchanged. No automatic merge.
+Next PD-QA-014/015/004, #115 and #96 are separate repairs; #113 comparison deferred without date.
+
+UI checklist receipt: existing FinancialTextInput, modal actions, FinancialValue, stat-card,
+error-text and status semantics reused; no CSS/button/icon variant or global design change.
+Actual pointer Edit/Save without force, keyboard Tab, associated current/pending errors, disabled
+Save/correction recovery, desktop/light1440 and half-width/dark760, no document/modal overflow,
+prefix centre delta0.0078125px and no page errors observed. Reduced-motion path exercised.
+FinancialValue is unchanged; scoped summary/decimal regressions47 PASS, Account API25 PASS,
+PostgreSQL adapter-only units2 PASS, tsc/Ruff/new money module strict mypy PASS.
+Screen-reader, desktop text enlargement, global combined browser journey, full importer execution
+and actual PostgreSQL execution remain explicitly NOT TESTED, not whole-platform UI acceptance.
+Main/normal is unfixed until approved integration. Same audit report retains pre-fix evidence.
+Fix102848a1214730e5065e9db04a66047dce6cd82b pushed; GitHub #91/#114/#92 updates synced as
+comments5648267278/5648268451/5648268545. No issue closure or automatic integration.

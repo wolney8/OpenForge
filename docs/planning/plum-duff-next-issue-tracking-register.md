@@ -13,6 +13,25 @@ entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
 
+### #91 / #114 isolated Account repair — 2026-09-12
+
+PD-QA-002/007: IMPLEMENTED ON REPAIR BRANCH ONLY; integration and Will acceptance pending.
+Base f7a3b35073ecc87cdf8f8f881129f221ec44d395, branch repair/account-money-91. Complete exact-cent
+validation rejects malformed/non-finite/unsupported precision before business writes. Omissions,
+explicit zero and blank unknown retain their documented meaning; included invalid sources give an
+incomplete Account/Profile/authorised combined cash total, not a fabricated complete subtotal.
+[Same audit addendum](../audits/platform-quality-audit.md) records scoped API/unit/browser evidence
+on disposable8026/3026, not main. Actual PostgreSQL and complete import-confirmation execution remain
+NOT TESTED; shared adapter/preflight source inspection is not runtime proof.
+
+PD-QA-014 Free Bet pre-commit validation, PD-QA-015 completed Casino uniqueness across Profiles/
+Accounts/concurrency, PD-QA-004 modal recovery, #115 exposure and #96 owner/provider rotation remain
+separate queued repairs. No remaining #114 coverage or broader #91 field scope is closed.
+Fix102848a1214730e5065e9db04a66047dce6cd82b pushed. GitHub synced #91 comment5648267278,
+#114 comment5648268451 and #92 comment5648268545; issues remain open.
+Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
+request. Launcher, parent case IDs, frozen candidate and original observations remain unchanged.
+
 Implementation, automated verification, hosted verification, and Will's acceptance are separate
 states. Partial delivery does not remove the remaining scope.
 
