@@ -5,6 +5,7 @@ import json
 import time
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
@@ -21,6 +22,22 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.auth_owner_emails = "owner@example.invalid"
     settings.database_url = f"sqlite:///{tmp_path / 'calculator-conversions.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    # Independent synthetic authority; never depend on the daily-use private seed.
+    with connect() as connection:
+        for index in (1, 2):
+            connection.execute(
+                """INSERT OR IGNORE INTO profiles (
+                    profile_id, display_name, profile_code, status, tracking_start_date,
+                    management_fee_percent, investment_fee_percent, current_cash_snapshot
+                ) VALUES (?, ?, ?, ?, '2026-09-12', '0.00', '0.00', '0.00')""",
+                (
+                    f"profile-demo-00{index}",
+                    f"Synthetic Profile {index}",
+                    f"SYN-00{index}",
+                    "Active",
+                ),
+            )
+        connection.commit()
 
 
 def add_account(
@@ -635,6 +652,78 @@ def test_multi_lay_v2_conversion_fails_closed_when_destination_would_drop_config
     assert response.status_code == 422
     assert "cannot yet preserve" in response.text
     assert client.get("/profiles/profile-demo-001/sportsbook-bets").json() == before
+
+
+@pytest.mark.parametrize(
+    ("strategy", "stakes", "liabilities", "totals"),
+    [
+        ("standard", ["16.33", "13.42"], ["24.50", "26.84"], ["18.66", "18.65", "18.67"]),
+        ("underlay", ["5.70", "4.68"], ["8.55", "9.36"], ["0.01", "26.04", "26.06"]),
+    ],
+)
+def test_normal_v2_mixed_commissions_save_reopen_and_retry(
+    tmp_path: Path, strategy: str, stakes: list[str], liabilities: list[str], totals: list[str]
+) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = multi_lay_payload(["profile-demo-001"])
+    payload["source"]["calculator_version"] = "multi-lay-v2"
+    calculator = payload["calculator"]
+    calculator.pop("exchange_commission")
+    payload["source"]["calculator_mode"] = strategy
+    calculator["allocation"] = strategy
+    calculator.update(
+        backing_type="normal",
+        strategy=strategy,
+        profit_boost_percent="0",
+        refund_amount="0",
+        retention_percent="70",
+        custom_multiplier="1",
+    )
+    calculator["outcomes"] = [
+        {"label": "Home", "lay_odds": "2.50", "commission": "0.05"},
+        {"label": "Away", "lay_odds": "3.00", "commission": "0.02"},
+    ]
+    response = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
+    assert response.status_code == 200, response.text
+    result = response.json()["results"][0]
+    assert result["state"] == "succeeded", result
+    url = f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
+    row = client.get(url).json()
+    entries = json.loads(row["multi_lay_outcomes_json"])
+    assert entries[0]["calculationVersion"] == "multi-lay-v2"
+    assert [leg["commission"] for leg in entries] == ["0.05", "0.02"]
+    # Independent Standard L_i=40/(O_i-c_i); Underlay multiplier is
+    # 10/sum(Standard_i*(1-c_i)); then penny placement before components.
+    reference = row["multi_lay_reference"]
+    assert [leg["lay_stake"] for leg in reference["branches"]] == stakes
+    assert [leg["liability"] for leg in reference["branches"]] == liabilities
+    assert [scenario["total"] for scenario in reference["scenarios"]] == totals
+    assert row["lay_actual"] == row["lay_matched_stake_1"] == ""
+    assert row["reporting_value"] is None
+    saved = client.put(url, json=row)
+    assert saved.status_code == 200, saved.text
+    assert client.get(url).json()["multi_lay_reference"] == reference
+
+    # Explicit zero stays per-leg; it is never replaced with leg 1's 5%.
+    entries[1]["commission"] = "0"
+    zero_row = {**row, "multi_lay_outcomes_json": json.dumps(entries)}
+    zero_saved = client.put(url, json=zero_row)
+    assert zero_saved.status_code == 200, zero_saved.text
+    assert json.loads(client.get(url).json()["multi_lay_outcomes_json"])[1]["commission"] == "0"
+    bad = {**zero_row, "profit_boost_percent": "10"}
+    assert client.put(url, json=bad).status_code == 422
+    assert json.loads(client.get(url).json()["multi_lay_outcomes_json"])[1]["commission"] == "0"
+    retry = client.post("/fund-manager/calculator-conversions/multi-lay", json=payload)
+    assert retry.json()["results"][0]["record_id"] == result["record_id"]
+    assert retry.json()["results"][0]["state"] == "already_succeeded"
+    placed = {**row, "status": "Placed", "lay_actual": "16.33"}
+    assert client.put(url, json=placed).status_code == 422
+    stripped = {**row, "multi_lay_outcomes_json": "[]"}
+    assert client.put(url, json=stripped).status_code == 422
+    assert client.get(url).json()["multi_lay_reference"] == zero_saved.json()["multi_lay_reference"]
 
 
 def test_extra_place_and_each_way_convert_to_profile_isolated_native_rows(

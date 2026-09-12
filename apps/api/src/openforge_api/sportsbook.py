@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable, Literal, cast
@@ -22,6 +23,7 @@ from openforge_api.calculations.sportsbook_current_value import (
     SportsbookCalculationResult,
     calculate_sportsbook_current_value,
 )
+from openforge_api.calculators import MultiLayPayload, preview_multi_lay
 from openforge_api.db import (
     create_multi_profile_entry_batch,
     create_sportsbook_bet,
@@ -116,7 +118,7 @@ class SportsbookBetFields(BaseModel):
     match_strategy: MatchStrategyValue
     lay_odds_1: str = Field(default="", max_length=40)
     multi_lay_outcome_1_name: str = Field(default="", max_length=120)
-    multi_lay_outcomes_json: str = Field(default="[]", max_length=4000)
+    multi_lay_outcomes_json: str = Field(default="[]", max_length=20000)
     lay_actual: str = Field(default="", max_length=40)
     lay_matched_stake_1: str = Field(default="", max_length=40)
     lay_commission_1: str = Field(default="", max_length=40)
@@ -128,6 +130,11 @@ class SportsbookBetFields(BaseModel):
 
 
 class SportsbookBetPayload(SportsbookBetFields):
+    @model_validator(mode="after")
+    def validate_versioned_multi_lay_planning(self) -> "SportsbookBetPayload":
+        multi_lay_planning_reference(self.model_dump())
+        return self
+
     @field_validator(
         "back_odds",
         "base_back_odds",
@@ -183,6 +190,7 @@ class SportsbookBetPayload(SportsbookBetFields):
 
 
 class SportsbookBetResponse(SportsbookBetFields):
+    multi_lay_reference: dict[str, Any] | None = None
     sportsbook_bet_id: str
     profile_id: str
     created_at: str
@@ -217,6 +225,7 @@ class SportsbookBetResponse(SportsbookBetFields):
 
 
 class SportsbookCalculationPreviewResponse(BaseModel):
+    multi_lay_reference: dict[str, Any] | None = None
     lay_commission_1: str | None
     calculation_state: str
     calculation_notes: list[str]
@@ -241,9 +250,7 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     profit_boost_source: str | None
 
 
-PAYOUT_AMOUNT_FORMAT_MESSAGE = (
-    "Enter a decimal amount using a full stop, for example 10.50."
-)
+PAYOUT_AMOUNT_FORMAT_MESSAGE = "Enter a decimal amount using a full stop, for example 10.50."
 
 
 class PayoutOddsPreviewPayload(BaseModel):
@@ -491,6 +498,107 @@ def serialize_profit_boost(result: ProfitBoostResult | None) -> dict[str, str | 
     }
 
 
+def multi_lay_planning_reference(values: dict[str, Any]) -> dict[str, Any]:
+    """Validate explicit v2 planning state; never change legacy recognised cash."""
+    try:
+        entries = json.loads(values.get("multi_lay_outcomes_json") or "[]")
+    except (ValueError, TypeError):
+        if "calculationVersion" in str(values.get("multi_lay_outcomes_json", "")):
+            raise ValueError("Malformed versioned Multi-Lay planning state.")
+        return {}
+    if not isinstance(entries, list):
+        return {}
+    entries = [entry for entry in entries if isinstance(entry, dict)]
+    primary = next((entry for entry in entries if entry.get("id") == "outcome1"), {})
+    version = primary.get("calculationVersion")
+    if not version:
+        return {}
+    if version != "multi-lay-v2":
+        raise ValueError("Unsupported Multi-Lay planning calculation version.")
+    ids = [entry.get("id") for entry in entries]
+    if ids[0] != "outcome1" or len(set(ids)) != len(ids):
+        raise ValueError("V2 planning requires ordered, uniquely identified outcome legs.")
+    if (
+        values.get("status") not in {"Prospecting", "Not Placed"}
+        or values.get("result") != "Pending"
+        or values.get("match_strategy") not in {"Multilay", "Multilay-Underlay"}
+        or values.get("offer_type") != "Bet & Get"
+        or values.get("lay_actual")
+        or values.get("lay_matched_stake_1")
+        or values.get("manual_override_value")
+        or values.get("profit_boost_mode")
+        or values.get("bonus_trigger")
+        or values.get("maximum_bonus")
+        or values.get("boosted_back_odds")
+        or values.get("base_back_odds")
+        or values.get("actual_accepted_back_odds")
+        or values.get("maximum_boost_winnings")
+        or values.get("profit_boost_percent") not in {None, "", "0"}
+    ):
+        raise ValueError(
+            "Multi-Lay v2 supports Normal Bet & Get planning only; placement/settlement "
+            "requires an approved actual per-leg cash contract."
+        )
+    for entry in entries:
+        if not entry.get("label") or not entry.get("layOdds"):
+            raise ValueError("Every v2 planning leg requires a label and lay odds.")
+        if (
+            entry.get("backingType", "normal") != "normal"
+            or entry.get("profitBoostPercent", "0") != "0"
+            or entry.get("refundAmount", "0") != "0"
+            or entry.get("customMultiplier", "1") != "1"
+            or entry.get("placedMatchedStake")
+            or entry.get("placementState", "pending") != "pending"
+        ):
+            raise ValueError("Unsupported backing, boost, reward, allocation or placement state.")
+        if "commission" not in entry:
+            raise ValueError("Every v2 planning leg requires explicit commission.")
+    strategy = "underlay" if values["match_strategy"] == "Multilay-Underlay" else "standard"
+    payload = MultiLayPayload.model_validate(
+        {
+            "backing_type": "normal",
+            "strategy": strategy,
+            "back_stake": values["back_stake"],
+            "back_odds": values["back_odds"],
+            "outcomes": [
+                {
+                    "label": entry["label"],
+                    "lay_odds": entry["layOdds"],
+                    "commission": entry["commission"],
+                }
+                for entry in entries
+            ],
+        }
+    )
+    if primary["layOdds"] != values["lay_odds_1"]:
+        raise ValueError("Primary planning lay odds must match the native row.")
+    reference = preview_multi_lay(payload).model_dump(mode="json")
+    return {
+        "multi_lay_reference": reference,
+        "calculation_state": "resolved",
+        "calculation_notes": ["Versioned planning references only; no recognised cash P&L."],
+        "reference_lay_stake_standard": reference["branches"][0]["lay_stake"]
+        if strategy == "standard"
+        else None,
+        "reference_lay_stake_underlay": reference["branches"][0]["lay_stake"]
+        if strategy == "underlay"
+        else None,
+        "reference_lay_stake_overlay": None,
+        "calculated_liability_1": reference["branches"][0]["liability"],
+        "scenario_pnl_if_back_wins": reference["scenarios"][1]["total"],
+        "scenario_pnl_if_lay_wins": reference["scenarios"][0]["total"],
+        "scenario_pnl_if_outcome_2_wins": reference["scenarios"][2]["total"],
+        "scenario_pnl_if_outcome_3_wins": reference["scenarios"][3]["total"]
+        if len(reference["scenarios"]) > 3
+        else None,
+        "projected_current_pnl": None,
+        "actual_net_pnl": None,
+        "final_net_pnl": None,
+        "reporting_value": None,
+        "lay_status": "Not Laid",
+    }
+
+
 def build_response(
     profile_id: str,
     row: object,
@@ -541,6 +649,7 @@ def build_response(
             "lay_commission_1": resolved_commission,
             **serialize_calculation(calculation),
             **serialize_profit_boost(profit_boost),
+            **multi_lay_planning_reference(record),
         }
     )
 
@@ -751,6 +860,7 @@ def preview_profile_sportsbook_bet(
             "lay_commission_1": resolved_commission or None,
             **serialize_calculation(calculation),
             **serialize_profit_boost(profit_boost),
+            **multi_lay_planning_reference(values),
         }
     )
 
@@ -1059,6 +1169,17 @@ def create_profile_sportsbook_bet(
 def update_profile_sportsbook_bet(
     profile_id: str, sportsbook_bet_id: str, payload: SportsbookBetPayload
 ) -> SportsbookBetResponse:
+    existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
+    if existing is not None:
+        old_reference = multi_lay_planning_reference(existing.__dict__)
+        new_reference = multi_lay_planning_reference(payload.model_dump())
+        if old_reference and not new_reference:
+            raise HTTPException(status_code=422, detail="Cannot discard v2 planning provenance.")
+        if new_reference and not old_reference:
+            raise HTTPException(
+                status_code=422,
+                detail="V2 planning is opt-in for new records only; legacy rows stay v1.",
+            )
     updated = update_sportsbook_bet(profile_id, sportsbook_bet_id, payload.model_dump())
     if updated is None:
         raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")

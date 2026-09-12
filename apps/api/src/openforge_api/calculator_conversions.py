@@ -44,6 +44,7 @@ from openforge_api.multi_profile_entry import (
     get_account_restrictions,
 )
 from openforge_api.sportsbook import build_response as build_sportsbook_response
+from openforge_api.sportsbook import multi_lay_planning_reference
 
 router = APIRouter(prefix="/fund-manager/calculator-conversions", tags=["calculator-conversions"])
 
@@ -614,12 +615,14 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
         raise HTTPException(
             status_code=422, detail="Multi-Lay source mode does not match calculator"
         )
-    commissions = {outcome.commission for outcome in payload.calculator.outcomes}
+    commissions = {Decimal(outcome.commission) for outcome in payload.calculator.outcomes}
+    versioned_planning = payload.source.calculator_version == "multi-lay-v2"
     if (
         payload.calculator.backing_type != "normal"
         or Decimal(payload.calculator.profit_boost_percent) != 0
         or allocation not in {"standard", "underlay"}
-        or len(commissions) != 1
+        or (not versioned_planning and len(commissions) != 1)
+        or (versioned_planning and payload.offer_type != "Bet & Get")
     ):
         raise HTTPException(
             status_code=422,
@@ -703,44 +706,58 @@ def convert_multi_lay(payload: MultiLayConversionPayload, request: Request) -> C
             )
             continue
         try:
-            created = create_sportsbook_bet(
-                target.profile_id,
-                {
-                    "event_name": payload.event_name,
-                    "offer_text": payload.event_name,
-                    "bookmaker": bookmaker,
-                    "offer_type": payload.offer_type,
-                    "bet_type": payload.bet_type,
-                    "offer_name": payload.offer_name,
-                    "fixture_type": payload.fixture_type,
-                    "market": "",
-                    "status": "Prospecting",
-                    "result": "Pending",
-                    "back_stake": payload.calculator.back_stake,
-                    "back_odds": payload.calculator.back_odds,
-                    "match_strategy": strategy,
-                    "lay_odds_1": first.lay_odds,
-                    "multi_lay_outcome_1_name": first.label,
-                    "multi_lay_outcomes_json": json.dumps(
+            destination_values = {
+                "event_name": payload.event_name,
+                "offer_text": payload.event_name,
+                "bookmaker": bookmaker,
+                "offer_type": payload.offer_type,
+                "bet_type": payload.bet_type,
+                "offer_name": payload.offer_name,
+                "fixture_type": payload.fixture_type,
+                "market": "",
+                "status": "Prospecting",
+                "result": "Pending",
+                "back_stake": payload.calculator.back_stake,
+                "back_odds": payload.calculator.back_odds,
+                "match_strategy": strategy,
+                "lay_odds_1": first.lay_odds,
+                "multi_lay_outcome_1_name": first.label,
+                "multi_lay_outcomes_json": json.dumps(
+                    (
                         [
                             {
-                                "id": f"outcome{index}",
-                                "label": outcome.label,
-                                "layOdds": outcome.lay_odds,
+                                "id": "outcome1",
+                                "label": first.label,
+                                "layOdds": first.lay_odds,
+                                "commission": first.commission,
+                                "calculationVersion": "multi-lay-v2",
+                                "backingType": "normal",
                             }
-                            for index, outcome in enumerate(additional, start=2)
-                        ],
-                        separators=(",", ":"),
-                    ),
-                    "lay_actual": "",
-                    "lay_matched_stake_1": "",
-                    "exchange_name": exchange_name,
-                    "date_settled": "",
-                    "user_notes": f"Calculator source: {source_id} ({checksum})",
-                    "manual_override_value": "",
-                    "manual_override_reason": "",
-                },
-            )
+                        ]
+                        if versioned_planning
+                        else []
+                    )
+                    + [
+                        {
+                            "id": f"outcome{index}",
+                            "label": outcome.label,
+                            "layOdds": outcome.lay_odds,
+                            **({"commission": outcome.commission} if versioned_planning else {}),
+                        }
+                        for index, outcome in enumerate(additional, start=2)
+                    ],
+                    separators=(",", ":"),
+                ),
+                "lay_actual": "",
+                "lay_matched_stake_1": "",
+                "exchange_name": exchange_name,
+                "date_settled": "",
+                "user_notes": f"Calculator source: {source_id} ({checksum})",
+                "manual_override_value": "",
+                "manual_override_reason": "",
+            }
+            multi_lay_planning_reference(destination_values)
+            created = create_sportsbook_bet(target.profile_id, destination_values)
             destination = build_sportsbook_response(
                 target.profile_id,
                 get_sportsbook_bet(target.profile_id, created.sportsbook_bet_id),

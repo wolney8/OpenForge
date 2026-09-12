@@ -87,7 +87,28 @@ closed. Version, backing type, boost, reward/retention, strategy, multiplier, pe
 and labels survive pop-out/source snapshots. Conversion is blocked when the destination cannot
 represent the complete configuration; fields are never silently dropped.
 
-## External differences
+## Normal planning persistence slice — 2026-09-12
+
+New records may opt into a **reference-only planning** slice by storing
+`calculationVersion: "multi-lay-v2"`, `backingType: "normal"` and explicit `commission`
+(decimal fraction) in the `outcome1` entry of the existing `multi_lay_outcomes_json` array.
+Every other outcome stores its own `commission`; zero is explicit. This adds no database column.
+The slice supports Standard/Underlay, 2–20 legs, no boost/reward/custom allocation, and only
+Prospecting/Not Placed + Pending. Back stake/odds remain native row fields. Existing v2 engine
+inputs, penny-placed references and component Outcomes are revalidated on native save and reopen.
+Calculator source envelope/checksum and operation idempotency remain intact.
+
+There is **no recognised cash P&L** in this slice. V2 planning responses expose a separate
+`multi_lay_reference`; legacy row financial/reference fields are not a substitute oracle.
+Placement, settlement, manual financial overrides and actual matched/placed stake capture are
+blocked for a v2 planning record until actual per-leg cash/commission reconciliation has its own
+approved contract. No recommended stake is silently copied into actual placement. Unstamped v1
+records retain exactly their existing computation and placement workflow. Native updates cannot
+strip the version marker to bypass this gate. Normal Standard/Underlay conversion writes the
+marker for a v2 source and faithfully retains each commission. Other v2 capabilities remain
+configuration-blocked, not flattened into this slice.
+
+## External differences (retained evidence)
 
 Outplayed exposes Normal, Normal Underlay and Free Bet SNR with two to four outcomes. MBB exposes
 Normal, Free Bet SNR, Money Back, Profit Boost, per-leg commission, up to 20 technical legs and the
