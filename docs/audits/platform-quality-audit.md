@@ -709,3 +709,163 @@ and request clarification audit coverage stays unexamined, not passed.
 
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 Original comparison files, launcher, parent IDs, frozenf7 candidate and observations remain untouched.
+
+## PD-QA-014 repair addendum — Free Bet pre-commit validation / 2026-09-12
+
+**Branch-specific evidence; main remains unfixed.** This extends the same audit, preserving Batch2's
+failures and the Account addendum. Result and evidence are separate. No calculator formula, settled
+record, schema, bridge architecture, operational database, secret or dependency change was made.
+
+### Revision and protected environments
+
+- Application main/frozen candidate: f7a3b35073ecc87cdf8f8f881129f221ec44d395, unchanged.
+- New branch `repair/free-bet-atomic-91` begins exactly at Account checkpoint
+  c4b9bb4412cb0e29c78df4919624c58db57633d6; `git merge-base --is-ancestor` proves inherited
+  Account fix102848a1214730e5065e9db04a66047dce6cd82b. Account branch/commits unchanged.
+- Added fix: b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f. Worktree:
+  `/Users/will_work/Scripts/Homelab/OpenForge/.worktrees/free-bet-atomic-repair`.
+- Audit7d75b5a54db466b1a47c6d7786ddc633f3dc7122 / c65169f and intentionally invalid audit fixtures
+  remain untouched. Multi-Lay215193b7fcb5b11a28e23a4531d2a45434545dc1 remains unmerged.
+- Disposable repair runtime: API8030/web3030, database
+  `/tmp/openforge-free-bet-atomic-91-repair/acceptance.sqlite3`. No shared mutable database with
+  normal3010/8010, frozen3020/8020, development3013/8013, audit3024/8024 or Account3026/8026.
+  All six API `/healthz` and web `/login` checks200 at the checkpoint. No protected service restarted.
+- `_input` originals/observations, capture launcher and parent case IDs unchanged.
+  Manual comparison deferred by Will; no scheduled date; resume only on supplied results or request.
+
+### Reproduce-before-fix and root cause
+
+The initial focused regression run had **8 failed tests before production editing**. NaN, Infinity,
+-Infinity and not-money Placed creates returned500 **and each retained one Free Bet**; subsequent
+individual/list/source-summary reads500. Missing Profile returned500 with zero Free Bets. Invalid
+actual-lay update contaminated a valid record. Injected response-preparation RuntimeError returned500
+after retaining the new row. These are independently asserted SQLite states, not inferred from HTTP.
+
+Root: unconstrained financial strings entered persistence; create/update committed row+business audit
+before engine/response construction. The response model inherited write validators, so corrupt or
+legacy records could fail again during reads. Missing Profile fell through to persistence failure.
+
+### Field and transaction policy
+
+The existing [Free Bet contract](../contracts/free-bet-current-value-contract.md) has the compact policy.
+Money is complete exact-cent decimal, non-negative except explicit reasoned final override.
+Zero remains valid; blank is unknown/optional, not fabricated stake. Null/malformed/non-finite,
+comma/exponent and unsupported money precision reject. Odds use the existing complete decimal
+>=1.01 contract with arbitrary supported decimal precision; commissions retain precision as0..1 ratios
+and still resolve from Profile Exchange settings. No two-decimal odds/commission truncation.
+
+PATCH merges omitted fields with the stored record before validating the effective lifecycle and
+financial dependencies. PUT retains required identity/lifecycle fields while preserving omitted
+optional fields. Placed/Settled require value/back odds unless a reasoned override provides value;
+positive actual lay requires odds/Exchange, **not a fully matched position**. Unlaid/partial workflows
+remain possible. Date syntax is checked before saving. Profile/Account/source identity checks are
+Profile-scoped; missing404, archived/ineligible controlled4xx, foreign Account cannot be substituted.
+
+Shared native/create/update/placement and conversion/opportunity/award child writes now validate
+before Free Bet mutation. Existing engine + response-model validation + JSON preparation run **inside
+the same row/business-audit transaction**, returning the prepared native response after commit.
+Conversion checks destination calculation readiness inside that callback rather than recalculating
+after commit. Foreseeable input/domain errors are controlled4xx; injected unexpected internal faults
+remain honest500 and roll back. No save-then-delete workaround or new financial equations.
+Profile calculation settings/cache are prepared before opening the Free Bet transaction, avoiding
+lazy default-setting writes inside a second SQLite connection.
+
+New staged Free Bet import validates selected fields and prepares each response inside its existing
+batch transaction. Two-row probes show second-row failure rolls back the earlier row, audit/source
+records, staged changes and batch completion. It does not retrofit modern lifecycle/source policies
+onto historical import or rewrite raw snapshots. Full importer/browser confirmation remains NOT TESTED.
+Award UI still submits child Free Bets through the protected native endpoint, then updates its
+Sportsbook source. **This is per-child save atomicity, not a claim of atomic multi-request award groups.**
+Group splitting/retry and the separately recorded dangling-source deletion policy remain open.
+
+Lost network delivery after a successful commit is a distinct ambiguous-delivery case. Existing
+conversion intent/target identity is unchanged: retry retains one successful destination. No promise
+that a lost response means nothing was saved; no new native/award idempotency architecture introduced.
+
+### Independent numerical expectations and observable results
+
+Expected values below are user/audit fixtures and desk equations, not production functions as oracle.
+Approved penny placement/engine equations are unchanged.
+
+| Case | Independent equation / expected | Actual | Result / evidence |
+|---|---|---|---|
+| Native SNR £10, back5, lay5.2, c.02 |40/5.18 →7.72 reference; actual7 liability7×4.2=29.40; Back Won40−29.40=10.60 |7.72 /10.60 after save/reopen/place/settle | PASS / PROVEN API + SQLite |
+| Native SR same inputs |50/5.18 →9.65 reference; actual7 Back Won50−29.40=20.60 |9.65 /20.60 | PASS / PROVEN API + SQLite |
+| Combined native settled report |10.60+20.60=31.20 |31.20 formal monthly fee-base result;31.20 formatted client aggregate | PASS / PROVEN focused API/unit |
+| Converted SNR £10, back3, lay3.1, c.02, actual6 |20−6×2.1=7.40 |7.40; retry same ID/one row | PASS / PROVEN conversion API |
+| Additional converted SR same inputs |30−6×2.1=17.40 |17.40; retry same ID/one row | PASS / PROVEN conversion API |
+| Invalid create/update fields | Supplied invalid value →4xx, no new row or changed record/timestamp/audit/report | All supplied money/odds/commission malformed/non-finite tests422; previous report unchanged | PASS / PROVEN API + independent SQL |
+| Unexpected calculation / response-JSON fault |500 with transaction rollback, not disguised422 | Create/update row+audit unchanged; failed conversion no destination or success notification fields | PASS / PROVEN injected boundary |
+| Foreign actual Profile/Accounts | Existing money-b row inaccessible via money-a; foreign Account denied for money-a | GET/PATCH404; create422, zero own rows; foreign row unchanged | PASS / PROVEN API |
+| Existing malformed financial row | Preserve raw identity/input; derived value unavailable; complete total cannot omit it | RawNaN unchanged; reads200/review_required; source values null, client P&L/liability unavailable; formal fee base blocked; export409 | PASS / PROVEN SQL/API/unit/browser |
+| Explicit correction | Human correction10.00 restores governed total |31.20 again | PASS / PROVEN API |
+| Historical finite precision | New writes10.000 reject; existing10.000 retains old governed engine/read behaviour without migration | Raw10.000 unchanged, final10.60 readable | PASS / PROVEN API |
+
+### Actual native editor / shared UI gate
+
+Nearest equivalents: existing Free Bet/Sportsbook guided ledger fields, associated errors, native
+Save flow, shared FinancialValue/Outcomes; inherited Account incomplete-status pattern for diagnostics.
+No new input styling, generic component system, button/copy semantics or global CSS.
+
+| Rendered probe | Result / evidence |
+|---|---|
+|1440/light +1440/dark, populated native editor | PASS / PROVEN: normal pointer Matching; invalid NaN/Infinity/-Infinity/not-money/1.234 stays editable, field name stable, aria-invalid/associated visible error, Save disabled; correction and actual-lay edit Save200, reopen6.00 |
+|760/light +760/dark | Associated validation and viewport containment PASS / PROVEN; **pointer Save BLOCKED under PD-QA-004**: no PUT after corrected200 preview, native form checkValidity true, no page error. No forced click/keyboard substitute used to claim pointer acceptance |
+| Modal geometry | Desktop left92.5/right1332.5, half-width left24/right744; top50/bottom950 within1000 height; page widths1425/1440 and745/760. Focus/Tab exercised; shared control dimensions unchanged |
+| Legacy-invalid ledger → Dashboard → Reports,760/dark | PASS / PROVEN actual Chromium: financial Unavailable + record-identity correction diagnostic; no page/console errors; rawNaN retained |
+| Full keyboard focus trap / Escape / reader / all text scales | NOT TESTED; remain PD-QA-004/remaining audit gates. Tab was exercised, not certified keyboard/reader acceptance |
+| Copy/apply/mark placed | Existing code semantics preserved / CODE-VERIFIED; no new complete clipboard/placement UI claim in this repair |
+
+The editor's nested error originally altered its implicit accessible label. Explicit visible field
+names plus described-by errors fix that without moving controls. The consistency enforcer and
+known-pitfalls register retain this invariant. The browser runner deliberately exits nonzero when
+half-width Save is blocked; those cases are not silently skipped or counted as PASS.
+
+### Focused commands / evidence limits
+
+```sh
+./scripts/run-python.sh -m pytest apps/api/tests/test_free_bet_atomic_safety.py apps/api/tests/test_account_money_safety.py apps/api/tests/test_free_bet_current_value.py apps/api/tests/test_postgres_runtime.py -q
+cd apps/web
+node node_modules/vitest/vitest.mjs run lib/free-bet-input.test.ts lib/account-money-safety.test.ts lib/tracker-summary.test.ts lib/cross-profile-reporting.test.ts lib/decimal-input.test.ts
+node node_modules/typescript/bin/tsc --noEmit --incremental false -p tsconfig.json
+```
+
+135 Python PASS =95 Free Bet +25 inherited Account +13 unchanged engine +2 adapter-only tests.
+58 focused web PASS =11 Free Bet +18 Account +29 existing summary/decimal. Focused Ruff, ESLint,
+TypeScript and money/Free Bet module mypy PASS. These are bounded regressions, not all numeric inputs,
+all strategy configurations, whole-platform readiness or calculator manual sign-off.
+
+SQLite transaction execution PROVEN. Shared PostgreSQL adapter/context path CODE-VERIFIED; two adapter
+unit tests PASS, **actual isolated PostgreSQL execution NOT TESTED**. No operational/hosted database used.
+Full native/imported award lifecycle, complete XLSX/import/restore confirmation, concurrent native
+submissions/network-loss delivery and all other #114 journeys remain NOT TESTED.
+
+Browser: `node scripts/verify_free_bet_atomic_repair.mjs`; `--legacy-only` isolates the legacy/report
+probe. Fixture launcher is the existing notification acceptance API script on8030, own runtime above;
+same-session restart uses uvicorn with that already-existing database, not reseeding. Diagnostic JSON
+stays there, never committed. Web3030 uses existing authenticated environment/internalAPI8030 and
+webpack with shared installed dependencies; no normal/manual runtime touched.
+
+Harness issues were recorded separately: initial synthetic Account lacked mandatory lifecycle;
+old test used wrong DTO reference key/omitted required PUT fields/persisted-state casing; Turbopack
+rejected out-of-root dependency symlinks so existing webpack support was used. An intermediate repair
+opened lazy Profile settings inside the SQL write and hit SQLite locking; preload/cache fixed it.
+An isolated runtime also logged concurrent default-lookup seeding's UNIQUE failure; no lookup
+implementation changed or whole-bootstrap assurance claimed. No numerical expectation was replaced
+with production output, no broad harness rewrite, no private inputs copied.
+
+### Integration / rollback / remaining repairs
+
+No automatic merge. Review Account checkpoint first, then this stacked Free Bet delta
+`c4b9bb4..b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f`; integrate only with approval. Existing main/normal services remain vulnerable to
+the original findings until integration. No schema migration or data cleanup accompanies it.
+Rollback is a reviewed revert of the Free Bet fix (then Account only if separately necessary), not
+source deletion, recalculation or balance rewriting. Preserve this canonical audit addendum when
+later reconciling the separate audit branch; do not replace Batch2 history.
+
+Next bounded implementation: PD-QA-015 completed Blackjack global source uniqueness across
+Profiles/Accounts including concurrent attempts. PD-QA-004 remains open for modal/focus/Escape and
+half-width Save; #115 exposure/dependencies and #96 owner/provider credential rotation stay separate.
+Other populated ledgers, PostgreSQL recovery, large datasets, screen-reader and historical request
+clarifications remain outstanding. GitHub evidence synced on 2026-09-12: #91 comment5648522825,
+#114 comment5648522892, #36 comment5648522984, #92 comment5648523060. No automatic issue closure.

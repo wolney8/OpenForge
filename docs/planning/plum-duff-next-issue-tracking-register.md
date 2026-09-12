@@ -13,6 +13,28 @@ entry without a verified issue link must remain explicitly `SYNC PENDING`.
 
 ## Active request capture and acceptance
 
+### #91 / #114 PD-QA-014 Free Bet repair — 2026-09-12
+
+IMPLEMENTED ON STACKED BRANCH ONLY; browser handoff incomplete under PD-QA-004, integration pending.
+Branch `repair/free-bet-atomic-91`, basec4b9bb4412cb0e29c78df4919624c58db57633d6,
+inherits unchanged Account fix102848a1214730e5065e9db04a66047dce6cd82b. Added fix
+b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f. Strict field-specific input/effective PATCH validation, transaction-contained
+calculation/response serialization, alternate staged-import protection and lossless legacy-invalid
+read/report diagnostics reuse the existing engine. No formulas, actual financial history or bridge
+architecture changed. See [canonical audit addendum](../audits/platform-quality-audit.md) and
+[field policy](../contracts/free-bet-current-value-contract.md).
+
+95 Free Bet,25 inherited Account,13 existing engine and2 adapter-only tests pass;58 focused web tests
+pass. Actual desktop/light+dark correction/Save/reopen passes. Half-width/light+dark validation
+passes, **pointer Save BLOCKED: no PUT**; keep PD-QA-004 open. Legacy ledger/Dashboard/Reports display
+Unavailable with identity diagnostics, no runtime errors and no source rewrite. Actual PostgreSQL,
+full import/restore/award-group and complete keyboard/Escape execution are NOT TESTED.
+Main remains f7 and unfixed until Account then Free Bet are approved/integrated; no automatic merge.
+PD-QA-015 completed-session global uniqueness/concurrency is next. #115/#96 and remaining audit/
+feature work stay separate. Manual comparison deferred by Will; no scheduled date; resume only on
+supplied observations/explicit request. #91/#114/#36/#92 evidence synced on 2026-09-12; no issue closure.
+This supersedes PD-QA-014 as a queued next task in the historical Account receipt below, not its evidence.
+
 ### #91 / #114 isolated Account repair — 2026-09-12
 
 PD-QA-002/007: IMPLEMENTED ON REPAIR BRANCH ONLY; integration and Will acceptance pending.

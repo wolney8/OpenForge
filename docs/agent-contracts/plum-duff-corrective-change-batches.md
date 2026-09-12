@@ -1,6 +1,28 @@
 # Plum Duff Corrective Change Batches
 
 This register prevents a reported correction from disappearing between report and verification.
+
+## PD-QA-014 Free Bet atomic repair — 2026-09-12
+
+IMPLEMENTED ON REPAIR BRANCH; NEEDS VERIFICATION for browser/remaining backend acceptance.
+On repair/free-bet-atomic-91, stacked on
+c4b9bb4412cb0e29c78df4919624c58db57633d6 (contains102848a Account repair).
+Native/update/placement/conversion/award shared write preparation, legacy-invalid read/report
+diagnostics and actual populated editor regression are one bounded batch. Reuse Free Bet current
+value engine/response, Account shared exact money validation, existing ledger field/error/Outcomes
+primitives; no equations/design/bridge replacement. Preserve all other branches/runtimes/data.
+Main remains unfixed; PD-QA-015/#115/#96/PD-QA-004 remain separate.
+Added fix b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f; no merge/deployment/automatic closure.
+
+| Item | Requested outcome | Result / evidence / remaining gate |
+|---|---|---|
+| PD-QA-014.1 | Field-specific pre-write validation, effective PATCH and controlled denial | PASS / PROVEN focused API;95 Free Bet cases include malformed/non-finite/omitted/blank/null/precision/zero and real foreign Account/Profile fixtures |
+| PD-QA-014.2 | Atomic calculation/response preparation and no false success | PASS / PROVEN SQLite; injected calculation/JSON create+update faults roll back row/audit; conversion failed target has no destination/success notification |
+| PD-QA-014.3 | Preserve invalid raw records; truthful affected aggregates | PASS / PROVEN unit/API and actual legacy ledger/Dashboard/Reports; money unavailable, identity diagnostics, no source rewrite |
+| PD-QA-014.4 | Independent SNR/SR and converted values | PASS / PROVEN references7.72/9.65, actual7 settlements10.60/20.60 and report31.20; converted actual6 SNR7.40/SR17.40, retry one row |
+| PD-QA-014.5 | Native invalid → associated error → correction → Save/reopen | Desktop both themes PASS / PROVEN; half-width both themes validation PASS but pointer Save BLOCKED/no PUT under PD-QA-004; full keyboard/Escape NOT TESTED |
+| PD-QA-014.6 | Alternate import/award boundary | Shared new-write consumers CODE-VERIFIED; staged-import two-row rollback PASS / PROVEN fixture; full import/restore and award-group execution NOT TESTED |
+| PD-QA-014.7 | Backend and inherited Account regressions |25 Account+13 existing engine+2 adapter-only tests PASS; actual PostgreSQL transaction execution NOT TESTED (no authorised isolated environment) |
 Working IDs are local delivery controls, not automatic GitHub issues.
 
 ## 2026-09-11 Calculator Correctness And Conversion Acceptance Repair

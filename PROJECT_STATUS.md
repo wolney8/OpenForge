@@ -9,6 +9,18 @@ durable requirements.
 
 ## Current state
 
+- **#91 / #114 Free Bet repair (stacked, not integrated):** `repair/free-bet-atomic-91`
+  starts at Account checkpoint `c4b9bb4412cb0e29c78df4919624c58db57633d6`, containing
+  Account fix102848a. Added fix `b7e4a9c7e7abd6964ca2f9b95cf1681e68da5e7f` validates effective Free Bet inputs and prepares
+  calculation/response/JSON before transaction commit; legacy invalid P&L is explicitly unavailable.
+  Independent SNR/SR/converted settlement and atomicity regressions pass. Desktop editor correction/
+  Save/reopen passes in both themes; half-width pointer Save is **BLOCKED under PD-QA-004** in both
+  themes, despite working associated validation. Actual PostgreSQL, full workbook import/award-group
+  execution and full keyboard/Escape acceptance remain NOT TESTED. See the
+  [same audit / Free Bet addendum](docs/audits/platform-quality-audit.md).
+  **Main/normal services remain unfixed pending approved Account-first, Free-Bet-second integration.**
+  Next implementation is PD-QA-015, not calculator manual sign-off. GitHub #91/#114/#36/#92 evidence synced on 2026-09-12; issues remain open.
+
 - **#91 Account repair (not integrated):** branch `repair/account-money-91` based on application
   `f7a3b35073ecc87cdf8f8f881129f221ec44d395`; original audit checkpoints c65169f/7d75b5a
   remain evidence. Canonical exact-cent validation and incomplete cash totals have focused API/unit
@@ -18,7 +30,7 @@ durable requirements.
 - Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit
   request. Frozen manual f7/3020/8020, original observations and unmerged Multi-Lay
   `215193b7fcb5b11a28e23a4531d2a45434545dc1` remain protected; no calculator sign-off.
-- Next separate repairs: PD-QA-014 Free Bet atomic validation; PD-QA-015 completed-source
+- Next separate repairs: PD-QA-015 completed-source
   uniqueness/concurrency; PD-QA-004 modal focus/Escape/pointer access; #115 dependency exposure;
   #96 owner/provider rotation. #114 remaining audit coverage is not complete.
 
