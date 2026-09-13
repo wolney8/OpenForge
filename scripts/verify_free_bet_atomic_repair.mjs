@@ -1,11 +1,11 @@
 // PD-QA-014: only this disposable authenticated synthetic repair runtime.
 import fs from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { chromium, request } from "@playwright/test";
+import { chromium, request, expect } from "@playwright/test";
 const modalRepair=process.argv.includes("--modal-repair");
 const runtime=modalRepair?"/tmp/openforge-modal-114-repair":"/tmp/openforge-free-bet-atomic-91-repair";
 const api=modalRepair?"http://127.0.0.1:8034":"http://127.0.0.1:8030", web=modalRepair?"http://localhost:3034":"http://localhost:3030";
-const captureName=process.argv.includes("--stress")?"free-bet-stress-browser.json":process.argv.includes("--reflow-only")?"free-bet-320-browser.json":"free-bet-browser.json";
+const captureName=process.argv.includes("--combined-stress")?"free-bet-combined-stress-browser.json":process.argv.includes("--stress")?"free-bet-stress-browser.json":process.argv.includes("--reflow-only")?"free-bet-320-browser.json":"free-bet-browser.json";
 const token=fs.readFileSync(`${runtime}/session-token`,"utf8").trim();
 const client=await request.newContext({baseURL:api,extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
 const auth=await client.get("/auth/session");
@@ -28,7 +28,7 @@ for(const [name,type] of [["Bet365","Bookie"],["Smarkets","Exchange"]]){
 await client.put(`/profiles/${id}/exchange-commissions`,{data:{exchange_name:"Smarkets",commission_rate:"0.02"}});
 const browser=await chromium.launch({headless:true}), observations=[];
 try{
-  for(const width of (process.argv.includes("--legacy-only") ? [] : process.argv.includes("--baseline")?[760]:process.argv.includes("--reflow-only")?[320]:process.argv.includes("--stress")?[1440,320]:[1440,760,390]))for(const theme of ["light","dark"]){
+  for(const width of (process.argv.includes("--legacy-only") ? [] : process.argv.includes("--baseline")?[760]:process.argv.includes("--reflow-only")||process.argv.includes("--combined-stress")?[320]:process.argv.includes("--stress")?[1440,320]:[1440,760,390]))for(const theme of ["light","dark"]){
     const made=await client.post(`/profiles/${id}/free-bets`,{data:{
       event_name:`Synthetic ${width} ${theme}`,offer_type:"Bet & Get",bet_type:"Single",fixture_type:"Football",
       bookmaker:"Bet365",status:"Placed",result:"Pending",retention_mode:"SNR",match_strategy:"Standard",
@@ -42,7 +42,7 @@ try{
     const errors=[];page.on("pageerror",e=>{errors.push(e.message);console.log("PAGE ERROR",e.message);});
     await page.goto(`${web}/profiles/${id}/tracker/free-bets?record=${row.free_bet_id}`,{waitUntil:"domcontentloaded"});
     await page.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem("openforge-theme",t);},theme);
-    if(process.argv.includes("--stress")&&width===1440)await page.evaluate(()=>{document.documentElement.style.fontSize="200%";});
+    if((process.argv.includes("--stress")&&width===1440)||process.argv.includes("--combined-stress"))await page.evaluate(()=>{document.documentElement.style.fontSize="200%";});
     const dialog=page.getByRole("dialog");await dialog.waitFor();
     console.log("INITIAL FOCUS",await dialog.evaluate(el=>el.contains(document.activeElement)));
     if(modalRepair&&!process.argv.includes("--baseline")){
@@ -61,17 +61,19 @@ try{
     for(const raw of ["NaN","Infinity","-Infinity","not-money","1.234"]){
       await input.fill(raw);
       console.log("ENTERED",raw);
-      await page.waitForTimeout(100);
       if(!await input.count()){
         console.log("EDITOR AFTER INVALID",await page.locator("body").innerText());
         throw Error("Free-bet input disappeared after invalid entry");
       }
       await input.blur();
+      await expect(input).toHaveAttribute("aria-invalid","true");
+      await expect(save).toBeDisabled();
       if(await input.inputValue()!==raw || await input.getAttribute("aria-invalid")!=="true" || await save.isEnabled()){
         console.log("INVALID STATE",raw,{value:await input.inputValue(),invalid:await input.getAttribute("aria-invalid"),saveEnabled:await save.isEnabled()});throw Error(`Invalid input accepted ${raw}`);
       }
       const desc=(await input.getAttribute("aria-describedby")??"").split(" ").find(x=>x.endsWith("-error"));
-      if(!desc || !await dialog.locator(`#${desc}`).isVisible())throw Error("Associated field error absent");
+      if(!desc)throw Error("Associated field error identity absent");
+      await expect(dialog.locator(`#${desc}`)).toBeVisible();
     }
     await input.fill("10.00");await input.blur();
     const lay=dialog.getByLabel("Lay actual",{exact:true});await lay.fill("not-money");

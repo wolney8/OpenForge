@@ -3,6 +3,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 import {chromium,request} from "@playwright/test";
 const runtime="/tmp/openforge-modal-114-repair",web="http://localhost:3034";
+const converted=process.argv.includes("--converted");
 const token=fs.readFileSync(runtime+"/session-token","utf8").trim();
 const api=await request.newContext({baseURL:"http://127.0.0.1:8034",extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
 assert.equal((await(await api.get("/auth/session")).json()).email,"notification-acceptance@example.invalid");
@@ -16,31 +17,61 @@ try{
  const context=await browser.newContext({viewport:{width:760,height:1000},colorScheme:"light",permissions:["clipboard-read","clipboard-write"],reducedMotion:"reduce"});
  await context.addCookies([{name:"pd_session",value:token,domain:"localhost",path:"/"}]);
  const page=await context.newPage();page.setDefaultTimeout(20000);
- for(const [retention,reference,final] of [["SNR","7.72","10.60"],["SR","9.65","20.60"]]){
-  const response=await api.post(`/profiles/${id}/free-bets`,{data:{event_name:`Synthetic ${retention} full journey`,offer_type:"Bet & Get",bet_type:"Single",fixture_type:"Football",bookmaker:"Bet365",status:"Available",result:"Pending",retention_mode:retention,match_strategy:"Standard",free_bet_value:"10.00",back_odds:"5.00",lay_odds_1:"5.20",lay_actual:"",lay_matched_stake_1:"",exchange_name:"Smarkets",date_settled:"2026-09-13T12:00:00"}});
-  assert.equal(response.status(),201,await response.text());const row=await response.json();assert.equal(row.base_reference_lay_stake,reference);
+ for(const [retention,reference,final] of (converted?[["SNR","6.49","7.40"],["SR","9.74","17.40"]]:[["SNR","7.72","10.60"],["SR","9.65","20.60"]])){
+  let row;
+  if(converted){
+   await page.goto(`${web}/fund-manager/calculators?backStake=10.00&backOdds=3.00&layOdds=3.10&exchangeCommission=0.02`,{waitUntil:"domcontentloaded"});
+   await page.locator("#calculator-bet-type").selectOption(retention);
+   await page.getByRole("button",{name:"Convert to opportunity",exact:true}).click();
+   const conversion=page.locator('[data-pd-id="calculator-conversion.dialog"]');await conversion.waitFor();
+   await conversion.getByLabel("Event / fixture",{exact:true}).fill(`Synthetic converted ${retention}`);
+   await conversion.locator("label").filter({hasText:/^Offer type/}).locator("select").selectOption("Bet & Get");
+   await conversion.locator("label").filter({hasText:/^Fixture type/}).locator("select").selectOption("Football");
+   await conversion.locator("label.multi-profile-target-row").filter({hasText:(body.profile??body).profile_code}).click();
+   const account=conversion.locator("label").filter({hasText:/^Bookmaker Account/}).locator("select");
+   await account.locator("option").filter({hasText:/Bet365/}).waitFor({state:"attached"});
+   await account.selectOption(await account.locator("option").filter({hasText:/Bet365/}).getAttribute("value"));
+   const [saved]=await Promise.all([page.waitForResponse(r=>r.url().endsWith("/calculator-conversions/standard")&&r.request().method()==="POST"),conversion.getByRole("button",{name:"Convert to opportunity",exact:true}).click()]);
+   assert.equal(saved.status(),200);const result=(await saved.json()).results[0];assert.notEqual(result.state,"failed");
+   await conversion.waitFor({state:"hidden"});
+   await page.locator(".calculator-conversion-receipt").getByRole("link",{name:"Open row"}).click();
+   row=await(await api.get(`/profiles/${id}/free-bets/${result.record_id}`)).json();
+   assert.equal(row.status,"Prospecting");assert(row.user_notes.includes("Calculator source:"),"conversion provenance missing");
+  }else{
+   const response=await api.post(`/profiles/${id}/free-bets`,{data:{event_name:`Synthetic ${retention} full journey`,offer_type:"Bet & Get",bet_type:"Single",fixture_type:"Football",bookmaker:"Bet365",status:"Available",result:"Pending",retention_mode:retention,match_strategy:"Standard",free_bet_value:"10.00",back_odds:"5.00",lay_odds_1:"5.20",lay_actual:"",lay_matched_stake_1:"",exchange_name:"Smarkets",date_settled:"2026-09-13T12:00:00"}});
+   assert.equal(response.status(),201,await response.text());row=await response.json();
+  }
+  if(!converted)assert.equal(row.base_reference_lay_stake,reference);
   const url=`${web}/profiles/${id}/tracker/free-bets?record=${row.free_bet_id}`;
   await page.goto(url,{waitUntil:"domcontentloaded"});let dialog=page.locator('[data-pd-id="free-bets.editor.dialog"]');await dialog.waitFor();
+  if(converted){
+   await dialog.getByRole("tab",{name:/Settlement/}).first().click();
+   await dialog.getByLabel("Settles",{exact:true}).fill("2026-09-13T12:00");
+   const [available]=await Promise.all([page.waitForResponse(r=>r.url().endsWith(`/free-bets/${row.free_bet_id}`)&&r.request().method()==="PUT"&&r.request().postDataJSON()?.status==="Available"),dialog.locator("label").filter({hasText:/^Status/}).locator("select").selectOption("Available")]);
+   assert.equal(available.status(),200);assert.equal((await available.json()).base_reference_lay_stake,reference);
+  }
   await dialog.getByRole("tab",{name:/Matching/}).first().click();
   const copy=dialog.getByRole("button",{name:"Copy Standard free-bet lay stake and mark placed",exact:true});await copy.click();
   assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),reference);
-  await dialog.getByLabel("Lay actual",{exact:true}).fill("7.00");await dialog.getByLabel("Lay actual",{exact:true}).blur();
+  await dialog.getByLabel("Lay actual",{exact:true}).fill(converted?"6.00":"7.00");await dialog.getByLabel("Lay actual",{exact:true}).blur();
   const [placed]=await Promise.all([page.waitForResponse(r=>r.url().endsWith(`/free-bets/${row.free_bet_id}`)&&r.request().method()==="PUT"),dialog.getByRole("button",{name:"Save",exact:true}).click()]);
   assert.equal(placed.status(),200);assert.equal((await placed.json()).status,"Placed");await dialog.waitFor({state:"hidden"});
   await page.goto(url,{waitUntil:"domcontentloaded"});dialog=page.locator('[data-pd-id="free-bets.editor.dialog"]');await dialog.waitFor();
   await dialog.getByRole("tab",{name:/Settlement/}).first().click();
   const result=dialog.locator("label").filter({hasText:/^Result/}).locator("select");
+  console.log("BEFORE SETTLEMENT",{retention,id:row.free_bet_id,result:await result.inputValue(),disabled:await result.isDisabled()});
+  assert.equal(await result.inputValue(),"Pending","fresh placed hand must await an actual result");
   const [settled]=await Promise.all([page.waitForResponse(r=>r.url().endsWith(`/free-bets/${row.free_bet_id}`)&&r.request().method()==="PUT"),result.selectOption("Back Won")]);
   assert.equal(settled.status(),200);const value=await settled.json();assert.equal(value.status,"Settled");assert.equal(value.final_net_pnl,final);
   const reopened=await(await api.get(`/profiles/${id}/free-bets/${row.free_bet_id}`)).json();
-  assert.equal(reopened.lay_actual,"7.00");assert.equal(reopened.final_net_pnl,final);
-  observations.push({retention,reference,copied:reference,actual:"7.00",status:"Settled",result:"Back Won",final});
+  assert.equal(reopened.lay_actual,converted?"6.00":"7.00");assert.equal(reopened.final_net_pnl,final);
+  observations.push({retention,reference,copied:reference,actual:converted?"6.00":"7.00",status:"Settled",result:"Back Won",final});
  }
  await page.goto(`${web}/profiles/${id}/tracker/reports`,{waitUntil:"domcontentloaded"});
- await page.getByText("£ 31.20",{exact:true}).first().waitFor();
+ await page.getByText(converted?"£ 24.80":"£ 31.20",{exact:true}).first().waitFor();
  await page.screenshot({path:runtime+"/free-bet-report-half-light.png",fullPage:true});
- await page.reload({waitUntil:"domcontentloaded"});await page.getByText("£ 31.20",{exact:true}).first().waitFor();
+ await page.reload({waitUntil:"domcontentloaded"});await page.getByText(converted?"£ 24.80":"£ 31.20",{exact:true}).first().waitFor();
  await context.close();
- fs.writeFileSync(runtime+"/free-bet-complete-journey.json",JSON.stringify({profileId:id,observations,combinedReport:"31.20",refresh:true},null,2));console.log(JSON.stringify(observations));
-}catch(error){fs.writeFileSync(runtime+"/free-bet-complete-journey.json",JSON.stringify({profileId:id,observations,blocker:String(error)},null,2));throw error;}
+ fs.writeFileSync(runtime+(converted?"/free-bet-converted-journey.json":"/free-bet-complete-journey.json"),JSON.stringify({profileId:id,observations,combinedReport:converted?"24.80":"31.20",refresh:true,...(converted?{journeyStatus:"PARTIAL",historyLineage:"Provenance retained in API notes; UI Notes locator absent in settled display, no History tab. Required history/award-lineage display unproven; do not count this as a complete journey."}:{})},null,2));console.log(JSON.stringify(observations));
+}catch(error){fs.writeFileSync(runtime+(converted?"/free-bet-converted-journey.json":"/free-bet-complete-journey.json"),JSON.stringify({profileId:id,observations,blocker:String(error)},null,2));throw error;}
 finally{await browser.close();await api.dispose();}

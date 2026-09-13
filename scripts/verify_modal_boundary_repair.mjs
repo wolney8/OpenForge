@@ -17,14 +17,15 @@ for(const [account,type] of [["Bet365","Bookie"],["Smarkets","Exchange"]]){
 }
 const browser=await chromium.launch({headless:true}), observations=[];
 try{
- for(const width of (process.argv.includes("--blackjack-only")?[]:[1440,760,390]))for(const theme of ["light","dark"]){
-  const context=await browser.newContext({viewport:{width,height:1000},colorScheme:theme,reducedMotion:"reduce"});
+ for(const width of (process.argv.includes("--blackjack-only")?[]:process.argv.includes("--motion-frame")?[760]:process.argv.includes("--stress")?[1440,320]:[1440,760,390]))for(const theme of ["light","dark"]){
+  const context=await browser.newContext({viewport:{width,height:1000},colorScheme:theme,reducedMotion:process.argv.includes("--motion")?"no-preference":"reduce"});
   await context.addCookies([{name:"pd_session",value:token,domain:"localhost",path:"/"}]);
   const page=await context.newPage();page.setDefaultTimeout(20000);
   const errors=[];page.on("pageerror",error=>errors.push(error.message));
   page.on("request",r=>{if(r.url().includes("calculator-conversions"))console.log("CONVERSION REQUEST",r.url());});
   await page.goto(`${web}/fund-manager/calculators?backStake=10.00&backOdds=3.00&layOdds=3.10&exchangeCommission=0.02`,{waitUntil:"domcontentloaded"});
   await page.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem("openforge-theme",t);},theme);
+  if(process.argv.includes("--stress")&&width===1440)await page.evaluate(()=>document.documentElement.style.fontSize="200%");
   const convert=page.getByRole("button",{name:"Convert to opportunity",exact:true});await convert.waitFor();
   await convert.click();
   const dialog=page.locator('[data-pd-id="calculator-conversion.dialog"]');await dialog.waitFor();
@@ -65,12 +66,28 @@ try{
   assert.equal(await page.getByLabel("Back stake",{exact:true}).inputValue(),"10.00");
   await receipt.getByRole("link",{name:"Open row"}).click();
   const native=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await native.waitFor();
+  const initialFrames=await native.evaluate(async el=>{
+   const result=[];for(let i=0;i<4;i++){await new Promise(requestAnimationFrame);const r=el.getBoundingClientRect(),s=getComputedStyle(el);result.push({y:r.y,height:r.height,opacity:Number(s.opacity),transform:s.transform,animation:s.animationName});}return result;
+  });
+  if(!process.argv.includes("--motion"))assert(initialFrames.every(r=>r.animation==="none"&&r.opacity===1&&r.transform==="none"),"reduced-motion modal not static");
+  if(process.argv.includes("--motion")){
+   if(process.argv.includes("--motion-frame")){
+    const mid=await native.evaluate(el=>{el.style.animation="none";void el.offsetHeight;el.style.animation="";const a=el.getAnimations().find(a=>a.animationName==="workflow-editor-reveal");if(!a)throw Error("native reveal animation absent");a.pause();a.currentTime=60;const s=getComputedStyle(el);return {opacity:Number(s.opacity),transform:s.transform};});
+    assert(mid.opacity>0&&mid.opacity<1&&mid.transform!=="none","controlled intermediate reveal frame");
+    initialFrames.push({controlledIntermediate:mid});
+   }
+   await page.keyboard.press("Escape");await native.waitFor({state:"hidden"});
+   await page.goto(web+row.href,{waitUntil:"domcontentloaded"});await native.waitFor();
+  }
+  await native.getByRole("tab",{name:/Matching/}).first().click();
   const frames=await native.evaluate(async el=>{
     const frames=[];
-    for(let i=0;i<6;i++){await new Promise(requestAnimationFrame);const r=el.getBoundingClientRect();frames.push({x:r.x,y:r.y,width:r.width,height:r.height});}
+    for(let i=0;i<12;i++){await new Promise(requestAnimationFrame);const r=el.getBoundingClientRect();frames.push({x:r.x,y:r.y,width:r.width,height:r.height,animations:el.getAnimations({subtree:true}).map(a=>({time:a.currentTime,state:a.playState}))});}
     return frames;
   });
   assert(frames.every(r=>r.x>=0&&r.x+r.width<=width&&r.height>0),"intermediate modal containment");
+  await native.getByRole("tab").first().click();
+  await native.getByRole("tab",{name:/Matching/}).first().click();
   assert(await native.evaluate(el=>el.contains(document.activeElement)),"sportsbook initial focus");
   const buttons=native.locator("button:not(:disabled)").filter({visible:true});
   await buttons.last().focus();await page.keyboard.press("Tab");
@@ -79,7 +96,7 @@ try{
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth);
   assert(!overflow,"page overflow");
   assert.deepEqual(errors,[]);
-  observations.push({width,theme,conversionSave:200,receipt:true,focusReturn:true,sportsbookFocusEscape:true,recordId:row.record_id,sourcePreserved:true});
+  observations.push({width,theme,textEnlargement:process.argv.includes("--stress")&&width===1440?"root font-size200%, not browser zoom":"none",motion:process.argv.includes("--motion")?"no-preference":"reduce",initialFrames,frames,conversionSave:200,receipt:true,focusReturn:true,sportsbookFocusEscape:true,recordId:row.record_id,sourcePreserved:true});
   console.log(JSON.stringify(observations.at(-1)));await context.close();
  }
  const context=await browser.newContext({viewport:{width:760,height:1000},colorScheme:"dark",reducedMotion:"reduce",recordVideo:{dir:runtime+"/review-video"}});
@@ -127,7 +144,7 @@ try{
  await page.getByText("£ (5.00)",{exact:true}).first().waitFor();
  observations.push({journey:"blackjack-live-to-casino",width:760,theme:"dark",stake:"5.00",reviewedBalanceResult:"-5.00",savedResult:"-5.00",retrySameRecord:true,secondAccountRejected:409,oneActivity:true,refreshHistory:true});
  await context.close();
- fs.writeFileSync(runtime+"/modal-conversion-browser.json",JSON.stringify({profileId:id,observations},null,2));
+ fs.writeFileSync(runtime+(process.argv.includes("--motion-frame")?"/modal-interrupted-frame-browser.json":process.argv.includes("--stress")?"/modal-stress-browser.json":process.argv.includes("--motion")?"/modal-motion-browser.json":"/modal-conversion-browser.json"),JSON.stringify({profileId:id,observations},null,2));
 }catch(error){
  fs.writeFileSync(runtime+"/modal-conversion-browser.json",JSON.stringify({profileId:id,observations,blocker:String(error)},null,2));throw error;
 }finally{await browser.close();await api.dispose();}

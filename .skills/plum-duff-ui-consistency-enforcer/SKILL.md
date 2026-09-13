@@ -61,6 +61,9 @@ use the canonical primitive and computed styling.
 ## 3. Non-negotiable implementation rules
 
 - Use existing Plum Duff components, classes, tokens and Material Symbols before adding local CSS.
+- Verify intrinsic header/action sizing with root text enlargement separately from320px reflow.
+  Labelled targets must wrap/bound their minimum width without shrinking text, hiding controls or
+  letting an identity label overflow its shrinking flex target. Record combined stress separately.
 - Portal viewport-level dialogs to `document.body` when an ancestor can constrain fixed positioning.
 - Dialog header and footer remain visible; only the intended body or table viewport scrolls.
 - No dialog child may enlarge the browser viewport or cause page-level horizontal scrolling.

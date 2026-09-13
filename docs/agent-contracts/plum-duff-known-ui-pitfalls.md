@@ -7,7 +7,15 @@ dialog top layer and shared mounted-panel focus lifecycle; async openers need an
 ref. Pending Escape must not discard a running save; dirty Escape retains confirmation semantics.
 Regression: verify_modal_boundary_repair.mjs and verify_free_bet_atomic_repair.mjs use real pointer
 hit-testing, nested confirmation, Tab containment and connected-trigger restoration. Desktop 200%
-background reflow remains a separate PD-QA-003 gap, not hidden overflow.
+background reflow belongs to PD-QA-005; PD-QA-003 is missing-Profile handling.
+
+## PD-QA-005 — typography-aware intrinsic actions
+
+The shared identity trigger must retain intrinsic avatar/role/arrow width; its parent action group
+wraps rather than compressing children outside the target. Ledger Add Row uses a bounded minimum,
+auto height and wrapping, not an absolute rem minimum that widens a narrow shell at enlarged text.
+Regression: Free Bet and modal probes distinguish1440px200% root text,320px unscaled, and320px200%
+combined stress. Poll visible associated validation state, not timing sleeps or forced clicks.
 
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.

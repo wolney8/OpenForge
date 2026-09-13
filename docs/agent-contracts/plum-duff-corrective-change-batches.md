@@ -4,6 +4,12 @@ This register prevents a reported correction from disappearing between report an
 
 ## PD-QA-004 shared modal boundary — 2026-09-13
 
+Next checkpoint PQA-U05/U06/U07: PD-QA-005 shared header text-reflow repair verified on candidate.
+200% root text at1440px identifies Fund Manager identity arrow right1496.5 outside its
+button right1440.7. Equivalent: canonical three-region shell action group with intact controls.
+Investigate intrinsic sizing/wrapping; no hidden overflow or text reduction. PD-QA-003 remains
+missing-Profile handling (earlier addendum reflow attribution was mistaken).
+
 Base f57e71ad1b7d35070154b96d3e4f33b15f780d24 on repair/modal-boundary-114.
 Approved scope: reuse unchanged ledger surfaces inside the existing native-dialog top-layer
 pattern (ConfirmationDialog), with shared focus lifecycle. No financial or authentication changes.
@@ -13,7 +19,7 @@ pattern (ConfirmationDialog), with shared focus lifecycle. No financial or authe
 | PD-QA-004.1 | Native initial focus and safe Escape, nested dirty confirmation | COMPLETE for tested native Free Bet/Sportsbook and conversion cases |
 | PD-QA-004.2 | Shared top-layer portal; half-width pointer Save unobstructed | COMPLETE at1440/760/390 both themes;320 native Free Bet |
 | PD-QA-004.3 | Tab containment, return focus, async/form preservation | COMPLETE scoped Tab/dirty confirmation/async503 retry and pending Escape; Blackjack explicit opener |
-| PD-QA-004.4 | Consumer/theme/width/motion rendered evidence, combined journeys | NEEDS VERIFICATION — desktop200% page overflow; non-reduced-motion interruption/reader/remaining variants open |
+| PD-QA-004.4 | Consumer/theme/width/motion rendered evidence, combined journeys | COMPLETE for scoped shared modal gate: normal/stress/reduced/intermediate interrupted close-reopen passes; reader/remaining whole-platform variants stay open in audit |
 
 Protected main/manual/development/audit databases remain unchanged. New synthetic runtime3034/8034.
 GitHub reports Vercel success deployments for preceding repair and audit SHAs; deployment protection/
