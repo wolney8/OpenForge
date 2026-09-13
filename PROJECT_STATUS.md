@@ -15,7 +15,7 @@ Normal app remains unfixed. The isolated candidate is at http://localhost:3034 (
 First measured baseline: assessments33/87 (38%); complete journeys exercised and passing5/24
 (21% each); competitor cells7/27 (26%, documentation only); requests4/133 (3%).
 These are coverage measures, not readiness or estimated time remaining. See the
-[current detailed audit](docs/audits/platform-quality-audit.md#measured-review-checkpoint--2026-09-13).
+[current detailed audit](docs/audits/platform-quality-audit.md#measured-scorecard-v1--2026-09-13--114-comment5652511529).
 Native pointer Save/focus and populated financial journeys now have candidate evidence;
 200% desktop text still produces background page overflow. PostgreSQL, reader testing and
 remaining journeys are open. Local review handoff is withheld pending the remaining UI gate.

@@ -1193,6 +1193,15 @@ This conservative baseline intentionally does not promote the indexed backlog in
 Next original+clarified source set: #70/#82 restriction intelligence, #85/#106 observation/freshness,
 #111 analytics. PD-FUTURE-001–018 source gaps remain visible; nothing is merged/deleted/deprioritised.
 
+### Current online handoff receipt — 2026-09-13
+
+#114 living5652511529 updated; #91 comment5652681682, #36 comment5652681735,
+#92 comment5652681789. Published handoff explicitly identifies local-only report745a382 and
+candidate46149c3; no fabricated GitHub file link or push/deployment claim.
+Protected API8010/8020/8013/8024/8026/8030 and candidate8034 health200; candidate3034 login200.
+Latest complete modal probe JSON includes six width/theme conversion records and actual Blackjack
+report/retry/refresh; half-dark injected503 preserved form and pending Escape, then retry succeeded.
+
 ### PD-QA-004 candidate evidence and review gates — 2026-09-13
 
 Product repair commit a7a4e74fe633c410056889c500912e53dc01ba99 (local only; push withheld).
