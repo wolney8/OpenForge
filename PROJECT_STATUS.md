@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-09-11_
+_Last updated: 2026-09-13_
 
 This is the short entry point for current state and acceptance. Use the
 [milestone readiness map](docs/planning/openforge-milestone-contract-fixture-readiness.md) for full
@@ -8,6 +8,22 @@ sequencing and the [request register](docs/planning/plum-duff-next-issue-trackin
 durable requirements.
 
 ## Current state
+
+Current reporting: audit/platform-quality-114 (documentation only). Modal candidate:
+repair/modal-boundary-114, based on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
+Normal app remains unfixed. The isolated candidate is at http://localhost:3034 (API8034).
+First measured baseline: assessments33/87 (38%); complete journeys exercised and passing5/24
+(21% each); competitor cells7/27 (26%, documentation only); requests4/133 (3%).
+These are coverage measures, not readiness or estimated time remaining. See the
+[current detailed audit](docs/audits/platform-quality-audit.md#measured-review-checkpoint--2026-09-13).
+Native pointer Save/focus and populated financial journeys now have candidate evidence;
+200% desktop text still produces background page overflow. PostgreSQL, reader testing and
+remaining journeys are open. Local review handoff is withheld pending the remaining UI gate.
+Vercel reports previous repair/audit deployments: pushes withheld to avoid unapproved Preview.
+Preview BLOCKED: safe Git-trigger configuration, isolated API/PG/auth, actual PG transactions,
+#115 disposition and #96 provider credential rotation remain prerequisites. No action needed from Will now.
+Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
+Historical entries below retain their original revision-specific evidence.
 
 The Account, Free Bet and completed-Blackjack duplicate repairs are stacked on separate reviewable
 branches; the normal app does not contain them yet. Blackjack retry/concurrency/rollback evidence

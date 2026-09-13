@@ -1,5 +1,17 @@
 # Plum Duff Next Issue Tracking Register
 
+## Current audit checkpoint —2026-09-13
+
+#114 reporting remains audit/platform-quality-114, documentation only; shared modal candidate
+repair/modal-boundary-114 stacks on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
+PD-QA-004.1–004.4 track mounted focus/top-layer Save, nested/pending Escape, return focus and
+rendered combined journeys. Scoped native/conversion pointer checks pass; desktop200% background
+reflow remains PD-QA-003. Main is not repaired. Push withheld: prior Git commits triggered Vercel.
+Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence33/5/7/4.
+Original scopes, orphan IDs, open PostgreSQL/import/award/large-data/reader/security checks remain.
+Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
+See the same platform-quality-audit.md for denominator definitions and retained prior failure evidence.
+
 _Last updated: 2026-09-11_
 
 ## Purpose
