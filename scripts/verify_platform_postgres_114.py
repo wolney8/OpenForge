@@ -5,6 +5,8 @@ The cluster is stopped in finally; evidence/backup are retained, not automatical
 """
 from __future__ import annotations
 
+import argparse
+from decimal import Decimal
 import hashlib
 import json
 import multiprocessing
@@ -31,6 +33,7 @@ def command(*args: str) -> str:
 
 
 def configure(dsn: str, runtime: str):
+    runtime = str(Path(runtime).resolve())
     import psycopg
     from openforge_api.config import settings
     from openforge_api import db
@@ -83,6 +86,7 @@ def snapshot(label):
     from test_calculator_conversions import blackjack_snapshot
     s = blackjack_snapshot()
     s["started_at"] = label
+    s["ended_at"] = "2026-09-13T04:00:00Z"
     unsigned = {k: v for k, v in s.items() if k not in {"source_checksum", "source_id"}}
     checksum = hashlib.sha256(json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {**unsigned, "source_checksum": checksum, "source_id": "blackjack-session-" + checksum[:20]}
@@ -96,14 +100,14 @@ def persisted(dsn):
         return {t: sorted(c.execute(f'SELECT row_to_json(t)::text FROM "{t}" t').fetchall()) for t in tables}
 
 
-def primary_cases(dsn, runtime):
+def primary_cases(dsn, runtime, evidence):
     import psycopg
     from openforge_api import db, free_bets, calculator_conversions as bridge
     from openforge_api.accounts import AccountPayload
     from test_free_bet_atomic_safety import payload as free_payload
     from test_account_money_safety import payload as money_payload
     client = client_for(dsn, runtime)
-    passed = []
+    passed = evidence.setdefault("passed", [])
     for pid in ["pqa114-a", "pqa114-b"]:
         db.create_profile_with_onboarding({"profile_id": pid, "display_name": "Synthetic " + pid, "profile_code": pid,
             "tracking_start_date": "2026-09-01", "current_cash_snapshot": "0.00", "enabled_modules": ["sportsbook-bets", "free-bets", "casino-offers"],
@@ -153,7 +157,11 @@ def primary_cases(dsn, runtime):
         assert r.json()["final_net_pnl"] == final
         assert client.get(f"/profiles/pqa114-a/free-bets/{ident}").json()["final_net_pnl"] == final
         with psycopg.connect(dsn) as c:
-            assert c.execute("SELECT final_net_pnl FROM free_bets WHERE free_bet_id=%s", (ident,)).fetchone()[0] == final
+            source = c.execute("SELECT free_bet_value,back_odds,lay_matched_stake_1,lay_odds_1,retention_mode,result,status FROM free_bets WHERE free_bet_id=%s", (ident,)).fetchone()
+            assert source == ("10.00", "5.00", "7.00", "5.20", retention, "Back Won", "Settled"), source
+            value, odds, actual, lay_odds = map(Decimal, source[:4])
+            cash_back = value * (odds - 1 if retention == "SNR" else odds)
+            assert cash_back - actual * (lay_odds - 1) == Decimal(final)
         financial.append({"id": ident, "retention": retention, "reference": reference, "actual": "7.00", "final": final})
     passed.append("B Free Bet validation/create-update response preparation zero-write rollback")
     passed.append("D Native SNR/SR saved/reopened independent 10.60/20.60; sum31.20")
@@ -169,6 +177,7 @@ def primary_cases(dsn, runtime):
     after = persisted(dsn)
     assert after["casino_offers"] == before["casino_offers"] and after["casino_offer_audit"] == before["casino_offer_audit"]
     assert db.list_calculator_conversion_notifications() == []
+    assert not any('"state":"Succeeded"' in row[0].replace(" ", "") for row in after["calculator_conversion_targets"])
     r = client.post("/fund-manager/calculator-conversions/blackjack", json=p)
     assert r.status_code == 200, r.text
     result = r.json()["results"][0]
@@ -191,6 +200,7 @@ def primary_cases(dsn, runtime):
             observed = [results.get(timeout=45) for _ in workers]
             codes = sorted(x[0] for x in observed)
             assert codes in ([[200, 200], [200, 409]] if same else [[200, 409]]), observed
+            evidence.setdefault("race_observations", []).append({"same_target": same, "http_codes": codes, "processes": len(workers)})
         finally:
             for w in workers:
                 w.join(timeout=20)
@@ -198,50 +208,76 @@ def primary_cases(dsn, runtime):
                 assert w.exitcode == 0
         with psycopg.connect(dsn) as c:
             assert c.execute("SELECT COUNT(*) FROM calculator_conversion_targets WHERE source_checksum=%s AND state='Succeeded'", (payload["snapshot"]["source_checksum"],)).fetchone()[0] == 1
+        successful = next(body["results"][0] for code, body in observed if code == 200)
+        retry_payload = {**payload, "profile_id": successful["profile_id"]}
+        retry = client.post("/fund-manager/calculator-conversions/blackjack", json=retry_payload)
+        assert retry.status_code == 200 and retry.json()["results"][0]["record_id"] == successful["record_id"]
     with psycopg.connect(dsn) as c:
         assert c.execute("SELECT COUNT(*),SUM(final_net_pnl::numeric) FROM casino_offers").fetchone() == (3, 45)
     assert len(db.list_calculator_conversion_notifications()) == 3
+    with psycopg.connect(dsn) as c:
+        for pid, ident, link in c.execute("SELECT target_profile_id,destination_record_id,notification_link FROM calculator_conversion_targets WHERE state='Succeeded'"):
+            assert link == f"/profiles/{pid}/tracker/casino-offers?record={ident}&source=calculator-conversion"
+    evidence["casino_count"] = 3
+    evidence["casino_total"] = "45.00"
+    evidence["notification_count"] = 3
     passed.append("C Blackjack fault rollback, retry, cross-target and separate-process same/cross-target races")
     return {"passed": passed, "free_bets": financial, "blackjack": p, "casino_id": result["record_id"], "snapshot": persisted(dsn)}
 
 
 def main():
-    root = Path(tempfile.mkdtemp(prefix="openforge-pqa-pg-114-", dir="/tmp"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
+    pg_bin = parser.parse_args().pg_bin.resolve()
+    def pg(name):
+        return str(pg_bin / name)
+    root = Path(tempfile.mkdtemp(prefix="openforge-pqa-pg-114-", dir="/tmp")).resolve()
     socket_dir = root / "socket"; socket_dir.mkdir(mode=0o700)
     data = root / "cluster"
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]
     assert port != 5432
     record = {"runtime": str(root), "app_sha": command("git", "-C", str(ROOT), "rev-parse", "HEAD").strip(), "port": port,
-        "version": command("/usr/local/bin/initdb", "--version").strip(), "status": "STARTED"}
+        "version": command(pg("initdb"), "--version").strip(), "pg_bin": str(pg_bin), "status": "STARTED"}
     root.joinpath("catalogue.json").write_text(json.dumps({"schema_version": "1.0", "catalogue_name": "Synthetic", "updated_at": "2026-09-13", "records": [{
         "catalogue_id": "BANK-DEMO-001", "account_type": "Bank", "brand_name": "Bank A", "short_display_name": "Bank A", "operator_group": "Synthetic", "platform": "Synthetic",
         "foreground_colour": "#FFFFFF", "background_colour": "#455A64", "operating_jurisdictions": ["GB"], "operating_subdivisions": [], "operating_channels": ["web"], "source": "Synthetic fixture"}]}))
     started = False
     print("Disposable PostgreSQL evidence directory:", root, flush=True)
-    server = Path("/usr/local/bin/initdb").resolve().parent / "postgres"
+    server = pg_bin / "postgres"
     if not server.is_file():
         record.update(status="BLOCKED", blocker=f"Client tools installed but matching server executable absent: {server}", cluster_stopped=False)
         root.joinpath("evidence.json").write_text(json.dumps(record, indent=2))
         print(json.dumps(record, indent=2), flush=True)
         raise SystemExit(2)
     try:
-        command("/usr/local/bin/initdb", "-D", str(data), "-U", ROLE, "-A", "trust", "--no-locale", "--encoding=UTF8")
-        command("/usr/local/bin/pg_ctl", "-D", str(data), "-l", str(root / "postgres.log"), "-o", f"-h127.0.0.1 -p{port} -k{socket_dir}", "-w", "start")
+        command(pg("initdb"), "-L", str(pg_bin.parent / "share/postgresql"), "-D", str(data), "-U", ROLE, "-A", "trust", "--no-locale", "--encoding=UTF8")
+        command(pg("pg_ctl"), "-D", str(data), "-l", str(root / "postgres.log"), "-o", f"-h127.0.0.1 -p{port} -k{socket_dir} -c dynamic_library_path={pg_bin.parent}/lib/postgresql", "-w", "start")
         started = True
         for name in ["pqa114_primary", "pqa114_restored"]:
-            command("/usr/local/bin/createdb", "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, name)
-            command("/usr/local/bin/psql", "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", name, "-v", "ON_ERROR_STOP=1", "-c", f"COMMENT ON DATABASE {name} IS 'Disposable PLATFORM-QUALITY-AUDIT-001 {root}'")
+            command(pg("createdb"), "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, name)
+            command(pg("psql"), "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", name, "-v", "ON_ERROR_STOP=1", "-c", f"COMMENT ON DATABASE {name} IS 'Disposable PLATFORM-QUALITY-AUDIT-001 {root}'")
         primary = f"postgresql://{ROLE}@127.0.0.1:{port}/pqa114_primary"
         restored = f"postgresql://{ROLE}@127.0.0.1:{port}/pqa114_restored"
-        record.update(primary_cases(primary, root))
+        import psycopg
+        with psycopg.connect(primary) as c:
+            record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        record.update(primary_cases(primary, root, record))
         backup = root / "synthetic-backup.dump"
-        command("/usr/local/bin/pg_dump", "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", "pqa114_primary", "-Fc", "-f", str(backup))
-        command("/usr/local/bin/pg_restore", "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", "pqa114_restored", "--exit-on-error", str(backup))
+        command(pg("pg_dump"), "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", "pqa114_primary", "-Fc", "-f", str(backup))
+        command(pg("pg_restore"), "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", "pqa114_restored", "--exit-on-error", str(backup))
+        command(pg("pg_ctl"), "-D", str(data), "-l", str(root / "postgres.log"), "-m", "fast", "-w", "restart")
+        record["restarted_after_restore"] = True
         assert persisted(restored) == record["snapshot"], "Native PostgreSQL restored records/audits/source claims differ"
+        record["restored_counts"] = {name: len(rows) for name, rows in record["snapshot"].items()}
         client = client_for(restored, str(root))
         for row in record["free_bets"]:
             assert client.get(f"/profiles/pqa114-a/free-bets/{row['id']}").json()["final_net_pnl"] == row["final"]
+        from openforge_api import free_bets
+        with patch.object(free_bets.FreeBetResponse, "model_dump_json", side_effect=RuntimeError("Synthetic post-restore fault")):
+            assert client.patch(f"/profiles/pqa114-a/free-bets/{record['free_bets'][0]['id']}", json={"free_bet_value": "12.00"}).status_code == 500
+        assert persisted(restored) == record["snapshot"]
+        record["post_restore_rollback"] = True
         r = client.post("/fund-manager/calculator-conversions/blackjack", json=record["blackjack"])
         assert r.status_code == 200 and r.json()["results"][0]["record_id"] == record["casino_id"]
         assert client.post("/fund-manager/calculator-conversions/blackjack", json={**record["blackjack"], "profile_id": "pqa114-b"}).status_code == 409
@@ -255,7 +291,7 @@ def main():
         raise
     finally:
         if started:
-            command("/usr/local/bin/pg_ctl", "-D", str(data), "-m", "fast", "-w", "stop")
+            command(pg("pg_ctl"), "-D", str(data), "-m", "fast", "-w", "stop")
         record["cluster_stopped"] = started
         root.joinpath("evidence.json").write_text(json.dumps(record, indent=2, default=str))
         print(json.dumps({k: v for k, v in record.items() if k != "snapshot"}, indent=2), flush=True)
