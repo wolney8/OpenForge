@@ -1,10 +1,158 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-Current measurable checkpoint: [2026-09-13 next checkpoint](#next-checkpoint--deployment-safety-reflow-and-populated-journeys).
+Current measurable checkpoint: [2026-09-13 lineage/PostgreSQL checkpoint](#lineage-postgresql-and-taskintelligence-checkpoint).
 Reporting branch audit/platform-quality-114; repair branch repair/modal-boundary-114.
 Main remains unfixed and owner calculator comparison remains deferred indefinitely.
 
-## Next checkpoint — deployment safety, reflow and populated journeys
+## Lineage, PostgreSQL and task/intelligence checkpoint
+
+CURRENT / LOCAL ONLY, 2026-09-13. Verified incoming combined candidate
+`f7c6bb3e7bdc6425272d943e697dcc8de9481693`, report parent
+`73d71aae101e36f75f1db604ba1ad14880f3a19f`; both descend from the previously reported checkpoints.
+Product source remains `6d2276e00d0a1a540f48f7ecc253e864ad30d5e3`: this tranche adds audit harnesses
+and documentation, not application changes. Exact outgoing combined/report SHAs are maintained in
+#114 living comment5652511529 and the delivery receipt. No push, PR, merge or deployment.
+Main/frozen manual candidate `f7a3b35073ecc87cdf8f8f881129f221ec44d395`, development
+`215193b7fcb5b11a28e23a4531d2a45434545dc1`, protected databases, review3034/8034 and original
+comparison observations are unchanged. Manual comparison deferred by Will; no scheduled date;
+resume on supplied results or explicit request. Optional local review does not block engineering.
+
+### Current measured coverage
+
+| Measure | Evidence-complete / planned | Whole coverage | Change this tranche | Change from initial baseline |
+|---|---|---|---|---|
+| Assessments |40/87|46%|+2; +2 points|+7; +8 points|
+| Journeys fully exercised |6/24|25%|0|+1; +4 points|
+| Journeys passing required checks |6/24|25%|0|+1; +4 points|
+| Competitor cells |14/27|52%|+1; +4 points|+7; +26 points|
+| Requests reconciled |18/133|14%|+9; +7 points|+14; +11 points|
+
+The incoming baseline was38/87,6/24,13/27,9/133. Denominators remain87/24/27/133;
+no exclusions or scope additions. Area assessment: functional12/24, UX7/12, security6/12,
+data5/12, sustainability5/12, requirements3/6, competitor packages2/9. Newly assessed IDs
+**PQA-R03, PQA-C03** are documentary reviews, not implementation/runtime PASS. Competitor cells:
+12 documentation-only,2 hands-on,3 blocked,10 unresolved/unexamined. No new hands-on competitor
+cell or complete journey is claimed. PQA-J06 remains PARTIAL; PQA-J21 remains BLOCKED.
+Finding stages:16 retained findings (new PD-QA-016),11 unfixed,5 repaired on candidate branches,
+0 full combined-candidate gate completions,0 integrated locally,0 hosted verified,0 owner accepted.
+Stages measure different evidence; they are not additive readiness scores.
+
+### PQA-J06: source consumer reached; full change history missing
+
+Result PARTIAL. The existing financial slice (£7.40 SNR + £17.40 SR = £24.80) was not replayed.
+Source-driven rendered checks exercise the actual native editor path:
+**Settlement → Advanced controls → Notes**. Keyboard activation opens/closes that disclosure;
+the read-only Notes textbox exposes the persisted calculator source ID/SHA-256 in its accessible
+name/value tree. The structured immutable envelope remains in `calculator_conversion_targets`.
+Both SNR/SR records were checked at1440/760px in both themes:8 observations, no page overflow,
+Escape close, source note matching API and business rows/audits unchanged. No reader execution.
+Artifact: `/tmp/openforge-modal-114-repair/free-bet-lineage-surfaces.json`; runner:
+`scripts/verify_free_bet_lineage_surfaces_114.mjs`. An initial getByLabel locator included nested
+textarea text; inspection of the actual accessibility tree resolved this harness error with the
+existing named textbox. It was not evidence of absent Notes or a new application label defect.
+
+These calculator-converted records legitimately have no qualifying-bet award parent. A calculator
+source is not a sportsbook-issued award; no synthetic parent should be invented. Separate native
+award-group/source removal coverage remains open. SQL confirms each converted record has one
+created and three updated audit entries. The editor exposes no full chronological record-change
+consumer, and the available reminder-audit endpoint is not that consumer.
+
+| ID / branch | Expected versus actual | Result / evidence | Impact / priority | Recommendation / acceptance | Issue |
+|---|---|---|---|---|---|
+| PD-QA-016 / combined candidate | Authorised row change history reachable; four business audit entries per row exist but no full editor/history consumer connects them. Calculator Notes source is reachable. | FAIL; CODE-VERIFIED absent connection and PROVEN bounded rendered surface | Medium; correction/lineage review lacks visible audit context; no new financial misstatement established | Proposal only: reuse governed read-only detail/history pattern. Created/updated/placed/settled history chronological, Profile isolated and reloadable; source identity shown; award parent only for genuine award; no recalculation. | #36/#114, existing lineage scope |
+
+### Real PostgreSQL attempt: missing server, not a transaction PASS
+
+Result BLOCKED / PROVEN environment prerequisite. `initdb`, `pg_ctl`, `psql`, `pg_dump` and
+`pg_restore` are client toolkit18.4. Actual initdb failed before cluster creation:
+`program "postgres" is needed by initdb but was not found in the same directory as
+"/usr/local/Cellar/libpq/18.4/bin/initdb"`. The matching `postgres` binary is absent; scoped searches
+of installed package/application locations found no alternative server distribution. Earlier tool
+availability was insufficient evidence of an executable local server. PostgreSQL **server version
+UNVERIFIED**. No operational/inherited DSN, port5432, hosted access or real data was used.
+
+`scripts/verify_platform_postgres_114.py` is a prepared, NOT EXECUTED transaction harness. It uses
+a uniquely created /tmp directory, private socket, unused loopback port, synthetic role/two databases,
+explicit identity/comment checks, independent SQL snapshots, separate-process race connections and
+finally cleanup limited to its own cluster. The current guard exits2/BLOCKED before startup when
+the matching server is absent. Artifact `/tmp/openforge-pqa-pg-114-a08gh_xx/evidence.json` records
+client18.4, incoming app checkpointf7c6bb3, port50432 and the missing-server path. Syntax compilation
+passes; that is not PostgreSQL evidence. Only this tranche's empty runtime/artifact directories
+were created; no server was started or protected service/database changed.
+
+| Required PostgreSQL boundary | Actual execution | Next test / prerequisite |
+|---|---|---|
+| A Account rejection / unchanged values and audits | NOT TESTED | Matching existing local server path, or approval to install a server distribution; then explicit test-only cluster |
+| B Free Bet preflight and injected-failure rollback | NOT TESTED | Same prerequisite; persisted SQL snapshots independently of HTTP |
+| C Blackjack retry / cross-target / separate-process race | NOT TESTED | Same prerequisite; separate real PostgreSQL connections |
+| D Saved/reopened £10.60 SNR and £20.60 SR | NOT TESTED | Same prerequisite; independent totals and SQL reads |
+| E Dump → second database restore / identities / duplicate protection | NOT TESTED | Same prerequisite; pg_dump/pg_restore, exact counts/source claims and post-restore retries |
+
+PQA-D06/D07 and J21 cannot advance from this attempt. No adapter mock, SQLite result or prepared
+harness is substituted for real PostgreSQL. After execution J21 still needs every required recovery
+step, not merely transaction tests. No package installation was authorised or performed.
+
+### PQA-R03: retained task/intelligence requirements
+
+All nine original issues were read; #86 clarification5569417310 was read (the other eight had no
+comments). Existing draft target/decision-support contracts and fixture specs were inspected,
+including `target-progress-calculation-contract.md`, `offer-decision-support-workflow-contract.md`
+and `target-progress-and-decision-support-fixture-spec.md`. A draft fixture plan is not executable
+financial authority. Current Dashboard has basic weekly/monthly/annual target progress; this is
+not the requested biweekly/versioned target lifecycle or offer-aware decision engine. Common Bet
+Combos, reminders and Notifications are partial building blocks, not proof of the whole package.
+
+| Request | Original user benefit and retained clarification | Current implementation / plan | Missing capability / dependency / disposition |
+|---|---|---|---|
+| #25 | Explainable target-driven offer decisions, weekly/biweekly/monthly, Profile/combined risk and cash-first scenarios | M12 draft decision workflow; basic target cards | Offer-aware advice, cadence/risk/downside thresholds and approvals; depends #26–30/account eligibility; planned, not implemented |
+| #26 | Target scope/status/history, safe/stretch amounts, rollover/archive and explicit current versus settled basis | Basic settings/progress; draft target contract | Biweekly/custom lifecycle, versioned target entity and history; approve tolerance/report basis/carry policy |
+| #27 | Standard/underlay/overlay/no-lay and explicitly approved casino recycle choices with target/risk explanations | Calculator strategies exist; decision workflow draft | No verified target-aware ranking/reason trail; casino advice needs #29 and governed scenarios; strategy availability is not advice evidence |
+| #28 | Historical cadence/seasonality with confidence, visible evidence and weak-data fallback | Future planning only | Historical/time-window/source-confidence model; no hidden weights or scoring before approval |
+| #29 | Withdraw/partial/full/fixed winnings or own-cash recycling with safe/downside/upside and explicit extra-risk consent | Draft workflow, not an advice consumer | Scenario/financial contract, own-cash permission, audit/report trail; no automated wagering |
+| #30 | Six governed recommendation/target contracts plus ahead/on/behind and risk fixtures | Target/decision fixture draft exists | Full six-contract set, thresholds/weights and independently approved fixtures; preserve uncovered scenarios |
+| #31 | Optional DDHH fixture/player/racing AI context, baseline/delta/source/confidence/human confirmation and offline fallback | Deferred advisory plan | Provider/cache/privacy/search/structured outputs approval; no credentials, autonomous action or AI financial oracle |
+| #72 | Daily/weekly/free-to-play opportunity catalogue with source freshness, per-Profile eligibility and reviewed ledger draft/reminder creation | Common Combo presets/reminders/opportunity workflow partially exist | Full fresh-source filters, stale reverify/archive, account warnings/blocks and review linkage; depends #70/#82/#85/#106; profitability not inferred |
+| #86 | Explainable tasks plus compact Kanban Complete/Ignore/Skip/No-Low-Value, reasons/value/RTP, cadence/preferences/history; optional later AI | Reminders/dashboard actions exist; task deck draft | Unified task engine and governed dispositions, preferences/history and source-account/balance freshness; clarification5569417310 retained, no hidden auto-priority |
+
+Requests are reviewed as plans/partial building blocks, not runtime PASS. Separate future Bonus SR,
+Accumulator/reference gaps, #113 deferral and unlocated historical source requests remain visible.
+
+### PQA-C03: recording and recovery comparison, with limits
+
+Public evidence accessed2026-09-13. Outplayed describes MyBets expected value and actual outcomes
+([official tools guide](https://outplayed.com/blog/outplayed-pro-tools-data), updated2026-08-20).
+OddsMonkey describes recorded profit/time/tool filters
+([official tracker](https://www.oddsmonkey.com/matched-betting/profit-tracker/)). These existing
+documentation cells were deepened, not counted again; member interaction remains inaccessible.
+Newly located [MBB homepage](https://matchedbettingblog.com/) documents offer-progress tracking.
+**C03/MBB advances to DOCUMENTED limited progress capability**, not a financial ledger or proven
+expected-versus-actual tracker. The latter remains unlocated/UNVERIFIED; no absent-equivalent claim.
+No new hands-on recording/recovery interaction, login bypass or numerical parity is asserted.
+
+OddsMonkey's [2023 reset guidance](https://help.oddsmonkey.com/hc/en-gb/articles/10263028145181-How-Do-I-Reset-My-Profit-Tracker)
+describes a member Settings deletion path; its
+[2026-01-28 guidance](https://oddsmonkey2.zendesk.com/hc/en-gb/articles/32997810911633-How-Do-I-Reset-My-Profit-Tracker)
+directs users to support. Both warn recovery is unavailable. This is a documented version/app-generation
+difference, not an observed current member workflow. Existing C06/OddsMonkey stays documentary;
+no extra comparison numerator. Our implications: explicit reviewed activity state, distinct projected
+versus actual cash performance, explainable task dispositions and correction/history recovery matter
+more than copying vendor totals or irreversible reset. #86/#111 and source freshness dependencies
+remain the relevant retained requirements; no autonomous wager recommendations.
+
+### Next bounded audit work and publication gates
+
+First unblock actual PostgreSQL with an existing matching server distribution/path or explicit
+installation approval; no Will regression assignment. Continue independent populated Casino/Cash
+Adjustment/Extra Place ledgers and genuine award-group/source removal/import/restore checks while
+that prerequisite is unresolved. Retain network-loss recovery, full combined reports, large data,
+screen-reader execution and orphaned historical requirements as named OPEN/BLOCKED rows below.
+Do not repeat the already accepted modal/reflow gate absent a regression.
+Normal app still lacks the repair stack. Preview remains BLOCKED: prior Vercel deployment disposition
+and approved Git-trigger rule, isolated authenticated API/PostgreSQL, #115 exposure disposition and
+#96 owner/provider credential rotation. Existing redacted deployment-metadata owner request remains
+open; no secrets requested. Local review3034/8034 and its prepared records are preserved, optional.
+
+## Historical checkpoint — deployment safety, reflow and populated journeys
 
 CURRENT, local-only: reporting branch `audit/platform-quality-114`; candidate product revision
 `6d2276e00d0a1a540f48f7ecc253e864ad30d5e3` on `repair/modal-boundary-114`. Exact full report/candidate commits are recorded in #114 living
@@ -1260,8 +1408,8 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D03 | SQLite write/claim fault rollback | ASSESSED; PASS scoped | PD-QA-014/015 fault rollback |
 | PQA-D04 | Legacy-invalid source preservation | ASSESSED; PASS scoped | Account/Free Bet legacy fixtures remain raw |
 | PQA-D05 | Valid/invalid export diagnostics | ASSESSED; PASS scoped | Account browser export409/200 |
-| PQA-D06 | Actual isolated PostgreSQL transactions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-D07 | PostgreSQL disaster recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-D06 | Actual isolated PostgreSQL transactions | BLOCKED; NOT TESTED | Actual initdb attempt failed: client18.4 lacks matching postgres server. Prepared guarded harness exits2; approved server path/install prerequisite, then A–D real SQL probes |
+| PQA-D07 | PostgreSQL disaster recovery | BLOCKED; NOT TESTED | Same missing-server prerequisite; then dump/second-DB restore/counts/financial/source claims/retry. No recovery step executed |
 | PQA-D08 | Populated workbook import/award reconciliation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
@@ -1281,13 +1429,13 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M12 | Subscriber/hosting/AI sustainability decision | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R01 | Notification original+clarified scope | ASSESSED; REVIEWED | #90 original;#99 original+5567517442/5567729491 |
 | PQA-R02 | Account restriction/balance clarification set | ASSESSED; DOCUMENTED review, not runtime PASS | Current addendum#70/#82/#85/#106 original+all available clarifications, source/contracts/gaps retained |
-| PQA-R03 | Dashboard/reports/tasks/AI original scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-R03 | Dashboard/reports/tasks/AI original scope | ASSESSED; DOCUMENTED planned/partial, not implementation PASS | #111 prior review plus #25–31/#72/#86 originals and #86 clarification5569417310; contracts/source/gaps/dependencies in current checkpoint |
 | PQA-R04 | Import/recovery original scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R05 | Calculator/bridge coverage scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R06 | Unlocated/future requests and source recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C01 | Public calculator configuration comparison | OPEN; PARTIAL | MBB/OddsMonkey public configuration documented; Outplayed exact configuration review remains UNVERIFIED |
 | PQA-C02 | Public offer evaluation comparison | ASSESSED; DOCUMENTED | Current addendum: three vendor guidance cells, not member hands-on |
-| PQA-C03 | Activity-recording comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-C03 | Activity-recording comparison | ASSESSED; DOCUMENTED comparison, not hands-on | Outplayed/OddsMonkey tracker documentation versus MBB limited offer-progress documentation; financial equivalence/member interactions unverified |
 | PQA-C04 | Expected vs actual performance comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C05 | Cash/balance workflow comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C06 | History/recovery comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -1308,7 +1456,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J03|Native SR Available→matching/copy→actual placement7→settlement→Reports/reload|PASS / PROVEN; same runner,9.65→20.60, combined31.20 |
 |PQA-J04|Standard source→Profile/Account/review→pointer Save→receipt/focus→destination/reopen|PASS / PROVEN; modal-conversion-browser.json1440/760/390 both themes |
 |PQA-J05|Actual Blackjack Live UI→hand outcome→Casino conversion→retry/second Account→history/report/reload|PASS / PROVEN; reviewed20→15=-5, one activity, retry same row, second Account409 |
-|PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; browser financial/copy/save/reopen/report24.80 passes; actual history/lineage display still unverified |
+|PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; financial slice24.80 retained; Settlement→Advanced controls→Notes source ID/hash passes8 width/theme/type checks with unchanged records/audits. Full row change-history consumer missing (PD-QA-016); award parent legitimately absent for calculator source |
 |PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|NOT TESTED; populated prospective modal only |
 |PQA-J08|Casino other activity→fees/override→settle/reopen→report|NOT TESTED; explicit fee/override factories next |
 |PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|NOT TESTED; changed terms/unsupported variations remain blocked |
@@ -1323,7 +1471,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|NOT TESTED; explicit imported restriction/award fixtures required |
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|PARTIAL; API restore invariants not full browser restore |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|BLOCKED harness/fixture setup; existing named backup tests not whole recovery |
-|PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|BLOCKED; no authorised isolated PostgreSQL environment |
+|PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|BLOCKED; environment now authorised but installed client18.4 lacks postgres server. No schema/transactions/backup/restore run; matching server prerequisite |
 |PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|NOT TESTED;#111 interaction/requested analytics retained |
 |PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |
 |PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|NOT TESTED;30row fixture is not large-data/performance evidence |
@@ -1333,7 +1481,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 Each C capability has one cell per Outplayed/MBB/OddsMonkey (27total).
 D = completed documentation-only comparison; H = completed hands-on workflow;
 B = required interaction inaccessible/blocked; U = unexamined or unresolved. D is not H.
-Historical first baseline counts:7D,0H,3B,17U; current13/27 cells are detailed at the top.
+Historical first baseline counts:7D,0H,3B,17U; current14/27 cells (12D/2H/3B/10U) are detailed at the top.
 No private login, trial signup, wager or authentication bypass.
 A public URL/access failure is evidence of inaccessibility, never proof that the feature is absent.
 
@@ -1341,7 +1489,7 @@ A public URL/access failure is evidence of inaccessibility, never proof that the
 |---|---|---|---|
 |C01 public configuration/guidance|U exact arrangement unresolved|D [public controls/guidance](https://matchedbettingblog.com/matched-betting-calculator/)|D [normal/SNR/SR/commission guidance](https://www.oddsmonkey.com/matched-betting/calculator/)|
 |C02 offer-review workflow documentation|U|U|U|
-|C03 activity recording documentation|D [Store in Profit Tracker / My Bets](https://outplayed.com/blog/matched-betting-spreadsheet)|U tracker equivalent unlocated, not declared absent|D [tool/manual/historical entry](https://help.oddsmonkey.com/hc/en-gb/articles/11151091597085-Keep-On-Track-With-Our-Profit-Tracker)|
+|C03 activity recording documentation|D [Store in Profit Tracker / My Bets](https://outplayed.com/blog/matched-betting-spreadsheet)|D limited [offer progress](https://matchedbettingblog.com/); financial tracker equivalent remains unlocated, not declared absent|D [tool/manual/historical entry](https://help.oddsmonkey.com/hc/en-gb/articles/11151091597085-Keep-On-Track-With-Our-Profit-Tracker)|
 |C04 expected versus actual documentation|D [My Bets EV/profit graphs](https://outplayed.com/blog/outplayed-pro-tools-data)|U|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
 |C05 cash/balance documentation|D [separate Balance Sheet, cosmetic cash transfers](https://outplayed.com/blog/matched-betting-spreadsheet)|U|U|
 |C06 recovery/history documentation|U|U|U|

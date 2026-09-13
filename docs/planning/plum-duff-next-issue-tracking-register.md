@@ -8,13 +8,22 @@ Current product6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; publication
 PD-QA-004.1–004.4 track mounted focus/top-layer Save, nested/pending Escape, return focus and
 rendered combined journeys. Scoped native/conversion pointer, text200%,320 and combined stress checks pass;
 reflow is PD-QA-005, not PD-QA-003 missing Profile. Main is not repaired. Push withheld: prior Git commits triggered Vercel.
-Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence38/6/13/9.
+Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence40/6/14/18.
 PQA-J12 browser partial-failure/retry/new-intent/notification journey passes. PQA-J06 browser financial
-slice passes, but history/lineage remains PARTIAL. PQA-U05/U06/U07, R02 and C02 have scoped assessment
+slice passes; source Notes visible in8 SNR/SR width/theme checks. Full change-history consumer missing:
+PD-QA-016 / #36/#114, FAIL bounded surface evidence; proposal only, no new product implementation.
+PQA-U05/U06/U07, R02 and C02 have scoped assessment
 evidence; original #70/#82/#85/#106/#111 plus clarifications are reconciled, not implemented.
 Prior deployment target/aliases/protection/auth/API/database isolation remain UNVERIFIED; owner
 metadata and approved branch exclusions precede publication. #115/#96 remain separate gates.
 Original scopes, orphan IDs, open PostgreSQL/import/award/large-data/reader/security checks remain.
+This checkpoint adds PQA-R03 review of #25–31/#72/#86 originals and #86 clarification5569417310:
+target lifecycle, risk/seasonality/casino decisions, six-contract fixtures, optional AI, fresh-source
+offers and task Kanban/dispositions/cadence/preferences/history remain planned/partial; no request
+is closed or narrowed. PQA-C03 documents tracker versus limited MBB offer-progress capabilities;
+no new hands-on member evidence or numerical parity. Actual PostgreSQL is BLOCKED: initdb/client18.4
+lacks its matching postgres server. A–E transaction/restore checks NOT TESTED; prepared guarded
+harness is not execution proof. Next: approved existing server path/install, then disposable cluster.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 See the same platform-quality-audit.md for denominator definitions and retained prior failure evidence.
 
