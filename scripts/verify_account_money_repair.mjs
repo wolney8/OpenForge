@@ -3,7 +3,8 @@ import fs from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {chromium,request} from "@playwright/test";
 
-const root="/tmp/openforge-account-money-91-repair",api="http://127.0.0.1:8026",web="http://localhost:3026";
+const modalRepair=process.argv.includes("--modal-repair");
+const root=modalRepair?"/tmp/openforge-modal-114-repair":"/tmp/openforge-account-money-91-repair",api=modalRepair?"http://127.0.0.1:8034":"http://127.0.0.1:8026",web=modalRepair?"http://localhost:3034":"http://localhost:3026";
 const token=fs.readFileSync(`${root}/session-token`,"utf8").trim();
 const client=await request.newContext({baseURL:api,extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
 const auth=await client.get("/auth/session");

@@ -1,5 +1,7 @@
 "use client";
 
+import { ModalBoundary } from "@/components/modal-boundary";
+
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
@@ -4015,6 +4017,7 @@ export function FreeBetWorkflowShell({
       ) : null}
 
       {workflowVisible ? (
+        <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
@@ -5242,6 +5245,7 @@ export function FreeBetWorkflowShell({
         </div>
       </section>
       </div>
+        </ModalBoundary>
       ) : null}
     </section>
   );

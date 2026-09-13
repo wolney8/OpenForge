@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { ModalBoundary } from "@/components/modal-boundary";
 
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { apiBaseUrl } from "@/lib/api";
@@ -21,6 +21,7 @@ export type CalculatorFinancialSource = {
 };
 
 type Props = {
+  returnFocusRef?: RefObject<HTMLElement | null>;
   blackjack?: BlackjackSessionSourceSnapshot;
   financial?: CalculatorFinancialSource;
   onClose: () => void;
@@ -58,7 +59,7 @@ function accountReview(account: Account, isBlackjack: boolean, promotional: bool
   return { blocked: false, message: "" };
 }
 
-export function CalculatorConversionDialog({ blackjack, financial, onClose, onComplete }: Props) {
+export function CalculatorConversionDialog({ blackjack, financial, onClose, onComplete, returnFocusRef }: Props) {
   const dialogRef = useRef<HTMLElement | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [accounts, setAccounts] = useState<Record<string, Account[]>>({});
@@ -161,9 +162,10 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose, onCo
     } finally { setBusy(false); }
   }
 
-  const markup = <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
+  const dismiss = () => { if (!busy) onClose(); };
+  const markup = <div className="modal-backdrop modal-backdrop-elevated" onClick={dismiss}>
     <section aria-label={isBlackjack ? "Save Blackjack session as Casino activity" : `Convert ${financialLabel} calculation to opportunity`} aria-modal="true" className="modal-panel multi-profile-opportunity-dialog" data-pd-id="calculator-conversion.dialog" onClick={(event) => event.stopPropagation()} ref={dialogRef} role="dialog" tabIndex={-1}>
-      <header className="modal-sticky-header workflow-panel-header"><div className="stack-tight"><span className="eyebrow">Fund Manager</span><strong>{isBlackjack ? "Save as Casino activity" : "Convert to opportunity"}</strong></div><button aria-label="Close conversion" className="modal-close-button" data-initial-focus onClick={onClose} type="button">×</button></header>
+      <header className="modal-sticky-header workflow-panel-header"><div className="stack-tight"><span className="eyebrow">Fund Manager</span><strong>{isBlackjack ? "Save as Casino activity" : "Convert to opportunity"}</strong></div><button aria-label="Close conversion" className="modal-close-button" data-initial-focus onClick={dismiss} type="button">×</button></header>
       <div className="multi-profile-opportunity-content stack">
         {busy && profiles.length === 0 ? <LedgerLoadingIndicator label="Loading conversion details" /> : null}
         {error ? <p className="field-validation-text" role="alert">{error}</p> : null}
@@ -188,8 +190,8 @@ export function CalculatorConversionDialog({ blackjack, financial, onClose, onCo
         </div></section>
         {results.length ? <section className="stack-tight" aria-label="Conversion results">{results.map((result) => <p className={result.state === "failed" ? "field-validation-text" : "status-message"} key={`${result.profile_id}:${result.account}`}>{result.account}: {result.state === "failed" ? result.reasons.join(" · ") : result.state === "already_succeeded" ? "Already saved" : "Saved"}{result.href ? <> · <Link href={result.href}>Open row</Link></> : null}</p>)}</section> : null}
       </div>
-      <footer className="modal-sticky-footer"><button className="button-link" onClick={onClose} type="button">Close</button><button className="modal-primary-button" disabled={!ready || busy} onClick={() => void submit()} type="button">{busy ? "Saving…" : isBlackjack ? "Save as Casino activity" : "Convert to opportunity"}</button></footer>
+      <footer className="modal-sticky-footer"><button className="button-link" onClick={dismiss} type="button">Close</button><button className="modal-primary-button" disabled={!ready || busy} onClick={() => void submit()} type="button">{busy ? "Saving…" : isBlackjack ? "Save as Casino activity" : "Convert to opportunity"}</button></footer>
     </section>
   </div>;
-  return typeof document === "undefined" ? null : createPortal(markup, document.body);
+  return <ModalBoundary onDismiss={dismiss} returnFocusRef={returnFocusRef}>{markup}</ModalBoundary>;
 }

@@ -10674,6 +10674,24 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   }
 }
 
+.modal-boundary {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.modal-boundary::backdrop {
+  background: transparent;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -10702,6 +10720,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .modal-panel.workflow-editor-modal {
+  container-name: ledger-editor;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   width: min(1240px, calc(100vw - 2.5rem));
@@ -12776,6 +12796,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .workflow-editor-header {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: minmax(14rem, 1fr) minmax(0, auto) auto;
   grid-template-areas:
     "title summary actions"
@@ -12808,6 +12829,26 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .workflow-editor-header .ledger-editor-tab-rail {
   grid-area: tabs;
+}
+
+/* Typography-aware modal fallback: oversized fixed headers must not cover forms. */
+@container ledger-editor (max-width: 60rem) {
+  .workflow-editor-header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "title" "summary" "actions" "tabs";
+    position: static;
+  }
+  .workflow-editor-header .editor-compact-summary,
+  .workflow-editor-header-actions {
+    justify-content: flex-start;
+  }
+  .workflow-editor-body {
+    min-height: min(10rem, 30dvh);
+  }
+}
+
+.modal-boundary .workflow-editor-modal {
+  overflow-y: auto;
 }
 
 .workflow-editor-header-actions {

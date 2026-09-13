@@ -1,5 +1,7 @@
 "use client";
 
+import { ModalBoundary } from "@/components/modal-boundary";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -5013,6 +5015,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   async function closeEditor() {
+    if (isPersistingRef.current) return;
     if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
@@ -7228,6 +7231,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ) : null}
 
       {workflowVisible ? (
+        <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
           <section
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
@@ -10301,6 +10305,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             </div>
           </section>
         </div>
+        </ModalBoundary>
       ) : null}
 
     </section>

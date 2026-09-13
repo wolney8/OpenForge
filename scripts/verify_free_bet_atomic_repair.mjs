@@ -2,8 +2,10 @@
 import fs from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { chromium, request } from "@playwright/test";
-const runtime="/tmp/openforge-free-bet-atomic-91-repair";
-const api="http://127.0.0.1:8030", web="http://localhost:3030";
+const modalRepair=process.argv.includes("--modal-repair");
+const runtime=modalRepair?"/tmp/openforge-modal-114-repair":"/tmp/openforge-free-bet-atomic-91-repair";
+const api=modalRepair?"http://127.0.0.1:8034":"http://127.0.0.1:8030", web=modalRepair?"http://localhost:3034":"http://localhost:3030";
+const captureName=process.argv.includes("--stress")?"free-bet-stress-browser.json":process.argv.includes("--reflow-only")?"free-bet-320-browser.json":"free-bet-browser.json";
 const token=fs.readFileSync(`${runtime}/session-token`,"utf8").trim();
 const client=await request.newContext({baseURL:api,extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
 const auth=await client.get("/auth/session");
@@ -26,7 +28,7 @@ for(const [name,type] of [["Bet365","Bookie"],["Smarkets","Exchange"]]){
 await client.put(`/profiles/${id}/exchange-commissions`,{data:{exchange_name:"Smarkets",commission_rate:"0.02"}});
 const browser=await chromium.launch({headless:true}), observations=[];
 try{
-  for(const width of (process.argv.includes("--legacy-only") ? [] : [1440,760]))for(const theme of ["light","dark"]){
+  for(const width of (process.argv.includes("--legacy-only") ? [] : process.argv.includes("--baseline")?[760]:process.argv.includes("--reflow-only")?[320]:process.argv.includes("--stress")?[1440,320]:[1440,760,390]))for(const theme of ["light","dark"]){
     const made=await client.post(`/profiles/${id}/free-bets`,{data:{
       event_name:`Synthetic ${width} ${theme}`,offer_type:"Bet & Get",bet_type:"Single",fixture_type:"Football",
       bookmaker:"Bet365",status:"Placed",result:"Pending",retention_mode:"SNR",match_strategy:"Standard",
@@ -40,7 +42,17 @@ try{
     const errors=[];page.on("pageerror",e=>{errors.push(e.message);console.log("PAGE ERROR",e.message);});
     await page.goto(`${web}/profiles/${id}/tracker/free-bets?record=${row.free_bet_id}`,{waitUntil:"domcontentloaded"});
     await page.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem("openforge-theme",t);},theme);
+    if(process.argv.includes("--stress")&&width===1440)await page.evaluate(()=>{document.documentElement.style.fontSize="200%";});
     const dialog=page.getByRole("dialog");await dialog.waitFor();
+    console.log("INITIAL FOCUS",await dialog.evaluate(el=>el.contains(document.activeElement)));
+    if(modalRepair&&!process.argv.includes("--baseline")){
+      if(!await dialog.evaluate(el=>el.contains(document.activeElement)))throw Error("Initial modal focus outside");
+      const controls=dialog.locator('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]').filter({visible:true});
+      await controls.last().focus();await page.keyboard.press("Tab");
+      if(!await dialog.evaluate(el=>el.contains(document.activeElement)))throw Error("Tab escaped");
+      await controls.first().focus();await page.keyboard.press("Shift+Tab");
+      if(!await dialog.evaluate(el=>el.contains(document.activeElement)))throw Error("Reverse Tab escaped");
+    }
     // Native stepper, pointer interaction only: never force an obstructed click.
     await dialog.getByRole("tab",{name:/Matching/}).first().click();
     const input=dialog.getByLabel("Free-bet value",{exact:true}), save=dialog.getByRole("button",{name:"Save",exact:true});
@@ -55,7 +67,9 @@ try{
         throw Error("Free-bet input disappeared after invalid entry");
       }
       await input.blur();
-      if(await input.inputValue()!==raw || await input.getAttribute("aria-invalid")!=="true" || await save.isEnabled())throw Error(`Invalid input accepted ${raw}`);
+      if(await input.inputValue()!==raw || await input.getAttribute("aria-invalid")!=="true" || await save.isEnabled()){
+        console.log("INVALID STATE",raw,{value:await input.inputValue(),invalid:await input.getAttribute("aria-invalid"),saveEnabled:await save.isEnabled()});throw Error(`Invalid input accepted ${raw}`);
+      }
       const desc=(await input.getAttribute("aria-describedby")??"").split(" ").find(x=>x.endsWith("-error"));
       if(!desc || !await dialog.locator(`#${desc}`).isVisible())throw Error("Associated field error absent");
     }
@@ -67,12 +81,24 @@ try{
     const previewResponse=await previewUpdated;
     if(previewResponse.status()!==200)throw Error("Valid corrected preview failed");
     if(!await save.isEnabled())throw Error("Correction does not enable save");
+    if(modalRepair&&!process.argv.includes("--baseline")){
+      await page.keyboard.press("Escape");
+      const confirm=page.locator('[data-pd-id="unsaved-changes.dialog"]');
+      await confirm.waitFor();
+      await confirm.getByRole("button",{name:"Keep Editing",exact:true}).click();
+      await confirm.waitFor({state:"hidden"});
+      if(await lay.inputValue()!=="6.00")throw Error("Dirty Escape lost form");
+      await save.scrollIntoViewIfNeeded();
+      if(!await save.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return el===hit||el.contains(hit);})){
+        console.log("INTERCEPT GEOMETRY",await save.evaluate(el=>{const r=el.getBoundingClientRect();return {rect:r.toJSON(),hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML.slice(0,220)};}));throw Error("Save intercepted");
+      }
+    }
     await input.focus();await page.keyboard.press("Tab");
     const geometry=await dialog.evaluate(el=>{const r=el.getBoundingClientRect();return{
       left:r.left,right:r.right,top:r.top,bottom:r.bottom,
       pageWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,
     };});
-    if(geometry.left<0||geometry.right>width||geometry.pageWidth>geometry.clientWidth)throw Error("Modal/page overflow");
+    if(geometry.left<0||geometry.right>width||geometry.pageWidth>geometry.clientWidth){console.log("OVERFLOW GEOMETRY",geometry);throw Error("Modal/page overflow");}
     console.log("BEFORE SAVE",width,theme,await dialog.locator("form").evaluateAll(forms=>forms.map(form=>({
       valid:form.checkValidity(),invalid:[...form.querySelectorAll(":invalid")].map(el=>({name:el.getAttribute("aria-label")??el.name,type:el.type,value:el.value,message:el.validationMessage})),
     }))));
@@ -119,10 +145,10 @@ try{
   if(database.prepare("SELECT free_bet_value FROM free_bets WHERE free_bet_id=?").get(legacyId).free_bet_value!=="NaN")throw Error("Legacy source was rewritten");
   database.close();await context.close();
   if(errors.length)throw Error("Legacy route runtime error");
-  fs.writeFileSync(`${runtime}/${process.argv.includes("--legacy-only")?"free-bet-legacy-browser":"free-bet-browser"}.json`,JSON.stringify(observations,null,2));
+  fs.writeFileSync(`${runtime}/${process.argv.includes("--legacy-only")?"free-bet-legacy-browser.json":captureName}`,JSON.stringify(observations,null,2));
   console.log(JSON.stringify(observations,null,2));
   if(observations.some(item=>item.result==="BLOCKED"))process.exitCode=1;
 }catch(error){
-  fs.writeFileSync(`${runtime}/free-bet-browser.json`,JSON.stringify({observations,blocker:String(error)},null,2));
+  fs.writeFileSync(`${runtime}/${captureName}`,JSON.stringify({observations,blocker:String(error)},null,2));
   throw error;
 }finally{await browser.close();await client.dispose();}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ModalBoundary } from "@/components/modal-boundary";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
@@ -868,6 +869,7 @@ function AppChromeContent({
         </div>
       </div>
       {unsavedPrompt.request ? (
+        <ModalBoundary onDismiss={() => unsavedPrompt.respond(false)}>
         <div
           className="modal-backdrop modal-backdrop-elevated unsaved-changes-backdrop"
           data-pd-id="unsaved-changes.backdrop"
@@ -921,6 +923,7 @@ function AppChromeContent({
             </footer>
           </section>
         </div>
+        </ModalBoundary>
       ) : null}
     </>
   );

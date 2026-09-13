@@ -1,5 +1,14 @@
 # Plum Duff Known UI Pitfalls
 
+## PD-QA-004 — modal boundary ownership
+
+Ordinary portals/z-index do not guarantee navigation cannot intercept modal Save. Reuse the native
+dialog top layer and shared mounted-panel focus lifecycle; async openers need an explicit return-focus
+ref. Pending Escape must not discard a running save; dirty Escape retains confirmation semantics.
+Regression: verify_modal_boundary_repair.mjs and verify_free_bet_atomic_repair.mjs use real pointer
+hit-testing, nested confirmation, Tab containment and connected-trigger restoration. Desktop 200%
+background reflow remains a separate PD-QA-003 gap, not hidden overflow.
+
 Use this as a prevention register, not a changelog. Add every repeated issue with date, area, root
 cause, prevention rule and regression test.
 

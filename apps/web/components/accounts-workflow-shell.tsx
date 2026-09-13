@@ -1,5 +1,7 @@
 "use client";
 
+import { ModalBoundary } from "@/components/modal-boundary";
+
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
@@ -1356,6 +1358,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
       {workflowVisible && typeof document !== "undefined"
         ? createPortal(
+            <ModalBoundary onDismiss={() => void closeEditor()}>
             <div className="modal-backdrop" onMouseDown={(event) => {
               if (event.target === event.currentTarget) void closeEditor();
             }}>
@@ -1693,7 +1696,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             </form>
           </div>
       </section>
-            </div>,
+            </div>
+            </ModalBoundary>,
             document.body,
           )
         : null}

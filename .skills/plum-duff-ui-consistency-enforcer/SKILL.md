@@ -339,3 +339,9 @@ If any applicable item is unverified, state that the UI tranche is incomplete. D
 to discover basic consistency, clipping, alignment, icon or overflow defects through smoke testing.
 
 When a repeated defect is found, update `plum-duff-known-ui-pitfalls.md` and add a regression test.
+
+Shared modal invariant: use the canonical native top-layer boundary rather than z-index escalation.
+Wait for the mounted active panel before initial focus; contain Tab, preserve nested confirmation
+ownership, and restore the connected opener. Async preparation must retain an explicit opener ref.
+Verify real pointer hit-testing at half-width, pending Escape, dirty confirmation and return focus;
+do not use forced clicks or treat a viewport-contained dialog as proof the page reflows.

@@ -173,14 +173,47 @@ export function useDialogFocusLifecycle(
     }
 
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const animationFrame = window.requestAnimationFrame(() => {
-      const initialFocus = dialogRef.current?.querySelector<HTMLElement>("[data-initial-focus]");
-      (initialFocus ?? dialogRef.current)?.focus({ preventScroll: true });
-    });
+    const focusableSelector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])';
+    const controls = () => [...(dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])]
+      .filter((element) => element.getClientRects().length > 0 && !element.closest("[inert]"));
+    const enter = () => {
+      const panel = dialogRef.current;
+      if (!panel) return false;
+      if (!panel.contains(document.activeElement)) {
+        const initial = panel.querySelector<HTMLElement>("[data-initial-focus]") ?? controls()[0];
+        if (!initial && !panel.hasAttribute("tabindex")) panel.tabIndex = -1;
+        (initial ?? panel).focus({ preventScroll: true });
+      }
+      return true;
+    };
+    // Active state can precede hydration of the actual panel. Retry on mount,
+    // rather than spending the one animation frame on a null ref.
+    const observer = new MutationObserver(() => { if (enter()) observer.disconnect(); });
+    if (!enter()) observer.observe(document.body, { childList: true, subtree: true });
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const panel = dialogRef.current;
+      if (!panel) return;
+      const activeDialog = document.activeElement instanceof Element
+        ? document.activeElement.closest("dialog") : null;
+      const owner = panel.closest("dialog");
+      // Native nested confirmations own their own top-layer focus.
+      if (activeDialog && activeDialog !== owner) return;
+      const items = controls();
+      const first = items[0], last = items.at(-1);
+      if (!first || !last) { event.preventDefault(); panel.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
 
     return () => {
-      window.cancelAnimationFrame(animationFrame);
-      window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+      observer.disconnect();
+      document.removeEventListener("keydown", trap);
+      window.requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
     };
   }, [active, dialogRef]);
 }
