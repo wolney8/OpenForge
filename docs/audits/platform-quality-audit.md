@@ -1,10 +1,100 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-Current measurable checkpoint: [2026-09-13 lineage/PostgreSQL checkpoint](#lineage-postgresql-and-taskintelligence-checkpoint).
+Current measurable checkpoint: [2026-09-13 actual PostgreSQL checkpoint](#actual-isolated-postgresql-execution--2026-09-13).
 Reporting branch audit/platform-quality-114; repair branch repair/modal-boundary-114.
 Main remains unfixed and owner calculator comparison remains deferred indefinitely.
 
-## Lineage, PostgreSQL and task/intelligence checkpoint
+## Actual isolated PostgreSQL execution — 2026-09-13
+
+CURRENT / LOCAL ONLY. Will explicitly approved a local server installation solely for isolated audit
+tests, with no service activation, existing database changes or hosted access. Product source remains
+`6d2276e00d0a1a540f48f7ecc253e864ad30d5e3`; incoming combined checkpoint
+`2d3bb086923b3baaeca72e0736fdc81f4d9940df`, report parent
+`6c025c03d66a93a196e1f273d74b6fe6095cba07`. Outgoing exact combined/report commits are maintained
+in #114 living comment5652511529 and the receipt. Changes are test-harness/documentation only.
+Main/frozen f7, development215193b, normal/manual/review services/databases and observations remain
+protected. No push, PR, merge, deployment, formula change or calculator sign-off.
+
+| Measure | Current / planned | Whole % | Change this checkpoint |
+|---|---|---|---|
+| Evidence-complete assessments |42/87|48%|+2 assessments / +2 points|
+| Complete journeys exercised |7/24|29%|+1 journey / +4 points|
+| Journeys passing required checks |7/24|29%|+1 journey / +4 points|
+| Competitor cells |14/27|52%|0;12 documentary/2 hands-on|
+| Requests reconciled |18/133|14%|0|
+
+New complete IDs **PQA-D06/D07 and PQA-J21**, with actual backend runtime recovery evidence below.
+J21 is the explicitly backend writes/concurrency→backup/restore→read/rollback journey, not a
+browser import/restore or deployment disaster-recovery certification. Denominators remain87/24/27/133.
+Area assessment: functional12/24, UX7/12, security6/12, data7/12, sustainability5/12,
+requirements3/6, competitor packages2/9. Initial baseline33/5/7/4 changes are+10/+8/+26/+11
+percentage points. Finding stages unchanged:16 retained,11 unfixed,5 candidate-branch repairs,
+0 full combined-candidate verification gates,0 integrated locally/hosted verified/owner accepted.
+
+### Installation and isolated target safety
+
+PostgreSQL **18.6 (Homebrew), x86_64 macOS** actually executed; `SELECT version()` retained.
+The initial ordinary Homebrew install stopped on an API/formula error and proposed unrelated
+dependency upgrades. No such upgrade occurred. The official bottle was fetched with SHA-256
+`3d6375c9f23f3904465f26e99eed103f13568abf6aa42b5f4fc703b5b183c99e`.
+A private extraction showed unrelocated install paths; the final server was installed in its own
+`/usr/local/Cellar/postgresql@18/18.6` keg with dependencies skipped and post-install skipped.
+Homebrew reported symlink conflicts with existing libpq; **no unlink/overwrite/forced link** was used.
+Only previously absent server-specific share/library links were supplied; existing libpq18.4 and
+seven runtime library versions remain unchanged. No default `/usr/local/var/postgresql@18` cluster
+was created. No `brew services start`, launch agent or persistent background service enabled.
+
+Final isolated runtime: `/private/tmp/openforge-pqa-pg-114-9lt0fep4`, port**60936**, loopback only,
+private socket, synthetic role `pqa114_owner`, databases `pqa114_primary` and `pqa114_restored`.
+The harness rejects port5432/non-test targets and checks database/role/port/unique marker identity
+before application use. Inherited PG/application configuration is removed from tool commands;
+application configuration explicitly selects the disposable DSN. Only synthetic factories used.
+Current application schema initialized through the existing PostgreSQL adapter/migration boundary.
+Actual API handlers run through authenticated TestClient against real psycopg connections; SQL
+snapshots are independent of HTTP responses. Concurrency uses two spawned processes, not mocks.
+
+Reproduce without touching protected data:
+`scripts/run-python.sh scripts/verify_platform_postgres_114.py --pg-bin /usr/local/Cellar/postgresql@18/18.6/bin`.
+Each invocation creates a new directory/port/database pair; it does not reuse the old test cluster.
+Final artifacts: `evidence.json`, `postgres.log`, `synthetic-backup.dump` in the isolated runtime,
+retained locally and not committed. The server was stopped in finally; `pg_ctl status` is checked
+independently. Server installation alone is not hosted approval or a persistent service request.
+Executed harness checkpoint `df1cb0ade86c222d3d57f0668c8a5e61b8f7cb46`; harness SHA-256
+`73317a82e5756618e567177f5b2ad92911c582e61167391d033c640a4af67531`.
+
+### Actual results — PASS / PROVEN for these finite boundaries
+
+| Boundary | Execution and independent evidence | Result |
+|---|---|---|
+| A Account create/update | Balance and pending-withdrawal not-money/NaN/±Infinity/unsupported precision/null return422. Independent SQL snapshots of records/dependants/audits unchanged; valid prior balance retained. | PASS |
+| B Free Bet atomic save | Malformed value and invalid actual-lay update422; injected calculation/response JSON faults create/patch500, unchanged native SQL records/audits. Legitimate500 not disguised as422. | PASS |
+| C Completed Blackjack | Fault after successful-claim SQL produces500 with no Casino/audit/notification or successful claim. Retry succeeds once; sequential retry returns same ID. Other Profile/Account409 without business mutation. Separate-process same-target and cross-target races each200/409; retry returns successful row. Three distinct snapshots yield3 rows, total45.00,3 notifications with exact Profile/record links. | PASS |
+| D Valid saved/reopened values | £10 at5.00/5.20,2% commission, actual lay7.00: SNR reference7.72/final10.60; SR9.65/20.60. Native persisted inputs rechecked; independently derived back-win cash minus actual lay liability confirms31.20 combined. Derived Free Bet P&L is not a stored column. | PASS |
+| E Backup/restore/restart/rollback | pg_dump custom-format → SECOND database pg_restore; server restarted with explicit logfile. Exact selected business/audit/source row snapshots equal. Restored counts:2 Profiles,9 Accounts/9 Account audits,2 Free Bets/4 audits,3 Casino/3 audits,3 conversion claims. Values reopen unchanged; injected post-restore response failure rolls back; same-source retry returns original ID, other target409. | PASS |
+
+Final backup SHA-256: `7b083b56fc0f00dd7c055eae60e22641ec90c34d8b4006936c64f0a2cf32006f`.
+Prepared-harness assumptions were corrected without changing application logic: explicit server
+tool/share/library paths, canonical /tmp marker identity, Path/string normalization, and SQL source
+checks instead of an imaginary stored Free Bet final_net_pnl column. An added restart initially
+inherited a captured stdout pipe; only that disposable server was stopped, logfile routing corrected,
+and the full final run passed. These earlier setup/control failures are harness failures, not product
+financial defects. Prior failed artifact/log directories remain as historical evidence; none is PASS.
+
+### Remaining checks and next work
+
+This does not verify all field/configuration combinations on PostgreSQL, account legacy-incomplete
+aggregation variants, browser hosted recovery, cloud/deployment rollback, workbook/award imports,
+backup privacy/custody/retention, provider auth/network-loss or large datasets. Those named checks
+stay OPEN/PARTIAL, not inferred PASS. PQA-J06 still lacks the full change-history consumer (PD-QA-016);
+visible source Notes and £24.80 financial slice remain evidenced separately. Other populated ledgers,
+genuine award linkage/removal and imported lineage are the next independent audit package.
+Preview/publication remains BLOCKED by prior Vercel deployment disposition/approved Git-trigger
+guard, isolated authenticated deployment configuration, #115 exposure disposition and #96 owner/provider
+rotation. Actual local PostgreSQL is no longer that prerequisite's blocker. Normal app remains unfixed
+until reviewed integration and post-integration smoke; no automatic integration. No engineering
+regression assignment for Will. Manual calculator comparison remains DEFERRED/no date.
+
+## Historical lineage, PostgreSQL and task/intelligence checkpoint
 
 CURRENT / LOCAL ONLY, 2026-09-13. Verified incoming combined candidate
 `f7c6bb3e7bdc6425272d943e697dcc8de9481693`, report parent
@@ -1272,7 +1362,8 @@ PD-QA-004**. Actual PostgreSQL transactions/concurrency are **NOT TESTED**.
 
 The original whole-product matrix and Batch2 failures remain authoritative for their recorded
 revision. B3 adds repair-branch evidence, not main PASS. No title-index inventory is promoted to
-full historical-requirement reconciliation. The following checkpoints retain all remaining coverage:
+full historical-requirement reconciliation. The following historical B3 checkpoint retained remaining
+coverage at that revision; current stable checklist/status is above/below, including later modal and PostgreSQL evidence:
 
 | Existing gap / issue | Current result | Exact next test or blocker |
 |---|---|---|
@@ -1281,7 +1372,7 @@ full historical-requirement reconciliation. The following checkpoints retain all
 | Other populated ledgers #1–13/#88 | NOT TESTED end-to-end | Native/imported Sportsbook, Casino promotion/manual/free-credit, Extra Place/Each Way, Cash Adjustment: preview/copy/save/reopen/place/settle/void/undo/report with independent values; unavailable special branches retain exact contract blockers |
 | Award lineage / dangling source | NOT TESTED full group lifecycle; existing FAIL retained | Explicit SNR/SR award factories: source→split awards→partial failure/retry→placement→settlement→source removal; inspect child/business audit/notification state, preserve existing deletion policy until approved repair |
 | Imports / restores #104/#109 | NOT TESTED full browser/import scope | Synthetic staged workbook mapping→confirm→reopen; whole portable restore retry/rollback/browser; missing Account access vocabulary/historical promo fallback is a product-contract blocker, not zero/default permission |
-| Actual PostgreSQL / backup recovery | NOT TESTED / UNVERIFIED | Requires a genuinely isolated authorised PostgreSQL environment; no available configured test DB used. Run concurrent claim/rollback, full restore/retry and SQLite-equivalent fixtures there, never hosted/operational substitutes |
+| Actual PostgreSQL / backup recovery — historical B3 | Then NOT TESTED / UNVERIFIED | Superseded for scoped local execution by current A–E PostgreSQL18.6 evidence. Full hosted/import/browser recovery remains separate, never operational substitutes |
 | Concurrent/network-loss/recovery | PARTIAL: new SQLite request races PASS; other paths NOT TESTED | Kill disposable worker after Pending reservation; lose response after committed Casino save then retry; disconnect during exploratory partial multi-Profile save; confirm same intent, one destination/event and controlled Pending recovery. Automatic timeout takeover is deliberately not added |
 | Combined reports / reconciliation #85/#106/#111 | NOT TESTED complete browser flow | Two Profiles with valid/invalid included balances, Free Bets and unique Casino activity: authorised combined cash/P&L completeness, filters/drilldown/export, refresh/correction, reviewed balance vs hand-result distinction; planned observation/explorer features are not runtime PASS |
 | Large data / performance | NOT TESTED | Isolated1000+ native/imported synthetic rows across modules; measure first render, filtering/scroll/pagination/charts/request count, half-width responsiveness; existing30-row fixture is not a scale benchmark |
@@ -1408,8 +1499,8 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D03 | SQLite write/claim fault rollback | ASSESSED; PASS scoped | PD-QA-014/015 fault rollback |
 | PQA-D04 | Legacy-invalid source preservation | ASSESSED; PASS scoped | Account/Free Bet legacy fixtures remain raw |
 | PQA-D05 | Valid/invalid export diagnostics | ASSESSED; PASS scoped | Account browser export409/200 |
-| PQA-D06 | Actual isolated PostgreSQL transactions | BLOCKED; NOT TESTED | Actual initdb attempt failed: client18.4 lacks matching postgres server. Prepared guarded harness exits2; approved server path/install prerequisite, then A–D real SQL probes |
-| PQA-D07 | PostgreSQL disaster recovery | BLOCKED; NOT TESTED | Same missing-server prerequisite; then dump/second-DB restore/counts/financial/source claims/retry. No recovery step executed |
+| PQA-D06 | Actual isolated PostgreSQL transactions | ASSESSED; PASS / PROVEN scoped | Real PostgreSQL18.6 Account/Free Bet preflight/rollback, independent persisted values and separate-process Blackjack retry/races; current A–D evidence |
+| PQA-D07 | PostgreSQL disaster recovery | ASSESSED; PASS / PROVEN scoped local database recovery | Actual dump/second-database restore, exact counts/financial/source claims, restart, post-restore read/rollback/duplicate protection; cloud/deployment/import recovery separate |
 | PQA-D08 | Populated workbook import/award reconciliation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
@@ -1471,7 +1562,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|NOT TESTED; explicit imported restriction/award fixtures required |
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|PARTIAL; API restore invariants not full browser restore |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|BLOCKED harness/fixture setup; existing named backup tests not whole recovery |
-|PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|BLOCKED; environment now authorised but installed client18.4 lacks postgres server. No schema/transactions/backup/restore run; matching server prerequisite |
+|PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
 |PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|NOT TESTED;#111 interaction/requested analytics retained |
 |PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |
 |PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|NOT TESTED;30row fixture is not large-data/performance evidence |

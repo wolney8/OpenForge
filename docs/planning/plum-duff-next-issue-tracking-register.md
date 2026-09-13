@@ -8,7 +8,7 @@ Current product6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; publication
 PD-QA-004.1–004.4 track mounted focus/top-layer Save, nested/pending Escape, return focus and
 rendered combined journeys. Scoped native/conversion pointer, text200%,320 and combined stress checks pass;
 reflow is PD-QA-005, not PD-QA-003 missing Profile. Main is not repaired. Push withheld: prior Git commits triggered Vercel.
-Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence40/6/14/18.
+Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence42/7/14/18.
 PQA-J12 browser partial-failure/retry/new-intent/notification journey passes. PQA-J06 browser financial
 slice passes; source Notes visible in8 SNR/SR width/theme checks. Full change-history consumer missing:
 PD-QA-016 / #36/#114, FAIL bounded surface evidence; proposal only, no new product implementation.
@@ -21,9 +21,12 @@ This checkpoint adds PQA-R03 review of #25–31/#72/#86 originals and #86 clarif
 target lifecycle, risk/seasonality/casino decisions, six-contract fixtures, optional AI, fresh-source
 offers and task Kanban/dispositions/cadence/preferences/history remain planned/partial; no request
 is closed or narrowed. PQA-C03 documents tracker versus limited MBB offer-progress capabilities;
-no new hands-on member evidence or numerical parity. Actual PostgreSQL is BLOCKED: initdb/client18.4
-lacks its matching postgres server. A–E transaction/restore checks NOT TESTED; prepared guarded
-harness is not execution proof. Next: approved existing server path/install, then disposable cluster.
+no new hands-on member evidence or numerical parity. Will approved local PostgreSQL server installation:
+18.6 now executes in a disposable synthetic cluster/port60936, stopped afterward; no default cluster,
+service activation or dependency/database upgrade. PQA-D06/D07 and backend J21 PASS / PROVEN A–E
+actual Account/Free Bet rollback and separate-process Blackjack retry/exclusion, SECOND DB dump/restore,
+exact counts/source IDs/financial values, restart and post-restore rollback. Not all PostgreSQL fields,
+imports/cloud/browser recovery or hosted integration proven. Those gaps remain, as does PD-QA-016.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 See the same platform-quality-audit.md for denominator definitions and retained prior failure evidence.
 

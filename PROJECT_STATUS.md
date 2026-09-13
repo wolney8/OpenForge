@@ -14,27 +14,29 @@ repair/modal-boundary-114, based on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
 Current product revision6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; exact reporting
 commit/link is maintained in #114 living comment5652511529 (unpublished files cannot have a live GitHub blob link).
 Normal app remains unfixed. The isolated candidate is at http://localhost:3034 (API8034).
-Current local-only measured review: assessments40/87 (46%); complete journeys exercised and passing6/24
-(25% each); competitor cells14/27 (52%:12 documentation,2 hands-on); requests18/133 (14%).
-This tranche adds PQA-R03/C03 assessments and nine original task/intelligence request reviews;
-no new complete journey. Initial baseline33/5/7/4 is historical; change+8/+4/+26/+11 points.
+Current local-only measured review: assessments42/87 (48%); complete journeys exercised and passing7/24
+(29% each); competitor cells14/27 (52%:12 documentation,2 hands-on); requests18/133 (14%).
+This checkpoint adds actual PostgreSQL assessments PQA-D06/D07 and backend recovery journey J21;
+no new competitor/request count. Initial baseline33/5/7/4 is historical; change+10/+8/+26/+11 points.
 These are coverage measures, not readiness or estimated time remaining. See the
-[current detailed audit](docs/audits/platform-quality-audit.md#lineage-postgresql-and-taskintelligence-checkpoint).
+[current detailed audit](docs/audits/platform-quality-audit.md#actual-isolated-postgresql-execution--2026-09-13).
 Native pointer Save/focus and populated financial journeys now have candidate evidence;
 Shared200% root-text header and combined320px sizing defects are fixed on the candidate, not main.
 PQA-J12 partial failure/retry/new-intent browser flow passes; J06 financial flow passes at7.40/17.40
 and report24.80. Source Notes are reachable in Settlement → Advanced controls at desktop/half-width
 in both themes, with unchanged business/audit rows. J06 remains PARTIAL: full record-change history
-has no user-facing consumer (PD-QA-016). Actual PostgreSQL initdb failed before startup: installed
-client18.4 lacks the matching postgres server binary. All transaction/backup/restore probes remain
-NOT TESTED, not PASS. A guarded test harness is prepared; an existing matching server path or explicit
-installation approval is needed. Reader and remaining journeys stay open. No engineering regressions
+has no user-facing consumer (PD-QA-016). Approved local PostgreSQL18.6 installation now enables
+actual Account rejection, Free Bet rollback, concurrent Blackjack exclusion and dump/SECOND DB
+restore/restart/post-restore rollback checks: A–E PASS on an isolated synthetic port60936 cluster,
+now stopped. SNR/SR reopen10.60/20.60;3 distinct Casino sessions create3 rows/notifications, no clones.
+No existing dependencies/database upgraded, default cluster or background service enabled.
+Broader import/cloud/browser recovery, reader and remaining journeys stay open. No engineering regressions
 are assigned to Will; optional3034 review and its records remain unchanged.
 Vercel reports previous repair/audit deployments: pushes withheld to avoid unapproved Preview.
-Preview BLOCKED: safe Git-trigger configuration, isolated API/PG/auth, actual PG transactions,
+Preview BLOCKED: safe Git-trigger configuration and isolated hosted API/PG/auth;
 #115 disposition and #96 provider credential rotation remain prerequisites. Owner-only prerequisites:
-matching local PostgreSQL server availability/installation approval and the existing redacted Vercel
-deployment metadata request; no secret values or calculator comparison.
+the existing redacted Vercel deployment metadata request and separate #115/#96 disposition;
+local PostgreSQL approval has been supplied and its scoped tests pass. No secret values or calculator comparison.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 Historical entries below retain their original revision-specific evidence.
 
