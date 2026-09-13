@@ -4,6 +4,28 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
+### PD-QA-020 new-write integrity policy (2026-09-13)
+
+This policy changes validation/atomicity, not equations or historical precision.
+Omitted PUT/update source fields preserve the existing value at the shared persistence
+boundary; explicitly supplied null is rejected. Blank optional fields remain unknown.
+
+| Fields | Supplied value policy | Blank/lifecycle |
+|---|---|---|
+|back_stake, lay_actual, lay_matched_stake_1, maximum_bonus, maximum_boost_winnings|Complete finite non-negative money, at most two decimals; canonical exact cents, no rounding|Optional in Prospecting/Not Placed; starting stake required for Placed/Settled/Free Bet Awarded or a non-Pending result; actual/matched lays may remain blank or zero (unlaid/partial)|
+|manual_override_value|Same complete money syntax, signed; explicit reason required|Optional, blank means no override|
+|back/base/accepted/lay odds, nested layOdds/placedLayOdds|Existing complete decimal odds ≥1.01; preserve supplied precision|Existing placement-required odds policy retained; no new perfectly-matched requirement|
+|lay_commission_1, nested commission|Complete finite unsigned decimal ratio 0–1; profile lookup remains authoritative for legacy rows|Blank retains existing lookup/unknown policy|
+|bonus_retention_rate, profit_boost_percent|Complete finite unsigned percentage; retention 0–100, boost non-negative; no two-decimal money restriction|Optional where not applicable|
+|nested placedMatchedStake/matchedStake|Same non-negative exact money policy|Blank/zero remain valid; preserve unrelated provenance keys|
+
+Profile and Account scope/lifecycle are validated before writes. Calculation, response
+model validation and JSON preparation complete inside the row/audit transaction.
+Known malformed stored numbers are returned raw with correction diagnostics and null
+financial outputs; included summaries remain unavailable, never a complete subtotal.
+Valid finite historical decimals retain original precision. Invalid export fails
+closed with the record ID and correction reason. No automatic record repair occurs.
+
 - Status: Approved implementation baseline through prior contract review and workbook-parity sign-off
 - Owner: Plum Duff calculation contracts
 - Human approval required before formula changes: Yes

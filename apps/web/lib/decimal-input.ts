@@ -5,6 +5,20 @@ export type DecimalInputOptions = {
 
 const canonicalMoneyInputPattern = /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/;
 
+export function getMoneyInputErrors(input: Record<string, unknown>, fields: readonly string[]): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of fields) {
+    const raw = input[field];
+    if (raw === undefined) continue;
+    const canonical = typeof raw === "string"
+      ? normalizeMoneyInput(raw.trim(), {allowNegative: field === "manual_override_value"})
+      : null;
+    if (canonical === null || canonical.length > 40 || String(raw).length > 40)
+      errors[field] = "Enter a complete finite amount with at most two decimal places.";
+  }
+  return errors;
+}
+
 /**
  * Normalise a complete, non-negative money entry without accepting partial or
  * ambiguous numeric syntax. Invalid text is returned as null so the caller can

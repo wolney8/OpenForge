@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from typing import Any, Callable, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from openforge_api.calculations.payout_odds import (
@@ -27,6 +35,7 @@ from openforge_api.db import (
     create_sportsbook_bet,
     delete_sportsbook_bet,
     get_multi_profile_entry_batch_target,
+    get_profile,
     get_profile_exchange_commission,
     get_profile_exchange_commission_map,
     get_sportsbook_bet,
@@ -40,11 +49,13 @@ from openforge_api.db import (
     update_sportsbook_bet,
     update_sportsbook_partial_lay_reminder,
 )
+from openforge_api.free_bet_input import validate_free_bet_commission
 from openforge_api.multi_profile_entry import (
     MultiProfileTargetEligibility,
     evaluate_multi_profile_target,
     strategy_requires_exchange,
 )
+from openforge_api.sportsbook_input import MONEY_FIELDS, money, nested_money, percentage
 from openforge_api.sportsbook_odds_input import (
     validate_complete_decimal_string,
     validate_nested_sportsbook_odds,
@@ -128,6 +139,21 @@ class SportsbookBetFields(BaseModel):
 
 
 class SportsbookBetPayload(SportsbookBetFields):
+    @field_validator(*MONEY_FIELDS, mode="before")
+    @classmethod
+    def validate_money(cls, value: Any, info: ValidationInfo) -> str:
+        return money(value, info.field_name or "money")
+
+    @field_validator("bonus_retention_rate", "profit_boost_percent", mode="before")
+    @classmethod
+    def validate_percentage(cls, value: Any, info: ValidationInfo) -> str:
+        return percentage(value, info.field_name or "percentage")
+
+    @field_validator("lay_commission_1", mode="before")
+    @classmethod
+    def validate_commission(cls, value: Any) -> str:
+        return validate_free_bet_commission(value)
+
     @field_validator(
         "back_odds",
         "base_back_odds",
@@ -142,16 +168,29 @@ class SportsbookBetPayload(SportsbookBetFields):
     @field_validator("multi_lay_outcomes_json", mode="before")
     @classmethod
     def validate_entered_nested_odds(cls, value: Any) -> str:
-        return validate_nested_sportsbook_odds(value)
+        return nested_money(validate_nested_sportsbook_odds(value))
 
     @model_validator(mode="after")
     def validate_required_placement_odds(self) -> "SportsbookBetPayload":
         requires_placement = (
-            self.status in {"Placed", "Settled", "Free Bet Awarded"}
-            or self.result != "Pending"
+            self.status in {"Placed", "Settled", "Free Bet Awarded"} or self.result != "Pending"
         )
         if not requires_placement:
             return self
+
+        if not self.back_stake:
+            raise ValidationError.from_exception_data(
+                self.__class__.__name__,
+                [
+                    {
+                        "type": PydanticCustomError(
+                            "sportsbook_stake_required", "Enter the back stake."
+                        ),
+                        "loc": ("back_stake",),
+                        "input": self.back_stake,
+                    }
+                ],
+            )
 
         required_fields: list[tuple[str, str]] = []
         if self.offer_type == "Profit Boost" and self.profit_boost_mode == "percentage":
@@ -241,9 +280,7 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     profit_boost_source: str | None
 
 
-PAYOUT_AMOUNT_FORMAT_MESSAGE = (
-    "Enter a decimal amount using a full stop, for example 10.50."
-)
+PAYOUT_AMOUNT_FORMAT_MESSAGE = "Enter a decimal amount using a full stop, for example 10.50."
 
 
 class PayoutOddsPreviewPayload(BaseModel):
@@ -491,7 +528,7 @@ def serialize_profit_boost(result: ProfitBoostResult | None) -> dict[str, str | 
     }
 
 
-def build_response(
+def _build_response(
     profile_id: str,
     row: object,
     *,
@@ -510,6 +547,14 @@ def build_response(
         if commission_lookup
         else get_profile_exchange_commission(profile_id, record["exchange_name"])
     )
+    for field in MONEY_FIELDS:
+        money(record[field], field, legacy=True)
+    for field in ("back_odds", "base_back_odds", "actual_accepted_back_odds", "lay_odds_1"):
+        validate_sportsbook_odds(record[field].strip())
+    nested_money(validate_nested_sportsbook_odds(record["multi_lay_outcomes_json"]), legacy=True)
+    percentage(record["bonus_retention_rate"], "bonus_retention_rate")
+    percentage(record["profit_boost_percent"], "profit_boost_percent")
+    validate_free_bet_commission(resolved_commission)
     calculation = calculate_sportsbook_current_value(
         SportsbookCalculationInput(
             profile_id=record["profile_id"],
@@ -543,6 +588,85 @@ def build_response(
             **serialize_profit_boost(profit_boost),
         }
     )
+
+
+def build_response(
+    profile_id: str,
+    row: object,
+    *,
+    as_of_date: date,
+    commission_lookup: Callable[[str], str] | None = None,
+    strict: bool = False,
+) -> SportsbookBetResponse:
+    try:
+        return _build_response(
+            profile_id, row, as_of_date=as_of_date, commission_lookup=commission_lookup
+        )
+    except (ValueError, DecimalException) as error:
+        if strict:
+            raise HTTPException(
+                status_code=422, detail=f"Sportsbook calculation requires correction: {error}"
+            ) from error
+        record = row.__dict__
+        unavailable = {
+            key: None
+            for key in SportsbookCalculationPreviewResponse.model_fields
+            if key != "lay_commission_1"
+        }
+        unavailable.update(
+            calculation_state="review_required",
+            calculation_notes=[
+                f"Sportsbook {record['sportsbook_bet_id']} requires correction: {error}"
+            ],
+            lay_status="Unavailable",
+            counts_as_open=record["status"] == "Placed",
+            is_overdue=False,
+        )
+        return SportsbookBetResponse.model_validate({**record, **unavailable})
+
+
+def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    profile = get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if profile.status == "Archived":
+        raise HTTPException(status_code=409, detail="Profile is archived")
+    try:
+        parsed = SportsbookBetPayload.model_validate(payload)
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail=error.errors(include_context=False)) from error
+    accounts = list_accounts(profile_id)
+    references = [
+        (parsed.bookmaker, "Bookie", "bookmaker"),
+        (parsed.exchange_name, "Exchange", "exchange_name"),
+    ]
+    references.extend(
+        (entry.get("placedExchange", ""), "Exchange", "multi_lay_outcomes_json.placedExchange")
+        for entry in json.loads(parsed.multi_lay_outcomes_json)
+    )
+    for name, kind, field in references:
+        if not name:
+            continue
+        account = next((a for a in accounts if a.account == name and a.type == kind), None)
+        if account is None:
+            raise HTTPException(
+                status_code=422, detail=f"{field}: select an Account belonging to this Profile"
+            )
+        if account.lifecycle_status == "Archived" or account.status == "Archived":
+            raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
+    return parsed.model_dump()
+
+
+def prepare_write_response(row: object, commissions: dict[str, str]) -> SportsbookBetResponse:
+    response = build_response(
+        row.profile_id,
+        row,
+        as_of_date=date.today(),
+        commission_lookup=lambda name: commissions.get(name, ""),
+        strict=True,
+    )
+    response.model_dump_json()
+    return response
 
 
 def serialize_calculation(calculation: SportsbookCalculationResult) -> dict[str, object]:
@@ -1031,9 +1155,7 @@ def cancel_sportsbook_copy_batch(
     ):
         raise HTTPException(status_code=404, detail="Copy batch not found")
     pending_target_ids = [
-        target["target_profile_id"]
-        for target in targets
-        if target["submit_state"] == "Pending"
+        target["target_profile_id"] for target in targets if target["submit_state"] == "Pending"
     ]
     for target_profile_id in pending_target_ids:
         update_multi_profile_entry_target(
@@ -1051,18 +1173,33 @@ def cancel_sportsbook_copy_batch(
 def create_profile_sportsbook_bet(
     profile_id: str, payload: SportsbookBetPayload
 ) -> SportsbookBetResponse:
-    created = create_sportsbook_bet(profile_id, payload.model_dump())
-    return build_response(profile_id, created, as_of_date=date.today())
+    prepared = []
+    create_sportsbook_bet(
+        profile_id,
+        payload.model_dump(),
+        prepare_response=lambda row, commissions: prepared.append(
+            prepare_write_response(row, commissions)
+        ),
+    )
+    return prepared[0]
 
 
 @router.put("/{sportsbook_bet_id}", response_model=SportsbookBetResponse)
 def update_profile_sportsbook_bet(
     profile_id: str, sportsbook_bet_id: str, payload: SportsbookBetPayload
 ) -> SportsbookBetResponse:
-    updated = update_sportsbook_bet(profile_id, sportsbook_bet_id, payload.model_dump())
+    prepared = []
+    updated = update_sportsbook_bet(
+        profile_id,
+        sportsbook_bet_id,
+        payload.model_dump(exclude_unset=True),
+        prepare_response=lambda row, commissions: prepared.append(
+            prepare_write_response(row, commissions)
+        ),
+    )
     if updated is None:
         raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
-    return build_response(profile_id, updated, as_of_date=date.today())
+    return prepared[0]
 
 
 @router.delete("/{sportsbook_bet_id}", status_code=204)

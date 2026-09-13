@@ -108,8 +108,10 @@ def build_module_total(
         profile_name=profile_name,
         module=module,
         row_count=max(len(current_values), len(final_values), len(signed_values or [])),
-        current_value_total=format_money(current_total) if current_values else None,
-        final_value_total=format_money(final_total) if final_values else None,
+        current_value_total=format_money(current_total)
+        if current_values and not missing_current
+        else None,
+        final_value_total=format_money(final_total) if final_values and not missing_final else None,
         signed_amount_total=format_money(signed_total) if signed_values is not None else None,
         missing_current_value_count=missing_current,
         missing_final_value_count=missing_final,

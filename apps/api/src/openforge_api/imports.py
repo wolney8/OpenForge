@@ -419,6 +419,9 @@ def sportsbook_export_row(profile_id: str, row: object) -> dict[str, object]:
         record["sportsbook_bet_id"],
     )
     calculated = build_response(profile_id, row, as_of_date=date.today())
+    if calculated.calculation_state == "review_required":
+        raise HTTPException(status_code=409, detail={"record_id": record["sportsbook_bet_id"],
+                                                   "errors": calculated.calculation_notes})
     return {
         "QualBetID": source.source_record_id if source else record["sportsbook_bet_id"],
         "DateSettling": record["date_settled"],

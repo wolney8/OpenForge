@@ -3737,7 +3737,11 @@ def get_casino_offer_by_id(casino_offer_id: str) -> CasinoOfferRecord | None:
     return None if row is None else map_casino_offer_row(row)
 
 
-def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> SportsbookBetRecord:
+def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
+                         prepare_response: Callable[[SportsbookBetRecord, dict[str, str]], object] | None = None) -> SportsbookBetRecord:
+    from openforge_api.sportsbook import validate_write_payload, prepare_write_response
+    payload = validate_write_payload(profile_id, payload)
+    commissions = get_profile_exchange_commission_map(profile_id)
     record = {
         "sportsbook_bet_id": payload.get("sportsbook_bet_id") or f"SB-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -3850,8 +3854,11 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any]) -> Sportsboo
             action="created",
             payload=record,
         )
-    created = get_sportsbook_bet(profile_id, record["sportsbook_bet_id"])
-    assert created is not None
+        stored = connection.execute("SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+                                    (profile_id, record["sportsbook_bet_id"])).fetchone()
+        assert stored is not None
+        created = map_row(stored)
+        (prepare_response or prepare_write_response)(created, commissions)
     return created
 
 
@@ -3859,10 +3866,15 @@ def update_sportsbook_bet(
     profile_id: str,
     sportsbook_bet_id: str,
     payload: dict[str, Any],
+    *, prepare_response: Callable[[SportsbookBetRecord, dict[str, str]], object] | None = None,
 ) -> SportsbookBetRecord | None:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is None:
         return None
+
+    from openforge_api.sportsbook import validate_write_payload, prepare_write_response
+    payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    commissions = get_profile_exchange_commission_map(profile_id)
 
     updated = {
         "event_name": payload["event_name"],
@@ -3990,7 +4002,12 @@ def update_sportsbook_bet(
             action="updated",
             payload={"sportsbook_bet_id": sportsbook_bet_id, "profile_id": profile_id, **updated},
         )
-    return get_sportsbook_bet(profile_id, sportsbook_bet_id)
+        stored = connection.execute("SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+                                    (profile_id, sportsbook_bet_id)).fetchone()
+        assert stored is not None
+        saved = map_row(stored)
+        (prepare_response or prepare_write_response)(saved, commissions)
+    return saved
 
 
 def update_sportsbook_partial_lay_reminder(
@@ -8273,6 +8290,12 @@ def confirm_sportsbook_import_batch(
     backup_snapshot_id: str,
     selected_staged_row_ids: set[str],
 ) -> list[str]:
+    from openforge_api.sportsbook import prepare_write_response
+
+    profile = get_profile(profile_id)
+    if profile is None or profile.status == "Archived":
+        raise ValueError("Select an existing, non-archived Profile for this import")
+    commissions = get_profile_exchange_commission_map(profile_id)
     imported_ids: list[str] = []
     with connect() as connection:
         batch = connection.execute(
@@ -8405,6 +8428,15 @@ def confirm_sportsbook_import_batch(
                 (staged_row["import_staged_row_id"], import_batch_id),
             )
             imported_ids.append(record["sportsbook_bet_id"])
+
+            stored = connection.execute(
+                "SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+                (profile_id, record["sportsbook_bet_id"]),
+            ).fetchone()
+            assert stored is not None
+            # Import keeps approved source precision/lifecycle; strict read preparation
+            # rejects corrupt finances before row, audit, provenance and batch commit.
+            prepare_write_response(map_row(stored), commissions)
 
         connection.execute(
             """

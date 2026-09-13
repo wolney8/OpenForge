@@ -1083,6 +1083,11 @@ export function CrossProfileAnalytics({
 
       {blockingReportingLoad ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
       {!blockingReportingLoad ? <AccountMoneyStatus issues={trackerRangeAllProfilesCombined.cashIssues} /> : null}
+      {!blockingReportingLoad && trackerRangeAllProfilesCombined.sportsbookFinancialIssues?.length ? (
+        <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
+          Sportsbook P&amp;L incomplete. {trackerRangeAllProfilesCombined.sportsbookFinancialIssues.join(" · ")}
+        </p>
+      ) : null}
       {!blockingReportingLoad && trackerRangeAllProfilesCombined.freeBetFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
           Free Bet P&amp;L incomplete. {trackerRangeAllProfilesCombined.freeBetFinancialIssues.join(" · ")}

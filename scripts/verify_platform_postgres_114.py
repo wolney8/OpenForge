@@ -225,10 +225,71 @@ def primary_cases(dsn, runtime, evidence):
     return {"passed": passed, "free_bets": financial, "blackjack": p, "casino_id": result["record_id"], "snapshot": persisted(dsn)}
 
 
+def sportsbook_cases(dsn, runtime):
+    import psycopg
+    from openforge_api import db, sportsbook
+    from openforge_api.accounts import AccountPayload
+    from test_sportsbook_atomic_safety import payload
+    client = client_for(dsn, str(runtime))
+    pid = "pqa114-sportsbook"
+    db.create_profile_with_onboarding({"profile_id": pid, "display_name": "Synthetic Sportsbook", "profile_code": "PQA-SB", "tracking_start_date": "2026-09-01", "current_cash_snapshot": "0.00", "enabled_modules": ["sportsbook-bets"], "accounts": [], "quick_actions": [], "exchange_commissions": []})
+    db.link_fund_manager_profile(email=OWNER, profile_id=pid)
+    with db.connect() as c:
+        c.execute("UPDATE profiles SET status='Active' WHERE profile_id=?", (pid,))
+    for name, kind in [("Bookmaker A", "Bookie"), ("Exchange A", "Exchange")]:
+        p = AccountPayload(account=name, type=kind, status="Active", lifecycle_status="Active", current_balance="0.00").model_dump()
+        p["restrictions_json"] = "[]"
+        db.create_account(pid, p)
+    db.upsert_profile_exchange_commission(pid, "Exchange A", "0.02")
+    def stored():
+        with psycopg.connect(dsn) as c:
+            return {t: sorted(c.execute(f'SELECT row_to_json(t)::text FROM "{t}" t').fetchall())
+                    for t in ["sportsbook_bets", "sportsbook_bet_audit", "free_bets", "free_bet_audit", "calculator_conversion_targets"]}
+    url = f"/profiles/{pid}/sportsbook-bets"
+    checks = 0
+    for raw in ["not-money", "NaN", "Infinity", "-Infinity"]:
+        before = stored()
+        assert client.post(url, json=payload(back_stake=raw)).status_code == 422
+        assert stored() == before
+        checks += 1
+    made = client.post(url, json=payload(status="Not Placed", lay_actual=""))
+    assert made.status_code == 201, made.text
+    assert made.json()["reference_lay_stake_standard"] == "9.65"
+    ident = made.json()["sportsbook_bet_id"]
+    for raw in ["not-money", "NaN", "Infinity", "-Infinity"]:
+        before = stored()
+        assert client.put(url + "/" + ident, json=payload(lay_actual=raw)).status_code == 422
+        assert stored() == before
+        checks += 1
+    for boundary, target in [("calculate_sportsbook_current_value", sportsbook), ("build_response", sportsbook), ("model_dump_json", sportsbook.SportsbookBetResponse)]:
+        before = stored()
+        with patch.object(target, boundary, side_effect=RuntimeError("Synthetic preparation failure")):
+            assert client.post(url, json=payload()).status_code == 500
+            assert client.put(url + "/" + ident, json=payload(back_stake="12.00")).status_code == 500
+        assert stored() == before
+        checks += 2
+    for result, expected in [("Back Won", "2.20"), ("Lay Won", "-1.18")]:
+        r = client.put(url + "/" + ident, json=payload(status="Settled", result=result))
+        assert r.status_code == 200, r.text
+        assert r.json()["calculated_liability_1"] == "37.80"
+        assert r.json()["final_net_pnl"] == expected
+        assert client.get(url + "/" + ident).json()["final_net_pnl"] == expected
+        with psycopg.connect(dsn) as c:
+            assert c.execute("SELECT back_stake,back_odds,lay_actual,lay_odds_1,result FROM sportsbook_bets WHERE sportsbook_bet_id=%s", (ident,)).fetchone() == ("10.00", "5.00", "9.00", "5.20", result)
+        checks += 1
+    before = stored()
+    assert client.post("/profiles/missing/sportsbook-bets", json=payload()).status_code in {403, 404}
+    assert stored() == before
+    checks += 1
+    return {"passed": ["PD-QA-020 real PostgreSQL invalid create/update, calculation/model/JSON rollback, exact financial reopen/correction, missing Profile zero-write denial"], "sportsbook_checks": checks, "reference": "9.65", "actual_liability": "37.80", "back_won": "2.20", "lay_won": "-1.18"}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
-    pg_bin = parser.parse_args().pg_bin.resolve()
+    parser.add_argument("--sportsbook-only", action="store_true", help="PD-QA-020 targeted transactions; does not repeat recovery suite")
+    args = parser.parse_args()
+    pg_bin = args.pg_bin.resolve()
     def pg(name):
         return str(pg_bin / name)
     root = Path(tempfile.mkdtemp(prefix="openforge-pqa-pg-114-", dir="/tmp")).resolve()
@@ -262,6 +323,10 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.sportsbook_only:
+            record.update(sportsbook_cases(primary, root))
+            record["status"] = "PASS"
+            return
         record.update(primary_cases(primary, root, record))
         backup = root / "synthetic-backup.dump"
         command(pg("pg_dump"), "-h", "127.0.0.1", "-p", str(port), "-U", ROLE, "-d", "pqa114_primary", "-Fc", "-f", str(backup))

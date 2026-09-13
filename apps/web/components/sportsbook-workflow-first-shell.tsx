@@ -1,6 +1,7 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { getMoneyInputErrors } from "@/lib/decimal-input";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
@@ -56,6 +57,7 @@ import { refreshFeeReviewResolutionSession, type FeeReviewResolutionContext } fr
 import { getSettlementValidationMessage } from "@/lib/settlement-validation";
 import {
   getSportsbookOddsInputError,
+  hasCompleteDecimalInputSyntax,
   parseSportsbookOddsInput,
 } from "@/lib/sportsbook-odds-input";
 import {
@@ -3506,7 +3508,16 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => new Map(oddsIssues.map((issue) => [issue.key, issue.message])),
     [oddsIssues]
   );
-  const hasInvalidOddsInput = oddsIssues.length > 0;
+  const financialInputErrors = getMoneyInputErrors(formState, ["back_stake", "lay_actual", "lay_matched_stake_1", "maximum_bonus", "maximum_boost_winnings", "manual_override_value"]);
+  for (const field of ["bonus_retention_rate", "profit_boost_percent"] as const) {
+    const value = formState[field];
+    if (value !== "" && (!hasCompleteDecimalInputSyntax(value) || !Number.isFinite(Number(value)) || (field === "bonus_retention_rate" && Number(value) > 100)))
+      financialInputErrors[field] = field === "bonus_retention_rate" ? "Enter a finite percentage from 0 to 100." : "Enter a complete non-negative percentage.";
+  }
+  const hasInvalidOddsInput = oddsIssues.length > 0 || Object.keys(financialInputErrors).length > 0;
+  function financialInputError(field: string) {
+    return financialInputErrors[field] ? <span className="field-validation-text" id={`sportsbook-money-${field}-error`} role="alert">{financialInputErrors[field]}</span> : null;
+  }
   const betSetupComplete = useMemo(() => getBetSetupComplete(formState), [formState]);
   const missingBetSetupFields = useMemo(() => getMissingBetSetupFields(formState), [formState]);
   const hasPersistedDraft = Boolean(formState.sportsbook_bet_id ?? selectedId);
@@ -4260,9 +4271,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   function updateDecimalFormField(field: keyof SportsbookFormState, value: string) {
-    if (!isDecimalCalculatorInput(value)) {
-      return;
-    }
+    // Preserve invalid money for associated validation; never keep a stale valid value.
     setFormState((current) => ({ ...current, [field]: value }));
   }
 
@@ -4284,9 +4293,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   function updateBackStakeField(value: string) {
-    if (!isProfitBoostOffer && !isDecimalCalculatorInput(value)) {
-      return;
-    }
     if (isProfitBoostOffer) {
       setPayoutStakeStrictValidation(true);
       setPayoutPreviewPendingIfValid(
@@ -5039,6 +5045,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   ): boolean {
     return (
       getBetSetupComplete(nextFormState) &&
+      Object.keys(getMoneyInputErrors(nextFormState, ["back_stake", "lay_actual", "lay_matched_stake_1", "maximum_bonus", "maximum_boost_winnings", "manual_override_value"])).length === 0 &&
       (nextFormState.offer_type !== "Profit Boost" ||
         !payoutStakeStrictValidation ||
         getPayoutStakeInputError(nextFormState.back_stake) === null) &&
@@ -7922,7 +7929,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             ) : null}
                             <label
                               className={`${getGuidedFieldClass("back_stake")}${
-                                payoutStakeError ||
+                                financialInputErrors.back_stake || payoutStakeError ||
                                 (calculatorUnlocked && missingCalculatorFields.includes("Back stake"))
                                   ? " is-invalid"
                                   : ""
@@ -7931,12 +7938,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             >
                               <span>Back stake</span>
                               <input
+                                aria-label="Back stake"
                                 aria-describedby={[
                                   getGuidedDescribedBy("back_stake"),
+                                  financialInputErrors.back_stake ? "sportsbook-money-back-stake-error" : "",
                                   payoutStakeError ? "sportsbook-payout-stake-error" : "",
                                 ].filter(Boolean).join(" ") || undefined}
 	                                aria-invalid={Boolean(
-                                  payoutStakeError ||
+                                  financialInputErrors.back_stake || payoutStakeError ||
                                     (calculatorUnlocked &&
                                       missingCalculatorFields.includes("Back stake"))
                                 )}
@@ -7944,6 +7953,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                onChange={(event) => updateBackStakeField(event.target.value)}
 	                                value={formState.back_stake}
 	                              />
+                              {financialInputErrors.back_stake ? <span className="field-validation-text" id="sportsbook-money-back-stake-error" role="alert">{financialInputErrors.back_stake}</span> : null}
                               {payoutStakeError ? (
                                 <span
                                   className="field-validation-text"
@@ -8025,18 +8035,26 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 >
                                   <span>Profit boost %</span>
                                   <input
+                                    aria-label="Profit boost %"
+                                    aria-invalid={Boolean(financialInputErrors.profit_boost_percent)}
+                                    aria-describedby={financialInputErrors.profit_boost_percent ? "sportsbook-money-profit_boost_percent-error" : undefined}
 	                                    inputMode="decimal"
 	                                    onChange={(event) => updateDecimalFormField("profit_boost_percent", event.target.value)}
 	                                    value={formState.profit_boost_percent}
 	                                  />
+                                  {financialInputError("profit_boost_percent")}
                                 </label>
                                 <label className="field-control">
                                   <span>Maximum boost winnings</span>
                                   <input
+                                    aria-label="Maximum boost winnings"
+                                    aria-invalid={Boolean(financialInputErrors.maximum_boost_winnings)}
+                                    aria-describedby={financialInputErrors.maximum_boost_winnings ? "sportsbook-money-maximum_boost_winnings-error" : undefined}
 	                                    inputMode="decimal"
 	                                    onChange={(event) => updateDecimalFormField("maximum_boost_winnings", event.target.value)}
 	                                    value={formState.maximum_boost_winnings}
 	                                  />
+                                  {financialInputError("maximum_boost_winnings")}
                                 </label>
                               </>
                             )}
@@ -8329,12 +8347,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               >
                                 <span>Lay actual</span>
                                 <input
-                                  aria-describedby={getGuidedDescribedBy("lay_actual")}
-                                  aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Lay actual")}
+                                  aria-label="Lay actual"
+                                  aria-describedby={[getGuidedDescribedBy("lay_actual"), financialInputErrors.lay_actual ? "sportsbook-money-lay-actual-error" : ""].filter(Boolean).join(" ") || undefined}
+                                  aria-invalid={Boolean(financialInputErrors.lay_actual) || (calculatorUnlocked && missingCalculatorFields.includes("Lay actual"))}
 	                                  inputMode="decimal"
 	                                  onChange={(event) => updateDecimalFormField("lay_actual", event.target.value)}
 	                                  value={formState.lay_actual}
 	                                />
+                                {financialInputErrors.lay_actual ? <span className="field-validation-text" id="sportsbook-money-lay-actual-error" role="alert">{financialInputErrors.lay_actual}</span> : null}
                               </label>
                             ) : null}
                             {isCashbackOffer ? (
@@ -8381,11 +8401,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               >
                                 <span>Maximum bonus</span>
                                 <input
-                                  aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Maximum bonus")}
+                                  aria-label="Maximum bonus"
+                                  aria-describedby={financialInputErrors.maximum_bonus ? "sportsbook-money-maximum_bonus-error" : undefined}
+                                  aria-invalid={Boolean(financialInputErrors.maximum_bonus) || (calculatorUnlocked && missingCalculatorFields.includes("Maximum bonus"))}
 	                                  inputMode="decimal"
 	                                  onChange={(event) => updateDecimalFormField("maximum_bonus", event.target.value)}
 	                                  value={formState.maximum_bonus}
 	                                />
+                                {financialInputError("maximum_bonus")}
                               </label>
                             ) : null}
                             {isRefundOffer ? (
@@ -8398,11 +8421,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               >
                                 <span>Bonus retention %</span>
                                 <input
-                                  aria-invalid={calculatorUnlocked && missingCalculatorFields.includes("Bonus retention %")}
+                                  aria-label="Bonus retention %"
+                                  aria-describedby={financialInputErrors.bonus_retention_rate ? "sportsbook-money-bonus_retention_rate-error" : undefined}
+                                  aria-invalid={Boolean(financialInputErrors.bonus_retention_rate) || (calculatorUnlocked && missingCalculatorFields.includes("Bonus retention %"))}
 	                                  inputMode="decimal"
 	                                  onChange={(event) => updateDecimalFormField("bonus_retention_rate", event.target.value)}
 	                                  value={formState.bonus_retention_rate}
 	                                />
+                                {financialInputError("bonus_retention_rate")}
                               </label>
                             ) : null}
                           </div>
@@ -9280,6 +9306,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       <label className="field-control">
                         <span>Lay matched stake 1</span>
                         <input
+                          aria-label="Lay matched stake 1"
+                          aria-invalid={Boolean(financialInputErrors.lay_matched_stake_1)}
+                          aria-describedby={financialInputErrors.lay_matched_stake_1 ? "sportsbook-money-lay_matched_stake_1-error" : undefined}
                           onChange={(event) =>
                             setFormState((current) => ({
                               ...current,
@@ -9288,6 +9317,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           }
                           value={formState.lay_matched_stake_1}
                         />
+                        {financialInputError("lay_matched_stake_1")}
                       </label>
                     </div>
                   )}
@@ -9614,6 +9644,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     <label className="field-control field-span-2">
                       <span>Manual override value</span>
                       <input
+                        aria-label="Manual override value"
+                        aria-invalid={Boolean(financialInputErrors.manual_override_value)}
+                        aria-describedby={financialInputErrors.manual_override_value ? "sportsbook-money-manual_override_value-error" : undefined}
                         onChange={(event) =>
                           setFormState((current) => ({
                             ...current,
@@ -9622,6 +9655,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         }
                         value={formState.manual_override_value}
                       />
+                      {financialInputError("manual_override_value")}
                     </label>
                     <label className="field-control field-span-2">
                       <span>Manual override reason</span>

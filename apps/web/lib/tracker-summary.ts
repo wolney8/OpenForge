@@ -30,6 +30,8 @@ export type AccountSummaryRecord = {
 };
 
 export type SportsbookSummaryRecord = {
+  calculation_state?: string;
+  calculation_notes?: string[];
   sportsbook_bet_id: string;
   bookmaker: string;
   event_name: string;
@@ -261,6 +263,7 @@ export type BookmakerBreakdownRow = {
 
 export type TrackerSummaryResult = {
   freeBetFinancialIssues?: string[];
+  sportsbookFinancialIssues?: string[];
   resolvedDateRange: ResolvedDateRange;
   accountQuickView: {
     bookieBalance: number;
@@ -408,6 +411,7 @@ function firstMoneyValue(...values: Array<string | null | undefined>): number {
 }
 
 function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
+  if (row.calculation_state === "review_required") return NaN;
   return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
 }
 
@@ -761,12 +765,14 @@ export function summarizeTrackerData(
     (sum, row) => sum + sportsbookDisplayValue(row),
     0
   );
+  const sportsbookFinancialIssues = sportsbookInRange.filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
+    .map((row) => `${row.sportsbook_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
   const sportsbookOpenCurrentValue = sportsbookInRange
     .filter((row) => row.counts_as_open)
-    .reduce((sum, row) => sum + parseMoney(row.projected_current_pnl), 0);
+    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : parseMoney(row.projected_current_pnl)), 0);
   const sportsbookSettledFinalValue = sportsbookInRange
     .filter((row) => !row.counts_as_open)
-    .reduce((sum, row) => sum + parseMoney(row.final_net_pnl), 0);
+    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : parseMoney(row.final_net_pnl)), 0);
   const freeBetReportingValue = freeBetsInRange.reduce(
     (sum, row) => sum + freeBetDisplayValue(row),
     0
@@ -827,7 +833,7 @@ export function summarizeTrackerData(
     ).length;
 
   const currentLiability =
-    openSportsbook.reduce((sum, row) => sum + parseMoney(row.calculated_liability_1), 0) +
+    openSportsbook.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
     openFreeBets.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
     openEachWayExtraPlaces.reduce(
       (sum, row) => sum + parseMoney(row.win_liability) + parseMoney(row.place_liability),
@@ -1168,6 +1174,7 @@ export function summarizeTrackerData(
   return {
     resolvedDateRange,
     freeBetFinancialIssues,
+    sportsbookFinancialIssues,
     accountQuickView: {
       bookieBalance,
       exchangeBalance,

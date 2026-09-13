@@ -91,10 +91,18 @@ def main() -> None:
         }
     )
     with connect() as connection:
+        connection.execute("UPDATE profiles SET status='Active' WHERE profile_id=?", (PROFILE_ID,))
         connection.execute(
             "INSERT INTO fund_manager_profile_links VALUES (?, ?, 1, ?)",
             (OWNER_EMAIL, PROFILE_ID, "2026-09-06T08:00:00Z"),
         )
+    from openforge_api.accounts import AccountPayload
+    from openforge_api.db import create_account, upsert_profile_exchange_commission
+    for name, kind in [("Bookmaker A", "Bookie"), ("Exchange A", "Exchange")]:
+        account = AccountPayload(account=name, type=kind, status="Active", lifecycle_status="Active", current_balance="0.00").model_dump()
+        account["restrictions_json"] = "[]"
+        create_account(PROFILE_ID, account)
+    upsert_profile_exchange_commission(PROFILE_ID, "Exchange A", "0.02")
     create_sportsbook_bet(
         PROFILE_ID,
         {

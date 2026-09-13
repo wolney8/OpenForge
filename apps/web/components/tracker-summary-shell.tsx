@@ -605,6 +605,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   return (
     <section aria-busy={isCriticalLoading} className="stack tracker-summary-shell">
       {!isCriticalLoading ? <AccountMoneyStatus issues={summary?.accountQuickView.moneyIssues} /> : null}
+      {!isCriticalLoading && summary?.sportsbookFinancialIssues?.length ? (
+        <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
+          Sportsbook P&amp;L incomplete. {summary.sportsbookFinancialIssues.join(" · ")}
+        </p>
+      ) : null}
       {!isCriticalLoading && summary?.freeBetFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
           Free Bet P&amp;L incomplete. {summary.freeBetFinancialIssues.join(" · ")}
