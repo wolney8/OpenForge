@@ -11,19 +11,27 @@ durable requirements.
 
 Current reporting: audit/platform-quality-114 (documentation only). Modal candidate:
 repair/modal-boundary-114, based on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
+Current product revision6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; exact reporting
+commit/link is maintained in #114 living comment5652511529 (unpublished files cannot have a live GitHub blob link).
 Normal app remains unfixed. The isolated candidate is at http://localhost:3034 (API8034).
-First measured baseline: assessments33/87 (38%); complete journeys exercised and passing5/24
-(21% each); competitor cells7/27 (26%, documentation only); requests4/133 (3%).
+Current local-only measured review: assessments38/87 (44%); complete journeys exercised and passing6/24
+(25% each); competitor cells13/27 (48%:11 documentation,2 hands-on); requests9/133 (7%).
+Initial baseline33/5/7/4 is historical; change+6/+4/+22/+4 percentage points respectively.
 These are coverage measures, not readiness or estimated time remaining. See the
 [current detailed audit](docs/audits/platform-quality-audit.md#measured-scorecard-v1--2026-09-13--114-comment5652511529).
 Native pointer Save/focus and populated financial journeys now have candidate evidence;
-200% desktop text still produces background page overflow. PostgreSQL, reader testing and
-remaining journeys are open. Local review handoff is withheld pending the remaining UI gate.
+Shared200% root-text header and combined320px sizing defects are fixed on the candidate, not main.
+PQA-J12 partial failure/retry/new-intent browser flow passes; J06 financial flow passes at7.40/17.40
+and report24.80, but history/lineage display remains PARTIAL. PostgreSQL, reader and remaining journeys
+stay open. Scoped local review is prepared; engineering regressions are not assigned to Will.
 Vercel reports previous repair/audit deployments: pushes withheld to avoid unapproved Preview.
 Preview BLOCKED: safe Git-trigger configuration, isolated API/PG/auth, actual PG transactions,
-#115 disposition and #96 provider credential rotation remain prerequisites. No action needed from Will now.
+#115 disposition and #96 provider credential rotation remain prerequisites. The only owner need now
+is redacted deployment metadata for the two Vercel dashboards; no secret values or calculator comparison.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 Historical entries below retain their original revision-specific evidence.
+
+### Historical earlier repair receipts (not current checkpoints)
 
 The Account, Free Bet and completed-Blackjack duplicate repairs are stacked on separate reviewable
 branches; the normal app does not contain them yet. Blackjack retry/concurrency/rollback evidence

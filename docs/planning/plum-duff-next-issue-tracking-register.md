@@ -4,10 +4,16 @@
 
 #114 reporting remains audit/platform-quality-114, documentation only; shared modal candidate
 repair/modal-boundary-114 stacks on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
+Current product6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; publication withheld.
 PD-QA-004.1–004.4 track mounted focus/top-layer Save, nested/pending Escape, return focus and
-rendered combined journeys. Scoped native/conversion pointer checks pass; desktop200% background
-reflow remains PD-QA-003. Main is not repaired. Push withheld: prior Git commits triggered Vercel.
-Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence33/5/7/4.
+rendered combined journeys. Scoped native/conversion pointer, text200%,320 and combined stress checks pass;
+reflow is PD-QA-005, not PD-QA-003 missing Profile. Main is not repaired. Push withheld: prior Git commits triggered Vercel.
+Stable scope87 assessments/24 journeys/27 competitor cells/133 requests; current evidence38/6/13/9.
+PQA-J12 browser partial-failure/retry/new-intent/notification journey passes. PQA-J06 browser financial
+slice passes, but history/lineage remains PARTIAL. PQA-U05/U06/U07, R02 and C02 have scoped assessment
+evidence; original #70/#82/#85/#106/#111 plus clarifications are reconciled, not implemented.
+Prior deployment target/aliases/protection/auth/API/database isolation remain UNVERIFIED; owner
+metadata and approved branch exclusions precede publication. #115/#96 remain separate gates.
 Original scopes, orphan IDs, open PostgreSQL/import/award/large-data/reader/security checks remain.
 Manual comparison deferred by Will; no scheduled date; resume on supplied results or explicit request.
 See the same platform-quality-audit.md for denominator definitions and retained prior failure evidence.

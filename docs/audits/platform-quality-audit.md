@@ -1,8 +1,186 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-Current measurable checkpoint: [scorecard v1](#measured-scorecard-v1--2026-09-13--114-comment5652511529).
+Current measurable checkpoint: [2026-09-13 next checkpoint](#next-checkpoint--deployment-safety-reflow-and-populated-journeys).
 Reporting branch audit/platform-quality-114; repair branch repair/modal-boundary-114.
 Main remains unfixed and owner calculator comparison remains deferred indefinitely.
+
+## Next checkpoint — deployment safety, reflow and populated journeys
+
+CURRENT, local-only: reporting branch `audit/platform-quality-114`; candidate product revision
+`6d2276e00d0a1a540f48f7ecc253e864ad30d5e3` on `repair/modal-boundary-114`. Exact full report/candidate commits are recorded in #114 living
+comment5652511529 and the checkpoint receipt. No repository push, PR, merge or deployment is authorised.
+Earlier b08962df0ad9658661ec75d7774189116c5aa414 /8b81bfccf0d277889c92ca12fac33eb74bdb20e3
+are historical parents, not competing current checkpoints. Main/frozen candidate remain
+f7a3b35073ecc87cdf8f8f881129f221ec44d395; development remains
+215193b7fcb5b11a28e23a4531d2a45434545dc1. Protected runtime/data mapping below is unchanged.
+
+### Current measured coverage (same denominators; no scope exclusions)
+
+| Measure | Evidence-complete / planned | Whole coverage | Change from initial baseline |
+|---|---|---|---|
+| Assessment review |38/87|44%|+5 assessments; +6 percentage points|
+| Journeys fully exercised |6/24|25%|+1 journey; +4 points|
+| Journeys passing required sampled checks |6/24|25%|+1 journey; +4 points|
+| Competitor cells |13/27|48%|+6 cells; +22 points|
+| Original requests with applicable clarification review |9/133|7%|+5 requests; +4 points|
+
+Area review: functional12/24 (50%), UX7/12 (58%), security6/12 (50%), data5/12 (42%),
+sustainability5/12 (42%), requirements2/6 (33%), competitor packages1/9 (11%).
+These are coverage, not readiness/time remaining. New complete assessment IDs: PQA-U05/U06/U07,
+PQA-R02 and PQA-C02. New complete journey PQA-J12. PQA-J06 remains PARTIAL, not added to numerator.
+Competitor breakdown11 documentation-only,2 hands-on,3 blocked,11 unresolved/unexamined.
+Finding stages remain cumulative:15 original findings;5 repairs on branches,0 full combined-candidate
+verification gate completions,0 integrated locally,0 hosted verified,0 owner accepted. Scoped rendered
+checks do not certify the entire combined candidate. Initial scorecard v1 below is historical.
+
+### Reflow/modal gate and evidence
+
+Result PASS / PROVEN for the tested shared gate, not accessibility certification.
+At1440px root font-size200% (NOT browser zoom), the identity trigger shrank while its label retained
+intrinsic width: arrow right1496.5px exceeded button right1440.7px. Shared intrinsic trigger sizing
+and wrapped action-group layout resolve the source, preserving controls/text. Separate320px reflow
+passes. Combined320px+200% text independently exposed the shared Add Row min-width8.75rem;
+bounded intrinsic minimum and wrapping resolve it without hidden overflow, smaller fonts or removed
+actions. Correct attribution: **PD-QA-005 is reflow; PD-QA-003 is missing-Profile handling**.
+
+Artifacts in `/tmp/openforge-modal-114-repair`, synthetic only, not committed:
+`free-bet-browser.json` (1440/760/390 both themes), `free-bet-stress-browser.json`
+(1440 root text200% and separate320), `free-bet-combined-stress-browser.json` (320+text200%,
+document307px/client320px, actual pointer Save200, reopened actual6.00).
+Associated invalid text stays editable; correction permits Save. Fixed-delay field assertions were
+replaced with polling the same aria-invalid/error/save conditions, not weakened or forced clicks.
+`modal-motion-browser.json` records six native Sportsbook/conversion theme-width cases, actual
+Escape close/reopen and RAF geometry; observed opacity/transform frames distinguish animation
+from settled states. `modal-stress-browser.json` asserts reduced-motion reveal animation:none,
+opacity1/transform:none. `modal-interrupted-frame-browser.json` separately captures a controlled
+60ms reveal frame and closes/reopens from that interrupted frame at760px both themes. Because
+the natural reveal can finish before locator readiness, this dedicated probe restarts the existing
+CSS animation before pausing it (opacity0.457636, translateY-5.42364), rather than substituting a
+new animation. An earlier late-animation harness failure is retained; it was not a product failure.
+Native Free Bet dirty nested Keep Editing/Tab recovery and conversion pending Escape/503 retry,
+receipt/async focus return pass. Actual Blackjack UI→Casino receipt/source exclusion/report passes
+on this synthetic candidate. Screen-reader execution, every modal variant and broader interrupted
+financial animation remain NOT TESTED; these are separate retained checks, not inferred PASS.
+Production build and focused TypeScript check pass; unchanged backend Account/Free Bet/completed-source
+finite regressions are reused at their inherited revisions, not a new whole-platform test claim.
+
+### Two populated journeys
+
+**PQA-J06 PARTIAL / PROVEN financial/browser slice:** converted SNR/SR £10, back3.00, lay3.10,
+commission2%; independent reference stakes6.49/9.74; actual lay6.00; Back Won finals7.40/17.40;
+combined report24.80 after reload. Browser performs conversion, destination opening, required
+Available state, matching/copy, explicit placement and settlement. Persistence is independently
+read; immutable calculator source remains attached. Required history/lineage UI display has NOT
+been evidenced: native editor exposes setup/matching/settlement, not an assumed History tab.
+An earlier missing Notes locator was a harness assumption, not a discovered financial failure.
+One SR settlement wait timed out in a concurrent probe run; cause UNVERIFIED. Unchanged sequential
+rerun passes both financial flows. Neither that timeout nor missing history is silently erased.
+Next: exercise actual existing lineage/history surface, or record its exact missing consumer under
+the retained lineage issue; do not fabricate a new feature or promote the whole journey.
+
+**PQA-J12 PASS / PROVEN:** actual half-width dark review selects two exact Account IDs; one Account
+becomes closed after review, causing HTTP200 succeeded/failed targets. First Profile has1 row,
+second0. Dialog remains editable; restore synthetic Account eligibility and retry submits only
+unresolved target with same intent. Receipt closes/focus returns; counts1/1. Already-saved retry
+returns same ID. A deliberate new exploratory intent creates another row: counts2/1. Three actual
+notification links each open their corresponding native destination. Inputs retain10.00.
+`conversion-partial-journey.json` records UI/API/persistence assertions. It does not substitute
+exploratory retry semantics for completed-Blackjack single-session protection. Network-lost-after-
+commit browser recovery and actual PostgreSQL concurrency remain separate untested gates.
+
+### Earlier Vercel deployments — read-only disposition
+
+| Source / branch | Confirmed evidence | Target/aliases/protection/auth/API/DB/test configuration |
+|---|---|---|
+| f57e71ad1b7d35070154b96d3e4f33b15f780d24 / repair/blackjack-source-91 | GitHub Vercel success; [dashboard93AK28L3bWtCK1GqKT61MvuFTs5u](https://vercel.com/homelab11/plum-duff/93AK28L3bWtCK1GqKT61MvuFTs5u) | UNVERIFIED; authorised owner metadata unavailable |
+| 7d75b5a54db466b1a47c6d7786ddc633f3dc7122 / audit/platform-quality-114 | GitHub Vercel success; [dashboardGPNAjWmuNa7kGxjKupUngdEU5W3e](https://vercel.com/homelab11/plum-duff/GPNAjWmuNa7kGxjKupUngdEU5W3e) | UNVERIFIED; authorised owner metadata unavailable |
+
+Private dashboard access was unavailable; no endpoint exploits, hosted test writes, live-data copy
+or secret values were attempted. Success status alone proves neither production promotion/public
+access/data isolation nor a security incident. Repo vercel.json has no branch exclusion. Hosted
+source forces auth and requires PostgreSQL configuration, but deployment environment/actual running
+auth remain unknown. Test launcher injects synthetic settings locally; no evidence establishes
+whether Vercel project environment had test-only settings. Prior deployments need owner disposition,
+not merely a future push embargo. One redacted metadata request covers both dashboards: target,
+aliases, protection and API/database environment target names, never secrets.
+
+Smallest proposed rule, NOT applied: `git.deploymentEnabled` with `audit/**:false` and
+`repair/**:false` in the effective approved Vercel project configuration. Other deliberate release/
+approved Preview branches remain governed normally. Verify effective root/overlapping true rules
+before any push: Vercel documents minimatch branch rules and true taking precedence over false.
+[Official Vercel Git configuration](https://vercel.com/docs/project-configuration/git-configuration),
+accessed2026-09-13. No integration disconnect/broad project change. Publication/Preview BLOCKED
+pending owner disposition and approved branch safeguard, isolated API/Postgres/auth configuration,
+actual isolated PG transactions, #115 dependency/exposure disposition and #96 provider rotation.
+Neither unavailable access nor local optimizer consumers clear exposure.
+
+Unpublished commit-only backup verified at root `.git/local-backups/audit-repairs-20260913.bundle`;
+five repair/report refs and f7 prerequisite, no databases/environment/private input observations.
+Final refreshed bundle is recorded in checkpoint receipt. Normal/frozen/development/audit records
+remain untouched. No product merge is used to synchronise audit documentation.
+
+### Competitor slice — source/date and method separation
+
+Accessed2026-09-13. **C02** three new documentation comparisons:
+[Outplayed feature guidance](https://outplayed.com/features) describes offer calendars/step guidance,
+catcher filters and progress/expiry handoff; useful context, not observed member interaction or
+profit guarantees. [MBB qualifying-bet guidance](https://matchedbettingblog.com/qualifying-bets/)
+(updated2023-01-26) separates terms, event/stake/odds constraints and liability/qualifying loss;
+historical examples are not current offers. [OddsMonkey Racing Matcher guide](https://help.oddsmonkey.com/hc/en-gb/articles/11145715428509-The-Racing-Matcher-Guide)
+(updated2023-07-26) documents dependent offer/race filters, bounded stake, commission and advanced
+review. Vendor wager integration does not authorise our autonomous wagering/scraping.
+**C06 OddsMonkey** [reset guide](https://help.oddsmonkey.com/hc/en-gb/articles/10263028145181-How-Do-I-Reset-My-Profit-Tracker)
+documents explicit Yes Delete confirmation; reset was not executed, restoration/undo remains unknown.
+Outplayed/MBB recovery equivalents remain unlocated, not declared absent.
+**C07/C08 MBB hands-on:** real Chromium1440/390 at
+[public calculator](https://matchedbettingblog.com/matched-betting-calculator/), controls stake10,
+back3, lay3.1, back commission0%, lay2%; Tab from stake reaches back odds; Space selects Free Bet
+then Normal; inputs stay within viewport. `public-calculator-usability.json` records controls/bounds.
+No observed numerical parity, screen-reader/contrast certification or authenticated tracker activity.
+Comparison: our contained modal/review/copy/receipt path adds explicit destination identity; requested
+#111 interactive actual-performance analytics and #85/#106 balance observations remain gaps.
+
+### Requirement reconciliation — original scope retained
+
+Five new traceability reviews, not five implemented features. Original bodies and every available
+clarification read: #70(no comments), #82(comment5569414794), #85(5561926423), #106(5574966194),
+#111(no comments). This raises reconciled requests4→9, not whole historical backlog completion.
+
+| Request / intended outcome | Current code/plans and evidence | Retained gap/dependency |
+|---|---|---|
+|#70 account restriction/gub evidence|Lifecycle/restriction arrays and generic Account audits/eligibility exist; CODE-VERIFIED|Requested chronological previous/new status, reasons/evidence/date/affected families/related-brand warnings are not proven as the full event workflow. Preserve all statuses and IDs; #71/#77 consumers|
+|#82 restrictions ≠ commercially dead|Draft Account health/ACPI fixture specs, Extra Place health adapter; DOCUMENTED plans, CODE-VERIFIED bounded NotChecked consumer|Numerical/odds-dependent stake observations, residual capabilities, confidence/profitability reasons and #86 task consumption missing. User-reported brand limits are not global facts|
+|#85 quick Account reconciliation|Account editor/audit exists; last_balance_update is request-supplied optional text, CODE-VERIFIED|Ledger-context popup, linked review/quick settle, server-authored financial timestamps remain requested. Account validation repair does not implement observation authority|
+|#106 balance observations/freshness|Mutable current balance+generic audit and separate snapshots are not an atomic observation workflow; draft/planned review|Same-value confirmation semantics, atomic append/current update, correction provenance, configured-age/activity freshness, account/Profile/combined trends and no-fake-P&L principle retained; #85/#86 coordination|
+|#111 interactive Dashboard/Reports|DashboardChartSurface renders static role=img ReplayableGraph/last-five labels; reports exist, CODE-VERIFIED|Point focus/pin/drilldown, range/grain/metrics/canonical dimensions/presets/data fallback remain planned. Account series depends#106; no fabricated OHLC/difficulty or settled-vs-current conflation; #110 motion|
+
+R02 completes the reviewed Account restriction/balance clarification package. R03 stays OPEN:
+reviewing #111 does not complete unread task/AI original clarifications. Fixture specs are not runtime
+passes. Source scope, request IDs and orphan requirements remain in the canonical register.
+
+### Local review and exact next gates
+
+Scoped local review READY for the sampled modal/financial UI, not platform/calculator sign-off.
+URL http://localhost:3034; API8034; existing isolated synthetic data/token and prepared converted
+Profile. Launch without reseed/reset/new auth:
+`node /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/modal-boundary-repair/scripts/open_modal_repair_review.mjs`.
+`--check` verifies existing authenticated access and prepared records. Optional5–10minute review,
+at most three actions: (1) reopen prepared SNR/SR at half width; inspect matching/settlement values
+and pointer access; (2) switch light/dark and open/close editor with Escape; (3) inspect prepared
+report24.80 and local modal/Blackjack receipt recording. No real wager or full regression assignment.
+Local troubleshooting recording lives under `/tmp/openforge-modal-114-repair/review-video`;
+synthetic only, not committed/hosted. Earlier before-fix geometry is recorded above; no invented
+before screenshot. Known limits: J06 history/lineage, full native pending variants, reader, larger
+data, imported/award-group recovery and network-loss paths.
+
+Actual PostgreSQL NOT TESTED. Local initdb/pg_ctl/psql are available; concrete prerequisite is a
+new disposable cluster/directory, dedicated loopback port/private socket (e.g.55434), synthetic role/
+database and explicit test-only DSN, plus rollback/concurrency/backup/restore fixtures. No5432,
+hosted/operational database fallback. Do not claim adapter tests as PG transaction evidence.
+Next bounded work: J06 actual history surface; award/import/recovery, PG isolated transaction setup,
+remaining populated ledgers/large datasets/reader and historical request reviews. Independent
+combined-candidate verification precedes a reviewed integration proposal/post-integration smoke.
+No push/deploy/integration/manual acceptance; #115/#96 remain separate.
 
 Audit date: 2026-09-12. Owner acceptance is not implied. Evidence level and test result are separate.
 
@@ -24,7 +202,7 @@ read as passing. The immediate priorities are affected dependencies/credential r
 malformed persisted money, controlled API rejection and modal accessibility—not animation polish.
 
 The current audit is executing in batches A–D. Untested areas below must not be read as passing.
-No application implementation, financial revision, migration, real-record write, credential rotation,
+Historical initial audit boundary (later bounded repairs are separately authorised above): no application implementation, financial revision, migration, real-record write, credential rotation,
 hosted scan or issue closure is authorised by this report.
 
 ### Batch 2 executive addendum — populated financial flows
@@ -975,7 +1153,7 @@ Next work is PD-QA-004, not another calculator feature or manual-comparison requ
 
 ## Measured scorecard v1 — 2026-09-13 / #114 comment5652511529
 
-This is the **first frozen denominator**, not an invented change from0%. Earlier checkpoints had
+Historical baseline only; current counts are at the top. This is the **first frozen denominator**, not an invented change from0%. Earlier checkpoints had
 no comparable percentage. Methods and stable IDs below now cover the original audit mandate.
 These are bounded assessment packages (one domain boundary/invariant family), not tests or route
 shells. An evidenced failure completes an assessment; an interrupted fixture or unavailable
@@ -1057,9 +1235,9 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-U02 | Sportsbook/conversion modal focus/close | ASSESSED; PASS scoped | modal-conversion-browser.json six cases |
 | PQA-U03 | Account financial field error/prefix geometry | ASSESSED; PASS scoped | money-repair-browser.json prefix delta0.0078125px |
 | PQA-U04 | Half-width/narrow pointer containment | ASSESSED; PASS scoped | Free Bet+conversion geometry1440/760/390 |
-| PQA-U05 | Desktop text enlargement and320px separately | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-U06 | Nested confirmation/pending/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-U07 | Interrupted/intermediate modal motion | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-U05 | Desktop text enlargement and320px separately | ASSESSED; PASS / PROVEN scoped | Current addendum: separate root-text200%,320 and combined stress artifacts; PD-QA-005 |
+| PQA-U06 | Nested confirmation/pending/error recovery | ASSESSED; PASS / PROVEN scoped | Current addendum: dirty nested Keep Editing, Tab, conversion pending/503 retry and focus return |
+| PQA-U07 | Interrupted/intermediate modal motion | ASSESSED; PASS / PROVEN scoped | Current addendum: RAF frames, controlled60ms close/reopen and static reduced-motion assertion |
 | PQA-U08 | Screen-reader announcements/navigation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-U09 | Contrast/targets/charts audit | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-U10 | Drag alternatives and tooltip association | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -1102,13 +1280,13 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M11 | Dependency/provider maintenance disposition | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M12 | Subscriber/hosting/AI sustainability decision | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R01 | Notification original+clarified scope | ASSESSED; REVIEWED | #90 original;#99 original+5567517442/5567729491 |
-| PQA-R02 | Account restriction/balance clarification set | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-R02 | Account restriction/balance clarification set | ASSESSED; DOCUMENTED review, not runtime PASS | Current addendum#70/#82/#85/#106 original+all available clarifications, source/contracts/gaps retained |
 | PQA-R03 | Dashboard/reports/tasks/AI original scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R04 | Import/recovery original scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R05 | Calculator/bridge coverage scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R06 | Unlocated/future requests and source recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C01 | Public calculator configuration comparison | OPEN; PARTIAL | MBB/OddsMonkey public configuration documented; Outplayed exact configuration review remains UNVERIFIED |
-| PQA-C02 | Public offer evaluation comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-C02 | Public offer evaluation comparison | ASSESSED; DOCUMENTED | Current addendum: three vendor guidance cells, not member hands-on |
 | PQA-C03 | Activity-recording comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C04 | Expected vs actual performance comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C05 | Cash/balance workflow comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -1130,13 +1308,13 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J03|Native SR Available→matching/copy→actual placement7→settlement→Reports/reload|PASS / PROVEN; same runner,9.65→20.60, combined31.20 |
 |PQA-J04|Standard source→Profile/Account/review→pointer Save→receipt/focus→destination/reopen|PASS / PROVEN; modal-conversion-browser.json1440/760/390 both themes |
 |PQA-J05|Actual Blackjack Live UI→hand outcome→Casino conversion→retry/second Account→history/report/reload|PASS / PROVEN; reviewed20→15=-5, one activity, retry same row, second Account409 |
-|PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; API fixtures7.40/17.40; full browser destination journey next |
+|PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; browser financial/copy/save/reopen/report24.80 passes; actual history/lineage display still unverified |
 |PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|NOT TESTED; populated prospective modal only |
 |PQA-J08|Casino other activity→fees/override→settle/reopen→report|NOT TESTED; explicit fee/override factories next |
 |PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|NOT TESTED; changed terms/unsupported variations remain blocked |
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|NOT TESTED; independent native movement fixture next |
 |PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|NOT TESTED; preserve separate dangling-source finding |
-|PQA-J12|Multi-Profile conversion partial failure→retry unresolved→new intent→notifications|PARTIAL; API evidence retained, full rendered failure recovery next |
+|PQA-J12|Multi-Profile conversion partial failure→retry unresolved→new intent→notifications|FULLY EXERCISED; PASS / PROVEN browser/API/persistence counts2/1, three notification links; current addendum |
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first tracker action/reopen|PARTIAL; API identity creation, full guided UI next |
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL; sampled security/restore tests; full browser lifecycle next |
 |PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
@@ -1155,7 +1333,8 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 Each C capability has one cell per Outplayed/MBB/OddsMonkey (27total).
 D = completed documentation-only comparison; H = completed hands-on workflow;
 B = required interaction inaccessible/blocked; U = unexamined or unresolved. D is not H.
-Counts:7D,0H,3B,17U. No private login, trial signup, wager or authentication bypass.
+Historical first baseline counts:7D,0H,3B,17U; current13/27 cells are detailed at the top.
+No private login, trial signup, wager or authentication bypass.
 A public URL/access failure is evidence of inaccessibility, never proof that the feature is absent.
 
 | Capability / method | Outplayed | MBB | OddsMonkey |
@@ -1179,7 +1358,7 @@ authorised member interactions only when legitimately available.
 
 ### Historical clarification reconciliation — bounded slice
 
-Four full review units currently qualify: #90,#99,#109 and#114 (original audit brief plus current
+Historical first baseline: four full review units qualified: #90,#99,#109 and#114 (original audit brief plus current
 living scorecard5652511529). All other issue titles/index entries remain **unreconciled**, not completed.
 This conservative baseline intentionally does not promote the indexed backlog into scope evidence.
 
@@ -1221,7 +1400,7 @@ bounded modal scrolling without obscuring actions. No formulas/schema/authentica
 | Pre-fix760px native Free Bet, both themes | FAIL / PROVEN initial focus outside; real Save produced no PUT | Original baseline JSON retained in isolated runtime |
 | Native Free Bet1440/760/390px, both themes | PASS / PROVEN pointer Save, invalid text/error/correction, nested dirty Escape, Tab, reopen | No forced clicks |
 |320px reflow, both themes | PASS / PROVEN independent unscaled reflow | Combined320px/200% NOT TESTED |
-| Desktop200% text | FAIL / PROVEN document1497px vs1440px; modal Save hit target now unobstructed | PD-QA-003 broader page reflow; do not conceal with hidden overflow |
+| Desktop200% text — historical pre-next-checkpoint | FAIL / PROVEN document1497px vs1440px; modal Save hit target unobstructed | Attribution corrected to PD-QA-005 reflow; repaired candidate evidence in current addendum; PD-QA-003 remains missing Profile |
 | Account1440light/760dark | PASS / PROVEN real correction/save, legacy invalid preserved until correction,22.34 complete cash total, export rejection/correction | All Account variants not a UI certification |
 | Native SNR/SR full financial journey | PASS / PROVEN copied7.72/9.65; actual7; Back Won10.60/20.60; report31.20 after refresh | Award/removal/import lineage remains separate |
 | Standard conversion six width/theme variants | PASS / PROVEN canonical Account identity, real Save/receipt/focus/row, state retained | Partial multi-Profile browser journey remains open |
