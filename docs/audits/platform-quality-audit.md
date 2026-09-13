@@ -1,12 +1,152 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-Current measurable checkpoint: [2026-09-13 actual PostgreSQL checkpoint](#actual-isolated-postgresql-execution--2026-09-13).
+## Populated Sportsbook, awards and native XLSX checkpoint — 2026-09-13
+
+CURRENT / LOCAL ONLY. Application source remains `6d2276e00d0a1a540f48f7ecc253e864ad30d5e3`;
+verified incoming combined candidate `c460f2a3074ede07bf7db9e30cec8c7e137ed6fa` and report
+`b476b18ddb4eccadba0aff24b136bb27eb33effd`. This tranche changes audit harnesses/documentation
+only; current harness commit `92a170c7e839693b9f7451a909d4f192b6f3fcad` is not a new application revision.
+Outgoing full harness/candidate/report SHAs are in #114 living comment5652511529 and the
+receipt; an unpublished report has no live GitHub blob link. Main/manual remain
+`f7a3b35073ecc87cdf8f8f881129f221ec44d395`; Multi-Lay development remains
+`215193b7fcb5b11a28e23a4531d2a45434545dc1`. Product ancestry and clean intended diffs verified.
+No push, PR, merge, deployment, migration, policy/formula change or historical repair.
+
+| Coverage measure | Current / planned | Whole % | Change from incoming / initial baseline |
+|---|---|---|---|
+| Evidence-complete assessments |46/87|53%|+4 / +15 percentage points|
+| Complete journeys exercised |8/24|33%|+1 / +12 points|
+| Journeys passing required checks |7/24|29%|0 / +8 points|
+| Competitor cells |14/27|52%|0 / +26 points;12 documentary,2 hands-on|
+| Requests reconciled |24/133|18%|+6 / +15 points|
+
+New assessment IDs **PQA-F14/F17/D08/R04**: a reproduced defect completes an assessment,
+not a successful journey. Areas: functional14/24, UX7/12, security6/12, data8/12,
+sustainability5/12, requirements4/6, competitor2/9. Denominators unchanged.
+**PQA-J07** is fully exercised but FAIL overall: positive numerical/control path passes;
+malformed business write and missing-Profile denial fail. **J11/J18 remain PARTIAL**, not new
+complete journeys. J11 cannot finish approved safe removal; J18 covers actual single-ledger XLSX
+uploads, not the entire multi-sheet Profile migration/recovery path. Twenty retained findings:
+15 open,5 fixed on candidate branches,0 full combined-candidate gates,0 integrated locally,
+0 hosted verified,0 owner accepted. Deferred #113 comparison/sign-off is not counted.
+
+### Reproducible setup, exact expectations and observed boundaries
+
+New owned dataset/API `/tmp/openforge-populated-audit-114-20260913/acceptance.sqlite3`,
+API8036 and web3036 in detached `.worktrees/populated-audit-114` at c460f2a; existing real
+synthetic owner-session launcher reused, authentication required, no bypass. No private/demo
+operational data, hosted target or inherited database. Original3034/8034 review/browser/data,
+other protected runtimes, intentionally invalid earlier evidence and _input observations unchanged.
+Initial setup failures (pnpm symlink check, Turbopack symlink root, missing web-side synthetic
+session verifier configuration) are HARNESS failures, not product findings. Existing webpack dev
+command and matching test-only verifier fixed setup; no packages/configuration changed.
+Several old e2e labels target superseded controls; source inspection and visible active-tab
+locators corrected the harness. No forced clicks. The wrong guessed report-summary API was
+discarded: actual reports consume existing ledger sources.
+
+| Stable case / method | Independently expected | Actually observed / result |
+|---|---|---|
+|J07-NATIVE-001 actual browser new→canonical Single/Bet & Get/Football→matching→copy→explicit actual9→save/reopen|10×5/(5.20−0.02)=9.652509…→reference9.65; liability9.65×4.20=40.53; reference branches40−40.53=−0.53,9.65×0.98−10=−0.543→−0.54|Reference/copy9.65; copy explicitly marks placement, not clipboard-only; manual actual9.00 takes precedence. Actual liability37.80; Back Won2.20. PASS / PROVEN finite fixture|
+|J07-CORRECTION-001 browser settled reopen→visible shared EDIT→Lay Won→persist|9×0.98−10=−1.18|Native persisted result Lay Won/actual9.00/P&L−1.18. Reports/reload verified below. PASS / PROVEN|
+|J11-SINGLE-001 real Sportsbook Free Bet tab/footer award|One10.00 SNR child with real source/group identity; no seeded parent IDs|One child created with parent native Sportsbook ID, split1/1, Available; visible source context. PASS / PROVEN scoped|
+|J11-SPLIT-FAIL-001 real UI5 SNR+5 SR, second POST503 then retry|Failure/retry must not create duplicate award value|Before2 children (including imported child); failed attempt3; retry5. First5 child retained in incomplete group1/2; fresh retry group adds5+5:15 credit created for intended10. FAIL / PROVEN|
+|J11-CHILD-SNR-5 browser matching/copy→actual3.50→save/reopen→Back Won|5×(5−1)/(5.20−0.02)=3.861003…→3.86 reference;5×4−3.50×4.20=5.30 final|Copied3.86; final5.30; source/group unchanged. PASS / PROVEN|
+|J11-CHILD-SR-5 same actual UI, half-width/dark|5×5/(5.20−0.02)=4.826254…→4.83;5×5−3.50×4.20=10.30|Copied4.83; final10.30; source/group unchanged. PASS / PROVEN|
+|J07/J11/IMPORT-REPORT-001 actual weekly/monthly report/reload|Imported2.20−native1.18+SNR5.30+SR10.30=16.62; remaining unplanned Available children have governed0 current value|Rendered16.62 (17 formatted matches), reload unchanged. PASS / PROVEN scoped, not calculator sign-off|
+|J11-REMOVE-001 real linked child controls|Settled descendants protected; unplaced/unsettled child removal as #80 permits|Settled controls disabled correctly. Available child ALSO disabled: “Remove sportsbook back and lay placement first.” No forced click. FAIL / PROVEN requirement mismatch; J11 PARTIAL|
+|J11-SOURCE-DELETE-001 authorised disposable API/independent persisted child state→actual report|Source deletion must not orphan placed/settled descendants|DELETE204, source absent, four children retain dangling source; reported16.62 becomes17.80 because−1.18 source removed. FAIL / PROVEN. No repair/recreation of synthetic rows|
+|J18-UPLOAD-001 actual file chooser→review→acknowledgement→verified backup/confirm|Approved native one-ledger XLSX headers/tables;2 Accounts (12.34 and explicit0),1 settled Sportsbook2.20,1 linked Available SNR; original source identities retained|Three real generated XLSX files imported through browser. Confirmed batches, UI artifacts and independent Account/ledger reads retained. No dump/direct fixture substituted for upload. PASS scoped; full Profile workbook migration NOT TESTED|
+|J18-INVALID-001 separate malformed Account workbook|Dry run controlled, no Account/ledger writes|Blocking finite-decimal field error; independent before/after business lists identical. PASS / PROVEN|
+|J18-RETRY-001 repeat same files|No duplicate source rows|All valid repeated rows no_op; original confirmed reviews retained. PASS / PROVEN|
+|J18-LINK-001 imported child/source identities|Imported QualBetID must remain provenance AND resolve its intended native parent/consumer|Child origin=PQA-IMP-QB-001; native parent ID=SB-DD13C2DD. No native identity match. FAIL / PROVEN stored-identity mismatch; full consumer reconciliation remains required|
+|J18-EXPORT-001 real Accounts selector→Export XLSX→browser download|Valid12.34 and explicit0 remain exportable|Downloaded plum-duff-profile-…-accounts.xlsx without failure; valid original identities/values preserved in read/export source. PASS / PROVEN scoped|
+|J07-INVALID-001 direct malformed Placed write, independent SQL then individual/list/export|Controlled field4xx; no committed row/dependants|500; one not-money back_stake row committed. Subsequent individual/list/export all500. FAIL / PROVEN; intentionally malformed synthetic row retained|
+|J07-DENIAL-001 missing Profile with same payload, independent SQL|Controlled denial; no write|500, no row added. FAIL / PROVEN under existing PD-QA-003|
+
+Numerical expectations above use signed contracts and explicit branch equations, not production
+functions as their own oracle. Existing production penny placement is not changed.
+Actual copy also preserved matched stake9.65 while the explicit actual9.00 won calculation
+precedence; these reference/placed fields are not represented as identical observations.
+
+### Findings and exact next tests
+
+|ID / area|Expected vs actual / reproducible evidence|Severity / exposure / impact|Recommendation / acceptance / existing issue|
+|---|---|---|---|
+|PD-QA-017 Award transaction/lineage safety, main and candidate|J11-SPLIT-FAIL-001 retained first child/new retry group; UI safe unplaced removal blocked; J11-SOURCE-DELETE-001 source204/orphans, source audit removal boundary CODE-VERIFIED|High integrity; authorised award/retry/delete; inflated credit and financial history loss, not observed operational corruption|Bounded server-owned award attempt/group + transaction/idempotency; server child/source deletion guards aligned with #80, retained audit. Test child503 retry exactly2 children/10, concurrent retry, source/settled-child deny unchanged totals; safe Available removal. #49/#80/#91/#114. Extends previously recorded dangling-source failure rather than erasing it|
+|PD-QA-018 Imported parent identity/consumer gap, candidate|J18-LINK-001 source ID retained without native parent resolution|Medium–high lineage; linked imported rows; broken source context/safe removal assumptions|Explicit source→native parent resolution under existing import architecture; no rewriting historic source IDs. Test approved linked workbook save/reopen→parent/child consumer and export unchanged source identity. #12/#80; preserve separate #109 access/provenance blocker|
+|PD-QA-019 Free Bet autosave stale draft overwrite, candidate|Fast Back odds5→Exchange selection→Lay odds5.20: earlier Exchange PUT200 returns lay odds blank, subsequent preview200 has no plan; copy never appears. Source handler resets form from response. Later synchronised run waits for committed Exchange change before next input and passes; this does NOT repair race|Medium–high reliability; fast matching entry; erased draft, blank guidance “Complete calculator inputs: .”, copy unavailable|Latest-edit/response guard at existing shared state boundary, no second financial engine. Deterministic deferred PUT test must preserve5.20/newer input and latest copy. #91/#92/#114. Original race trace DOCUMENTED observable run + CODE-VERIFIED response reset; broader stale-request variants NOT TESTED|
+|PD-QA-020 Sportsbook monetary pre-commit/legacy reads, main and candidate|J07-INVALID-001500 after INSERT; same bad row poisons individual/list/export500|High financial integrity; authenticated native creation; persistent corruption blocks unrelated readable rows/export|First small repair: field-specific complete-decimal validation/effective record, calculation/response preparation inside existing transaction, useful legacy-invalid diagnostics. Reuse Account/Free Bet patterns, no formulas/migration. Regression invalid create/update/injected prepare fault zero writes, valid actual9 final2.20/−1.18 unchanged, readable incomplete report. #91/#114; missing-Profile500 extends PD-QA-003|
+
+No destructive correction of historical/operational data. New unsafe-source deletion and malformed
+writes were deliberately executed only against this tranche's disposable synthetic records.
+No product fixes in this audit. Safe unplaced removal, protected reversal, actual child-delete
+server denial, concurrent award requests and network-loss award recovery remain NOT TESTED/BLOCKED
+or FAIL as specified, not inferred from the creation/copy pass.
+
+### Requirement reconciliation — original scope and later clarifications
+
+Six newly reconciled request IDs; #109 already counted and not counted again. Review disposition is
+DOCUMENTED, not implementation PASS. Original issue bodies and all available comments read this
+tranche; no historical thread outside this coherent package reread.
+
+|Request / intended outcome|Authority, current implementation/plans/evidence|Remaining functionality/UX/dependency|
+|---|---|---|
+|#49 generated Free Bets from a qualifying row, defaults/editability/typed lineage/status timing/duplicate safety|Original +5561926348 editor-entry verification recurrence. Existing real typed Free Bet tab/footer reached; genuine single/split SNR/SR issuance exercised|Partial child failure leaves incomplete group; retry duplicate and source status becomes Free Bet Awarded. Preserve closed implementation history, outstanding #80/PD-QA-017 verification; no claim old editor presence proves whole workflow|
+|#80 safe removal/source-group/placed-descendant protection|Original has no comments; linked source panel/removal guards and actual API tested|Unplaced child blocked by source placements; API source deletion orphans descendants; audit retention guard required. Planned repair, not silently narrowing allowed child removal|
+|#12 controlled Profile import/export/staging/mapping/validation/lineage|Original has no comments; approved roundtrip/map contracts; actual single-ledger upload/review/backup/confirm/reopen/report/export|Full multi-sheet Profile workbook, cross-Profile source collisions and invalid multi-ledger atomic batch remain NOT TESTED; imported parent alias unresolved; #109 mapping/access gap retained|
+|#94 workbook runtime/hosted delivery/Profile eligibility|Original three preserved IDs WORKBOOK-RUNTIME-001/WORKBOOK-HOSTED-001/PROFILE-EXPORT-ELIGIBILITY-001; no comments; existing portability gates reviewed|DEFERRED provider/template/explicit Profile authorisation; local XLSX structure is not Google bound-script edits/recalc/disposable-row delete or hosted parity. Do not use private Founder inputs|
+|#95 three-way source snapshot/current/incoming conflict review|Original WORKBOOK-MERGE-DESIGN-001 has no comments; snapshot/identity/source-authority design contract reviewed|DESIGN ONLY, no merge writes authorised/implemented. Manual conflict decisions, stable IDs/formulas-as-reference, no deletion or guessed financial truth|
+|#104 preserve accepted Founder September financial AND operational readiness baseline|Original FOUNDER-IMPORT-BASELINE-001, no comments; retained onboarding/import/source evidence and synthetic isolation|ONGOING SAFETY BASELINE; no reimport of operational records, no assertion new minimal fixture verifies all Founder cases; keep #109 and explicit import/recovery checks|
+
+### Durable redacted evidence and reproducibility
+
+Harnesses: scripts/verify_populated_sportsbook_award_import_114.mjs (native/award and --import,
+--inspect/--removal resumable probes), scripts/verify_genuine_award_child_114.mjs,
+scripts/build_populated_import_audit_114.py, scripts/verify_sportsbook_write_denial_audit_114.mjs
+(--reads avoids repeating malformed write). Source-linked children come ONLY from genuine browser
+award generation. Existing synthetic XLSX exporter builds files, never expected money answers.
+Initial observations file was overwritten by a concurrent diagnostic harness run; confirmed batch
+audit and original browser confirmed screenshots recover that evidence. Separate outputs and
+runs.jsonl now retain audit runs; this harness failure is not a product pass/fail.
+The report itself retains redacted observations, equations, failure state and checksums below;
+temporary screenshots/DB artifacts are supplementary, not the sole durable evidence.
+Session tokens, environment values, private observations and database dumps are not committed.
+
+|Retained artifact identity (owned synthetic runtime only)|SHA-256 at evidence checkpoint|
+|---|---|
+|populated-evidence.json|8165b6bb5119be9da01101edf80d816c7b9378af02972338e32dd46595d8f576|
+|import-evidence.json|0880ad73abc0164cf4594c59bbb2cddb99dd83e2d919a5be908b1be57db2b26b|
+|inspect-evidence.json|06c293a112f86a4c49b58d595fb8dad47edd81374e600c9ad55ba6bf2eeffae5|
+|genuine-child-evidence.json|ca9aca8bda0a53574a9664709c5b82ccc45f56373aa75695d1203bacad7fdd0f|
+|browser-accounts-export.xlsx|a1ff3127a56b49061a01b69f7fd01de9b16e5f3591588be346a44ab990037a51|
+|sportsbook-write-denial-evidence.json (including downstream reads)|062b371ba6054d9d3079ec3d3ee19c36eedc44f0cbc419999096ba23df97cfa2|
+
+Actual authenticated browser: native/issued/imported editors, pointer Save/copy, Escape and focus;
+reopened Sportsbook/Free Bet/Accounts at1440 light and760 dark, no page overflow, focus in dialogs;
+screenshots privately inspected. Report data readiness explicitly awaited; initial empty shell
+screenshots were NOT counted. UI/artifact evidence is finite, not full accessibility certification.
+No unrelated modal/reflow suites or unchanged PostgreSQL suite rerun.
+PG18.6 transaction/backup/restore evidence from preceding checkpoint remains scoped PASS.
+Screen-reader, larger/imported datasets, award concurrency/recovery, full multi-sheet workbook
+migration/export/import, external Google workbook runtime and remaining109 request reconciliations
+are not implied PASS. Remaining request count is109 (133−24); orphaned source requirements remain.
+
+Next highest-value implementation proposal: PD-QA-020 Sportsbook pre-commit and controlled
+missing-Profile/legacy reads first, then PD-QA-017 server award integrity in a separate tranche.
+Next independent audit package: full synthetic Profile workbook migration/recovery + cross-Profile
+source-ID/parent resolution, remaining Casino/Extra Places/Cash movements and large-data/accessibility.
+No manual testing assignment. #113 manual comparison deferred by Will, no date; resume only on
+supplied results/explicit request. Vercel publication metadata/branch exclusions, #115 dependency
+exposure/remediation and #96 owner/provider rotation remain separate BLOCKED prerequisites.
+
+
+Historical preceding checkpoint: [2026-09-13 actual PostgreSQL checkpoint](#actual-isolated-postgresql-execution--2026-09-13).
 Reporting branch audit/platform-quality-114; repair branch repair/modal-boundary-114.
 Main remains unfixed and owner calculator comparison remains deferred indefinitely.
 
 ## Actual isolated PostgreSQL execution — 2026-09-13
 
-CURRENT / LOCAL ONLY. Will explicitly approved a local server installation solely for isolated audit
+HISTORICAL CHECKPOINT / LOCAL ONLY. Will explicitly approved a local server installation solely for isolated audit
 tests, with no service activation, existing database changes or hosted access. Product source remains
 `6d2276e00d0a1a540f48f7ecc253e864ad30d5e3`; incoming combined checkpoint
 `2d3bb086923b3baaeca72e0736fdc81f4d9940df`, report parent
@@ -1459,10 +1599,10 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F11 | Governed Free Bet conversion API | ASSESSED; PASS scoped | PD-QA-014 converted SNR/SR cases |
 | PQA-F12 | Completed Casino source global uniqueness | ASSESSED; PASS scoped | PD-QA-015 thread/process race+actual UI retry |
 | PQA-F13 | Other Casino fees/override lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-F14 | Sportsbook actual placement/settlement | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F14 | Sportsbook actual placement/settlement | ASSESSED; FAIL overall / PROVEN | Populated checkpoint: native copy9.65/actual9, Win2.20/correction−1.18/report; malformed500 commits and poisons reads; missing Profile500 |
 | PQA-F15 | Extra Places placement/settlement | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F16 | Cash movements and matching | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-F17 | Award lineage/removal lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F17 | Award lineage/removal lifecycle | ASSESSED; FAIL / PROVEN scoped | Genuine single/split SNR/SR; child503/retry duplicate, removal UI blocker/API orphan; J11 remains PARTIAL |
 | PQA-F18 | Combined report reconciliation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F19 | Search/filter/loadout/Quick Actions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F20 | Settings persistence/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -1501,7 +1641,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D05 | Valid/invalid export diagnostics | ASSESSED; PASS scoped | Account browser export409/200 |
 | PQA-D06 | Actual isolated PostgreSQL transactions | ASSESSED; PASS / PROVEN scoped | Real PostgreSQL18.6 Account/Free Bet preflight/rollback, independent persisted values and separate-process Blackjack retry/races; current A–D evidence |
 | PQA-D07 | PostgreSQL disaster recovery | ASSESSED; PASS / PROVEN scoped local database recovery | Actual dump/second-database restore, exact counts/financial/source claims, restart, post-restore read/rollback/duplicate protection; cloud/deployment/import recovery separate |
-| PQA-D08 | Populated workbook import/award reconciliation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; FAIL / PROVEN scoped | Real native XLSX upload/approval/backup/confirm/reopen/report/export; malformed zero writes/no-op retry; parent source alias unresolved and award retry credit duplicated; full Profile migration NOT TESTED |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
 | PQA-D11 | Retention/deletion/privacy recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -1521,7 +1661,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-R01 | Notification original+clarified scope | ASSESSED; REVIEWED | #90 original;#99 original+5567517442/5567729491 |
 | PQA-R02 | Account restriction/balance clarification set | ASSESSED; DOCUMENTED review, not runtime PASS | Current addendum#70/#82/#85/#106 original+all available clarifications, source/contracts/gaps retained |
 | PQA-R03 | Dashboard/reports/tasks/AI original scope | ASSESSED; DOCUMENTED planned/partial, not implementation PASS | #111 prior review plus #25–31/#72/#86 originals and #86 clarification5569417310; contracts/source/gaps/dependencies in current checkpoint |
-| PQA-R04 | Import/recovery original scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-R04 | Import/recovery original scope | ASSESSED; DOCUMENTED review, not runtime PASS | Original #12/#94/#95/#104 plus award dependencies #49/#80 fully available issue/clarification sources→contracts/code/plans/current evidence/gaps; #109 not counted twice |
 | PQA-R05 | Calculator/bridge coverage scope | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R06 | Unlocated/future requests and source recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C01 | Public calculator configuration comparison | OPEN; PARTIAL | MBB/OddsMonkey public configuration documented; Outplayed exact configuration review remains UNVERIFIED |
@@ -1548,18 +1688,18 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J04|Standard source→Profile/Account/review→pointer Save→receipt/focus→destination/reopen|PASS / PROVEN; modal-conversion-browser.json1440/760/390 both themes |
 |PQA-J05|Actual Blackjack Live UI→hand outcome→Casino conversion→retry/second Account→history/report/reload|PASS / PROVEN; reviewed20→15=-5, one activity, retry same row, second Account409 |
 |PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; financial slice24.80 retained; Settlement→Advanced controls→Notes source ID/hash passes8 width/theme/type checks with unchanged records/audits. Full row change-history consumer missing (PD-QA-016); award parent legitimately absent for calculator source |
-|PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|NOT TESTED; populated prospective modal only |
+|PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|FULLY EXERCISED; FAIL overall. Positive copy9.65/actual9/Win2.20→shared settled EDIT→Lay Won−1.18→report/reload passes; malformed Placed write500 commits and breaks reads/export; missing Profile500. PD-QA-020/003 |
 |PQA-J08|Casino other activity→fees/override→settle/reopen→report|NOT TESTED; explicit fee/override factories next |
 |PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|NOT TESTED; changed terms/unsupported variations remain blocked |
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|NOT TESTED; independent native movement fixture next |
-|PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|NOT TESTED; preserve separate dangling-source finding |
+|PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|PARTIAL / FAIL: genuine single/split awards, second-child503→retry15 credit for10, SNR/SR settlement5.30/10.30 and report/reload verified. Safe Available removal blocked by source placements; separate API source deletion204 leaves four orphans and removes−1.18 from reports. No complete passing journey; PD-QA-017 |
 |PQA-J12|Multi-Profile conversion partial failure→retry unresolved→new intent→notifications|FULLY EXERCISED; PASS / PROVEN browser/API/persistence counts2/1, three notification links; current addendum |
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first tracker action/reopen|PARTIAL; API identity creation, full guided UI next |
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL; sampled security/restore tests; full browser lifecycle next |
 |PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT TESTED; actual keyboard/stale-response journey next |
 |PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL; durable clear tests not source-independent history;#90 retained |
-|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|NOT TESTED; explicit imported restriction/award fixtures required |
+|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: actual native single-ledger XLSX files for2 Accounts/1 Sportsbook/1 linked Free Bet→review/approval/verified backup/import→real UI reopen/report→browser Accounts export; invalid zero writes, repeats no_op. Full multi-sheet Profile migration, cross-Profile source collisions and #109 access fields NOT TESTED; parent alias does not resolve native ID (PD-QA-018) |
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|PARTIAL; API restore invariants not full browser restore |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|BLOCKED harness/fixture setup; existing named backup tests not whole recovery |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |

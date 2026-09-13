@@ -9,6 +9,26 @@ durable requirements.
 
 ## Current state
 
+Current audit: assessments46/87 (53%); journeys8/24 exercised (33%),7/24 passing (29%);
+competitors14/27 (52%:12 documentation,2 hands-on); requests24/133 (18%).
+New populated native Sportsbook controls/financials pass, but malformed creation commits then500;
+row/list/export500 and missing-Profile500 remain. Genuine split awards duplicate5 credit on child
+failure/retry; API source deletion orphans four children. These are OPEN, not repaired.
+Actual native XLSX uploads/review/backup/import/reopen/report/browser export exercised; full Profile
+workbook journey stays PARTIAL, imported parent ID unresolved and #109 access mapping gap retained.
+Main/normal app remains unfixed; product6d2276e00d0a1a540f48f7ecc253e864ad30d5e3 unchanged.
+Incoming combined c460f2a3074ede07bf7db9e30cec8c7e137ed6fa/report b476b18ddb4eccadba0aff24b136bb27eb33effd;
+outgoing exact local-only commits in #114 living summary. No push/merge/deployment.
+See [current populated audit checkpoint](docs/audits/platform-quality-audit.md#populated-sportsbook-awards-and-native-xlsx-checkpoint--2026-09-13).
+Next: scoped Sportsbook atomic validation proposal, then server award integrity; independent full
+synthetic Profile workbook/other populated ledgers audit continues. PostgreSQL scoped recovery
+already passes; no repeat. Manual comparison deferred by Will, no date; no testing assignment.
+Protected3034 review data/services and _input observations unchanged. #115/#96/Vercel publication
+prerequisites remain separate. No action needed from Will for further local audit.
+
+### Historical preceding checkpoint (not current totals)
+
+
 Current reporting: audit/platform-quality-114 (documentation only). Modal candidate:
 repair/modal-boundary-114, based on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
 Current product revision6d2276e00d0a1a540f48f7ecc253e864ad30d5e3, LOCAL ONLY; exact reporting

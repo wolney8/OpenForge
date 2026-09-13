@@ -1,6 +1,26 @@
 # Plum Duff Next Issue Tracking Register
 
-## Current audit checkpoint —2026-09-13
+## Current populated audit checkpoint —2026-09-13
+
+Stable scope87 assessments/24 journeys/27 competitor cells/133 requests:46 assessed (53%),
+8 fully exercised (33%),7 passing (29%),14 competitor cells (52%),24 requests reconciled (18%).
+Audit/report and stacked modal branches LOCAL ONLY; application6d2276e unchanged. No publication.
+PD-QA-017 award partial-child/retry duplicate and source deletion orphan; safe child removal blocked.
+PD-QA-018 imported parent source ID/native ID unresolved; full Profile workbook import NOT TESTED.
+PD-QA-019 fast Free Bet Exchange autosave overwrites newer lay-odds draft; no repair in audit.
+PD-QA-020 malformed Placed Sportsbook500 after commit; individual/list/export500. Existing PD-QA-003
+extended by missing-Profile Sportsbook500/no write. All OPEN; synthetic evidence only.
+Original #49/#80/#12/#94/#95/#104 + all available clarifications reconciled to code/plans/evidence/
+dependencies. #109 already counted, gap preserved; #94 DEFERRED provider gates, #95 DESIGN ONLY,
+#104 ongoing financial AND operational baseline, not broad importer acceptance.
+PQA-F14/F17/D08/R04 assessments complete with scoped FAIL/review outcomes, not readiness PASS.
+J07 fully exercised but FAIL overall; J11/J18 PARTIAL. Current report retains exact redacted evidence,
+independent equations and checksums. Next: propose separately scoped Sportsbook pre-commit safety,
+then award atomic/idempotent creation/deletion guards; independent workbook recovery/other ledgers.
+Main/manualf7, development215193b, review3034 and all observations unchanged. PG scoped tests pass.
+No Will engineering assignment; #113 deferred without a date; #115/#96/Vercel gates remain visible.
+
+## Historical preceding audit checkpoint —2026-09-13
 
 #114 reporting remains audit/platform-quality-114, documentation only; shared modal candidate
 repair/modal-boundary-114 stacks on f57e71ad1b7d35070154b96d3e4f33b15f780d24.
