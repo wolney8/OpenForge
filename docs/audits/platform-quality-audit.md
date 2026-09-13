@@ -1,5 +1,108 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current Sportsbook safety repair — 2026-09-13 / LOCAL ONLY
+
+Branch `repair/sportsbook-safe-91`; verified base81af076cf67b5d0951aef9f1a8bca6fdafb841bc,
+inherited application6d2276e00d0a1a540f48f7ecc253e864ad30d5e3,
+harness92a170c7e839693b9f7451a909d4f192b6f3fcad, prior reporte1a461e028730bb046cb665c939a2d8343474ab3.
+Repair product/tests **cb0f29068d5d4a24a61ec3e2a66afa91c3265a71**.
+Main/normal app remains UNFIXED until reviewed integration. No push/merge/deployment,
+migration, formula change, historical correction or manual calculator sign-off.
+
+| Measure | Current | % | Change this repair |
+|---|---|---|---|
+| Assessments |46/87|53%|0 items / 0 points|
+| Journeys exercised |8/24|33%|0 / 0|
+| Journeys passing |8/24|33%|+1 / +4 points|
+| Competitor cells |14/27|52%|0 / 0;12 documentary,2 hands-on|
+| Requirements |24/133|18%|0 / 0|
+
+PD-QA-020 fixed on branch; PD-QA-003 Sportsbook missing-Profile subcase repaired.
+PQA-J07 native gates now pass on this candidate; original failing evidence below is
+historical and retained. Other modules are not certified by sharing a helper.
+PD-QA-017/018/019, wider workbook/ledger/recovery/accessibility/request review,
+#115/#96 and publication prerequisites remain OPEN. Calculator manual comparison
+remains deferred by Will with no date.
+
+### Root cause, field policy and boundaries
+
+Seven initial failing regressions reproduced malformed/non-finite creation500,
+missing-Profile500, post-write preparation fault retaining a row/audit, and bad-row
+unreadability before production edits. DB create/update committed before calculation/
+response validation. Effective records now receive complete-string exact-decimal
+validation; calculation, model validation and JSON prepare within the mutation
+transaction. Unexpected faults remain honest500 with rollback; bad input is field-specific
+4xx. Missing/archived/foreign Profile/Account denial leaves no business write.
+Supported conversion shares the same create boundary; identity/idempotency remain unchanged.
+
+[Existing Sportsbook field-policy contract](../contracts/sportsbook-current-value-contract.md):
+new money precision is pennies; stakes/rewards non-negative, signed manual overrides
+retained. Explicit zero valid, omitted update retained, null rejected, blank unknown
+where lifecycle permits. Placed/Settled requires backing stake/existing odds prerequisites,
+not a fully matched lay. Odds/commission/retention/boost preserve separate ranges/precision;
+nested placed/matched stakes, odds and commission validated. No partial parsing or silent
+rounding. Historical valid precision remains readable.
+
+Legacy invalid fixtures retain raw identity/value; diagnostic review-required response
+has null financial calculations. Relevant Sportsbook/exposure/current/combined summaries
+are unavailable, never a silently complete subtotal; unrelated cash is not invalidated.
+Migration totals also retain missing counts and unavailable totals. Native/portable export
+rejects invalid data with record diagnostics. Explicit correction restores completeness;
+no historical repair/deletion.
+
+### Evidence and exact limits
+
+- Sportsbook isolated SQLite safety matrix71 passed; inherited Account/Free Bet/current-value
+  suites rerun. Blackjack source suite19 passed. Web focused money/summary/decimal42 passed;
+  targeted lint/typecheck passed.
+- Actual PostgreSQL18.6 targeted17 checks: synthetic private-loopback cluster, independent
+  SQL snapshots, invalid create/update, calculation/model/JSON failure rollback,9.65reference,
+  actual9.00/liability37.80, Back Won2.20, Lay Won−1.18, reopen and missing-Profile zero-write.
+  No reinstall or unchanged recovery-suite repeat.
+- Actual authenticated browser1440/light,760/dark,1440/dark,760/light:
+  malformed text stays editable with associated error; keyboard correction/pointer Save;
+  copied9.65, persistedactual9.00/liability37.80, settlement2.20/correction−1.18;
+  reopen/report/reload; no page overflow/console errors. Separate legacy browser preserved
+  not-money, showed record-ID incomplete notice and explicitly corrected to2.20.
+- Browser artifacts: /tmp/openforge-sportsbook-safe-91-20260913/
+  browser-four-variants-evidence.json and legacy-evidence.json. Redacted observations
+  are durable here; no private DB/token/screenshots committed.
+- Existing demo-seed-dependent tests are harness-blocked: conversion/workflow27 failures
+  before applicable flows/1 pass; odds input41 pass/1 missing-demo-Profile fixture failure.
+  Not reported as product mathematical failures or passing journeys.
+- Unsynchronised Exchange autosave can erase newer odds; positive path synchronises on
+  actual save response. PD-QA-019 remains OPEN, not fixed by successful slow tests.
+- Import confirmation preparation is inside the transaction (CODE-VERIFIED);
+  staged-import injected-fault runtime probe NOT TESTED. PostgreSQL legacy-list/export,
+  wider nested-configuration and network-loss coverage are not inferred from17 native checks.
+
+### Bounded related-path review
+
+| Ledger | Write/validation entry | Transaction/response | Legacy-invalid handling | Evidence / next missing test |
+|---|---|---|---|---|
+| Accounts | Native create/update/pending withdrawal canonical policy | Inherited pre-success validation/preparation | Raw diagnostics, incomplete cash, controlled export | Inherited SQLite/UI/prior PG; alternate paths remain reviewed scope |
+| Sportsbook | Native create/update/placement/settlement/shared conversion, import confirmation | Effective record + same-transaction calculation/model/JSON | Review-required rows/unavailable totals/export denial | SQLite, actual PG17, browser4 variants; import injected fault NOT TESTED |
+| Free Bets | Native/update/placement/shared conversion/award | Inherited atomic preparation | Diagnostic/incomplete results | Inherited regressions; PD019 autosave and PD017 award-group integrity OPEN |
+| Casino | Native and completed-session bridge | Inherited global source claim/atomic completed activity | General native legacy handling not fully assessed | Blackjack inherited source tests; native malformed/update/fault next |
+| Extra Places | Native Each Way/Extra Place and bridge | Separate destination boundary, not certified here | Not fully assessed | Dedicated invalid-write/response rollback/legacy probe next |
+| Cash Adjustments | Native create/update | Existing route constructs response after mutation | Not fully assessed | Injected preparation failure/legacy export probe next |
+
+Next PD-QA-017: intended£10 split award must not become£15 on failure/retry;
+concurrent/repeated attempts cannot duplicate; source deletion cannot orphan protected
+children or erase financial history; legitimate unplaced removal follows#80.
+PD018 imported-parent resolution and PD019 stale autosave remain separate.
+Protected main/frozen f7/development/review3034/databases/_input unchanged.
+No action needed from Will. Earlier current headings below are historical.
+
+Final execution: focused SQLite211 passed plus Blackjack19 passed. Actual PostgreSQL18.6
+runtime /private/tmp/openforge-pqa-pg-114-15yesosk,port54155, app cb0f29068d5d4a24a61ec3e2a66afa91c3265a71:
+17 passed, cluster stopped. Evidence SHA2568131528cb8c55166d3742c1a493d95e73a8210221f80e8a524251e5ef4bcff8a;
+browser-four-variants SHA256136cd2661eaefaa4149a4865b09486a0e241060043610faa5e873aac7a988902;
+legacy SHA256b1aa847dee14e6e8dacc26c44febd22a85c0190e29999028399e757791488064.
+Review8034 and owned8038 health200. Protected runtimes untouched.
+
+
+
 ## Populated Sportsbook, awards and native XLSX checkpoint — 2026-09-13
 
 CURRENT / LOCAL ONLY. Application source remains `6d2276e00d0a1a540f48f7ecc253e864ad30d5e3`;
@@ -1688,7 +1791,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J04|Standard source→Profile/Account/review→pointer Save→receipt/focus→destination/reopen|PASS / PROVEN; modal-conversion-browser.json1440/760/390 both themes |
 |PQA-J05|Actual Blackjack Live UI→hand outcome→Casino conversion→retry/second Account→history/report/reload|PASS / PROVEN; reviewed20→15=-5, one activity, retry same row, second Account409 |
 |PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; financial slice24.80 retained; Settlement→Advanced controls→Notes source ID/hash passes8 width/theme/type checks with unchanged records/audits. Full row change-history consumer missing (PD-QA-016); award parent legitimately absent for calculator source |
-|PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|FULLY EXERCISED; FAIL overall. Positive copy9.65/actual9/Win2.20→shared settled EDIT→Lay Won−1.18→report/reload passes; malformed Placed write500 commits and breaks reads/export; missing Profile500. PD-QA-020/003 |
+|PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|FULLY EXERCISED; PASS on cb0f290 repair only: browser4 variants, invalid/correction/report/reload, SQLite atomicity/denial and real PG17. Main unfixed; historical failures preserved. |
 |PQA-J08|Casino other activity→fees/override→settle/reopen→report|NOT TESTED; explicit fee/override factories next |
 |PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|NOT TESTED; changed terms/unsupported variations remain blocked |
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|NOT TESTED; independent native movement fixture next |

@@ -1,5 +1,12 @@
 # Plum Duff Next Issue Tracking Register
 
+## Current Sportsbook integrity repair —2026-09-13
+
+PD-QA-020 fixed on branch cb0f29068d5d4a24a61ec3e2a66afa91c3265a71; PD-QA-003 Sportsbook subcase repaired. Main remains unfixed. Existing audit contains reproduction, field policy, SQLite/actual PostgreSQL/native browser evidence and related write-boundary table. J07 native required gates now pass;46/87 assessed,8/24 exercised,8/24 passing,14/27 competitors,24/133 requests. No new assessment/request count.
+PD-QA-017 next:£10 split cannot become£15 on retry; concurrency/idempotency; protected children/history and legitimate#80 removal. PD018 imported-parent and PD019 stale autosave remain separate. No push/merge/deploy; protected builds/data unchanged; calculator comparison deferred without date.
+
+## Historical preceding checkpoint
+
 ## Current populated audit checkpoint —2026-09-13
 
 Stable scope87 assessments/24 journeys/27 competitor cells/133 requests:46 assessed (53%),

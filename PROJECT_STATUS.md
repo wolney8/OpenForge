@@ -1,5 +1,11 @@
 # Project Status
 
+## Current repair checkpoint (local only)
+
+Current local-only repair cb0f29068d5d4a24a61ec3e2a66afa91c3265a71 on repair/sportsbook-safe-91, based on 81af076cf67b5d0951aef9f1a8bca6fdafb841bc. Sportsbook saves validate and prepare before commit; legacy invalid rows remain visible with incomplete totals. Native browser desktop/half-width light/dark, isolated SQLite and actual PostgreSQL evidence are in the existing audit. Main/normal services remain unfixed pending reviewed integration. Coverage46/87 assessed,8/24 exercised,8/24 passing,14/27 competitor,24/133 requests; only J07 passing changes (+1/+4 points). Next PD-QA-017 award integrity; PD018/019 and wider audit/security/publication gates remain open. Manual comparison deferred by Will, no date. No action needed from Will. Older current wording below is historical.
+
+## Historical preceding checkpoints
+
 _Last updated: 2026-09-13_
 
 This is the short entry point for current state and acceptance. Use the
