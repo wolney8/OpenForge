@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {chromium,request,expect} from '@playwright/test';
 const runtime='/tmp/openforge-award-integrity-91-20260914';
 const awardReviewOnly=process.argv.includes('--award-review-only');
-const webPort=process.env.PQA_AWARD_WEB_PORT??'3039';
+const webPort=process.env.PQA_AWARD_WEB_PORT??'3040';
 assert(['3039','3040'].includes(webPort));
 const webBase='http://localhost:'+webPort;
 const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{
@@ -28,7 +28,7 @@ for(const [account,type] of [['Bet365','Bookie'],['Smarkets','Exchange']]){
 assert.equal((await api.put('/profiles/'+pid+'/exchange-commissions',
   {data:{exchange_name:'Smarkets',commission_rate:'0.02'}})).status(),200);
 const browser=await chromium.launch({headless:true});
-const evidence={date:new Date().toISOString(),profileId:pid,scope:awardReviewOnly?'award review only; full child matching blocked separately by PD-QA-019':'complete award journey',variants:[],errors:[],result:'IN PROGRESS'};
+const evidence={source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),webBase,apiSource:JSON.parse(fs.readFileSync(runtime+'/review-source.json','utf8')),date:new Date().toISOString(),profileId:pid,scope:awardReviewOnly?'award review only; child matching not exercised':'complete award journey',variants:[],errors:[],result:'IN PROGRESS'};
 let page;
 const sql=()=>JSON.parse(execFileSync('/Users/will_work/Scripts/Homelab/OpenForge/.venv/bin/python',[
   '-c',"import sqlite3,json,sys; c=sqlite3.connect(sys.argv[1]); c.row_factory=sqlite3.Row; print(json.dumps({t:[dict(r) for r in c.execute('SELECT * FROM '+t+' WHERE profile_id=?',(sys.argv[2],))] for t in ['sportsbook_bets','free_bets','sportsbook_bet_audit','free_bet_audit']}))",

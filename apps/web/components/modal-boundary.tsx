@@ -28,6 +28,22 @@ export function ModalBoundary({ children, onDismiss, returnFocusRef }: {
   if (typeof document === "undefined") return null;
   return createPortal(
     <dialog className="modal-boundary" ref={ref} role="presentation"
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const dialog = event.currentTarget;
+        // A nested native confirmation owns its own cycle, not the parent boundary.
+        if (document.activeElement?.closest("dialog") !== dialog) return;
+        const controls = [...dialog.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+        )].filter(element => element.getClientRects().length > 0 && !element.closest("[inert]"));
+        const first = controls[0], last = controls.at(-1);
+        if (!first || !last) { event.preventDefault(); dialog.focus(); return; }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+          event.preventDefault(); last.focus({ preventScroll: true });
+        } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+          event.preventDefault(); first.focus({ preventScroll: true });
+        }
+      }}
       onCancel={(event) => { event.preventDefault(); onDismiss(); }}>
       {children}
     </dialog>, document.body,

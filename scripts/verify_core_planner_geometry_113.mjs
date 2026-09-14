@@ -48,6 +48,14 @@ try {
   await controls.first().focus();await page.keyboard.press('Shift+Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)));
   await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');await page.keyboard.press('Escape');
   const confirm=page.locator('[data-pd-id="unsaved-changes.dialog"]');await expect(confirm).toBeVisible();
+  assert(await confirm.evaluate(el=>el.contains(document.activeElement)),'Nested confirmation initial focus');
+  await confirm.getByRole('button').last().focus();await page.keyboard.press('Tab');
+  assert(await confirm.evaluate(el=>el.contains(document.activeElement)),'Nested confirmation Tab containment');
+  await confirm.getByRole('button').first().focus();await page.keyboard.press('Shift+Tab');
+  assert(await confirm.evaluate(el=>el.contains(document.activeElement)),'Nested confirmation Shift-Tab containment');
+  await page.keyboard.press('Escape');await expect(confirm).toBeHidden();await expect(dialog).toBeVisible();
+  assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Nested Escape returns to parent editor');
+  await page.keyboard.press('Escape');await expect(confirm).toBeVisible();
   await confirm.getByRole('button',{name:'Keep Editing',exact:true}).click();await expect(confirm).toBeHidden();
   await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
   await expect(save).toBeEnabled();
@@ -64,6 +72,9 @@ try {
   await page.keyboard.press('Escape');await expect(dialog).toBeVisible();await expect(confirm).toBeHidden();
   assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Pending Escape retains active focus');
   release();await expect(dialog.getByText('Synthetic pending save unavailable',{exact:false}).first()).toBeVisible();
+  const failedGeometry=await dialog.evaluate(el=>{const body=el.querySelector('.workflow-editor-body'),error=el.querySelector('[data-pd-id$=".save-error"]');return {bodyWidth:body.clientWidth,bodyScroll:body.scrollWidth,error:error.getBoundingClientRect().toJSON(),dialog:el.getBoundingClientRect().toJSON()};});
+  assert(failedGeometry.bodyScroll<=failedGeometry.bodyWidth+1,JSON.stringify(failedGeometry));
+  assert(failedGeometry.error.right<=failedGeometry.dialog.right+1,JSON.stringify(failedGeometry));
   await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
   const unchanged=await(await api.get(mutationPath)).json();assert.equal(JSON.parse(unchanged.lay_plan_json).selected_strategy,plan.selected_strategy);
   await page.unroute('**'+mutationPath);await expect(save).toBeEnabled();
