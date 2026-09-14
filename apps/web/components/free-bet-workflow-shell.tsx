@@ -1,10 +1,11 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -1307,8 +1308,20 @@ export function FreeBetWorkflowShell({
     }
   }, [initialIssueFilter, setTableFilters]);
   const [tableSort, setTableSort] = useState<FreeBetTableSort | null>(null);
-  const [formState, setFormState] = useState<FreeBetFormState>(createBlankForm);
-  const [pristineFormState, setPristineFormState] = useState<FreeBetFormState>(createBlankForm);
+  const [formState, setRenderedFormState] = useState<FreeBetFormState>(createBlankForm);
+  const formStateRef = useRef(formState);
+  const setFormState = useCallback((action: SetStateAction<FreeBetFormState>) => {
+    const next = typeof action === "function" ? action(formStateRef.current) : action;
+    formStateRef.current = next;
+    setRenderedFormState(next);
+  }, []);
+  const [pristineFormState, setRenderedPristineFormState] = useState<FreeBetFormState>(createBlankForm);
+  const pristineFormStateRef = useRef(pristineFormState);
+  const setPristineFormState = useCallback((next: FreeBetFormState) => {
+    pristineFormStateRef.current = next;
+    setRenderedPristineFormState(next);
+  }, []);
+  const queuedDropdownAutosaveRef = useRef<string | null>(null);
   const [outcomeModalState, setOutcomeModalState] = useState<FreeBetOutcomeModalState | null>(null);
   const [followUpReminderEditorState, setFollowUpReminderEditorState] =
     useState<FreeBetFollowUpReminderEditorState | null>(null);
@@ -1456,7 +1469,11 @@ export function FreeBetWorkflowShell({
         const activeRecord = nextRows.find((row) => row.free_bet_id === selected);
         if (activeRecord) {
           const nextFormState = recordToForm(activeRecord);
-          setFormState(nextFormState);
+          if (!isPersistingRef.current) {
+            setFormState(shouldPreserveEditorStep
+              ? reconcileSavedForm(pristineFormStateRef.current, nextFormState, formStateRef.current)
+              : nextFormState);
+          }
           setPristineFormState(nextFormState);
           setShowOfferIdentityValidation(false);
           setSettledEditEnabled(false);
@@ -1475,7 +1492,7 @@ export function FreeBetWorkflowShell({
         setWorkflowVisible(false);
       }
     });
-  }, [profileId, startTransition, workflowVisible]);
+  }, [profileId, startTransition, workflowVisible, setFormState, setPristineFormState]);
 
   const loadExchangeSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
@@ -1578,7 +1595,7 @@ export function FreeBetWorkflowShell({
     );
     scrollToElementTopAfterRender(() => editorRef.current);
     return true;
-  }, [profileId, setTableCollapsed]);
+  }, [profileId, setTableCollapsed, setFormState, setPristineFormState]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -2821,17 +2838,19 @@ export function FreeBetWorkflowShell({
           ? current.map((row) => (row.free_bet_id === saved.free_bet_id ? saved : row))
           : [saved, ...current];
       });
-      const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+      const newerEdits = hasNewerFormEdits(nextFormState, formStateRef.current);
+      const returnToLedger = !newerEdits && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel);
       if (returnToLedger) {
         ignoreInitialRecordIdRef.current = true;
       }
       setSelectedId(returnToLedger ? null : saved.free_bet_id);
       selectedIdRef.current = returnToLedger ? null : saved.free_bet_id;
-      setFormState(savedFormState);
+      // Invalidate pre-save reads; never rehydrate a pending editor from an older response.
+      loadRowsRequestIdRef.current += 1;
+      setFormState(reconcileSavedForm(nextFormState, savedFormState, formStateRef.current));
       setPristineFormState(savedFormState);
-      await loadRows(returnToLedger ? null : saved.free_bet_id);
       setShowOfferIdentityValidation(false);
-      setSettledEditEnabled(false);
+      if (!newerEdits) setSettledEditEnabled(false);
       if (returnToLedger) {
         const blankFormState = createBlankForm();
         setSelectedId(null);
@@ -2854,9 +2873,19 @@ export function FreeBetWorkflowShell({
         setStatusMessage("");
       }
       return true;
+    } catch {
+      setErrorMessage("Free-bet save was not confirmed. Your latest edits remain available; retry saving.");
+      return false;
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
+      const queuedLabel = queuedDropdownAutosaveRef.current;
+      queuedDropdownAutosaveRef.current = null;
+      if (queuedLabel) void persistForm(formStateRef.current, {
+        autosaveLabel: queuedLabel,
+        suppressMissingRequiredMessage: true,
+        returnToLedgerOnSuccess: false,
+      });
     }
   }
 
@@ -2864,12 +2893,16 @@ export function FreeBetWorkflowShell({
     updater: (current: FreeBetFormState) => FreeBetFormState,
     autosaveLabel: string
   ) {
-    const nextFormState = updater(formState);
+    const nextFormState = updater(formStateRef.current);
     setFormState(nextFormState);
     if (!(selectedId ?? formState.free_bet_id)) {
       return;
     }
     if (!canPersistForm(nextFormState)) {
+      return;
+    }
+    if (isPersistingRef.current) {
+      queuedDropdownAutosaveRef.current = autosaveLabel;
       return;
     }
     await persistForm(nextFormState, {
