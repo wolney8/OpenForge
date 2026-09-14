@@ -1,5 +1,32 @@
 # Project Status
 
+## Current calculator-correction engineering checkpoint — 2026-09-14 / LOCAL ONLY
+
+Partial user observations received; no further bulk owner entry required; engineering reference
+verification and fixes active; final acceptance pending. Original JSON/workbook remain private
+and unchanged. Observed3010 build is UNKNOWN, not assumed to be this candidate.
+
+We are repairing the calculator workflow on `repair/calculator-corrections-113`, stacked on award
+candidate3a5fddc. Free Bet delayed-save repair37a495e and shared footer containmentda196a9 are local
+only; harness/launcher9ce1766. Four real delayed-response browser variants pass;18 shared footer
+geometry checks pass, but Casino Escape fails in all6 variants. Full UI acceptance is incomplete.
+Main/normal3010, frozen manual3020 and existing3034 review remain unchanged/unfixed.
+
+Next: PD-CALC-20260914 C04 SNR preset/sign correction, C05–C08 core scope/percentage commission/
+Simple–Advanced/conditional Cashback, then C09 integration verification. C03 workbook tracing
+remains partial. Wider #114 workbook/ledger/competitor/backlog review is on hold during this
+corrective checkpoint, not cancelled. No action needed from Will; no bulk comparison assignment.
+Coverage remains46/87 reviewed,8/24 exercised/passing,14/27 competitor,24/133 requests.
+
+[Current evidence and remaining IDs](docs/audits/platform-quality-audit.md#current-calculator-correction-checkpoint--2026-09-14--local-only).
+Optional existing-data engineering launcher (not an owner acceptance assignment):
+`cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
+opens an authenticated synthetic browser on3040/8039 without resetting data/services. It prints
+the full checkout SHA; API source8276e2a is unchanged. It fails safely if that owned runtime/session
+is absent. Numerical corrections remain outstanding. No push/merge/deployment.
+
+Everything below is historical unless revalidated in the current checkpoint.
+
 ## Current award-integrity checkpoint — local only
 
 Award server repair **8276e2a1f9a3eb7fe018021c616e4c180d0216c9**, harness/contract

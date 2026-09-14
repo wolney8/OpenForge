@@ -1,5 +1,116 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current calculator-correction checkpoint — 2026-09-14 / LOCAL ONLY
+
+**Explicit engineering checkpoint, not the whole requested calculator correction.** Governing
+clarifications: #1135662334267, #355662339238, #1145662344208. Partial user observations received;
+no further bulk owner entry required; engineering reference verification and fixes active;
+final acceptance pending. The79-case owner campaign is no longer a delivery requirement.
+
+Verified base3a5fddc27ea898aad01f7a186cc06c62c5e66aec includes award application
+8276e2a1f9a3eb7fe018021c616e4c180d0216c9, but **no PD-QA-019 repair**. New separate branch
+repair/calculator-corrections-113: latest-edit37a495ee656c6850c6c670539bb5ec1ce6716330,
+footerda196a97216fb9eb48e18bf2cf53bb74c29d492d, reusable harness/launcher
+9ce17661239f71663908b0265552ac1cecc2e1b6. API source remains8276e2a; no formulas changed.
+Main and frozen candidate remainf7a3b35073ecc87cdf8f8f881129f221ec44d395;
+unmerged Multi-Lay215193b7fcb5b11a28e23a4531d2a45434545dc1 remains untouched.
+Existing normal/manual3020/8020 and3034/8034 data/services, private observations and earlier
+invalid audit fixtures are protected. Only owned disposable8039/3040 is used for these probes.
+
+| Requirement | Result / evidence | Exact remaining scope |
+|---|---|---|
+|C01 PD019 latest-edit/autosave|PASS / PROVEN for the executed delayed-response cases|Cross-editor/network-failure and rapid settlement variants not established by these cases|
+|C02 modal clipping|Geometry PASS / PROVEN; full modal gate FAIL|Casino Escape missing6/6; production build, text enlargement/interrupted-motion repetition not tested here|
+|C03 ingest/workbook|PARTIAL / DOCUMENTED|Original hashes/definitions preserved; normal/refund/partial-match formula tracing unfinished|
+|C04 SNR presets/sign|FAIL SNR / PROVEN; sign investigation PARTIAL|Reference endpoint implementation and UI/accessibility/clipboard negative-sign verification outstanding|
+|C05 core scope/operational partial match|NOT IMPLEMENTED|Normal/SNR new controls, scope-deferred legacy SR/bonus-win, distinct actual fills/remaining hedge|
+|C06 percentage commission|NOT IMPLEMENTED|All applicable standalone/embedded percentage boundaries and explicit legacy units|
+|C07 Simple/Advanced|NOT IMPLEMENTED|Simultaneous shared Underlay/Overlay/Custom references, live slider, hub/pop-out/embedded parity|
+|C08 conditional racing Cashback|NOT IMPLEMENTED|Ordinary hedge first, conditional cash/free-credit branches, state-leakage investigation|
+|C09 engineering full acceptance|PARTIAL|Selected controls→request→copy→destination→settlement/report for corrected references not yet executed|
+
+### Reproduction and fixes
+
+PD019 save used an older rendered form snapshot, then replaced current state with the server
+acknowledgement and reloaded/rehydrated it. Later dropdown changes were dropped by the saving lock.
+The repair keeps a synchronous current-form reference, reconciles only acknowledged fields,
+invalidates pre-save reads and serialises the latest queued dropdown. A later draft prevents an
+explicit Save from silently closing the editor. Unconfirmed saves keep the draft and show recovery
+wording; this does not assert that a response lost after commit means nothing was saved.
+
+The shared sticky footer was inside the form/body grid but used expanded width and negative inline
+margins. It enlarged body.scrollWidth; keyboard focus scrolled the body horizontally, cropping
+fields and actions. The shared footer now fits its parent grid with existing tokens. No hidden
+overflow, text shrinking, z-index escalation or family-specific CSS. Casino's native panel has no
+ModalBoundary integration and fails Escape; this is retained under PD-QA-004, not obscured by
+successful geometry. No unrelated Casino focus/confirmation redesign was attempted.
+
+### Executed evidence — finite cases, not platform/calculator sign-off
+
+- latest-edit.test.ts:3 independent form reconciliation cases PASS (later text, blank, zero,
+  malformed draft; server normalization). TypeScript and targeted ESLint PASS, no warnings.
+- verify_free_bet_latest_edit_113.mjs:4/4 current actual authenticated browser variants PASS,
+ 1440/light,760/dark,1440/dark,760/light; reduced motion on light. Gate a **real committed PUT**
+  acknowledgement, enter5.00/5.20/7.00 before releasing it, queue another Exchange, then assert
+  latest UI and independent GET. Edit actual7.50, real pointer Save/reopen GET and reference7.72
+  PASS. Independent reference40/(5.20−0.02), penny7.72. No page errors. Body1180/660px has equal
+  client/scroll widths, scrollLeft0, contained footer buttons and no page horizontal overflow.
+- verify_shared_footer_geometry_113.mjs:18/18 geometry checks PASS: Sportsbook/FreeBet/Casino ×
+ 1440/760/390 × both themes. Keyboard focus stays in panel; contained44px-high action targets.
+  Body clientWidth=scrollWidth1180/660/290, scrollLeft0. Escape12/12 Sportsbook/FreeBet PASS;
+  Casino6/6 FAIL. Runner retains failing assertions, exits1, and reports geometry separately.
+- Earlier development-state award harness4 full variants passed issuance/fault rollback/retry/
+  lost-response/removal and child matching/actual placement/settlement/report. Children5.30/10.30
+  plus qualifying−1.18=14.42 per offer. This run spanned uncommitted UI edits: **not exact frozen
+  outgoing-build evidence**, not grounds to promote PQA-J11. Reusable harness now accepts3040.
+- Harness-only setup errors (missing Account required fields, incorrect Betfair catalogue name,
+  wrong free-bet reference response field, missing hyphen in Add free-bet accessible name) were
+  corrected without weakening financial assertions. Casino Escape is a product failure, not one
+  of those setup errors. No PostgreSQL suite rerun: server transaction code unchanged.
+
+### Immutable observations and authority boundary
+
+Original calculator-results-2026-09-14.json SHA256
+95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac retained privately.
+79 embedded case definitions;37 session entries:12 Recorded,23 Blocked,1 Needs review,1 Not started.
+Indices are interpreted using the embedded definitions. Blank is unknown, never0. Original
+inconsistent status annotations and numerical strings are preserved. localhost3010/blank build
+IDs make the observed source revision **UNKNOWN**; candidate reruns are separate evidence.
+
+Latest original workbook WO_MB_Tracker_3Sept2026_1013AM.xlsx SHA256
+7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a, read-only ZIP/XML.
+FreeBets!V3 gives explicit actualT priority, else SNR/SR equalisation, with old Underlay/Overlay
+factors Settings!B8/B9 applied **before** ROUND(...,2); AE uses Account commission lookup.
+This establishes operational legacy semantics, not approval of the newly requested OP reference
+presets. Other requested workbook mappings remain C03. No operational records imported or rewritten.
+
+Read-only current API reproduction, source8276e2a, synthetic10/back4/lay4.2/commission.02:
+SNR Underlay6.66, Overlay9.33: **confirmed mismatch** to supplied OP targets6.25/10.20. Current
+adapter applies0.928/1.300 to the unrounded equalised stake. Requested targets instead derive
+from specified branch targets; correction must be isolated from historical actual/settled values.
+Normal Overlay with explicit10.20 returns back-win**−2.64** correctly at the API. Will's+2.64
+observation stays unchanged; current rendered/accounting/copy provenance investigation remains.
+Bonus-on-loss observations agree with supplied OP readings; do not alter them. MBB full-refund vs
+70% retention explanation remains a hypothesis until identical reference settings are observed.
+Public OP/MBB guidance/source inspection is DOCUMENTED, **not new black-box parity execution**.
+
+### Checklist/handoff and unchanged scope
+
+UI checklist: existing editor/ModalBoundary/form/FinancialValue equivalents reused; equivalent
+footers searched; no new controls/icons/colours/financial equations. Theme/geometry/focus/real
+FreeBet Save evidence above. Complete modal/production-build/motion gate remains incomplete, so no
+owner smoke-test request. Optional existing-data launcher is in PROJECT_STATUS; --check succeeds
+with legitimate private synthetic session. It prints full checkout SHA and never resets services.
+
+Counts remain46/87 assessments53%,8/24 exercised and passing33%,14/27 competitor52% (12 docs,
+2 hands-on),24/133 requirements18%; no denominator change or journey promotion this checkpoint.
+No main integration, hosted verification, owner acceptance, push/PR/deployment or issue closure.
+Next work is C03–C09 plus retained Casino PD004 gap; then resume workbook/ledger/award/import,
+accessibility, competitor and requirement review. PD018 imported sources, #115 exposure,
+#96 credential action and Vercel publication approval remain separate. No action needed from Will.
+
+All earlier CURRENT headings/scorecards below are historical unless revalidated above.
+
 ## Current award-integrity repair — 2026-09-14 / LOCAL ONLY
 
 Candidate branch `repair/award-integrity-91`; application fix

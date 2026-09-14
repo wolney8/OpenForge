@@ -1,5 +1,23 @@
 # Issue #113 independent calculator verification audit
 
+## Current engineering handoff — 2026-09-14
+
+Partial user observations received; no further bulk owner entry required; engineering reference
+verification and fixes active; final acceptance pending. Clarifications5662334267/5662339238
+supersede the bulk79-case owner campaign. No new worksheet or owner assignment.
+Original JSON95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac
+remains private/unchanged; observed3010 revision UNKNOWN. Definitions, blanks and inconsistent
+sub-status annotations are retained, not converted into fabricated zeros or discarded results.
+
+[Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-calculator-correction-checkpoint--2026-09-14--local-only).
+Current source8276e2a reproduces SNR Underlay6.66/Overlay9.33 rather than supplied OP6.25/10.20:
+old workbook factors are not the requested branch-target presets. Correction remains open C04;
+no formula/historical data changes in the current editor repair. Normal10.20 Overlay API returns
+−2.64 correctly; current UI/clipboard sign verification remains open. Bonus-on-loss user OP
+agreement is preserved. New external black-box parity has not been established from source reads.
+Legacy SR/bonus-win scope revision is not implementation/PASS; operational reads/settlement remain
+protected. Earlier finite-family PASS totals below do not prove all controls/configurations.
+
 _Audit date: 2026-09-10. Scope: every calculator family and significant mode exposed by the
 Fund Manager Calculator Workspace at commit `1ef9c4e`. This is evidence, not a formula change._
 

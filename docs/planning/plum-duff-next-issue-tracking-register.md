@@ -1,5 +1,32 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-CALC-20260914 — active owner corrections
+
+Latest #113/35/114 clarifications5662334267/5662339238/5662344208 govern.
+Verified stack base3a5fddc27ea898aad01f7a186cc06c62c5e66aec, application8276e2a,
+report0b0540d; no PD019 repair exists there. Separate repair/calculator-corrections-113.
+C01 PD019 latest-edit/autosave COMPLETE for the scoped response-gate cases37a495e;
+C02 PD004/005 clipping geometry COMPLETE18/18da196a9, full modal NEEDS VERIFICATION:
+Casino Escape FAIL6/6 remains PD004; no owner smoke request.
+C03 original JSON/workbook provenance IN PROGRESS; C04 SNR presets/sign IN PROGRESS:
+API mismatch6.66/9.33 reproduced, factor root cause verified, endpoint fix outstanding;
+C05 core scope/operational partial matching NOT STARTED; C06 shared percentage commission
+NOT STARTED; C07 Simple/Advanced shared composition NOT STARTED; C08 conditional Cashback
+NOT STARTED; C09 engineering UI/API/copy/ledger verification NEEDS VERIFICATION:
+four gated actual FreeBet browser/API saves PASS; corrected-calculator destination paths pending.
+Nearest equivalents: existing Free Bet editor/persistence guards, shared modal shell,
+FinancialValue/Outcomes/slider and onboarding percentage boundary. No new visual system.
+Original results95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac
+remain private/unchanged; observed3010 revision UNKNOWN until supported evidence.
+Partial user observations received; no further bulk owner entry required;
+engineering reference verification and fixes active; final acceptance pending.
+No push/merge/deploy; inherited repairs, frozen candidate/dev/data remain protected.
+Current candidate source37a495ee656c6850c6c670539bb5ec1ce6716330 and
+da196a97216fb9eb48e18bf2cf53bb74c29d492d; harness9ce17661239f71663908b0265552ac1cecc2e1b6.
+Coverage unchanged46/87,8/24 exercised/passing,14/27,24/133; no J11 promotion from a
+development-state award run. Engineering owns remainingC03–C09; No action needed from Will.
+Earlier deferred/bulk-entry/current status below is historical where this scope supersedes it.
+
 ## PD-QA-017 award repair — branch server PASS; browser journey PARTIAL / 2026-09-14
 
 Verified base1295e2679db1856f67da0cb2cda82e4ad8cabdf9 includes Sportsbook
