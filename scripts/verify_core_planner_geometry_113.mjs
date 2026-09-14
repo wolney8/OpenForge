@@ -50,7 +50,33 @@ try {
   const confirm=page.locator('[data-pd-id="unsaved-changes.dialog"]');await expect(confirm).toBeVisible();
   await confirm.getByRole('button',{name:'Keep Editing',exact:true}).click();await expect(confirm).toBeHidden();
   await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
-  assert.deepEqual(errors,[]);evidence.checks.push({basis,width,theme,textScale,geometry,initialFocus:true,focusTrap:true,dirtyEscapePreservesDraft:true,pointerSave:true});
+  await expect(save).toBeEnabled();
+  // A failed pending request must retain this active editor and its latest draft.
+  const mutationPath=`/profiles/${pid}/${ledger}/${id}`;
+  let release,entered;
+  const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);
+  await page.route('**'+mutationPath,async route=>{
+    if(!['PUT','PATCH'].includes(route.request().method()))return route.continue();
+    entered();await gate;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Synthetic pending save unavailable'})});
+  });
+  await save.click();
+  await Promise.race([started,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Save never reached pending gate')),15000))]);
+  await page.keyboard.press('Escape');await expect(dialog).toBeVisible();await expect(confirm).toBeHidden();
+  assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Pending Escape retains active focus');
+  release();await expect(dialog.getByText('Synthetic pending save unavailable',{exact:false}).first()).toBeVisible();
+  await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
+  const unchanged=await(await api.get(mutationPath)).json();assert.equal(JSON.parse(unchanged.lay_plan_json).selected_strategy,plan.selected_strategy);
+  await page.unroute('**'+mutationPath);await expect(save).toBeEnabled();
+  // An undelivered request is not a commit: preserve the editor and report honestly.
+  await page.route('**'+mutationPath,route=>route.abort('failed'));
+  await save.click();await expect(dialog.locator('[data-pd-id$=".save-error"]')).toContainText(/not confirmed/);
+  await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
+  assert.equal(JSON.parse((await(await api.get(mutationPath)).json()).lay_plan_json).selected_strategy,plan.selected_strategy);
+  await page.unroute('**'+mutationPath);await expect(save).toBeEnabled();
+  await save.click();await expect(dialog).toBeHidden();
+  const recovered=await(await api.get(mutationPath)).json();assert.equal(JSON.parse(recovered.lay_plan_json).selected_strategy,'Custom');
+  assert.equal(JSON.parse(recovered.lay_plan_json).reviewed_planned_lay_stake,'9.00');assert.equal(recovered.lay_actual,'');
+  assert.deepEqual(errors,[]);evidence.checks.push({basis,width,theme,textScale,geometry,initialFocus:true,focusTrap:true,dirtyEscapePreservesDraft:true,pointerSave:true,pendingEscapePreservesEditor:true,failedSavePreservesDraftAndStoredPlan:true,realRetryPersists:true});
   await context.close();
  }
  evidence.result='PASS';

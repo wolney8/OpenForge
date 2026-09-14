@@ -1,6 +1,7 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { formatApiErrorBody } from "@/lib/api-error";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
@@ -5176,7 +5177,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     if (!response.ok) {
       const detail = await response.text();
-      setErrorMessage(detail);
+      setErrorMessage(formatApiErrorBody(detail, "Unable to save sportsbook row."));
       return false;
     }
 
@@ -5250,6 +5251,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       );
     }
     return true;
+    } catch (failure) {
+      setErrorMessage(failure instanceof Error ? `Save response was not confirmed: ${failure.message}. Your edits are retained.` : "Save response was not confirmed. Your edits are retained.");
+      return false;
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
@@ -9677,11 +9681,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     data-guided-field="free_bet_bridge"
                     data-pd-id="sportsbook.free-bet-bridge.inline"
                   >
-                    {errorMessage ? (
-                      <p className="field-validation-text field-span-2" role="alert">
-                        {errorMessage}
-                      </p>
-                    ) : null}
                     <label className="field-control">
                       <span>Bookmaker</span>
                       <select
@@ -10193,6 +10192,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               </EditorSection>
             </LedgerEditorTabPanel>
 		            <div className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions">
+              {errorMessage ? <p className="field-validation-text" data-pd-id="sportsbook.editor.save-error" role="alert">{errorMessage}</p> : null}
               {selectedId && settledDeleteGuardRowId === selectedId ? (
                 <LedgerSettledDeleteGuard
                   disabled={isPersisting}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { formatApiErrorBody } from "@/lib/api-error";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 
@@ -2837,7 +2838,7 @@ export function FreeBetWorkflowShell({
       });
 
       if (!response.ok) {
-        setErrorMessage(await response.text());
+        setErrorMessage(formatApiErrorBody(await response.text(), "Unable to save free bet."));
         return false;
       }
 
@@ -5197,6 +5198,11 @@ export function FreeBetWorkflowShell({
           </EditorSection>
           </LedgerEditorTabPanel>
           <div className="field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
+            {errorMessage ? (
+              <p className="field-validation-text" data-pd-id="free-bets.editor.save-error" role="alert">
+                {errorMessage}
+              </p>
+            ) : null}
             {selectedId && settledDeleteGuardRowId === selectedId ? (
               <LedgerSettledDeleteGuard
                 disabled={isPersisting}

@@ -179,8 +179,15 @@ export function useDialogFocusLifecycle(
     const enter = () => {
       const panel = dialogRef.current;
       if (!panel) return false;
-      if (!panel.contains(document.activeElement)) {
-        const initial = panel.querySelector<HTMLElement>("[data-initial-focus]") ?? controls()[0];
+      const owner = panel.closest("dialog");
+      if (owner && !owner.open) return true;
+      // Do not reclaim focus from a nested native confirmation, including when its
+      // focused action becomes disabled and the browser temporarily focuses body.
+      if (owner && [...document.querySelectorAll("dialog[open]")].some(other => other !== owner)) return true;
+      const focused = document.activeElement;
+      if (!panel.contains(focused) || (focused instanceof HTMLElement && focused.matches(":disabled"))) {
+        const eligible = controls();
+        const initial = eligible.find(element => element.hasAttribute("data-initial-focus")) ?? eligible[0];
         if (!initial && !panel.hasAttribute("tabindex")) panel.tabIndex = -1;
         (initial ?? panel).focus({ preventScroll: true });
       }
@@ -188,8 +195,14 @@ export function useDialogFocusLifecycle(
     };
     // Active state can precede hydration of the actual panel. Retry on mount,
     // rather than spending the one animation frame on a null ref.
-    const observer = new MutationObserver(() => { if (enter()) observer.disconnect(); });
-    if (!enter()) observer.observe(document.body, { childList: true, subtree: true });
+    // Focus may be lost again after entry when a save disables or replaces its trigger.
+    // Continue observing only structural/focusability changes, not animation/style frames.
+    const observer = new MutationObserver(enter);
+    enter();
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true,
+      attributeFilter: ["disabled", "hidden", "inert", "open"] });
+    const maintainFocus = () => { enter(); };
+    document.addEventListener("focusin", maintainFocus);
     const trap = (event: KeyboardEvent) => {
       if (event.key !== "Tab") return;
       const panel = dialogRef.current;
@@ -212,6 +225,7 @@ export function useDialogFocusLifecycle(
 
     return () => {
       observer.disconnect();
+      document.removeEventListener("focusin", maintainFocus);
       document.removeEventListener("keydown", trap);
       window.requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
     };
