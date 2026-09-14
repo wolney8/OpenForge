@@ -2,6 +2,15 @@
 
 ## PD-CALC-20260914 — visible core planner C04–C07 / core C09
 
+2026-09-14 engineering continuation: shared focus lifecycle/native ModalBoundary now retain focus
+through disabled Save and nested keyboard cycling, return the original opener, and expose Matching
+HTTP/network errors in canonical footer alerts. Selected-record footer actions use explicit shared
+tracks and constrained-container stacking; six selected plus eighteen empty modal variants cover
+pairwise collision, pointer Save, keyboard, both themes and enlarged text. No hidden overflow or
+route-specific positional patches. Profit Boost uses existing request revision/abort/input-key rules;
+offer changes reset incompatible Custom/reward drafts without altering explicit saved/pop-out input.
+Outgoing fixed-source evidence is recorded in the existing audit, not inferred from these components.
+
 Canonical equivalents: accepted CalculatorSegmentedControl, CalculatorSegmentEyebrow,
 CalculatorReferenceSection/CalculatorOutcomes, CommissionInput, CopyableFinancialValue,
 SingleLayCustomSlider and existing ledger modal/footer. No family-specific financial engine/CSS.

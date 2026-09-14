@@ -361,3 +361,8 @@ labelled scenario values; never hide the overflow or clip a numeric column. Slid
 direction labels must use the slider container's available width, including enlarged rem units.
 Assert editor body scrollWidth, paired label/control alignment, complete reference outer edges,
 real pointer Save and keyboard slider behaviour on standalone and embedded consumers.
+
+Selected-record modal gate: assert Delete/Revert and navigation action rectangles do not overlap,
+not just empty Add geometry. Test focus after Save becomes disabled, nested confirmation Tab/Shift-Tab
+on actual controls, associated errors inside the active Matching panel, preserved draft and real retry.
+Hold a reference response while editing settlement; assert queued intent and actual commission persist.

@@ -1140,6 +1140,21 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
   retention across refresh, panel fit, corner radii, selected/focus containment, adjacent selection,
   disabled boundaries, transition/reduced-motion state, menu anchoring and viewport containment.
 
+## 2026-09-14: Selected modal actions and pending focus differ from empty Add
+
+- Empty Add geometry does not cover Delete/Revert plus navigation in a selected record. At390px
+  those groups overlapped. Use shared explicit footer tracks and container-based stacking; assert
+  pairwise action rectangles on both empty and selected records, not only viewport containment.
+- Disabling the focused Save can lose active-dialog focus. Keep the shared focus lifecycle active
+  for focusability changes; nested confirmations own their actual controls and keyboard cycle.
+- Matching save errors must be inside the active editor, not on its inert background or another tab.
+  Verify held Save, pending Escape, HTTP503 and transport failure, preserved draft and real retry.
+- A held reference response must not discard dropdown autosave. Queue the latest draft until
+  planning readiness, then retain confirmed actual commission and settlement precedence.
+- Focus return captures the original connected opener before dialog cleanup.
+- Regression: verify_core_planner_geometry_113.mjs, verify_shared_footer_geometry_113.mjs and
+  verify_core_lay_planner_ui_113.mjs; both themes, half-width/narrow and text scaling separately.
+
 ## 2026-09-11: Native field intrinsic widths escaped narrow calculator grids
 
 - Area: canonical `.field-control` inputs, selects and textareas at narrow/text-scaled widths.

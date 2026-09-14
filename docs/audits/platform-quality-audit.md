@@ -1,6 +1,101 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current visible core-calculator checkpoint — 2026-09-14 / LOCAL ONLY
+## Current calculator engineering continuation — 2026-09-14 / LOCAL ONLY
+
+Current frozen application source **d3a6b5de3007c0f53cf33231a888c9af631707f4**:
+frontend product **d3a6b5d** (original focus target captured before cleanup; JSX escape only), API product
+**eb86c6045e5b6f4db939c733d20e5e8e67b526d4** unchanged. New product commits9577566,
+26aa070,534c978,71c5c41,9625b16,9c8994e are separately scoped UI/recovery repairs;9483edf
+and25744bb are test harness checkpoints. No financial engine, operational database or historical
+result changed. Main/frozen candidate remainf7a3b35073ecc87cdf8f8f881129f221ec44d395;
+unmerged Multi-Lay215193b remains untouched. No publication, integration or deployment.
+
+**Partial user observations received; no further bulk owner entry required; engineering reference
+verification and fixes active; final acceptance pending.** Owner review, recordings, worksheets
+and launcher troubleshooting are not progression gates. The previous79-case campaign is not a
+delivery requirement. The current engineering gate below replaces older broad remaining-work
+wording without erasing its revision-limited evidence.
+
+Original JSON hash95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac
+and workbook7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a remain
+unchanged, private and read-only. CASHBACK-001 output indices0/1/2 are selected stake9.00,
+liability28.80, back-win1.20; observed build remains UNKNOWN (localhost3010/blank build IDs).
+Its stated Standard setup conflicts with those observed Custom-compatible numbers. Current-build
+offer switching reproduced a leaked Custom9 draft, but does not prove the original observation's cause.
+
+### New reproduced defects and fixes
+
+- Profit Boost had a separate unguarded request effect: old32.00 remained current during a held
+  4.00-odds response, and failures were unhandled. Exact input-key invalidation, abort/revision
+  guards and an inline error now preserve the persistent breakdown without presenting stale odds.
+- Disabling a focused Save lost active-dialog focus. Shared focus lifecycle keeps observing
+  focusability/structural changes and skips disabled targets/nested dialogs. Nested confirmation
+  Tab also reached the presentation wrapper; ModalBoundary now cycles its actual controls.
+- Sportsbook failed Save errors appeared only in a hidden award tab; Free Bet errors were outside
+  the modal. Canonical footer alerts expose HTTP/network failure and preserve the draft for retry.
+- A real5% reference response held while choosing Back Won dropped the dropdown autosave intent
+  (database stayed Pending). The existing latest-draft queue now drains only after valid planning
+  readiness, retaining independently confirmed actual2% commission and actual-stake results.
+- Selected SNR390light showed Revert overlapping Previous/Next; empty Add-modal geometry passed
+  and did not cover it. The shared footer uses explicit tracks, full-width errors and container-based
+  action/navigation stacking. New pairwise overlap assertions cover selected as well as empty rows.
+- Changing offers leaked Custom stake/bounds and reward assumptions. An explicit different offer
+  starts Standard, clears offer-specific drafts and seeds Cashback's editable cap from stake;
+  shared odds/Exchange/commission and explicit saved/pop-out state remain untouched. Cashback
+  labels now say Without cashback and Eligible refund amount / cap, with finishing-position guidance.
+
+### C08 actual receipt / operational boundary — exact blocker, not a backend PASS
+
+Read-only workbook SportsBookU2/W2/X2/Y2/Z2/AA2/AC2/AF2 and FreeBetsV3/X2/Y2/Z2/AA2/AD2
+confirm reference/actual precedence, cash-first settlement and same-odds subtraction. SportsBookZ2
+`Lay Won + Cashback` assumes full-stake cash returned; Free Bet refund is not face-value cash profit.
+Existing `maximum_bonus` is an eligible cap, not a receipt; strict `lay-plan-v1` forbids refund-kind,
+receipt and award-link fields. The smallest outstanding C08 proposal is typed conditional-benefit
+storage on the existing ledger (kind, eligibility/cap, actual receipt identity/date/amount and awarded
+credit linkage), explicitly versioned, no backfill. That additional schema is NOT approved by the two
+lay-plan-column approval and is not implemented. Cash-cap legacy behaviour remains readable;
+credit-refund conversion stays422 before writes. Do not claim embedded actual-receipt/credit parity.
+
+C05 current versioned UI retains actual first-fill amount/odds/commission separately from the plan.
+Existing legacy partial-lay controls use target-minus-matched; they do not establish changed-odds
+remaining hedge correctness. Still unfinished: adapt the governed operational partial workflow to
+versioned Normal/SNR without strategy Part Lay, using faithful actual/unmatched-order representation
+and independent changed-odds fixtures. Do not substitute Multi-Lay's mutually exclusive outcomes for
+same-market fills or infer a copied/planned order was filled. This is engineering work, not a worksheet.
+
+### Current external interaction / coverage
+
+Accessed2026-09-14: the public iframe linked by
+[Outplayed calculator page](https://outplayed.com/round-robin-bet-calculator) is
+[odds-calculator-v3](https://bonusaccumulator.com/calc/outplayed/odds-calculator-v3/index.php).
+Actual public Chromium760/390, SNR10/back4/lay4.2/back commission0%/lay2%, Advanced:
+Standard7.18/22.98/7.02/7.04; Underlay6.25/20.00/10.00/6.13;
+Overlay10.20/32.64/**−2.64**/10.00; keyboard Custom9.00/28.80/1.20/8.82;
+pointer Copy Underlay writes6.25, no horizontal page overflow at390. The visual minus is present;
+raw innerText omits generated accounting punctuation, so raw2.64 is not a positive observed profit.
+This is fresh bounded black-box evidence, separate from supplied observations/source inspection.
+Native-select values used browser select events; numeric/slider keyboard and pointer Copy are
+recorded separately. Full keyboard/assistive-technology certification remains UNVERIFIED.
+
+[MBB public calculator](https://matchedbettingblog.com/matched-betting-calculator/) actual390px
+keyboard Space selects Free Bet; identical10/4/4.2/0%/2% shows stake7.18, exchange liability22.97
+and7.03/7.03 outcomes. These differ by1p from penny-placed Outplayed/Plum Duff; independent raw
+equalisation30/4.18 is consistent with MBB's displayed balanced totals (internal order INFERRED,
+not freshly source-proven). Do not force different endpoint/precision behaviour into a parity PASS.
+Unconditional MBB refund-if-loses is not conditional racing cashback.
+
+One newly completed provider cell: **PQA-C08 / Outplayed public mobile interaction**. C07 Outplayed
+full keyboard remains partial, member tracker/recording remains inaccessible/unverified. Coverage:
+46/87 assessments53%,8/24 exercised33%,8/24 passing33%,**15/27 competitor cells56%**
+(12 documentation-only,3 hands-on),24/133 requirements18%. Change:+1 competitor cell/+4 points;
+no repair/test count promotes an assessment, journey or requirement. Larger-data/accessibility,
+imports/restores/PD018, remaining populated ledgers and historical clarification coverage remain queued.
+
+### Historical preceding visible core checkpoint (eb86c60)
+
+The following sections describe prior revisions, not the current continuation above. Their old
+remaining-work statements do not undo verified repairs; exact outstanding IDs remain in the current
+C01–C09 table. No owner login/video/review gate is current authority.
 
 Application source **eb86c6045e5b6f4db939c733d20e5e8e67b526d4** inherits UI7f4ff6f17be61d5b3e4c6faf36b7bb80c2b9f3a2,
 shared planner0baffd2 and validated planning storage3f2eaca9fe2b7e00a957202ce84e09246751fbca.
@@ -20,17 +115,113 @@ dirty/revision state; response acknowledgement preserves newer drafts. Identical
 no longer leave the planner permanently busy. An unchanged saved plan's reference refresh does not
 prevent actual settlement; edited inputs still invalidate stale Copy/Apply/Save.
 
+### Current C01–C09 correction checklist
+
 | ID | Current result / evidence | Exact remaining work |
 |---|---|---|
-| C01 | Bounded latest-edit PASS / PROVEN; plan revision unit regressions added | Broader network-loss/cross-editor/autosave interruption cases remain; no universal autosave claim |
-| C02 | Core focus/Save/dirty Escape PASS / PROVEN, six rendered variants | Pending/nested confirmation, interrupted motion and broader asynchronous focus-return cases remain |
+| C01 | Bounded prior latest-edit PASS retained; new input-key/network/pending-planner repairs implemented | Outgoing fixed-source rerun below governs PASS; lost acknowledgement across reload and cross-editor simultaneous edits are separate next tests, not universal autosave acceptance |
+| C02 | Active/pending/nested focus and selected-footer repairs implemented; new six-variant checks | Outgoing gate below; interrupted close/reopen intermediate motion and pending destructive-confirm error remain specific untested variants |
 | C03 | PARTIAL / DOCUMENTED | Exact workbook SR discrepancy retained; no historical calculation rewrite; Cashback provenance remains |
-| C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | External observations are not fresh live parity; unsupported rare source/destination configurations remain tracked |
-| C05 | New native/versioned Normal/SNR controls and explicit placement PASS / PROVEN | Changed-odds/multi-fill remaining hedge explicitly unsupported; no fabricated fills or strategy Part Lay |
-| C06 | Core embedded percentage/override save-reopen PASS / PROVEN | Full PostgreSQL actual-commission settlement remains NOT TESTED; broader default-change browser variants remain |
-| C07 | Core Simple/Advanced/full-width references/live slider and rendered geometry PASS / PROVEN | Broader motion interruption/state variants remain; other families' distinct mathematics unchanged |
-| C08 | PARTIAL; existing conditional reference evidence retained | Embedded Cashback receipts/caps/credit/reset and no-double-counting remain next |
-| C09 | Core fixed-source browser/native/conversion/award gate PASS / PROVEN; overall PARTIAL | Broader C01/C02, C08 and populated old-schema PostgreSQL/portable compatibility remain; final acceptance pending |
+| C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | Fresh bounded public Outplayed four-reference black-box match recorded above; MBB penny difference explicit, not parity PASS; unsupported rare configurations remain tracked |
+| C05 | Core native/versioned Normal/SNR plan/actual controls PASS / PROVEN; operational parity PARTIAL | Existing partial workflow not yet adapted to new plans; changed-odds/unmatched-order/multi-fill support remains unfinished, no fabricated fills or strategy Part Lay |
+| C06 | Core percentage/override save-reopen PASS retained; actual PostgreSQL actual-commission/default-change PASS | Actual6/4.2/2% retains19.20/10.80/5.88 when default changes5%; full default-change browser variants still required |
+| C07 | Core Simple/Advanced/full-width references/live slider and rendered geometry PASS / PROVEN; Profit Boost embedded PARTIAL | Embedded Profit Boost still exposes only displayed odds/percentage plus its separate payout helper, not the four-source standalone breakdown; shared adapter remains engineering work. Broader motion interruption/state variants remain |
+| C08 | Standalone/pop-out conditional cash/credit/cap/switch/reset PASS / PROVEN; embedded PARTIAL/BLOCKED | Actual receipt/refund-kind/award-link storage requires additional explicit approval; no credit-to-cash conversion or actual-receipt claim |
+| C09 | Prior core/award evidence retained; current outgoing gate below; overall PARTIAL | C05 operational/C07 embedded boost/C08 receipt and portable full browser round-trip remain; populated old-schema PostgreSQL upgrade now PASS, not full workbook recovery |
+
+### Current outgoing evidence receipt — source d3a6b5d
+
+No application source edits during this outgoing run. The final JSX fix preserves visible copy;
+capturing the original modal opener removes the cleanup lint warning and is covered by real conversion
+focus-return/nested dialog tests. Current API source remains eb86c6045e5b6f4db939c733d20e5e8e67b526d4.
+Typecheck, changed-code lint and Next16.3.2 production build PASS; installed tools used directly to
+avoid pnpm's attempted dependency-link replacement. No dependency change or hosted build claim.
+
+Core real browser/API/independent SQLite persistence PASS8 on this final source: Normal/SNR native
+plans and Standard/Underlay/Overlay/Custom reviewed conversions; preserved immutable source identity,
+receipt/dialog close/focus, clipboard-only Copy, saved commission override and blank actuals until
+explicit confirmation. Actual6@4.2/2% remains19.20 liability and10.80 Back Won; SNR Lay Won5.88,
+Normal Lay Won−4.12. A held5% planning refresh while selecting Back Won now retains the queued result
+and confirmed2% actuals. Evidence01387214ea8c17f2b2bf1c9e4defd397629481e0d2bbd3f1b5be3a1e5f1d1fc1.
+
+Profit Boost PASS2 on this final source: four independent source equations/accepted override without
+lay inputs; immediate old-output invalidation, held late response ignored, malformed/HTTP503 failure
+and correction recovery. Evidencef70b5fefd202340f9a4886e409277bed814eaf9a4306ee2bd92bdc34e2fbd4a8.
+Cashback switch/reset PASS2: Standard9.57 qualifying−0.62, cash eligible10→9.38/cap5→4.38,
+credit5 face value/estimated3.50 remain separate from unchanged cash−0.62; changing offers clears
+Custom9/reward-kind/bounds rather than inheriting them. Evidence
+4dbb55557ce506276d9eabc28a90269a1fd8843c601a39b60e871ff8873d8538.
+
+PQA-J12 existing full journey rerun PASS on this candidate at760dark: real multi-Profile review,
+Account closed after review→one success/one failure; successful target retained; retry submits only
+unresolved target/same intent; dialog closes with two row links; deliberately new exploratory intent
+creates another row. Independent SQLite counts2/1 and exactly three linked notifications; source
+values retained. Already-saved retry reuses IDs. Evidence
+0487c41493df473e506a8a95a486156f7d562bcd26da7e801cbf88872467eef7.
+This re-verifies an existing journey, not an additional journey numerator.
+
+Genuine award outgoing PASS4 on exactly d3a6b5de3007c0f53cf33231a888c9af631707f4 at3040/8039,
+1440/760 both themes: real source award creation, single10 removal, split5SNR+5SR face value10,
+injected second-child rollback and same-operation refresh retry, lost committed response reuse in
+one variant, no removed-child resurrection, copy3.86/4.83 with explicit actual3.50, reopen/settle
+5.30/10.30 and qualifying−1.18 included in offer14.42, parent-linked list/protected removal disabled,
+source deletion409 unchanged persistence/report/reload. No application edits during runs.
+Evidence5a2cf806d2c3cdba09cf1d69758387b4e15307083d44ff2b97e6e8add47c977d.
+This is bounded actual browser/SQLite proof, not a new concurrent PostgreSQL award run or full history UI.
+
+37 focused shared money/commission/latest-edit tests and23 existing core-plan backend cases PASS;
+unaffected prior199 atomicity/legacy cases retain their revision/scope rather than being rerun.
+Earlier18 empty footer and4 latest-edit variants on25744bb remain valid for unchanged CSS/latest-edit
+paths; final d3a6b5d six selected variants additionally exercise the modal opener change. These test
+counts are not configuration/whole-platform acceptance. Self-review used; no independent agent review
+claimed. Screen-reader execution remains NOT TESTED.
+
+Serving frontend PID31797 and API PID48094 are the owned repair worktree3040/8039; API manifest
+checkout d3a6b5d/API producteb86c60 matches the final8-path browser evidence. Authenticated launcher
+check succeeds and browser real requests use8039. Canonical healthz8039/8020/8034 returns200;
+normal3010 login returns200. Protected services/data were not restarted/migrated. Existing synthetic
+session renewed only through strict database-backed fixture auth; fresh production Google callback
+is not configured/tested in this fixture and is not claimed repaired. Launcher remains
+`cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`.
+
+New selected-editor geometry PASS6 on d3a6b5de3007c0f53cf33231a888c9af631707f4:1440/760/390,
+both themes, desktop200% and half-width200% separately. Pending Escape/focus; repeated nested
+Tab/Shift-Tab/Escape; HTTP503 and transport failure preserve Custom9 draft and original persisted
+plan; pointer retry saves the plan with blank actuals. All footer button pairs are non-overlapping.
+Screenshot390light inspected: Delete/Revert and Previous/Next occupy separate rows, no rank/label
+or action collision; editor body scroll is deliberate, not hidden overflow.
+Evidence SHA2568a62ceb289bd96b2930aeb0f745ba0a712f39dc7c98d96941968054833de45d2.
+
+Actual PostgreSQL18.6/Homebrew test execution at harness9483edf4bb3d8b8f69cf71738e5d6a47e1ada8f1,
+unchanged API eb86c60: dedicated loopback52818, disposable cluster, synthetic current-schema DB and
+SECOND populated old-schema DB. All four SNR plans retain empty actuals; injected response preparation
+rolls back row/audit changes; fresh-connection reopen works. Confirmed actual6@4.2/2% remains19.20 liability,
+10.80/5.88 branches despite planning/default5%. Two approved nullable planning columns upgrade populated
+old-schema data twice; legacy actual7/back5/lay5.2/2% Back Won10.60 and original snapshot unchanged.
+PASS / PROVEN for these boundaries; cluster stopped. Retained redacted evidence checksum
+35ec858e5edd10d7e9f1d22fe022a87031f7a270cb2dfc1e2d28727cec4f87dc.
+Prior wider backup/restore evidence is retained, not rerun/promoted by these transaction tests.
+
+Public Outplayed bounded black-box controls/copy and four-reference numbers PASS2 (760/390):
+evidence68db025b3a39089b6dc91f09c70bf926f257876ac5add3d9d23d87d04123d2cf.
+MBB observed different liability22.97 and balanced7.03/7.03 at matching settings: comparison
+DOCUMENTED mismatch, not mathematical failure inferred from rounding alone. Evidence
+fb489921a777b35278f773817cf5caadb5937288e0b9fb648788d02fd5733c27.
+Observations, private synthetic screenshots/DB/cookies and workbook are not committed.
+
+J11 protected-removal/source-result and user-visible linked-child list are exercised by the genuine
+award runner; full change-history UI is still absent under PD-QA-016. Its existence must not be
+invented from source IDs or audit rows. J11 remains PARTIAL in this conservative full-history scope;
+current explanation is missing history consumer, not superseded autosave failure. No journey count
+increase. Unsupported imported-parent reconciliation PD-QA-018 remains separate.
+
+Exact next executable IDs: C05.versioned-operational-adapter (actual fills/unmatched orders/governed
+changed-odds hedge), C07.embedded-profit-boost-four-source, C01.after-commit-lost-ack-reload and
+C01.cross-editor-ordering, C02.interrupted-dialog-motion and C02.pending-destructive-confirm-error,
+C09.portable-browser-roundtrip. C08.embedded-receipt is BLOCKED by additional unapproved typed
+conditional-benefit storage, not by owner comparison. Wider next audit package remains populated
+Casino/EachWay/Cash ledgers, Profile-workbook restore/parent resolution and large-data/accessibility
+plus retained request/competitor/security checks. No owner engineering assignment.
 
 Owned review3040/8039 retains its existing disposable synthetic database, backed up before loading
 the approved additive migrations. API startup review-source.json identifies loaded checkout and API
@@ -2360,7 +2551,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J08|Casino other activity→fees/override→settle/reopen→report|NOT TESTED; explicit fee/override factories next |
 |PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|NOT TESTED; changed terms/unsupported variations remain blocked |
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|NOT TESTED; independent native movement fixture next |
-|PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|PARTIAL / FAIL: genuine single/split awards, second-child503→retry15 credit for10, SNR/SR settlement5.30/10.30 and report/reload verified. Safe Available removal blocked by source placements; separate API source deletion204 leaves four orphans and removes−1.18 from reports. No complete passing journey; PD-QA-017 |
+|PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|PARTIAL; original15-credit/orphan/removal failures are historical, repaired8276e2a and prior frozeneb86 browser evidence. Current outgoing rerun and per-assertion receipt above govern evidence; full user-visible lineage/history assertions remain independent from issuance/transaction correctness. Not added to journey numerator. |
 |PQA-J12|Multi-Profile conversion partial failure→retry unresolved→new intent→notifications|FULLY EXERCISED; PASS / PROVEN browser/API/persistence counts2/1, three notification links; current addendum |
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first tracker action/reopen|PARTIAL; API identity creation, full guided UI next |
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL; sampled security/restore tests; full browser lifecycle next |
@@ -2387,13 +2578,13 @@ A public URL/access failure is evidence of inaccessibility, never proof that the
 | Capability / method | Outplayed | MBB | OddsMonkey |
 |---|---|---|---|
 |C01 public configuration/guidance|U exact arrangement unresolved|D [public controls/guidance](https://matchedbettingblog.com/matched-betting-calculator/)|D [normal/SNR/SR/commission guidance](https://www.oddsmonkey.com/matched-betting/calculator/)|
-|C02 offer-review workflow documentation|U|U|U|
+|C02 offer-review workflow documentation|D retained2026-09-13 features/calendar/offer guidance|D retained qualifying-bet terms/stake/odds/liability guidance|D retained Racing Matcher offer/terms/review guidance|
 |C03 activity recording documentation|D [Store in Profit Tracker / My Bets](https://outplayed.com/blog/matched-betting-spreadsheet)|D limited [offer progress](https://matchedbettingblog.com/); financial tracker equivalent remains unlocated, not declared absent|D [tool/manual/historical entry](https://help.oddsmonkey.com/hc/en-gb/articles/11151091597085-Keep-On-Track-With-Our-Profit-Tracker)|
 |C04 expected versus actual documentation|D [My Bets EV/profit graphs](https://outplayed.com/blog/outplayed-pro-tools-data)|U|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
 |C05 cash/balance documentation|D [separate Balance Sheet, cosmetic cash transfers](https://outplayed.com/blog/matched-betting-spreadsheet)|U|U|
-|C06 recovery/history documentation|U|U|U|
-|C07 actual keyboard interaction|U|U|U|
-|C08 actual mobile interaction|U|U|U|
+|C06 recovery/history documentation|U|U|D retained public reset guide/Yes Delete confirmation; not an executed reset or restoration test|
+|C07 actual keyboard interaction|U full keyboard interaction partial; current numeric/slider evidence is not full certification|H retained public calculator1440/390 Tab/Space/field bounds plus fresh390 numeric entry|U|
+|C08 actual mobile interaction|H public linked calculator390: numeric entry, Advanced presets, Custom slider and Copy; current engineering continuation above|H retained public calculator1440/390 plus fresh keyboard390; no member tracking|U|
 |C09 actual evaluate→record→performance interaction|B member tracker documented login; attempted public entry unavailable|B recording endpoint/equivalent unlocated; guessed spreadsheet URL failed, forum anecdotes not authority|B [Profit Tracker redirects to login](https://members.oddsmonkey.com/account/login?&returnurl=%2ftools%2fprofittracker)|
 
 Useful pattern: contextual evaluate→record handoff and explicit expected/actual graph/report, with

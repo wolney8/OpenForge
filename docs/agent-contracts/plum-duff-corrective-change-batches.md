@@ -1,6 +1,30 @@
 # Plum Duff Corrective Change Batches
 
+C01.pending-plan-result: COMPLETE for the fixed25744bb browser/API/database gate. On534c978, a real prepared5% planner response held while
+Normal Settlement selects Back Won leaves the database Pending after release. Existing dropdown
+autosave returns early for planner-pending and loses the intent. Reuse the existing latest-form
+queue; persist only once the reviewed plan becomes valid, retaining confirmed actual2% commission.
+Independent expected actual6/4.2/2% result10.80 remains unchanged by the5% plan revision.
+
+C02.selected-footer: COMPLETE for six selected variants and eighteen empty-modal variants on25744bb. Rendered SNR390light edit footer on534c978 overlaps Revert
+with Previous/Next. Empty native-modal18-case geometry did not cover selected Delete/Revert content.
+Canonical existing workflow-editor-footer must deliberately stack primary and navigation rows at
+constrained container widths; keep desktop treatment, target sizes and all actions.
+
 This register prevents a reported correction from disappearing between report and verification.
+
+## C01/C08/C09 engineering continuation — 2026-09-14
+
+Base57ead2abcf4dcd67c9ed1cea6a38641bcfc5ede0; no owner-review progression gate.
+Preserve all C01–C09 requirements in the existing audit. This is not calculator sign-off.
+
+| Item | Surface / acceptance / canonical equivalent | Status |
+|---|---|---|
+| C01.PB | Standard hub/pop-out independent Profit Boost breakdown: old results unavailable immediately after edit; late/failing responses cannot restore them; correction recovers without lay inputs. Reuse main reference request revision/abort and shared field/error/value surfaces. | COMPLETE scoped25744bb PASS2; real responses gated/HTTP503/invalid input/recovery/four source equations, no lay prerequisite |
+| C08.storage | Embedded conditional cash/credit receipt and cap provenance, save/reopen/report. Existing Sportsbook maximum_bonus is a cap, not a recorded receipt; no refund-kind/receipt/award-reference field in approved lay-plan-v1. Do not hide actual receipts in planning context. | BLOCKED — additional typed conditional-benefit storage requires approval; exact minimal fields in current audit. Standalone/pop-out cap/credit/switch/reset PASS2 |
+| C09.auth | Diagnose3040 verification prerequisite independently; retain real auth. Existing disposable fixture session expired (API401, frontend login), not evidence of a Google callback defect. Renew only owned synthetic session through existing signed/database-backed fixture mechanism. | COMPLETE for engineering access: strict database-backed fixture renewed; core8 and genuine award4 browser gates pass. Fresh Google callback unavailable in synthetic config, not claimed fixed |
+| C02.pending-focus | Shared native editors: disabling focused Save during a pending write must retain focus inside the active dialog; nested confirmations retain their own focus; failed Save preserves draft and can retry. Equivalent: useDialogFocusLifecycle/native ModalBoundary. | COMPLETE scoped25744bb PASS6; pending focus/Escape and repeated nested Tab/Shift-Tab/Escape to parent |
+| C01/C02.save-error | Sportsbook editor save failures must be visible in Matching as well as Free Bet; network failures must restore controls without uncaught rejection. Equivalent: shared inline field-validation alert in active Free Bet editor. | COMPLETE scoped25744bb PASS6;503 and transport failure preserve editable Custom9, API original plan unchanged, real retry succeeds |
 
 ## PD-QA-004 shared modal boundary — 2026-09-13
 

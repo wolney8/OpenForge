@@ -2,6 +2,18 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
+Current engineering continuation: no owner-review gate/bulk campaign. Local source
+d3a6b5de3007c0f53cf33231a888c9af631707f4 inherits all repairs, adds latest-reference/save recovery,
+pending settlement queue, nested focus and selected-footer containment. Detailed C01–C09 and
+revision-linked evidence remain in the existing platform audit. No normal-app integration/push.
+C05 operational versioned partial matching and C07 embedded four-source Profit Boost adapter are
+next executable engineering work. C08 standalone/pop-out cap/credit/reset is verified; embedded
+actual receipt/kind/award linkage is blocked by unapproved additional storage beyond lay-plan-v1.
+C01 lost acknowledgement/reload/cross-editor and C02 interrupted/pending confirmation cases remain.
+Coverage46/87,8/24 exercised/passing,15/27 competitor (+1),24/133; no test-count inflation.
+
+The immediately following eb86c60 checkpoint is historical, not current reporting authority.
+
 ### Current visible core-parity slice — C04–C07 / core C09
 
 UI0baffd2 and shared reflow37da721 consume lay-plan-v1 in native/versioned Normal Sportsbook
