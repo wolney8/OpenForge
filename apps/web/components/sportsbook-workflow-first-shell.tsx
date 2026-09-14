@@ -263,6 +263,9 @@ type SportsbookRecord = {
 };
 
 type LinkedFreeBetRecord = {
+  award_review_required?: boolean;
+  award_review_notes?: string[];
+  award_removal_block_reason?: string;
   free_bet_id: string;
   event_name: string;
   offer_text: string;
@@ -555,6 +558,8 @@ type FreeBetBridgeSplitState = {
 };
 
 type FreeBetBridgeModalState = {
+  operation_id: string;
+  operation_completed?: boolean;
   sourceRowId: string;
   bookmaker: string;
   offer_type: string;
@@ -3833,6 +3838,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     ).trim() || "Add The Offer Name As Shown.";
   const guidedEntryActionMessage = guidedEntryResolvedInstruction;
   const openFreeBetBridgeModal = useCallback((record: SportsbookRecord) => {
+    try {
+      const persisted = JSON.parse(sessionStorage.getItem(`pd.award-review.${record.profile_id}.${record.sportsbook_bet_id}`) || "null") as FreeBetBridgeModalState | null;
+      if (persisted?.operation_id && persisted.sourceRowId === record.sportsbook_bet_id) {
+        setFreeBetBridgeModalState(persisted);
+        setFreeBetBridgeCreatedCount(persisted.operation_completed ? persisted.splits.length : 0);
+        return;
+      }
+    } catch { /* Invalid local draft is not an issued award. */ }
     const settleDate = toDateTimeLocalValue(record.date_settled);
     const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
     const offerName = record.offer_name || record.offer_text || "Free bet from sportsbook";
@@ -3840,6 +3853,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const fixtureType = record.fixture_type || "Football";
     const freeBetValue = "5";
     setFreeBetBridgeModalState({
+      operation_id: crypto.randomUUID(),
       sourceRowId: record.sportsbook_bet_id,
       bookmaker: record.bookmaker,
       offer_type: record.offer_type,
@@ -3867,6 +3881,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFreeBetBridgeCreatedCount(0);
     setFreeBetBridgeSplitsExpanded(false);
   }, []);
+  useEffect(() => {
+    if (freeBetBridgeModalState) {
+      sessionStorage.setItem(`pd.award-review.${profileId}.${freeBetBridgeModalState.sourceRowId}`, JSON.stringify(freeBetBridgeModalState));
+    }
+  }, [freeBetBridgeModalState, profileId]);
   const activateEditorTab = useCallback((tabId: SportsbookEditorTabId) => {
     if (
       tabId === "free_bet" &&
@@ -5614,6 +5633,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
 
+    if (freeBetBridgeModalState.operation_completed) {
+      setFreeBetBridgeModalState({...freeBetBridgeModalState, operation_id:crypto.randomUUID(), operation_completed:false});
+      setFreeBetBridgeCreatedCount(0);
+      return;
+    }
     const sourceRow = rows.find((row) => row.sportsbook_bet_id === freeBetBridgeModalState.sourceRowId);
     if (!sourceRow) {
       setStatusMessage("Sportsbook row could not be found for free-bet bridge.");
@@ -5628,7 +5652,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     const freeBetStatus = freeBetBridgeModalState.free_bet_status || "Available";
-    const awardGroupId = `AWARD-${freeBetBridgeModalState.sourceRowId}-${Date.now()}`;
+    const awardGroupId = freeBetBridgeModalState.operation_id;
+    const children: Record<string, unknown>[] = [];
     const createdFreeBetIds: string[] = [];
 
     setIsFreeBetBridgeSubmitting(true);
@@ -5640,12 +5665,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ? `Award split variance: ${freeBetBridgeModalState.variance_reason.trim()}`
           : "";
         const userNotes = [bridgeNotes, splitNotes, varianceNote].filter(Boolean).join("\n");
-        const freeBetCreateResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/free-bets`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        children.push({
             event_name: sourceRow.event_name,
             offer_text: sourceRow.offer_text || sourceRow.offer_name || "Free bet from sportsbook",
             bookmaker: freeBetBridgeModalState.bookmaker,
@@ -5676,93 +5696,43 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             user_notes: userNotes,
             manual_override_value: "",
             manual_override_reason: "",
-          }),
         });
-
-        if (!freeBetCreateResponse.ok) {
-          const detail = await freeBetCreateResponse.text();
-          setErrorMessage(detail || "Unable to create free bet from sportsbook row");
-          return;
-        }
-
-        const createdFreeBet = (await freeBetCreateResponse.json()) as { free_bet_id: string };
-        createdFreeBetIds.push(createdFreeBet.free_bet_id);
       }
+      const awardResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${freeBetBridgeModalState.sourceRowId}/free-bet-awards`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({operation_id: awardGroupId, children,
+          expected_award_value: freeBetBridgeModalState.expected_award_value,
+          variance_reason: freeBetBridgeModalState.variance_reason.trim()}),
+      });
+      if (!awardResponse.ok) {
+        setErrorMessage((await awardResponse.text()) || "Award not confirmed. Keep this review and retry.");
+        return;
+      }
+      const saved = (await awardResponse.json()) as {free_bet_ids:string[]; source:SportsbookRecord};
+      createdFreeBetIds.push(...saved.free_bet_ids);
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/free-bets`);
       dispatchTrackerDataUpdated({ ledger: "free-bets", profileId });
       setFreeBetBridgeCreatedCount((count) => count + createdFreeBetIds.length);
 
-      if (sourceRow.status !== "Free Bet Awarded") {
-        const updated = await updateRowFromTable(
-          sourceRow,
-          {
-            status: "Free Bet Awarded",
-            result: sourceRow.result,
-          },
-          `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} and marked ${sourceRow.sportsbook_bet_id} as free bet awarded.`,
-          { keepEditorOpen: true, preserveTableView: true }
-        );
-        if (!updated) {
-          return;
-        }
-        setFormState((current) => ({
-          ...current,
-          status: "Free Bet Awarded",
-        }));
-      } else {
-        invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
-        dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
-        await loadRows(null);
-      }
-
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+      dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
+      await loadRows(sourceRow.sportsbook_bet_id);
+      setFormState((current) => ({...current, status: saved.source.status, result:saved.source.result}));
       setStatusMessage(
         `Created ${createdFreeBetIds.length} free bet${createdFreeBetIds.length === 1 ? "" : "s"} from ${sourceRow.sportsbook_bet_id}.`
       );
       void loadLinkedFreeBets(sourceRow.sportsbook_bet_id);
-      setFreeBetBridgeModalState((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const settleDate = toDateTimeLocalValue(sourceRow.date_settled);
-        const expiry = settleDate ? addDaysToDateTimeLocalValue(settleDate, 3) : "";
-        const freeBetValue = current.free_bet_value || "5";
-        const offerName = current.offer_name || sourceRow.offer_name || sourceRow.offer_text || "Free bet from sportsbook";
-        const betType = current.bet_type || sourceRow.bet_type || "Single";
-        const fixtureType = current.fixture_type || sourceRow.fixture_type || "Football";
-        const retentionMode = current.retention_mode || "SNR";
-
-        return {
-          ...current,
-          free_bet_status: current.free_bet_status || "Available",
-          free_bet_value: freeBetValue,
-          expected_award_value: freeBetValue,
-          expiry_datetime: expiry,
-          variance_reason: "",
-          user_notes: "",
-          splits: [
-            createFreeBetBridgeSplit({
-              value: freeBetValue,
-              offerName,
-              betType,
-              fixtureType,
-              expiry,
-              retentionMode,
-            }),
-          ],
-        };
-      });
-      setFreeBetBridgeSplitsExpanded(false);
+      setFreeBetBridgeModalState((current) => current ? {...current, operation_completed:true} : current);
       setActiveEditorTabId("free_bet");
+    } catch {
+      setErrorMessage("Award response was not confirmed. Retry this review with its retained operation identity.");
     } finally {
       setIsFreeBetBridgeSubmitting(false);
     }
   }
 
   function getLinkedFreeBetRemovalBlockReason(row: LinkedFreeBetRecord): string {
-    if (sourceBackPlacementRecorded || sourceLayPlacementRecorded) {
-      return "Remove sportsbook back and lay placement first.";
-    }
+    if (row.award_removal_block_reason) return row.award_removal_block_reason;
     if (!canRemoveLinkedFreeBet(row)) {
       return "This free bet has already moved beyond an unplaced award state.";
     }
@@ -5800,34 +5770,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       setLinkedFreeBetRows(remainingRows);
       setLinkedFreeBetRemovalId(null);
 
-      if (sourceRowId && remainingRows.length === 0 && formState.status === "Free Bet Awarded") {
-        const sourceRow = rows.find((entry) => entry.sportsbook_bet_id === sourceRowId);
-        if (sourceRow) {
-          const updated = await updateRowFromTable(
-            sourceRow,
-            {
-              status: "Prospecting",
-              result: "Pending",
-            },
-            "Removed linked free-bet rows and reopened the sportsbook row as prospecting.",
-            { keepEditorOpen: true, preserveTableView: true }
-          );
-          if (updated) {
-            setFormState((current) => ({
-              ...current,
-              status: "Prospecting",
-              result: "Pending",
-            }));
-            setPristineFormState((current) => ({
-              ...current,
-              status: "Prospecting",
-              result: "Pending",
-            }));
-          }
-        }
-      } else if (sourceRowId) {
-        await loadLinkedFreeBets(sourceRowId);
-      }
+      if (sourceRowId) await loadLinkedFreeBets(sourceRowId);
 
       setStatusMessage(`Removed linked free bet ${row.free_bet_id}.`);
     } finally {
@@ -10147,6 +10090,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             <article className="linked-free-bet-row" key={linkedFreeBet.free_bet_id}>
                               <div className="linked-free-bet-main">
                                 <strong>{linkedFreeBet.offer_text || linkedFreeBet.event_name || linkedFreeBet.free_bet_id}</strong>
+                                {linkedFreeBet.award_review_required ? (
+                                  <span className="field-validation-text" role="status">
+                                    {linkedFreeBet.award_review_notes?.join(" ")}
+                                  </span>
+                                ) : null}
                                 <span>
                                   {linkedFreeBet.bookmaker || "Bookmaker not set"} · {linkedFreeBet.status}
                                   {linkedFreeBet.source_award_split_total > 1

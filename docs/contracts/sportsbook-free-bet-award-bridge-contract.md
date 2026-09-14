@@ -4,6 +4,30 @@ _Last updated: 2026-07-23_
 
 ## Status
 
+### PD-QA-017 repair contract — 2026-09-14
+
+Approved repair scope: one reviewed new award operation creates its children and source
+update atomically. Existing sportsbook audit primary-key identity holds a durable
+operation intent with canonical request hash, pending/committed state and original
+response/child IDs. This is not promotional profit and introduces no financial equation
+or schema. A failed transaction can retain a pending intent, never partially issued credit.
+Same identity plus changed reviewed contents rejects; successful replay returns the
+original result, including explicit removed-child IDs, without resurrection. New explicit
+user intent uses a new identity; refresh/retry preserves the existing reviewed intent.
+Legacy groups without a verified operation remain review-required, never auto-completed.
+
+Profile/source locking is database-backed and covers group issuance, source removal,
+child removal and child placement; recheck lifecycle/relationships in that transaction.
+Unused/unplaced/unsettled children may be removed irrespective of source placement.
+Protected children cannot be deleted. Source with surviving children or a durable award
+operation cannot be hard-deleted, because its source history/result must remain intact.
+Child removal retains a source audit snapshot and never resets the qualifying result.
+The original committed operation keeps original IDs; replay cannot remint removed credit.
+
+Evidence gates: independent SQLite and real PostgreSQL transactions/concurrency/removal;
+actual browser single/split, failure/retry, placement/settlement, removal/report/reload.
+PD-QA-016/018/019 remain separately open. No automatic legacy repair or deletion.
+
 Planning baseline. Human approval required before implementation.
 
 ## Purpose

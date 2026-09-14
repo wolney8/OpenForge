@@ -49,6 +49,8 @@ from openforge_api.db import (
     update_sportsbook_bet,
     update_sportsbook_partial_lay_reminder,
 )
+
+from openforge_api.free_bet_awards import AwardRequest
 from openforge_api.free_bet_input import validate_free_bet_commission
 from openforge_api.multi_profile_entry import (
     MultiProfileTargetEligibility,
@@ -1200,6 +1202,12 @@ def update_profile_sportsbook_bet(
     if updated is None:
         raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
     return prepared[0]
+
+
+@router.post("/{sportsbook_bet_id}/free-bet-awards", status_code=201)
+def create_profile_free_bet_award(profile_id: str, sportsbook_bet_id: str, payload: AwardRequest) -> dict:
+    from openforge_api.free_bet_awards import issue_award
+    return issue_award(profile_id, sportsbook_bet_id, payload)
 
 
 @router.delete("/{sportsbook_bet_id}", status_code=204)

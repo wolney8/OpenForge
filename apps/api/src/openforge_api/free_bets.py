@@ -143,6 +143,9 @@ class FreeBetPayload(FreeBetFields):
 
 
 class FreeBetResponse(FreeBetFields):
+    award_review_required: bool = False
+    award_review_notes: list[str] = Field(default_factory=list)
+    award_removal_block_reason: str = ""
     free_bet_id: str
     profile_id: str
     created_at: str
@@ -367,11 +370,27 @@ def build_response(
             counts_as_open=row.status in {"Placed", "Available", "Prospecting", "Not Yet Awarded"},
             is_overdue=False,
         )
+    award_review = False
+    removal_reason = ""
+    if row.origin_qual_bet_id:
+        from openforge_api.db import connect
+        with connect() as connection:
+            from openforge_api.db import linked_free_bet_removal_block_reason
+            removal_reason = linked_free_bet_removal_block_reason(connection, record)
+            verified = connection.execute(
+                "SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? "
+                "AND sportsbook_bet_id=? AND audit_id=? AND action='award_operation'",
+                (row.profile_id, row.origin_qual_bet_id, "award-operation-" + row.source_award_group_id),
+            ).fetchone()
+        award_review = verified is None
     return FreeBetResponse.model_validate(
         {
             **record,
             "lay_commission_1": resolved_commission,
             **serialized,
+            "award_review_required": award_review,
+            "award_removal_block_reason": removal_reason,
+            "award_review_notes": ["Legacy/partial award group needs explicit review before recovery."] if award_review else [],
         }
     )
 

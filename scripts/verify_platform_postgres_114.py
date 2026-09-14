@@ -288,6 +288,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
     parser.add_argument("--sportsbook-only", action="store_true", help="PD-QA-020 targeted transactions; does not repeat recovery suite")
+    parser.add_argument("--awards-only", action="store_true", help="PD-QA-017 transactions/process races only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -323,6 +324,10 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.awards_only:
+            from verify_award_integrity_91 import award_cases
+            record.update(award_cases(primary,root))
+            return
         if args.sportsbook_only:
             record.update(sportsbook_cases(primary, root))
             record["status"] = "PASS"

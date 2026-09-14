@@ -5,7 +5,8 @@ import json
 import re
 import sqlite3
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -19,6 +20,17 @@ from openforge_api.config import settings
 from openforge_api.postgres_runtime import connect_postgres, connect_postgres_read_only
 
 database_operation_lock = threading.RLock()
+_mutation_connection: ContextVar[Any | None] = ContextVar("explicit_mutation_connection", default=None)
+
+
+@contextmanager
+def reuse_mutation_connection(connection: Any) -> Iterator[None]:
+    """Explicit composite mutation: nested existing primitives cannot commit independently."""
+    token = _mutation_connection.set(connection)
+    try:
+        yield
+    finally:
+        _mutation_connection.reset(token)
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 SUPPORTED_POSTGRES_RUNTIME_MODES = {"neon", "postgres", "postgresql"}
 
@@ -629,6 +641,10 @@ def parse_seed_bool(value: Any) -> bool:
 
 @contextmanager
 def connect() -> Iterator[Any]:
+    shared = _mutation_connection.get()
+    if shared is not None:
+        yield shared
+        return
     database_mode = settings.database_mode.strip().lower() or "local"
     if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
         # Each PostgreSQL call owns its connection. Serializing independent hosted
@@ -3867,6 +3883,7 @@ def update_sportsbook_bet(
     sportsbook_bet_id: str,
     payload: dict[str, Any],
     *, prepare_response: Callable[[SportsbookBetRecord, dict[str, str]], object] | None = None,
+    transaction: Any | None = None,
 ) -> SportsbookBetRecord | None:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is None:
@@ -3913,7 +3930,17 @@ def update_sportsbook_bet(
         "manual_override_reason": payload["manual_override_reason"],
         "updated_at": utc_now(),
     }
-    with connect() as connection:
+    with (nullcontext(transaction) if transaction is not None else connect()) as connection:
+        lock_award_profile(connection, profile_id)
+        current = connection.execute("SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?", (profile_id, sportsbook_bet_id)).fetchone()
+        if current is None:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
+        linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
+        operation = connection.execute("SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
+        if (linked or operation) and (payload["status"] == "Prospecting" or (current["result"] != "Pending" and payload["result"] == "Pending")):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Linked awards protect the qualifying result. Review the award history before reversing its source.")
         connection.execute(
             """
             UPDATE sportsbook_bets
@@ -4175,6 +4202,10 @@ def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
         return False
 
     with connect() as connection:
+        lock_award_profile(connection, profile_id)
+        if connection.execute("SELECT 1 FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone() or connection.execute("SELECT 1 FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone():
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="This source has linked award history and cannot be deleted.")
         write_audit_entry(
             connection=connection,
             sportsbook_bet_id=sportsbook_bet_id,
@@ -4835,10 +4866,14 @@ def create_free_bet(
     prepare_response: Callable[
         [FreeBetRecord, ProfileTrackerSettingsRecord, dict[str, str]], object
     ] | None = None,
+    transaction: Any | None = None,
 ) -> FreeBetRecord:
     from openforge_api.free_bets import prepare_write_response, validate_write_payload
 
     payload = validate_write_payload(profile_id, payload)
+    if any(payload.get(f) for f in ("origin_qual_bet_id","source_award_group_id","source_award_split_index","source_award_split_total")) and transaction is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail="Use the reviewed server award operation to create linked free bets.")
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
     record = {
@@ -4885,7 +4920,7 @@ def create_free_bet(
         "created_at": utc_now(),
         "updated_at": utc_now(),
     }
-    with connect() as connection:
+    with (nullcontext(transaction) if transaction is not None else connect()) as connection, reuse_mutation_connection(connection):
         connection.execute(
             """
             INSERT INTO free_bets (
@@ -5017,7 +5052,17 @@ def update_free_bet(
         "manual_override_reason": payload["manual_override_reason"],
         "updated_at": utc_now(),
     }
-    with connect() as connection:
+    with connect() as connection, reuse_mutation_connection(connection):
+        lock_award_profile(connection, profile_id)
+        current = connection.execute("SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?", (profile_id, free_bet_id)).fetchone()
+        if current is None:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Free bet no longer exists.")
+        if current["origin_qual_bet_id"]:
+            identity_fields = ("origin_qual_bet_id","source_award_group_id","offer_group_id","source_award_split_index","source_award_split_total")
+            if any(payload.get(field) != current[field] for field in identity_fields):
+                from fastapi import HTTPException
+                raise HTTPException(status_code=409, detail="Award source/group identity cannot be cleared or reassigned.")
         connection.execute(
             """
             UPDATE free_bets
@@ -5269,12 +5314,58 @@ def list_free_bet_follow_up_notifications() -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def lock_award_profile(connection: Any, profile_id: str) -> None:
+    """Database row/write lock, shared by issuance, removal and placement."""
+    from fastapi import HTTPException
+    if connection.execute("UPDATE profiles SET profile_id=profile_id WHERE profile_id=?", (profile_id,)).rowcount == 0:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    row = connection.execute("SELECT status FROM profiles WHERE profile_id=?", (profile_id,)).fetchone()
+    if row["status"] == "Archived":
+        raise HTTPException(status_code=409, detail="Profile is archived.")
+
+
+def linked_free_bet_removal_block_reason(connection: Any, current: Any) -> str:
+    from decimal import Decimal, InvalidOperation
+    if not current["origin_qual_bet_id"]:
+        return ""
+    def protected(record: Any) -> bool:
+        if record.get("status", "") in {"Placed", "Settled"} or record.get("result", "Pending") != "Pending":
+            return True
+        for field in ("lay_actual", "lay_matched_stake_1", "manual_override_value"):
+            raw = str(record.get(field, "")).strip()
+            try:
+                if raw and (not Decimal(raw).is_finite() or Decimal(raw) != 0):
+                    return True
+            except InvalidOperation:
+                return True
+        return False
+    if current["status"] not in {"Prospecting","Available","Not Yet Awarded"} or protected(dict(current)):
+        return "This linked free bet has protected actual activity and cannot be deleted."
+    audits = connection.execute("SELECT payload_json FROM free_bet_audit WHERE profile_id=? AND free_bet_id=?", (current["profile_id"],current["free_bet_id"])).fetchall()
+    if any(protected(json.loads(a["payload_json"])) for a in audits):
+        return "This linked free bet retains protected placement/settlement history."
+    if not connection.execute("SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?", (current["profile_id"],current["origin_qual_bet_id"])).fetchone():
+        return "Legacy award source requires review before removal."
+    return ""
+
+
 def delete_free_bet(profile_id: str, free_bet_id: str) -> bool:
     existing = get_free_bet(profile_id, free_bet_id)
     if existing is None:
         return False
 
     with connect() as connection:
+        lock_award_profile(connection, profile_id)
+        current = connection.execute("SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?", (profile_id, free_bet_id)).fetchone()
+        if current is None:
+            return False
+        if current["origin_qual_bet_id"]:
+            from fastapi import HTTPException
+            reason = linked_free_bet_removal_block_reason(connection,current)
+            if reason:
+                raise HTTPException(status_code=409, detail=reason)
+            child_audits = [dict(r) for r in connection.execute("SELECT * FROM free_bet_audit WHERE profile_id=? AND free_bet_id=?", (profile_id, free_bet_id)).fetchall()]
+            write_audit_entry(connection, current["origin_qual_bet_id"], profile_id, "award_child_removed", {"child":dict(current), "child_audit":child_audits})
         write_free_bet_audit_entry(
             connection=connection,
             free_bet_id=free_bet_id,
