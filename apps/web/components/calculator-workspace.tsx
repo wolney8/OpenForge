@@ -195,7 +195,13 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const [conversion, setConversion] = useState("");
   const [conversionOpen, setConversionOpen] = useState(false);
   const [conversionReceipt, setConversionReceipt] = useState<Array<{ profile: string; account: string; href: string; state: string }>>([]);
-  const [profitBoostPreview, setProfitBoostPreview] = useState<ProfitBoostPreview | null>(null);
+  const [profitBoostState, setProfitBoostState] = useState<{key: string; result: ProfitBoostPreview | null; error: string}>({key:"",result:null,error:""});
+  const profitBoostVersion = useRef(0);
+  const profitBoostPayload = JSON.stringify({ mode: inputs.profitBoostMode, back_stake: inputs.backStake, base_back_odds: inputs.baseBackOdds, profit_boost_percent: inputs.profitBoostPercent, boosted_back_odds: inputs.boostedBackOdds, total_potential_return: inputs.totalPotentialReturn, potential_profit: inputs.potentialProfit, actual_accepted_back_odds: inputs.actualAcceptedBackOdds, maximum_boost_winnings: inputs.maximumBoostWinnings });
+  const profitBoostKey = `${inputs.betType}:${profitBoostPayload}`;
+  // A previous response is never authoritative for a different input, including the debounce frame.
+  const profitBoostPreview = profitBoostState.key === profitBoostKey ? profitBoostState.result : null;
+  const profitBoostError = profitBoostState.key === profitBoostKey ? profitBoostState.error : "";
   const [exchanges, setExchanges] = useState<ExchangeOption[]>([]);
   const commissionWasEdited = useRef(search.has("exchangeCommission"));
   const [isCalculating, setIsCalculating] = useState(false);
@@ -207,19 +213,28 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const invalid = Object.values(errors).some(Boolean);
 
   useEffect(() => {
-    if (inputs.betType !== "profit_boost" || !hasCompleteDecimalInputSyntax(inputs.backStake) || Number(inputs.backStake) <= 0) {
-      const clearTimer = window.setTimeout(() => setProfitBoostPreview(null), 0);
-      return () => window.clearTimeout(clearTimer);
-    }
+    const version = ++profitBoostVersion.current;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      void fetch(`${apiBaseUrl}/fund-manager/calculators/profit-boost/preview`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-        body: JSON.stringify({ mode: inputs.profitBoostMode, back_stake: inputs.backStake, base_back_odds: inputs.baseBackOdds, profit_boost_percent: inputs.profitBoostPercent, boosted_back_odds: inputs.boostedBackOdds, total_potential_return: inputs.totalPotentialReturn, potential_profit: inputs.potentialProfit, actual_accepted_back_odds: inputs.actualAcceptedBackOdds, maximum_boost_winnings: inputs.maximumBoostWinnings }),
-      }).then(async (response) => { if (response.ok) setProfitBoostPreview(await response.json() as ProfitBoostPreview); });
+    if (inputs.betType !== "profit_boost" || !hasCompleteDecimalInputSyntax(inputs.backStake) || Number(inputs.backStake) <= 0) {
+      return () => controller.abort();
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/profit-boost/preview`, {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+          body: profitBoostPayload,
+        });
+        if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Boosted odds are unavailable. Correct the inputs or retry."));
+        const result = await response.json() as ProfitBoostPreview;
+        if (controller.signal.aborted || version !== profitBoostVersion.current) return;
+        setProfitBoostState({key:profitBoostKey,result,error:""});
+      } catch (failure) {
+        if (controller.signal.aborted || version !== profitBoostVersion.current) return;
+        setProfitBoostState({key:profitBoostKey,result:null,error:failure instanceof Error ? failure.message : "Boosted odds are unavailable."});
+      }
     }, 100);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [inputs.actualAcceptedBackOdds, inputs.backStake, inputs.baseBackOdds, inputs.betType, inputs.boostedBackOdds, inputs.maximumBoostWinnings, inputs.potentialProfit, inputs.profitBoostMode, inputs.profitBoostPercent, inputs.totalPotentialReturn]);
+  }, [inputs.backStake, inputs.betType, profitBoostKey, profitBoostPayload]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -245,7 +260,15 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
     requestAbortRef.current?.abort(); requestAbortRef.current = null; requestVersionRef.current += 1;
     setInputs((current) => {
       const next = { ...current, [field]: value };
-      if (field === "betType") { next.strategy = "Standard"; next.manualLayStake = ""; }
+      if (field === "betType" && value !== current.betType) {
+        // A different offer starts a new reference, not the previous offer's custom
+        // allocation or reward assumptions. Shared stake/odds/commission stay intact;
+        // restoring an explicit saved/pop-out state does not pass through this path.
+        next.strategy = "Standard"; next.manualLayStake = "";
+        next.customLayDraft = ""; next.customMinimum = ""; next.customMaximum = "";
+        next.promotionValue = value === "cashback" ? current.backStake : "";
+        next.cashbackRewardKind = "cash"; next.retentionPercent = "70";
+      }
       if (field === "betType" && value === "bonus_lock_in") {
         bonusValueIsDerived.current = true;
         next.promotionValue = current.backStake;
@@ -450,7 +473,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
           {inputs.betType === "cashback" && inputs.cashbackRewardKind === "free_bet" ? <Field error={errors.retentionPercent} id="credit-retention-percent" label="Estimated credit retention (%)" onChange={(value) => update("retentionPercent", value)} value={inputs.retentionPercent} /> : null}
           {inputs.betType === "profit_boost" && inputs.profitBoostMode === "percentage" ? <Field error={touched.maximumBoostWinnings ? errors.maximumBoostWinnings : null} id="maximum-boost-winnings" label="Maximum boost winnings (optional)" onChange={(value) => update("maximumBoostWinnings", value)} value={inputs.maximumBoostWinnings} /> : null}
         </div> : null}
-        {inputs.betType === "profit_boost" && profitBoostPreview?.calculation_state === "resolved" ? <article className="calculator-result-card" data-pd-id="calculators.profit-boost.breakdown"><div className="calculator-result-card-heading"><strong>Boosted odds breakdown</strong></div><p className="calculator-section-guidance">Shows what the bookmaker supplied and the effective odds used for hedging.</p><dl className="calculator-result-card-values"><ResultValue label="Original odds" money={false} value={inputs.baseBackOdds || "Not provided"} /><ResultValue label="Raw derived boosted odds" money={false} value={profitBoostPreview.raw_derived_odds ?? "Cannot derive from these inputs"} /><ResultValue label="Effective odds used" money={false} value={profitBoostPreview.effective_odds ?? "-"} /><ResultValue label="Bookmaker total return" value={profitBoostPreview.bookmaker_total_return ?? "-"} /><ResultValue label="Odds-based conservative return" value={profitBoostPreview.effective_odds_return ?? "-"} /><ResultValue label="Potential profit" value={profitBoostPreview.potential_profit ?? "-"} /></dl></article> : null}
+        {inputs.betType === "profit_boost" ? <article aria-busy={!profitBoostPreview && !profitBoostError} className="calculator-result-card" data-pd-id="calculators.profit-boost.breakdown"><div className="calculator-result-card-heading"><strong>Boosted odds breakdown</strong></div><p className="calculator-section-guidance">Shows what the bookmaker supplied and the effective odds used for hedging.</p>{profitBoostError ? <p className="error-text" role="alert">{profitBoostError}</p> : !profitBoostPreview ? <p role="status">Waiting for valid price inputs; previous odds are not current.</p> : profitBoostPreview.calculation_state !== "resolved" ? <p role="status">{profitBoostPreview.notes.join(" ")}</p> : null}<dl className="calculator-result-card-values"><ResultValue label="Original odds" money={false} value={inputs.baseBackOdds || "Not provided"} /><ResultValue label="Raw derived boosted odds" money={false} value={profitBoostPreview?.raw_derived_odds ?? "—"} /><ResultValue label="Effective odds used" money={false} value={profitBoostPreview?.effective_odds ?? "—"} /><ResultValue label="Bookmaker total return" value={profitBoostPreview?.bookmaker_total_return ?? "-"} /><ResultValue label="Odds-based conservative return" value={profitBoostPreview?.effective_odds_return ?? "-"} /><ResultValue label="Potential profit" value={profitBoostPreview?.potential_profit ?? "-"} /></dl></article> : null}
         {inputs.betType === "profit_boost" && profitBoostPreview?.calculation_state === "resolved" ? <details className="calculator-guidance-disclosure"><summary>How this price was calculated</summary><p>{profitBoostPreview.equation}. {inputs.actualAcceptedBackOdds ? `Actual accepted odds ${profitBoostPreview.effective_odds} take precedence.` : "No accepted-odds override is applied."}</p><p>{profitBoostExample}</p></details> : null}
         {inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet === "SR" ? <p className="error-text" role="status">Free Bet SR backing is not currently supported by the verified Bonus Lock-In contract.</p> : null}
         {inputs.betType === "cashback" && inputs.cashbackRewardKind === "free_bet" && result ? <section className="calculator-result-card" data-pd-id="calculators.cashback.credit"><strong>If cashback triggers: promotional credit, not cash profit</strong><dl className="calculator-result-card-values"><ResultValue label="Free Bet face value" value={result.cashback_credit_face_value ?? "-"} /><ResultValue label="Estimated retained value (not realised cash)" value={result.cashback_estimated_retained_value ?? "-"} /></dl></section> : null}

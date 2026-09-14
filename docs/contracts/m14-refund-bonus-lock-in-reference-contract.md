@@ -20,6 +20,21 @@ writes. Ordinary cash Cashback conversion retains the existing destination autho
 £10/back4/lay4.2/c.02 Standard9.57: win−0.62, without cashback−0.62, cash10 triggers9.38;
 credit10 triggers still cash−0.62, optional70% estimated retained value7.00 separately.
 
+Changing Calculator/offer explicitly starts its Standard reference and clears the previous
+offer's Custom stake/bounds and reward assumptions. Stake, odds, Exchange and commission
+remain unchanged. Fresh Cashback seeds its editable eligible cap from stake, Cash and70%
+estimated credit retention; opening an explicit saved/pop-out state preserves its values.
+Changing Simple/Advanced within an offer does not use this reset. Reset clears drafts.
+
+**C08 destination blocker (not standalone calculation):** `maximum_bonus` stores an eligible
+cap, not proof of a receipt. `lay-plan-v1` only governs Normal/SNR hedge planning and forbids
+extra fields. Neither can faithfully store conditional refund kind, actual received amount,
+receipt identity/date or linked awarded-credit identity. Full embedded receipt/credit delivery
+needs an explicitly approved typed conditional-benefit field/contract on the existing ledger
+(no backfill), plus the existing award lineage consumer. No new field or migration is implemented
+under the two lay-plan-column approval. Existing cash-cap settlement is legacy authority, not
+evidence that actual receipt provenance is implemented; credit conversion remains fail closed.
+
 - Status: Approved for Normal and Free Bet (SNR) backing bets with Back Loses/Back Wins
   rewards across Standard, Underlay, Overlay, Custom and explicit Part Lay
 - Owner: OpenForge M14 Calculator Workspace
