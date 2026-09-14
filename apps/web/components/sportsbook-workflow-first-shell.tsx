@@ -4234,20 +4234,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const backPlacementConfirmed = ["Placed", "Settled", "Free Bet Awarded"].includes(
     formState.status
   );
-  const sourceBackPlacementRecorded =
-    ["Placed", "Settled"].includes(formState.status) ||
-    (formState.status === "Free Bet Awarded" &&
-      (parseNumericInput(formState.back_stake) !== null ||
-        parseSportsbookOddsInput(formState.back_odds) !== null));
   const layPartiallyConfirmed =
     partialLayExecutionSummary.matchedTotal > 0 &&
     !partialLayExecutionSummary.hasReachedTarget;
   const layFullyConfirmed = partialLayExecutionSummary.hasReachedTarget;
   const layPlacementConfirmed = layPartiallyConfirmed || layFullyConfirmed;
-  const sourceLayPlacementRecorded =
-    layPlacementConfirmed ||
-    parseNumericInput(formState.lay_actual) !== null ||
-    parseNumericInput(formState.lay_matched_stake_1) !== null;
   const partialLayPanelTitle =
     partialLayLegs.length === 1 && layFullyConfirmed ? "Matched Lay" : "Partial Lay Legs";
   const shouldShowLayPlacementLegDetails =
@@ -6526,6 +6517,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           <button
             aria-label={`Delete sportsbook row ${sourceRow.sportsbook_bet_id}`}
             className="icon-button icon-button-destructive table-action-button"
+            disabled={isFreeBetAwardingOffer(sourceRow.offer_type) && ["Placed", "Settled", "Free Bet Awarded"].includes(sourceRow.status)}
             onClick={() => void handleDeleteSelectedRow(sourceRow.sportsbook_bet_id)}
             title={`Delete ${sourceRow.sportsbook_bet_id}`}
             type="button"
@@ -10214,7 +10206,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                    {selectedId ? (
 	                      <button
 	                        className="review-chip review-chip-danger"
-	                        disabled={isPersisting}
+	                        disabled={isPersisting || Boolean(selectedSportsbookRow && isFreeBetAwardingOffer(selectedSportsbookRow.offer_type) && ["Placed", "Settled", "Free Bet Awarded"].includes(selectedSportsbookRow.status))}
 	                        onClick={() => void handleDeleteSelectedRow()}
 	                        type="button"
 	                      >

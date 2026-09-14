@@ -3938,7 +3938,8 @@ def update_sportsbook_bet(
             raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
         linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         operation = connection.execute("SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
-        if (linked or operation) and (payload["status"] == "Prospecting" or (current["result"] != "Pending" and payload["result"] == "Pending")):
+        qualifying_activity = current["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current["status"] in {"Placed", "Settled", "Free Bet Awarded"}
+        if (linked or operation or qualifying_activity) and (payload["status"] == "Prospecting" or (current["result"] != "Pending" and payload["result"] == "Pending") or (qualifying_activity and payload["offer_type"] != current["offer_type"])):
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="Linked awards protect the qualifying result. Review the award history before reversing its source.")
         connection.execute(
@@ -4203,6 +4204,15 @@ def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
 
     with connect() as connection:
         lock_award_profile(connection, profile_id)
+        current_source = connection.execute(
+            "SELECT offer_type,status FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+            (profile_id, sportsbook_bet_id),
+        ).fetchone()
+        if current_source is None:
+            return False
+        if current_source["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current_source["status"] in {"Placed", "Settled", "Free Bet Awarded"}:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="This qualifying source has recorded activity. Retain its financial history; do not delete it while issuing or reviewing awards.")
         if connection.execute("SELECT 1 FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone() or connection.execute("SELECT 1 FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone():
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="This source has linked award history and cannot be deleted.")

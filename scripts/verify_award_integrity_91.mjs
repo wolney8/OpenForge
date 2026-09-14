@@ -119,13 +119,13 @@ try{
     await page.goto(childurl,{waitUntil:'domcontentloaded'});
     const editor=page.locator('[data-pd-id="free-bets.editor.dialog"]');await editor.waitFor();
     await editor.getByRole('tab',{name:/Matching/}).first().click();
-    await editor.getByLabel('Back odds',{exact:true}).fill('5.00');
     const exchangeSelect=editor.locator('label').filter({hasText:/^Exchange/}).locator('select');
     if(await exchangeSelect.inputValue()!=='Smarkets'){
       const [exchange]=await Promise.all([page.waitForResponse(r=>r.url().endsWith('/free-bets/'+ident)&&r.request().method()==='PUT'&&r.request().postDataJSON().exchange_name==='Smarkets'),
         exchangeSelect.selectOption('Smarkets')]);
       assert.equal(exchange.status(),200);
     }
+    await editor.getByLabel('Back odds',{exact:true}).fill('5.00');
     await editor.getByLabel('Lay odds 1',{exact:true}).fill('5.20');
     await editor.getByLabel('Lay odds 1',{exact:true}).blur();
     await editor.getByRole('button',{name:'Copy Standard free-bet lay stake and mark placed',exact:true}).click();

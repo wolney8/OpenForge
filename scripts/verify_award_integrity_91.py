@@ -297,11 +297,12 @@ def award_cases(target, runtime):
             ),
         ],
     )
-    assert sorted(s for s, _ in responses) in [[201, 409], [204, 404]], responses
+    assert sorted(s for s, _ in responses) == [201, 409], responses
     rows = stored(target)
     source_ids = {r["sportsbook_bet_id"] for r in rows["sportsbook_bets"]}
     assert all(r["origin_qual_bet_id"] in source_ids for r in rows["free_bets"])
-    checks.append("source deletion versus issuance separate-process race: no orphan")
+    assert fresh in source_ids
+    checks.append("source deletion versus issuance separate-process race: source result retained, no orphan")
     before = stored(target)
     assert (
         client.post(

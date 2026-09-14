@@ -57,6 +57,13 @@ def persisted():
         }
 
 
+def test_qualifying_source_activity_protected_before_award_claim(free_client):
+    sid = source(free_client)
+    before = persisted()
+    assert free_client.delete(f"/profiles/money-a/sportsbook-bets/{sid}").status_code == 409
+    assert persisted() == before
+
+
 def test_legacy_independent_post_retry_cannot_mint_fifteen(free_client):
     sid = source(free_client)
     for attempt in range(2):
