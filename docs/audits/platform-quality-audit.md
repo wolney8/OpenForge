@@ -1,6 +1,110 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current approved lay-plan implementation checkpoint — 2026-09-14 / LOCAL ONLY
+## Current visible core-calculator checkpoint — 2026-09-14 / LOCAL ONLY
+
+Application source **eb86c6045e5b6f4db939c733d20e5e8e67b526d4** inherits UI7f4ff6f17be61d5b3e4c6faf36b7bb80c2b9f3a2,
+shared planner0baffd2 and validated planning storage3f2eaca9fe2b7e00a957202ce84e09246751fbca.
+eb86c60 corrects only NEW versioned-plan lay-status classification: unplaced planned stakes must
+not produce Fully Laid. Five independent pre-fix assertions failed;23 core-plan cases pass after.
+No financial equation, schema, actual stake, legacy row result or placed history was changed.
+Verified starting checkpoint43ce6376bdaf597baf7aaea90296f4fe1e8c8078 and report25bb681a2e576e05249a9eb7cd399c489e427f07
+are historical. Main/frozenf7a3b35073ecc87cdf8f8f881129f221ec44d395 and Multi-Lay215193b7fcb5b11a28e23a4531d2a45434545dc1
+remain untouched. All commits local only; no operational migration/publication/integration.
+
+The accepted standalone components now power native/versioned Normal Sportsbook and SNR Free Bet editors.
+Simple/Advanced, all three full-width references, Custom followed by its slider, percentage inputs,
+clipboard-only copy, explicit plan apply and explicit actual-placement confirmation are implemented.
+Historical null plans remain legacy unless an eligible unplaced record is explicitly replanned.
+Backend storage is consumed, not merely exposed. A saved commission override is part of the editor's
+dirty/revision state; response acknowledgement preserves newer drafts. Identical apply/Exchange events
+no longer leave the planner permanently busy. An unchanged saved plan's reference refresh does not
+prevent actual settlement; edited inputs still invalidate stale Copy/Apply/Save.
+
+| ID | Current result / evidence | Exact remaining work |
+|---|---|---|
+| C01 | Bounded latest-edit PASS / PROVEN; plan revision unit regressions added | Broader network-loss/cross-editor/autosave interruption cases remain; no universal autosave claim |
+| C02 | Core focus/Save/dirty Escape PASS / PROVEN, six rendered variants | Pending/nested confirmation, interrupted motion and broader asynchronous focus-return cases remain |
+| C03 | PARTIAL / DOCUMENTED | Exact workbook SR discrepancy retained; no historical calculation rewrite; Cashback provenance remains |
+| C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | External observations are not fresh live parity; unsupported rare source/destination configurations remain tracked |
+| C05 | New native/versioned Normal/SNR controls and explicit placement PASS / PROVEN | Changed-odds/multi-fill remaining hedge explicitly unsupported; no fabricated fills or strategy Part Lay |
+| C06 | Core embedded percentage/override save-reopen PASS / PROVEN | Full PostgreSQL actual-commission settlement remains NOT TESTED; broader default-change browser variants remain |
+| C07 | Core Simple/Advanced/full-width references/live slider and rendered geometry PASS / PROVEN | Broader motion interruption/state variants remain; other families' distinct mathematics unchanged |
+| C08 | PARTIAL; existing conditional reference evidence retained | Embedded Cashback receipts/caps/credit/reset and no-double-counting remain next |
+| C09 | Core fixed-source browser/native/conversion/award gate PASS / PROVEN; overall PARTIAL | Broader C01/C02, C08 and populated old-schema PostgreSQL/portable compatibility remain; final acceptance pending |
+
+Owned review3040/8039 retains its existing disposable synthetic database, backed up before loading
+the approved additive migrations. API startup review-source.json identifies loaded checkout and API
+source; browser genuine conversion/SQL checks establish the network target, not health alone.
+Existing legitimate synthetic session verification is required on BOTH frontend and API. The first
+restart omitted frontend verification settings and redirected tests to login: launch failures, not
+passing journeys. Award fault injection initially patched only free_bets' function, missing the award
+module's imported reference: the corrected test-only runner patches both. Neither is a financial fix.
+
+Rendered narrow probing reproduced a shared42rem Outcomes minimum and auto grid track expansion.
+The shared matrix now bounds tracks and stacks complete labelled rows by container width; auxiliary
+fields and the shared Custom slider reflow by available width/rem units at enlarged text. No hidden content, smaller typography,
+route offsets or global shell rewrite. Existing Multi-Lay/Sequential/Early Payout calculations unchanged.
+
+41 focused money/commission/latest-edit/plan unit checks and23 core-plan backend checks pass;
+typecheck, changed-code lint and the initial0baff production build pass. Final source is frozen for
+browser and outgoing-build checks. These counts are not configuration completeness or owner acceptance.
+Private synthetic screenshots/runtime evidence contain no operational observations. Durable final
+redacted results/checksums are below. The original JSON/workbook remain unchanged/private.
+
+### Final frozen-source observable evidence — producteb86c60 / 2026-09-14
+
+All application source remained unchanged throughout these final runs. The independent SQLite
+reader initially failed immediately on another test's brief writer lock; its test-only connection
+now uses busy_timeout5000. No business assertion or expected value was weakened. Earlier interrupted
+geometry attempts during API restart encountered catalogue/request failures and remain harness
+failures, not passes. Final runs below use stable owned services.
+
+| Probe | Result / evidence | Exact scope | SHA-256 of retained private synthetic result |
+|---|---|---|---|
+| verify_core_lay_planner_ui_113.mjs | PASS / PROVEN,8 journeys | Four native + four real conversions; database assertions, copy-only/Not Laid, source checksum, same-intent retry IDs, dialog close/focus/receipt, actual6 placement, settlement/report/reload; held older response,0/2/5/2.125% override save/reopen, keyboard slider and presentation transitions | e554dab15916bf207489aa913755536c19b691d3413218e96a620d553539e34a |
+| verify_core_reference_controls_113.mjs | PASS / PROVEN,4 variants | Hub/pop-out, desktop/half-width, both themes/reduced motion, four SNR references, Normal/SNR negative accessible/copy outcome−2.64, percentage requests, retained result shell | aad430375735364a43164db999a0ea7db478a8cbe6d026f6133f5ba540c06c20 |
+| verify_core_planner_geometry_113.mjs | PASS / PROVEN,6 variants | Native/versioned editors1440/760/390px; desktop200% root-text separately from half-width200%; bounded inputs/body/page, full-width references, pointer Save, Tab/Shift-Tab, dirty Escape/Keep Editing | a5c5cf364691cbe2ecf5197b1c5b63a503da664647ddcd4f188d227046946d2c |
+| verify_core_shared_consumers_113.mjs | PASS / PROVEN,8 presentation checks | Standard/Multi-Lay/Sequential/Early Payout at1440light/760dark: accepted eyebrow, paired heading alignment where applicable, no page overflow; NOT numerical/external parity | 811ed81da561de46ce6e299634607d7974eac1ccb969a1d17b1a35699857c9ef |
+| verify_award_integrity_91.mjs | PASS / PROVEN,4 genuine journeys | Single10 removal, split5SNR+5SR, injected second-child rollback, refresh retry same operation, lost committed response reused IDs in one variant, reopen/actual3.50/settlement, protected removals/source409, report/reload | 93f3fc286d757362a6095360b28cae9e159877b18550c88ab828455ed0e0756a |
+
+Independent SNR10/back4/lay4.2/c2% references: Standard7.18/22.98/7.02/7.04;
+Underlay6.25/20.00/10.00/6.13; Overlay10.20/32.64/−2.64/10.00;
+Custom9.00/28.80/1.20/8.82 (stake/liability/back-win/lay-win). Embedded saved Underlay6.25
+and actual6 coexist; actual liability19.20, Back Won10.80, Lay Won5.88. Normal actual6
+has Back Won10.80 and Lay Won−4.12. Eight final Back Won records report86.40, independently
+8×10.80. Every supported converted source retained its hash and empty actuals until confirmation.
+
+J11 assertion reconciliation: genuine generation, split basis/face values, failure/rollback/retry,
+refresh, explicit child placement/settlement, unused removal without replay resurrection and protected
+source/child denial/report totals are exercised. Child5.30 + child10.30 + source−1.18 = offer14.42;
+the source result is INCLUDED, not erased. Existing unchanged database concurrency/authority/removal
+tests retain their prior revision-specific evidence; browser tests are not concurrency proof. Full
+change-history UI PD-QA-016 and imported-source resolution PD-QA-018 remain separate findings.
+Broader autosave/network interruption C01 is not claimed universally repaired by J11's synchronised
+placement steps; the old superseded autosave blocker is not the explanation for this passing run.
+
+Final frontend7f4ff6f production build, typecheck and changed-code lint PASS; its application tree is
+identical in combined sourceeb86c60. The new status regression plus199 affected financial/atomicity
+cases pass: no changed legacy financial expectations. One interrupted final award attempt hit a
+Playwright response-body resource error; the complete rerun passed without weaker assertions.
+The owned local review
+uses the canonical Next development command: this repository's API rewrite is development-only,
+so a bare local production start cannot supply /api/auth/session. That attempted startup produced
+a controlled session-service error; no bypass was used. Production-build success is not a hosted
+or production-runtime verification claim. The authenticated development review is the tested pair.
+Test-harness-only checkpoint71f18ba1f13c7119dda095e6429b208d4348d777 does not change product code.
+
+Final screenshots were inspected directly in both standalone and embedded layouts. Screen-reader
+testing remains UNVERIFIED. No owner acceptance, hosted result or whole-platform numerical claim.
+
+Current launcher (refuses a stale/nonpassing core evidence build):
+`cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
+
+Coverage unchanged46/87 reviewed,8/24 journeys exercised/passing,14/27 competitors,24/133 requests.
+Wider audit resumes after the core/C08 integration gate. No bulk owner comparison required.
+Everything below is historical unless explicitly revalidated above.
+
+## Historical approved lay-plan implementation checkpoint — 2026-09-14 / LOCAL ONLY
 
 Product source **3f2eaca9fe2b7e00a957202ce84e09246751fbca** is a direct child of
 verified checkpoint47b4495642d15456938210a1150945b7dd57d65b, which directly inherits

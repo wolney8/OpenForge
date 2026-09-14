@@ -1,5 +1,14 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-14: Shared reference matrices and sliders exceeded their embedded container
+
+C07: a legacy42rem Outcomes minimum, implicit auto grid tracks and fixed slider side tracks
+overflowed narrow editors and half-width +200% text. Bound shared matrix tracks, stack complete
+labelled rows by container width, and reflow slider bounds without hiding values or shrinking text.
+Use available-width/rem-aware auxiliary tracks. Regress standalone and embedded references,
+editor body overflow, paired headings/inputs, real pointer Save, focus/dirty Escape and keyboard slider.
+`verify_core_planner_geometry_113.mjs` and `verify_core_shared_consumers_113.mjs` retain the probes.
+
 ## 2026-09-14: Save acknowledgements overwrote later edits; oversized footers cropped fields
 
 PD-QA-019: acknowledge only the submitted form snapshot. Merge later field edits, retain invalid

@@ -354,3 +354,10 @@ Wait for the mounted active panel before initial focus; contain Tab, preserve ne
 ownership, and restore the connected opener. Async preparation must retain an explicit opener ref.
 Verify real pointer hit-testing at half-width, pending Escape, dirty confirmation and return focus;
 do not use forced clicks or treat a viewport-contained dialog as proof the page reflows.
+
+Shared calculator composition invariant: Outcomes/reference matrices must bound their grid tracks
+to the consumer container, not inherit a wide table minimum. At constrained widths stack complete
+labelled scenario values; never hide the overflow or clip a numeric column. Slider bounds and
+direction labels must use the slider container's available width, including enlarged rem units.
+Assert editor body scrollWidth, paired label/control alignment, complete reference outer edges,
+real pointer Save and keyboard slider behaviour on standalone and embedded consumers.

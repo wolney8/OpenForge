@@ -1,6 +1,28 @@
 # Project Status
 
-## Current approved planning-storage checkpoint — LOCAL ONLY
+## Current visible calculator/ledger repair — LOCAL ONLY
+
+The shared planner now appears in native/versioned Normal Sportsbook and SNR Free Bet editors,
+as well as the existing standalone/pop-out: Simple/Advanced, simultaneous Underlay/Overlay/Custom,
+live slider, Commission (%), clipboard-only Copy and explicit actual placement. Corrected plans
+retain strategy and commission after reopening. Producteb86c6045e5b6f4db939c733d20e5e8e67b526d4
+inherits UI7f4ff6f and validated planning storage3f2eaca; unplaced plans now correctly show Not Laid.
+The fixed-source core browser gate passes:
+eight native/conversion journeys, four hub/pop-out variants, six embedded geometry/keyboard cases
+and four genuine award journeys. This is scoped engineering evidence, not automatic acceptance.
+The [current audit](docs/audits/platform-quality-audit.md#current-visible-core-calculator-checkpoint--2026-09-14--local-only)
+records exact evidence and limitations. Owned3040/8039 is current; existing synthetic data retained.
+
+Main/normal, frozen manual and3034 builds remain unchanged/unfixed. No push/merge/deployment.
+No action needed from Will; no further bulk comparison required. C08 Cashback and broader C01/C02
+network/modal cases remain next, followed by wider audit coverage. Coverage remains46/87 reviewed,
+8/24 exercised/passing,14/27 competitors,24/133 requirements; this is not platform sign-off.
+
+Launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
+
+Everything below is historical unless explicitly revalidated above.
+
+## Historical approved planning-storage checkpoint — LOCAL ONLY
 
 We are implementing core calculator/ledger parity. Backend source3f2eaca9fe2b7e00a957202ce84e09246751fbca
 adds the two approved nullable planning fields, validated exact-decimal plans, corrected

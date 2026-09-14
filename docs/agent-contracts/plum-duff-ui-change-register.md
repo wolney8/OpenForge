@@ -1,5 +1,23 @@
 # Plum Duff UI Change Register
 
+## PD-CALC-20260914 — visible core planner C04–C07 / core C09
+
+Canonical equivalents: accepted CalculatorSegmentedControl, CalculatorSegmentEyebrow,
+CalculatorReferenceSection/CalculatorOutcomes, CommissionInput, CopyableFinancialValue,
+SingleLayCustomSlider and existing ledger modal/footer. No family-specific financial engine/CSS.
+New native/versioned Normal Sportsbook and SNR Free Bet reuse these standalone/pop-out components.
+All Advanced references visible; slider follows Custom; percentages have explicit ratio units;
+copy-only/apply-plan/explicit actual-confirmation semantics consume lay-plan-v1. Historical null
+plans require explicit eligible replan. C08 and broader C01/C02 remain tracked, not superseded.
+
+Implementation checklist: instructions/equivalent search completed; shared tokens/Material icons/
+stable input IDs/inline errors reused; typecheck and targeted lint pass. Four hub/pop-out and six
+embedded geometry/theme/keyboard cases pass, including desktop200% text separately from narrow
+390px and combined half-width200%. No page/editor overflow, full-width references, focus trap,
+dirty Escape preservation and pointer Save assertions. Changed shared Standard/Multi-Lay/Sequential/
+Early Payout presentation has eight representative no-overflow/eyebrow checks. Final native/conversion
+and award evidence resides in the current audit; screen-reader behaviour remains UNVERIFIED.
+
 Record approved, durable UI requirements here when they alter a shared workflow or a
 first-class ledger. This prevents implementation from silently drifting between request,
 code, tests and parity review.

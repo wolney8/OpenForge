@@ -4,7 +4,23 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
-### Core NEW-plan storage — approved 2026-09-14; implementation in progress
+### Core NEW-plan storage — approved 2026-09-14; backend and shared UI implemented
+
+The shared CoreLayPlanner is the native new SNR/Normal and versioned-row consumer.
+Its Simple/Advanced view uses the same reference endpoint and accepted components as
+standalone/pop-out. Advanced reveals Underlay/Overlay/Custom simultaneously, without
+changing the selected hedge. Reference refresh retains the result surface but blocks
+stale Copy/Apply; edited inputs block Save until server review. An unchanged persisted
+plan can settle actuals while its reference refreshes. Same-value actions are no-ops.
+Planning commission uses Commission (%) with an explicit ratio boundary and override
+origin. Confirm actual placement shows editable stake/odds/commission and writes only
+through existing actual fields; no copied or applied reference is evidence of a fill.
+Eligible unplaced historical null-plan rows require an explicit Replan action and Save;
+reads/ordinary historical edits never create a versioned plan automatically.
+
+For versioned plans, the lay-status badge is derived from confirmed actual fields,
+never the reference stake used for prospective scenarios. A saved/copy-only unplaced
+plan is Not Laid. This changes no money equation, persisted stake or legacy row rule.
 
 Will approved exactly one nullable `lay_plan_json` TEXT field on each existing core
 ledger and additive migrations only on disposable SQLite/PostgreSQL. No backfill.

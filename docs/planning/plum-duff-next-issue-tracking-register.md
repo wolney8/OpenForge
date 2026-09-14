@@ -2,7 +2,23 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
-### Current core-parity slice — C04–C07 / core C09
+### Current visible core-parity slice — C04–C07 / core C09
+
+UI0baffd2 and shared reflow37da721 consume lay-plan-v1 in native/versioned Normal Sportsbook
+and SNR Free Bet editors, alongside accepted standalone/pop-out controls. Copy is clipboard-only;
+Apply changes planning; actual placement requires explicit confirmation. Latest-edit plan revision
+acknowledgement preserves newer drafts; percentage overrides participate in dirty state.
+Corrected SNR Underlay6.25/Overlay10.20 conversions are enabled only through validated plan storage.
+No historical automatic replan; eligible unplaced null-plan records have an explicit audited action.
+Final frozen-source browser evidence/current limitations are maintained in the audit's C01–C09 table.
+Current combined producteb86c6045e5b6f4db939c733d20e5e8e67b526d4:8 complete core native/conversion
+journeys,4 hub/pop-out,6 editor geometry/keyboard and4 genuine award journeys pass. Reviewed plans
+now show Not Laid until actual confirmation;23 plan +199 affected legacy/atomicity tests pass.
+Historical unversioned/award editors retain their old action semantics unless explicitly replanned.
+Owned3040/8039 only, retained disposable data, no normal/manual changes or publication. C08 Cashback,
+broader C01/C02 and unsupported changed-odds/multi-fill remaining hedge stay visible. No owner campaign.
+
+### Historical backend-only core-parity checkpoint
 
 Current product3f2eaca9fe2b7e00a957202ce84e09246751fbca implements approved backend
 lay-plan-v1 fields/validation/migrations/bridge/native portable consumers. Isolated

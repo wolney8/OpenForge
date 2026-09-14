@@ -4,6 +4,15 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
+### Core Normal planner UI (2026-09-14)
+
+New native core Normal and versioned converted records use the shared CoreLayPlanner
+and approved lay-plan-v1 contract documented in the Free Bet contract. No new equation.
+Simple/Advanced presentation, ratio/percentage boundaries, reference review, explicit
+historical replan, copy-only/apply-plan and explicit actual-confirmation semantics are
+identical. Existing unversioned/multi-lay/offer-specific workflows retain their own
+governed contracts; no silent historical upgrade or planned-to-actual substitution.
+
 ### PD-QA-020 new-write integrity policy (2026-09-13)
 
 This policy changes validation/atomicity, not equations or historical precision.
