@@ -12942,10 +12942,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   position: sticky;
   bottom: 0;
   z-index: 18;
-  width: calc(100% + 2.7rem + 2px);
-  max-width: none;
-  margin: 0 calc(-1.35rem - 1px) 0;
-  padding: 0.95rem calc(1.45rem + 1px) max(0.95rem, env(safe-area-inset-bottom));
+  /* Footer belongs to the body grid: oversizing it creates a horizontal scroll
+     extent which browser focus scrolling uses to crop both labels and actions. */
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.95rem 0 max(0.95rem, env(safe-area-inset-bottom));
   border-top: 1px solid color-mix(in srgb, var(--outline) 72%, transparent);
   border-radius: 0 0 1.75rem 1.75rem;
   background: color-mix(in srgb, var(--surface) 99%, var(--bg));
@@ -12954,7 +12956,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .workflow-editor-modal .form-grid > .workflow-editor-footer {
-  max-width: none;
+  max-width: 100%;
 }
 
 .workflow-editor-footer-primary {
