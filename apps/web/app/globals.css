@@ -8778,7 +8778,29 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .calculator-outcomes-table {
-  min-width: 42rem;
+  min-width: 0;
+}
+
+.calculator-outcomes-matrix {
+  min-width: 0;
+  container: calculator-outcomes / inline-size;
+}
+
+@container calculator-outcomes (max-width: 48rem) {
+  .calculator-outcomes-table .extra-place-outcome-row-heading { display: none; }
+  .calculator-outcomes-table .calculator-outcome-scenario-row[class*="calculator-outcome-columns-"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calculator-outcome-scenario-row > :is(strong, span) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .calculator-outcome-scenario-row > [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--on-surface-variant);
+    font-size: 0.75rem;
+  }
 }
 
 @media (max-width: 520px) {
@@ -11163,6 +11185,7 @@ html[data-theme="dark"] body:has(.extra-place-ledger.extra-place-theme-ep) .extr
 
 .extra-place-outcome-table {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
 }
 

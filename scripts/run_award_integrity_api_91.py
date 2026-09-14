@@ -46,4 +46,6 @@ def prepare(*args, **kwargs):
 
 
 free_bets.prepare_write_response = prepare
+from openforge_api import free_bet_awards
+free_bet_awards.prepare_write_response = prepare
 uvicorn.run(app, host="127.0.0.1", port=8039, log_level="warning")

@@ -105,7 +105,8 @@ try {
   let entered,release;const held=new Promise(r=>entered=r),gate=new Promise(r=>release=r);let first=true;
   const intercept=async route=>{if(!first)return route.continue();first=false;const response=await route.fetch();entered();await gate;try{await route.fulfill({response});}catch{/* superseded aborted request */}};
   await page.route('**/matched-betting/preview',intercept);
-  await core.getByLabel('Back odds',{exact:true}).fill('5.00');await held;
+  await core.getByLabel('Back odds',{exact:true}).fill('5.00');
+  await Promise.race([held,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Held preview request was not intercepted')),20000))]);
   await expect(selected.getByRole('row').first().getByRole('button')).toBeDisabled();await expect(save).toBeDisabled();
   await core.getByLabel('Back odds',{exact:true}).fill('6.00');
   // Underlay endpoint 10*(6-2)/(4.2-1) = 12.50, independent.
