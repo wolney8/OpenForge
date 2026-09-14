@@ -308,6 +308,7 @@ def core_plan_cases(dsn, runtime):
         result = client.post(f"/profiles/{pid}/free-bets", json=body(strategy))
         assert result.status_code == 201, result.text
         row = result.json(); ids.append(row["free_bet_id"])
+        assert row["lay_status"] == "Not Laid"
         assert (row["calculated_liability_1"],row["scenario_pnl_if_back_wins"],row["scenario_pnl_if_lay_wins"]) == expected[1:]
     with psycopg.connect(dsn) as c:
         rows = c.execute("SELECT lay_actual,lay_matched_stake_1,lay_commission_1,lay_plan_json FROM free_bets").fetchall()
@@ -317,6 +318,20 @@ def core_plan_cases(dsn, runtime):
         failed = client.post(f"/profiles/{pid}/free-bets", json=body())
         assert failed.status_code == 500
     assert persisted(dsn) == before
+    # Actual first-fill commission and financial results are independent of subsequent plans/defaults.
+    url = f"/profiles/{pid}/free-bets/{ids[1]}"  # reviewed Underlay6.25
+    placed = client.patch(url, json={"status":"Settled", "result":"Back Won",
+        "lay_actual":"6.00", "lay_matched_stake_1":"6.00", "lay_commission_1":"0.02"})
+    assert placed.status_code == 200, placed.text
+    assert (placed.json()["calculated_liability_1"], placed.json()["final_net_pnl"],
+            placed.json()["scenario_pnl_if_lay_wins"]) == ("19.20","10.80","5.88")
+    actual_plan = json.loads(placed.json()["lay_plan_json"])
+    assert actual_plan["selected_strategy"] == "Underlay" and actual_plan["reviewed_planned_lay_stake"] == "6.25"
+    db.upsert_profile_exchange_commission(pid, "Exchange A", "0.05")
+    reopened = client.get(url).json()
+    assert reopened["final_net_pnl"] == "10.80" and reopened["lay_commission_1"] == "0.02"
+    with psycopg.connect(dsn) as c:
+        assert c.execute("SELECT lay_actual,lay_odds_1,lay_commission_1 FROM free_bets WHERE free_bet_id=%s",(ids[1],)).fetchone() == ("6.00","4.20","0.02")
     # Repeat the actual migration entry point, then use fresh connections to reopen.
     from openforge_api.postgres_migrations import apply_postgres_migrations
     apply_postgres_migrations(dsn)
@@ -326,6 +341,23 @@ def core_plan_cases(dsn, runtime):
     # schema with a synthetic unversioned row, then execute only additive upgrade.
     old_dsn = dsn.replace("/pqa114_primary", "/pqa114_restored")
     apply_postgres_migrations(old_dsn)
+    old_client = client_for(old_dsn, runtime)
+    # Populate genuine unversioned synthetic rows before removing only the approved nullable columns.
+    db.create_profile_with_onboarding({"profile_id":"legacy-plan-test", "display_name":"Synthetic legacy",
+        "profile_code":"LEGACY-PLAN", "tracking_start_date":"2026-09-01", "current_cash_snapshot":"0.00",
+        "enabled_modules":["free-bets","sportsbook-bets"],"accounts":[],"quick_actions":[],"exchange_commissions":[]})
+    db.link_fund_manager_profile(email=OWNER, profile_id="legacy-plan-test")
+    with db.connect() as c:
+        c.execute("UPDATE profiles SET status='Active' WHERE profile_id=?",("legacy-plan-test",))
+    for name,kind in [("Bookmaker A","Bookie"),("Exchange A","Exchange")]:
+        values=AccountPayload(account=name,type=kind,status="Active",lifecycle_status="Active",current_balance="0.00").model_dump()
+        values["restrictions_json"]="[]";db.create_account("legacy-plan-test",values)
+    db.upsert_profile_exchange_commission("legacy-plan-test","Exchange A","0.02")
+    from test_free_bet_atomic_safety import payload as legacy_payload
+    legacy=old_client.post('/profiles/legacy-plan-test/free-bets',json=legacy_payload(status="Settled",result="Back Won"))
+    assert legacy.status_code == 201, legacy.text
+    legacy_id=legacy.json()["free_bet_id"];assert legacy.json()["final_net_pnl"] == "10.60"
+    before_old=persisted(old_dsn)
     with psycopg.connect(old_dsn) as c:
         c.execute("ALTER TABLE free_bets DROP COLUMN lay_plan_json")
         c.execute("ALTER TABLE sportsbook_bets DROP COLUMN lay_plan_json")
@@ -334,10 +366,13 @@ def core_plan_cases(dsn, runtime):
     with psycopg.connect(old_dsn) as c:
         columns = c.execute("SELECT table_name,column_name,is_nullable FROM information_schema.columns WHERE column_name='lay_plan_json'").fetchall()
         assert set(columns) == {("sportsbook_bets","lay_plan_json","YES"),("free_bets","lay_plan_json","YES")}
+    assert persisted(old_dsn) == before_old
+    assert old_client.get('/profiles/legacy-plan-test/free-bets/'+legacy_id).json()["final_net_pnl"] == "10.60"
     return {"status":"PASS", "core_plan_records":4, "passed":[
         "Fresh PostgreSQL schema: four independent SNR references, actual fields blank",
         "Injected response preparation rolls back rows/audits", "Repeat migration and fresh-connection reopen",
-        "Second disposable old-column schema upgrades twice with nullable planning fields"]}
+        "Confirmed actual6/4.2/2% yields19.20/10.80/5.88; changed default5% does not rewrite actuals",
+        "Second populated disposable old-column schema upgrades twice; legacy row/audits unchanged and10.60 retained"]}
 
 
 def main():
