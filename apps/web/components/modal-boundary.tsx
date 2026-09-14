@@ -18,10 +18,11 @@ export function ModalBoundary({ children, onDismiss, returnFocusRef }: {
     const dialog = ref.current;
     if (!dialog) return;
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const requestedReturnTarget = returnFocusRef?.current;
     if (!dialog.open) dialog.showModal();
     return () => {
       if (dialog.open) dialog.close();
-      const target = returnFocusRef?.current ?? trigger;
+      const target = requestedReturnTarget ?? trigger;
       if (target?.isConnected) target.focus({ preventScroll: true });
     };
   }, [returnFocusRef]);
