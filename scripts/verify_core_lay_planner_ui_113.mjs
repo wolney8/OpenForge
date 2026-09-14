@@ -135,11 +135,24 @@ try {
  row=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
  assert.equal(row.lay_actual,'6.00');assert.equal(row.lay_commission_1,'0.02');assert.equal(row.calculated_liability_1,'19.20');
  assert.equal(JSON.parse(row.lay_plan_json).reviewed_planned_lay_stake,planned);
- await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Settlement/}).first().click();
- const [settled]=await Promise.all([page.waitForResponse(r=>r.url().endsWith('/'+ledger+'/'+id)&&r.request().method()==='PUT'),
-   dialog.locator('label').filter({hasText:/^Result/}).locator('select').filter({visible:true}).selectOption('Back Won')]);
+ await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
+ await expect(core.getByLabel('Planning Commission (%)',{exact:true})).toBeVisible();
+ let releasePlan,enteredPlan;
+ const heldPlan=new Promise(resolve=>releasePlan=resolve),preparedPlan=new Promise(resolve=>enteredPlan=resolve);
+ await page.route('**/matched-betting/preview',async route=>{
+   if(route.request().postDataJSON().exchange_commission!=='0.05')return route.continue();
+   const response=await route.fetch();enteredPlan();await heldPlan;await route.fulfill({response});
+ });
+ await core.getByLabel('Planning Commission (%)',{exact:true}).fill('5');
+ await Promise.race([preparedPlan,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Plan response did not enter gate')),20000))]);
+ await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+ const settlement=page.waitForResponse(r=>r.url().endsWith('/'+ledger+'/'+id)&&r.request().method()==='PUT');
+ await dialog.locator('label').filter({hasText:/^Result/}).locator('select').filter({visible:true}).selectOption('Back Won');
+ releasePlan();const settled=await settlement;
+ await page.unroute('**/matched-betting/preview');
  assert.equal(settled.status(),200,await settled.text());row=await settled.json();
  assert.equal(row.final_net_pnl,backWon);assert.equal(row.scenario_pnl_if_lay_wins,layWon);
+ assert.equal(JSON.parse(row.lay_plan_json).commission,'0.05');
  assert.equal(stored(ledger,id).lay_actual,'6.00');assert.equal(stored(ledger,id).lay_commission_1,'0.02');assert.equal(stored(ledger,id).result,'Back Won');
  await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/reports');
  await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
@@ -220,7 +233,7 @@ try {
   await context.close();
  }
  evidence.reviewRecords=[];
- for(const basis of ['Normal','SNR']) {
+ for(const basis of process.argv.includes('--normal-only')?['Normal']:['Normal','SNR']) {
   const ledger=basis==='SNR'?'free-bets':'sportsbook-bets';
   const reference=evidence.cases.find(c=>c.kind==='native '+basis);
   const original=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+reference.id)).json();

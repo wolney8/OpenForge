@@ -5257,8 +5257,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
-      const queued = queuedCoreAutosaveRef.current;
-      queuedCoreAutosaveRef.current = null;
+      const queued = corePlanPendingRef.current ? null : queuedCoreAutosaveRef.current;
+      if (queued) queuedCoreAutosaveRef.current = null;
       if (queued) void persistForm(formStateRef.current, {autosaveLabel:queued,
         suppressMissingRequiredMessage:true, returnToLedgerOnSuccess:false});
     }
@@ -5283,7 +5283,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (!canPersistForm(nextFormState)) {
       return;
     }
-    if (nextFormState.lay_plan_json && isPersistingRef.current) {
+    if (nextFormState.lay_plan_json && (isPersistingRef.current || corePlanPendingRef.current)) {
       queuedCoreAutosaveRef.current = autosaveLabel;
       return;
     }
@@ -5292,6 +5292,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       suppressMissingRequiredMessage: true,
     });
   }
+
+  useEffect(() => {
+    if (corePlanPending || isPersisting || !queuedCoreAutosaveRef.current) return;
+    const label = queuedCoreAutosaveRef.current;
+    queuedCoreAutosaveRef.current = null;
+    void persistForm(formStateRef.current, { autosaveLabel: label,
+      suppressMissingRequiredMessage: true, returnToLedgerOnSuccess: false });
+    // The readiness transition drains one intent against the current draft; unrelated
+    // renders must not retry a failed write or replay an already-drained intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corePlanPending, isPersisting]);
 
   function loadEditorFormState(
     nextFormState: SportsbookFormState,

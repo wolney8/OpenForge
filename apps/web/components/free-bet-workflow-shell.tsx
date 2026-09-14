@@ -2893,8 +2893,8 @@ export function FreeBetWorkflowShell({
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
-      const queuedLabel = queuedDropdownAutosaveRef.current;
-      queuedDropdownAutosaveRef.current = null;
+      const queuedLabel = corePlanPendingRef.current ? null : queuedDropdownAutosaveRef.current;
+      if (queuedLabel) queuedDropdownAutosaveRef.current = null;
       if (queuedLabel) void persistForm(formStateRef.current, {
         autosaveLabel: queuedLabel,
         suppressMissingRequiredMessage: true,
@@ -2915,7 +2915,7 @@ export function FreeBetWorkflowShell({
     if (!canPersistForm(nextFormState)) {
       return;
     }
-    if (isPersistingRef.current) {
+    if (isPersistingRef.current || corePlanPendingRef.current) {
       queuedDropdownAutosaveRef.current = autosaveLabel;
       return;
     }
@@ -2924,6 +2924,17 @@ export function FreeBetWorkflowShell({
       suppressMissingRequiredMessage: true,
     });
   }
+
+  useEffect(() => {
+    if (corePlanPending || isPersisting || !queuedDropdownAutosaveRef.current) return;
+    const label = queuedDropdownAutosaveRef.current;
+    queuedDropdownAutosaveRef.current = null;
+    void persistForm(formStateRef.current, { autosaveLabel: label,
+      suppressMissingRequiredMessage: true, returnToLedgerOnSuccess: false });
+    // Drain one pending intent with the latest draft only on readiness; a failed
+    // mutation remains an explicit retry, not an automatic request loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corePlanPending, isPersisting]);
 
   function applyFreeBetLayWorkflowMode(mode: LayWorkflowMode) {
     if (!freeBetLayWorkflowModeOptions.includes(mode)) {
