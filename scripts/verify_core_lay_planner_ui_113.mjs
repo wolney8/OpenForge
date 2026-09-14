@@ -20,6 +20,8 @@ assert.equal((await api.put('/profiles/'+pid+'/exchange-commissions',{data:{exch
 const browser=await chromium.launch({headless:true});
 const evidence={source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),date:new Date().toISOString(),profileId:pid,cases:[]};
 const database=new DatabaseSync(runtime+'/acceptance.sqlite3',{readOnly:true});
+// Independent inspection must respect SQLite's existing brief writer transaction.
+database.exec('PRAGMA busy_timeout=5000');
 function stored(ledger,id) {
  assert(['free-bets','sportsbook-bets'].includes(ledger));
  const table=ledger==='free-bets'?'free_bets':'sportsbook_bets',key=ledger==='free-bets'?'free_bet_id':'sportsbook_bet_id';
