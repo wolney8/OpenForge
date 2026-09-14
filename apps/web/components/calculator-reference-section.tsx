@@ -41,7 +41,7 @@ export function CalculatorReferenceSection({
         {rows.map((row) => <div className="calculator-reference-row" key={row.label}>
           <dt><span>{row.label}</span></dt>
           <dd>{row.copyable
-            ? <CopyableFinancialValue dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} value={row.value} />
+            ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} value={row.value} />
             : row.value === null || row.value === undefined || row.value === ""
               ? <span>£ -</span>
               : <FinancialValue label={row.label} value={row.value} />}</dd>
