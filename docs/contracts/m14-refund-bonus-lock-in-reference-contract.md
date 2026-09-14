@@ -4,6 +4,22 @@ _Last updated: 2026-09-11_
 
 ## 0. Contract status
 
+### C08 conditional racing Cashback reference / 2026-09-14
+
+Conditional finishing-position cashback is NOT unconditional Bonus Lock-In. Use ordinary qualifying
+hedging and retain separate horse-win, horse-loss-without-refund and eligible-refund-position rows.
+The existing stake/cap rule is eligible value=min(stake, explicit promotion_value); this input is
+the reviewed eligible amount/cap, not proof that any loss triggered a refund. Cash adds it once only
+to the eligible row. Free Bet refund shows face-value credit plus separately labelled optional
+estimated retained value=credit*retention_percent/100, neither included in cash branch P&L.
+No later linked Free Bet realisation is recognised or double-counted by this reference.
+Cashback result mapping remains workbook Lay Won + Cashback for an actually eligible cash result;
+current/projected MIN and all historical settlement code are unchanged. Credit-refund conversion
+is unsupported until destination/source-award semantics can retain it truthfully; fail closed before
+writes. Ordinary cash Cashback conversion retains the existing destination authority.
+£10/back4/lay4.2/c.02 Standard9.57: win−0.62, without cashback−0.62, cash10 triggers9.38;
+credit10 triggers still cash−0.62, optional70% estimated retained value7.00 separately.
+
 - Status: Approved for Normal and Free Bet (SNR) backing bets with Back Loses/Back Wins
   rewards across Standard, Underlay, Overlay, Custom and explicit Part Lay
 - Owner: OpenForge M14 Calculator Workspace

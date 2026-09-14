@@ -313,6 +313,10 @@ def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[
 def convert_standard(payload: StandardConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
     _validate_destination_classification(payload)
+    if payload.calculator.bet_type == "free_bet" and payload.calculator.free_bet_mode == "SNR" and payload.calculator.strategy in {"Underlay", "Overlay"}:
+        raise HTTPException(status_code=422, detail="SNR outcome-target presets require a versioned destination planning contract; no activity was created.")
+    if (payload.calculator.bet_type == "cashback" or (payload.calculator.bet_type == "qualifying" and payload.calculator.promotion_mode == "cashback")) and payload.calculator.cashback_reward_kind != "cash":
+        raise HTTPException(status_code=422, detail="Free Bet cashback reference cannot be saved as cash cashback; destination award/credit contract is required.")
     if payload.source.calculator_family != "matched-betting":
         raise HTTPException(
             status_code=422, detail="Standard conversion requires matched-betting source"

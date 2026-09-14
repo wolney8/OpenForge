@@ -75,6 +75,9 @@ class MatchedBettingPayload(BaseModel):
     lay_odds: str = Field(max_length=40)
     exchange_commission: str = Field(max_length=40)
     manual_lay_stake: str = Field(default="", max_length=40)
+    custom_reference_lay_stake: str = Field(default="", max_length=40)
+    show_custom_reference: bool = False
+    cashback_reward_kind: Literal["cash", "free_bet"] = "cash"
     promotion_value: str = Field(default="", max_length=40)
     bonus_trigger: Literal["Lay Wins", "Back Wins"] = "Lay Wins"
     bonus_backing_bet: Literal["Normal", "SNR", "SR"] = "Normal"
@@ -129,6 +132,7 @@ class MatchedBettingPayload(BaseModel):
 
     @field_validator(
         "manual_lay_stake",
+        "custom_reference_lay_stake",
         "promotion_value",
         "total_potential_return",
         "potential_profit",
@@ -233,6 +237,8 @@ class CalculatorStrategyReferenceResponse(BaseModel):
 
 class MatchedBettingResponse(BaseModel):
     reference_contract_version: str = "workbook-reference-v1"
+    cashback_credit_face_value: str | None = None
+    cashback_estimated_retained_value: str | None = None
     result_kind: Literal["reference"] = "reference"
     calculation_state: str
     calculator_family: Literal["matched-betting"] = "matched-betting"
@@ -933,6 +939,13 @@ def _matched_outcomes(
 
     back_label = "Back bet wins"
     lay_label = "Lay bet wins"
+    if offer_type == "cashback":
+        return [
+            row("back-wins", "Horse wins", bookmaker_if_back, exchange_if_back, Decimal("0")),
+            row("lay-wins", "Horse loses — Without cashback", bookmaker_if_lay, exchange_if_lay, Decimal("0")),
+            row("cashback-trigger", "If cashback triggers — eligible finishing position", bookmaker_if_lay, exchange_if_lay,
+                promotion if promotion is not None and payload.cashback_reward_kind == "cash" else Decimal("0")),
+        ]
     if promotion:
         if trigger_back:
             back_label = (
@@ -964,7 +977,7 @@ def _matched_outcomes(
     ]
 
 
-def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
+def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) -> MatchedBettingResponse:
     profit_boost = None
     bonus_result = None
     strategy_references: list[CalculatorStrategyReferenceResponse] = []
@@ -1140,7 +1153,7 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             sportsbook_result.exchange_component_if_lay_wins,
             sportsbook_result.promotion_component,
         )
-        if payload.bet_type == "qualifying":
+        if payload.bet_type in {"qualifying", "cashback", "profit_boost"}:
             strategy_references = []
             for reference_strategy in ("Standard", "Underlay", "Overlay"):
                 sportsbook_reference = calculate_sportsbook_current_value(
@@ -1241,8 +1254,24 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         selected = bonus_result.selected
         outcomes[0].total = _money(selected.back_wins_total)
         outcomes[1].total = _money(selected.back_loses_total)
+    is_cashback_reference = payload.bet_type == "cashback" or (payload.bet_type == "qualifying" and payload.promotion_mode == "cashback")
+    is_credit_cashback = is_cashback_reference and payload.cashback_reward_kind == "free_bet"
+    cashback_credit = quantize_money(min(Decimal(payload.back_stake), Decimal(payload.promotion_value))) if is_credit_cashback else None
+    if is_cashback_reference:
+        promotion_trigger_result = Decimal(outcomes[2].total)
 
+    if payload.show_custom_reference and _include_custom:
+        custom = _calculate(payload.model_copy(update={
+            "strategy": "Custom",
+            "manual_lay_stake": payload.custom_reference_lay_stake or _money(standard),
+        }), _include_custom=False)
+        strategy_references.append(CalculatorStrategyReferenceResponse(
+            strategy="Custom", lay_stake=custom.selected_lay_stake, liability=custom.liability,
+            back_wins_total=custom.outcomes[0].total, back_loses_total=custom.outcomes[1].total,
+        ))
     return MatchedBettingResponse(
+        cashback_credit_face_value=_money(cashback_credit) if cashback_credit is not None else None,
+        cashback_estimated_retained_value=_money(quantize_money(cashback_credit * Decimal(payload.retention_percent) / 100)) if cashback_credit is not None else None,
         reference_contract_version="snr-outcome-target-v1" if payload.bet_type == "free_bet" and payload.free_bet_mode == "SNR" else "workbook-reference-v1",
         calculation_state=calculation_state,
         canonical_back_odds=effective_back_odds_text,

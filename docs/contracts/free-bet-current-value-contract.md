@@ -23,6 +23,9 @@ user OP observations, NOT fresh external black-box parity. Existing legacy SR/fa
 Public preview responses identify reference_contract_version. Back commission is not exposed by
 this payload; do not silently infer support. Embedded adoption requires an explicit reference call,
 not a global rewrite of legacy ledger presets. Conversion envelopes retain the derived response.
+An opt-in show_custom_reference plus optional positive custom_reference_lay_stake adds an independent
+Custom reference using the existing engine. Blank draft uses the placed Standard reference. It does
+not change selected strategy/stake. Each response contains liabilities and both outcome totals.
 
 - Status: Approved implementation baseline through prior contract review and workbook-parity sign-off
 - Owner: Plum Duff calculation contracts

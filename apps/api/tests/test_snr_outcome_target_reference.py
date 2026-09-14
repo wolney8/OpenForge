@@ -40,3 +40,10 @@ def test_unavailable_endpoint_is_not_invented(strategy,b,c):
     with pytest.raises(HTTPException) as error:
         _calculate(MatchedBettingPayload(bet_type='free_bet',strategy=strategy,back_stake='10',back_odds=b,lay_odds='4.2',exchange_commission=c))
     assert error.value.status_code==422
+
+
+def test_advanced_custom_reference_does_not_select_custom():
+    r=_calculate(MatchedBettingPayload(bet_type='free_bet',strategy='Standard',back_stake='10',back_odds='4',lay_odds='4.2',exchange_commission='0.02',show_custom_reference=True,custom_reference_lay_stake='9'))
+    assert r.selected_lay_stake=='7.18'
+    custom=next(ref for ref in r.strategy_references if ref.strategy=='Custom')
+    assert (custom.lay_stake, custom.liability, custom.back_wins_total, custom.back_loses_total)==('9.00','28.80','1.20','8.82')

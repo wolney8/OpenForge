@@ -21,6 +21,32 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.auth_owner_emails = "owner@example.invalid"
     settings.database_url = f"sqlite:///{tmp_path / 'calculator-conversions.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    # Each test owns its synthetic Profiles; local startup no longer seeds demo rows.
+    with connect() as connection:
+        for suffix in ("001", "002"):
+            connection.execute("INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (f"profile-demo-{suffix}", f"Synthetic Profile {suffix}", f"DEMO-{suffix}", "Active", "2026-09-14", "0", "0", "0"))
+        connection.commit()
+
+
+def test_new_reference_semantics_fail_closed_without_destination_contract(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    for strategy in ("Underlay", "Overlay"):
+        payload = standard_payload(["profile-demo-001"])
+        payload["calculator"].update(bet_type="free_bet", free_bet_mode="SNR", strategy=strategy)
+        payload["source"]["calculator_mode"] = "free_bet"
+        response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+        assert response.status_code == 422
+        assert "versioned destination" in response.text
+    payload = standard_payload(["profile-demo-001"])
+    payload["calculator"].update(bet_type="cashback", cashback_reward_kind="free_bet")
+    payload["source"]["calculator_mode"] = "cashback"
+    response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    assert response.status_code == 422
+    with connect() as connection:
+        assert connection.execute("SELECT COUNT(*) AS count FROM sportsbook_bets").fetchone()["count"] == 0
+        assert connection.execute("SELECT COUNT(*) AS count FROM free_bets").fetchone()["count"] == 0
 
 
 def add_account(
