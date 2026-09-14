@@ -1,5 +1,7 @@
 "use client";
 
+import { ModalBoundary } from "@/components/modal-boundary";
+
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -4221,6 +4223,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       ) : null}
 
       {workflowVisible ? (
+        <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit casino row" : "Create casino row"}
@@ -5774,6 +5777,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
       </section>
       </div>
+        </ModalBoundary>
       ) : null}
       {isQuickAddOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !isPersisting) setIsQuickAddOpen(false); }}>
