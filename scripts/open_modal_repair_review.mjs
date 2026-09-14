@@ -19,7 +19,8 @@ if(corrections){
  const lastRun=fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,"utf8")):null;
  const served=JSON.parse(fs.readFileSync(runtime+'/review-source.json','utf8'));
  if(!lastRun?.result || lastRun.result!=='PASS' || lastRun.source!==served.checkout)throw Error('Current matching API/browser build has not passed the core journey; do not open an older candidate as evidence.');
- console.log(`Tested review build ${lastRun.source}; API started from ${served.checkout}, API product source ${served.api_source}; ${lastRun.cases.length} real native/conversion variants. Current report checkout ${execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()}. Main remains unchanged; wider correction acceptance is pending.`);
+ const frontendSource=execFileSync('git',['log','-1','--format=%H','--','apps/web'],{encoding:'utf8'}).trim();
+ console.log(`Tested review build ${lastRun.source}; frontend product source ${frontendSource}; API started from ${served.checkout}, API product source ${served.api_source}; ${lastRun.cases.length} real native/conversion variants. Current report checkout ${execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()}. Main remains unchanged; wider correction acceptance is pending.`);
 }
 if(process.argv.includes("--check")){console.log(`Ready: authenticated synthetic ${url}`);process.exit(0);}
 const context=await chromium.launchPersistentContext(runtime+"/local-review-browser",{headless:false,viewport:null});
