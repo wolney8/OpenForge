@@ -20,4 +20,20 @@ describe("PD-QA-019 save acknowledgement", () => {
       expect(reconcileSavedForm(original, { ...original, id: "synthetic-id" }, current).actual).toBe(actual);
     }
   });
+  it("acknowledges a plan revision without restoring an older hedge or commission", () => {
+    const plan = {schema_version:"lay-plan-v1", commission_units:"ratio", revision:0,backing_basis:"SNR",calculation_contract_version:"snr-outcome-target-v1",
+      source_identity:"synthetic-source", exchange_account_id:"synthetic-exchange", selected_strategy:"Underlay", commission:"0.02"};
+    const before = {lay_plan_json:JSON.stringify(plan)};
+    const acknowledgement = {lay_plan_json:JSON.stringify({...plan,revision:1})};
+    const current = {lay_plan_json:JSON.stringify({...plan,selected_strategy:"Custom",custom_lay_stake:"9.00",commission:"0.05"})};
+    expect(JSON.parse(reconcileSavedForm(before,acknowledgement,current).lay_plan_json)).toEqual({...JSON.parse(current.lay_plan_json),revision:1});
+  });
+  it("never upgrades a cleared or different-source plan from an old acknowledgement", () => {
+    const plan = {schema_version:"lay-plan-v1", commission_units:"ratio", revision:0,source_identity:"source-a",backing_basis:"SNR",calculation_contract_version:"snr-outcome-target-v1",selected_strategy:"Standard"};
+    const before = {lay_plan_json:JSON.stringify(plan)};
+    const saved = {lay_plan_json:JSON.stringify({...plan,revision:1})};
+    expect(reconcileSavedForm(before,saved,{lay_plan_json:""}).lay_plan_json).toBe("");
+    const different = {lay_plan_json:JSON.stringify({...plan,source_identity:"source-b"})};
+    expect(reconcileSavedForm(before,saved,different)).toEqual(different);
+  });
 });

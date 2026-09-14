@@ -8,7 +8,7 @@ const runtime='/tmp/openforge-award-integrity-91-20260914';
 assert.equal(execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim(),'repair/calculator-corrections-113');
 const source=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const browser=await chromium.launch({headless:true});
-const evidence={source,date:new Date().toISOString(),scope:'standalone/pop-out reference controls only; destination planning remains blocked',cases:[]};
+const evidence={source,date:new Date().toISOString(),scope:'standalone/pop-out reference controls; destination journeys have separate evidence',cases:[]};
 const expected={Standard:['7.18','22.98','7.02','7.04'],Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['9.00','28.80','1.20','8.82']};
 try {
   for(const [path,width,theme,motion] of [['/fund-manager/calculators',1440,'light','reduce'],['/calculator',760,'dark','no-preference'],['/calculator',1440,'dark','reduce'],['/fund-manager/calculators',760,'light','no-preference']]) {

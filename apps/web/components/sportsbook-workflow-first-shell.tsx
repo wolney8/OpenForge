@@ -1,10 +1,12 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
+import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
   fetchJsonAndCache,
@@ -195,6 +197,7 @@ type ResultOption = {
 };
 
 type SportsbookRecord = {
+  lay_plan_json?: string | null;
   sportsbook_bet_id: string;
   profile_id: string;
   event_name: string;
@@ -280,6 +283,7 @@ type LinkedFreeBetRecord = {
 };
 
 type SportsbookFormState = {
+  lay_plan_json?: string | null;
   sportsbook_bet_id?: string;
   event_name: string;
   offer_text: string;
@@ -1017,6 +1021,7 @@ function getSportsbookRangeAnchor(row: Pick<SportsbookRecord, "date_settled" | "
 
 function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState {
   return {
+    lay_plan_json: null,
     event_name: "",
     offer_text: "",
     bookmaker: "",
@@ -1056,6 +1061,7 @@ function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState 
 
 function recordToForm(record: SportsbookRecord): SportsbookFormState {
   return {
+    lay_plan_json: record.lay_plan_json ?? null,
     sportsbook_bet_id: record.sportsbook_bet_id,
     event_name: record.event_name,
     offer_text: record.offer_text,
@@ -1171,6 +1177,7 @@ function toInlineUpdatePayload(record: SportsbookRecord, overrides?: Partial<Spo
 
   return {
     event_name: formState.event_name,
+    lay_plan_json: formState.lay_plan_json,
     offer_text: formState.offer_text,
     bookmaker: formState.bookmaker,
     offer_type: formState.offer_type,
@@ -2741,7 +2748,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     false
   );
   const [showBetSetupValidation, setShowBetSetupValidation] = useState(false);
-  const [formState, setFormState] = useState<SportsbookFormState>(() => createBlankForm());
+  const [formState, setRenderedFormState] = useState<SportsbookFormState>(() => createBlankForm());
+  const formStateRef = useRef(formState);
+  const setFormState = useCallback((action: SetStateAction<SportsbookFormState>) => {
+    const next = typeof action === "function" ? action(formStateRef.current) : action;
+    formStateRef.current = next;
+    setRenderedFormState(next);
+  }, []);
+  const queuedCoreAutosaveRef = useRef<string | null>(null);
+  const corePlanPendingRef = useRef(false);
+  const [corePlanPending, setCorePlanPending] = useState(false);
+  const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
   const [pristineFormState, setPristineFormState] = useState<SportsbookFormState>(() =>
     createBlankForm()
   );
@@ -2853,6 +2870,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+  const [isNewCoreIntent, setIsNewCoreIntent] = useState(false);
   const isPersistingRef = useRef(false);
   const [pageSize, setPageSize] = useState(8);
   const defaultBonusRetentionRate = useMemo(
@@ -3030,7 +3048,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setLinkedFreeBetRemovalId(null);
       }
     },
-    [profileId]
+    [profileId, setFormState]
   );
 
   const loadLinkedFreeBets = useCallback(
@@ -4530,7 +4548,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         signal: controller.signal,
         body: JSON.stringify({
           ...previewFormState,
-          lay_commission_1: "",
+          lay_commission_1: formState.lay_plan_json ? formState.lay_commission_1 : "",
           date_settled: fromDateTimeLocalValue(previewFormState.date_settled),
         }),
       })
@@ -4558,7 +4576,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId]);
+  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId, formState.lay_commission_1, formState.lay_plan_json]);
 
   const reviewRows = useMemo(() => {
     const nextRows =
@@ -4958,6 +4976,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     resetPayoutOddsHelper();
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
+    setIsNewCoreIntent(false);
     setPreviewCalculation(null);
     const nextFormState = recordToForm(record);
     const parsedMultiLay = parseMultiLayOutcomes(record.multi_lay_outcomes_json, {
@@ -5007,6 +5026,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setSelectedId(null);
     selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
+    setIsNewCoreIntent(true);
     setWorkflowVisible(true);
     setTableCollapsed(false);
     setPreviewCalculation(null);
@@ -5081,7 +5101,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       partialLayLegsOverride?: PartialLayLegInput[];
     }
   ): Promise<boolean> {
-    if (isPersistingRef.current) {
+    if (isPersistingRef.current || corePlanPendingRef.current) {
       return false;
     }
 
@@ -5149,7 +5169,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       },
       body: JSON.stringify({
         ...persistableFormState,
-        lay_commission_1: "",
+        lay_commission_1: persistableFormState.lay_plan_json ? persistableFormState.lay_commission_1 : "",
         date_settled: fromDateTimeLocalValue(persistableFormState.date_settled),
       }),
     });
@@ -5160,7 +5180,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return false;
     }
 
-    if (persistableFormState !== nextFormState) {
+    if (!persistableFormState.lay_plan_json && persistableFormState !== nextFormState) {
       setFormState(persistableFormState);
     }
 
@@ -5184,13 +5204,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           )
         : [saved, ...current];
     });
-    const returnToLedger = options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel;
+    const newerCoreEdits = Boolean(persistableFormState.lay_plan_json) && hasNewerFormEdits(nextFormState, formStateRef.current);
+    const returnToLedger = !newerCoreEdits && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel);
     if (returnToLedger) {
       ignoreInitialRecordIdRef.current = true;
     }
     setSelectedId(returnToLedger ? null : saved.sportsbook_bet_id);
     selectedIdRef.current = returnToLedger ? null : saved.sportsbook_bet_id;
-    setFormState(savedFormState);
+    loadRowsRequestIdRef.current += 1;
+    setFormState(newerCoreEdits ? reconcileSavedForm(nextFormState, savedFormState, formStateRef.current) : savedFormState);
     setPristineFormState(savedFormState);
     setMultiLayOutcome1Label(getMultiLayOutcomeLabel(saved.multi_lay_outcome_1_name));
     setMultiLayOutcomes(savedMultiLay.extraOutcomes);
@@ -5203,7 +5225,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       })
     );
     setShowBetSetupValidation(false);
-    setSettledEditEnabled(false);
+    if (!newerCoreEdits) setSettledEditEnabled(false);
     if (!options?.autosaveLabel) {
       setRevertSnapshot(null);
     }
@@ -5231,6 +5253,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
+      const queued = queuedCoreAutosaveRef.current;
+      queuedCoreAutosaveRef.current = null;
+      if (queued) void persistForm(formStateRef.current, {autosaveLabel:queued,
+        suppressMissingRequiredMessage:true, returnToLedgerOnSuccess:false});
     }
   }
 
@@ -5243,7 +5269,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     updater: (current: SportsbookFormState) => SportsbookFormState,
     autosaveLabel: string
   ) {
-    const previousFormState = formState;
+    const previousFormState = formStateRef.current;
     const nextFormState = updater(previousFormState);
     setRevertSnapshot(previousFormState);
     setFormState(nextFormState);
@@ -5251,6 +5277,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     if (!canPersistForm(nextFormState)) {
+      return;
+    }
+    if (nextFormState.lay_plan_json && isPersistingRef.current) {
+      queuedCoreAutosaveRef.current = autosaveLabel;
       return;
     }
     await persistForm(nextFormState, {
@@ -7799,6 +7829,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         ) : null}
                       </div>
                   </div>
+                  {!formState.lay_plan_json && !isNewCoreIntent && selectedId && !isSettledReadOnly && !Number(formState.lay_actual || formState.lay_matched_stake_1) && !["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type) && ["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy) ? <CoreLayPlannerUpgrade onReplan={() => setIsNewCoreIntent(true)} /> : null}
+                  {(!["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type)) && (formState.lay_plan_json || isNewCoreIntent || !selectedId) && ["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy) ? <CoreLayPlanner
+                    accounts={accountAuthorities} basis="Normal" defaultCommission={resolvedCommission} exchangeCommissions={exchangeSettings}
+                    actualLiability={activePreviewCalculation?.calculated_liability_1 ?? (selectedSportsbookRow?.lay_actual === formState.lay_actual && selectedSportsbookRow?.lay_odds_1 === formState.lay_odds_1 && selectedSportsbookRow?.lay_commission_1 === formState.lay_commission_1 ? selectedSportsbookRow?.calculated_liability_1 : null)}
+                    form={formState} inspectionId="sportsbook.matching.core-planner" onValidity={handleCoreValidity}
+                    readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => ({...current, ...patch}))}
+                  /> : (
                   <div className="calculator-shell">
                     <div className="calculator-band calculator-band-primary">
                       <span className="eyebrow">Calculator</span>
@@ -9123,6 +9160,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </fieldset>
             </EditorSection>
@@ -10187,7 +10225,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                  <>
 	                    <button
 	                      className="review-chip review-chip-copy"
-	                      disabled={isInitialLoading || isPersisting || !isDirty || hasInvalidOddsInput}
+	                      disabled={isInitialLoading || isPersisting || corePlanPending || !isDirty || hasInvalidOddsInput}
 	                      type="submit"
 	                    >
 	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}

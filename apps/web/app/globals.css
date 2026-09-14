@@ -8385,7 +8385,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   align-items: end;
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(12rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   min-width: 0;
 }
 

@@ -1,11 +1,22 @@
 """Resume only the owned authenticated synthetic award API; local file fault control."""
 import os
+import json
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
 runtime = Path("/tmp/openforge-award-integrity-91-20260914").resolve()
 assert runtime.is_dir() and (runtime / "acceptance.sqlite3").is_file()
 assert (runtime / "session-token").is_file()
+workspace = Path(__file__).resolve().parents[1]
+checkout = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=workspace, text=True).strip()
+api_source = subprocess.check_output(["git", "log", "-1", "--format=%H", "--", "apps/api/src"], cwd=workspace, text=True).strip()
+(runtime / "review-source.json").write_text(json.dumps({
+    "checkout": checkout, "api_source": api_source, "workspace": str(workspace),
+    "started_at": datetime.now(timezone.utc).isoformat(), "api_port": 8039,
+    "database": str(runtime / "acceptance.sqlite3"),
+}, indent=2))
 os.environ.update(
     OPENFORGE_AUTH_REQUIRED="true",
     OPENFORGE_AUTH_OWNER_EMAILS="notification-acceptance@example.invalid",

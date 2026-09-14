@@ -1,6 +1,7 @@
 "use client";
 
 import { ModalBoundary } from "@/components/modal-boundary";
+import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
@@ -167,6 +168,7 @@ type FreeBetCalculationPreview = {
 };
 
 type FreeBetRecord = {
+  lay_plan_json?: string | null;
   free_bet_id: string;
   profile_id: string;
   event_name: string;
@@ -229,6 +231,7 @@ type FreeBetRecord = {
 };
 
 type FreeBetFormState = {
+  lay_plan_json?: string | null;
   free_bet_id?: string;
   event_name: string;
   offer_text: string;
@@ -911,6 +914,7 @@ function isSortableFreeBetColumn(columnKey: string): columnKey is FreeBetSortKey
 
 function createBlankForm(): FreeBetFormState {
   return {
+    lay_plan_json: null,
     event_name: "",
     offer_text: "",
     bookmaker: "",
@@ -946,6 +950,7 @@ function createBlankForm(): FreeBetFormState {
 
 function recordToForm(record: FreeBetRecord): FreeBetFormState {
   return {
+    lay_plan_json: record.lay_plan_json ?? null,
     free_bet_id: record.free_bet_id,
     event_name: record.event_name,
     offer_text: record.offer_text,
@@ -982,6 +987,7 @@ function recordToForm(record: FreeBetRecord): FreeBetFormState {
 
 function getComparableFreeBetDirtyState(formState: FreeBetFormState) {
   return {
+    lay_plan_json: formState.lay_plan_json ?? null,
     free_bet_id: formState.free_bet_id ?? "",
     event_name: formState.event_name ?? "",
     offer_text: formState.offer_text ?? "",
@@ -1310,6 +1316,9 @@ export function FreeBetWorkflowShell({
   const [tableSort, setTableSort] = useState<FreeBetTableSort | null>(null);
   const [formState, setRenderedFormState] = useState<FreeBetFormState>(createBlankForm);
   const formStateRef = useRef(formState);
+  const corePlanPendingRef = useRef(false);
+  const [corePlanPending, setCorePlanPending] = useState(false);
+  const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
   const setFormState = useCallback((action: SetStateAction<FreeBetFormState>) => {
     const next = typeof action === "function" ? action(formStateRef.current) : action;
     formStateRef.current = next;
@@ -1338,6 +1347,7 @@ export function FreeBetWorkflowShell({
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewCalculation, setPreviewCalculation] = useState<FreeBetCalculationPreview | null>(null);
+  const [previewSnapshotKey, setPreviewSnapshotKey] = useState("");
   const [showOfferIdentityValidation, setShowOfferIdentityValidation] = useState(false);
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
   const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
@@ -1356,6 +1366,7 @@ export function FreeBetWorkflowShell({
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+  const [isNewCoreIntent, setIsNewCoreIntent] = useState(false);
 
   const isPersistingRef = useRef(false);
   const [pageSize, setPageSize] = useState(8);
@@ -1743,7 +1754,7 @@ export function FreeBetWorkflowShell({
       formState.event_name.trim() &&
       formState.bookmaker.trim()
   );
-  const activePreviewCalculation = previewReady ? previewCalculation : null;
+  const activePreviewCalculation = previewReady && previewSnapshotKey === JSON.stringify(formState) ? previewCalculation : null;
   const editorLayStatus = isNoLayStrategy
     ? "Fully Laid"
     : activePreviewCalculation?.lay_status ?? selectedRow?.lay_status ?? "Not Laid";
@@ -2218,7 +2229,7 @@ export function FreeBetWorkflowShell({
         },
         body: JSON.stringify({
           ...formState,
-          lay_commission_1: "",
+          lay_commission_1: formState.lay_plan_json ? formState.lay_commission_1 : "",
           expiry_datetime: fromDateTimeLocalValue(formState.expiry_datetime),
           date_settled: fromDateTimeLocalValue(formState.date_settled),
         }),
@@ -2229,7 +2240,7 @@ export function FreeBetWorkflowShell({
           }
           return (await response.json()) as FreeBetCalculationPreview;
         })
-        .then((payload) => { if(current)setPreviewCalculation(payload); })
+        .then((payload) => { if(current) {setPreviewCalculation(payload); setPreviewSnapshotKey(JSON.stringify(formState));} })
         .catch(() => { if(current)setPreviewCalculation(null); });
     }, 250);
 
@@ -2697,6 +2708,7 @@ export function FreeBetWorkflowShell({
     setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = false;
+    setIsNewCoreIntent(false);
     setPreviewCalculation(null);
     const nextFormState = recordToForm(record);
     setFormState(nextFormState);
@@ -2723,6 +2735,7 @@ export function FreeBetWorkflowShell({
     setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = true;
+    setIsNewCoreIntent(true);
     setWorkflowVisible(true);
     setTableCollapsed(false);
     setPreviewCalculation(null);
@@ -2778,7 +2791,7 @@ export function FreeBetWorkflowShell({
       returnToLedgerOnSuccess?: boolean;
     }
   ): Promise<boolean> {
-    if (isPersistingRef.current) {
+    if (isPersistingRef.current || corePlanPendingRef.current) {
       return false;
     }
 
@@ -2817,7 +2830,7 @@ export function FreeBetWorkflowShell({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...nextFormState,
-          lay_commission_1: "",
+          lay_commission_1: nextFormState.lay_plan_json ? nextFormState.lay_commission_1 : "",
           expiry_datetime: fromDateTimeLocalValue(nextFormState.expiry_datetime),
           date_settled: fromDateTimeLocalValue(nextFormState.date_settled),
         })
@@ -4419,6 +4432,13 @@ export function FreeBetWorkflowShell({
                   ) : null}
                 </div>
               </div>
+              {!formState.lay_plan_json && !isNewCoreIntent && selectedId && formState.retention_mode === "SNR" && !isSettledReadOnly && !Number(formState.lay_actual || formState.lay_matched_stake_1) && ["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy) ? <CoreLayPlannerUpgrade onReplan={() => setIsNewCoreIntent(true)} /> : null}
+              {(formState.retention_mode === "SNR") && (formState.lay_plan_json || isNewCoreIntent || !selectedId) && ["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy) ? <CoreLayPlanner
+                accounts={accountAuthorities} basis="SNR" defaultCommission={resolvedCommission} exchangeCommissions={exchangeSettings}
+                actualLiability={activePreviewCalculation?.calculated_liability_1 ?? (selectedRow?.lay_actual === formState.lay_actual && selectedRow?.lay_odds_1 === formState.lay_odds_1 && selectedRow?.lay_commission_1 === formState.lay_commission_1 ? selectedRow?.calculated_liability_1 : null)}
+                form={formState} inspectionId="free-bets.matching.core-planner" onValidity={handleCoreValidity}
+                readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => ({...current, ...patch}))}
+              /> : (
               <div className="calculator-shell">
                 <div className="calculator-band calculator-band-primary">
                   <span className="eyebrow">Calculator</span>
@@ -4757,6 +4777,7 @@ export function FreeBetWorkflowShell({
                   ) : null}
                 </div>
               </div>
+              )}
             </div>
             </fieldset>
           </EditorSection>
@@ -4802,7 +4823,7 @@ export function FreeBetWorkflowShell({
                   }
                   value={formState.retention_mode}
                 >
-                  {freeBetRetentionModeOptions.map((option) => (
+                  {freeBetRetentionModeOptions.filter(option => !isCreatingDraftRef.current || option === "SNR").map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
@@ -5209,7 +5230,7 @@ export function FreeBetWorkflowShell({
                 <>
                   <button
                     className="review-chip review-chip-copy"
-                    disabled={isPending || isPersisting || !isDirty || hasInvalidFinancialInput}
+                    disabled={isPending || isPersisting || corePlanPending || !isDirty || hasInvalidFinancialInput}
                     type="submit"
                   >
                     {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}

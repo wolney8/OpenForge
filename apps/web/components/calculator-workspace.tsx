@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { CalculatorReferenceSection } from "@/components/calculator-reference-section";
+import { CalculatorSegmentEyebrow } from "@/components/calculator-segment-eyebrow";
 import { CommissionInput } from "@/components/commission-input";
 import { percentageToCommissionRatio } from "@/lib/commission-input";
 import { CalculatorConversionDialog } from "@/components/calculator-conversion-dialog";
@@ -150,10 +151,6 @@ function CalculatorFamilySelector({
       </div>
     </div> : null}
   </nav>;
-}
-
-function CalculatorSegmentEyebrow({ children }: { children: string }) {
-  return <div className="calculator-segment-heading"><span className="eyebrow">{children}</span></div>;
 }
 
 function CalculatorFamilyHeading({ onOpen, primary = false, title }: { onOpen?: () => void; primary?: boolean; title: string }) {
@@ -405,8 +402,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
   const advancedCurrent = Math.min(advancedMaximum, Math.max(advancedMinimum, Number(inputs.customLayDraft || inputs.manualLayStake || result?.reference_lay_stake_standard || advancedMinimumText)));
   const qualifyingBackingType = inputs.betType === "free_bet" ? inputs.freeBetMode : "Normal";
   const showAdvancedReferences = inputs.presentationMode === "Advanced";
-  const blockedSnrPresetDestination = inputs.betType === "free_bet" && inputs.freeBetMode === "SNR" && ["Underlay", "Overlay"].includes(inputs.strategy);
-  const canConvertMatchedResult = Boolean(result) && !invalid && !isCalculating && !blockedSnrPresetDestination && !(inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet !== "Normal") && !(inputs.betType === "cashback" && inputs.cashbackRewardKind !== "cash");
+  const canConvertMatchedResult = Boolean(result) && !invalid && !isCalculating && !(inputs.betType === "bonus_lock_in" && inputs.bonusBackingBet !== "Normal") && !(inputs.betType === "cashback" && inputs.cashbackRewardKind !== "cash");
   const profitBoostExample = inputs.profitBoostMode === "displayed_odds"
     ? "Example: £10 at 3.20 → total return £32; profit £22."
     : inputs.profitBoostMode === "total_return"
