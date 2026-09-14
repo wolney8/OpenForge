@@ -13,8 +13,12 @@ if(response.status()!==200||(await response.json()).email!=="notification-accept
 const fixture=JSON.parse(fs.readFileSync(runtime+(corrections?"/browser-evidence.json":"/free-bet-converted-journey.json"),"utf8"));
 if((await api.get(`/profiles/${fixture.profileId}/free-bets`)).status()!==200)throw Error("Prepared synthetic review fixture unavailable; do not reset data.");
 await api.dispose();
-const url=`http://localhost:${webPort}/profiles/${fixture.profileId}/tracker/free-bets`;
-if(corrections)console.log("Local checkout "+execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()+"; tested UI source66fc5ddb34900e6c11f3d87c71c4370eee24cbf4, resumed API source72a924e6e2ea8f769136575f8192726a785974c4. Embedded parity and full calculator acceptance remain outstanding.");
+const url=corrections?`http://localhost:${webPort}/fund-manager/calculators`:`http://localhost:${webPort}/profiles/${fixture.profileId}/tracker/free-bets`;
+if(corrections){
+ const evidencePath=runtime+"/core-reference-controls-evidence.json";
+ const lastRun=fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,"utf8")):null;
+ console.log("Local checkout "+execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()+"; last reference-control run source "+(lastRun?.source??"UNKNOWN")+" ("+(lastRun?.cases?.length??0)+" recorded variants), API source72a924e6e2ea8f769136575f8192726a785974c4. Versioned NEW-plan persistence remains blocked; full calculator acceptance is pending.");
+}
 if(process.argv.includes("--check")){console.log(`Ready: authenticated synthetic ${url}`);process.exit(0);}
 const context=await chromium.launchPersistentContext(runtime+"/local-review-browser",{headless:false,viewport:null});
 await context.addCookies([{name:"pd_session",value:token,domain:"localhost",path:"/"}]);

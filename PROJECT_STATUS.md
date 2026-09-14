@@ -7,30 +7,38 @@ verification and fixes active; final acceptance pending. Original JSON/workbook 
 and unchanged. Observed3010 build is UNKNOWN, not assumed to be this candidate.
 
 We are repairing the calculator workflow on `repair/calculator-corrections-113`, stacked on award
-candidate3a5fddc. Current tested product66fc5ddb34900e6c11f3d87c71c4370eee24cbf4, API reference
+candidate3a5fddc. Current tested product24385bf72a5161a6e14e22175f40def2fcb808db, API reference
 source72a924e6e2ea8f769136575f8192726a785974c4. SNR preset references corrected6.25/10.20;
 conditional Cashback cash/credit separated; standalone everyday/percentage/Advanced controls added.
 Casino52a87af now passes all6 Escape variants; shared geometry/focus-entry/Escape18/18 pass.
-113 focused numerical/bridge tests,12 percentage tests, typecheck/lint and production build pass.
+Current focused22 API cases (19 numerical and3 blocker probes),15 money/percentage unit cases,
+4 real hub/pop-out variants, typecheck/targeted lint and production build pass. Prior113-case
+family/bridge evidence is historical and unchanged, not universal acceptance.
 Frozen66fc5dd genuine award rerun passes4 full variants:5.30/10.30 children plus-1.18 qualifying
 result gives14.42 report; rollback/retry/removal remain correct. No source edits during that run.
-Full correction remains partial: embedded parity, canonical chevron references, operational remaining
-hedges, stale-copy/live dragging and complete corrected calculator-to-ledger gates are outstanding.
+Shared references now use full-width Outcomes geometry; drafts retain the result shell and stale
+copy/apply is disabled. Actual Normal/SNR loss clipboard is−2.64, not the positive lay stake10.20.
+Full correction remains blocked at NEW-plan persistence: native Free Bet Underlay/Overlay reopen
+as6.66/9.33 and row5% commission is discarded for Profile2%. No separate versioned plan exists.
+Operational remaining hedges, broader live-drag/state variants and full embedded parity remain.
 Main/normal3010, frozen manual3020 and existing3034 review remain unchanged/unfixed.
 
-Next: PD-CALC-20260914 C05/C06 corresponding embedded controls, C07 canonical shared reference/
-slider/stale-copy gate, C08 Cashback receipts/caps and mode-transition proof, then C09 integration.
+Next: approval of the minimal versioned planning-field proposal in the existing Free Bet contract,
+then C05/C06 embedded controls/planning and core C09 save/reopen/actual-settlement parity.
+C08 Cashback receipts/caps and mode-transition proof remain next; C01/C02 broader cases remain.
 C03 workbook SR discrepancy/receipt provenance remains explicit; corrected SNR Underlay/Overlay
 conversion fails closed pending a faithful destination planning contract. Wider #114 review is on hold during this
-corrective checkpoint, not cancelled. No action needed from Will; no bulk comparison assignment.
+corrective checkpoint, not cancelled. Only the NEW-plan schema/policy approval is needed from Will;
+no bulk comparison assignment or engineering regression task.
 Coverage remains46/87 reviewed,8/24 exercised/passing,14/27 competitor,24/133 requests.
 
 [Current evidence and remaining IDs](docs/audits/platform-quality-audit.md#current-calculator-correction-checkpoint--2026-09-14--local-only).
 Optional existing-data engineering launcher (not an owner acceptance assignment):
 `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
 opens an authenticated synthetic browser on3040/8039 without resetting data/services. It prints
-the full checkout SHA; API source8276e2a is unchanged. It fails safely if that owned runtime/session
-is absent. Numerical corrections remain outstanding. No push/merge/deployment.
+the full checkout SHA and last reference-control run source; API reference source72a924e is unchanged.
+It fails safely if that owned runtime/session is absent. Corrected SNR Underlay/Overlay conversion
+remains blocked, not bypassed. No migration/push/merge/deployment.
 
 Everything below is historical unless revalidated in the current checkpoint.
 

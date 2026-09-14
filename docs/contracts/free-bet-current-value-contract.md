@@ -4,6 +4,37 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
+### Core NEW-plan parity proposal — approval required, not implemented
+
+The isolated C04–C07 reproduction `test_core_snr_parity_contract_gap.py` proves that
+an unplaced native SNR Underlay/Overlay reopens as6.66/9.33, not6.25/10.20, and a
+submitted row commission0.05 reopens as Profile0.02. Current persistence clears
+`lay_commission_1`; no separately versioned planned stake exists. Existing source
+envelopes retain original provenance but are not a mutable destination planner.
+
+Smallest coherent proposal: **one nullable `lay_plan_json` column on each existing
+Free Bet and Sportsbook table**, with a validated versioned planning object holding
+reference-contract version, backing basis, original planning inputs, planned odds,
+commission ratio, selected strategy, explicit reviewed planned stake and source
+identity/checksum where applicable. This is record planning metadata, not another
+financial engine. NEW opt-in plans use the existing reference service; reads and
+preview consume their explicit version. Existing unversioned rows keep legacy
+Profile-commission lookup and original calculation semantics. A changed plan uses
+existing audit/validation/transaction boundaries; immutable original conversion
+provenance remains unchanged. No historical backfill or recalculation.
+
+Actual matched amounts/odds/commission remain separate actual fields and retain
+settlement precedence. Copying a planned number must not populate actuals or mark
+placed. Original and current planning odds must remain distinguishable from fills;
+different-odds remaining hedges require the governed operational calculation.
+Unrepresented multi-fill arrangements stay blocked. Existing Profile/Account
+authority, target idempotency and completed Blackjack uniqueness are unchanged.
+
+Required approval gate: schema design/migration plus opt-in planning-field policy.
+Until approved, corrected SNR Underlay/Overlay writes remain422 before mutation;
+do not encode them as Custom, Notes, actual stakes, or unconsumed source metadata.
+This proposal is NOT a supported persistence contract or PostgreSQL execution claim.
+
 ### 2026-09-14 SNR reference-only correction / snr-outcome-target-v1
 
 Approved by Will's C04 correction prompt. This governs calculator reference presets only;

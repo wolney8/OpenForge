@@ -3,8 +3,12 @@
 ## Current calculator-correction checkpoint — 2026-09-14 / LOCAL ONLY
 
 Reporting branch audit/platform-quality-114 is documentation-only. Current tested product candidate
-**66fc5ddb34900e6c11f3d87c71c4370eee24cbf4**; API reference source
-**72a924e6e2ea8f769136575f8192726a785974c4**. Previous3e678d2 / reportf633016 are historical
+**24385bf72a5161a6e14e22175f40def2fcb808db**; API reference source
+**72a924e6e2ea8f769136575f8192726a785974c4**. Verified starting checkout
+9ffaad7e726a8c0482ac22ba1da0cf18063622aa differs from prior tested product
+66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 only in documentation/launcher;
+prior reporting checkpoint1512015295b97aa7f09f0ceb2b3121faab6c6fb4 is historical.
+Previous3e678d2 / reportf633016 are historical
 checkpoints, not the current implementation. No repository pushes. Normal/main remains unfixed.
 GitHub summary sync confirmed: #355662640708, #365662640861, #375662641234, #925662641772,
 #1055662641037, #1135662641608, #1145662641374. Remote summaries label all commits LOCAL ONLY.
@@ -36,12 +40,56 @@ invalid audit fixtures are protected. Only owned disposable8039/3040 is used for
 |C01 PD019 latest-edit/autosave|PASS / PROVEN for the executed delayed-response cases|Cross-editor/network-failure and rapid settlement variants not established by these cases|
 |C02 modal clipping|Scoped PASS / PROVEN|18/18 geometry/focus-entry/Escape variants now pass, including Casino6/6; dirty/pending/nested confirmation/focus-return and text-enlargement/interrupted-motion variants remain untested|
 |C03 ingest/workbook|PARTIAL / DOCUMENTED|Current workbook normal/refund/same-odds remaining formulas traced below; receipt/cap provenance and SR internal workbook discrepancy require explicit resolution|
-|C04 SNR presets/sign|Numerical PASS / PROVEN; full surface parity PARTIAL|18 independent preset cases plus Custom-reference invariant; real half-width SNR controls6.25/10.20 and Normal negative accounting accessibility pass; negative-value clipboard and embedded presets unverified; no fresh external black-box parity claim|
+|C04 SNR presets/sign|Reference PASS / PROVEN; destination BLOCKED|19 independent numerical cases pass; desktop/half-width hub/pop-out show all four required references. Actual Normal and SNR loss clipboard is−2.64 with accessible accounting parentheses. Native embedded Under/Overlay still6.66/9.33; precise schema proposal below. No fresh external parity claim|
 |C05 core scope/operational partial match|PARTIAL / CODE-VERIFIED|Standalone ordinary controls Normal/SNR; saved SR/bonus-win retained disabled. Part Lay dropdown removed; full embedded scope/actual fills/different-odds remaining hedge and all preset transitions need work|
-|C06 percentage commission|PARTIAL / PROVEN for executed subset|12 exact decimal-shift tests and real Standard2% input pass; standalone Field/Multi-Lay/Sequential/Dutching inputs share primitive. Embedded exchange fields and broader saved/pop-out round trips remain|
-|C07 Simple/Advanced|PARTIAL / CODE-VERIFIED|Simultaneous Underlay/Overlay/Custom and directly following slider implemented; real half-width visibility passes. Canonical chevron reference composition, all stale-copy paths/live drag/embedded parity remain|
+|C06 percentage commission|Standalone PASS / PROVEN; embedded BLOCKED|12 exact helper cases plus browser0/2/5/2.125 percentages→0/.02/.05/.02125. Explicit ratio-tagged hub/pop-out state restores2%. Native row5% is discarded and reopens Profile2%; versioned per-plan override policy required. Full save/reopen round trips not established|
+|C07 Simple/Advanced|Scoped standalone PASS / PROVEN; embedded PARTIAL|Shared CalculatorOutcomes full-width reference rows replace narrow nested cards; Under/Overlay/Custom coexist, slider follows Custom. Advanced preserves Standard; Simple restores equalised stake and preserves Custom draft. Mounted result identity survives invalid edits; copy/apply disabled pending/invalid. One held real response is superseded safely. Continuous pointer drag, enlarged-text and embedded parity remain unverified|
 |C08 conditional racing Cashback|API PASS / PROVEN; UI PARTIAL|Three independent cases ordinary hedge then conditional cash/credit; separate credit face/retained estimate and cash-first total. UI reward selector added but embedded/receipt/cap and mode-leakage end-to-end not established; original CASHBACK-001 intent UNKNOWN|
-|C09 engineering full acceptance|PARTIAL|Production build/typecheck/lint pass.113 focused numerical/bridge tests pass; full corrected controls→copy→review/save/reopen→settlement/report, rapid-entry/motion/text scaling gate remains. Genuine award rerun on frozen66fc5dd is recorded separately|
+|C09 engineering full acceptance|BLOCKED at destination planning contract|Frozen24385bf production build/typecheck/targeted lint pass;22 focused API cases (19 numerical +3 blocker probes),15 financial/percentage unit cases,4 real hub/pop-out variants pass. No source edits during final tests. Corrected plan save/reopen/actual settlement parity remains blocked; no PostgreSQL persistence change executed. Earlier frozen66fc5dd award evidence reconciled below, not relabelled as a new24385bf full journey|
+
+### C04–C07 / core C09 — precise destination blocker, 2026-09-14
+
+Result **BLOCKED**, evidence **PROVEN** for isolated SQLite native create/reopen;
+**CODE-VERIFIED** for the schema/write-policy constraint. Three disposable regression
+probes in `apps/api/tests/test_core_snr_parity_contract_gap.py` independently inspect
+stored actual fields and schema: unplaced Underlay6.66 versus required6.25, Overlay9.33
+versus10.20; explicit commission0.05 is cleared and returns Profile0.02. Passing
+reproduction tests demonstrate a parity FAIL, not a working destination.
+
+`db.create_free_bet/update_free_bet` clear row commission; Sportsbook equivalents
+also clear it. Neither core ledger has a separately versioned authoritative planned
+stake. Conversion target envelopes preserve original reference inputs/checksum but
+native preview/reopen do not consume them as editable planning authority. Existing
+Custom conversion uses `lay_actual`: that is not proof of planned-versus-actual parity.
+Existing embedded copy/apply placement semantics must be separated under the new
+planning policy, not silently treated as confirmation that an exchange filled an order.
+
+**Smallest approval proposal**, recorded in the existing
+[Free Bet contract](../contracts/free-bet-current-value-contract.md#core-new-plan-parity-proposal--approval-required-not-implemented):
+one nullable versioned `lay_plan_json` field on each existing core ledger, preserving
+contract version, basis, original planning inputs/odds/commission, selected strategy,
+explicit reviewed planned stake and source identity. Existing actual fields keep
+settlement precedence; unversioned historical rows retain their original lookup and
+math. No backfill, migration, Notes workaround, strategy relabelling or guard bypass
+was implemented. Corrected SNR Underlay/Overlay conversion remains422 before writes.
+Approval of this schema/policy is required to continue NEW-plan persistence work.
+
+Bounded runtime evidence: `verify_core_reference_controls_113.mjs` uses the real
+owned8039 API and authenticated3040 hub/pop-out,1440/760px, both themes and motion
+preferences. It verifies reference edges within1px, all supplied SNR stake/liability/
+branch expectations, copy6.25 and actual loss−2.64, Custom9.00 selection, mode/draft
+preservation, editable invalid odds with blocked stale copy, percentage requests and
+no page overflow. One delayed real response is held while a newer request completes;
+copy/apply stay disabled and the older result cannot replace11.96. This is not a
+universal stale/network or live-pointer-drag proof. No browser-to-destination journey
+or PostgreSQL NEW-plan claim is made. Original observations/workbook remain unchanged.
+Redacted runtime evidence checksum8cc4058c6fa0af10b9e2b579523132ead1b2dc739baafcfa099546bf0d534353;
+the durable summary above records method/build/results without private tokens or dumps.
+
+No runtime/database/schema/financial-engine changes; only shared UI plus isolated
+probes. Required enlarged-text, broader live drag/reset/saved-state variants and
+native embedded parity remain explicitly unverified. C08 receipt/cap/conditional
+cash-versus-credit work and C01/C02 additional network/confirmation gates remain queued.
 
 ### Current numerical, workbook and conversion evidence — 2026-09-14
 
@@ -98,11 +146,28 @@ Synthetic evidence SHA25611dc2da77b5cde3fd07660ee05afb798ee17947866cd4a743988325
 raw evidence stays private/local. No application source edits during build/browser runs.
 These executed award variants do not establish universal autosave or calculator acceptance.
 
-**Exact next implementation:** C05/C06 adapt corresponding embedded controls without changing
-legacy settlement semantics; C07 use shared chevron Outcomes reference geometry and close stale-copy/
-live-slider gaps; C08 trace actual cap/receipt/credit award source semantics and test mode transitions;
-C03 resolve the recorded workbook discrepancy, then C09 fixed-candidate end-to-end gates.
+**Exact next implementation:** obtain the minimal NEW-plan schema/policy approval before
+core save/reopen parity; retain the server guard meanwhile. Complete corresponding
+embedded controls and operational remaining hedges against that versioned representation.
+C08 trace actual cap/receipt/credit award source semantics and mode transitions; keep
+C03 SR discrepancy separate from core Normal/SNR, then C09 full fixed-candidate gates.
 No owner bulk entry required. Wider #114 imports/ledgers/competitors/backlog coverage resumes afterward.
+
+#### J11 fixed-build assertion reconciliation — not a new journey promotion
+
+|Existing assertion|Valid revision/evidence|Exact limit|
+|---|---|---|
+|Single10, split5 SNR+5 SR, second-child failure/rollback/retry|Frozen66fc5dd,4 real variants|All4 pass; not repeated on24385bf|
+|Committed-response loss and refresh preserve operation/IDs|Frozen66fc5dd first variant;8276e2a backend|Browser first variant only|
+|Concurrent same operation, changed payload, deliberate later award|8276e2a SQLite and actual PostgreSQL18.6 backend|Not browser-concurrency proof|
+|Unused-child removal/replay without resurrection|Frozen66fc5dd browser;8276e2a backend|Protected child/source UI denial still requires its explicit browser assertion|
+|Protected source/child deletion, deletion-placement/issuance races, authority denials|8276e2a SQLite/PostgreSQL backend|Browser race/denial variants not established by ordinary Save|
+|Child matching/copy/actual placement/settlement/report/reload|Frozen66fc5dd4 variants:3.86/4.83 copied,3.50 actual,5.30/10.30 + qualifying−1.18 =14.42|No autosave blocker for these bounded synchronized cases; broader stale/network safety remains C01|
+|Legacy partial-group review/import lineage/full change-history consumer|Contracts/backend where applicable; PD018/PD016 retained|Imported source resolution and complete visible history remain distinct open gaps|
+
+PQA-J11 remains PARTIAL until required user-visible protected-removal/history assertions
+are reached; superseded pre37a495e autosave/clipping failures are historical, not the
+current explanation. Audit denominators/totals unchanged46/87,8/24,14/27,24/133.
 
 ### Historical preceding reproduction and fixes — before52a87af/811ef5c
 

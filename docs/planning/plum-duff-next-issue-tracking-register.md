@@ -2,6 +2,30 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
+### Current core-parity slice — C04–C07 / core C09
+
+Verified starting checkout9ffaad7e726a8c0482ac22ba1da0cf18063622aa;
+tested prior UI66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 and API72a924e6e2ea8f769136575f8192726a785974c4.
+C04/C06/C09 destination parity BLOCKED: isolated native create/reopen reproduces
+Underlay6.66 rather than6.25, Overlay9.33 rather than10.20, and submitted5% becomes
+Profile2%. Existing Free Bet schema has no separate versioned planned stake;
+row commission is deliberately cleared. Original conversion-envelope provenance
+cannot substitute for a mutable authoritative destination planning contract.
+Do not remove the conversion guard, relabel the strategy, or populate actual stake.
+C07 shared controls scoped PASS / PROVEN on tested24385bf72a5161a6e14e22175f40def2fcb808db: reuse CalculatorOutcomes for full-width reference
+rows, keep result shells mounted during drafts, pending-disable copy/apply actions,
+and support copying the actual negative outcome separately from the positive stake.
+Nearest equivalent: shared CalculatorOutcomes / CopyableFinancialValue; no local CSS.
+Four hub/pop-out1440/760px light/dark variants pass exact reference edges, current
+stake/outcome clipboard, Custom/mode changes, invalid drafts and percentage requests.
+One held real response is superseded without replacing the newer result. Full live
+pointer-drag/enlarged-text/reset/saved-state and embedded parity remain unverified.
+22 focused API,15 money/percentage unit cases, typecheck/targeted lint/build pass.
+Required minimal schema approval is documented in the existing calculation contract:
+one nullable versioned lay_plan_json column per existing core ledger, not another
+engine. No migration, historical backfill, PostgreSQL NEW-plan execution or guard
+bypass. Core save/reopen/actual-placement parity remains BLOCKED, not complete.
+
 Latest #113/35/114 clarifications5662334267/5662339238/5662344208 govern.
 Verified stack base3a5fddc27ea898aad01f7a186cc06c62c5e66aec, application8276e2a,
 report0b0540d; no PD019 repair exists there. Separate repair/calculator-corrections-113.
@@ -11,12 +35,13 @@ dirty/pending/nested confirmation/focus return/text scaling remain NEEDS VERIFIC
 C03 IN PROGRESS: read-only normal/refund/same-odds remaining formulas traced; workbook SR branch
 discrepancy and receipt/cap source semantics remain explicit. Original hashes unchanged.
 C04 numerical COMPLETE for independent preset fixtures811ef5c; Standard7.18, Under6.25, Over10.20,
-Custom9.00. Normal API/rendered accessible loss(2.64) confirmed; negative-value clipboard and
-embedded preset acceptance NEEDS VERIFICATION. No fresh external black-box parity claim.
+Custom9.00. Normal/SNR accessible loss(2.64) and actual negative clipboard−2.64 now PASS;
+embedded preset acceptance BLOCKED by NEW-plan contract. No fresh external parity claim.
 C05/C06 IN PROGRESS: standalone Normal/SNR choices and percentage primitive66fc5dd; embedded
 scope/percentage inputs, actual-match/different-odds remaining hedge and saved-unit variants remain.
-C07 IN PROGRESS: simultaneous Under/Overlay/Custom plus directly following slider; canonical
-chevron geometry, stale-copy/live drag and corresponding embedded parity still required.
+C07 PARTIAL: simultaneous full-width shared Under/Overlay/Custom plus following slider,
+canonical Outcomes geometry and bounded stale-copy proof pass. Full live-pointer-drag and
+corresponding embedded parity remain required.
 C08 IN PROGRESS: three independent cash/credit conditional reference cases72a924e; actual
 receipt/cap source semantics and UI/embedded mode-leakage proof remain.
 C09 NEEDS VERIFICATION: frozen product66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 passes build,
@@ -31,10 +56,12 @@ remain private/unchanged; observed3010 revision UNKNOWN until supported evidence
 Partial user observations received; no further bulk owner entry required;
 engineering reference verification and fixes active; final acceptance pending.
 No push/merge/deploy; inherited repairs, frozen candidate/dev/data remain protected.
-Current candidate source37a495ee656c6850c6c670539bb5ec1ce6716330 and
-da196a97216fb9eb48e18bf2cf53bb74c29d492d; harness9ce17661239f71663908b0265552ac1cecc2e1b6.
+Current tested source24385bf72a5161a6e14e22175f40def2fcb808db inherits37a495ee656c6850c6c670539bb5ec1ce6716330 and
+da196a97216fb9eb48e18bf2cf53bb74c29d492d. Prior66fc5dd frozen award4-variant evidence is
+reconciled against J11 assertions in the current audit; no new full24385bf award claim.
 Coverage unchanged46/87,8/24 exercised/passing,14/27,24/133; no J11 promotion from a
-development-state award run. Engineering owns remainingC03–C09; No action needed from Will.
+development-state award run. Engineering owns remainingC03–C09; only the minimal NEW-plan
+schema/policy approval is needed from Will, not manual comparison or regression work.
 Earlier deferred/bulk-entry/current status below is historical where this scope supersedes it.
 
 ## PD-QA-017 award repair — branch server PASS; browser journey PARTIAL / 2026-09-14
