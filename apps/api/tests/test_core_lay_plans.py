@@ -39,6 +39,7 @@ def test_native_versioned_reference_persists_without_actual_placement(free_clien
     response = free_client.post("/profiles/money-a/free-bets", json=body(strategy))
     assert response.status_code == 201, response.text
     row = response.json()
+    assert row["lay_status"] == "Not Laid"
     raw = db.get_free_bet("money-a", row["free_bet_id"])
     assert raw.lay_actual == raw.lay_matched_stake_1 == raw.lay_commission_1 == ""
     assert json.loads(raw.lay_plan_json)["reviewed_planned_lay_stake"] == EXPECTED[strategy][0]
@@ -58,6 +59,7 @@ def test_normal_plan_uses_same_service_without_populating_actuals(free_client):
     assert response.status_code == 201, response.text
     row = response.json()
     assert row["lay_actual"] == row["lay_matched_stake_1"] == ""
+    assert row["lay_status"] == "Not Laid"
     raw = db.get_sportsbook_bet("money-a", row["sportsbook_bet_id"])
     assert json.loads(raw.lay_plan_json)["reviewed_planned_lay_stake"] == "9.57"
 

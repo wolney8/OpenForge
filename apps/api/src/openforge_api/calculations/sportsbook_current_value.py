@@ -910,7 +910,11 @@ def calculate_sportsbook_current_value(
         final_net_pnl=final_net_pnl,
         reporting_value=resolved_value,
         lay_status=_lay_status(
-            calculation_input.match_strategy, actual_lay_stake, lay_matched_stake
+            calculation_input.match_strategy,
+            (parse_decimal(calculation_input.lay_actual)
+             or parse_decimal(calculation_input.lay_matched_stake_1))
+            if calculation_input.planned_lay_stake else actual_lay_stake,
+            lay_matched_stake,
         ),
         counts_as_open=counts_as_open,
         is_overdue=is_overdue,

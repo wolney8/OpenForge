@@ -75,6 +75,7 @@ try {
  let plan=JSON.parse(row.lay_plan_json);
  assert.equal(plan.selected_strategy,chosen);assert.equal(plan.reviewed_planned_lay_stake,planned);
  assert.equal(row.lay_actual,'');assert.equal(row.lay_matched_stake_1,'');
+ assert.equal(row.lay_status,'Not Laid');
  assert.equal(stored(ledger,id).lay_actual,'');assert.equal(stored(ledger,id).lay_commission_1,'');
  await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
@@ -180,6 +181,7 @@ try {
   let row=await(await api.get(recordUrl)).json(),plan=JSON.parse(row.lay_plan_json);
   assert.equal(plan.selected_strategy,strategy);assert.equal(plan.reviewed_planned_lay_stake,stake);assert(plan.source_identity&&plan.source_checksum);
   assert.equal(row.lay_actual,'');assert.equal(row.lay_matched_stake_1,'');
+  assert.equal(row.lay_status,'Not Laid');
   assert.equal(stored(ledger,target.record_id).lay_actual,'');assert.equal(stored(ledger,target.record_id).lay_commission_1,'');
   const retry=await api.post('/fund-manager/calculator-conversions/standard',{data:saved.request().postDataJSON()});
   assert.equal(retry.status(),200);assert.equal((await retry.json()).results[0].record_id,target.record_id);
