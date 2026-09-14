@@ -1,6 +1,23 @@
 # Project Status
 
-## Current repair checkpoint (local only)
+## Current award-integrity checkpoint — local only
+
+Award server repair **8276e2a1f9a3eb7fe018021c616e4c180d0216c9**, harness/contract
+**eca15d6d022d240c5a22676c9a9232656f82a84e**, on `repair/award-integrity-91` stacked on
+**1295e2679db1856f67da0cb2cda82e4ad8cabdf9**. Atomic split/retry/concurrency/removal tests pass
+on isolated SQLite and actual PostgreSQL18.6;227 focused inherited/award API checks pass.
+Genuine award-review controls pass desktop/half-width, both themes, including refresh and lost response.
+**Full PQA-J11 stays PARTIAL:** existing PD-QA-019 stale child autosave blocks matching; desktop modal
+left clipping also remains visible under PD004/005/#92. No false complete-journey or manual acceptance.
+Coverage unchanged:46/87 assessed,8/24 exercised,8/24 passing,14/27 competitors,24/133 requests.
+[Current detailed evidence and limits](docs/audits/platform-quality-audit.md#current-award-integrity-repair--2026-09-14--local-only).
+Main/normal app remains unfixed pending reviewed integration. Protected manual/review services/data
+and _input observations unchanged. Manual comparison deferred by Will, no scheduled date.
+Next: return to remaining workbook/populated-ledger audit; PD018/019 and modal clipping are retained
+repair gates, security #115/#96 and publication approval separate. No action needed from Will.
+No push/merge/deploy. Prior checkpoints below are historical.
+
+## Historical repair checkpoint (local only)
 
 Current local-only repair cb0f29068d5d4a24a61ec3e2a66afa91c3265a71 on repair/sportsbook-safe-91, based on 81af076cf67b5d0951aef9f1a8bca6fdafb841bc. Sportsbook saves validate and prepare before commit; legacy invalid rows remain visible with incomplete totals. Native browser desktop/half-width light/dark, isolated SQLite and actual PostgreSQL evidence are in the existing audit. Main/normal services remain unfixed pending reviewed integration. Coverage46/87 assessed,8/24 exercised,8/24 passing,14/27 competitor,24/133 requests; only J07 passing changes (+1/+4 points). Next PD-QA-017 award integrity; PD018/019 and wider audit/security/publication gates remain open. Manual comparison deferred by Will, no date. No action needed from Will. Older current wording below is historical.
 

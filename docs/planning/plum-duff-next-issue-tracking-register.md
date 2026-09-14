@@ -1,6 +1,25 @@
 # Plum Duff Next Issue Tracking Register
 
-## Current Sportsbook integrity repair —2026-09-13
+## PD-QA-017 award repair — branch server PASS; browser journey PARTIAL / 2026-09-14
+
+Verified base1295e2679db1856f67da0cb2cda82e4ad8cabdf9 includes Sportsbook
+cb0f29068d5d4a24a61ec3e2a66afa91c3265a71; prior reporta3084de1e409710408499aba436ed3703370aadc.
+Separate repair/award-integrity-91 application8276e2a1f9a3eb7fe018021c616e4c180d0216c9;
+harness/contracteca15d6d022d240c5a22676c9a9232656f82a84e.
+A atomic split/failure COMPLETE(server evidence); B durable hash-bound retry/concurrency
+COMPLETE; C safe unused/protected removal and source/placement races COMPLETE(server evidence);
+D legacy explicit review/immutable identifiers/no resurrection COMPLETE; E API/backend COMPLETE,
+full browser NEEDS VERIFICATION / BLOCKED by existing PD019 autosave and desktop modal clipping
+PD004/005; F audit/status/GitHub/local bundle handoff COMPLETE when outgoing checkpoints recorded.
+No whole PD017/PQA-J11 UI acceptance inferred:227 API tests, actual SQLite/PG11 boundaries each,
+four actual themed/width award-review subflows pass; current full child matching→settlement→report
+browser attempt fails PD019. Independent children5.30/10.30 plus qualifying−1.18 =offer14.42.
+UI reuse: existing award rows/footer, confirmation/source links, field-validation error inside active
+editor; no new CSS/primitives. Main unchanged; no push/merge/deploy; comparisons deferred/no date.
+Scope details/checksums/rollback/next checks in SAME audit. PD016 history, PD018 imported sources,
+PD019 stale autosave, remaining workbook/ledgers/competitors/requirements and #115/#96 remain visible.
+
+## Historical Sportsbook integrity repair —2026-09-13
 
 PD-QA-020 fixed on branch cb0f29068d5d4a24a61ec3e2a66afa91c3265a71; PD-QA-003 Sportsbook subcase repaired. Main remains unfixed. Existing audit contains reproduction, field policy, SQLite/actual PostgreSQL/native browser evidence and related write-boundary table. J07 native required gates now pass;46/87 assessed,8/24 exercised,8/24 passing,14/27 competitors,24/133 requests. No new assessment/request count.
 PD-QA-017 next:£10 split cannot become£15 on retry; concurrency/idempotency; protected children/history and legitimate#80 removal. PD018 imported-parent and PD019 stale autosave remain separate. No push/merge/deploy; protected builds/data unchanged; calculator comparison deferred without date.

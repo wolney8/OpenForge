@@ -1,6 +1,146 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current Sportsbook safety repair — 2026-09-13 / LOCAL ONLY
+## Current award-integrity repair — 2026-09-14 / LOCAL ONLY
+
+Candidate branch `repair/award-integrity-91`; application fix
+**8276e2a1f9a3eb7fe018021c616e4c180d0216c9** (atomic operation7a818fe2dd873ce7f7b6babb1962414e01f79f9c;
+contextual recoveryb3397bd0e566129680f3593dbfe8bfc5852aba59).
+Harness/contract checkpoint **eca15d6d022d240c5a22676c9a9232656f82a84e**.
+Verified base **1295e2679db1856f67da0cb2cda82e4ad8cabdf9** contains Sportsbook
+cb0f29068d5d4a24a61ec3e2a66afa91c3265a71 and inherited Account/Free Bet/Blackjack/modal repairs.
+Previous report **a3084de1e409710408499aba436ed3703370aadc** is historical.
+Exact outgoing report SHA is maintained in #114 living comment5652511529.
+No product merge into the documentation-only audit branch.
+
+| Coverage measure | Current | Whole % | Change this checkpoint |
+|---|---|---|---|
+| Evidence-complete assessments |46/87|53%|0 items / 0 points|
+| Fully exercised journeys |8/24|33%|0 / 0|
+| Passing journeys |8/24|33%|0 / 0|
+| Competitor cells |14/27|52%|0 / 0;12 documentation,2 hands-on|
+| Reconciled requests |24/133|18%|0 / 0|
+
+**PQA-J11 stays PARTIAL, not promoted from an API test count.** The latest complete browser
+attempt passed real award issuance/removal, injected failure/refresh/retry and lost-response
+recovery, then failed at child matching: older autosave cleared entered lay odds (PD-QA-019).
+A separately labelled award-review-only matrix checks the bounded award controls; it does
+not substitute for placement/settlement/history/report steps. Earlier three-theme/width
+ordered-entry settlement observations are retained as historical evidence, not current full
+journey sign-off. PD-QA-016 full change-history and PD-QA-018 imported-parent resolution stay separate.
+
+### PD-QA-017: reproduction, repair and disposition
+
+**Result PASS / PROVEN for the executed server transaction/identity/removal matrix; current
+full browser journey FAIL / PROVEN at the existing PD-QA-019 boundary.** No whole-platform claim.
+Before edits five baseline failures exposed independent child POSTs minting15 credit for
+a reviewed10 on retry, source204/orphans/history loss, unavailable atomic route, and the
+source-placement child-removal guard. The first UI static test also had an incorrect repository
+path (harness failure, corrected before the genuine source guard assertion).
+
+New reviewed groups use one authenticated, Profile-scoped server operation:
+`POST /profiles/:profile/sportsbook-bets/:source/free-bet-awards`.
+Existing sportsbook audit primary-key identity stores canonical SHA-256-bound pending/committed
+intent and the committed original child IDs. Durable pending intent is **not issued credit**.
+All child validation/Account authority, existing calculation/response preparation, child writes,
+source update and successful business audits share one mutation transaction. Nested existing
+create/read helpers explicitly reuse its connection; no independent child commit or new engine.
+Expected face value and explained variance remain reviewed values, not realised profit.
+
+Same operation retries/concurrent processes reuse IDs; changed reviewed contents409. An explicitly
+new later award gets a new operation and remains possible. Browser review/identity survives refresh
+in session-local storage; ambiguous delivery keeps inputs and contextual error inside the active
+editor. The first post-success click explicitly opens a new review rather than silently issuing it.
+
+Removal rechecks child lifecycle, actual values AND retained placement history while holding the
+Profile/database lock. An unused child can be removed even when its source is placed. Its complete
+raw snapshot/audit history is retained on the source; committed replay reports removed IDs without
+resurrection. Protected descendants deny409 without mutation. Source activity/award history cannot
+be hard-deleted or reset to Pending/Prospecting to erase financial history; qualifying classification
+cannot be cleared to bypass protection. Recorded qualifying activity is protected even before the
+award claim, closing source-deletion-versus-issuance financial loss. Ordinary non-award deletion
+and genuinely unplaced qualifying drafts retain their existing policy.
+
+Two additional bypass regressions protect immutable child source/group/split identifiers and flag
+legacy partial groups for explicit review; neither original-group retry nor a fresh full-group
+request silently completes ambiguous credit. No duplicates, historical values or imported source
+identifiers were automatically repaired. Replay after legitimate removal cannot remint credit.
+
+### Executed evidence, independent values and exact limits
+
+- Final application8276e2a: **227 focused API regressions PASS**, including17 award tests and inherited
+  Account/Free Bet/Blackjack/Sportsbook safety. Targeted TypeScript/ESLint and new Python Ruff PASS.
+- SQLite and **actual PostgreSQL18.6** each passed the same11 grouped assertion boundaries:
+  second-child500 rollback; exactly two children/10 on retry; committed lost-response replay;
+  changed-payload409; simultaneous same operation through separate processes/connections;
+  deliberate later single10; unused removal/replay; protected/source deletion zero mutation;
+  deletion-versus-placement and source-deletion-versus-issuance races; controlled missing/archived/
+  foreign authority; final source response-preparation fault rollback/retry. State independently
+  queried through sqlite3/psycopg, not inferred from HTTP status.
+- PostgreSQL private loopback63474, synthetic test database, current schema only; test cluster stopped.
+  No reinstall, hosted DSN, default5432, operational database, migration or unchanged recovery rerun.
+- Independently: source actual9 at back10/back5/lay5.20/commission2%, Lay Won =−10+9×0.98=**−1.18**.
+  Each generated5 child actual3.50, Back Won: SNR5×(5−1)−3.50×(5.20−1)=**5.30**;
+  SR5×5−3.50×4.20=**10.30**. Whole offer =−1.18+5.30+10.30=**14.42**.
+  Standard reference/copy children**3.86/4.83**; face value10 is promotional credit, not cash profit.
+- Latest full browser attempt is retained separately in owned runtime `browser-evidence.json`:
+  actual authenticated editor, genuine single/split generation (never seeded child links),500 injection,
+  retained review/operation after refresh, real post-commit network abort/retry-original IDs, normal
+  pointer/keyboard; child matching blocked by PD019. No forced clicks, hidden assertion failures or
+  substitute API call counted as a complete browser step.
+- Separate scoped award-review evidence **PASS / PROVEN** for all four1440/760 light/dark variants,
+  private run2026-09-14; normal pointer Create and keyboard containment; genuine single10/removal,
+  split5SNR+5SR, injected second-child failure/refresh/retry, no duplicate children, source Delete
+  disabled. Actual first-variant post-commit network abort/retry reused original IDs. No page errors.
+  It checks1440/760, light/dark, contained focus, real pointer Create, review/retry/removal,
+  protected source Delete disabled and page containment. It deliberately does NOT claim child settlement.
+- Private screenshot inspection also found a retained desktop modal clipping defect: left edges of
+  Expiry/Expected Award Value/Notes labels and the disabled Save button are cropped at1440/dark
+  (1440/light similar). The half-width screenshots retain readable aligned actions. Page-level
+  overflow assertions alone did not establish modal containment. This is **FAIL / PROVEN by rendered
+  pixels**, root sizing/scroll cause UNVERIFIED, existing PD-QA-004/005/#92 follow-up; no new CSS
+  introduced or whole-modal acceptance claimed. No forced click or screenshot-only repair.
+- Existing setup errors (missing onboarding module, unchanged-select event wait, calculator draft
+  incorrectly assumed to autosave, original nested SQLite seed-lock) are distinguished from product
+  defects. Calculator inputs are not assumed to issue an API update on blur. The unfixed PD019 rapid
+  entry loss remains a product finding, not a harness skip.
+- No screen reader, all numeric inputs, external calculator parity, hosted behaviour, complete import/
+  restore/award history UI or operational historical records verified by this repair. Account lifecycle
+  changes after committed issuance can still deny replay under current authority revalidation; the
+  existing result is retained, no duplicate credit. This edge remains NOT TESTED.
+
+Durable redacted evidence summary/checksums (no DB/token/screenshots committed):
+SQLite `/private/tmp/openforge-award-91-pv_mr1f4/evidence.json`
+SHA-256 `65b6cfab56f43d8280b479cc8ffc197b55b26149325e58c3bcbc0fe110c978a0`;
+PostgreSQL `/private/tmp/openforge-pqa-pg-114-wxsk0yef/evidence.json`
+SHA-256 `a0a80751cb44a2b882ec5be7ad682519a163acca77c785adf999219852540c66`.
+Both explicitly identify application8276e2a. Raw artifacts remain isolated local-only.
+Scoped browser `/tmp/openforge-award-integrity-91-20260914/award-review-evidence.json`
+SHA-256 `b39c3c5c07e3918a789e0f2e448c88e1d42aabd3370a9f923b4a6056ab9733d5`;
+full failed browser `browser-evidence.json`
+SHA-256 `689e97f4bd0892665e019e02b47b64f34c7b0d3256aa8ef844b24ef76d0b03c6`.
+Synthetic profile `profile-66fa7e6c3fd5`, four genuine group operations/each exactly two5 children;
+first lost-response single retained IDs before legitimate removal. Captures are private troubleshooting
+evidence, not committed raw screenshots. No actual user comparison observations were touched.
+
+### Safety, integration and next return point
+
+Main/manual candidate **f7a3b35073ecc87cdf8f8f881129f221ec44d395**, unmerged Multi-Lay
+**215193b7fcb5b11a28e23a4531d2a45434545dc1**, normal/manual3020/8020 and review3034/8034
+data/services and all _input originals/observations remain unchanged. Main/normal app does NOT
+contain this repair. Owned synthetic award runtime3039/8039 is separate, authentication required.
+Bundle verification and exact report/branch checkpoint are maintained in the handoff.
+
+No push/PR/merge/deployment or issue closure. Future integration requires review of the inherited
+stack and scoped product commits; rollback uses reverse reverts on an authorised review branch,
+not historical data rewrite. No schema migration is required. #115 dependency/exposure, #96
+owner/provider rotation and Vercel publication prerequisites remain separate and uncleared.
+
+Next bounded repair **PD-QA-019 stale Free Bet autosave** is the genuine PQA-J11 browser blocker;
+**PD-QA-018 imported-parent resolution** and the remaining full workbook/populated ledgers,
+competitor/request/accessibility/recovery audit remain queued. No calculator comparison date.
+No engineering regression assignment or action needed from Will for continued local work.
+
+## Historical Sportsbook safety repair — 2026-09-13 / LOCAL ONLY
 
 Branch `repair/sportsbook-safe-91`; verified base81af076cf67b5d0951aef9f1a8bca6fdafb841bc,
 inherited application6d2276e00d0a1a540f48f7ecc253e864ad30d5e3,
