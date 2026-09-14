@@ -21,6 +21,10 @@ child removal and child placement; recheck lifecycle/relationships in that trans
 Unused/unplaced/unsettled children may be removed irrespective of source placement.
 Protected children cannot be deleted. Source with surviving children or a durable award
 operation cannot be hard-deleted, because its source history/result must remain intact.
+Recorded Placed/Settled/Free Bet Awarded qualifying-source activity is also protected
+before the operation claim: deletion racing issuance cannot remove its financial result.
+Its qualifying classification/recorded result cannot be cleared to bypass that protection;
+normal non-award rows and genuinely unplaced qualifying drafts retain existing policies.
 Child removal retains a source audit snapshot and never resets the qualifying result.
 The original committed operation keeps original IDs; replay cannot remint removed credit.
 
@@ -28,7 +32,8 @@ Evidence gates: independent SQLite and real PostgreSQL transactions/concurrency/
 actual browser single/split, failure/retry, placement/settlement, removal/report/reload.
 PD-QA-016/018/019 remain separately open. No automatic legacy repair or deletion.
 
-Planning baseline. Human approval required before implementation.
+Historical planning baseline below; the scoped PD-QA-017 repair above was explicitly
+authorised by Will. Broader planning requirements retain their original approval gates.
 
 ## Purpose
 

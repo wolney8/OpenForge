@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {chromium,request,expect} from '@playwright/test';
 const runtime='/tmp/openforge-award-integrity-91-20260914';
+const awardReviewOnly=process.argv.includes('--award-review-only');
 const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{
   Cookie:'pd_session='+fs.readFileSync(runtime+'/session-token','utf8').trim()}});
 assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
@@ -24,7 +25,7 @@ for(const [account,type] of [['Bet365','Bookie'],['Smarkets','Exchange']]){
 assert.equal((await api.put('/profiles/'+pid+'/exchange-commissions',
   {data:{exchange_name:'Smarkets',commission_rate:'0.02'}})).status(),200);
 const browser=await chromium.launch({headless:true});
-const evidence={date:new Date().toISOString(),profileId:pid,variants:[],errors:[],result:'IN PROGRESS'};
+const evidence={date:new Date().toISOString(),profileId:pid,scope:awardReviewOnly?'award review only; full child matching blocked separately by PD-QA-019':'complete award journey',variants:[],errors:[],result:'IN PROGRESS'};
 let page;
 const sql=()=>JSON.parse(execFileSync('/Users/will_work/Scripts/Homelab/OpenForge/.venv/bin/python',[
   '-c',"import sqlite3,json,sys; c=sqlite3.connect(sys.argv[1]); c.row_factory=sqlite3.Row; print(json.dumps({t:[dict(r) for r in c.execute('SELECT * FROM '+t+' WHERE profile_id=?',(sys.argv[2],))] for t in ['sportsbook_bets','free_bets','sportsbook_bet_audit','free_bet_audit']}))",
@@ -113,6 +114,15 @@ try{
   assert.equal(split.free_bet_ids.length,2);assert.equal(split.issued_face_value,'10.00');
   assert.equal(sql().free_bets.filter(r=>r.origin_qual_bet_id===sid).length,2);
   await page.screenshot({path:runtime+'/award-'+width+'-'+theme+'.png',fullPage:true});
+  if(awardReviewOnly){
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await expect(dialog.getByRole('button',{name:'Delete',exact:true})).toBeDisabled();
+    evidence.variants.push({width,theme,sourceId:sid,operationId:op,childIds:split.free_bet_ids,
+      single10Removed:true,secondChildFailureRollback:true,refreshRetrySameIdentity:true,
+      lostCommittedResponseReusedIds:lostResponseIds!==null,sourceDeletionDisabled:true,
+      pointerCreate:true,keyboardFocusContained:true,noPageOverflow:true});
+    await context.close();continue;
+  }
   for(const [index,mode,reference,expected] of [[0,'SNR','3.86','5.30'],[1,'SR','4.83','10.30']]){
     const ident=split.free_bet_ids[index];
     const childurl='http://localhost:3039/profiles/'+pid+'/tracker/free-bets?record='+ident;
@@ -171,5 +181,5 @@ try{
 }catch(error){evidence.result='FAIL';evidence.error=error.message;
  if(page&&!page.isClosed()){fs.writeFileSync(runtime+'/failure.txt',await page.locator('body').innerText());
  await page.screenshot({path:runtime+'/failure.png',fullPage:true});}throw error;
-}finally{fs.writeFileSync(runtime+'/browser-evidence.json',JSON.stringify(evidence,null,2));
+}finally{fs.writeFileSync(runtime+(awardReviewOnly?'/award-review-evidence.json':'/browser-evidence.json'),JSON.stringify(evidence,null,2));
  await browser.close();await api.dispose();}
