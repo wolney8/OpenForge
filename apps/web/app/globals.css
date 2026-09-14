@@ -8746,6 +8746,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 .custom-slider-card-controls {
   padding: 0 0.95rem;
   min-width: 0;
+  container: custom-slider / inline-size;
 }
 
 .custom-slider-direction-labels {
@@ -15547,6 +15548,21 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .custom-slider-track:active {
   cursor: grabbing;
+}
+
+@container custom-slider (max-width: 24rem) {
+  .custom-slider-direction-labels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .custom-slider-direction-labels > span { display: none; }
+  .custom-slider-direction-labels > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-wrap: anywhere;
+  }
+  .custom-slider-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .custom-slider-track-wrap { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+  .custom-slider-range-label:first-child { grid-column: 1; grid-row: 1; }
+  .custom-slider-range-label:last-child { grid-column: 2; grid-row: 1; }
 }
 
 .field-span-2 {
