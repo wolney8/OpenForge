@@ -1,6 +1,25 @@
 # Project Status
 
-## Current calculator-correction engineering checkpoint — 2026-09-14 / LOCAL ONLY
+## Current approved planning-storage checkpoint — LOCAL ONLY
+
+We are implementing core calculator/ledger parity. Backend source3f2eaca9fe2b7e00a957202ce84e09246751fbca
+adds the two approved nullable planning fields, validated exact-decimal plans, corrected
+SNR API conversion, actual-commission preservation and native portable metadata.
+Isolated SQLite and PostgreSQL18.6 tests establish the scoped backend results in the
+[current audit](docs/audits/platform-quality-audit.md#current-approved-lay-plan-implementation-checkpoint--2026-09-14--local-only).
+The embedded controls/native UI and fixed-build browser integration gate are still
+unfinished. There is no new tested browser candidate; existing3040/8039 retains its
+prior API/data. Main/normal, manual and3034 services remain unchanged/unfixed.
+
+Next: shared versioned embedded planner and explicit actual placement, then complete
+browser save/reopen/settlement/report verification on a new isolated runtime. C08 and
+broader C01/C02 cases remain queued. Wider audit is on hold during this core gate.
+No action needed from Will; no bulk comparison, publication or integration authorised.
+Coverage remains46/87 reviewed,8/24 exercised/passing,14/27 competitor,24/133 requests.
+
+Everything below is historical unless explicitly revalidated above.
+
+## Historical calculator-correction engineering checkpoint — 2026-09-14 / LOCAL ONLY
 
 Partial user observations received; no further bulk owner entry required; engineering reference
 verification and fixes active; final acceptance pending. Original JSON/workbook remain private

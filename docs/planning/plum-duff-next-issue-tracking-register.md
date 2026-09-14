@@ -4,6 +4,30 @@
 
 ### Current core-parity slice — C04–C07 / core C09
 
+Current product3f2eaca9fe2b7e00a957202ce84e09246751fbca implements approved backend
+lay-plan-v1 fields/validation/migrations/bridge/native portable consumers. Isolated
+SNR four-strategy create/reopen/API conversion, source/retry, actual6.00 precedence,
+commission overrides, portable ID remapping and SQLite old-schema upgrade pass.
+Actual PostgreSQL18.6 fresh/repeat/empty-old-schema upgrade and response rollback pass
+on that fixed source. Existing portable suite has12 pre-existing seed/readiness failures;
+new valid plan round-trip passes. Broader PostgreSQL restart/portable/actuals remain.
+C04/C06 backend scoped PASS; C05/C07 native/versioned embedded controls NOT IMPLEMENTED;
+core C09 browser integration NOT TESTED. New plan API is available, not an automatic
+native UI path yet. Do not hand this backend checkpoint to Will as end-to-end parity.
+No operational migrations/backfill/publication. Existing3040/8039 remains prior API.
+Next exact step: shared embedded planner, percentage/native paths, explicit placement,
+copy-only semantics and revision acknowledgement, then isolated fixed-browser gate.
+No further schema approval/bulk owner entry needed. C08/C01/C02 remain retained.
+
+The earlier proposal/blocker text below is historical, not current authority.
+
+2026-09-14 continuation: Will approved the two nullable versioned lay_plan_json fields,
+typed API/editor/bridge/portable consumers and disposable-only additive migrations.
+Prior BLOCKED schema proposal below is historical. C04–C07/core C09 now IN PROGRESS:
+implement one validated planning contract, preserve existing actual-commission column
+for confirmed versioned placements, and prove SQLite/PostgreSQL/UI round trips.
+No operational migration, backfill, publication or acceptance authorised.
+
 Verified starting checkout9ffaad7e726a8c0482ac22ba1da0cf18063622aa;
 tested prior UI66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 and API72a924e6e2ea8f769136575f8192726a785974c4.
 C04/C06/C09 destination parity BLOCKED: isolated native create/reopen reproduces

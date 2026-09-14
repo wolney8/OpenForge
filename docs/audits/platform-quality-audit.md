@@ -1,6 +1,76 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current calculator-correction checkpoint — 2026-09-14 / LOCAL ONLY
+## Current approved lay-plan implementation checkpoint — 2026-09-14 / LOCAL ONLY
+
+Product source **3f2eaca9fe2b7e00a957202ce84e09246751fbca** is a direct child of
+verified checkpoint47b4495642d15456938210a1150945b7dd57d65b, which directly inherits
+tested24385bf72a5161a6e14e22175f40def2fcb808db. Prior reportc8664a54ff6583db0b02188d70c0caec0d8263cf
+is historical. This is an implementation checkpoint, **not full core parity**.
+
+Will's two-field approval is implemented in the backend: nullable TEXT lay_plan_json
+on Sportsbook/Free Bets, typed lay-plan-v1, server reference validation, immutable
+source identity, revision checks, planning/actual separation and retained actual
+commission in the existing lay_commission_1 column. No additional business columns.
+No backfill, operational migration, push, merge or deployment. Main/normal remains
+unfixed; protected3034/8034 and frozen3020/8020 are unchanged.
+
+| ID | Current result / evidence | Exact remaining work |
+|---|---|---|
+| C01 | Existing scoped PASS / PROVEN retained | Broader stale/network/cross-editor cases; new plan revision acknowledgement must be integrated with latest-edit handling |
+| C02 | Existing scoped PASS / PROVEN retained | Dirty/pending/nested confirmation/focus return/text-enlargement cases remain |
+| C03 | PARTIAL / DOCUMENTED | Workbook SR conflict and Cashback receipt/cap provenance remain separate; original inputs unchanged |
+| C04 | Backend plan/reference PASS / PROVEN; UI PARTIAL | New API conversions preserve Standard7.18, Underlay6.25, Overlay10.20, Custom9.00, strategy and source; embedded UI still needs versioned plan consumption |
+| C05 | PARTIAL / CODE-VERIFIED | Native API planning is available; native UI defaults and explicit actual-placement/copy-only controls not implemented; multi-fill/changed-odds remaining hedge still unsupported |
+| C06 | Backend override PASS / PROVEN; UI PARTIAL | Plan ratios0/.05/.02125 persist; actual .02 does not follow changed Profile default. Embedded percentage inputs and browser save/reopen/pop-out still unfinished |
+| C07 | Existing standalone scoped PASS / PROVEN; embedded PARTIAL | Reuse the accepted shared controls for new native/versioned embedded rows; live drag/stale apply/save and revision-state handling remain |
+| C08 | Existing API scoped PASS / PROVEN; UI PARTIAL | Conditional Cashback receipt/cap/credit, embedded mode-switch/reset and no double counting remain |
+| C09 | PARTIAL / PROVEN backend only | Fixed-source browser conversion/reopen/copy/actual placement/settlement/report, enlarged text, reduced motion, genuine award rerun and changed-code build remain NOT TESTED for this product |
+
+### Actual isolated migration and persistence evidence
+
+Fixed source3f2eaca: **235 focused API/backend checks PASS**, including23 new core-plan
+cases, Account/Free Bet/Sportsbook atomic safety, supported conversion and three
+unchanged unversioned legacy-plan regressions. This count is not a configuration or
+journey completion claim. The source was not edited during this final test run.
+
+New parametrised test_core_lay_plans.py uses independent exact literals, real HTTP
+handlers and database inspection. It covers all four SNR references, Normal planning,
+zero/5%/fractional overrides, invalid/tampered/foreign/version conflicts, response
+rollback, revision rejection, actual6.00 precedence (liability19.20, Back Won10.80,
+Lay Won5.88), source/idempotent API conversion, native portable restore with Exchange
+ID remapping, and synthetic SQLite old-schema repeat upgrade without changing actuals.
+
+Actual PostgreSQL18.6 PASS on fixed source3f2eaca, unused loopback port54921, owned
+disposable directory /private/tmp/openforge-pqa-pg-114-j808ymjz. Fresh schema/four SNR
+references/blank actuals, injected response rollback, repeat migration/fresh-connection
+reads and second disposable old-column schema upgrade pass. Cluster stopped in finally.
+The second PostgreSQL upgrade fixture has empty ledger tables; preservation of populated
+old-schema PostgreSQL rows, full restart, actual-commission settlement and portable
+restore on PostgreSQL remain NOT TESTED. SQLite does not establish those results.
+
+Existing portable suite has 12 fixture-setup failures: its legacy seed calls protected
+create with result Won, four-decimal money and an Exchange not owned by the Profile.
+Assertions were not weakened. The new valid synthetic native portable plan round-trip
+passes; legacy artifact compatibility and all old portable assertions remain unverified.
+
+Native portable exports now retain plans and restore remaps Exchange Account IDs.
+Legacy ledger workbook export rejects planned rows with a native-portable alternative,
+rather than dropping metadata. Older native v1 missing-plan columns are accepted only
+after original checksum validation; an explicit legacy-file regression remains needed.
+Rollback must retain columns/plans; older code must not edit new versioned plans.
+
+No new corrected browser candidate is running:3040/8039 still serves the prior API72a924e,
+with existing data retained. The existing launcher is historical-review only, not a
+launch of3f2eaca. Next implementation: shared embedded versioned planner, native automatic
+plan creation, percentage/explicit placement controls, coherent revision acknowledgement
+and source-preserving bridge UI; then an isolated new runtime and fixed-candidate browser
+gate. No further schema approval or bulk owner comparison is required.
+
+Coverage unchanged46/87 assessments,8/24 journeys exercised/passing,14/27 competitor
+cells,24/133 requirements. Wider audit resumes after core integration gate.
+Everything below is historical unless explicitly revalidated above.
+
+## Historical calculator-correction checkpoint — 2026-09-14 / LOCAL ONLY
 
 Reporting branch audit/platform-quality-114 is documentation-only. Current tested product candidate
 **24385bf72a5161a6e14e22175f40def2fcb808db**; API reference source
