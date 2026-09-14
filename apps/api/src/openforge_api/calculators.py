@@ -232,6 +232,7 @@ class CalculatorStrategyReferenceResponse(BaseModel):
 
 
 class MatchedBettingResponse(BaseModel):
+    reference_contract_version: str = "workbook-reference-v1"
     result_kind: Literal["reference"] = "reference"
     calculation_state: str
     calculator_family: Literal["matched-betting"] = "matched-betting"
@@ -995,6 +996,24 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         else payload.strategy
     )
     if payload.bet_type == "free_bet":
+        snr_references: dict[str, Decimal | None] | None = None
+        selected_reference = payload.manual_lay_stake
+        if payload.free_bet_mode == "SNR":
+            face, back, lay, commission = map(Decimal, (
+                payload.back_stake, effective_back_odds_text,
+                payload.lay_odds, payload.exchange_commission,
+            ))
+            under = face * (back - 2) / (lay - 1)
+            snr_references = {
+                "Standard": quantize_money(face * (back - 1) / (lay - commission)),
+                "Underlay": quantize_money(under) if under >= 0 else None,
+                "Overlay": quantize_money(face / (1 - commission)) if commission < 1 else None,
+            }
+            if not selected_reference and calculation_strategy in snr_references:
+                selected = snr_references[calculation_strategy]
+                if selected is None:
+                    raise HTTPException(status_code=422, detail=f"{calculation_strategy} has no valid non-negative SNR endpoint for these inputs.")
+                selected_reference = _money(selected)
         free_result = calculate_free_bet_current_value(
             FreeBetCalculationInput(
                 profile_id="standalone",
@@ -1007,7 +1026,7 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
                 match_strategy=calculation_strategy,
                 lay_odds_1=payload.lay_odds,
                 lay_commission_1=payload.exchange_commission,
-                lay_actual=payload.manual_lay_stake,
+                lay_actual=selected_reference,
                 default_underlay_factor=payload.underlay_factor,
                 default_overlay_factor=payload.overlay_factor,
             ),
@@ -1018,6 +1037,8 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
             free_result.underlay_reference_lay_stake,
             free_result.overlay_reference_lay_stake,
         )
+        if snr_references is not None:
+            standard, underlay, overlay = (snr_references[name] for name in ("Standard", "Underlay", "Overlay"))
         calculation_state = free_result.calculation_state
         actual_lay_stake = free_result.actual_lay_stake_1
         liability = free_result.calculated_liability_1
@@ -1034,6 +1055,12 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         )
         strategy_references = []
         for reference_strategy in ("Standard", "Underlay", "Overlay"):
+            reference_actual = ""
+            if snr_references is not None:
+                reference_value = snr_references[reference_strategy]
+                if reference_value is None:
+                    continue
+                reference_actual = _money(reference_value)
             free_reference = calculate_free_bet_current_value(
                 FreeBetCalculationInput(
                     profile_id="standalone",
@@ -1044,6 +1071,7 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
                     free_bet_value=payload.back_stake,
                     back_odds=effective_back_odds_text,
                     match_strategy=reference_strategy,
+                    lay_actual=reference_actual,
                     lay_odds_1=payload.lay_odds,
                     lay_commission_1=payload.exchange_commission,
                     default_underlay_factor=payload.underlay_factor,
@@ -1215,6 +1243,7 @@ def _calculate(payload: MatchedBettingPayload) -> MatchedBettingResponse:
         outcomes[1].total = _money(selected.back_loses_total)
 
     return MatchedBettingResponse(
+        reference_contract_version="snr-outcome-target-v1" if payload.bet_type == "free_bet" and payload.free_bet_mode == "SNR" else "workbook-reference-v1",
         calculation_state=calculation_state,
         canonical_back_odds=effective_back_odds_text,
         canonical_lay_odds=payload.lay_odds,

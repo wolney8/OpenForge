@@ -43,6 +43,11 @@ def test_qualifying_and_free_bet_configuration_matrix(
         underlay = stake * (back_odds - 1) / (lay_odds - 1)
         overlay = stake / (1 - commission)
         payload: dict[str, str] = {"bet_type": "qualifying"}
+    elif backing == "SNR":
+        standard = stake * (back_odds - 1) / (lay_odds - commission)
+        underlay = stake * (back_odds - 2) / (lay_odds - 1)
+        overlay = stake / (1 - commission)
+        payload = {"bet_type": "free_bet", "free_bet_mode": backing}
     else:
         standard = stake * (back_odds - (1 if backing == "SNR" else 0)) / (lay_odds - commission)
         standard = Decimal(placed(standard))

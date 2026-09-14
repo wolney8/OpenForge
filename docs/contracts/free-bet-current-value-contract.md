@@ -4,6 +4,26 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
+### 2026-09-14 SNR reference-only correction / snr-outcome-target-v1
+
+Approved by Will's C04 correction prompt. This governs calculator reference presets only;
+it does NOT replace historical/current-value ledger settings, actual stakes or settlement.
+For face value F, back odds B, lay odds O and ratio commission c, with no back commission:
+Standard = F*(B−1)/(O−c); Underlay = F*(B−2)/(O−1); Overlay = F/(1−c).
+Underlay targets back-win F; Overlay targets lay-win F. Negative Underlay is unavailable,
+not clamped to a fabricated stake. B=2 gives a valid zero endpoint. c=1 makes Overlay unavailable.
+Selected unavailable presets reject422; Custom remains explicit and independent.
+Use exact Decimal intermediates, then existing ROUND_HALF_UP penny placement, then the existing
+cash-first engine's liability/branch quantization. No outcome equations are duplicated.
+Reference outcome residuals can differ by a penny; no exact break-even promise after placement.
+£10/B4/O4.2/c.02: Standard7.18/liability22.98/back7.02/lay7.04;
+Underlay6.25/liability20.00/back10.00/lay6.13; Overlay10.20/liability32.64/back−2.64/lay10.00;
+Custom9.00/liability28.80/back1.20/lay8.82. These are independent equations plus supplied
+user OP observations, NOT fresh external black-box parity. Existing legacy SR/factor policy remains.
+Public preview responses identify reference_contract_version. Back commission is not exposed by
+this payload; do not silently infer support. Embedded adoption requires an explicit reference call,
+not a global rewrite of legacy ledger presets. Conversion envelopes retain the derived response.
+
 - Status: Approved implementation baseline through prior contract review and workbook-parity sign-off
 - Owner: Plum Duff calculation contracts
 - Human approval required before formula changes: Yes
