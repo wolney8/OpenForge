@@ -29,16 +29,9 @@ def configure_temp_database(tmp_path: Path) -> None:
         connection.commit()
 
 
-def test_new_reference_semantics_fail_closed_without_destination_contract(tmp_path: Path) -> None:
+def test_unsupported_cashback_credit_remains_fail_closed(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = authenticated_client()
-    for strategy in ("Underlay", "Overlay"):
-        payload = standard_payload(["profile-demo-001"])
-        payload["calculator"].update(bet_type="free_bet", free_bet_mode="SNR", strategy=strategy)
-        payload["source"]["calculator_mode"] = "free_bet"
-        response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
-        assert response.status_code == 422
-        assert "versioned destination" in response.text
     payload = standard_payload(["profile-demo-001"])
     payload["calculator"].update(bet_type="cashback", cashback_reward_kind="free_bet")
     payload["source"]["calculator_mode"] = "cashback"
@@ -455,7 +448,11 @@ def test_standard_custom_and_part_lay_preserve_explicit_stake(tmp_path: Path) ->
         assert response.status_code == 200, response.text
         result = response.json()["results"][0]
         row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}").json()
-        assert row["lay_actual"] == "8.75"
+        if strategy == "Custom":
+            assert row["lay_actual"] == ""
+            assert json.loads(row["lay_plan_json"])["reviewed_planned_lay_stake"] == "8.75"
+        else:
+            assert row["lay_actual"] == "8.75"
         assert row["calculation_state"] == "resolved"
 
 

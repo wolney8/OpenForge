@@ -4,7 +4,49 @@ _Last updated: 2026-06-30_
 
 ## 0. Contract status
 
-### Core NEW-plan parity proposal — approval required, not implemented
+### Core NEW-plan storage — approved 2026-09-14; implementation in progress
+
+Will approved exactly one nullable `lay_plan_json` TEXT field on each existing core
+ledger and additive migrations only on disposable SQLite/PostgreSQL. No backfill.
+The plan schema `lay-plan-v1` supports Normal/SNR and Standard/Underlay/Overlay/Custom;
+calculation versions are workbook-reference-v1 (Normal) and snr-outcome-target-v1 (SNR).
+Inputs, Custom amount and reviewed planned stake are exact decimal strings. Commission
+is an explicit ratio with origin default/override and Exchange Account identity.
+Server recalculates the reviewed stake with the same existing calculator reference
+service; conflicting canonical row inputs, unsupported versions, tampered derived
+stake and foreign/ambiguous Exchange identities reject before writes.
+Omitted update retains the plan; explicit null clears only an eligible unplaced plan
+and is audited. Existing unversioned records never upgrade automatically.
+
+For versioned records the existing `lay_commission_1` column captures confirmed actual
+commission. It remains empty for an unplaced plan. A first explicit placement request
+that omits commission accepts the reviewed plan terms and captures that ratio in the
+actual column; explicitly blank commission rejects. Subsequent actual rates never
+follow planner or Profile defaults. Browser placement must show and confirm the rate.
+Actual amount/odds/commission retain settlement
+precedence even if the planner or Profile defaults change. Planning inputs remain in
+the plan, not actual fields, and plan editing does not mutate placements. Copy is
+clipboard-only. Unsupported plan metadata is diagnosed separately from otherwise
+valid actual history. Multi-fill arrangements beyond existing actual fields remain
+outside this core slice; changed-odds remaining hedges require governed operational
+calculation, never an inferred fill or blind subtraction.
+
+Native portable format must retain the object and remap Exchange Account identity;
+legacy workbook export must explicitly warn/reject where metadata cannot survive.
+Rollback leaves columns/data intact; pre-plan applications must not edit new planned
+records without an explicit guard because their consumers cannot preserve semantics.
+
+The additive PostgreSQL migration identity is `20260914_003_core_lay_plans`; SQLite
+uses the existing idempotent `ensure_column` initializer. Both columns are nullable
+TEXT, with no backfill. The native v1 portable reader accepts earlier files lacking
+these optional columns only after validating their original checksums, treating an
+absent plan as null. New native exports include the plan and remap its Exchange ID
+on restore. Legacy ledger workbook export rejects planned rows with an actionable
+native-portable alternative rather than dropping metadata. No operational migration
+is permitted by this approval. Integration requires the remaining editor/browser gate;
+rollback must retain columns and planning data, blocking old-code edits of new plans.
+
+#### Historical proposal and original blocker evidence
 
 The isolated C04–C07 reproduction `test_core_snr_parity_contract_gap.py` proves that
 an unplaced native SNR Underlay/Overlay reopens as6.66/9.33, not6.25/10.20, and a

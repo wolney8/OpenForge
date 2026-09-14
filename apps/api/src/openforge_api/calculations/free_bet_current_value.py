@@ -75,6 +75,8 @@ class FreeBetCalculationInput:
     date_settled: str = ""
     manual_override_value: str = ""
     manual_override_reason: str = ""
+    reference_lay_stakes: tuple[str | None, str | None, str | None] | None = None
+    planned_lay_stake: str = ""
 
 
 @dataclass(frozen=True)
@@ -432,7 +434,13 @@ def calculate_free_bet_current_value(
         overlay_reference_lay_stake = quantize_money(
             base_reference_lay_stake * overlay_factor
         )
+        if calculation_input.reference_lay_stakes is not None:
+            base_reference_lay_stake, underlay_reference_lay_stake, overlay_reference_lay_stake = (
+                parse_decimal(value) for value in calculation_input.reference_lay_stakes
+            )
         actual_lay_stake = parse_decimal(calculation_input.lay_actual)
+        if actual_lay_stake is None and calculation_input.planned_lay_stake:
+            actual_lay_stake = parse_decimal(calculation_input.planned_lay_stake)
         if manual_lay_mode and actual_lay_stake is None:
             override_result = _manual_override_fallback(
                 calculation_input,

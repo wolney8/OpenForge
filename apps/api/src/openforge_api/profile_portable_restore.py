@@ -330,6 +330,9 @@ def _restore_row(spec: SheetSpec, source: Mapping[str, str]) -> dict[str, Any]:
         raise PortableRestoreError(f"{spec.name} null metadata names an unknown field")
     row: dict[str, Any] = {}
     for field in spec.columns:
+        if field == "lay_plan_json" and field not in source:
+            row[field] = None
+            continue
         value = source[field]
         if field in null_fields:
             if value != "":
@@ -404,6 +407,10 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
     parsed: dict[str, tuple[dict[str, Any], ...]] = {}
     for spec in PORTABLE_PAYLOAD_SPECS:
         columns = _expected_columns(spec)
+        # Older v1 backups predate the optional additive planning column. Validate
+        # their original headers/checksums before representing absent plans as null.
+        if spec.name in {"Sportsbook", "Free Bets"} and sheets[spec.name][0] == [c for c in columns if c != "lay_plan_json"]:
+            columns = tuple(c for c in columns if c != "lay_plan_json")
         rows = _tabular_rows(sheets, spec.name, columns)
         declared = by_name[spec.name]
         if declared["authority_role"] != spec.authority_role:
@@ -939,6 +946,13 @@ def _resolved_rows(
                 if sheet_name != spec.name or not row.get(field):
                     continue
                 row[field] = identity_maps.get(domain, {}).get(str(row[field]), row[field])
+            if spec.name in {"Sportsbook", "Free Bets"} and row.get("lay_plan_json"):
+                from openforge_api.lay_plan import parse_plan
+                plan = parse_plan(str(row["lay_plan_json"]))
+                account_id = identity_maps.get("account", {}).get(plan.exchange_account_id)
+                if not account_id:
+                    raise PortableRestoreError("lay_plan_json Exchange Account identity cannot be resolved")
+                row["lay_plan_json"] = plan.model_copy(update={"exchange_account_id": account_id}).model_dump_json()
             if spec.name == "Profile":
                 row["profile_id"] = target_profile_id
                 row["display_name"] = target_display_name
@@ -1144,6 +1158,10 @@ def _normalized_projection(
             for (sheet_name, field), domain in FOREIGN_ID_FIELDS.items():
                 if sheet_name == spec.name and row.get(field):
                     row[field] = inverse.get(domain, {}).get(str(row[field]), row[field])
+            if spec.name in {"Sportsbook", "Free Bets"} and row.get("lay_plan_json"):
+                from openforge_api.lay_plan import parse_plan
+                plan = parse_plan(str(row["lay_plan_json"]))
+                row["lay_plan_json"] = plan.model_copy(update={"exchange_account_id": inverse.get("account", {}).get(plan.exchange_account_id, plan.exchange_account_id)}).model_dump_json()
             if spec.name == "Source Identities" and row.get("entity_id"):
                 domain = str(row.get("entity_type") or "")
                 identity_domain = ENTITY_IDENTITY_DOMAINS.get(domain, domain)

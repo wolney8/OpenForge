@@ -284,11 +284,68 @@ def sportsbook_cases(dsn, runtime):
     return {"passed": ["PD-QA-020 real PostgreSQL invalid create/update, calculation/model/JSON rollback, exact financial reopen/correction, missing Profile zero-write denial"], "sportsbook_checks": checks, "reference": "9.65", "actual_liability": "37.80", "back_won": "2.20", "lay_won": "-1.18"}
 
 
+def core_plan_cases(dsn, runtime):
+    """Only the approved additive plan boundary; actual PostgreSQL, no recovery rerun."""
+    import psycopg
+    from openforge_api import db, free_bets
+    from openforge_api.accounts import AccountPayload
+    from test_core_lay_plans import body, EXPECTED
+    client = client_for(dsn, runtime)
+    pid = "money-a"
+    db.create_profile_with_onboarding({"profile_id": pid, "display_name":"Synthetic plans",
+        "profile_code":"PLAN-TEST", "tracking_start_date":"2026-09-01", "current_cash_snapshot":"0.00",
+        "enabled_modules":["sportsbook-bets", "free-bets"], "accounts":[], "quick_actions":[], "exchange_commissions":[]})
+    db.link_fund_manager_profile(email=OWNER, profile_id=pid)
+    with db.connect() as c:
+        c.execute("UPDATE profiles SET status='Active' WHERE profile_id=?", (pid,))
+    for name, kind in [("Bookmaker A","Bookie"),("Exchange A","Exchange")]:
+        values = AccountPayload(account=name, type=kind, status="Active", lifecycle_status="Active", current_balance="0.00").model_dump()
+        values["restrictions_json"] = "[]"
+        db.create_account(pid, values)
+    db.upsert_profile_exchange_commission(pid, "Exchange A", "0.02")
+    ids = []
+    for strategy, expected in EXPECTED.items():
+        result = client.post(f"/profiles/{pid}/free-bets", json=body(strategy))
+        assert result.status_code == 201, result.text
+        row = result.json(); ids.append(row["free_bet_id"])
+        assert (row["calculated_liability_1"],row["scenario_pnl_if_back_wins"],row["scenario_pnl_if_lay_wins"]) == expected[1:]
+    with psycopg.connect(dsn) as c:
+        rows = c.execute("SELECT lay_actual,lay_matched_stake_1,lay_commission_1,lay_plan_json FROM free_bets").fetchall()
+        assert len(rows) == 4 and all(r[:3] == ("","","") and r[3] for r in rows)
+    before = persisted(dsn)
+    with patch.object(free_bets.FreeBetResponse,"model_dump_json",side_effect=RuntimeError("Synthetic plan response failure")):
+        failed = client.post(f"/profiles/{pid}/free-bets", json=body())
+        assert failed.status_code == 500
+    assert persisted(dsn) == before
+    # Repeat the actual migration entry point, then use fresh connections to reopen.
+    from openforge_api.postgres_migrations import apply_postgres_migrations
+    apply_postgres_migrations(dsn)
+    for identifier in ids:
+        assert client.get(f"/profiles/{pid}/free-bets/{identifier}").status_code == 200
+    # Second already-created disposable database: model the old nullable-column
+    # schema with a synthetic unversioned row, then execute only additive upgrade.
+    old_dsn = dsn.replace("/pqa114_primary", "/pqa114_restored")
+    apply_postgres_migrations(old_dsn)
+    with psycopg.connect(old_dsn) as c:
+        c.execute("ALTER TABLE free_bets DROP COLUMN lay_plan_json")
+        c.execute("ALTER TABLE sportsbook_bets DROP COLUMN lay_plan_json")
+    apply_postgres_migrations(old_dsn)
+    apply_postgres_migrations(old_dsn)
+    with psycopg.connect(old_dsn) as c:
+        columns = c.execute("SELECT table_name,column_name,is_nullable FROM information_schema.columns WHERE column_name='lay_plan_json'").fetchall()
+        assert set(columns) == {("sportsbook_bets","lay_plan_json","YES"),("free_bets","lay_plan_json","YES")}
+    return {"status":"PASS", "core_plan_records":4, "passed":[
+        "Fresh PostgreSQL schema: four independent SNR references, actual fields blank",
+        "Injected response preparation rolls back rows/audits", "Repeat migration and fresh-connection reopen",
+        "Second disposable old-column schema upgrades twice with nullable planning fields"]}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
     parser.add_argument("--sportsbook-only", action="store_true", help="PD-QA-020 targeted transactions; does not repeat recovery suite")
     parser.add_argument("--awards-only", action="store_true", help="PD-QA-017 transactions/process races only")
+    parser.add_argument("--core-plans-only", action="store_true", help="Approved additive core lay-plan storage only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -324,6 +381,9 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.core_plans_only:
+            record.update(core_plan_cases(primary, root))
+            return
         if args.awards_only:
             from verify_award_integrity_91 import award_cases
             record.update(award_cases(primary,root))

@@ -103,6 +103,7 @@ MatchStrategyValue = Literal[
 
 
 class SportsbookBetFields(BaseModel):
+    lay_plan_json: str | None = Field(default=None, max_length=12000)
     sportsbook_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(min_length=1, max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -538,6 +539,8 @@ def _build_response(
     commission_lookup: Callable[[str], str] | None = None,
 ) -> SportsbookBetResponse:
     record = row.__dict__
+    from openforge_api.lay_plan import readable_plan
+    plan, plan_note = readable_plan(record)
     profit_boost = resolve_profit_boost(record)
     effective_back_odds = (
         format_decimal(profit_boost.effective_back_odds, decimals=4)
@@ -549,6 +552,8 @@ def _build_response(
         if commission_lookup
         else get_profile_exchange_commission(profile_id, record["exchange_name"])
     )
+    if record.get("lay_plan_json"):
+        resolved_commission = record["lay_commission_1"] or (plan.commission if plan else resolved_commission)
     for field in MONEY_FIELDS:
         money(record[field], field, legacy=True)
     for field in ("back_odds", "base_back_odds", "actual_accepted_back_odds", "lay_odds_1"):
@@ -574,19 +579,23 @@ def _build_response(
             multi_lay_outcome_1_name=record["multi_lay_outcome_1_name"],
             multi_lay_outcomes_json=record["multi_lay_outcomes_json"],
             lay_commission_1=resolved_commission,
-            lay_actual=record["lay_actual"],
+            lay_actual=(record["lay_actual"] or record["lay_matched_stake_1"]) if record.get("lay_plan_json") else record["lay_actual"],
             lay_matched_stake_1=record["lay_matched_stake_1"],
             date_settled=record["date_settled"],
             manual_override_value=record["manual_override_value"],
             manual_override_reason=record["manual_override_reason"],
+            **(plan.reference_inputs() if plan else {}),
         ),
         as_of_date=as_of_date,
     )
+    serialized = serialize_calculation(calculation)
+    if plan_note:
+        serialized["calculation_notes"].append(plan_note)
     return SportsbookBetResponse.model_validate(
         {
             **record,
             "lay_commission_1": resolved_commission,
-            **serialize_calculation(calculation),
+            **serialized,
             **serialize_profit_boost(profit_boost),
         }
     )
@@ -656,7 +665,8 @@ def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str
             )
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
-    return parsed.model_dump()
+    from openforge_api.lay_plan import validate_plan_write
+    return validate_plan_write(profile_id, parsed.model_dump(), basis="Normal")
 
 
 def prepare_write_response(row: object, commissions: dict[str, str]) -> SportsbookBetResponse:
@@ -841,6 +851,11 @@ def preview_profile_sportsbook_bet(
 ) -> SportsbookCalculationPreviewResponse:
     resolved_commission = get_profile_exchange_commission(profile_id, payload.exchange_name)
     values = {**payload.model_dump(), "profile_id": profile_id}
+    from openforge_api.lay_plan import parse_plan, validate_plan_write
+    validated = validate_plan_write(profile_id, payload.model_dump(), basis="Normal")
+    plan = parse_plan(validated["lay_plan_json"]) if validated.get("lay_plan_json") else None
+    if plan:
+        resolved_commission = payload.lay_commission_1 or plan.commission
     profit_boost = resolve_profit_boost(values)
     effective_back_odds = (
         format_decimal(profit_boost.effective_back_odds, decimals=4)
@@ -864,11 +879,12 @@ def preview_profile_sportsbook_bet(
             multi_lay_outcome_1_name=payload.multi_lay_outcome_1_name,
             multi_lay_outcomes_json=payload.multi_lay_outcomes_json,
             lay_commission_1=resolved_commission,
-            lay_actual=payload.lay_actual,
+            lay_actual=(payload.lay_actual or payload.lay_matched_stake_1) if plan else payload.lay_actual,
             lay_matched_stake_1=payload.lay_matched_stake_1,
             date_settled=payload.date_settled,
             manual_override_value=payload.manual_override_value,
             manual_override_reason=payload.manual_override_reason,
+            **(plan.reference_inputs() if plan else {}),
         ),
         as_of_date=date.today(),
     )

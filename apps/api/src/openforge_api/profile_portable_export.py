@@ -197,7 +197,7 @@ SHEET_SPECS = (
             "partial_lay_reminder_due_at partial_lay_reminder_reason "
             "partial_lay_reminder_resolution_note partial_lay_reminder_resolved_at "
             "partial_lay_reminder_resolved_by user_notes manual_override_value "
-            "manual_override_reason created_at updated_at"
+            "manual_override_reason created_at updated_at lay_plan_json"
         ),
         ("sportsbook_bet_id",),
         decimal_fields=frozenset(
@@ -217,7 +217,7 @@ SHEET_SPECS = (
                 "manual_override_value",
             }
         ),
-        json_fields=frozenset({"multi_lay_outcomes_json"}),
+        json_fields=frozenset({"multi_lay_outcomes_json", "lay_plan_json"}),
         timestamp_fields=COMMON_TIMESTAMPS,
     ),
     SheetSpec(
@@ -233,9 +233,10 @@ SHEET_SPECS = (
             "follow_up_reminder_due_at follow_up_reminder_reason "
             "follow_up_reminder_resolution_note follow_up_reminder_resolved_at "
             "follow_up_reminder_resolved_by user_notes manual_override_value "
-            "manual_override_reason created_at updated_at"
+            "manual_override_reason created_at updated_at lay_plan_json"
         ),
         ("free_bet_id",),
+        json_fields=frozenset({"lay_plan_json"}),
         decimal_fields=frozenset(
             {
                 "free_bet_value",
@@ -553,6 +554,12 @@ def _canonical_value(spec: SheetSpec, field: str, value: Any) -> str:
     if value is None:
         return ""
     if field in spec.json_fields:
+        if field == "lay_plan_json" and value:
+            from openforge_api.lay_plan import parse_plan
+            try:
+                parse_plan(value if isinstance(value, str) else json.dumps(value))
+            except ValueError as error:
+                raise PortableExportError(f"{spec.name}.lay_plan_json requires correction: {error}") from error
         if isinstance(value, str):
             try:
                 value = json.loads(value)

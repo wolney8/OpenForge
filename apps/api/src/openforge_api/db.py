@@ -2045,6 +2045,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         connection, "sportsbook_bets", "multi_lay_outcomes_json", "TEXT NOT NULL DEFAULT '[]'"
     )
     ensure_column(connection, "sportsbook_bets", "lay_matched_stake_1", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "lay_plan_json", "TEXT")
+    ensure_column(connection, "free_bets", "lay_plan_json", "TEXT")
     ensure_column(
         connection,
         "sportsbook_bets",
@@ -3405,6 +3407,7 @@ class SportsbookBetRecord:
     manual_override_reason: str
     created_at: str
     updated_at: str
+    lay_plan_json: str | None = None
 
 
 @dataclass(frozen=True)
@@ -3449,6 +3452,7 @@ class FreeBetRecord:
     manual_override_reason: str
     created_at: str
     updated_at: str
+    lay_plan_json: str | None = None
 
 
 @dataclass(frozen=True)
@@ -3791,7 +3795,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
         "lay_matched_stake_1": payload["lay_matched_stake_1"],
         # Workbook parity: commission is derived from profile exchange settings,
         # not entered or stored as a row-owned source field.
-        "lay_commission_1": "",
+        "lay_commission_1": payload.get("lay_commission_1", "") if payload.get("lay_plan_json") and (payload.get("lay_actual") or payload.get("lay_matched_stake_1")) else "",
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
         "partial_lay_reminder_state": "Not Set",
@@ -3863,6 +3867,8 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
             """,
             tuple(record.values()),
         )
+        from openforge_api.lay_plan import store_plan
+        record["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, record["sportsbook_bet_id"], payload.get("lay_plan_json"))
         write_audit_entry(
             connection=connection,
             sportsbook_bet_id=record["sportsbook_bet_id"],
@@ -3890,6 +3896,8 @@ def update_sportsbook_bet(
         return None
 
     from openforge_api.sportsbook import validate_write_payload, prepare_write_response
+    from openforge_api.lay_plan import capture_first_placement_commission
+    payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
     commissions = get_profile_exchange_commission_map(profile_id)
 
@@ -3922,7 +3930,7 @@ def update_sportsbook_bet(
         "multi_lay_outcomes_json": payload.get("multi_lay_outcomes_json", "[]"),
         "lay_actual": payload["lay_actual"],
         "lay_matched_stake_1": payload["lay_matched_stake_1"],
-        "lay_commission_1": "",
+        "lay_commission_1": payload.get("lay_commission_1", "") if payload.get("lay_plan_json") and (payload.get("lay_actual") or payload.get("lay_matched_stake_1")) else "",
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
         "user_notes": payload["user_notes"],
@@ -3936,6 +3944,8 @@ def update_sportsbook_bet(
         if current is None:
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
+        from openforge_api.lay_plan import store_plan
+        updated["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, sportsbook_bet_id, payload.get("lay_plan_json"), updating=True)
         linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         operation = connection.execute("SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         qualifying_activity = current["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current["status"] in {"Placed", "Settled", "Free Bet Awarded"}
@@ -4907,7 +4917,7 @@ def create_free_bet(
         "lay_matched_stake_1": payload["lay_matched_stake_1"],
         # Workbook parity: commission is derived from profile exchange settings,
         # not entered or stored as a row-owned source field.
-        "lay_commission_1": "",
+        "lay_commission_1": payload.get("lay_commission_1", "") if payload.get("lay_plan_json") and (payload.get("lay_actual") or payload.get("lay_matched_stake_1")) else "",
         "exchange_name": payload["exchange_name"],
         "expiry_datetime": payload["expiry_datetime"],
         "date_settled": payload["date_settled"],
@@ -4983,6 +4993,8 @@ def create_free_bet(
             tuple(record.values()),
         )
         created_free_bet_id = cast(str, record["free_bet_id"])
+        from openforge_api.lay_plan import store_plan
+        record["lay_plan_json"] = store_plan(connection, "free_bets", profile_id, created_free_bet_id, payload.get("lay_plan_json"))
         write_free_bet_audit_entry(
             connection=connection,
             free_bet_id=created_free_bet_id,
@@ -5015,6 +5027,8 @@ def update_free_bet(
         return None
     from openforge_api.free_bets import prepare_write_response, validate_write_payload
 
+    from openforge_api.lay_plan import capture_first_placement_commission
+    payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
@@ -5036,7 +5050,7 @@ def update_free_bet(
         "lay_odds_1": payload["lay_odds_1"],
         "lay_actual": payload["lay_actual"],
         "lay_matched_stake_1": payload["lay_matched_stake_1"],
-        "lay_commission_1": "",
+        "lay_commission_1": payload.get("lay_commission_1", "") if payload.get("lay_plan_json") and (payload.get("lay_actual") or payload.get("lay_matched_stake_1")) else "",
         "exchange_name": payload["exchange_name"],
         "expiry_datetime": payload["expiry_datetime"],
         "date_settled": payload["date_settled"],
@@ -5068,6 +5082,8 @@ def update_free_bet(
         if current is None:
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Free bet no longer exists.")
+        from openforge_api.lay_plan import store_plan
+        updated["lay_plan_json"] = store_plan(connection, "free_bets", profile_id, free_bet_id, payload.get("lay_plan_json"), updating=True)
         if current["origin_qual_bet_id"]:
             identity_fields = ("origin_qual_bet_id","source_award_group_id","offer_group_id","source_award_split_index","source_award_split_total")
             if any(payload.get(field) != current[field] for field in identity_fields):

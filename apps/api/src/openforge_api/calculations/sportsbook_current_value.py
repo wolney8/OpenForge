@@ -70,6 +70,8 @@ class SportsbookCalculationInput:
     date_settled: str = ""
     manual_override_value: str = ""
     manual_override_reason: str = ""
+    reference_lay_stakes: tuple[str | None, str | None, str | None] | None = None
+    planned_lay_stake: str = ""
 
 
 @dataclass(frozen=True)
@@ -469,6 +471,10 @@ def calculate_sportsbook_current_value(
         ref_standard, ref_underlay, ref_overlay = _resolve_reference_lay_stakes(
             back_stake, back_odds, lay_odds_1, commission_1
         )
+    if calculation_input.reference_lay_stakes is not None:
+        ref_standard, ref_underlay, ref_overlay = (
+            parse_decimal(value) for value in calculation_input.reference_lay_stakes
+        )
     reference_by_strategy = {
         "Standard": ref_standard,
         "Underlay": ref_underlay,
@@ -735,6 +741,8 @@ def calculate_sportsbook_current_value(
         )
 
     manual_lay_value = parse_decimal(calculation_input.lay_actual)
+    if manual_lay_value is None and calculation_input.planned_lay_stake:
+        manual_lay_value = parse_decimal(calculation_input.planned_lay_stake)
     if manual_lay_mode and manual_lay_value is None:
         override_result = _manual_override_fallback(
             calculation_input,

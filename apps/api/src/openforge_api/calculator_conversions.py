@@ -313,8 +313,6 @@ def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[
 def convert_standard(payload: StandardConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
     _validate_destination_classification(payload)
-    if payload.calculator.bet_type == "free_bet" and payload.calculator.free_bet_mode == "SNR" and payload.calculator.strategy in {"Underlay", "Overlay"}:
-        raise HTTPException(status_code=422, detail="SNR outcome-target presets require a versioned destination planning contract; no activity was created.")
     if (payload.calculator.bet_type == "cashback" or (payload.calculator.bet_type == "qualifying" and payload.calculator.promotion_mode == "cashback")) and payload.calculator.cashback_reward_kind != "cash":
         raise HTTPException(status_code=422, detail="Free Bet cashback reference cannot be saved as cash cashback; destination award/credit contract is required.")
     if payload.source.calculator_family != "matched-betting":
@@ -420,6 +418,21 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
             continue
         try:
             source_note = f"Calculator source: {source_id} ({checksum})"
+            from openforge_api.lay_plan import encode_plan
+            core_plan = None
+            if ((payload.calculator.bet_type == "free_bet" and payload.calculator.free_bet_mode == "SNR") or
+                (payload.calculator.bet_type == "qualifying" and payload.calculator.promotion_mode == "standard")) and payload.calculator.strategy in {"Standard", "Underlay", "Overlay", "Custom"}:
+                core_plan = encode_plan(
+                    schema_version="lay-plan-v1", calculation_contract_version=preview.reference_contract_version,
+                    backing_basis="SNR" if destination_kind == "free_bet" else "Normal",
+                    back_stake=payload.calculator.back_stake, back_odds=preview.canonical_back_odds,
+                    lay_odds=preview.canonical_lay_odds, selected_strategy=payload.calculator.strategy,
+                    custom_lay_stake=payload.calculator.manual_lay_stake if payload.calculator.strategy == "Custom" else "",
+                    exchange_name=exchange_name, commission_units="ratio", commission=payload.calculator.exchange_commission,
+                    commission_origin=payload.source.canonical_inputs.get("commission_origin", "override"),
+                    reviewed_planned_lay_stake=preview.selected_lay_stake,
+                    source_identity=source_id, source_checksum=checksum,
+                )
             explicit_lay = (
                 preview.selected_lay_stake
                 if payload.calculator.bet_type in {"bonus_lock_in", "money_back"}
@@ -450,7 +463,8 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                         "back_odds": preview.canonical_back_odds,
                         "match_strategy": payload.calculator.strategy,
                         "lay_odds_1": preview.canonical_lay_odds,
-                        "lay_actual": explicit_lay,
+                        "lay_actual": "" if core_plan else explicit_lay,
+                        "lay_plan_json": core_plan,
                         "lay_matched_stake_1": "",
                         "exchange_name": exchange_name,
                         "expiry_datetime": "",
@@ -512,7 +526,8 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                     "bonus_retention_rate": payload.calculator.retention_percent,
                     "match_strategy": payload.calculator.strategy,
                     "lay_odds_1": preview.canonical_lay_odds,
-                    "lay_actual": explicit_lay,
+                    "lay_actual": "" if core_plan else explicit_lay,
+                    "lay_plan_json": core_plan,
                     "lay_matched_stake_1": "",
                     "exchange_name": exchange_name,
                     "date_settled": "",

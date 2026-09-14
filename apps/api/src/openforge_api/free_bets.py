@@ -64,6 +64,7 @@ MatchStrategyValue = Literal["Standard", "Underlay", "Overlay", "Custom", "No La
 
 
 class FreeBetFields(BaseModel):
+    lay_plan_json: str | None = Field(default=None, max_length=12000)
     free_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(default="", max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -284,6 +285,8 @@ def build_calculation_input(
     tracker_settings: ProfileTrackerSettingsRecord,
     resolved_commission: str | None = None,
 ) -> FreeBetCalculationInput:
+    from openforge_api.lay_plan import readable_plan
+    plan, _ = readable_plan(record.__dict__)
     return FreeBetCalculationInput(
         profile_id=record.profile_id,
         record_id=record.free_bet_id,
@@ -295,11 +298,12 @@ def build_calculation_input(
         match_strategy=record.match_strategy,
         lay_odds_1=record.lay_odds_1,
         lay_commission_1=(
+            (record.lay_commission_1 or plan.commission) if plan else
             resolved_commission
             if resolved_commission is not None
             else get_profile_exchange_commission(record.profile_id, record.exchange_name)
         ),
-        lay_actual=record.lay_actual,
+        lay_actual=(record.lay_actual or record.lay_matched_stake_1) if record.lay_plan_json else record.lay_actual,
         lay_matched_stake_1=record.lay_matched_stake_1,
         default_underlay_factor=tracker_settings.default_free_bet_underlay_factor,
         default_overlay_factor=tracker_settings.default_free_bet_overlay_factor,
@@ -307,6 +311,7 @@ def build_calculation_input(
         date_settled=record.date_settled,
         manual_override_value=record.manual_override_value,
         manual_override_reason=record.manual_override_reason,
+        **(plan.reference_inputs() if plan else {}),
     )
 
 
@@ -323,6 +328,12 @@ def build_response(
         if commission_lookup
         else get_profile_exchange_commission(record["profile_id"], record["exchange_name"])
     )
+    if row.lay_plan_json:
+        from openforge_api.lay_plan import parse_plan
+        try:
+            resolved_commission = row.lay_commission_1 or parse_plan(row.lay_plan_json).commission
+        except ValueError:
+            resolved_commission = row.lay_commission_1 or resolved_commission
     try:
         for field in MONEY_FIELDS:
             validate_legacy_free_bet_money(record[field], field)
@@ -338,6 +349,11 @@ def build_response(
             as_of_datetime=datetime.now(),
         )
         serialized = serialize_calculation(calculation)
+        if row.lay_plan_json:
+            from openforge_api.lay_plan import readable_plan
+            _, note = readable_plan(record)
+            if note:
+                serialized["calculation_notes"].append(note)
         for field, value in serialized.items():
             if (
                 isinstance(value, str)
@@ -427,7 +443,8 @@ def validate_write_payload(profile_id: str, payload: dict[str, object]) -> dict[
         raise HTTPException(
             status_code=422, detail="origin_qual_bet_id: source does not belong to this Profile"
         )
-    return parsed.model_dump()
+    from openforge_api.lay_plan import validate_plan_write
+    return validate_plan_write(profile_id, parsed.model_dump(), basis=parsed.retention_mode)
 
 
 def prepare_write_response(
@@ -468,6 +485,11 @@ def preview_profile_free_bet(
     profile_id: str, payload: FreeBetPayload
 ) -> FreeBetCalculationPreviewResponse:
     resolved_commission = get_profile_exchange_commission(profile_id, payload.exchange_name)
+    from openforge_api.lay_plan import parse_plan, validate_plan_write
+    validated = validate_plan_write(profile_id, payload.model_dump(), basis=payload.retention_mode)
+    plan = parse_plan(validated["lay_plan_json"]) if validated.get("lay_plan_json") else None
+    if plan:
+        resolved_commission = payload.lay_commission_1 or plan.commission
     tracker_settings = get_profile_tracker_settings(profile_id)
     calculation = calculate_free_bet_current_value(
         FreeBetCalculationInput(
@@ -481,7 +503,7 @@ def preview_profile_free_bet(
             match_strategy=payload.match_strategy,
             lay_odds_1=payload.lay_odds_1,
             lay_commission_1=resolved_commission,
-            lay_actual=payload.lay_actual,
+            lay_actual=(payload.lay_actual or payload.lay_matched_stake_1) if plan else payload.lay_actual,
             lay_matched_stake_1=payload.lay_matched_stake_1,
             default_underlay_factor=tracker_settings.default_free_bet_underlay_factor,
             default_overlay_factor=tracker_settings.default_free_bet_overlay_factor,
@@ -489,6 +511,7 @@ def preview_profile_free_bet(
             date_settled=payload.date_settled,
             manual_override_value=payload.manual_override_value,
             manual_override_reason=payload.manual_override_reason,
+            **(plan.reference_inputs() if plan else {}),
         ),
         as_of_datetime=datetime.now(),
     )

@@ -2221,7 +2221,10 @@ def list_profile_import_batches(profile_id: str) -> list[ImportBatchResponse]:
 def export_profile_sportsbook_xlsx(profile_id: str) -> Response:
     if get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    rows = [sportsbook_export_row(profile_id, row) for row in list_sportsbook_bets(profile_id)]
+    records = list_sportsbook_bets(profile_id)
+    if any(row.lay_plan_json for row in records):
+        raise HTTPException(status_code=409, detail="Legacy workbook export cannot retain versioned lay plans. Use native portable Profile export; no records were dropped.")
+    rows = [sportsbook_export_row(profile_id, row) for row in records]
     content = build_sportsbook_export(rows)
     return Response(
         content=content,
@@ -2238,7 +2241,10 @@ def export_profile_sportsbook_xlsx(profile_id: str) -> Response:
 def export_profile_free_bets_xlsx(profile_id: str) -> Response:
     if get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    rows = [free_bet_export_row(profile_id, row) for row in list_free_bets(profile_id)]
+    records = list_free_bets(profile_id)
+    if any(row.lay_plan_json for row in records):
+        raise HTTPException(status_code=409, detail="Legacy workbook export cannot retain versioned lay plans. Use native portable Profile export; no records were dropped.")
+    rows = [free_bet_export_row(profile_id, row) for row in records]
     content = build_free_bet_export(rows)
     return Response(
         content=content,
