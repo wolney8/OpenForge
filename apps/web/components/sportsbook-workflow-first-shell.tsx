@@ -9647,6 +9647,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     data-guided-field="free_bet_bridge"
                     data-pd-id="sportsbook.free-bet-bridge.inline"
                   >
+                    {errorMessage ? (
+                      <p className="field-validation-text field-span-2" role="alert">
+                        {errorMessage}
+                      </p>
+                    ) : null}
                     <label className="field-control">
                       <span>Bookmaker</span>
                       <select

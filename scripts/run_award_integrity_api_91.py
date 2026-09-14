@@ -14,9 +14,9 @@ os.environ.update(
     OPENFORGE_DATABASE_URL="sqlite:///" + str(runtime / "acceptance.sqlite3"),
 )
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/api/src"))
-from openforge_api.main import app
-from openforge_api import free_bets
-import uvicorn
+from openforge_api.main import app  # noqa: E402 - test environment must precede app import
+from openforge_api import free_bets  # noqa: E402
+import uvicorn  # noqa: E402
 
 original = free_bets.prepare_write_response
 seen = {}
