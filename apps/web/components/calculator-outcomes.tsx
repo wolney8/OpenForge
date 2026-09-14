@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { formatFinancialValue } from "@/lib/financial-display";
 
 export type CalculatorOutcomeValue = string | number | null | undefined;
@@ -12,6 +13,7 @@ export type CalculatorOutcomeScenario = {
   components?: CalculatorOutcomeValue[][];
   total: CalculatorOutcomeValue;
   selected?: boolean;
+  copyableTotal?: boolean;
 };
 
 function asNumber(value: CalculatorOutcomeValue) {
@@ -33,19 +35,23 @@ export function CalculatorOutcomeValueDisplay({ label, value }: { label: string;
 
 export function CalculatorOutcomes({
   columns = [],
+  busy = false,
   description,
   inspectionId,
   rows,
   summary,
+  title = "Outcomes",
 }: {
+  busy?: boolean;
   columns?: string[];
   description?: ReactNode;
   inspectionId: string;
   rows: CalculatorOutcomeScenario[];
   summary?: ReactNode;
+  title?: ReactNode;
 }) {
-  return <section className="calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card" data-pd-id={inspectionId}>
-    <div className="calculator-result-card-heading"><h3>Outcomes</h3></div>
+  return <section aria-busy={busy} className="calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card" data-pd-id={inspectionId}>
+    <div className="calculator-result-card-heading"><h3>{title}</h3></div>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
       {columns.length > 0 ? <div className={`extra-place-outcome-row extra-place-outcome-row-heading calculator-outcome-columns-${Math.min(columns.length, 3)}`} role="row">
@@ -69,7 +75,9 @@ export function CalculatorOutcomes({
                 <CalculatorOutcomeValueDisplay label={`${row.label} ${columns[componentIndex] ?? "component"} ${valueIndex + 1}`} value={value} />
               </span>)}
             </span>)}
-            <strong data-label="Total"><CalculatorOutcomeValueDisplay label={`${row.label} total`} value={row.total} /></strong>
+            <strong data-label="Total">{row.copyableTotal
+              ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.key}.copyable`} label={`${row.label} total`} value={row.total} />
+              : <CalculatorOutcomeValueDisplay label={`${row.label} total`} value={row.total} />}</strong>
           </div>
         </FinancialValueReplayGroup>;
       })}
