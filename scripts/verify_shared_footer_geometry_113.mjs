@@ -24,6 +24,11 @@ try {
    const geometry=await dialog.evaluate(el=>{const b=el.querySelector('.workflow-editor-body'),r=el.getBoundingClientRect();return {left:r.left,right:r.right,bodyWidth:b.clientWidth,scrollWidth:b.scrollWidth,scrollLeft:b.scrollLeft,buttons:[...el.querySelectorAll('.workflow-editor-footer button')].filter(e=>e.getClientRects().length).map(e=>{const t=e.getBoundingClientRect();return {left:t.left,right:t.right,width:t.width,height:t.height};})};});
    assert(geometry.scrollWidth<=geometry.bodyWidth+1,JSON.stringify({route,width,theme,geometry}));
    assert.equal(geometry.scrollLeft,0);
+   const overlaps=await footer.locator('button').evaluateAll(buttons=>{
+     const visible=buttons.filter(button=>button.getClientRects().length).map(button=>({label:button.textContent.trim(),box:button.getBoundingClientRect()}));
+     return visible.flatMap((a,i)=>visible.slice(i+1).filter(b=>Math.min(a.box.right,b.box.right)-Math.max(a.box.left,b.box.left)>1&&Math.min(a.box.bottom,b.box.bottom)-Math.max(a.box.top,b.box.top)>1).map(b=>[a.label,b.label]));
+   });
+   assert.deepEqual(overlaps,[],JSON.stringify({route,width,theme,overlaps}));
    assert(geometry.buttons.every(b=>b.left>=geometry.left&&b.right<=geometry.right),JSON.stringify({route,width,theme,geometry}));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    assert(await dialog.evaluate(el=>el.contains(document.activeElement)));

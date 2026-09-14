@@ -12984,12 +12984,19 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .workflow-editor-footer-primary {
+  grid-column: 1;
   align-items: center;
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.55rem;
   justify-self: start;
   padding-left: 0.1rem;
+}
+
+.workflow-editor-footer > .field-validation-text {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .workflow-editor-footer-primary .review-chip {
@@ -13009,6 +13016,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .workflow-editor-footer-nav {
+  grid-column: 3;
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -13021,6 +13029,27 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .workflow-editor-footer-nav .review-chip {
   min-width: 7.25rem;
   justify-content: center;
+}
+
+/* The action row must fit selected-record Delete/Revert too, not only empty Add.
+   Reflow by the actual modal container, including enlarged text; never overlap
+   navigation in the flexible spacer track or reduce accessible target sizes. */
+@container ledger-editor (max-width: 40rem) {
+  .workflow-editor-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workflow-editor-footer-primary,
+  .workflow-editor-footer-nav {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .workflow-editor-footer-nav {
+    justify-self: stretch;
+    justify-content: space-between;
+  }
+  .workflow-editor-footer-divider {
+    display: none;
+  }
 }
 
 .ledger-settled-delete-guard {

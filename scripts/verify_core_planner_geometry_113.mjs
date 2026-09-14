@@ -42,6 +42,11 @@ try {
   for(const name of ['Underlay','Overlay','Custom']) {const a=await core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`).boundingBox(),b=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();assert(Math.abs(a.x-b.x)<=1&&Math.abs(a.width-b.width)<=1);}
   await page.screenshot({path:`${runtime}/core-geometry-${basis}-${width}-${theme}-${textScale}.png`,fullPage:true});
   const save=dialog.getByRole('button',{name:'Save',exact:true});await save.scrollIntoViewIfNeeded();
+  const buttonOverlaps=await dialog.locator('.workflow-editor-footer button').evaluateAll(buttons=>{
+    const visible=buttons.filter(button=>button.getClientRects().length).map(button=>({label:button.textContent.trim(),box:button.getBoundingClientRect()}));
+    return visible.flatMap((a,i)=>visible.slice(i+1).filter(b=>Math.min(a.box.right,b.box.right)-Math.max(a.box.left,b.box.left)>1&&Math.min(a.box.bottom,b.box.bottom)-Math.max(a.box.top,b.box.top)>1).map(b=>[a.label,b.label]));
+  });
+  assert.deepEqual(buttonOverlaps,[],JSON.stringify({basis,width,theme,buttonOverlaps}));
   assert(await save.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return el===hit||el.contains(hit);}),'Pointer Save unobstructed');
   const controls=dialog.locator('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]').filter({visible:true});
   await controls.last().focus();await page.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)));
