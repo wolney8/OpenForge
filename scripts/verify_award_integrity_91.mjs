@@ -5,6 +5,9 @@ import {execFileSync} from 'node:child_process';
 import {chromium,request,expect} from '@playwright/test';
 const runtime='/tmp/openforge-award-integrity-91-20260914';
 const awardReviewOnly=process.argv.includes('--award-review-only');
+const webPort=process.env.PQA_AWARD_WEB_PORT??'3039';
+assert(['3039','3040'].includes(webPort));
+const webBase='http://localhost:'+webPort;
 const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{
   Cookie:'pd_session='+fs.readFileSync(runtime+'/session-token','utf8').trim()}});
 assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
@@ -45,7 +48,7 @@ try{
     back_stake:'10.00',back_odds:'5.00',lay_odds_1:'5.20',lay_actual:'9.00',
     exchange_name:'Smarkets',match_strategy:'Standard',date_settled:'2026-09-14T12:00:00'}});
   assert.equal(seed.status(),201,await seed.text());const sid=(await seed.json()).sportsbook_bet_id;
-  const url='http://localhost:3039/profiles/'+pid+'/tracker/sportsbook-bets?record='+sid;
+  const url=webBase+'/profiles/'+pid+'/tracker/sportsbook-bets?record='+sid;
   const awardpath='/profiles/'+pid+'/sportsbook-bets/'+sid+'/free-bet-awards';
   const dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');
   async function open(){
@@ -125,7 +128,7 @@ try{
   }
   for(const [index,mode,reference,expected] of [[0,'SNR','3.86','5.30'],[1,'SR','4.83','10.30']]){
     const ident=split.free_bet_ids[index];
-    const childurl='http://localhost:3039/profiles/'+pid+'/tracker/free-bets?record='+ident;
+    const childurl=webBase+'/profiles/'+pid+'/tracker/free-bets?record='+ident;
     await page.goto(childurl,{waitUntil:'domcontentloaded'});
     const editor=page.locator('[data-pd-id="free-bets.editor.dialog"]');await editor.waitFor();
     await editor.getByRole('tab',{name:/Matching/}).first().click();
@@ -160,7 +163,7 @@ try{
     {name:'Remove linked free bet '+ident,exact:true})).toBeDisabled();
   const beforeDenied=sql();assert.equal((await api.delete('/profiles/'+pid+'/sportsbook-bets/'+sid)).status(),409);
   assert.deepEqual(sql(),beforeDenied);
-  await page.goto('http://localhost:3039/profiles/'+pid+'/tracker/reports',{waitUntil:'domcontentloaded'});
+  await page.goto(webBase+'/profiles/'+pid+'/tracker/reports',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
   await page.reload();await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
   const records=await(await api.get('/profiles/'+pid+'/free-bets')).json();

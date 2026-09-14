@@ -343,6 +343,12 @@ to discover basic consistency, clipping, alignment, icon or overflow defects thr
 
 When a repeated defect is found, update `plum-duff-known-ui-pitfalls.md` and add a regression test.
 
+Active editor invariant: delayed persistence acknowledges its submitted snapshot, never later
+edits. Gate an actual response while editing and assert UI plus persistence; ordered entry after
+awaiting autosave does not establish rapid-edit safety. A sticky footer inside the body grid must
+not extend its horizontal scroll extent. Check body scrollLeft and every action rectangle after
+focus in equivalent ledger consumers; do not infer keyboard/modal acceptance from geometry alone.
+
 Shared modal invariant: use the canonical native top-layer boundary rather than z-index escalation.
 Wait for the mounted active panel before initial focus; contain Tab, preserve nested confirmation
 ownership, and restore the connected opener. Async preparation must retain an explicit opener ref.

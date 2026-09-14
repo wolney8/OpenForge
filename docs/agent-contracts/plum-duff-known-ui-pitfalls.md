@@ -1,5 +1,21 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-14: Save acknowledgements overwrote later edits; oversized footers cropped fields
+
+PD-QA-019: acknowledge only the submitted form snapshot. Merge later field edits, retain invalid
+draft text, serialise queued dropdown autosaves using the latest snapshot, and invalidate pre-save
+reads. Do not rehydrate the entire active editor from a delayed save or refresh response.
+Regression: latest-edit.test.ts and verify_free_bet_latest_edit_113.mjs gate a real committed
+response while entering odds/actual stake and changing Exchange again; assert persisted values.
+
+PD-QA-004/005: a sticky footer inside the form/body grid must fit that grid's width. Negative
+inline margins plus expanded width create a horizontal scroll extent; native focus then scrolls
+the body sideways and crops labels/actions. Assert scrollWidth/clientWidth, scrollLeft and all
+action rectangles after keyboard focus, not only before interaction. Reuse the shared footer.
+Regression: verify_shared_footer_geometry_113.mjs covers Sportsbook/Free Bet/Casino in both themes
+at desktop/half-width/narrow. It retains independent Escape failures; geometry success is not full
+modal acceptance. Casino Escape remains an explicit PD-QA-004 consumer gap until repaired/tested.
+
 ## PD-QA-004 — modal boundary ownership
 
 Ordinary portals/z-index do not guarantee navigation cannot intercept modal Save. Reuse the native
