@@ -2,9 +2,11 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import {chromium,request} from "@playwright/test";
-const runtime="/tmp/openforge-modal-114-repair",web="http://localhost:3034";
+import {execFileSync} from "node:child_process";
+const corrections=process.argv.includes('--calculator-corrections');
+const runtime=corrections?"/tmp/openforge-award-integrity-91-20260914":"/tmp/openforge-modal-114-repair",web=corrections?"http://localhost:3040":"http://localhost:3034";
 const token=fs.readFileSync(runtime+"/session-token","utf8").trim();
-const api=await request.newContext({baseURL:"http://127.0.0.1:8034",extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
+const api=await request.newContext({baseURL:corrections?"http://127.0.0.1:8039":"http://127.0.0.1:8034",extraHTTPHeaders:{Cookie:`pd_session=${token}`}});
 assert.equal((await(await api.get("/auth/session")).json()).email,"notification-acceptance@example.invalid");
 const targets=[];
 for(const n of [1,2]){
@@ -68,7 +70,7 @@ try{
  const notices=await(await api.get("/fund-manager/notifications")).json();
  const hrefs=[...first.body.results.filter(r=>r.state!=="failed"),...retry.body.results,...fresh.body.results].map(r=>r.href);
  for(const href of hrefs){assert.equal(notices.filter(n=>n.notification_type==="calculator_conversion_complete"&&n.href===href).length,1);await page.goto(web+href,{waitUntil:"domcontentloaded"});await page.locator('[data-pd-id="sportsbook.editor.dialog"]').waitFor();await page.keyboard.press("Escape");}
- observations.push({profiles:targets.map(t=>t.profile.profile_id),partialStates:first.body.results.map(r=>r.state),retryOnlyUnresolved:true,retryIntentRetained:true,deliberateNewIntent:true,counts:[2,1],notificationLinks:hrefs,sourcePreserved:true});
+ observations.push({source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),web,profiles:targets.map(t=>t.profile.profile_id),partialStates:first.body.results.map(r=>r.state),retryOnlyUnresolved:true,retryIntentRetained:true,deliberateNewIntent:true,counts:[2,1],notificationLinks:hrefs,sourcePreserved:true});
  fs.writeFileSync(runtime+"/conversion-partial-journey.json",JSON.stringify(observations,null,2));console.log(JSON.stringify(observations));await context.close();
 }catch(error){fs.writeFileSync(runtime+"/conversion-partial-journey.json",JSON.stringify({observations,blocker:String(error)},null,2));throw error;}
 finally{await browser.close();await api.dispose();}
