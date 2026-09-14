@@ -6,14 +6,24 @@ Latest #113/35/114 clarifications5662334267/5662339238/5662344208 govern.
 Verified stack base3a5fddc27ea898aad01f7a186cc06c62c5e66aec, application8276e2a,
 report0b0540d; no PD019 repair exists there. Separate repair/calculator-corrections-113.
 C01 PD019 latest-edit/autosave COMPLETE for the scoped response-gate cases37a495e;
-C02 PD004/005 clipping geometry COMPLETE18/18da196a9, full modal NEEDS VERIFICATION:
-Casino Escape FAIL6/6 remains PD004; no owner smoke request.
-C03 original JSON/workbook provenance IN PROGRESS; C04 SNR presets/sign IN PROGRESS:
-API mismatch6.66/9.33 reproduced, factor root cause verified, endpoint fix outstanding;
-C05 core scope/operational partial matching NOT STARTED; C06 shared percentage commission
-NOT STARTED; C07 Simple/Advanced shared composition NOT STARTED; C08 conditional Cashback
-NOT STARTED; C09 engineering UI/API/copy/ledger verification NEEDS VERIFICATION:
-four gated actual FreeBet browser/API saves PASS; corrected-calculator destination paths pending.
+C02 geometry/Escape/focus-entry COMPLETE for18 native variants including Casino52a87af;
+dirty/pending/nested confirmation/focus return/text scaling remain NEEDS VERIFICATION.
+C03 IN PROGRESS: read-only normal/refund/same-odds remaining formulas traced; workbook SR branch
+discrepancy and receipt/cap source semantics remain explicit. Original hashes unchanged.
+C04 numerical COMPLETE for independent preset fixtures811ef5c; Standard7.18, Under6.25, Over10.20,
+Custom9.00. Normal API/rendered accessible loss(2.64) confirmed; negative-value clipboard and
+embedded preset acceptance NEEDS VERIFICATION. No fresh external black-box parity claim.
+C05/C06 IN PROGRESS: standalone Normal/SNR choices and percentage primitive66fc5dd; embedded
+scope/percentage inputs, actual-match/different-odds remaining hedge and saved-unit variants remain.
+C07 IN PROGRESS: simultaneous Under/Overlay/Custom plus directly following slider; canonical
+chevron geometry, stale-copy/live drag and corresponding embedded parity still required.
+C08 IN PROGRESS: three independent cash/credit conditional reference cases72a924e; actual
+receipt/cap source semantics and UI/embedded mode-leakage proof remain.
+C09 NEEDS VERIFICATION: frozen product66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 passes build,
+typecheck/lint,113 focused API tests,12 percentage tests and bounded real half-width controls.
+Full corrected calculator→copy→review/save/reopen→settlement/report gate remains.
+Corrected SNR Underlay/Overlay conversion BLOCKED pending versioned destination planning
+contract; Free Bet cashback credit cannot become cash cashback. Server guards prove zero writes.
 Nearest equivalents: existing Free Bet editor/persistence guards, shared modal shell,
 FinancialValue/Outcomes/slider and onboarding percentage boundary. No new visual system.
 Original results95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac

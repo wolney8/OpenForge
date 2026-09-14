@@ -2,6 +2,18 @@
 
 ## Current calculator-correction checkpoint — 2026-09-14 / LOCAL ONLY
 
+Reporting branch audit/platform-quality-114 is documentation-only. Current tested product candidate
+**66fc5ddb34900e6c11f3d87c71c4370eee24cbf4**; API reference source
+**72a924e6e2ea8f769136575f8192726a785974c4**. Previous3e678d2 / reportf633016 are historical
+checkpoints, not the current implementation. No repository pushes. Normal/main remains unfixed.
+GitHub summary sync confirmed: #355662640708, #365662640861, #375662641234, #925662641772,
+#1055662641037, #1135662641608, #1145662641374. Remote summaries label all commits LOCAL ONLY.
+Final runtime checks: normal3010/login, manual3020/login+8020/healthz, review3034/login+8034/healthz,
+candidate3040/login+8039/healthz all200; no protected-service restarts or protected-data changes.
+Only owned8039 was resumed from current API source, retaining its disposable synthetic database.
+Local bundle is refreshed after this report commit using explicit committed repair/report refs;
+no environment files/runtime databases/private inputs are included.
+
 **Explicit engineering checkpoint, not the whole requested calculator correction.** Governing
 clarifications: #1135662334267, #355662339238, #1145662344208. Partial user observations received;
 no further bulk owner entry required; engineering reference verification and fixes active;
@@ -11,7 +23,9 @@ Verified base3a5fddc27ea898aad01f7a186cc06c62c5e66aec includes award application
 8276e2a1f9a3eb7fe018021c616e4c180d0216c9, but **no PD-QA-019 repair**. New separate branch
 repair/calculator-corrections-113: latest-edit37a495ee656c6850c6c670539bb5ec1ce6716330,
 footerda196a97216fb9eb48e18bf2cf53bb74c29d492d, reusable harness/launcher
-9ce17661239f71663908b0265552ac1cecc2e1b6. API source remains8276e2a; no formulas changed.
+9ce17661239f71663908b0265552ac1cecc2e1b6. New calculator-only SNR reference boundary811ef5c,
+conditional cashback/custom reference72a924e, everyday controls/percentage commission66fc5dd,
+and Casino shared modal52a87af. Historical workbook/actual placed/settled engines are unchanged.
 Main and frozen candidate remainf7a3b35073ecc87cdf8f8f881129f221ec44d395;
 unmerged Multi-Lay215193b7fcb5b11a28e23a4531d2a45434545dc1 remains untouched.
 Existing normal/manual3020/8020 and3034/8034 data/services, private observations and earlier
@@ -20,16 +34,77 @@ invalid audit fixtures are protected. Only owned disposable8039/3040 is used for
 | Requirement | Result / evidence | Exact remaining scope |
 |---|---|---|
 |C01 PD019 latest-edit/autosave|PASS / PROVEN for the executed delayed-response cases|Cross-editor/network-failure and rapid settlement variants not established by these cases|
-|C02 modal clipping|Geometry PASS / PROVEN; full modal gate FAIL|Casino Escape missing6/6; production build, text enlargement/interrupted-motion repetition not tested here|
-|C03 ingest/workbook|PARTIAL / DOCUMENTED|Original hashes/definitions preserved; normal/refund/partial-match formula tracing unfinished|
-|C04 SNR presets/sign|FAIL SNR / PROVEN; sign investigation PARTIAL|Reference endpoint implementation and UI/accessibility/clipboard negative-sign verification outstanding|
-|C05 core scope/operational partial match|NOT IMPLEMENTED|Normal/SNR new controls, scope-deferred legacy SR/bonus-win, distinct actual fills/remaining hedge|
-|C06 percentage commission|NOT IMPLEMENTED|All applicable standalone/embedded percentage boundaries and explicit legacy units|
-|C07 Simple/Advanced|NOT IMPLEMENTED|Simultaneous shared Underlay/Overlay/Custom references, live slider, hub/pop-out/embedded parity|
-|C08 conditional racing Cashback|NOT IMPLEMENTED|Ordinary hedge first, conditional cash/free-credit branches, state-leakage investigation|
-|C09 engineering full acceptance|PARTIAL|Selected controls→request→copy→destination→settlement/report for corrected references not yet executed|
+|C02 modal clipping|Scoped PASS / PROVEN|18/18 geometry/focus-entry/Escape variants now pass, including Casino6/6; dirty/pending/nested confirmation/focus-return and text-enlargement/interrupted-motion variants remain untested|
+|C03 ingest/workbook|PARTIAL / DOCUMENTED|Current workbook normal/refund/same-odds remaining formulas traced below; receipt/cap provenance and SR internal workbook discrepancy require explicit resolution|
+|C04 SNR presets/sign|Numerical PASS / PROVEN; full surface parity PARTIAL|18 independent preset cases plus Custom-reference invariant; real half-width SNR controls6.25/10.20 and Normal negative accounting accessibility pass; negative-value clipboard and embedded presets unverified; no fresh external black-box parity claim|
+|C05 core scope/operational partial match|PARTIAL / CODE-VERIFIED|Standalone ordinary controls Normal/SNR; saved SR/bonus-win retained disabled. Part Lay dropdown removed; full embedded scope/actual fills/different-odds remaining hedge and all preset transitions need work|
+|C06 percentage commission|PARTIAL / PROVEN for executed subset|12 exact decimal-shift tests and real Standard2% input pass; standalone Field/Multi-Lay/Sequential/Dutching inputs share primitive. Embedded exchange fields and broader saved/pop-out round trips remain|
+|C07 Simple/Advanced|PARTIAL / CODE-VERIFIED|Simultaneous Underlay/Overlay/Custom and directly following slider implemented; real half-width visibility passes. Canonical chevron reference composition, all stale-copy paths/live drag/embedded parity remain|
+|C08 conditional racing Cashback|API PASS / PROVEN; UI PARTIAL|Three independent cases ordinary hedge then conditional cash/credit; separate credit face/retained estimate and cash-first total. UI reward selector added but embedded/receipt/cap and mode-leakage end-to-end not established; original CASHBACK-001 intent UNKNOWN|
+|C09 engineering full acceptance|PARTIAL|Production build/typecheck/lint pass.113 focused numerical/bridge tests pass; full corrected controls→copy→review/save/reopen→settlement/report, rapid-entry/motion/text scaling gate remains. Genuine award rerun on frozen66fc5dd is recorded separately|
 
-### Reproduction and fixes
+### Current numerical, workbook and conversion evidence — 2026-09-14
+
+Independent SNR outcome-target contract is versioned `snr-outcome-target-v1`, not a change to
+historical workbook Free Bet engine. For F=10,B=4,O=4.2,c=0.02:
+Standard7.18 / liability22.98 / back7.02 / lay7.04;
+Underlay6.25 /20.00 /10.00 /6.13;
+Overlay10.20 /32.64 /-2.64 /10.00;
+Custom9.00 /28.80 /1.20 /8.82.
+Raw endpoints F*(B-2)/(O-1) and F/(1-c), then existing HALF_UP penny placement; negative
+or undefined endpoints are unavailable, not invented. Existing ledger legacy factor presets are
+unchanged: corrected SNR Underlay/Overlay conversion explicitly422 before writes until a versioned
+destination planning contract can preserve them. Standard/explicit Custom and legacy SR bridge
+regressions still pass. Credit cashback cannot be saved as cash cashback; server guard rejects it.
+
+Scoped run: `test_snr_outcome_target_reference.py`, `test_conditional_cashback_reference.py`,
+`test_standard_calculator_configuration_matrix.py`, `test_calculator_conversions.py`:113 PASS.
+An initial16 conversion setup failures came from absent implicitly seeded demo Profiles; harness now
+explicitly creates isolated synthetic Profiles. An accidental uncommitted Each Way reference variable
+caused2 failures, was corrected before checkpoint, and the complete focused run then passed.
+These counts are test cases, not all-input or all-configuration acceptance.
+Exact percentage helper12 PASS; TypeScript and targeted ESLint PASS; production Next16.3.2 webpack
+build PASS with explicit isolated8039 API target. Existing4 C01 delayed-response variants reused.
+Real modal18 variants:1440/760/390 x light/dark x Sportsbook/FreeBet/Casino;
+body scrollWidth equals clientWidth, scrollLeft0, footer actions contained, no page overflow,
+focus enters, Escape closes. Additional modal variants above remain untested.
+Real half-width Standard: SNR selection/commission2/Advanced yields6.25,10.20,Custom visible;
+Normal Overlay in both themes exposes accessible accounting loss(2.64) and selected stake clipboard
+10.20. Original observed+2.64 JSON remains unchanged; no sign-code correction was made.
+Source inspection and supplied observations are not a fresh live Outplayed/MBB execution.
+
+Read-only approved workbook hash7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a,
+original observation hash95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac,
+both reverified unchanged. Sportsbook master formulas U2/W2/X2/Y2/Z2/AA2/AC2 shared to row3:
+actual S precedence, equalised M*N/(P-AB), HALF_UP-equivalent ROUND2, liability U*(P-1),
+cash back/lay branches; Z2 maps `Lay Won + Cashback` to U*(1-AB), implicitly full stake
+cash refund. AC2=MAX(U-T,0) only same-odds remaining; this is not an order-fill observation or
+a general different-odds hedge equation. AE3 SettingsB10 retention, AF2 stake-seeded reward.
+Free Bet V3: actual T precedence; Standard IF(SR,N*O,N*(O-1))/(Q-AE), then ROUND2;
+legacy Under/Overlay multiply unrounded Standard by SettingsB8/B9. X2 liability, Y2/Z2
+branch components, AA2/AB2 current/final/override and AD2=MAX(V-U,0).
+**Workbook discrepancy retained:** SR Y2 uses gross N*O-liability, while SR AA2 settled branch
+subtracts N again. No historical SR reinterpretation is authorised by this reference correction.
+Named CommissionDefaults=SettingsH3:I1002; ResultList=BE3:BE1002; LayStatusList=BP3:BP5.
+Original3010 observed build remains UNKNOWN.
+
+Frozen candidate66fc5ddb34900e6c11f3d87c71c4370eee24cbf4: genuine award runner
+`PQA_AWARD_WEB_PORT=3040 node scripts/verify_award_integrity_91.mjs` exited0.
+Four variants1440/light,760/dark,1440/dark,760/light pass: single10 removal, second-child failure
+rollback, refresh retry same operation, exactly5 SNR+5 SR, copy3.86/4.83, explicit actual3.50,
+final5.30/10.30, qualifying-1.18 included in report14.42, pointer Save/no page overflow.
+Lost committed response identity reuse exercised in the first variant only.
+Synthetic evidence SHA25611dc2da77b5cde3fd07660ee05afb798ee17947866cd4a74398832518d6c1820;
+raw evidence stays private/local. No application source edits during build/browser runs.
+These executed award variants do not establish universal autosave or calculator acceptance.
+
+**Exact next implementation:** C05/C06 adapt corresponding embedded controls without changing
+legacy settlement semantics; C07 use shared chevron Outcomes reference geometry and close stale-copy/
+live-slider gaps; C08 trace actual cap/receipt/credit award source semantics and test mode transitions;
+C03 resolve the recorded workbook discrepancy, then C09 fixed-candidate end-to-end gates.
+No owner bulk entry required. Wider #114 imports/ledgers/competitors/backlog coverage resumes afterward.
+
+### Historical preceding reproduction and fixes — before52a87af/811ef5c
 
 PD019 save used an older rendered form snapshot, then replaced current state with the server
 acknowledgement and reloaded/rehydrated it. Later dropdown changes were dropped by the saving lock.
@@ -45,7 +120,7 @@ overflow, text shrinking, z-index escalation or family-specific CSS. Casino's na
 ModalBoundary integration and fails Escape; this is retained under PD-QA-004, not obscured by
 successful geometry. No unrelated Casino focus/confirmation redesign was attempted.
 
-### Executed evidence — finite cases, not platform/calculator sign-off
+### Historical preceding executed evidence — finite cases, not platform/calculator sign-off
 
 - latest-edit.test.ts:3 independent form reconciliation cases PASS (later text, blank, zero,
   malformed draft; server normalization). TypeScript and targeted ESLint PASS, no warnings.

@@ -10,10 +10,16 @@ remains private/unchanged; observed3010 revision UNKNOWN. Definitions, blanks an
 sub-status annotations are retained, not converted into fabricated zeros or discarded results.
 
 [Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-calculator-correction-checkpoint--2026-09-14--local-only).
-Current source8276e2a reproduces SNR Underlay6.66/Overlay9.33 rather than supplied OP6.25/10.20:
-old workbook factors are not the requested branch-target presets. Correction remains open C04;
-no formula/historical data changes in the current editor repair. Normal10.20 Overlay API returns
-−2.64 correctly; current UI/clipboard sign verification remains open. Bonus-on-loss user OP
+Current candidate66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 corrects SNR presets at the versioned
+calculator reference boundary: Standard7.18, Underlay6.25, Overlay10.20, Custom9.00 for the
+complete10/4/4.2/2% fixture.113 focused mathematical/bridge cases and12 percentage cases pass;
+real half-width controls and Normal negative accounting accessibility pass. This is not fresh
+external black-box parity or all-configuration acceptance. Corrected SNR Underlay/Overlay
+conversion fails closed until the destination planning contract preserves those semantics.
+Historical source8276e2a reproduced6.66/9.33 using old workbook factors. Remaining C04 scope:
+embedded preset parity and negative-value clipboard verification. Historical placed/settled engines
+are unchanged. Normal10.20 Overlay API and rendered accessible accounting value are correctly
+−2.64; selected stake clipboard10.20 passed both themes. Bonus-on-loss user OP
 agreement is preserved. New external black-box parity has not been established from source reads.
 Legacy SR/bonus-win scope revision is not implementation/PASS; operational reads/settlement remain
 protected. Earlier finite-family PASS totals below do not prove all controls/configurations.

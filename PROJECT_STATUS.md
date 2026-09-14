@@ -7,14 +7,21 @@ verification and fixes active; final acceptance pending. Original JSON/workbook 
 and unchanged. Observed3010 build is UNKNOWN, not assumed to be this candidate.
 
 We are repairing the calculator workflow on `repair/calculator-corrections-113`, stacked on award
-candidate3a5fddc. Free Bet delayed-save repair37a495e and shared footer containmentda196a9 are local
-only; harness/launcher9ce1766. Four real delayed-response browser variants pass;18 shared footer
-geometry checks pass, but Casino Escape fails in all6 variants. Full UI acceptance is incomplete.
+candidate3a5fddc. Current tested product66fc5ddb34900e6c11f3d87c71c4370eee24cbf4, API reference
+source72a924e6e2ea8f769136575f8192726a785974c4. SNR preset references corrected6.25/10.20;
+conditional Cashback cash/credit separated; standalone everyday/percentage/Advanced controls added.
+Casino52a87af now passes all6 Escape variants; shared geometry/focus-entry/Escape18/18 pass.
+113 focused numerical/bridge tests,12 percentage tests, typecheck/lint and production build pass.
+Frozen66fc5dd genuine award rerun passes4 full variants:5.30/10.30 children plus-1.18 qualifying
+result gives14.42 report; rollback/retry/removal remain correct. No source edits during that run.
+Full correction remains partial: embedded parity, canonical chevron references, operational remaining
+hedges, stale-copy/live dragging and complete corrected calculator-to-ledger gates are outstanding.
 Main/normal3010, frozen manual3020 and existing3034 review remain unchanged/unfixed.
 
-Next: PD-CALC-20260914 C04 SNR preset/sign correction, C05–C08 core scope/percentage commission/
-Simple–Advanced/conditional Cashback, then C09 integration verification. C03 workbook tracing
-remains partial. Wider #114 workbook/ledger/competitor/backlog review is on hold during this
+Next: PD-CALC-20260914 C05/C06 corresponding embedded controls, C07 canonical shared reference/
+slider/stale-copy gate, C08 Cashback receipts/caps and mode-transition proof, then C09 integration.
+C03 workbook SR discrepancy/receipt provenance remains explicit; corrected SNR Underlay/Overlay
+conversion fails closed pending a faithful destination planning contract. Wider #114 review is on hold during this
 corrective checkpoint, not cancelled. No action needed from Will; no bulk comparison assignment.
 Coverage remains46/87 reviewed,8/24 exercised/passing,14/27 competitor,24/133 requests.
 
