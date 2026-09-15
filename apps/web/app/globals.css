@@ -15664,9 +15664,10 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 	    grid-template-columns: 1fr;
 	  }
 
-  .calculator-input-grid {
-    grid-template-columns: 1fr;
-  }
+	  .calculator-input-grid,
+	  .workflow-editor-modal .calculator-input-grid {
+	    grid-template-columns: 1fr;
+	  }
 
 	  .calculator-segment-grid-back,
 	  .calculator-segment-grid-lay {

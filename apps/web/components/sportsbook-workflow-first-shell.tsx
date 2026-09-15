@@ -8282,7 +8282,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                             {isProfitBoostOffer && activePreviewCalculation?.effective_back_odds ? (
                               <section
                                 aria-label="Profit Boost calculation breakdown"
-                                className="content-subpanel stack-tight field-span-2"
+                                className="content-subpanel stack stack-tight field-span-2"
                               >
                                 <span className="eyebrow">How this was calculated</span>
                                 <span>Original odds: {profitBoostSourceDraft.base_back_odds || "Not provided"}</span>
