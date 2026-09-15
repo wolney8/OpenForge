@@ -442,7 +442,8 @@ def offer_metadata_cases(dsn, runtime):
 
     with psycopg.connect(dsn) as connection:
         stored_profit = connection.execute(
-            "SELECT profit_boost_mode,profit_boost_source_json FROM sportsbook_bets "
+            "SELECT profit_boost_mode,profit_boost_source_json,lay_plan_json,lay_actual "
+            "FROM sportsbook_bets "
             "WHERE sportsbook_bet_id=%s",
             (profit_id,),
         ).fetchone()
@@ -452,6 +453,11 @@ def offer_metadata_cases(dsn, runtime):
         ).fetchone()
     assert stored_profit[0] == "total_return"
     assert json.loads(stored_profit[1])["total_potential_return"] == "27.86"
+    stored_plan = json.loads(stored_profit[2])
+    assert stored_plan["back_odds"] == "2.7900"
+    # Independent: 10 * 2.79 / (3.10 - 0.02) = 9.058... -> 9.06.
+    assert stored_plan["reviewed_planned_lay_stake"] == "9.06"
+    assert stored_profit[3] == ""
     assert json.loads(stored_cashback[0])["eligible_amount"] == "10.00"
     reopened = client.get(f"/profiles/{profile_id}/sportsbook-bets/{profit_id}").json()
     assert reopened["reference_boosted_odds"] == "2.7800"
