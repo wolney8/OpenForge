@@ -71,6 +71,11 @@ def test_cashback_credit_conversion_preserves_pending_credit_provenance(tmp_path
         "receipt_date": "",
         "linked_awarded_credit_id": "",
     }
+    plan = json.loads(row["lay_plan_json"])
+    assert plan["selected_strategy"] == "Standard"
+    # Independently: (10 × 3.00) / (3.10 - 0.02) = 9.740259… -> £9.74.
+    assert plan["reviewed_planned_lay_stake"] == "9.74"
+    assert row["lay_actual"] == ""
 
 
 def add_account(
@@ -655,6 +660,10 @@ def test_profit_boost_keeps_bookmaker_return_distinct_from_accepted_odds(tmp_pat
     assert row["effective_back_odds"] == "2.7900"
     assert row["profit_boost_bookmaker_total_return"] == "27.86"
     assert row["profit_boost_effective_odds_return"] == "27.90"
+    plan = json.loads(row["lay_plan_json"])
+    assert plan["back_odds"] == "2.7900"
+    assert plan["reviewed_planned_lay_stake"] == row["reference_lay_stake_standard"]
+    assert row["lay_actual"] == ""
 
 
 def test_sportsbook_offer_metadata_sqlite_upgrade_is_additive_and_repeatable(

@@ -91,8 +91,24 @@ try {
     await dialog.getByLabel('Actual accepted back odds').fill('2.79');
     await dialog.getByLabel('Lay odds 1').fill('3.00');
     await dialog.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption('Smarkets');
+    await expect(dialog.getByLabel('Presentation Mode')).toHaveValue('Standard');
+    await expect(dialog.getByLabel('Commission (%)')).toHaveValue('2');
     await expect(dialog.getByText('Bookmaker total return: £27.86')).toBeVisible();
     await expect(dialog.getByText('Effective hedge odds: 2.7900')).toBeVisible();
+    await dialog.getByLabel('Profit Boost entry').selectOption('displayed_odds');
+    await expect(dialog.getByLabel('Entered boosted odds')).toHaveValue('');
+    await dialog.getByLabel('Profit Boost entry').selectOption('total_return');
+    await expect(dialog.getByLabel('Total potential return, including stake')).toHaveValue('27.86');
+    await dialog.getByLabel('Presentation Mode').selectOption('Advanced');
+    await expect(dialog.locator('[data-pd-id="sportsbook.matching.result-cards"]')).toContainText('Underlay');
+    await expect(dialog.locator('[data-pd-id="sportsbook.matching.result-cards"]')).toContainText('Overlay');
+    await expect(dialog.getByRole('slider',{name:'Custom lay stake slider'})).toBeVisible();
+    await dialog.getByLabel('Presentation Mode').selectOption('Standard');
+    const plannedCopy=dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/});
+    await plannedCopy.click();
+    await expect(dialog.getByText(/planned lay copied.*actual exchange fill separately/i)).toBeVisible();
+    assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'9.36');
+    await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
     const breakdownGeometry=await dialog.getByRole('region',{name:'Profit Boost calculation breakdown'}).evaluate(element=>({
       display:getComputedStyle(element).display,
       gap:parseFloat(getComputedStyle(element).rowGap),
@@ -108,6 +124,7 @@ try {
     assert.equal(profit.effective_back_odds,'2.7900');
     assert.equal(profit.profit_boost_bookmaker_total_return,'27.86');
     assert.equal(JSON.parse(profit.profit_boost_source_json).total_potential_return,'27.86');
+    assert.equal(JSON.parse(profit.lay_plan_json).selected_strategy,'Standard');
     const storedProfit=database.prepare('SELECT profit_boost_source_json,lay_actual FROM sportsbook_bets WHERE sportsbook_bet_id=?').get(profit.sportsbook_bet_id);
     assert.equal(JSON.parse(storedProfit.profit_boost_source_json).mode,'total_return');
     assert.equal(storedProfit.lay_actual,'');
@@ -135,6 +152,21 @@ try {
     await dialog.getByLabel('Eligible refund amount').fill('10.00');
     await dialog.getByLabel('Offer cap').fill('8.00');
     await expect(dialog.getByLabel('Eligibility')).toHaveValue('pending');
+    await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+    await dialog.getByLabel('Actual cashback receipt amount').fill('5.00');
+    await dialog.getByLabel('Cashback receipt reference').fill('DRAFT-TO-CLEAR');
+    await dialog.getByLabel('Cashback receipt date').fill('2026-09-15');
+    await dialog.getByRole('tab',{name:/Matching/}).first().click();
+    await dialog.getByLabel('Refund kind').selectOption('free_bet');
+    await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+    await expect(dialog.getByLabel('Actual cashback receipt amount')).toHaveValue('');
+    await expect(dialog.getByLabel('Cashback receipt reference')).toHaveValue('');
+    await expect(dialog.getByLabel('Cashback receipt date')).toHaveValue('');
+    await dialog.getByRole('tab',{name:/Matching/}).first().click();
+    await dialog.getByLabel('Refund kind').selectOption('cash');
+    await expect(dialog.getByLabel('Presentation Mode')).toHaveValue('Standard');
+    await dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/}).click();
+    await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
     if(width===760){
       const inputGrid=dialog.locator('.calculator-input-grid:visible').first();
       assert.equal((await inputGrid.evaluate(element=>getComputedStyle(element).gridTemplateColumns)).split(' ').length,1);
@@ -158,6 +190,10 @@ try {
     await dialog.getByLabel('Actual cashback receipt amount').fill('8.00');
     await dialog.getByLabel('Cashback receipt reference').fill('SYNTHETIC-RECEIPT-'+width);
     await dialog.getByLabel('Cashback receipt date').fill('2026-09-15');
+    await dialog.getByLabel('Actual cashback receipt amount').fill('9.00');
+    await expect(dialog.getByText('Actual receipt cannot exceed the eligible amount or offer cap.')).toBeVisible();
+    await dialog.getByLabel('Actual cashback receipt amount').fill('8.00');
+    await expect(dialog.getByText('Actual receipt cannot exceed the eligible amount or offer cap.')).toHaveCount(0);
     await dialog.locator('label').filter({hasText:/^Result/}).locator('select').selectOption('Lay Won + Cashback');
     cashback=await saveAndFind(page,dialog,cashbackName);
     assert.equal(cashback.final_net_pnl,'6.82');
@@ -207,6 +243,7 @@ try {
       const pbTarget=await convertCurrent(page,'Synthetic converted Profit Boost');
       const pbRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${pbTarget.record_id}`)).json();
       assert.equal(JSON.parse(pbRow.profit_boost_source_json).mode,'total_return');assert.equal(pbRow.lay_actual,'');
+      assert.equal(JSON.parse(pbRow.lay_plan_json).reviewed_planned_lay_stake,pbRow.reference_lay_stake_standard);
       converted.profitBoost={id:pbRow.sportsbook_bet_id,mode:'total_return',plannedOnly:true};
 
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
@@ -219,6 +256,7 @@ try {
       const cbRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${cbTarget.record_id}`)).json();
       const cbMeta=JSON.parse(cbRow.conditional_benefit_json);
       assert.equal(cbMeta.eligibility,'pending');assert.equal(cbMeta.actual_receipt_amount,'');assert.equal(cbRow.lay_actual,'');
+      assert.equal(JSON.parse(cbRow.lay_plan_json).selected_strategy,'Standard');
       converted.cashback={id:cbRow.sportsbook_bet_id,eligibility:'pending',receiptNotAssumed:true};
       await page.getByLabel('Refund received as').selectOption('free_bet');
       await expect(page.locator('[data-pd-id="calculators.cashback.credit"]')).toBeVisible();
