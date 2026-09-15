@@ -10,8 +10,8 @@ Repeated preambles, `Total`, strategy and Apply/Use-plan controls are absent fro
 cards. Multi-Lay uses the same surfaces but retains allocation controls because they recalculate all
 legs. Standalone, pop-out and Sportsbook/Free Bet editors pass focused rendering and modal checks at
 desktop, half-width, narrow and 200% text, both themes, keyboard and reduced motion. No maths or
-historical data changed. This repair is not in normal 3010, main or Vercel; GitHub #35/#92 sync is
-pending because publication is forbidden.
+historical data changed. This repair is not in normal 3010, main or Vercel. GitHub #35/#92 received
+the local-only evidence; repository publication remains forbidden.
 
 ## Current normal local Plum Duff — 2026-09-15
 

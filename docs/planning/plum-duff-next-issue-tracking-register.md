@@ -27,7 +27,8 @@ history and superseded by this visual contract:
 | PD-FIX-241 | Reflow the shared calculator at half-width, narrow and 200% text | COMPLETE / PROVEN by zero internal overflow on six ledger-editor variants |
 | PD-FIX-242 | Preserve Multi-Lay hierarchy without flattening its all-leg allocation semantics | COMPLETE for presentation; allocation actions remain necessary and explicit |
 
-Current product is `8f5dc5876a2830947fbfb79a88a89b4da171858d`; GitHub #35/#92 synchronisation remains pending.
+Current product is `8f5dc5876a2830947fbfb79a88a89b4da171858d`; GitHub #35/#92 comments
+`5688496018`/`5688496182` record the local-only evidence. No repository publication occurred.
 
 ## PD-LOCAL-INTEGRATION-20260915 — one usable normal local application
 
