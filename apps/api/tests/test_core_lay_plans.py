@@ -64,6 +64,66 @@ def test_normal_plan_uses_same_service_without_populating_actuals(free_client):
     assert json.loads(raw.lay_plan_json)["reviewed_planned_lay_stake"] == "9.57"
 
 
+def test_profit_boost_plan_uses_accepted_odds_without_rewriting_source_odds(free_client):
+    offer_plan = {
+        "schema_version": "lay-plan-v1",
+        "calculation_contract_version": "workbook-reference-v1",
+        "backing_basis": "Normal",
+        "back_stake": "10.00",
+        "back_odds": "2.7900",
+        "lay_odds": "3.00",
+        "selected_strategy": "Standard",
+        "custom_lay_stake": "",
+        "exchange_name": "Exchange A",
+        "commission_units": "ratio",
+        "commission": "0.02",
+        "commission_origin": "override",
+        "reviewed_planned_lay_stake": "9.36",
+    }
+    values = sportsbook_payload(
+        offer_type="Profit Boost",
+        profit_boost_mode="total_return",
+        back_stake="10.00",
+        back_odds="2.78",
+        actual_accepted_back_odds="2.79",
+        profit_boost_source_json=json.dumps({
+            "schema_version": "profit-boost-source-v1",
+            "revision": 0,
+            "mode": "total_return",
+            "boosted_back_odds": "",
+            "total_potential_return": "27.86",
+            "potential_profit": "",
+            "base_back_odds": "",
+            "profit_boost_percent": "",
+            "maximum_boost_winnings": "",
+        }),
+        lay_odds_1="3.00",
+        lay_actual="",
+        lay_matched_stake_1="",
+        lay_plan_json=json.dumps(offer_plan),
+    )
+    created = free_client.post("/profiles/money-a/sportsbook-bets", json=values)
+    assert created.status_code == 201, created.text
+    row = created.json()
+    assert row["back_odds"] == "2.7800"
+    assert row["actual_accepted_back_odds"] == "2.79"
+    assert row["lay_actual"] == ""
+
+    values.update(
+        lay_plan_json=row["lay_plan_json"],
+        lay_actual="9.00",
+        lay_matched_stake_1="9.00",
+        lay_commission_1="0.02",
+        status="Settled",
+        result="Back Won",
+    )
+    updated = free_client.put(
+        f"/profiles/money-a/sportsbook-bets/{row['sportsbook_bet_id']}", json=values
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["final_net_pnl"] == "-0.10"
+
+
 @pytest.mark.parametrize("strategy", EXPECTED)
 def test_corrected_conversion_preserves_plan_source_and_retry(tmp_path, strategy):
     from test_calculator_conversions import configure_temp_database, authenticated_client, add_account, standard_payload

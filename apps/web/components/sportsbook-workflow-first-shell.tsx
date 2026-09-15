@@ -2248,10 +2248,15 @@ function getLayStakePreview(
   }
 
   if (formState.match_strategy === "Custom" || formState.match_strategy === "Partial Lay") {
+    const plannedStake = formState.match_strategy === "Custom"
+      ? readLayPlan(formState.lay_plan_json)?.reviewed_planned_lay_stake ?? ""
+      : "";
     return {
-      suggested: formState.lay_actual.trim() || "—",
+      suggested: formState.lay_actual.trim() || plannedStake || "—",
       modeLabel: formState.match_strategy,
-      note: "Workbook parity: custom and partial-lay rows rely on explicit lay actual values.",
+      note: plannedStake && !formState.lay_actual.trim()
+        ? "The reviewed Custom plan remains separate from any confirmed exchange fill."
+        : "Workbook parity: custom and partial-lay rows rely on explicit actual values once placed.",
     };
   }
 
@@ -2333,7 +2338,8 @@ function hasPreviewInputsReady(
   }
 
   if (
-    (formState.match_strategy === "Custom" || formState.match_strategy === "Partial Lay") &&
+    (formState.match_strategy === "Partial Lay" ||
+      (formState.match_strategy === "Custom" && !formState.lay_plan_json)) &&
     parseNumericInput(formState.lay_actual) === null
   ) {
     return false;
@@ -2385,7 +2391,8 @@ function getCalculatorMissingFields(
     missing.push("Lay odds 1");
   }
   if (
-    (formState.match_strategy === "Custom" || formState.match_strategy === "Partial Lay") &&
+    (formState.match_strategy === "Partial Lay" ||
+      (formState.match_strategy === "Custom" && !formState.lay_plan_json)) &&
     parseNumericInput(formState.lay_actual) === null
   ) {
     missing.push("Lay actual");
@@ -2443,7 +2450,8 @@ function getCalculatorGuidance(
   }
 
   if (
-    (formState.match_strategy === "Custom" || formState.match_strategy === "Partial Lay") &&
+    (formState.match_strategy === "Partial Lay" ||
+      (formState.match_strategy === "Custom" && !formState.lay_plan_json)) &&
     parseNumericInput(formState.lay_actual) === null
   ) {
     return `Enter lay actual for the ${formState.match_strategy.toLowerCase()} path before the contract-backed preview resolves.`;
@@ -2962,6 +2970,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [errorMessage, setErrorMessage] = useState("");
   const [previewCalculation, setPreviewCalculation] = useState<SportsbookCalculationPreview | null>(null);
   const [previewCalculationKey, setPreviewCalculationKey] = useState("");
+  const [previewOfferReferenceKey, setPreviewOfferReferenceKey] = useState("");
   const [payoutTotalReturn, setPayoutTotalReturn] = useState("");
   const [payoutReturnTouched, setPayoutReturnTouched] = useState(false);
   const [payoutStakeStrictValidation, setPayoutStakeStrictValidation] = useState(false);
@@ -3916,6 +3925,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     ]
   );
   const previewFormKey = useMemo(() => JSON.stringify(previewFormState), [previewFormState]);
+  const offerReferenceInputKey = useMemo(() => JSON.stringify([
+    formState.offer_type,
+    formState.back_stake,
+    formState.back_odds,
+    formState.actual_accepted_back_odds,
+    formState.profit_boost_source_json,
+    conditionalBenefitDraft.refund_kind,
+    conditionalBenefitDraft.eligible_amount,
+    conditionalBenefitDraft.refund_cap,
+    formState.lay_odds_1,
+    offerPlanningCommission,
+  ]), [formState.offer_type, formState.back_stake, formState.back_odds,
+    formState.actual_accepted_back_odds, formState.profit_boost_source_json,
+    conditionalBenefitDraft.refund_kind, conditionalBenefitDraft.eligible_amount,
+    conditionalBenefitDraft.refund_cap, formState.lay_odds_1, offerPlanningCommission]);
   const calculatorGuidance = useMemo(
     () => getCalculatorGuidance(formState, resolvedCommission),
     [formState, resolvedCommission]
@@ -4273,6 +4297,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     previewCalculationKey === previewFormKey
       ? previewCalculation
       : null;
+  const activeOfferReferenceCalculation = activePreviewCalculation ?? (
+    (isProfitBoostOffer || isConditionalCashbackOffer) &&
+    previewOfferReferenceKey === offerReferenceInputKey
+      ? previewCalculation
+      : null
+  );
   const multiLayPlannerSummary = useMemo(
     () =>
       getMultiLayPlannerSummary(
@@ -4623,19 +4653,19 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const singleLayResultCards = useMemo(() => {
     const backStake = parseNumericInput(formState.back_stake);
     const effectiveBackOdds = parseNumericInput(
-      activePreviewCalculation?.effective_back_odds ?? formState.back_odds
+      activeOfferReferenceCalculation?.effective_back_odds ?? formState.back_odds
     );
     const layOdds = parseSportsbookOddsInput(formState.lay_odds_1);
     const commission = parseNumericInput(offerPlanningCommission) ?? 0;
     const stakeByMode: Record<SingleLayResultMode, string | null | undefined> = {
       Underlay:
-        activePreviewCalculation?.reference_lay_stake_underlay ??
+        activeOfferReferenceCalculation?.reference_lay_stake_underlay ??
         selectedSportsbookRow?.reference_lay_stake_underlay,
       Standard:
-        activePreviewCalculation?.reference_lay_stake_standard ??
+        activeOfferReferenceCalculation?.reference_lay_stake_standard ??
         selectedSportsbookRow?.reference_lay_stake_standard,
       Overlay:
-        activePreviewCalculation?.reference_lay_stake_overlay ??
+        activeOfferReferenceCalculation?.reference_lay_stake_overlay ??
         selectedSportsbookRow?.reference_lay_stake_overlay,
       Custom: formatPreviewMoney(customSliderCurrentFloat),
     };
@@ -4664,7 +4694,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       };
     });
   }, [
-    activePreviewCalculation,
+    activeOfferReferenceCalculation,
     formState.back_odds,
     formState.back_stake,
     formState.lay_odds_1,
@@ -4784,12 +4814,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           if (!controller.signal.aborted) {
             setPreviewCalculation(payload);
             setPreviewCalculationKey(previewFormKey);
+            setPreviewOfferReferenceKey(offerReferenceInputKey);
           }
         })
         .catch(() => {
           if (!controller.signal.aborted) {
             setPreviewCalculation(null);
             setPreviewCalculationKey("");
+            setPreviewOfferReferenceKey("");
           }
         });
     }, 250);
@@ -4798,7 +4830,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId, offerPlanningCommission, formState.lay_plan_json]);
+  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId,
+    offerPlanningCommission, offerReferenceInputKey, formState.lay_plan_json]);
 
   const reviewRows = useMemo(() => {
     const nextRows =
@@ -6043,7 +6076,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     customStake = "",
   ): LayPlan | null {
     if (!isProfitBoostOffer && !isConditionalCashbackOffer) return null;
-    const effectiveBackOdds = activePreviewCalculation?.effective_back_odds ?? formState.back_odds;
+    const effectiveBackOdds =
+      activeOfferReferenceCalculation?.effective_back_odds ??
+      activePayoutPreview?.effective_odds ??
+      formState.back_odds;
     const previous = readLayPlan(formState.lay_plan_json);
     const matchingAccounts = accountAuthorities.filter((account) =>
       account.type === "Exchange" && account.account === formState.exchange_name &&
@@ -6075,19 +6111,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     };
   }
 
-  async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
+  async function applySuggestedLayValue(
+    mode: "Standard" | "Underlay" | "Overlay",
+    displayedStake?: string,
+  ) {
     const nextSuggestedLay =
-      mode === "Underlay"
-        ? activePreviewCalculation?.reference_lay_stake_underlay ??
+      displayedStake ?? (mode === "Underlay"
+        ? activeOfferReferenceCalculation?.reference_lay_stake_underlay ??
           selectedSportsbookRow?.reference_lay_stake_underlay ??
           "—"
         : mode === "Overlay"
-          ? activePreviewCalculation?.reference_lay_stake_overlay ??
+          ? activeOfferReferenceCalculation?.reference_lay_stake_overlay ??
             selectedSportsbookRow?.reference_lay_stake_overlay ??
             "—"
-          : activePreviewCalculation?.reference_lay_stake_standard ??
+          : activeOfferReferenceCalculation?.reference_lay_stake_standard ??
             selectedSportsbookRow?.reference_lay_stake_standard ??
-            "—";
+            "—");
 
     if (!nextSuggestedLay || nextSuggestedLay === "—") {
       return false;
@@ -8968,7 +9007,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       <div className="calculator-band calculator-band-secondary sportsbook-calculator-grid">
 	                        {!isNoLayStrategy ? (
 	                          <div className="calculator-panel-card calculator-result-panel">
-	                            {layStakePreview ? (
+                            {singleLayResultCards.some((card) => card.layStake !== null) ? (
 	                              <div
 	                                className={`calculator-result-card-grid calculator-result-card-grid-${singleLayCalculatorMode.toLowerCase()}`}
 	                                data-pd-id="sportsbook.matching.result-cards"
@@ -8984,7 +9023,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                    <dl className="calculator-result-card-values">
 	                                      <div>
 	                                        <dt>Lay Stake</dt>
-	                                        <dd><CopyableFinancialValue actionLabel={(isProfitBoostOffer || isConditionalCashbackOffer) ? `Copy and apply ${card.mode} planned lay stake` : `Copy ${card.mode} lay stake and mark placed`} disabled={!card.canCopy || layFullyConfirmed} label={`${card.mode} lay stake`} onCopy={() => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode)} value={card.layStake} /></dd>
+	                                    <dd><CopyableFinancialValue actionLabel={(isProfitBoostOffer || isConditionalCashbackOffer) ? `Copy and apply ${card.mode} planned lay stake` : `Copy ${card.mode} lay stake and mark placed`} disabled={!card.canCopy || layFullyConfirmed} label={`${card.mode} lay stake`} onCopy={(value) => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode, value)} value={card.layStake} /></dd>
 	                                      </div>
 	                                      <div>
 	                                        <dt>Liability</dt>

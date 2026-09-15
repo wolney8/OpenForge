@@ -104,7 +104,13 @@ def validate_plan_write(profile_id: str, values: dict[str, Any], *, basis: str) 
         if plan.backing_basis != basis:
             raise ValueError("backing_basis conflicts with the ledger")
         stake = "free_bet_value" if basis == "SNR" else "back_stake"
-        for field, planned in [(stake, plan.back_stake), ("back_odds", plan.back_odds)]:
+        planning_odds_field = (
+            "actual_accepted_back_odds"
+            if values.get("offer_type") == "Profit Boost"
+            and values.get("actual_accepted_back_odds")
+            else "back_odds"
+        )
+        for field, planned in [(stake, plan.back_stake), (planning_odds_field, plan.back_odds)]:
             if not values.get(field) or Decimal(values[field]) != Decimal(planned):
                 raise ValueError(f"{field} conflicts with lay_plan_json")
         if values.get("match_strategy") != plan.selected_strategy:

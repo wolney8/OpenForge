@@ -44,6 +44,13 @@ async function openNew(page, offerType, eventName) {
 
 async function saveAndFind(page,dialog,eventName) {
   const save=dialog.getByRole('button',{name:'Save',exact:true});
+  if (await save.isDisabled()) {
+    const invalid = await dialog.locator('[aria-invalid="true"]').evaluateAll((elements) =>
+      elements.map((element) => ({ label: element.getAttribute('aria-label'), value: element.value }))
+    );
+    const alerts = await dialog.locator('[role="alert"]').allTextContents();
+    throw new Error(`Save unavailable for ${eventName}: invalid=${JSON.stringify(invalid)} alerts=${JSON.stringify(alerts)}`);
+  }
   await expect(save).toBeEnabled();
   await save.click();
   try { await expect(dialog).toBeHidden(); }
@@ -91,7 +98,7 @@ try {
     await dialog.getByLabel('Actual accepted back odds').fill('2.79');
     await dialog.getByLabel('Lay odds 1').fill('3.00');
     await dialog.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption('Smarkets');
-    await expect(dialog.getByLabel('Presentation Mode')).toHaveValue('Standard');
+    await expect(dialog.getByLabel('Sportsbook lay workflow mode')).toHaveValue('Standard');
     await expect(dialog.getByLabel('Commission (%)')).toHaveValue('2');
     await expect(dialog.getByText('Bookmaker total return: £27.86')).toBeVisible();
     await expect(dialog.getByText('Effective hedge odds: 2.7900')).toBeVisible();
@@ -99,16 +106,23 @@ try {
     await expect(dialog.getByLabel('Entered boosted odds')).toHaveValue('');
     await dialog.getByLabel('Profit Boost entry').selectOption('total_return');
     await expect(dialog.getByLabel('Total potential return, including stake')).toHaveValue('27.86');
-    await dialog.getByLabel('Presentation Mode').selectOption('Advanced');
+    await dialog.getByLabel('Sportsbook lay workflow mode').selectOption('Advanced');
     await expect(dialog.locator('[data-pd-id="sportsbook.matching.result-cards"]')).toContainText('Underlay');
     await expect(dialog.locator('[data-pd-id="sportsbook.matching.result-cards"]')).toContainText('Overlay');
-    await expect(dialog.getByRole('slider',{name:'Custom lay stake slider'})).toBeVisible();
-    await dialog.getByLabel('Presentation Mode').selectOption('Standard');
+    const customSlider=dialog.getByRole('slider',{name:'Custom lay stake slider'});
+    await expect(customSlider).toBeVisible();
+    await customSlider.focus();
+    await customSlider.press('ArrowRight');
+    await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
     const plannedCopy=dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/});
+    await expect(plannedCopy).toBeEnabled();
     await plannedCopy.click();
-    await expect(dialog.getByText(/planned lay copied.*actual exchange fill separately/i)).toBeVisible();
+    const copyFeedback=dialog.locator('.calculator-copy-feedback');
+    await expect(copyFeedback).toBeVisible();
+    await expect(dialog.getByText(/planned lay (copied|applied).*actual exchange fill separately/i)).toBeVisible();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'9.36');
     await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
+    await dialog.getByLabel('Sportsbook lay workflow mode').selectOption('Standard');
     const breakdownGeometry=await dialog.getByRole('region',{name:'Profit Boost calculation breakdown'}).evaluate(element=>({
       display:getComputedStyle(element).display,
       gap:parseFloat(getComputedStyle(element).rowGap),
@@ -137,8 +151,8 @@ try {
     await dialog.getByRole('button',{name:'Back Bet Placed'}).click();
     await dialog.getByRole('button',{name:'Lay Fully Placed'}).click();
     await dialog.getByRole('tab',{name:/Settlement/}).first().click();
-    await dialog.locator('input[type="datetime-local"]:visible').fill('2026-09-15T11:00');
     await dialog.locator('label:visible').filter({hasText:/^Result/}).locator('select').selectOption('Back Won');
+    await dialog.locator('input[type="datetime-local"]:visible').fill('2026-09-15T11:00');
     profit=await saveAndFind(page,dialog,profitName);
     assert.equal(profit.lay_actual,'9.00');
     assert.equal(profit.final_net_pnl,'-0.10');
@@ -164,7 +178,7 @@ try {
     await expect(dialog.getByLabel('Cashback receipt date')).toHaveValue('');
     await dialog.getByRole('tab',{name:/Matching/}).first().click();
     await dialog.getByLabel('Refund kind').selectOption('cash');
-    await expect(dialog.getByLabel('Presentation Mode')).toHaveValue('Standard');
+    await expect(dialog.getByLabel('Sportsbook lay workflow mode')).toHaveValue('Standard');
     await dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/}).click();
     await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
     if(width===760){
@@ -186,6 +200,7 @@ try {
     await dialog.getByRole('button',{name:'Back Bet Placed'}).click();
     await dialog.getByRole('button',{name:'Lay Fully Placed'}).click();
     await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+    await dialog.locator('label').filter({hasText:/^Result/}).locator('select').selectOption('Lay Won + Cashback');
     await dialog.locator('input[type="datetime-local"]:visible').fill('2026-09-15T12:00');
     await dialog.getByLabel('Actual cashback receipt amount').fill('8.00');
     await dialog.getByLabel('Cashback receipt reference').fill('SYNTHETIC-RECEIPT-'+width);
@@ -194,7 +209,6 @@ try {
     await expect(dialog.getByText('Actual receipt cannot exceed the eligible amount or offer cap.')).toBeVisible();
     await dialog.getByLabel('Actual cashback receipt amount').fill('8.00');
     await expect(dialog.getByText('Actual receipt cannot exceed the eligible amount or offer cap.')).toHaveCount(0);
-    await dialog.locator('label').filter({hasText:/^Result/}).locator('select').selectOption('Lay Won + Cashback');
     cashback=await saveAndFind(page,dialog,cashbackName);
     assert.equal(cashback.final_net_pnl,'6.82');
     assert.equal(JSON.parse(cashback.conditional_benefit_json).actual_receipt_amount,'8.00');
@@ -203,7 +217,7 @@ try {
     const nativeModes=[];
     if(width===1440){
       for(const source of [
-        {mode:'displayed_odds',label:'Entered boosted odds',value:'3.20',reopenedValue:'3.2000'},
+        {mode:'displayed_odds',label:'Entered boosted odds',value:'3.20',reopenedValue:'3.20'},
         {mode:'profit_only',label:'Potential profit, excluding stake',value:'22.00'},
         {mode:'percentage',label:'Base back odds',value:'3.00',extra:['Profit boost %','10']},
       ]){
@@ -215,12 +229,17 @@ try {
         if(source.extra)await dialog.getByLabel(source.extra[0]).fill(source.extra[1]);
         await dialog.getByLabel('Lay odds 1').fill('3.00');
         await dialog.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption('Smarkets');
+        await dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/}).click();
+        await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
         const saved=await saveAndFind(page,dialog,name);
         assert.equal(JSON.parse(saved.profit_boost_source_json).mode,source.mode);
+        assert.equal(JSON.parse(saved.lay_plan_json).selected_strategy,'Standard');
+        assert.equal(saved.lay_actual,'');
         await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${saved.sportsbook_bet_id}`);
         dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
         await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
         await expect(dialog.getByLabel(source.label)).toHaveValue(source.reopenedValue??source.value);
+        await expect(dialog.getByLabel('Commission (%)')).toHaveValue('2');
         nativeModes.push({mode:source.mode,id:saved.sportsbook_bet_id});
         await dialog.getByRole('button',{name:/Close/}).first().click();
       }
