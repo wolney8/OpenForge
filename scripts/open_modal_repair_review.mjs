@@ -16,7 +16,7 @@ if((await api.get(`/profiles/${fixture.profileId}/${fixtureEndpoint}`)).status()
 await api.dispose();
 const url=corrections?`http://localhost:${webPort}/fund-manager/calculators?family=matched-betting&betType=free_bet&freeBetMode=SNR&backStake=10.00&backOdds=4.00&layOdds=4.20&exchangeCommission=0.02&commissionUnits=ratio`:`http://localhost:${webPort}/profiles/${fixture.profileId}/tracker/free-bets`;
 if(corrections){
- const evidencePath=runtime+"/profit-boost-cashback-bundle-evidence.json";
+ const evidencePath=runtime+"/core-lay-planner-ui-evidence.json";
  const lastRun=fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,"utf8")):null;
  const served=JSON.parse(fs.readFileSync(runtime+'/review-source.json','utf8'));
  const apiDiff=lastRun?.source&&served.checkout
@@ -26,7 +26,7 @@ if(corrections){
  const frontendDiff=lastRun?.source
   ? spawnSync('git',['diff','--quiet',frontendSource,lastRun.source,'--','apps/web']).status
   : 1;
- if(!lastRun?.result || lastRun.result!=='PASS' || apiDiff!==0 || frontendDiff!==0)throw Error('The running API or frontend does not match the product code that passed the core journey; do not open an older candidate as evidence.');
+ if(!lastRun?.result || lastRun.result!=='PASS' || apiDiff!==0 || frontendDiff!==0)throw Error('The running API or frontend does not match the product code that passed the exact Standard screen and core journey; do not open an older candidate as evidence.');
  console.log(`Tested review build ${lastRun.source}; frontend product source ${frontendSource}; API started from ${served.checkout}, API product source ${served.api_source}; ${lastRun.cases.length} rendered width/theme variants. Current report checkout ${execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()}. Main remains unchanged; wider platform acceptance is pending.`);
 }
 if(process.argv.includes("--check")){console.log(`Ready: authenticated synthetic ${url}`);process.exit(0);}
