@@ -62,8 +62,27 @@ try{
   const persisted=await(await api.get('/profiles/'+pid+'/free-bets/'+id)).json();
   assert.equal(persisted.lay_actual,'7.50');
   assert.equal(persisted.base_reference_lay_stake,'7.72');
-  await page.reload();assert.deepEqual(errors,[]);
-  results.push({width,theme,first,last,delayedAcknowledgement:true,latestTextRetained:true,queuedDropdownPersisted:true,reference:'7.72',geometry});
+  let lostAcknowledgementReload=false;
+  if(width===1440&&theme==='light'){
+    await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/free-bets?record='+id);await dialog.waitFor();
+    await dialog.getByRole('tab',{name:/Matching/}).first().click();
+    const mutation='**/profiles/'+pid+'/free-bets/'+id;
+    await page.route(mutation,async route=>{
+      if(route.request().method()!=='PUT'){await route.continue();return;}
+      const response=await route.fetch();assert.equal(response.status(),200);await route.abort('failed');
+    });
+    await dialog.getByLabel('Lay actual',{exact:true}).fill('7.60');
+    await dialog.getByRole('button',{name:'Save',exact:true}).click();
+    await dialog.getByRole('alert').waitFor();
+    assert.equal(await dialog.getByLabel('Lay actual',{exact:true}).inputValue(),'7.60');
+    assert.equal((await(await api.get('/profiles/'+pid+'/free-bets/'+id)).json()).lay_actual,'7.60');
+    await page.unroute(mutation);await page.reload();await dialog.waitFor();
+    await dialog.getByRole('tab',{name:/Matching/}).first().click();
+    await expect(dialog.getByLabel('Lay actual',{exact:true})).toHaveValue('7.60');
+    lostAcknowledgementReload=true;
+  }else await page.reload();
+  assert.deepEqual(errors,[]);
+  results.push({width,theme,first,last,delayedAcknowledgement:true,latestTextRetained:true,queuedDropdownPersisted:true,lostAcknowledgementReload,reference:'7.72',geometry});
   await context.close();
  }
  console.log(JSON.stringify({scope:'latest edit + native modal containment',profile:pid,status:'PASS',results},null,2));
