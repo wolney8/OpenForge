@@ -1,5 +1,21 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-LOCAL-INTEGRATION-20260915 — one usable normal local application
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-LOCAL-001 | Retire synthetic 3040 as Will's application and serve the reviewed stack through normal 3010 sign-in | COMPLETE LOCALLY: 3010/8010 run the integration worktree; 3040/8039 stopped |
+| PD-LOCAL-002 | Protect existing local records before additive planning migration | COMPLETE / PROVEN: verified backup, cloned migration twice, restored rollback copy, unchanged old-field fingerprints and null new metadata on historical rows |
+| PD-LOCAL-003 | Reconcile the repair stack and assembled Multi-Lay work without flattening unsupported modes | COMPLETE for the reviewed stack; richer Multi-Lay placement/reward modes remain explicitly PARTIAL under PD-FIX-114 |
+| PD-LOCAL-004 | Make worktree-served web code use the intended normal database rather than an empty worktree-relative database | COMPLETE at c73b0943 using an explicit local database path; default behaviour is unchanged |
+
+Normal local application: `http://localhost:3010`, integration head
+**c73b0943a711e37ec29070c8c421506e892e87fc**. Main, Vercel, frozen manual data and protected source
+branches remain unchanged. The verified pre-migration backup is retained under ignored
+`data/private/backups/`; rollback is stop services, restore that backup, and restart the previous
+local source. GitHub synchronisation remains pending because repository publication is forbidden in
+this tranche.
+
 ## PD-CALC-SCREEN-20260915 — exact Standard screen repair
 
 | ID | Requested outcome | Current state |

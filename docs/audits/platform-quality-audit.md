@@ -1,5 +1,35 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current local integration gate — 2026-09-15
+
+Will's normal application is now `http://localhost:3010`; it serves the reviewed integration stack
+at **c73b0943a711e37ec29070c8c421506e892e87fc** with the normal API, authentication settings and
+local database. The former 3040/8039 pair is stopped and is no longer an owner handoff. Its fresh
+normal-browser failure was reproduced: 3040 proxied to the award-integrity synthetic API, which had
+no ordinary Google OAuth/public-auth configuration, so login returned 503 `Unable to continue`.
+
+Data gate: SQLite backup
+`data/private/backups/openforge-pre-integration-final-20260915-153928.sqlite3` has SHA-256
+`b097528c2b078505c361ae9197c9b5095fa20be9000cfeff5782a519cdcf9dec` and passes integrity checks.
+An ignored clone and a second restored copy were verified before the normal switch. The additive
+`sportsbook_bets.lay_plan_json`, `sportsbook_bets.profit_boost_source_json`,
+`sportsbook_bets.conditional_benefit_json` and `free_bets.lay_plan_json` columns migrated twice with
+an identical schema. All old columns in Profiles, Accounts, Sportsbook, Free Bets, Casino and Cash
+Adjustments retained identical row fingerprints; representative clone routes and report sources
+returned 200. Historical new-metadata count remains zero. The migrated normal database passes
+integrity and the same old-field comparison.
+
+Engineering evidence: production web build PASS; 399/419 mixed focused API checks PASS. The 20
+failures are retained as fixture debt: legacy workflow tests assume private seed display names and
+now conflict with canonical Profile Account validation. The current independent safety/calculation
+suites passed within that run; this is not recorded as an all-green broad-suite result. Existing
+frozen browser/PostgreSQL evidence remains applicable because the only new product change selects
+the intended local database path for a worktree-served web process. Main/hosted remain unchanged.
+
+Rollback: stop 3010/8010, restore the verified pre-integration backup, and restart the previous
+f7a3b35 source. Do not drop additive columns if new planning metadata has since been created; use
+the backup only as an immediate local rollback with Will's later work accounted for.
+
 ## Current exact Standard screen correction — 2026-09-15 / LOCAL ONLY
 
 The earlier broad UI status did not establish the screen shown in Will's latest screenshot. Git

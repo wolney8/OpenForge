@@ -1,5 +1,31 @@
 # Project Status
 
+## Current normal local Plum Duff — 2026-09-15
+
+`http://localhost:3010` now serves the assembled application from
+`integration/local-plum-duff-20260915` with the normal local sign-in and Will's normal local
+database. Port 3040 is retired as an owner-review address; its synthetic API could not complete a
+normal Google sign-in, which caused the `Unable to continue` response.
+
+Before the switch, the normal database was backed up and restored to a separate verification copy.
+The four additive planning columns were applied to a clone twice, with identical repeat-migration
+schema and unchanged old-field fingerprints for Profiles, Accounts, Sportsbook, Free Bets, Casino
+and Cash Adjustments. The same migration was then applied to the normal database; existing rows
+remain unversioned/null and their previous financial fields and identities are unchanged.
+
+The local application includes the accumulated Account, Free Bet, Sportsbook, award, Blackjack,
+latest-edit, modal/reflow, calculator, planning, Profit Boost, conditional Cashback, Multi-Lay and
+conversion protections through **c73b0943a711e37ec29070c8c421506e892e87fc**. Health, normal login
+redirect, production build, clone-data ledger/report reads and the focused financial suite pass.
+The mixed legacy API run passed 399 checks but retains 20 obsolete seed/display-name fixture
+failures; these are test-maintenance gaps, not promoted to product PASS.
+
+Still unfinished: reward-aware Bonus planning, Multi-Lay actual per-leg placement and richer saved
+reward/boost modes, Early Payout full source persistence, split Cashback award-group receipt
+linkage, changed-odds/multiple-fill handling, full screen-reader evidence and the remaining #114
+import/recovery/security coverage. Main and Vercel are unchanged; this is the normal local runtime,
+not a published release.
+
 ## Current exact Standard calculator screen — LOCAL ONLY
 
 The separate test version at `http://localhost:3040/fund-manager/calculators` now shows the requested
