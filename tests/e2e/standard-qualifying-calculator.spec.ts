@@ -586,12 +586,12 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await expect(reference.getByText("LIVE", { exact: true })).toBeVisible();
   await expect(reference.getByRole("heading", { name: "LIVE Lock-In Reference" })).toBeVisible();
   await expect(page.getByText("Shift the suggested hedge toward more or less profit on the remaining outcome.")).toBeVisible();
-  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 95.82")).toBeVisible();
   await expect(page.getByLabel("Team / selection wins: Bookmaker £ 62.50; Exchange £ (46.26); total £ 16.24")).toBeVisible();
   await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("80");
-  await expect(page.getByLabel("Additional back stake: £ 68.73")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 68.73")).toBeVisible();
   await page.locator('[data-pd-id="calculators.early-maximum-payout"]').fill("");
-  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 95.82")).toBeVisible();
   await page.route("**/fund-manager/calculators/early-payout/preview", async (route) => {
     const payload = route.request().postDataJSON() as { lock_adjustment_percent?: string };
     if (payload.lock_adjustment_percent !== "50") return route.continue();
@@ -603,17 +603,17 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await page.getByRole("slider", { name: "Lock-in adjustment" }).fill("50");
   await expect(reference).toBeVisible();
   await expect(outcomes).toBeVisible();
-  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 95.82")).toBeVisible();
   const [pendingReferenceBox, pendingOutcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
   expect(pendingReferenceBox?.height).toBeCloseTo(settledReferenceBox?.height ?? 0, 0);
   expect(pendingOutcomesBox?.height).toBeCloseTo(settledOutcomesBox?.height ?? 0, 0);
-  await expect(page.getByLabel("Additional back stake: £ 48.91")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 48.91")).toBeVisible();
   const [liveReferenceBox, liveOutcomesBox] = await Promise.all([reference.boundingBox(), outcomes.boundingBox()]);
   expect(liveReferenceBox?.x).toBeCloseTo(liveOutcomesBox?.x ?? 0, 0);
   expect(liveReferenceBox?.width).toBeCloseTo(liveOutcomesBox?.width ?? 0, 0);
   await page.locator('[data-pd-id="calculators.early-payout.lock-adjustment-reset"]').click();
   await expect(page.getByRole("slider", { name: "Lock-in adjustment" })).toHaveValue("100");
-  await expect(page.getByLabel("Additional back stake: £ 95.82")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 95.82")).toBeVisible();
   const earlyCopyButton = page.locator('[data-pd-id="calculators.early-payout.reference.additional-back-stake.copyable"] button');
   const earlyCopyGeometry = await iconButtonGeometry(earlyCopyButton);
   expect(Math.abs(earlyCopyGeometry.offset.x)).toBeLessThanOrEqual(0.5);
@@ -623,7 +623,7 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await page.getByRole("button", { name: "Add part back" }).click();
   await page.getByLabel("Part back 1 stake").fill("20");
   await page.getByLabel("Part back 1 odds").fill("1.4");
-  await expect(page.getByLabel("Additional back stake: £ 72.48")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 72.48")).toBeVisible();
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH, fullPage: true });
   }
@@ -633,10 +633,10 @@ test("calculates Early Payout trigger, part-back and Dutch references without wr
   await page.locator('[data-pd-id="calculators.early-back-stake"]').fill("50");
   await page.locator('[data-pd-id="calculators.early-back-odds"]').fill("2.25");
   await page.locator('[data-pd-id="calculators.early-initial-odds"]').fill("1.8");
-  await expect(page.getByLabel("Recommended second bookmaker stake: £ 62.50")).toBeVisible();
+  await expect(page.getByLabel("Recommended second bookmaker stake: total £ 62.50")).toBeVisible();
   await page.getByRole("switch", { name: "Bookmaker has paid out early" }).click();
   await page.locator('[data-pd-id="calculators.early-in-play-odds"]').fill("1.2");
-  await expect(page.getByLabel("Additional back stake: £ 93.75")).toBeVisible();
+  await expect(page.getByLabel("Additional back stake: total £ 93.75")).toBeVisible();
   await expect(page.getByLabel("Selection wins: Bookmaker 1 £ 62.50; Bookmaker 2 £ (62.50); Bookmaker 3 £ 18.75; total £ 18.75")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator('[data-pd-id="calculators.early-payout.outcomes"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");

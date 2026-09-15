@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 async function mockSession(page: import("@playwright/test").Page) {
+  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (sessionToken) {
+    await page.context().addCookies([{ name: "pd_session", value: sessionToken, url: process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010" }]);
+  }
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
     authenticated: true,
     email: "calculator-parity@example.invalid",
@@ -47,16 +51,24 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-desktop.png`, fullPage: true });
   }
+  await page.getByLabel("Back stake").fill("10");
+  await page.getByLabel("Back odds").fill("4");
+  await page.getByLabel("Lay odds").fill("4.2");
+  await page.getByLabel("Commission (%)").fill("2");
   await page.getByRole("button", { name: "Advanced" }).click();
-  await page.getByLabel("Actual selected strategy").selectOption("Partial Lay");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.overlay"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom"]')).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Custom lay stake slider" })).toBeVisible();
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
-  expect(geometry[0].fields[1]).toEqual(geometry[1].fields[1]);
+  expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
   await page.getByLabel("Back stake").fill("invalid");
   await page.getByLabel("Back odds").focus();
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
-  expect(geometry[0].fields[1]).toEqual(geometry[1].fields[1]);
+  expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
   await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
-  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(1);
+  await expect(page.getByLabel("Bonus Applied If Bet")).toHaveValue("Lay Wins");
+  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(0);
 
   await page.goto("/fund-manager/calculators?family=multi-lay");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.presentation"] .calculator-segment-back .eyebrow')).toHaveText("Back bet");
@@ -192,9 +204,13 @@ test("keeps the exact Standard controls contained across themes and calculator w
     await page.evaluate(() => { document.documentElement.style.fontSize = "18px"; });
     await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
     await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByLabel("Back stake").fill("10");
+    await page.getByLabel("Back odds").fill("4");
+    await page.getByLabel("Lay odds").fill("4.2");
+    await page.getByLabel("Commission (%)").fill("2");
     await page.getByRole("button", { name: "Advanced" }).click();
-    await page.getByLabel("Actual selected strategy").focus();
-    await expect(page.getByLabel("Actual selected strategy")).toBeFocused();
+    await page.getByRole("textbox", { name: "Custom Lay" }).focus();
+    await expect(page.getByRole("textbox", { name: "Custom Lay" })).toBeFocused();
     const overflow = await page.evaluate(() => ({
       client: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,
