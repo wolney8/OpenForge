@@ -59,66 +59,73 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   await page.getByLabel("Exchange commission (%)", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Advanced" }).click();
   const topControlRows = await page.locator('.calculator-band-primary .ledger-calculator-mode-bar').first().evaluate((root) => ({
-    selectorTop: root.querySelector<HTMLElement>('#calculator-calculator-offer')!.getBoundingClientRect().top,
-    modeTop: root.querySelector<HTMLElement>('[data-pd-id="calculators.matched-betting.mode"]')!.getBoundingClientRect().top,
-    firstRight: root.children[0].getBoundingClientRect().right,
-    secondLeft: root.children[1].getBoundingClientRect().left,
+    offerTop: root.querySelector<HTMLElement>('#calculator-calculator-offer')!.getBoundingClientRect().top,
+    betTypeTop: root.querySelector<HTMLElement>('#calculator-bet-type')!.closest<HTMLElement>('.field-control')!.getBoundingClientRect().top,
+    modeTop: root.querySelector<HTMLElement>('[data-pd-id="calculators.matched-betting.mode"]')!.closest<HTMLElement>('.field-control')!.getBoundingClientRect().top,
     labelsFit: [...root.querySelectorAll<HTMLElement>(":scope > .field-control > span")].every((label) => label.scrollWidth <= label.clientWidth + 1),
   }));
-  expect(topControlRows.modeTop).toBeGreaterThan(topControlRows.selectorTop);
-  expect(topControlRows.secondLeft - topControlRows.firstRight).toBeGreaterThanOrEqual(20);
+  expect(topControlRows.modeTop).toBeGreaterThan(topControlRows.offerTop);
+  expect(topControlRows.betTypeTop).toBeCloseTo(topControlRows.modeTop, 0);
   expect(topControlRows.labelsFit).toBe(true);
+  await expect(page.getByLabel("Offer")).toHaveValue("qualifying");
+  await expect(page.getByLabel("Calculator", { exact: true })).toHaveCount(0);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.overlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom"]')).toBeVisible();
   await expect(page.getByRole("slider", { name: "Custom lay stake slider" })).toBeVisible();
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"]')).toContainText("Custom Lay");
-  await expect(page.getByText("Lower lay reference; penny placement can leave a small residual.", { exact: true })).toBeHidden();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom"] h3')).toHaveText("Custom");
+  await expect(page.getByText("Underlay favours the bookmaker-win side.", { exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "About Underlay" })).toBeVisible();
   await page.getByRole("button", { name: "About Underlay" }).click();
-  await expect(page.getByRole("tooltip")).toContainText("Lower lay reference");
+  await expect(page.getByRole("tooltip")).toContainText("Underlay favours the bookmaker-win side.");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "About Underlay" })).toHaveAttribute("aria-expanded", "false");
-  for (const id of ["underlay", "overlay", "custom"]) {
-    await expect(page.locator(`[data-pd-id="calculators.matched-betting.${id}"] h3`)).toHaveText(id === "custom" ? "Custom Lay" : `${id[0].toUpperCase()}${id.slice(1)}`);
+  for (const id of ["underlay", "standard", "overlay", "custom"]) {
+    await expect(page.locator(`[data-pd-id="calculators.matched-betting.${id}"] h3`)).toHaveText(`${id[0].toUpperCase()}${id.slice(1)}`);
   }
   await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"] [data-label="Total"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id^="calculators.matched-betting."] h3', { hasText: /reference/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /(?:Apply|Use) (?:Underlay|Standard|Overlay) plan/i })).toHaveCount(0);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-input-copy"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"] [data-pd-id="calculator.custom-slider"]')).toBeVisible();
   await expect(page.getByLabel("Actual selected strategy")).toHaveCount(0);
   await expect(page.getByText("Decimal rate, for example 0.02", { exact: true })).toHaveCount(0);
   const advancedOrder = await page.locator('[data-pd-id="calculators.matched-betting.results"]').evaluate((root) => {
+    const cards = ["underlay", "standard", "overlay"].map((id) => root.querySelector(`[data-pd-id="calculators.matched-betting.${id}"]`)!);
     const custom = root.querySelector('[data-pd-id="calculators.matched-betting.custom"]')!;
     const slider = root.querySelector('[data-pd-id="calculator.custom-slider"]')!;
     const outcomes = root.querySelector('[data-pd-id="calculators.outcomes"]')!;
     return {
+      comparisonOrder: cards.every((card, index) => index === cards.length - 1 || Boolean(card.compareDocumentPosition(cards[index + 1]) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      comparisonBeforeCustom: Boolean(cards.at(-1)!.compareDocumentPosition(custom) & Node.DOCUMENT_POSITION_FOLLOWING),
       customBeforeSlider: Boolean(custom.compareDocumentPosition(slider) & Node.DOCUMENT_POSITION_FOLLOWING),
       sliderBeforeOutcomes: Boolean(slider.compareDocumentPosition(outcomes) & Node.DOCUMENT_POSITION_FOLLOWING),
     };
   });
-  expect(advancedOrder).toEqual({ customBeforeSlider: true, sliderBeforeOutcomes: true });
+  expect(advancedOrder).toEqual({ comparisonOrder: true, comparisonBeforeCustom: true, customBeforeSlider: true, sliderBeforeOutcomes: true });
   const alignedReferences = await page.locator('[data-pd-id="calculators.matched-betting.results"]').evaluate((root) => {
     const ids = ["calculators.matched-betting.custom-group", "calculators.outcomes"];
     const outer = ids.map((id) => root.querySelector<HTMLElement>(`[data-pd-id="${id}"]`)!.getBoundingClientRect());
-    const pair = [...root.querySelectorAll<HTMLElement>('.calculator-advanced-reference-pair > .calculator-reference-section')].map((item) => item.getBoundingClientRect());
-    const rowGeometry = [...root.querySelectorAll<HTMLElement>('.calculator-reference-section')].map((section) => [...section.querySelectorAll<HTMLElement>('.calculator-outcome-scenario-row')].map((row) => {
-      const label = row.querySelector<HTMLElement>('strong:first-child')!.getBoundingClientRect();
-      const value = row.querySelector<HTMLElement>('strong:last-child')!.getBoundingClientRect();
+    const cards = [...root.querySelectorAll<HTMLElement>('.calculator-reference-card-grid > .calculator-reference-section')].map((item) => item.getBoundingClientRect());
+    const rowGeometry = [...root.querySelectorAll<HTMLElement>('.calculator-reference-section')].map((section) => [...section.querySelectorAll<HTMLElement>('.calculator-reference-card-row')].map((row) => {
+      const label = row.querySelector<HTMLElement>('dt')!.getBoundingClientRect();
+      const value = row.querySelector<HTMLElement>('dd')!.getBoundingClientRect();
       return { labelRight: Math.round(label.right), valueLeft: Math.round(value.left) };
     }));
-    const compactLabels = [...root.querySelectorAll<HTMLElement>('.calculator-reference-section .calculator-outcome-scenario-row')].every((row) => {
-      const label = row.querySelector<HTMLElement>('strong:first-child')!.getBoundingClientRect();
-      return label.width < row.getBoundingClientRect().width * 0.55;
+    const deadSpace = cards.map((card, index) => {
+      const content = root.querySelectorAll<HTMLElement>('.calculator-reference-card-grid > .calculator-reference-section')[index].lastElementChild!.getBoundingClientRect();
+      return Math.round(card.bottom - content.bottom);
     });
-    return { outer: outer.map((box) => [Math.round(box.x), Math.round(box.width)]), pair: pair.map((box) => Math.round(box.width)), rowGeometry, compactLabels };
+    return { outer: outer.map((box) => [Math.round(box.x), Math.round(box.width)]), cardWidths: cards.map((box) => Math.round(box.width)), cardHeights: cards.map((box) => Math.round(box.height)), rowGeometry, deadSpace };
   });
   expect(alignedReferences.outer[0]).toEqual(alignedReferences.outer[1]);
-  expect(Math.abs(alignedReferences.pair[0] - alignedReferences.pair[1])).toBeLessThanOrEqual(1);
+  expect(new Set(alignedReferences.cardWidths).size).toBe(1);
+  expect(new Set(alignedReferences.cardHeights).size).toBe(1);
   for (const rows of alignedReferences.rowGeometry) {
     expect(new Set(rows.map((row) => row.labelRight)).size).toBe(1);
     expect(new Set(rows.map((row) => row.valueLeft)).size).toBe(1);
   }
-  expect(alignedReferences.compactLabels).toBe(true);
+  expect(alignedReferences.deadSpace.every((space) => space <= 1)).toBe(true);
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-advanced-desktop.png`, fullPage: true });
   }
@@ -150,7 +157,7 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.standard"]')).toBeVisible();
   await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.overlay"]')).toBeVisible();
   await expect(multiLay.locator('.calculator-reference-section [data-label="Total"]')).toHaveCount(0);
-  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.custom"]')).toContainText("Custom Lay");
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.custom"] h3')).toHaveText("Custom");
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/multi-lay-advanced-desktop.png`, fullPage: true });
   }
@@ -291,8 +298,8 @@ test("keeps the exact Standard controls contained across themes and calculator w
     await page.getByLabel("Lay odds").fill("4.2");
     await page.getByLabel("Exchange commission (%)", { exact: true }).fill("2");
     await page.getByRole("button", { name: "Advanced" }).click();
-    await page.getByRole("textbox", { name: "Custom Lay" }).focus();
-    await expect(page.getByRole("textbox", { name: "Custom Lay" })).toBeFocused();
+    await page.locator("#calculator-custom-reference-lay").focus();
+    await expect(page.locator("#calculator-custom-reference-lay")).toBeFocused();
     const overflow = await page.evaluate(() => ({
       client: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,

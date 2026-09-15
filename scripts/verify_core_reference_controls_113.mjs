@@ -23,40 +23,33 @@ try {
     const outcomes=page.locator('[data-pd-id="calculators.outcomes"]');
     await expect(outcomes).toHaveAttribute('aria-busy','false');
     await expect(page.locator('#calculator-commission')).toHaveValue('2');
-    const selected=page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]');
+    const selected=page.locator('[data-pd-id="calculators.matched-betting.standard"]');
     await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/7\.18/);
     const reference=name=>page.locator(`[data-pd-id="calculators.matched-betting.${name.toLowerCase()}"]`);
     for(const name of ['Underlay','Overlay','Custom']) {
-      const rows=reference(name).getByRole('row');
+      const rows=reference(name).locator('dd');
       for(const [i,label] of ['Lay stake','Liability','Back wins','Back loses'].entries()) {
         const value=expected[name][i];
-        await expect(rows.nth(i)).toHaveAttribute('aria-label',new RegExp(label+': total .*'+value.replace('-','').replace('.','\\.')));
-        if(value.startsWith('-'))await expect(rows.nth(i)).toHaveAttribute('aria-label',/\(2\.64\)/);
+        await expect(rows.nth(i)).toContainText(value.replace('-',''));
+        if(value.startsWith('-'))await expect(rows.nth(i)).toContainText('(2.64)');
       }
       const a=await reference(name).boundingBox(),b=await outcomes.boundingBox();
       assert(Math.abs(a.x-b.x)<=1 && Math.abs(a.width-b.width)<=1,'Reference and Outcomes full-width edges');
     }
-    await page.getByRole('button',{name:'Use Underlay plan',exact:true}).click();
-    await expect(selected.getByRole('button')).toBeEnabled();
-    await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/6\.25/);
-    await selected.getByRole('button').click();
+    await expect(page.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);
+    await reference('Underlay').locator('dd').first().getByRole('button').click();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'6.25');
-    assert.equal(requests.at(-1).strategy,'Underlay');
-    await page.getByRole('button',{name:'Use Overlay plan',exact:true}).click();
-    await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/10\.20/);
-    await expect(selected.getByRole('button')).toBeEnabled();
+    assert.equal(requests.at(-1).strategy,'Standard');
     const negative=reference('Overlay').locator('[data-pd-id$=".back-wins.copyable"]');
     await expect(negative.getByRole('button')).toHaveAttribute('aria-label',/\(2\.64\)/);
     await negative.getByRole('button').click();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'-2.64');
     await page.locator('#calculator-custom-reference-lay').fill('9.00');
-    await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/9\.00/);
-    await expect(selected.getByRole('button')).toBeEnabled();
+    await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-input-copy"] button')).toHaveAttribute('aria-label',/9\.00/);
     assert.equal(requests.at(-1).strategy,'Custom');
     assert.equal(requests.at(-1).manual_lay_stake,'9.00');
     await page.getByRole('button',{name:'Simple',exact:true}).click();
-    await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/7\.18/);
-    await expect(selected.getByRole('button')).toBeEnabled();
+    await expect(selected.locator('dd').first().getByRole('button')).toHaveAttribute('aria-label',/7\.18/);
     await page.getByRole('button',{name:'Advanced',exact:true}).click();
     await expect(selected.getByRole('button')).toBeEnabled();
     assert.equal(requests.at(-1).strategy,'Standard','Opening Advanced does not select another hedge');
@@ -64,7 +57,7 @@ try {
     // Draft changes retain the same result node but cannot copy stale output.
     await outcomes.evaluate(el=>el.dataset.identity='persistent');
     await page.locator('#calculator-back-odds').fill('not-odds');
-    await expect(selected.getByRole('button')).toBeDisabled();
+    await expect(selected.locator('dd').first().getByRole('button')).toBeDisabled();
     await expect(outcomes).toHaveAttribute('data-identity','persistent');
     await page.locator('#calculator-back-odds').fill('4');
     await expect(selected.getByRole('button')).toBeEnabled();
@@ -82,16 +75,15 @@ try {
       await page.route('**/matched-betting/preview',intercept);
       await page.locator('#calculator-back-odds').fill('5');
       await held;
-      await expect(selected.getByRole('button')).toBeDisabled();
-      await expect(page.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeDisabled();
+      await expect(selected.locator('dd').first().getByRole('button')).toBeDisabled();
       await expect(outcomes).toHaveAttribute('data-identity','persistent');
       await page.locator('#calculator-back-odds').fill('6');
-      await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/11\.96/);
-      await expect(selected.getByRole('button')).toBeEnabled();
+      await expect(selected.locator('dd').first().getByRole('button')).toHaveAttribute('aria-label',/11\.96/);
+      await expect(selected.locator('dd').first().getByRole('button')).toBeEnabled();
       release();await page.unroute('**/matched-betting/preview',intercept);
-      await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/11\.96/);
+      await expect(selected.locator('dd').first().getByRole('button')).toHaveAttribute('aria-label',/11\.96/);
       await page.locator('#calculator-back-odds').fill('4');
-      await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/7\.18/);
+      await expect(selected.locator('dd').first().getByRole('button')).toHaveAttribute('aria-label',/7\.18/);
     }
     for(const [percent,ratio] of [['0','0'],['2','0.02'],['5','0.05'],['2.125','0.02125']]) {
       await page.locator('#calculator-commission').fill(percent);
@@ -103,7 +95,6 @@ try {
     const normal=new URLSearchParams({...Object.fromEntries(params),betType:'qualifying',strategy:'Overlay',manualLayStake:'10.20'});
     await page.goto('http://localhost:3040'+path+'?'+normal);
     await expect(outcomes).toHaveAttribute('aria-busy','false');
-    await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/10\.20/);
     const normalLoss=outcomes.locator('[data-pd-id$=".copyable"]').filter({has:page.getByRole('button',{name:/Copy .*\(2\.64\)/})});
     await normalLoss.getByRole('button').click();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'-2.64');

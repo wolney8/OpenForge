@@ -70,14 +70,13 @@ try {
  await core.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption(accounts.Exchange.account_id);
  await expect(core.getByLabel('Planning exchange commission (%)',{exact:true})).toHaveValue('2');
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
- try {await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();}
+ try {await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);}
  catch(e) {console.log('CORE FAILED STATE',await core.innerText());throw e;}
- await core.getByRole('button',{name:'Use '+chosen+' plan',exact:true}).click();
  const referenceFor=name=>core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
- let selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
+let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
- await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
- await selected.getByRole('row').first().getByRole('button').click();
+ await expect(selected.locator('dd').first()).toContainText(planned);
+ await selected.locator('dd').first().getByRole('button').click();
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),planned);
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
@@ -98,7 +97,7 @@ try {
  assert.equal(stored(ledger,id).lay_actual,'');assert.equal(stored(ledger,id).lay_commission_1,'');
  await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
- await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();
+ await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);
  await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
  await expect(core.getByLabel('Actual selected strategy')).toHaveCount(0);
  await expect(core.getByText('Decimal rate, for example 0.02',{exact:true})).toHaveCount(0);
@@ -107,19 +106,19 @@ try {
   return {sliderInsideCustom:Boolean(slider?.closest('[data-pd-id$=".custom-group"]')),customBeforeSlider:Boolean(custom?.compareDocumentPosition(slider)&Node.DOCUMENT_POSITION_FOLLOWING),sliderBeforeOutcomes:Boolean(slider?.compareDocumentPosition(outcomes)&Node.DOCUMENT_POSITION_FOLLOWING)};
  });
  assert.deepEqual(embeddedOrder,{sliderInsideCustom:true,customBeforeSlider:true,sliderBeforeOutcomes:true});
- selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
+ selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
- await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
+ await expect(selected.locator('dd').first()).toContainText(planned);
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['9.00','28.80','1.20','8.82']};
- await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');
- await expect(referenceFor('Custom').getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
+ await core.getByLabel('Lay stake',{exact:true}).fill('9.00');
+ await expect(core.locator('[data-pd-id$=".custom-input-copy"]')).toContainText('9.00');
  for(const name of (basis==='SNR'?['Underlay','Overlay','Custom']:[])) {
   const reference=core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
-  for(const [i,value] of expected[name].entries())await expect(reference.getByRole('row').nth(i)).toHaveAttribute('aria-label',new RegExp(value.replace('-','').replace('.','\\.')));
+  for(const [i,value] of expected[name].entries())await expect(reference.locator('dd').nth(i)).toContainText(value.replace('-',''));
  }
  if(basis==='SNR') {
-  const pair=await core.locator('.calculator-advanced-reference-pair').boundingBox();
+  const pair=await core.locator('.calculator-reference-card-grid').boundingBox();
   const customGroup=await core.locator('[data-pd-id$=".custom-group"]').boundingBox();
   const outcomes=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();
   assert(Math.abs(pair.x-outcomes.x)<=1&&Math.abs(pair.width-outcomes.width)<=1);
@@ -127,21 +126,21 @@ try {
   const underlay=await referenceFor('Underlay').boundingBox(),overlay=await referenceFor('Overlay').boundingBox();
   assert(Math.abs(underlay.width-overlay.width)<=1);
  }
- await core.getByRole('button',{name:'Use '+chosen+' plan',exact:true}).click();
+ await expect(core.getByRole('button',{name:'Use '+chosen+' plan',exact:true})).toHaveCount(0);
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
- selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
- await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
+ selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
+ await expect(selected.locator('dd').first()).toContainText(planned);
  if(basis==='SNR'&&width===1440) {
   for(const [percentage,ratio] of [['0','0'],['5','0.05'],['2.125','0.02125'],['2','0.02']]) {
    await core.getByLabel('Planning exchange commission (%)').fill(percentage);
-   await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
+   await expect(selected.locator('dd').first().getByRole('button')).toBeEnabled();
    await expect(save).toBeEnabled();await save.click();await expect(dialog).toBeHidden();
    const savedRow=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
    assert.equal(JSON.parse(savedRow.lay_plan_json).commission,ratio);assert.equal(JSON.parse(savedRow.lay_plan_json).commission_origin,'override');
    assert.equal(savedRow.lay_actual,'');
    await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
    await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue(percentage);
-   await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
+   await expect(selected.locator('dd').first().getByRole('button')).toBeEnabled();
   }
   const result=core.locator('[data-pd-id$=".outcomes"]');await result.evaluate(el=>el.dataset.testIdentity='persistent');
   let entered,release;const held=new Promise(r=>entered=r),gate=new Promise(r=>release=r);let first=true;
@@ -149,22 +148,22 @@ try {
   await page.route('**/matched-betting/preview',intercept);
   await core.getByLabel('Back odds',{exact:true}).fill('5.00');
   await Promise.race([held,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Held preview request was not intercepted')),20000))]);
-  await expect(selected.getByRole('row').first().getByRole('button')).toBeDisabled();await expect(save).toBeDisabled();
+  await expect(selected.locator('dd').first().getByRole('button')).toBeDisabled();await expect(save).toBeDisabled();
   await core.getByLabel('Back odds',{exact:true}).fill('6.00');
   // Underlay endpoint 10*(6-2)/(4.2-1) = 12.50, independent.
-  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/12\.50/);
-  await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();release();await page.unroute('**/matched-betting/preview',intercept);
-  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/12\.50/);
-  await core.getByLabel('Back odds',{exact:true}).fill('4.00');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
-  await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');const customReference=referenceFor('Custom');await expect(customReference.getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
+  await expect(selected.locator('dd').first()).toContainText('12.50');
+  await expect(selected.locator('dd').first().getByRole('button')).toBeEnabled();release();await page.unroute('**/matched-betting/preview',intercept);
+  await expect(selected.locator('dd').first()).toContainText('12.50');
+  await core.getByLabel('Back odds',{exact:true}).fill('4.00');await expect(selected.locator('dd').first()).toContainText('6.25');
+  await core.getByLabel('Lay stake',{exact:true}).fill('9.00');const customReference=referenceFor('Custom');await expect(core.locator('[data-pd-id$=".custom-input-copy"]')).toContainText('9.00');
   const slider=core.getByRole('slider',{name:'Custom lay stake slider'});await slider.focus();await page.keyboard.press('ArrowRight');
   const customCopy=core.locator('[data-pd-id$=".custom-input-copy"] button');await expect(customCopy).toBeEnabled();
-  const current=await core.getByLabel('Custom Lay',{exact:true}).inputValue();
+  const current=await core.getByLabel('Lay stake',{exact:true}).inputValue();
   assert.notEqual(current,'9.00');await customCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
   await expect(result).toHaveAttribute('data-test-identity','persistent');
-  await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.getByRole('row').first()).toHaveAttribute('aria-label',/7\.18/);
+  await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.locator('dd').first()).toContainText('7.18');
   await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
-  await core.getByRole('button',{name:'Use Underlay plan',exact:true}).click();selected=referenceFor('Underlay');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
+  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);selected=referenceFor('Underlay');await expect(selected.locator('dd').first()).toContainText('6.25');
  }
  await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
  await core.getByLabel('Actual lay odds',{exact:true}).fill('4.20');
@@ -227,10 +226,10 @@ try {
   await dismissStorageNotice(page);
   if(strategy==='Standard')await page.getByRole('button',{name:'Simple',exact:true}).click();
   const sourceCopy=strategy==='Standard'
-    ? page.locator('[data-pd-id="calculators.matched-betting.standard"]').getByRole('row').first().getByRole('button')
+    ? page.locator('[data-pd-id="calculators.matched-betting.standard"]').locator('dd').first().getByRole('button')
     : strategy==='Custom'
       ? page.locator('[data-pd-id="calculators.matched-betting.custom-input-copy"] button')
-      : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).getByRole('row').first().getByRole('button');
+      : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).locator('dd').first().getByRole('button');
   await expect(sourceCopy).toBeEnabled();await expect(sourceCopy).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
   await sourceCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   if(strategy==='Standard')await page.getByRole('button',{name:'Advanced',exact:true}).click();
@@ -268,9 +267,9 @@ try {
   await editor.getByRole('tab',{name:/Matching/}).first().click();const core=editor.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   if(strategy==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
   const selected=strategy==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : core.locator(`[data-pd-id$=".${strategy.toLowerCase()}"]`);
-  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
+  await expect(selected.locator('dd').first()).toContainText(stake);
   await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
-  const embeddedCopy=strategy==='Custom'?core.locator('[data-pd-id$=".custom-input-copy"] button'):selected.getByRole('row').first().getByRole('button');
+  const embeddedCopy=strategy==='Custom'?core.locator('[data-pd-id$=".custom-input-copy"] button'):selected.locator('dd').first().getByRole('button');
   await expect(embeddedCopy).toBeEnabled();await embeddedCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   assert.equal((await(await api.get(recordUrl)).json()).lay_actual,'','Copy must not place');
   await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();

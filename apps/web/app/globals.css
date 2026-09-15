@@ -8233,6 +8233,8 @@ html[data-theme="dark"] .ledger-editor-tab-button-matching {
 }
 
 .calculator-shell {
+  container-name: calculator-shell;
+  container-type: inline-size;
   display: grid;
   gap: 1rem;
   min-width: 0;
@@ -8382,7 +8384,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .ledger-calculator-mode-bar {
-  align-items: end;
+  align-items: start;
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
@@ -8395,13 +8397,18 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .calculator-workspace-control-bar {
   column-gap: 1.5rem;
-  grid-template-columns: minmax(min(100%, 16rem), 1.35fr) minmax(min(100%, 13rem), 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   row-gap: 1rem;
 }
 
-.calculator-presentation-mode-field {
+.calculator-workspace-control-bar > .field-control:first-child {
   grid-column: 1 / -1;
-  max-width: 22rem;
+  max-width: 24rem;
+}
+
+.calculator-workspace-control-bar .calculator-presentation-mode-field {
+  grid-column: auto;
+  max-width: none;
 }
 
 .workflow-editor-modal .calculator-input-grid {
@@ -8688,7 +8695,6 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-large);
   gap: 0;
-  overflow: clip;
 }
 
 .calculator-custom-reference-group > .calculator-reference-section {
@@ -8696,16 +8702,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   border-radius: 0;
 }
 
-.calculator-advanced-reference-pair {
-  align-items: start;
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-width: 0;
-}
-
 .calculator-advanced-reference-group > *,
-.calculator-advanced-reference-pair > *,
 .calculator-custom-reference-group > * {
   box-sizing: border-box;
   margin: 0;
@@ -8713,38 +8710,81 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   width: 100%;
 }
 
-.calculator-reference-section .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
-  grid-template-columns: minmax(7.5rem, 10.5rem) minmax(7.5rem, 1fr);
-}
-
-.calculator-reference-section .calculator-outcome-scenario-row > strong:first-child {
+.calculator-reference-section {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-large);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  overflow: visible;
 }
 
-.calculator-reference-tone-underlay .calculator-result-card-heading {
-  border-top: 0.25rem solid var(--warning);
-}
-
-.calculator-reference-tone-overlay .calculator-result-card-heading {
-  border-top: 0.25rem solid var(--primary);
-}
-
-.calculator-reference-tone-custom .calculator-result-card-heading {
-  border-top: 0.25rem solid var(--success);
-}
-
-.calculator-reference-heading-content {
+.calculator-reference-card-heading {
   align-items: center;
-  display: inline-flex;
+  border-top: 0.25rem solid var(--calculator-reference-accent);
+  border-radius: var(--shape-large) var(--shape-large) 0 0;
+  display: flex;
   gap: 0.55rem;
   justify-content: center;
   min-width: 0;
+  padding: 0.7rem 0.9rem 0.65rem;
 }
 
-.calculator-reference-heading-content .context-help-action {
+.calculator-reference-card-heading h3 {
+  font-size: 1rem;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.calculator-reference-card-heading .context-help-action {
   background: color-mix(in srgb, currentColor 8%, transparent);
   border-color: currentColor;
   color: inherit;
+}
+
+.calculator-reference-card-control {
+  border-top: 1px solid var(--outline-variant);
+  padding: 0.8rem;
+}
+
+.calculator-reference-card-values {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.calculator-reference-card-row {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 68%, transparent);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(7.75rem, 7.75rem);
+  min-height: 2.8rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.calculator-reference-card-row dt,
+.calculator-reference-card-row dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.calculator-reference-card-row dt {
+  color: var(--on-surface-variant);
+  font-weight: 700;
+}
+
+.calculator-reference-card-row dd {
+  align-items: center;
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .calculator-custom-input-row {
@@ -8761,10 +8801,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .calculator-reference-card-grid {
-  align-items: start;
+  align-items: stretch;
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
 }
 
@@ -8776,13 +8816,42 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   padding: 0.8rem;
 }
 
-.calculator-apply-standard {
-  justify-self: start;
+@media (max-width: 780px) {
+  .calculator-reference-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-@media (max-width: 780px) {
-  .calculator-advanced-reference-pair {
+/* Reflow from the calculator's usable inline size and the user's text size. At
+   200% text, 70rem grows with the type instead of leaving three cramped cards. */
+@container calculator-shell (max-width: 70rem) {
+  .calculator-reference-card-grid,
+  .ledger-calculator-mode-bar {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calculator-paired-segments {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .calculator-paired-segment,
+  .calculator-paired-segment:first-child,
+  .calculator-paired-segment:last-child {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-rows: none;
+  }
+
+  .calculator-paired-segment-fields {
+    grid-auto-rows: minmax(5.25rem, auto);
+    grid-row: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .calculator-paired-segment > .calculator-segment-auxiliary-fields {
+    grid-row: auto;
   }
 }
 
@@ -12073,44 +12142,10 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .calculator-outcome-scenario-row > strong:last-child::before { content: attr(data-label); }
 }
 
-/* Reference cards reuse the Outcomes row primitive but are deliberately compact: one fixed
-   chevron label track and one value/copy track, with no Outcomes-only Total heading. */
-.calculator-outcomes-reference .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
-  gap: 0.65rem;
-  grid-template-columns: minmax(7.5rem, 10.5rem) minmax(7.5rem, 1fr);
-}
-
-.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:first-child {
-  padding-right: 1.25rem;
-}
-
-.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:last-child {
-  align-items: center;
-  display: flex;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:last-child::before {
-  content: none;
-}
-
 .calculator-reference-tone-standard { --calculator-reference-accent: var(--primary); }
 .calculator-reference-tone-underlay { --calculator-reference-accent: var(--warning); }
-.calculator-reference-tone-overlay { --calculator-reference-accent: var(--primary); }
+.calculator-reference-tone-overlay { --calculator-reference-accent: var(--lay-color); }
 .calculator-reference-tone-custom { --calculator-reference-accent: var(--success); }
-
-.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:first-child {
-  background: color-mix(in srgb, var(--calculator-reference-accent) 18%, var(--surface-container-high));
-  border-color: var(--calculator-reference-accent);
-}
-
-@container calculator-outcomes (max-width: 22rem) {
-  .calculator-outcomes-reference .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
-    grid-template-columns: minmax(6.75rem, 8.5rem) minmax(6.5rem, 1fr);
-    padding-inline: 0.65rem;
-  }
-}
 
 @media (max-width: 780px) {
   .calculator-workspace-control-bar,

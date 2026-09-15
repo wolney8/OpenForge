@@ -3,10 +3,12 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {chromium,request,expect} from '@playwright/test';
-const runtime='/tmp/openforge-award-integrity-91-20260914';
-const token=fs.readFileSync(runtime+'/session-token','utf8').trim();
-const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{Cookie:'pd_session='+token}});
-assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
+const runtime=process.env.OPENFORGE_CORE_RUNTIME ?? '/tmp/openforge-award-integrity-91-20260914';
+const token=fs.readFileSync(process.env.OPENFORGE_CORE_SESSION_TOKEN ?? runtime+'/session-token','utf8').trim();
+const apiBase=process.env.OPENFORGE_CORE_API_BASE ?? 'http://127.0.0.1:8039';
+const webBase=process.env.OPENFORGE_CORE_WEB_BASE ?? 'http://localhost:3040';
+const api=await request.newContext({baseURL:apiBase,extraHTTPHeaders:{Cookie:'pd_session='+token}});
+assert.equal((await(await api.get('/auth/session')).json()).authenticated,true);
 const made=await api.post('/profiles/onboarding',{data:{setup_path:'import',display_name:'Synthetic Core Geometry',profile_code:'CORE-GEO-'+Date.now(),tracking_start_date:'2026-09-01',enabled_modules:['sportsbook-bets','free-bets','cash-adjustments'],accounts:[],quick_actions:[]}});
 assert.equal(made.status(),201,await made.text());const pid=(await made.json()).profile.profile_id;
 assert.equal((await api.patch('/profiles/'+pid,{data:{status:'Active'}})).status(),200);
@@ -28,18 +30,21 @@ try {
   await context.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
   await context.addInitScript(t=>localStorage.setItem('openforge-theme',t),theme);
   page=await context.newPage();page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(`http://localhost:3040/profiles/${pid}/tracker/${ledger}?record=${id}`);
+  await page.goto(`${webBase}/profiles/${pid}/tracker/${ledger}?record=${id}`);
   const dialog=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await dialog.waitFor();
   assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Initial modal focus');
   if(textScale===200)await page.evaluate(()=>document.documentElement.style.fontSize='200%');
   await dialog.getByRole('tab',{name:/Matching/}).first().click();const core=dialog.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   await core.getByRole('button',{name:'Advanced',exact:true}).click();
-  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();
+  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);
   await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
   const geometry=await dialog.evaluate(el=>{const b=el.querySelector('.workflow-editor-body'),r=el.getBoundingClientRect();return{dialog:r.toJSON(),bodyWidth:b.clientWidth,bodyScroll:b.scrollWidth,pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,inputs:[...el.querySelectorAll('.calculator-paired-segment input,.calculator-paired-segment select')].filter(e=>e.getClientRects().length).map(e=>({box:e.getBoundingClientRect().toJSON(),parent:e.closest('.field-control').getBoundingClientRect().toJSON()}))};});
   assert(geometry.bodyScroll<=geometry.bodyWidth+1,JSON.stringify(geometry));assert(geometry.pageWidth<=width+1,JSON.stringify(geometry));
   assert(geometry.inputs.every(({box,parent})=>box.left>=parent.left-1&&box.right<=parent.right+1),JSON.stringify(geometry));
-  for(const name of ['Underlay','Overlay','Custom']) {const a=await core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`).boundingBox(),b=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();assert(Math.abs(a.x-b.x)<=1&&Math.abs(a.width-b.width)<=1);}
+  const comparison=await Promise.all(['underlay','standard','overlay'].map(name=>core.locator(`[data-pd-id$=".${name}"]`).boundingBox()));
+  assert(new Set(comparison.map(box=>Math.round(box.width))).size===1,'Comparison cards must have equal widths');
+  const custom=await core.locator('[data-pd-id$=".custom-group"]').boundingBox(),outcomes=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();
+  assert(Math.abs(custom.x-outcomes.x)<=1&&Math.abs(custom.width-outcomes.width)<=1,'Custom and Outcomes must share full-width edges');
   await page.screenshot({path:`${runtime}/core-geometry-${basis}-${width}-${theme}-${textScale}.png`,fullPage:true});
   const save=dialog.getByRole('button',{name:'Save',exact:true});await save.scrollIntoViewIfNeeded();
   const buttonOverlaps=await dialog.locator('.workflow-editor-footer button').evaluateAll(buttons=>{
@@ -51,7 +56,7 @@ try {
   const controls=dialog.locator('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]').filter({visible:true});
   await controls.last().focus();await page.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)));
   await controls.first().focus();await page.keyboard.press('Shift+Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)));
-  await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');await page.keyboard.press('Escape');
+  await core.getByLabel('Lay stake',{exact:true}).fill('9.00');await page.keyboard.press('Escape');
   const confirm=page.locator('[data-pd-id="unsaved-changes.dialog"]');await expect(confirm).toBeVisible();
   assert(await confirm.evaluate(el=>el.contains(document.activeElement)),'Nested confirmation initial focus');
   await confirm.getByRole('button').last().focus();await page.keyboard.press('Tab');
@@ -62,7 +67,7 @@ try {
   assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Nested Escape returns to parent editor');
   await page.keyboard.press('Escape');await expect(confirm).toBeVisible();
   await confirm.getByRole('button',{name:'Keep Editing',exact:true}).click();await expect(confirm).toBeHidden();
-  await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
+  await expect(core.getByLabel('Lay stake',{exact:true})).toHaveValue('9.00');
   await expect(save).toBeEnabled();
   // A failed pending request must retain this active editor and its latest draft.
   const mutationPath=`/profiles/${pid}/${ledger}/${id}`;
@@ -80,13 +85,13 @@ try {
   const failedGeometry=await dialog.evaluate(el=>{const body=el.querySelector('.workflow-editor-body'),error=el.querySelector('[data-pd-id$=".save-error"]');return {bodyWidth:body.clientWidth,bodyScroll:body.scrollWidth,error:error.getBoundingClientRect().toJSON(),dialog:el.getBoundingClientRect().toJSON()};});
   assert(failedGeometry.bodyScroll<=failedGeometry.bodyWidth+1,JSON.stringify(failedGeometry));
   assert(failedGeometry.error.right<=failedGeometry.dialog.right+1,JSON.stringify(failedGeometry));
-  await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
+  await expect(core.getByLabel('Lay stake',{exact:true})).toHaveValue('9.00');
   const unchanged=await(await api.get(mutationPath)).json();assert.equal(JSON.parse(unchanged.lay_plan_json).selected_strategy,plan.selected_strategy);
   await page.unroute('**'+mutationPath);await expect(save).toBeEnabled();
   // An undelivered request is not a commit: preserve the editor and report honestly.
   await page.route('**'+mutationPath,route=>route.abort('failed'));
   await save.click();await expect(dialog.locator('[data-pd-id$=".save-error"]')).toContainText(/not confirmed/);
-  await expect(core.getByLabel('Custom Lay',{exact:true})).toHaveValue('9.00');
+  await expect(core.getByLabel('Lay stake',{exact:true})).toHaveValue('9.00');
   assert.equal(JSON.parse((await(await api.get(mutationPath)).json()).lay_plan_json).selected_strategy,plan.selected_strategy);
   await page.unroute('**'+mutationPath);await expect(save).toBeEnabled();
   await save.click();await expect(dialog).toBeHidden();

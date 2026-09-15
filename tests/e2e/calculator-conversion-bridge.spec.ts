@@ -130,7 +130,7 @@ test("does not expose Casino conversion for Blackjack Simulation", async ({ page
   await expect(page.locator('[data-pd-id="calculators.blackjack.save-activity"]')).toHaveCount(0);
 });
 
-test("Bonus Lock-In advanced references drive selected, copied, and converted stake", async ({ page, context }) => {
+test("Bonus Lock-In advanced comparisons copy their own stake without changing the selected plan", async ({ page, context }) => {
   await authorizeServerRoute(page);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: { authenticated: true, role: "fund_manager", email: "owner@example.invalid", name: "Owner", expires_at: Date.now() / 1000 + 3600, linked_profile_ids: [], session_policy: { auto_logout_enabled: false } } }));
@@ -153,13 +153,13 @@ test("Bonus Lock-In advanced references drive selected, copied, and converted st
   await page.getByRole("button", { name: "Advanced", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
-  await page.getByRole("button", { name: "Use Underlay plan" }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("1.50");
-  expect(previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Underlay", retention_percent: "70", exchange_commission: "0" });
-  await page.getByRole("button", { name: "Use Overlay plan" }).click();
-  await expect.poll(() => previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Overlay" });
+  expect(previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Standard", retention_percent: "70", exchange_commission: "0" });
+  await page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("4.34");
+  expect(previewRequests.at(-1)).toMatchObject({ strategy: "Standard" });
 });
 
 test("Profit Boost explains payout-derived odds before lay inputs are complete", async ({ page }) => {

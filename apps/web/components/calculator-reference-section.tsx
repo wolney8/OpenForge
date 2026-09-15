@@ -2,8 +2,9 @@
 
 import type { ReactNode } from "react";
 
-import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { ContextHelp } from "@/components/context-help";
+import { CopyableFinancialValue } from "@/components/copyable-financial-value";
+import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
 
 export type CalculatorReferenceRow = {
@@ -11,6 +12,13 @@ export type CalculatorReferenceRow = {
   label: string;
   value: string | null | undefined;
 };
+
+function referenceValue(value: string | null | undefined, label: string) {
+  const parsed = Number(value);
+  return value === null || value === undefined || value === "" || !Number.isFinite(parsed)
+    ? <span>£ -</span>
+    : <FinancialValue label={label} value={parsed} />;
+}
 
 export function CalculatorReferenceSection({
   action,
@@ -35,11 +43,21 @@ export function CalculatorReferenceSection({
 
   const heading = <>{live ? <span className={`table-chip table-chip-danger calculator-live-chip${motion.ready && motion.enabled ? " is-motion-enabled" : ""}`}>LIVE</span> : null}{title}</>;
 
-  return <CalculatorOutcomes busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} inspectionId={inspectionId}
-    headingAction={<ContextHelp label={`About ${title}`} text={description} />} title={heading} variant="reference"
-    rows={rows.map((row) => ({
-      key: row.label.toLowerCase().replaceAll(" ", "-"), label: row.label, total: row.value,
-      copyableTotal: row.copyable,
-      tone: row.label === "Back wins" ? "positive" : row.label === "Back loses" ? "exchange" : row.label === "Liability" ? "warning" : "primary",
-    }))} summary={action} />;
+  return <section aria-busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} data-pd-id={inspectionId}>
+    <header className="calculator-reference-card-heading">
+      <h3>{heading}</h3>
+      <ContextHelp label={`About ${title}`} text={description} />
+    </header>
+    {action ? <div className="calculator-reference-card-control">{action}</div> : null}
+    <dl className="calculator-reference-card-values">
+      {rows.map((row) => <FinancialValueReplayGroup key={row.label.toLowerCase().replaceAll(" ", "-")}>
+        <div className="calculator-reference-card-row">
+          <dt>{row.label}</dt>
+          <dd>{row.copyable
+            ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} value={row.value} />
+            : referenceValue(row.value, row.label)}</dd>
+        </div>
+      </FinancialValueReplayGroup>)}
+    </dl>
+  </section>;
 }

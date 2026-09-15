@@ -178,7 +178,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   });
   const rowsFor = (r: Reference) => [
     { label:"Lay stake", value:r.lay_stake, copyable:true }, { label:"Liability", value:r.liability },
-    { label:"Back wins", value:r.back_wins_total }, { label:"Back loses", value:r.back_loses_total },
+    { label:"Bookmaker wins", value:r.back_wins_total }, { label:"Exchange wins", value:r.back_loses_total },
   ];
   const actualValid = actualDraft !== "" && Number(actualDraft) > 0 &&
     !Object.keys(getMoneyInputErrors({ actualDraft }, ["actualDraft"])).length &&
@@ -201,7 +201,6 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
         <section className="calculator-segment calculator-segment-lay calculator-paired-segment" style={{"--calculator-segment-field-rows":2,"--calculator-segment-span":4} as CSSProperties}>
           <CalculatorSegmentEyebrow>Lay bet</CalculatorSegmentEyebrow><div className="calculator-segment-grid calculator-paired-segment-fields">
             <PlannerField id={`${inspectionId}.lay-odds`} label="Lay odds" value={planningOdds} onChange={value => { invalidate(); setPlanningOdds(value); if (!hasActual) onPatch({lay_odds_1:value}); }} error={draftErrors.layOdds} readOnly={readOnly} />
-            <label className="field-control"><span>Planned reference</span><input readOnly value={strategy} /></label>
           </div><div className="calculator-segment-grid calculator-segment-auxiliary-fields">
             <label className="field-control"><span>Exchange</span><select disabled={hasActual || readOnly} onChange={event => { const a = exchanges.find(a => a.account_id === event.target.value); if (!a) return;
               const rate = exchangeCommissions.find(row => row.exchange_name === a.account)?.commission_rate ?? "";
@@ -212,26 +211,25 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
             <label className="field-control"><span>Exchange commission (%)</span><CommissionInput aria-label="Planning exchange commission (%)" onRatioChange={value => { if (value === commission && origin === "override") return; invalidate(); setCommission(value); if (!hasActual) setActualCommission(value); setOrigin("override"); }} readOnly={readOnly} value={commission} /></label>
           </div></section>
       </div>
-      <p className="field-hint" data-pd-id={`${inspectionId}.selected`}>Selected plan: {strategy}. Applying and copying do not record an exchange fill.</p>
       {busy ? <p role="status">Updating reference…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}
     </div>
     <div className="calculator-band calculator-band-secondary" aria-busy={busy}>
       {mode === "Advanced" ? <section className="calculator-advanced-reference-group" data-pd-id={`${inspectionId}.advanced`}>
-        <div className="calculator-advanced-reference-pair">{(["Underlay","Overlay"] as const).map(name => { const r = references.find(r => r.strategy === name); return <CalculatorReferenceSection key={name}
-          busy={disabled} description={r ? "Planned reference after penny placement; not an actual fill." : "No valid non-negative endpoint for these inputs."}
+        <div className="calculator-reference-card-grid">{(["Underlay","Standard","Overlay"] as const).map(name => { const r = references.find(r => r.strategy === name); return <CalculatorReferenceSection key={name}
+          busy={disabled} description={r ? name === "Underlay" ? "Underlay favours the bookmaker-win side." : name === "Overlay" ? "Overlay favours the exchange-win side." : "Standard aims to equalise the outcomes." : "No valid non-negative endpoint exists for these inputs."}
           inspectionId={`${inspectionId}.${name.toLowerCase()}`} title={name} rows={r ? rowsFor(r) : []}
-          tone={name === "Underlay" ? "underlay" : "overlay"} action={<button aria-pressed={strategy === name} className="button-link" disabled={disabled || !r} onClick={() => selectStrategy(name)} type="button">Use {name} plan</button>} />; })}</div>
-        <section className="calculator-custom-reference-group" data-pd-id={`${inspectionId}.custom-group`}><CalculatorReferenceSection busy={disabled} description="Editable planned lay; actual placement is confirmed separately."
-          inspectionId={`${inspectionId}.custom`} title="Custom Lay" rows={custom ? rowsFor(custom).map(row => row.label === "Lay stake" ? {...row, copyable:false} : row) : []} tone="custom"
-          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Custom Lay" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom Lay stake" value={customDraft || custom?.lay_stake} /></div>} />
+          tone={name === "Underlay" ? "underlay" : name === "Overlay" ? "overlay" : "standard"} />; })}</div>
+        <section className="calculator-custom-reference-group" data-pd-id={`${inspectionId}.custom-group`}><CalculatorReferenceSection busy={disabled} description="Custom lets you choose your own planned lay stake."
+          inspectionId={`${inspectionId}.custom`} title="Custom" rows={custom ? rowsFor(custom).filter(row => row.label !== "Lay stake") : []} tone="custom"
+          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Lay stake" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom lay stake" value={customDraft || custom?.lay_stake} /></div>} />
         {Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? <SingleLayCustomSlider
           current={Math.min(maximum,Math.max(minimum,Number(customDraft || custom?.lay_stake || standard?.lay_stake || minimum)))}
           centre={Number(standard?.lay_stake)} minimum={minimum} maximum={maximum} minimumText={minimumText || String(minimum)} maximumText={maximumText || String(maximum)}
           onDraft={editCustom} onCommit={editCustom} onMinimumChange={setMinimumText} onMaximumChange={setMaximumText} /> : <p className="field-hint">Enter valid minimum and maximum bounds to use the slider.</p>}</section>
       </section> : null}
-      {mode === "Simple" ? <CalculatorReferenceSection busy={disabled} description="Reviewed target hedge, separate from actual recorded placement."
+      {mode === "Simple" ? <CalculatorReferenceSection busy={disabled} description="Standard aims to equalise the outcomes."
         inspectionId={`${inspectionId}.selected-reference`} title="Standard" rows={standard ? rowsFor(standard) : []}
-        action={undefined} /> : <button className="button-link calculator-apply-standard" disabled={disabled || !standard} onClick={() => selectStrategy("Standard")} type="button">Use Standard plan</button>}
+        action={undefined} /> : null}
       <CalculatorOutcomes busy={disabled} inspectionId={`${inspectionId}.outcomes`} columns={["Bookmaker","Exchange","Bonus / cashback"]}
         rows={(preview?.outcomes ?? []).map((o,index) => ({key:o.key,label:o.label,tone:index === 0 ? "positive" : "exchange",copyableTotal:true,
           components:[[o.bookmaker_component],[o.exchange_component],[o.promotion_component]],total:o.total}))} />
