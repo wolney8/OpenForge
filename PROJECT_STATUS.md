@@ -1,37 +1,26 @@
 # Project Status
 
-## Current engineering continuation — LOCAL ONLY / no owner-review gate
+## Current useful delivery bundle — LOCAL ONLY
 
-Calculator and editor recovery fixes are on the repair candidate only: stale Profit Boost values
-are invalidated immediately, failed saves show an error inside the active editor, pending planner
-responses no longer lose a settlement edit, nested dialog keyboard focus stays contained, and narrow
-selected-record footer actions stack without overlap. Cashback starts with ordinary qualifying loss;
-cash cap and promotional credit are labelled separately, and changing offers clears incompatible drafts.
-The separate test version now also keeps copying a suggested partial hedge strictly separate from
-recording an exchange fill. It shows the reviewed plan, matched amount, unknown unmatched order and
-same-odds remainder. Changed-odds and multiple-fill accounting still need an approved financial contract.
+The separate test version now carries four-source Profit Boost and conditional Cashback through
+the Sportsbook editor, calculator conversion, save/reopen, explicit placement and settlement/report.
+It preserves bookmaker return separately from conservative hedge odds and does not treat eligible
+Cashback or Free Bet credit as received cash. Linked credit identity survives portable restore.
+The normal app and Vercel do not contain these changes; no operational database was migrated.
 
-The [current C01–C09 checklist and evidence](docs/audits/platform-quality-audit.md#current-calculator-engineering-continuation--2026-09-14--local-only)
-is authoritative. Separate test version checkpoint3f7a71104ed07682aed256baea1a0dc71ce035f8,
-with frontend product4bb0109598115b9bbd317e94e12b493502310633, passes the eight-path core
-gate, six selected-editor geometry/recovery cases, Profit Boost/Cashback2+2 and multi-Profile retry
-journey. Production build/typecheck/changed-code lint and four genuine award outgoing variants pass.
-API financial source eb86c6045e5b6f4db939c733d20e5e8e67b526d4 is unchanged.
-The previous fixed25744bb gate passed eight core paths, six selected-editor cases, eighteen native
-footer cases and four genuine award variants. Fresh public Outplayed SNR observations match the
-four core references; MBB differs by one penny in liability/outcomes, explicitly documented.
-The browser also proves that a Free Bet value which reached the server before the browser lost its
-save response remains recoverable after reload. Simultaneous edits in two browser windows are still untested.
+Product evidence source is **865a0c3f4fc00cd99e3969bb8f721704fdf17c97**; current local review
+checkpoint follows it. Real browser/API/SQLite checks pass at desktop light and half-width dark,
+including all four boost sources, cash and credit conversion, £8 confirmed Cashback receipt,
+settlement/report/reload, error recovery and genuine award retry/removal. Production build,
+typecheck, 33 focused API/portable tests and disposable PostgreSQL 18.6 fresh/repeat/old-schema
+upgrade pass. A bounded populated Casino lifecycle also passes, but fee allocation and full change
+history remain untested.
 
-Coverage:46/87 reviewed (53%),8/24 journeys exercised/passing (33%),15/27 competitor cells (56%),
-24/133 requests reconciled (18%). Competitor change:+1 cell/+4 percentage points; no other count increase.
-Main/normal, frozen manual, Multi-Lay and3034 builds/data remain unchanged. No publication/integration.
-No bulk owner comparison is required. Embedded four-source Profit Boost cannot faithfully reopen
-bookmaker return/profit inputs with today's row fields; the audit records the smallest recommended
-typed metadata change and exact permission boundary. Next authorised work is the remaining
-network/modal and wider audit checks. C08 embedded actual receipt/award linkage also needs precisely
-scoped additional storage approval. Remaining
-portable browser recovery and wider audit coverage remain named in the same report.
+[Current checklist and evidence](docs/audits/platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
+Audit coverage remains 46/87 reviewed (53%), 8/24 full tasks exercised/passing (33%), 15/27
+competitor cells (56%) and 24/133 requests (18%). These are coverage figures, not a percentage of
+the application finished. Next: changed-odds/multiple-fill partial matching and the next populated
+Cash Adjustment/import/accessibility audit package.
 
 Existing current-candidate launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
 

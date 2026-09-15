@@ -2,6 +2,16 @@
 
 ## PD-CALC-20260914 — visible core planner C04–C07 / core C09
 
+2026-09-15 useful-bundle addendum: the same Sportsbook editor now exposes all four Profit Boost
+source modes and conditional Cashback eligibility/cap/receipt fields. Matching shows source inputs,
+raw and effective odds, bookmaker return/profit and accepted-odds precedence. Settlement records
+cash receipt identity/date/amount or links existing awarded credit without treating credit as cash.
+Offer switching clears incompatible drafts; latest-edit protection, shared footer errors, percentage
+commission, modal focus and copy-only planning remain unchanged. Real 1440 light and 760 dark
+browser checks show no page overflow; native/conversion save/reopen and report/reload pass.
+Existing fields, tabs, FinancialValue, Outcomes, selectors and footer actions were reused—no new
+visual primitive or local positional workaround. Screen-reader execution remains NOT TESTED.
+
 2026-09-14 engineering continuation: shared focus lifecycle/native ModalBoundary now retain focus
 through disabled Save and nested keyboard cycling, return the original opener, and expose Matching
 HTTP/network errors in canonical footer alerts. Selected-record footer actions use explicit shared
