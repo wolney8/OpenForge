@@ -4,7 +4,8 @@
 
 The separate test version now provides the complete bounded Profit Boost and conditional Cashback
 workflow through Sportsbook native entry and calculator conversion. Product commit
-**85eb33cf790e54b44414d009bbc9b5a836d6f2df** includes the current browser harness; focused
+**85eb33cf790e54b44414d009bbc9b5a836d6f2df** is exercised by browser harness
+**be5a013b2d7e6171f69dc412c9733a196cbfa663**; focused
 PostgreSQL harness checkpoint **4c07d319fb02f0326d2c538df21ddc0b154aa68e**. It is not in main
 or Vercel; no operational
 database was migrated. The approved nullable metadata migrations were exercised only on disposable
@@ -15,11 +16,14 @@ The authenticated launcher verifies the independently running frontend and API p
 for a product mismatch.
 
 Actual browser→API→SQLite→reopen→placement→settlement/report evidence passes at 1440 light,
-760 dark/reduced-motion and 390 light, plus 200% desktop text without page overflow. All four
-Profit Boost sources reopen with their original inputs and a versioned plan;
+760 dark and 390 light, plus 200% desktop text without page overflow. All four Profit Boost sources
+save through native and conversion entry and reopen with their original inputs, blank actual stake
+and a versioned plan;
 £27.86/£10 retains raw odds 2.786, conservative hedge odds 2.78 and accepted odds 2.79 separately.
 Copy and Custom-slider actions update the plan only. Explicit actual lay £9.00 then settles at
-−£0.10. Cashback retains £10 eligibility, £8 cap and a separately confirmed £8 cash receipt;
+−£0.10. The converted total-return row settles at −£0.20, converted Cashback settles at £8.82,
+and the browser verifies the resulting £15.34 settled report value after reload. Cashback retains
+£10 eligibility, £8 cap and a separately confirmed £8 cash receipt;
 settlement is £6.82. Switching receipt kind clears incompatible receipt fields. Pending Free Bet
 credit remains promotional credit, not cash, and its linked identity survives portable restore.
 Native and converted plans preserve blank actual stake until placement.
@@ -31,7 +35,8 @@ and disposable PostgreSQL offer-plan/metadata fresh/repeat/old-schema checks PAS
 confirmed £2.10, settlement and report/reload in both width/theme variants. J08 remains PARTIAL:
 fee allocation and a complete change-history consumer are untested. Cashback split-award receipts
 still have only one linked-credit identity; creating/linking a whole split group in one editor action
-is outside this approved storage slice.
+is outside this approved storage slice. The 390 check proves page containment, not every internal
+control bound; reduced-motion preference is verified but no changed transition is exercised here.
 
 Coverage remains **46/87 assessments (53%), 8/24 full tasks exercised (33%), 8/24 passing (33%),
 15/27 competitor cells (56%), 24/133 requests (18%)**. These measure audit coverage, not how much of
@@ -183,9 +188,9 @@ prevent actual settlement; edited inputs still invalidate stale Copy/Apply/Save.
 | C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | Fresh bounded public Outplayed four-reference black-box match recorded above; MBB penny difference explicit, not parity PASS; unsupported rare configurations remain tracked |
 | C05 | Core plan/actual controls PASS / PROVEN; same-odds operational remainder PASS / PROVEN on 4bb0109 | Changed-odds hedge, persisted unmatched order and multi-fill accounting remain unsupported; Copy never records a fill |
 | C06 | Core percentage/override save-reopen PASS retained; actual PostgreSQL actual-commission/default-change PASS | Actual6/4.2/2% retains19.20/10.80/5.88 when default changes5%; full default-change browser variants still required |
-| C07 | Four Profit Boost sources save/reopen in native and converted Sportsbook rows; accepted/source/hedge odds remain distinct; planned Copy/Custom slider never marks placement. PASS / PROVEN on 85eb33c | Historical rows remain unchanged; a full screen-reader check is NOT TESTED |
+| C07 | Four Profit Boost sources save/reopen in native and converted Sportsbook rows; accepted/source/hedge odds remain distinct; planned Copy/Custom slider never marks placement. PASS / PROVEN on be5a013 over product 85eb33c | Historical rows remain unchanged; a full screen-reader check is NOT TESTED |
 | C08 | Conditional Cashback kind/eligibility/cap and confirmed cash or linked-credit receipt persist; kind switches clear incompatible receipt state; cash settlement and portable linked-ID remap PASS / PROVEN on 85eb33c | Split-award linkage is still one linked credit ID; whole-group receipt creation/linking and complete history UI remain outside this bounded bundle |
-| C09 | Native and converted browser→API→database→reopen→explicit placement→settlement/report PASS for Profit Boost and cash Cashback on frozen 85eb33c; pending credit conversion and genuine award regression PASS | Portable round-trip is API/persistence-proven, not a browser file-import journey; broader recovery, assistive technology and remaining ledger tasks continue under #114 |
+| C09 | Native and converted browser→API→database→reopen→explicit placement→settlement/report PASS for Profit Boost and cash Cashback on be5a013/product 85eb33c, including the £15.34 report value after reload; pending credit conversion and genuine award regression PASS | Portable round-trip is API/persistence-proven, not a browser file-import journey; broader recovery, assistive technology and remaining ledger tasks continue under #114 |
 
 ### Historical outgoing evidence receipt — source d3a6b5d
 

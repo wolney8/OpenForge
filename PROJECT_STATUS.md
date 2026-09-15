@@ -8,15 +8,19 @@ Copying and moving the Custom slider cannot pretend an exchange fill occurred. O
 return, conservative hedge odds and accepted odds remain distinct. Eligible Cashback and Free Bet
 credit are not treated as received cash; changing receipt kind clears incompatible values.
 
-Tested product/browser harness **85eb33cf790e54b44414d009bbc9b5a836d6f2df**; PostgreSQL harness
+Tested product **85eb33cf790e54b44414d009bbc9b5a836d6f2df**; browser evidence harness
+**be5a013b2d7e6171f69dc412c9733a196cbfa663**; PostgreSQL harness
 **4c07d319fb02f0326d2c538df21ddc0b154aa68e**. Browser/API/SQLite checks pass at desktop light,
 half-width dark, narrow light and 200% text, including all four sources, converted-row settlement,
-£8 confirmed Cashback receipt, report/reload and genuine award retry/removal. Seventy focused tests,
+£8 confirmed Cashback receipt, the £15.34 settled report total after conversion/reload and genuine
+award retry/removal. Seventy focused tests,
 TypeScript, production build
 and disposable PostgreSQL 18.6 migration/persistence pass. Populated Casino entry-to-report also
 passes, but fees/full change history remain untested. Split Cashback award groups still need a
 group-capable receipt link. The normal app and Vercel do not contain these changes.
-Review-launch identity guard: **e5e75f6552cd53d50817240bce22e5da1490ca08**.
+Review-launch identity guard: **e5e75f6552cd53d50817240bce22e5da1490ca08**. Narrow evidence
+proves page containment; it is not a full internal-clipping certification. Reduced-motion preference
+is present, but a changed transition was not exercised in this bundle.
 
 [Current checklist and evidence](docs/audits/platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
 Audit coverage remains 46/87 reviewed (53%), 8/24 full tasks exercised/passing (33%), 15/27

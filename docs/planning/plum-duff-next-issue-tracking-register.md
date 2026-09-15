@@ -2,7 +2,8 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
-Current useful bundle product/browser harness **85eb33cf790e54b44414d009bbc9b5a836d6f2df**,
+Current useful bundle product **85eb33cf790e54b44414d009bbc9b5a836d6f2df**, browser evidence
+**be5a013b2d7e6171f69dc412c9733a196cbfa663**,
 PostgreSQL harness **4c07d319fb02f0326d2c538df21ddc0b154aa68e**, local only. The approved existing-row metadata
 preserves all four Profit Boost sources and conditional Cashback eligibility/cap/confirmed cash or
 linked Free Bet receipt across native entry, conversion, save/reopen and portable restore. Copy and
@@ -24,12 +25,13 @@ audit section is the exact handoff source.
 
 | Item | User outcome and affected surfaces | Result / evidence / remaining issue |
 |---|---|---|
-| PB-01 | All four Profit Boost source methods work in native Sportsbook entry and calculator conversion, then save/reopen with source, hedge and accepted odds distinct. | COMPLETE / PROVEN: browser bundle on 85eb33c, 70 focused tests and PostgreSQL evidence on 4c07d31 |
-| PB-02 | Simple/Advanced planned references, Custom slider and Copy cannot record a placement; real stake/odds/commission require explicit placement. | COMPLETE / PROVEN: rendered desktop/half-width light/dark plus independent database assertions |
+| PB-01 | All four Profit Boost source methods work in native Sportsbook entry and calculator conversion, then save/reopen with source, hedge and accepted odds distinct. | COMPLETE / PROVEN: browser bundle be5a013/product 85eb33c, 70 focused tests and PostgreSQL evidence on 4c07d31 |
+| PB-02 | Simple/Advanced planned references, Custom slider and Copy cannot record a placement; real stake/odds/commission require explicit placement. | COMPLETE / PROVEN: representative desktop-light/half-width-dark rendering plus independent database assertions |
 | CB-01 | Conditional cash refund keeps eligibility/cap separate from a dated, identified receipt and counts it once at settlement/report. | COMPLETE / PROVEN: £10 eligible, £8 cap/receipt, £6.82 final result |
 | CB-02 | Free Bet refund remains linked promotional credit rather than cash, survives supported portable restore and uses award duplicate protection. | COMPLETE for one linked credit / PROVEN API and genuine award regression; split-group link remains UNSUPPORTED |
 | UI-01 | Source switching, invalid receipt recovery, saved percentage commission and half-width layout retain state without clipped controls or old results. | COMPLETE / PROVEN scoped; screen-reader execution remains NOT TESTED |
 | AUD-01 | Exercise one additional populated Casino task from creation through report. | PARTIAL: core £2.40→£2.10 flow passes; fees and complete change history remain NOT TESTED |
+| UI-02 | Keep narrow and reduced-motion evidence truthful. | PARTIAL: 390 page containment and reduced-motion preference pass; internal bound coverage and an affected motion transition remain NOT TESTED |
 
 The immediately following eb86c60 checkpoint is historical, not current reporting authority.
 

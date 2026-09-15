@@ -12,7 +12,9 @@ sub-status annotations are retained, not converted into fabricated zeros or disc
 [Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
 Current separate test product 85eb33cf790e54b44414d009bbc9b5a836d6f2df preserves all four
 Profit Boost sources and conditional Cashback through native/conversion planning, reopen, explicit
-placement and report. Copy/Custom slider remain planning-only. Seventy focused tests, actual browser
+placement and report. Browser harness be5a013b2d7e6171f69dc412c9733a196cbfa663 verifies all four
+source modes through native and converted save/reopen, and verifies the £15.34 settled report value
+after reload. Copy/Custom slider remain planning-only. Seventy focused tests, actual browser
 and disposable PostgreSQL evidence pass; detailed limits remain in the current platform audit.
 Earlier candidate66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 corrected SNR presets at the versioned
 calculator reference boundary: Standard7.18, Underlay6.25, Overlay10.20, Custom9.00 for the
