@@ -226,6 +226,17 @@ implementation tranche must finish with all of the following:
 ## Response style
 
 - Keep responses direct, concise, and forward-looking.
+- Write owner updates in plain UK English with short, complete sentences. Lead with what the work
+  achieves for the person using the app, then explain what was wrong, what changed, what was tested,
+  what remains untested, what is unfinished, and what engineering will do next. State clearly whether
+  a fix exists only in a separate test version, in the normal local application, in a Vercel Preview,
+  or in the live application. Prefer ordinary descriptions such as `calculator inside the bet editor`,
+  `old calculation result`, `full task from start to finish`, and `saving and restoring exported data`
+  before technical identifiers. Keep evidence, issue IDs, commands and full commits in the technical
+  record or a short footer. Explain that audit coverage percentages measure reviewed scope, not how
+  much of the application is finished. When approval is genuinely required, state the proposed change,
+  why existing behaviour cannot meet the requirement, affected data/application areas, the recommended
+  option and the exact permission needed; continue other authorised work.
 - Do not use a status table unless the user explicitly asks for one.
 - In every substantive reply, explicitly note in short:
   - what we are working on now

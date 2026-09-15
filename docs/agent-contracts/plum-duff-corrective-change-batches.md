@@ -1,5 +1,11 @@
 # Plum Duff Corrective Change Batches
 
+## PD-COMMS-20260915 — purpose-first owner updates
+
+| Item | Required outcome | Status |
+|---|---|---|
+| PD-COMMS-001 | Existing reply guidance requires plain UK English, purpose first, tested/untested scope, unfinished work/next action, and where the fix is available. Approval requests explain the proposed change and data boundary. No new report or owner gate. | COMPLETE — concise rule added to AGENTS.md; implementation scope unchanged |
+
 C01.pending-plan-result: COMPLETE for the fixed25744bb browser/API/database gate. On534c978, a real prepared5% planner response held while
 Normal Settlement selects Back Won leaves the database Pending after release. Existing dropdown
 autosave returns early for planner-pending and loses the intent. Reuse the existing latest-form
