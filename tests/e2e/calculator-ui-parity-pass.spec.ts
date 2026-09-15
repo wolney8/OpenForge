@@ -41,6 +41,8 @@ async function pairedPanelFit(page: import("@playwright/test").Page, id: string)
 
 test("aligns calculator segments, hierarchy, schemes and selection surfaces", async ({ page }) => {
   await mockSession(page);
+  // Geometry evidence must capture settled figures rather than an odometer transition frame.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/fund-manager/calculators");
 
   let geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
