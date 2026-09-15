@@ -93,6 +93,13 @@ try {
     await dialog.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption('Smarkets');
     await expect(dialog.getByText('Bookmaker total return: £27.86')).toBeVisible();
     await expect(dialog.getByText('Effective hedge odds: 2.7900')).toBeVisible();
+    const breakdownGeometry=await dialog.getByRole('region',{name:'Profit Boost calculation breakdown'}).evaluate(element=>({
+      display:getComputedStyle(element).display,
+      gap:parseFloat(getComputedStyle(element).rowGap),
+      lines:[...element.children].map(child=>child.getBoundingClientRect().top),
+    }));
+    assert.equal(breakdownGeometry.display,'grid');assert(breakdownGeometry.gap>0);
+    assert(breakdownGeometry.lines.every((top,index,lines)=>index===0||top>lines[index-1]));
     await page.screenshot({path:`${runtime}/bundle-profit-${width}-${theme}.png`,fullPage:true});
     evidence.screenshots.push(`bundle-profit-${width}-${theme}.png`);
     let profit=await saveAndFind(page,dialog,profitName);
@@ -128,6 +135,10 @@ try {
     await dialog.getByLabel('Eligible refund amount').fill('10.00');
     await dialog.getByLabel('Offer cap').fill('8.00');
     await expect(dialog.getByLabel('Eligibility')).toHaveValue('pending');
+    if(width===760){
+      const inputGrid=dialog.locator('.calculator-input-grid:visible').first();
+      assert.equal((await inputGrid.evaluate(element=>getComputedStyle(element).gridTemplateColumns)).split(' ').length,1);
+    }
     await page.screenshot({path:`${runtime}/bundle-cashback-${width}-${theme}.png`,fullPage:true});
     evidence.screenshots.push(`bundle-cashback-${width}-${theme}.png`);
     let cashback=await saveAndFind(page,dialog,cashbackName);
