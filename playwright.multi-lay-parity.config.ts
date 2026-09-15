@@ -4,5 +4,11 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e", testMatch: "multi-lay-normal-parity.spec.ts",
   workers: 1, timeout: 60000,
-  use: { baseURL: "http://127.0.0.1:3013", trace: "off", video: "off", screenshot: "off" },
+  use: {
+    baseURL: process.env.OPENFORGE_TEST_WEB_URL || "http://127.0.0.1:3013",
+    extraHTTPHeaders: process.env.OPENFORGE_TEST_SESSION_TOKEN
+      ? { Cookie: `pd_session=${process.env.OPENFORGE_TEST_SESSION_TOKEN}` }
+      : undefined,
+    trace: "off", video: "off", screenshot: "off",
+  },
 });

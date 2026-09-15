@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const api = "http://127.0.0.1:8013";
+const api = process.env.OPENFORGE_TEST_API_URL || "http://127.0.0.1:8013";
 test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reopens every leg", async ({ page, request }) => {
   await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
@@ -32,7 +32,7 @@ test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reope
   await editor.getByLabel("Event name", { exact: true }).fill("Synthetic native Normal v2");
   await editor.getByRole("tab", { name: /Matching/ }).click();
   await expect(editor.locator('[data-pd-id="calculators.multi-lay.presentation"]')).toHaveCount(0);
-  await editor.getByLabel("Sportsbook lay workflow mode").selectOption("Multilay");
+  await editor.getByLabel("Sportsbook hedge calculator").selectOption("multi-lay");
   const optIn = editor.getByRole("button", { name: "Use v2 per-leg commission planning" });
   for (const width of [1440, 760]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -50,10 +50,10 @@ test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reope
   await page.keyboard.press("Enter");
   const planner = editor.locator('[data-pd-id="calculators.multi-lay.presentation"]');
   await expect(planner).toBeVisible();
-  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-1-commission"]')).toHaveValue("0.02");
+  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-1-commission"]')).toHaveValue("2");
   await planner.locator('[data-pd-id="calculators.multi-back-stake"]').fill("10");
   await planner.locator('[data-pd-id="calculators.multi-back-odds"]').fill("4");
-  for (const [index, label, odds, commission] of [[1, "Home", "2.50", "0.05"], [2, "Away", "3", "0.02"]] as const) {
+  for (const [index, label, odds, commission] of [[1, "Home", "2.50", "5"], [2, "Away", "3", "2"]] as const) {
     await planner.locator(`[data-pd-id="calculators.multi-outcome-${index}-label"]`).fill(label);
     await planner.locator(`[data-pd-id="calculators.multi-outcome-${index}-odds"]`).fill(odds);
     await planner.locator(`[data-pd-id="calculators.multi-outcome-${index}-commission"]`).fill(commission);
@@ -97,7 +97,7 @@ test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reope
   expect(row.lay_actual).toBe("");
   await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets?record=${row.sportsbook_bet_id}`);
   await editor.getByRole("tab", { name: /Matching/ }).click();
-  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("0.02");
+  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("2");
   await expect(planner.locator('[data-pd-id="calculators.multi-outcome-3-commission"]')).toHaveValue("0");
   await expect(planner.locator('[data-pd-id="calculators.multi-outcome-3-label"]')).toHaveValue("Draw");
   await expect(optIn).toHaveCount(0);
@@ -135,12 +135,19 @@ test("Normal v2 planning preserves mixed commissions through native save/reopen"
   } });
   expect(createdProfile.status()).toBe(201);
   const profileId = (await createdProfile.json()).profile.profile_id;
+  for (const [account, type] of [["Bet365", "Bookie"], ["Smarkets", "Exchange"]]) {
+    const response = await request.post(`${api}/profiles/${profileId}/accounts`, { data: {
+      account, type, status: "Active", lifecycle_status: "Active", restrictions: [], channel: "Online",
+      ...(type === "Exchange" ? { commission_rate: "0.02" } : {}),
+    } });
+    expect(response.status(), await response.text()).toBe(201);
+  }
   const entries = [
     { id: "outcome1", label: "Home", layOdds: "2.50", commission: "0.05", calculationVersion: "multi-lay-v2", backingType: "normal" },
     { id: "outcome2", label: "Away", layOdds: "3.00", commission: "0.02" },
   ];
   const created = await request.post(`${api}/profiles/${profileId}/sportsbook-bets`, { data: {
-    event_name: "Synthetic Normal commission parity", offer_text: "Synthetic plan", bookmaker: "Bookmaker A",
+    event_name: "Synthetic Normal commission parity", offer_text: "Synthetic plan", bookmaker: "Bet365",
     offer_type: "Bet & Get", bet_type: "Single", fixture_type: "Football", match_strategy: "Multilay",
     status: "Prospecting", result: "Pending", back_stake: "10.00", back_odds: "4.00", lay_odds_1: "2.50",
     exchange_name: "Smarkets", multi_lay_outcome_1_name: "Home", multi_lay_outcomes_json: JSON.stringify(entries),
@@ -167,14 +174,14 @@ test("Normal v2 planning preserves mixed commissions through native save/reopen"
   await editor.getByRole("tab", { name: /Matching/ }).click();
   const planner = editor.locator('[data-pd-id="calculators.multi-lay.presentation"]');
   await expect(planner).toBeVisible();
-  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-1-commission"]')).toHaveValue("0.05");
-  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("0.02");
+  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-1-commission"]')).toHaveValue("5");
+  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("2");
   await expect(planner.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("16.33");
   await page.evaluate(() => { Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (value: string) => { (window as unknown as { copied: string }).copied = value; } } }); });
   await planner.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"] button').click();
   expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("16.33");
-  await planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]').fill("0.03");
-  await planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]').fill("0.02");
+  await planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]').fill("3");
+  await planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]').fill("2");
   await expect(planner.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("16.33");
   for (const width of [1440, 760, 390]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -202,5 +209,5 @@ test("Normal v2 planning preserves mixed commissions through native save/reopen"
   expect((await reopened.json()).multi_lay_reference).toEqual(reference);
   await page.reload();
   await editor.getByRole("tab", { name: /Matching/ }).click();
-  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("0.02");
+  await expect(planner.locator('[data-pd-id="calculators.multi-outcome-2-commission"]')).toHaveValue("2");
 });

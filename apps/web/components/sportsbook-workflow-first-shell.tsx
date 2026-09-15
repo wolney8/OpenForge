@@ -4654,6 +4654,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   function applyLayWorkflowMode(mode: LayWorkflowMode) {
+    if (mode === "Multilay") {
+      corePlanPendingRef.current = false;
+      setCorePlanPending(false);
+    }
     setSelectedLayWorkflowMode(mode);
     setFormState((current) =>
       applyStrategyDefaults(current, getStrategyForLayWorkflowMode(mode, current.match_strategy))
@@ -8189,6 +8193,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 className="section-fieldset stack"
                 disabled={!calculatorUnlocked || isSettledReadOnly}
               >
+                {!isNoLayStrategy &&
+                !["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type) ? (
+                  <label className="field-control ledger-calculator-mode-field">
+                    <span>Hedge calculator</span>
+                    <select
+                      aria-label="Sportsbook hedge calculator"
+                      onChange={(event) =>
+                        applyLayWorkflowMode(event.target.value === "multi-lay" ? "Multilay" : "Standard")
+                      }
+                      value={usesMultiLayStrategy ? "multi-lay" : "single-lay"}
+                    >
+                      <option value="single-lay">Single lay</option>
+                      <option value="multi-lay">Multi-Lay</option>
+                    </select>
+                  </label>
+                ) : null}
                 {!selectedId && usesMultiLayStrategy && !usesV2MultiLayPlanning &&
                   formState.offer_type === "Bet & Get" &&
                   ["Prospecting", "Not Placed"].includes(formState.status) &&
