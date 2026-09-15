@@ -47,6 +47,10 @@ const fallbackProfiles: ProfileSeed[] = [
 ];
 
 function resolveDatabasePath() {
+  const configuredPath = process.env.OPENFORGE_WEB_LOCAL_DATABASE_PATH?.trim();
+  if (configuredPath) {
+    return path.resolve(configuredPath);
+  }
   return path.resolve(process.cwd(), "../../data/private/db/openforge.sqlite3");
 }
 
