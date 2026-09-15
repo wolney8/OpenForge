@@ -266,10 +266,16 @@ try {
       }
     }
     assert.deepEqual(errors,[]);
+    const reportRows=await(await api.get('/profiles/'+pid+'/sportsbook-bets')).json();
+    const settledReportPence=reportRows.reduce((total,row)=>
+      total+(row.final_net_pnl==null?0:Math.round(Number(row.final_net_pnl)*100)),0);
+    const expectedReportValue=`£ ${(settledReportPence/100).toFixed(2)}`;
     await page.goto(`http://localhost:3040/profiles/${pid}/tracker/reports`);
     await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
+    await expect(page.locator(`[aria-label="${expectedReportValue}"]`).first()).toBeVisible();
     await page.reload();
     await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
+    await expect(page.locator(`[aria-label="${expectedReportValue}"]`).first()).toBeVisible();
     const converted={};
     if(width===1440){
       await page.goto('http://localhost:3040/fund-manager/calculators');
@@ -297,6 +303,37 @@ try {
       const settledPb=await saveAndFind(page,dialog,'Synthetic converted Profit Boost');
       assert.equal(settledPb.lay_actual,'9.00');assert.equal(settledPb.final_net_pnl,'-0.20');
       converted.profitBoost={id:pbRow.sportsbook_bet_id,mode:'total_return',plannedOnly:false,final:'-0.20'};
+
+      converted.profitBoostSources=[converted.profitBoost];
+      for(const source of [
+        {mode:'displayed_odds',label:'Boosted odds displayed',value:'3.20'},
+        {mode:'profit_only',label:'Potential profit / winnings',value:'22.00'},
+        {mode:'percentage',label:'Original / base odds',value:'3.00',extra:['Profit Boost (%)','10']},
+      ]){
+        await page.goto('http://localhost:3040/fund-manager/calculators');
+        await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('profit_boost');
+        await page.getByLabel('Boosted price source').selectOption(source.mode);
+        await page.getByLabel('Back stake',{exact:true}).fill('10.00');
+        await page.getByRole('textbox',{name:source.label}).fill(source.value);
+        if(source.extra)await page.getByLabel(source.extra[0],{exact:true}).fill(source.extra[1]);
+        await page.getByLabel('Lay odds',{exact:true}).fill('3.00');
+        await page.getByLabel('Commission (%)').fill('2');
+        const convertedTarget=await convertCurrent(page,`Synthetic converted Profit Boost ${source.mode}`);
+        const convertedRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${convertedTarget.record_id}`)).json();
+        const convertedMeta=JSON.parse(convertedRow.profit_boost_source_json);
+        assert.equal(convertedMeta.mode,source.mode);
+        assert.equal(JSON.parse(convertedRow.lay_plan_json).selected_strategy,'Standard');
+        assert.equal(convertedRow.lay_actual,'');
+        await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${convertedRow.sportsbook_bet_id}`);
+        dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
+        await dialog.getByRole('tab',{name:/Matching/}).first().click();
+        await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
+        await expect(dialog.getByLabel(source.mode==='displayed_odds'?'Entered boosted odds':source.mode==='profit_only'?'Potential profit, excluding stake':'Base back odds')).toHaveValue(source.value);
+        if(source.mode==='percentage')await expect(dialog.getByLabel('Profit boost %')).toHaveValue('10');
+        await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
+        converted.profitBoostSources.push({id:convertedRow.sportsbook_bet_id,mode:source.mode,plannedOnly:true});
+        await dialog.getByRole('button',{name:/Close/}).first().click();
+      }
 
       await page.goto('http://localhost:3040/fund-manager/calculators');
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
@@ -341,8 +378,19 @@ try {
       const creditMeta=JSON.parse(creditRow.conditional_benefit_json);
       assert.equal(creditMeta.refund_kind,'free_bet');assert.equal(creditMeta.actual_receipt_amount,'');
       converted.cashbackCredit={id:creditRow.sportsbook_bet_id,creditSeparateFromCash:true};
+      const convertedReportRows=await(await api.get('/profiles/'+pid+'/sportsbook-bets')).json();
+      const convertedReportPence=convertedReportRows.reduce((total,row)=>
+        total+(row.final_net_pnl==null?0:Math.round(Number(row.final_net_pnl)*100)),0);
+      const convertedReportValue=`£ ${(convertedReportPence/100).toFixed(2)}`;
+      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/reports`);
+      await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
+      await expect(page.locator(`[aria-label="${convertedReportValue}"]`).first()).toBeVisible();
+      await page.reload();
+      await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
+      await expect(page.locator(`[aria-label="${convertedReportValue}"]`).first()).toBeVisible();
+      converted.reportValue=convertedReportValue;
     }
-    evidence.cases.push({width,theme,profitBoost:{id:profit.sportsbook_bet_id,source:'total_return',raw:'2.786',reference:'2.7800',accepted:'2.7900',bookmakerReturn:'27.86',actualLay:'9.00',final:'-0.10'},nativeModes,cashback:{id:cashback.sportsbook_bet_id,eligible:'10.00',cap:'8.00',receipt:'8.00',final:'6.82'},converted,reportReload:true,noPageOverflow:true});
+    evidence.cases.push({width,theme,profitBoost:{id:profit.sportsbook_bet_id,source:'total_return',raw:'2.786',reference:'2.7800',accepted:'2.7900',bookmakerReturn:'27.86',actualLay:'9.00',final:'-0.10'},nativeModes,cashback:{id:cashback.sportsbook_bet_id,eligible:'10.00',cap:'8.00',receipt:'8.00',final:'6.82'},converted,reportReload:true,reportValue:expectedReportValue,noPageOverflow:true});
     await context.close();
   }
   const enlargedContext=await browser.newContext({viewport:{width:1440,height:1050}});
