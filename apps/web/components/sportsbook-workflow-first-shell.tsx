@@ -199,6 +199,8 @@ type ResultOption = {
 
 type SportsbookRecord = {
   lay_plan_json?: string | null;
+  profit_boost_source_json?: string | null;
+  conditional_benefit_json?: string | null;
   sportsbook_bet_id: string;
   profile_id: string;
   event_name: string;
@@ -264,6 +266,11 @@ type SportsbookRecord = {
   reference_boosted_odds: string | null;
   effective_back_odds: string | null;
   profit_boost_source: string | null;
+  profit_boost_raw_derived_odds: string | null;
+  profit_boost_bookmaker_total_return: string | null;
+  profit_boost_effective_odds_return: string | null;
+  profit_boost_potential_profit: string | null;
+  profit_boost_equation: string | null;
 };
 
 type LinkedFreeBetRecord = {
@@ -285,6 +292,8 @@ type LinkedFreeBetRecord = {
 
 type SportsbookFormState = {
   lay_plan_json?: string | null;
+  profit_boost_source_json?: string | null;
+  conditional_benefit_json?: string | null;
   sportsbook_bet_id?: string;
   event_name: string;
   offer_text: string;
@@ -521,6 +530,11 @@ type SportsbookCalculationPreview = {
   reference_boosted_odds: string | null;
   effective_back_odds: string | null;
   profit_boost_source: string | null;
+  profit_boost_raw_derived_odds: string | null;
+  profit_boost_bookmaker_total_return: string | null;
+  profit_boost_effective_odds_return: string | null;
+  profit_boost_potential_profit: string | null;
+  profit_boost_equation: string | null;
 };
 
 type PayoutOddsPreview = {
@@ -1023,6 +1037,8 @@ function getSportsbookRangeAnchor(row: Pick<SportsbookRecord, "date_settled" | "
 function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState {
   return {
     lay_plan_json: null,
+    profit_boost_source_json: null,
+    conditional_benefit_json: null,
     event_name: "",
     offer_text: "",
     bookmaker: "",
@@ -1063,6 +1079,8 @@ function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState 
 function recordToForm(record: SportsbookRecord): SportsbookFormState {
   return {
     lay_plan_json: record.lay_plan_json ?? null,
+    profit_boost_source_json: record.profit_boost_source_json ?? null,
+    conditional_benefit_json: record.conditional_benefit_json ?? null,
     sportsbook_bet_id: record.sportsbook_bet_id,
     event_name: record.event_name,
     offer_text: record.offer_text,
@@ -1099,6 +1117,94 @@ function recordToForm(record: SportsbookRecord): SportsbookFormState {
     manual_override_value: record.manual_override_value,
     manual_override_reason: record.manual_override_reason,
   };
+}
+
+type ProfitBoostSourceDraft = {
+  schema_version: "profit-boost-source-v1";
+  revision: number;
+  mode: string;
+  boosted_back_odds: string;
+  total_potential_return: string;
+  potential_profit: string;
+  base_back_odds: string;
+  profit_boost_percent: string;
+  maximum_boost_winnings: string;
+};
+
+type ConditionalBenefitDraft = {
+  schema_version: "conditional-benefit-v1";
+  revision: number;
+  refund_kind: "cash" | "free_bet";
+  eligibility: "pending" | "eligible" | "not_eligible";
+  eligible_amount: string;
+  refund_cap: string;
+  actual_receipt_amount: string;
+  receipt_identity: string;
+  receipt_date: string;
+  linked_awarded_credit_id: string;
+};
+
+function parseJsonObject<T>(raw: string | null | undefined): Partial<T> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed as Partial<T> : {};
+  } catch {
+    return {};
+  }
+}
+
+function getProfitBoostSourceDraft(form: SportsbookFormState): ProfitBoostSourceDraft {
+  const saved = parseJsonObject<ProfitBoostSourceDraft>(form.profit_boost_source_json);
+  return {
+    schema_version: "profit-boost-source-v1",
+    revision: Number(saved.revision ?? 0),
+    mode: form.profit_boost_mode || saved.mode || "displayed_odds",
+    boosted_back_odds: form.back_odds || saved.boosted_back_odds || "",
+    total_potential_return: saved.total_potential_return || "",
+    potential_profit: saved.potential_profit || "",
+    base_back_odds: form.base_back_odds || saved.base_back_odds || "",
+    profit_boost_percent: form.profit_boost_percent || saved.profit_boost_percent || "",
+    maximum_boost_winnings: form.maximum_boost_winnings || saved.maximum_boost_winnings || "",
+  };
+}
+
+function getConditionalBenefitDraft(form: SportsbookFormState): ConditionalBenefitDraft {
+  const saved = parseJsonObject<ConditionalBenefitDraft>(form.conditional_benefit_json);
+  return {
+    schema_version: "conditional-benefit-v1",
+    revision: Number(saved.revision ?? 0),
+    refund_kind: saved.refund_kind === "free_bet" ? "free_bet" : "cash",
+    eligibility: saved.eligibility === "eligible" || saved.eligibility === "not_eligible"
+      ? saved.eligibility
+      : "pending",
+    eligible_amount: saved.eligible_amount || form.maximum_bonus || "",
+    refund_cap: saved.refund_cap || "",
+    actual_receipt_amount: saved.actual_receipt_amount || "",
+    receipt_identity: saved.receipt_identity || "",
+    receipt_date: saved.receipt_date || "",
+    linked_awarded_credit_id: saved.linked_awarded_credit_id || "",
+  };
+}
+
+function serializeOfferMetadata(form: SportsbookFormState): SportsbookFormState {
+  if (form.offer_type === "Profit Boost") {
+    return {
+      ...form,
+      conditional_benefit_json: null,
+      profit_boost_source_json: JSON.stringify(getProfitBoostSourceDraft(form)),
+    };
+  }
+  if (form.offer_type === "Cashback") {
+    const benefit = getConditionalBenefitDraft(form);
+    return {
+      ...form,
+      profit_boost_source_json: null,
+      conditional_benefit_json: JSON.stringify(benefit),
+      maximum_bonus: benefit.eligible_amount,
+    };
+  }
+  return { ...form, profit_boost_source_json: null, conditional_benefit_json: null };
 }
 
 function parseNumericInput(value: string): number | null {
@@ -1179,6 +1285,8 @@ function toInlineUpdatePayload(record: SportsbookRecord, overrides?: Partial<Spo
   return {
     event_name: formState.event_name,
     lay_plan_json: formState.lay_plan_json,
+    profit_boost_source_json: serializeOfferMetadata(formState).profit_boost_source_json,
+    conditional_benefit_json: serializeOfferMetadata(formState).conditional_benefit_json,
     offer_text: formState.offer_text,
     bookmaker: formState.bookmaker,
     offer_type: formState.offer_type,
@@ -1699,10 +1807,11 @@ function getSportsbookResultLabel(
   }
 
   if (result === "Back Won") {
-    return "Back won";
+    return offerType === "Cashback" ? "Back won (no cashback)" : "Back won";
   }
 
   if (result === "Lay Won") {
+    if (offerType === "Cashback") return "Lay won (without cashback)";
     return strategy === "No Lay" || offerType === "Mug Bet" ? "Back lost" : "Lay won";
   }
 
@@ -1715,10 +1824,12 @@ function getSportsbookResultLabel(
   }
 
   if (result === "Back Won + Cashback") {
+    if (offerType === "Cashback") return "Back won and cashback received";
     return bonusTrigger === "Back Wins" ? "Back won + cashback/bonus" : "Back won + extra branch";
   }
 
   if (result === "Lay Won + Cashback") {
+    if (offerType === "Cashback") return "Eligible finish; cashback received";
     return bonusTrigger === "Lay Wins" ? "Lay won + cashback/bonus" : "Lay won + extra branch";
   }
 
@@ -1879,6 +1990,25 @@ function applyOfferTypeDefaults(
     offer_type: nextOfferType,
     bet_type: fallbackBetType,
     result: nextResultValues.has(current.result) ? current.result : "Pending",
+    profit_boost_source_json:
+      current.offer_type === nextOfferType ? current.profit_boost_source_json : null,
+    conditional_benefit_json:
+      current.offer_type === nextOfferType ? current.conditional_benefit_json : null,
+    ...(current.offer_type !== nextOfferType &&
+    (current.offer_type === "Profit Boost" || nextOfferType === "Profit Boost")
+      ? {
+          back_odds: "",
+          profit_boost_mode: "displayed_odds",
+          base_back_odds: "",
+          profit_boost_percent: "",
+          maximum_boost_winnings: "",
+          actual_accepted_back_odds: "",
+        }
+      : {}),
+    ...(current.offer_type !== nextOfferType &&
+    (current.offer_type === "Cashback" || nextOfferType === "Cashback")
+      ? { maximum_bonus: "" }
+      : {}),
   };
 
   if (nextOfferType === "Mug Bet" || nextOfferType === "None") {
@@ -2170,11 +2300,16 @@ function hasPreviewInputsReady(
   formState: SportsbookFormState,
   resolvedCommission: string
 ): boolean {
-  const hasProfitBoostInputs =
-    formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "percentage"
-      ? parseSportsbookOddsInput(formState.base_back_odds) !== null &&
-        parseNumericInput(formState.profit_boost_percent) !== null
-      : parseSportsbookOddsInput(formState.back_odds) !== null;
+  const profitSource = getProfitBoostSourceDraft(formState);
+  const hasProfitBoostInputs = formState.offer_type !== "Profit Boost"
+    ? parseSportsbookOddsInput(formState.back_odds) !== null
+    : formState.profit_boost_mode === "percentage"
+      ? parseSportsbookOddsInput(formState.base_back_odds) !== null && parseNumericInput(formState.profit_boost_percent) !== null
+      : formState.profit_boost_mode === "total_return"
+        ? parseNumericInput(profitSource.total_potential_return) !== null
+        : formState.profit_boost_mode === "profit_only"
+          ? parseNumericInput(profitSource.potential_profit) !== null
+          : parseSportsbookOddsInput(formState.back_odds) !== null;
   const hasBackInputs =
     parseNumericInput(formState.back_stake) !== null && hasProfitBoostInputs;
 
@@ -2220,6 +2355,14 @@ function getCalculatorMissingFields(
     }
     if (parseNumericInput(formState.profit_boost_percent) === null) {
       missing.push("Profit boost %");
+    }
+  } else if (formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "total_return") {
+    if (parseNumericInput(getProfitBoostSourceDraft(formState).total_potential_return) === null) {
+      missing.push("Total potential return");
+    }
+  } else if (formState.offer_type === "Profit Boost" && formState.profit_boost_mode === "profit_only") {
+    if (parseNumericInput(getProfitBoostSourceDraft(formState).potential_profit) === null) {
+      missing.push("Potential profit");
     }
   } else if (formState.back_odds === "") {
     missing.push(formState.offer_type === "Profit Boost" ? "Boosted back odds" : "Back odds");
@@ -2689,7 +2832,7 @@ function getPersistableSportsbookForm(
       ? serializePartialLayLegs(options.partialLayLegs)
       : "[]";
   const nextBaseState: SportsbookFormState = {
-    ...formState,
+    ...serializeOfferMetadata(formState),
     multi_lay_outcome_1_name: isMultiLayStrategy(formState.match_strategy)
       ? options.outcome1Label
       : "",
@@ -3485,8 +3628,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const showsPlacementSection = !isNoLayStrategy && showsLayMatchedStake;
   const isCashbackOffer =
     formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type);
+  const isConditionalCashbackOffer = formState.offer_type === "Cashback";
   const isRefundOffer = isBonusLockInOfferType(formState.offer_type);
   const isProfitBoostOffer = formState.offer_type === "Profit Boost";
+  const profitBoostSourceDraft = useMemo(
+    () => getProfitBoostSourceDraft(formState),
+    [formState]
+  );
+  const conditionalBenefitDraft = useMemo(
+    () => getConditionalBenefitDraft(formState),
+    [formState]
+  );
   const isFreeBetAwardableRow = isFreeBetAwardingOffer(formState.offer_type);
   const payoutStakeError =
     isProfitBoostOffer &&
@@ -4302,6 +4454,39 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   function updateDecimalFormField(field: keyof SportsbookFormState, value: string) {
     // Preserve invalid money for associated validation; never keep a stale valid value.
     setFormState((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateProfitBoostSourceField(
+    field: keyof ProfitBoostSourceDraft,
+    value: string
+  ) {
+    setFormState((current) => {
+      const source = { ...getProfitBoostSourceDraft(current), [field]: value };
+      const mirrored = field === "base_back_odds"
+        ? { base_back_odds: value }
+        : field === "profit_boost_percent"
+          ? { profit_boost_percent: value }
+          : field === "maximum_boost_winnings"
+            ? { maximum_boost_winnings: value }
+            : field === "boosted_back_odds"
+              ? { back_odds: value }
+              : {};
+      return { ...current, ...mirrored, profit_boost_source_json: JSON.stringify(source) };
+    });
+  }
+
+  function updateConditionalBenefitField(
+    field: keyof ConditionalBenefitDraft,
+    value: string
+  ) {
+    setFormState((current) => {
+      const benefit = { ...getConditionalBenefitDraft(current), [field]: value };
+      return {
+        ...current,
+        conditional_benefit_json: JSON.stringify(benefit),
+        maximum_bonus: field === "eligible_amount" ? value : current.maximum_bonus,
+      };
+    });
   }
 
   function updateOddsFormField(field: keyof SportsbookFormState, value: string) {
@@ -7882,15 +8067,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <select
                                   onChange={(event) => {
                                     setAppliedPayoutOdds(null);
-                                    setFormState((current) => ({
-                                      ...current,
-                                      profit_boost_mode: event.target.value,
-                                    }));
+                                    const mode = event.target.value;
+                                    setFormState((current) => {
+                                      const source = { ...getProfitBoostSourceDraft(current), mode };
+                                      return {
+                                        ...current,
+                                        profit_boost_mode: mode,
+                                        profit_boost_source_json: JSON.stringify(source),
+                                      };
+                                    });
                                   }}
                                   value={formState.profit_boost_mode}
                                 >
-                                  <option value="displayed_odds">Enter final boosted odds</option>
-                                  <option value="percentage">Bookmaker provides percentage</option>
+                                  <option value="displayed_odds">Bookmaker displays boosted odds</option>
+                                  <option value="total_return">Bookmaker displays total potential return</option>
+                                  <option value="profit_only">Bookmaker displays potential profit</option>
+                                  <option value="percentage">Original odds and boost percentage</option>
                                 </select>
                               </label>
                             ) : null}
@@ -7959,7 +8151,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                       ))
                                   }
 	                                  inputMode="decimal"
-	                                  onChange={(event) => updateOddsFormField("back_odds", event.target.value)}
+	                                  onChange={(event) => isProfitBoostOffer
+                                      ? updateProfitBoostSourceField("boosted_back_odds", event.target.value)
+                                      : updateOddsFormField("back_odds", event.target.value)}
 	                                  value={formState.back_odds}
 	                                />
 	                                {oddsIssueMap.has("back_odds") ? (
@@ -7968,7 +8162,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                  </span>
 	                                ) : null}
                               </label>
-                            ) : (
+                            ) : formState.profit_boost_mode === "percentage" ? (
                               <>
                                 <label
                                   className={`field-control${
@@ -7984,7 +8178,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                    aria-describedby={oddsIssueMap.has("base_back_odds") ? "sportsbook-base-back-odds-error" : undefined}
 	                                    aria-invalid={oddsIssueMap.has("base_back_odds")}
 	                                    inputMode="decimal"
-	                                    onChange={(event) => updateOddsFormField("base_back_odds", event.target.value)}
+	                                    onChange={(event) => updateProfitBoostSourceField("base_back_odds", event.target.value)}
 	                                    value={formState.base_back_odds}
 	                                  />
 	                                  {oddsIssueMap.has("base_back_odds") ? (
@@ -8006,7 +8200,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                     aria-invalid={Boolean(financialInputErrors.profit_boost_percent)}
                                     aria-describedby={financialInputErrors.profit_boost_percent ? "sportsbook-money-profit_boost_percent-error" : undefined}
 	                                    inputMode="decimal"
-	                                    onChange={(event) => updateDecimalFormField("profit_boost_percent", event.target.value)}
+	                                    onChange={(event) => updateProfitBoostSourceField("profit_boost_percent", event.target.value)}
 	                                    value={formState.profit_boost_percent}
 	                                  />
                                   {financialInputError("profit_boost_percent")}
@@ -8018,12 +8212,32 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                     aria-invalid={Boolean(financialInputErrors.maximum_boost_winnings)}
                                     aria-describedby={financialInputErrors.maximum_boost_winnings ? "sportsbook-money-maximum_boost_winnings-error" : undefined}
 	                                    inputMode="decimal"
-	                                    onChange={(event) => updateDecimalFormField("maximum_boost_winnings", event.target.value)}
+	                                    onChange={(event) => updateProfitBoostSourceField("maximum_boost_winnings", event.target.value)}
 	                                    value={formState.maximum_boost_winnings}
 	                                  />
                                   {financialInputError("maximum_boost_winnings")}
                                 </label>
                               </>
+                            ) : formState.profit_boost_mode === "total_return" ? (
+                              <label className="field-control">
+                                <span>Total potential return, including stake</span>
+                                <input
+                                  aria-label="Total potential return, including stake"
+                                  inputMode="decimal"
+                                  onChange={(event) => updateProfitBoostSourceField("total_potential_return", event.target.value)}
+                                  value={profitBoostSourceDraft.total_potential_return}
+                                />
+                              </label>
+                            ) : (
+                              <label className="field-control">
+                                <span>Potential profit, excluding stake</span>
+                                <input
+                                  aria-label="Potential profit, excluding stake"
+                                  inputMode="decimal"
+                                  onChange={(event) => updateProfitBoostSourceField("potential_profit", event.target.value)}
+                                  value={profitBoostSourceDraft.potential_profit}
+                                />
+                              </label>
                             )}
                             {isProfitBoostOffer ? (
                               <label className={`field-control${oddsIssueMap.has("actual_accepted_back_odds") ? " is-invalid" : ""}`}>
@@ -8043,93 +8257,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                ) : null}
                               </label>
                             ) : null}
-                            {isProfitBoostOffer ? (
-                              <section
-                                aria-labelledby="sportsbook-payout-odds-title"
-                                className="content-subpanel stack field-span-2"
-                                data-pd-id="sportsbook.profit-boost.payout-odds-helper"
-                              >
-                                <div>
-                                  <span className="eyebrow">Payout helper</span>
-                                  <strong id="sportsbook-payout-odds-title">
-                                    Calculate odds from total return
-                                  </strong>
-                                  <p className="field-support-text">
-                                    Uses the cash back stake above. Enter the total potential return,
-                                    including returned stake. Profit-only winnings and stake-not-returned
-                                    free-bet payouts are not valid here.
-                                  </p>
-                                </div>
-                                <label className={`field-control${payoutReturnError ? " is-invalid" : ""}`}>
-                                  <span>Total potential return</span>
-                                  <input
-                                    aria-describedby={[
-                                      "sportsbook-payout-return-help",
-                                      payoutReturnError ? "sportsbook-payout-return-error" : "",
-                                    ].filter(Boolean).join(" ")}
-                                    aria-invalid={Boolean(payoutReturnError)}
-                                    inputMode="decimal"
-                                    onChange={(event) => updatePayoutTotalReturn(event.target.value)}
-                                    value={payoutTotalReturn}
-                                  />
-                                  <small id="sportsbook-payout-return-help">
-                                    Temporary helper input; it is not saved with the row.
-                                  </small>
-                                  {payoutReturnError ? (
-                                    <span
-                                      className="field-validation-text"
-                                      id="sportsbook-payout-return-error"
-                                      role="alert"
-                                    >
-                                      {payoutReturnError}
-                                    </span>
-                                  ) : null}
-                                </label>
-                                {isPayoutPreviewLoading ? (
-                                  <p aria-busy="true" aria-live="polite" role="status">
-                                    Calculating odds from payout…
-                                  </p>
-                                ) : null}
-                                {payoutPreviewError ? (
-                                  <p className="field-validation-text" role="alert">
-                                    {payoutPreviewError}
-                                  </p>
-                                ) : null}
-                                {activePayoutPreview ? (
-                                  <div aria-live="polite" className="stack-tight" role="status">
-                                    <span>
-                                      Raw implied odds{activePayoutPreview.raw_is_approximate ? " (approx.)" : ""}
-                                    </span>
-                                    <strong>{activePayoutPreview.raw_implied_odds}</strong>
-                                    <span>Conservative effective odds</span>
-                                    <strong>{activePayoutPreview.effective_odds}</strong>
-                                    {activePayoutPreview.application_block_reason ? (
-                                      <span>{activePayoutPreview.application_block_reason}</span>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                                {payoutAssociationActive ? (
-                                  <p role="status">
-                                    Calculated from payout and applied to Entered boosted odds.
-                                  </p>
-                                ) : null}
-                                <div className="tracker-nav">
-                                  <button
-                                    className="button-link"
-                                    data-pd-id="sportsbook.profit-boost.use-payout-odds"
-                                    disabled={
-                                      isPayoutPreviewLoading ||
-                                      !activePayoutPreview?.application_allowed ||
-                                      Boolean(formState.actual_accepted_back_odds)
-                                    }
-                                    onClick={applyPayoutOdds}
-                                    type="button"
-                                  >
-                                    Use calculated odds
-                                  </button>
-                                </div>
-                              </section>
-                            ) : null}
                             {isProfitBoostOffer && activePreviewCalculation?.effective_back_odds ? (
                               <div className="field-control" role="status">
                                 <span>Effective boosted odds</span>
@@ -8144,6 +8271,29 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                         : "Entered boosted odds"}
                                 </small>
                               </div>
+                            ) : null}
+                            {isProfitBoostOffer && activePreviewCalculation?.effective_back_odds ? (
+                              <section
+                                aria-label="Profit Boost calculation breakdown"
+                                className="content-subpanel stack-tight field-span-2"
+                              >
+                                <span className="eyebrow">How this was calculated</span>
+                                <span>Original odds: {profitBoostSourceDraft.base_back_odds || "Not provided"}</span>
+                                <span>
+                                  Source: {formState.profit_boost_mode === "displayed_odds"
+                                    ? `Displayed odds ${profitBoostSourceDraft.boosted_back_odds}`
+                                    : formState.profit_boost_mode === "total_return"
+                                      ? `Bookmaker total return £${profitBoostSourceDraft.total_potential_return}`
+                                      : formState.profit_boost_mode === "profit_only"
+                                        ? `Bookmaker profit £${profitBoostSourceDraft.potential_profit}`
+                                        : `${profitBoostSourceDraft.profit_boost_percent}% boost`}
+                                </span>
+                                <span>Raw derived odds: {activePreviewCalculation.profit_boost_raw_derived_odds || "Not required"}</span>
+                                <span>Effective hedge odds: {activePreviewCalculation.effective_back_odds}</span>
+                                <span>Bookmaker total return: £{activePreviewCalculation.profit_boost_bookmaker_total_return ?? "—"}</span>
+                                <span>Potential profit: £{activePreviewCalculation.profit_boost_potential_profit ?? "—"}</span>
+                                <small>{activePreviewCalculation.profit_boost_equation}</small>
+                              </section>
                             ) : null}
                           </div>
                           <div className="review-chip-row" role="group" aria-label="Back placement actions">
@@ -8324,7 +8474,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 {financialInputErrors.lay_actual ? <span className="field-validation-text" id="sportsbook-money-lay-actual-error" role="alert">{financialInputErrors.lay_actual}</span> : null}
                               </label>
                             ) : null}
-                            {isCashbackOffer ? (
+                            {isRefundOffer ? (
                               <label className="field-control">
                                 <span>Bonus trigger</span>
                                 <select
@@ -8358,24 +8508,57 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 </select>
                               </label>
                             ) : null}
-                            {isCashbackOffer ? (
-                              <label
-                                className={`field-control${
-                                  calculatorUnlocked && missingCalculatorFields.includes("Maximum bonus")
-                                    ? " is-invalid"
-                                    : ""
-                                }`}
-                              >
+                            {isConditionalCashbackOffer ? (
+                              <>
+                                <label className="field-control">
+                                  <span>Refund kind</span>
+                                  <select
+                                    onChange={(event) => updateConditionalBenefitField("refund_kind", event.target.value)}
+                                    value={conditionalBenefitDraft.refund_kind}
+                                  >
+                                    <option value="cash">Cash</option>
+                                    <option value="free_bet">Free Bet credit</option>
+                                  </select>
+                                </label>
+                                <label className="field-control">
+                                  <span>Eligible refund amount</span>
+                                  <input
+                                    aria-label="Eligible refund amount"
+                                    inputMode="decimal"
+                                    onChange={(event) => updateConditionalBenefitField("eligible_amount", event.target.value)}
+                                    value={conditionalBenefitDraft.eligible_amount}
+                                  />
+                                </label>
+                                <label className="field-control">
+                                  <span>Offer cap</span>
+                                  <input
+                                    aria-label="Offer cap"
+                                    inputMode="decimal"
+                                    onChange={(event) => updateConditionalBenefitField("refund_cap", event.target.value)}
+                                    value={conditionalBenefitDraft.refund_cap}
+                                  />
+                                </label>
+                                <label className="field-control">
+                                  <span>Eligibility</span>
+                                  <select
+                                    onChange={(event) => updateConditionalBenefitField("eligibility", event.target.value)}
+                                    value={conditionalBenefitDraft.eligibility}
+                                  >
+                                    <option value="pending">Not yet confirmed</option>
+                                    <option value="eligible">Eligible result confirmed</option>
+                                    <option value="not_eligible">Not eligible</option>
+                                  </select>
+                                </label>
+                              </>
+                            ) : isRefundOffer ? (
+                              <label className="field-control">
                                 <span>Maximum bonus</span>
                                 <input
                                   aria-label="Maximum bonus"
-                                  aria-describedby={financialInputErrors.maximum_bonus ? "sportsbook-money-maximum_bonus-error" : undefined}
-                                  aria-invalid={Boolean(financialInputErrors.maximum_bonus) || (calculatorUnlocked && missingCalculatorFields.includes("Maximum bonus"))}
-	                                  inputMode="decimal"
-	                                  onChange={(event) => updateDecimalFormField("maximum_bonus", event.target.value)}
-	                                  value={formState.maximum_bonus}
-	                                />
-                                {financialInputError("maximum_bonus")}
+                                  inputMode="decimal"
+                                  onChange={(event) => updateDecimalFormField("maximum_bonus", event.target.value)}
+                                  value={formState.maximum_bonus}
+                                />
                               </label>
                             ) : null}
                             {isRefundOffer ? (
@@ -9549,6 +9732,58 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       ))}
                     </select>
                   </label>
+                  {isConditionalCashbackOffer ? (
+                    <>
+                      <label className="field-control">
+                        <span>Actual receipt amount</span>
+                        <input
+                          aria-label="Actual cashback receipt amount"
+                          inputMode="decimal"
+                          onChange={(event) => updateConditionalBenefitField("actual_receipt_amount", event.target.value)}
+                          value={conditionalBenefitDraft.actual_receipt_amount}
+                        />
+                        <small>
+                          {conditionalBenefitDraft.refund_kind === "cash"
+                            ? "Confirmed cash only; this is added once when the cashback result is selected."
+                            : "Promotional credit only; later Free Bet profit is reported by its linked row."}
+                        </small>
+                      </label>
+                      <label className="field-control">
+                        <span>Receipt reference</span>
+                        <input
+                          aria-label="Cashback receipt reference"
+                          onChange={(event) => updateConditionalBenefitField("receipt_identity", event.target.value)}
+                          value={conditionalBenefitDraft.receipt_identity}
+                        />
+                      </label>
+                      <label className="field-control">
+                        <span>Receipt date</span>
+                        <input
+                          aria-label="Cashback receipt date"
+                          onChange={(event) => updateConditionalBenefitField("receipt_date", event.target.value)}
+                          type="date"
+                          value={conditionalBenefitDraft.receipt_date}
+                        />
+                      </label>
+                      {conditionalBenefitDraft.refund_kind === "free_bet" ? (
+                        <label className="field-control">
+                          <span>Linked awarded Free Bet</span>
+                          <select
+                            aria-label="Linked awarded Free Bet"
+                            onChange={(event) => updateConditionalBenefitField("linked_awarded_credit_id", event.target.value)}
+                            value={conditionalBenefitDraft.linked_awarded_credit_id}
+                          >
+                            <option value="">Select awarded credit</option>
+                            {linkedFreeBetRows.map((row) => (
+                              <option key={row.free_bet_id} value={row.free_bet_id}>
+                                {row.offer_text || row.event_name} · £{row.free_bet_value}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                    </>
+                  ) : null}
                   {quickSettlementOptions.length > 0 ? (
                     <div
                       aria-label="Quick settlement outcomes"
