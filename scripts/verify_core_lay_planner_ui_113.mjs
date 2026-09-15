@@ -146,6 +146,8 @@ try {
  const unchangedAfterCopy=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
  assert.equal(unchangedAfterCopy.lay_actual,'6.00','Copying the remaining plan must not record a fill');
  assert.equal(unchangedAfterCopy.lay_matched_stake_1,'6.00','Copying the remaining plan must not change the matched amount');
+ await core.locator('[data-pd-id$=".partial-summary"]').scrollIntoViewIfNeeded();
+ await page.screenshot({path:`${runtime}/core-partial-${basis}-${width}-${theme}.png`,fullPage:true});
  await expect(core.getByLabel('Planning Commission (%)',{exact:true})).toBeVisible();
  let releasePlan,enteredPlan;
  const heldPlan=new Promise(resolve=>releasePlan=resolve),preparedPlan=new Promise(resolve=>enteredPlan=resolve);
