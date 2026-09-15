@@ -14,6 +14,7 @@ import { CalculatorReferenceSection } from "@/components/calculator-reference-se
 import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
+import { getPartialLayExecutionSummary } from "@/lib/sportsbook-table-workflow";
 
 type CoreForm = {
   lay_plan_json?: string | null; back_odds: string; lay_odds_1: string;
@@ -166,6 +167,15 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   const minimum = minimumText === "" ? Number(lower?.lay_stake ?? "0") : Number(minimumText);
   const maximum = maximumText === "" ? Number(upper?.lay_stake ?? standard?.lay_stake ?? "0") : Number(maximumText);
   const disabled = busy || !validInputs || Boolean(error) || readOnly;
+  const recordedStake = form.lay_actual || form.lay_matched_stake_1;
+  const actualTermsMatchPlan = Boolean(savedPlan && recordedStake &&
+    Number(form.lay_odds_1) === Number(savedPlan.lay_odds) &&
+    Number(form.lay_commission_1) === Number(savedPlan.commission));
+  const partialSummary = getPartialLayExecutionSummary({
+    explicitTargetLayStake: savedPlan?.reviewed_planned_lay_stake ?? "",
+    suggestedTargetLayStake: "",
+    legs: recordedStake ? [{matchedStake:recordedStake}] : [],
+  });
   const rowsFor = (r: Reference) => [
     { label:"Lay stake", value:r.lay_stake, copyable:true }, { label:"Liability", value:r.liability },
     { label:"Back wins", value:r.back_wins_total }, { label:"Back loses", value:r.back_loses_total },
@@ -227,9 +237,17 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
           components:[[o.bookmaker_component],[o.exchange_component],[o.promotion_component]],total:o.total}))} />
       <section className="calculator-result-card stack" data-pd-id={`${inspectionId}.actual-placement`}>
         <div className="calculator-result-card-heading"><h3>Actual placement</h3></div>
-        {hasActual ? <><p>Recorded matched stake <CopyableFinancialValue label="Actual matched stake" value={form.lay_actual || form.lay_matched_stake_1} /> at {form.lay_odds_1}. Planning edits do not change these actuals.</p>
+        {hasActual ? <><p>Recorded matched stake <CopyableFinancialValue label="Actual matched stake" value={recordedStake} /> at {form.lay_odds_1}. Planning edits do not change these actuals.</p>
           <p>Actual liability <CopyableFinancialValue label="Actual liability" value={actualLiability} /></p>
-          <p className="field-hint">Remaining hedge at changed odds or different commissions requires a separately governed multi-fill calculation. No unmatched order is assumed filled.</p></> : <>
+          {partialSummary.targetLayStake !== null ? <div className="summary-list" data-pd-id={`${inspectionId}.partial-summary`}>
+            <p className="lede"><span className="summary-label">Reviewed planned stake</span><CopyableFinancialValue label="Reviewed planned stake" value={partialSummary.targetLayStake.toFixed(2)} /></p>
+            <p className="lede"><span className="summary-label">Matched so far</span><CopyableFinancialValue label="Matched so far" value={partialSummary.matchedTotal.toFixed(2)} /></p>
+            <p className="lede"><span className="summary-label">Known unmatched order</span><strong>Not recorded</strong></p>
+            {actualTermsMatchPlan && partialSummary.remainingToMatch !== null && partialSummary.remainingToMatch > 0 ? <p className="lede"><span className="summary-label">Remaining to match at the same odds</span><CopyableFinancialValue label="Remaining to match at the same odds" value={partialSummary.remainingToMatch.toFixed(2)} /></p> : null}
+          </div> : null}
+          <p className="field-hint">{actualTermsMatchPlan
+            ? "The remaining amount is a planning reference only. Copying it does not record another fill."
+            : "The actual odds or commission differ from the plan. An additional hedge needs a reviewed changed-odds calculation; no unmatched order is assumed filled."}</p></> : <>
           <div className="form-grid"><PlannerField id={`${inspectionId}.actual-stake`} label="Actual matched stake" value={actualDraft} onChange={setActualDraft} readOnly={readOnly} /><PlannerField id={`${inspectionId}.actual-odds`} label="Actual lay odds" value={actualOdds || planningOdds} onChange={setActualOdds} readOnly={readOnly} />
             <label className="field-control"><span>Commission (%)</span><CommissionInput aria-label="Actual Commission (%)" onRatioChange={setActualCommission} readOnly={readOnly} value={actualCommission} /></label></div>
           <button className="button-link icon-text-action" disabled={disabled || !actualValid} onClick={() => onPatch({lay_actual:actualDraft,lay_matched_stake_1:actualDraft,

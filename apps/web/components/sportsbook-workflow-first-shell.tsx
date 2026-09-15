@@ -6127,30 +6127,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     const nextStake = formatPreviewMoney(recommendedNextLayStakeValue);
     const copied = await copyToClipboard(nextStake);
-    const finalLegIndex = partialLayLegs.findIndex((leg) => leg.isFinal);
-
-    const nextLegs =
-      finalLegIndex >= 0
-        ? partialLayLegs.map((leg, index) =>
-            index === finalLegIndex ? { ...leg, matchedStake: nextStake } : leg
-          )
-        : [
-            ...partialLayLegs,
-            {
-              id: createPartialLayLegId(partialLayLegs.length + 1),
-              exchangeName: formState.exchange_name,
-              layOdds: formState.lay_odds_1,
-              matchedStake: nextStake,
-              isFinal: false,
-            },
-          ];
-
-    applyPartialLayLegState(nextLegs);
-    setPendingLegRemovalId(null);
     setStatusMessage(
       copied
-        ? "Copied Recommended Next Lay Stake and applied it to the next lay leg matched stake."
-        : "Applied Recommended Next Lay Stake to the next lay leg matched stake."
+        ? "Copied Recommended Next Lay Stake. No matched stake was recorded."
+        : "Could not copy Recommended Next Lay Stake. No matched stake was recorded."
     );
   }
 
@@ -8623,6 +8603,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <span className="summary-label">Recommended Next Lay Stake</span>
                                 <span className="summary-value-with-action">
                                   <button
+                                    aria-label="Copy Recommended Next Lay Stake"
                                     className="review-chip review-chip-copy"
                                     disabled={!canCopyRecommendedNextLayStake}
                                     onClick={() => void copyRecommendedNextLayStake()}
