@@ -4,10 +4,13 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {chromium, request, expect} from '@playwright/test';
-const runtime='/tmp/openforge-award-integrity-91-20260914';
-const token=fs.readFileSync(runtime+'/session-token','utf8').trim();
-const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{Cookie:'pd_session='+token}});
-assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
+const runtime=process.env.OPENFORGE_CORE_RUNTIME ?? '/tmp/openforge-award-integrity-91-20260914';
+const webBase=process.env.OPENFORGE_CORE_WEB_BASE ?? 'http://localhost:3040';
+const apiBase=process.env.OPENFORGE_CORE_API_BASE ?? 'http://127.0.0.1:8039';
+const tokenPath=runtime+'/session-token';
+const token=fs.existsSync(tokenPath)?fs.readFileSync(tokenPath,'utf8').trim():'';
+const api=await request.newContext({baseURL:apiBase,...(token?{extraHTTPHeaders:{Cookie:'pd_session='+token}}:{})});
+if(token) assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
 const made=await api.post('/profiles/onboarding',{data:{setup_path:'import',display_name:'Synthetic Core Planner',profile_code:'CORE-'+Date.now(),tracking_start_date:'2026-09-01',enabled_modules:['sportsbook-bets','free-bets','cash-adjustments'],accounts:[],quick_actions:[]}});
 assert.equal(made.status(),201,await made.text()); const pid=(await made.json()).profile.profile_id;
 assert.equal((await api.patch('/profiles/'+pid,{data:{status:'Active'}})).status(),200);
@@ -19,7 +22,7 @@ for(const [account,type] of [['Bet365','Bookie'],['Smarkets','Exchange']]) {
 assert.equal((await api.put('/profiles/'+pid+'/exchange-commissions',{data:{exchange_name:'Smarkets',commission_rate:'0.02'}})).status(),200);
 const browser=await chromium.launch({headless:true});
 const evidence={source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),date:new Date().toISOString(),profileId:pid,cases:[]};
-const database=new DatabaseSync(runtime+'/acceptance.sqlite3',{readOnly:true});
+const database=new DatabaseSync(process.env.OPENFORGE_CORE_DATABASE ?? runtime+'/acceptance.sqlite3',{readOnly:true});
 // Independent inspection must respect SQLite's existing brief writer transaction.
 database.exec('PRAGMA busy_timeout=5000');
 function stored(ledger,id) {
@@ -31,20 +34,24 @@ async function dismissStorageNotice(page) {
  const button=page.getByRole('button',{name:'Understood',exact:true});
  try { await button.waitFor({state:'visible',timeout:2000});await button.click(); } catch {/* already accepted or not rendered */}
 }
+async function authorizeContext(context) {
+ if(token) await context.addCookies([{name:'pd_session',value:token,domain:new URL(webBase).hostname,path:'/'}]);
+ else await context.route('**/auth/session*',route=>route.fulfill({json:{authenticated:true,email:'calculator-parity@example.invalid',name:'Synthetic Fund Manager',role:'fund_manager',expires_at:Math.floor(Date.now()/1000)+3600,linked_profile_ids:[],session_policy:{auto_logout_enabled:false,timeout_minutes:15,preference_configured:true,effective_expires_at:Math.floor(Date.now()/1000)+3600}}}));
+}
 try {
- for(const [basis,width,theme] of (process.argv.includes('--normal-only')?[['Normal',760,'dark']]:[['SNR',1440,'light'],['Normal',760,'dark'],['SNR',760,'dark'],['Normal',1440,'light']])) {
+ if(!process.argv.includes('--conversion-only')) for(const [basis,width,theme] of (process.argv.includes('--normal-only')?[['Normal',760,'dark']]:[['SNR',1440,'light'],['Normal',760,'dark'],['SNR',760,'dark'],['Normal',1440,'light']])) {
  const ledger=basis==='SNR'?'free-bets':'sportsbook-bets',prefix=basis==='SNR'?'free-bets':'sportsbook';
  const planned=basis==='SNR'?'6.25':'9.57',chosen=basis==='SNR'?'Underlay':'Standard';
  // Both back-win branches: 10*(4-1) - 6*(4.2-1) = 10.80.
  const backWon='10.80',layWon=basis==='SNR'?'5.88':'-4.12';
  const eventName=`Synthetic Core Native ${basis} ${width} ${theme}`;
  const context=await browser.newContext({viewport:{width,height:1100},permissions:['clipboard-read','clipboard-write'],reducedMotion:theme==='light'?'reduce':'no-preference'});
- await context.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
+ await authorizeContext(context);
  await context.addInitScript(t=>localStorage.setItem('openforge-theme',t),theme);
  const page=await context.newPage();page.setDefaultTimeout(20000);
  page.on('pageerror',e=>console.log('PAGEERROR',e.message));
  page.on('response',async r=>{if(r.url().endsWith('/matched-betting/preview')&&r.status()!==200)console.log('REFERENCE ERROR',r.status(),await r.text());});
- await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/'+ledger);
+ await page.goto(webBase+'/profiles/'+pid+'/tracker/'+ledger);
  await dismissStorageNotice(page);
  await page.locator('[data-pd-id="ledger.toolbar.add-row"]').click();
  const dialog=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await dialog.waitFor();
@@ -63,9 +70,9 @@ try {
  await core.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption(accounts.Exchange.account_id);
  await expect(core.getByLabel('Planning exchange commission (%)',{exact:true})).toHaveValue('2');
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
- try {await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();}
+ try {await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();}
  catch(e) {console.log('CORE FAILED STATE',await core.innerText());throw e;}
- await core.getByRole('button',{name:'Apply '+chosen,exact:true}).click();
+ await core.getByRole('button',{name:'Use '+chosen+' plan',exact:true}).click();
  const referenceFor=name=>core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
  let selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
@@ -83,7 +90,7 @@ try {
  await save.click();await expect(dialog).toBeHidden();
  const rows=await(await api.get('/profiles/'+pid+'/'+ledger)).json();
  let row=rows.find(r=>r.event_name===eventName);assert(row);
- const id=row[basis==='SNR'?'free_bet_id':'sportsbook_bet_id'],url='http://localhost:3040/profiles/'+pid+'/tracker/'+ledger+'?record='+id;
+ const id=row[basis==='SNR'?'free_bet_id':'sportsbook_bet_id'],url=webBase+'/profiles/'+pid+'/tracker/'+ledger+'?record='+id;
  let plan=JSON.parse(row.lay_plan_json);
  assert.equal(plan.selected_strategy,chosen);assert.equal(plan.reviewed_planned_lay_stake,planned);
  assert.equal(row.lay_actual,'');assert.equal(row.lay_matched_stake_1,'');
@@ -91,7 +98,7 @@ try {
  assert.equal(stored(ledger,id).lay_actual,'');assert.equal(stored(ledger,id).lay_commission_1,'');
  await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
- await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();
+ await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();
  await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
  await expect(core.getByLabel('Actual selected strategy')).toHaveCount(0);
  await expect(core.getByText('Decimal rate, for example 0.02',{exact:true})).toHaveCount(0);
@@ -120,7 +127,7 @@ try {
   const underlay=await referenceFor('Underlay').boundingBox(),overlay=await referenceFor('Overlay').boundingBox();
   assert(Math.abs(underlay.width-overlay.width)<=1);
  }
- await core.getByRole('button',{name:'Apply '+chosen,exact:true}).click();
+ await core.getByRole('button',{name:'Use '+chosen+' plan',exact:true}).click();
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
  selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
@@ -151,13 +158,13 @@ try {
   await core.getByLabel('Back odds',{exact:true}).fill('4.00');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
   await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');const customReference=referenceFor('Custom');await expect(customReference.getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
   const slider=core.getByRole('slider',{name:'Custom lay stake slider'});await slider.focus();await page.keyboard.press('ArrowRight');
-  await expect(customReference.getByRole('row').first().getByRole('button')).toBeEnabled();
+  const customCopy=core.locator('[data-pd-id$=".custom-input-copy"] button');await expect(customCopy).toBeEnabled();
   const current=await core.getByLabel('Custom Lay',{exact:true}).inputValue();
-  assert.notEqual(current,'9.00');await customReference.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
+  assert.notEqual(current,'9.00');await customCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
   await expect(result).toHaveAttribute('data-test-identity','persistent');
   await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.getByRole('row').first()).toHaveAttribute('aria-label',/7\.18/);
   await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
-  await core.getByRole('button',{name:'Apply Underlay',exact:true}).click();selected=referenceFor('Underlay');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
+  await core.getByRole('button',{name:'Use Underlay plan',exact:true}).click();selected=referenceFor('Underlay');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
  }
  await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
  await core.getByLabel('Actual lay odds',{exact:true}).fill('4.20');
@@ -198,7 +205,7 @@ try {
  assert.equal(row.final_net_pnl,backWon);assert.equal(row.scenario_pnl_if_lay_wins,layWon);
  assert.equal(JSON.parse(row.lay_plan_json).commission,'0.05');
  assert.equal(stored(ledger,id).lay_actual,'6.00');assert.equal(stored(ledger,id).lay_commission_1,'0.02');assert.equal(stored(ledger,id).result,'Back Won');
- await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/reports');
+ await page.goto(webBase+'/profiles/'+pid+'/tracker/reports');
  await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
  const total=((evidence.cases.filter(c=>c.kind.startsWith('native')).reduce((sum,c)=>sum+Math.round(Number(c.backWon)*100),0)+Math.round(Number(backWon)*100))/100).toFixed(2);
  await expect(page.locator('.financial-value').filter({hasText:total}).first()).toBeVisible();
@@ -211,17 +218,19 @@ try {
   const ledger=basis==='SNR'?'free-bets':'sportsbook-bets',prefix=basis==='SNR'?'free-bets':'sportsbook';
   const stake={Underlay:'6.25',Overlay:'10.20',Custom:'9.00',Standard:basis==='SNR'?'7.18':'9.57'}[strategy];
   const context=await browser.newContext({viewport:{width,height:1100},permissions:['clipboard-read','clipboard-write'],reducedMotion:theme==='light'?'reduce':'no-preference'});
-  await context.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
+  await authorizeContext(context);
   await context.addInitScript(t=>localStorage.setItem('openforge-theme',t),theme);
   const page=await context.newPage();page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const params=new URLSearchParams({family:'matched-betting',betType:basis==='SNR'?'free_bet':'qualifying',freeBetMode:'SNR',backStake:'10.00',backOdds:'4.00',layOdds:'4.20',exchangeCommission:'0.02',commissionUnits:'ratio',presentationMode:'Advanced',strategy,manualLayStake:strategy==='Custom'?'9.00':'',customLayDraft:'9.00',exchange:'Smarkets'});
   const path=width===760?'/calculator':'/fund-manager/calculators';
-  await page.goto('http://localhost:3040'+path+'?'+params);
+  await page.goto(webBase+path+'?'+params);
   await dismissStorageNotice(page);
   if(strategy==='Standard')await page.getByRole('button',{name:'Simple',exact:true}).click();
   const sourceCopy=strategy==='Standard'
-    ? page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button')
-    : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).getByRole('row').first().getByRole('button');
+    ? page.locator('[data-pd-id="calculators.matched-betting.standard"]').getByRole('row').first().getByRole('button')
+    : strategy==='Custom'
+      ? page.locator('[data-pd-id="calculators.matched-betting.custom-input-copy"] button')
+      : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).getByRole('row').first().getByRole('button');
   await expect(sourceCopy).toBeEnabled();await expect(sourceCopy).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
   await sourceCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   if(strategy==='Standard')await page.getByRole('button',{name:'Advanced',exact:true}).click();
@@ -254,15 +263,15 @@ try {
   assert.equal(retry.status(),200);assert.equal((await retry.json()).results[0].record_id,target.record_id);
   const table=ledger==='free-bets'?'free_bets':'sportsbook_bets';
   assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE profile_id=? AND lay_plan_json LIKE ?`).get(pid,'%'+plan.source_checksum+'%').n,1);
-  const readUrl='http://localhost:3040'+target.href;
+  const readUrl=webBase+target.href;
   await page.goto(readUrl);await dismissStorageNotice(page);const editor=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await editor.waitFor();
   await editor.getByRole('tab',{name:/Matching/}).first().click();const core=editor.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   if(strategy==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
   const selected=strategy==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : core.locator(`[data-pd-id$=".${strategy.toLowerCase()}"]`);
   await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
   await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
-  await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
-  await selected.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
+  const embeddedCopy=strategy==='Custom'?core.locator('[data-pd-id$=".custom-input-copy"] button'):selected.getByRole('row').first().getByRole('button');
+  await expect(embeddedCopy).toBeEnabled();await embeddedCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   assert.equal((await(await api.get(recordUrl)).json()).lay_actual,'','Copy must not place');
   await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
   await page.screenshot({path:`${runtime}/core-embedded-controls-${basis}-${strategy}-${width}-${theme}.png`});
@@ -285,7 +294,7 @@ try {
   assert.equal(settled.status(),200,await settled.text());row=await settled.json();
   const backWon='10.80';assert.equal(row.final_net_pnl,backWon);
   assert.equal(stored(ledger,target.record_id).lay_actual,'6.00');assert.equal(stored(ledger,target.record_id).lay_commission_1,'0.02');assert.equal(stored(ledger,target.record_id).result,'Back Won');
-  await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/reports');await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
+  await page.goto(webBase+'/profiles/'+pid+'/tracker/reports');await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
   const total=((evidence.cases.reduce((sum,c)=>sum+Math.round(Number(c.backWon)*100),0)+Math.round(Number(backWon)*100))/100).toFixed(2);
   await expect(page.locator('.financial-value').filter({hasText:total}).first()).toBeVisible();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.deepEqual(errors,[]);
@@ -293,7 +302,7 @@ try {
   await context.close();
  }
  evidence.reviewRecords=[];
- for(const basis of process.argv.includes('--normal-only')?['Normal']:['Normal','SNR']) {
+ if(!process.argv.includes('--conversion-only')) for(const basis of process.argv.includes('--normal-only')?['Normal']:['Normal','SNR']) {
   const ledger=basis==='SNR'?'free-bets':'sportsbook-bets';
   const reference=evidence.cases.find(c=>c.kind==='native '+basis);
   const original=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+reference.id)).json();

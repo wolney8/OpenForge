@@ -153,12 +153,12 @@ test("Bonus Lock-In advanced references drive selected, copied, and converted st
   await page.getByRole("button", { name: "Advanced", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
-  await page.getByRole("button", { name: "Apply Underlay" }).click();
+  await page.getByRole("button", { name: "Use Underlay plan" }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("1.50");
   expect(previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Underlay", retention_percent: "70", exchange_commission: "0" });
-  await page.getByRole("button", { name: "Apply Overlay" }).click();
+  await page.getByRole("button", { name: "Use Overlay plan" }).click();
   await expect.poll(() => previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Overlay" });
 });
 

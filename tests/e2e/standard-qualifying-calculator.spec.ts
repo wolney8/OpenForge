@@ -120,7 +120,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   const preservedAdvancedStake = await customSlider.getAttribute("aria-valuenow");
   await page.getByRole("button", { name: "Simple" }).click();
   await expect(page.getByText("Simple mode uses the equalised Standard strategy.")).toBeVisible();
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toContainText("Standard reference");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toContainText("Standard");
   await page.getByRole("button", { name: "Advanced" }).click();
   await expect(customSlider).toHaveAttribute("aria-valuenow", preservedAdvancedStake ?? "");
   await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
@@ -215,7 +215,7 @@ test("routes the governed Bonus controls to the displayed and copied strategy", 
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ (0.03)");
-  await page.getByRole("button", { name: "Apply Overlay" }).click();
+  await page.getByRole("button", { name: "Use Overlay plan" }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
   await page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("4.34");

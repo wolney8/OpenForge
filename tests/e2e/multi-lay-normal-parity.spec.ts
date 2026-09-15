@@ -1,21 +1,29 @@
 import { expect, test } from "@playwright/test";
 
 const api = process.env.OPENFORGE_TEST_API_URL || "http://127.0.0.1:8013";
+const apiHeaders = process.env.OPENFORGE_E2E_SESSION_TOKEN
+  ? { Cookie: `pd_session=${process.env.OPENFORGE_E2E_SESSION_TOKEN}` }
+  : undefined;
+async function authorizePage(page: import("@playwright/test").Page) {
+  if (!process.env.OPENFORGE_E2E_SESSION_TOKEN) return;
+  await page.context().addCookies([{ name: "pd_session", value: process.env.OPENFORGE_E2E_SESSION_TOKEN, url: process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010" }]);
+}
 test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reopens every leg", async ({ page, request }) => {
+  await authorizePage(page);
   await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
     authenticated: true, role: "fund_manager", email: "native@example.invalid", name: "Synthetic Owner",
     linked_profile_ids: [], expires_at: Math.floor(Date.now()/1000)+3600,
     session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true },
   } }));
-  const profile = await request.post(`${api}/profiles/onboarding`, { data: {
+  const profile = await request.post(`${api}/profiles/onboarding`, { headers: apiHeaders, data: {
     setup_path: "import", display_name: "Synthetic Native Planner", profile_code: `NAT-${Date.now()}`,
     tracking_start_date: "2026-09-12", enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"],
   } });
   expect(profile.status(), await profile.text()).toBe(201);
   const profileId = (await profile.json()).profile.profile_id;
   for (const [account, type] of [["Bet365", "Bookie"], ["Smarkets", "Exchange"]]) {
-    const response = await request.post(`${api}/profiles/${profileId}/accounts`, { data: {
+    const response = await request.post(`${api}/profiles/${profileId}/accounts`, { headers: apiHeaders, data: {
       account, type, status: "Active", lifecycle_status: "Active", restrictions: [], channel: "Online",
       ...(type === "Exchange" ? { commission_rate: "0.02" } : {}),
     } });
@@ -128,15 +136,16 @@ test("shared dense cells contain Sequential Lay and Dutching fields", async ({ p
   }
 });
 test("Normal v2 planning preserves mixed commissions through native save/reopen", async ({ page, request }) => {
+  await authorizePage(page);
   await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
-  const createdProfile = await request.post(`${api}/profiles/onboarding`, { data: {
+  const createdProfile = await request.post(`${api}/profiles/onboarding`, { headers: apiHeaders, data: {
     setup_path: "import", display_name: "Synthetic Parity Profile", profile_code: `PAR-${Date.now()}`,
     tracking_start_date: "2026-09-12", enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"],
   } });
   expect(createdProfile.status()).toBe(201);
   const profileId = (await createdProfile.json()).profile.profile_id;
   for (const [account, type] of [["Bet365", "Bookie"], ["Smarkets", "Exchange"]]) {
-    const response = await request.post(`${api}/profiles/${profileId}/accounts`, { data: {
+    const response = await request.post(`${api}/profiles/${profileId}/accounts`, { headers: apiHeaders, data: {
       account, type, status: "Active", lifecycle_status: "Active", restrictions: [], channel: "Online",
       ...(type === "Exchange" ? { commission_rate: "0.02" } : {}),
     } });
@@ -146,7 +155,7 @@ test("Normal v2 planning preserves mixed commissions through native save/reopen"
     { id: "outcome1", label: "Home", layOdds: "2.50", commission: "0.05", calculationVersion: "multi-lay-v2", backingType: "normal" },
     { id: "outcome2", label: "Away", layOdds: "3.00", commission: "0.02" },
   ];
-  const created = await request.post(`${api}/profiles/${profileId}/sportsbook-bets`, { data: {
+  const created = await request.post(`${api}/profiles/${profileId}/sportsbook-bets`, { headers: apiHeaders, data: {
     event_name: "Synthetic Normal commission parity", offer_text: "Synthetic plan", bookmaker: "Bet365",
     offer_type: "Bet & Get", bet_type: "Single", fixture_type: "Football", match_strategy: "Multilay",
     status: "Prospecting", result: "Pending", back_stake: "10.00", back_odds: "4.00", lay_odds_1: "2.50",
@@ -205,7 +214,7 @@ test("Normal v2 planning preserves mixed commissions through native save/reopen"
   await editor.getByRole("button", { name: "Save", exact: true }).click();
   const savedResponse = await saving;
   expect(savedResponse.status(), await savedResponse.text()).toBe(200);
-  const reopened = await request.get(`${api}/profiles/${profileId}/sportsbook-bets/${row.sportsbook_bet_id}`);
+  const reopened = await request.get(`${api}/profiles/${profileId}/sportsbook-bets/${row.sportsbook_bet_id}`, { headers: apiHeaders });
   expect((await reopened.json()).multi_lay_reference).toEqual(reference);
   await page.reload();
   await editor.getByRole("tab", { name: /Matching/ }).click();

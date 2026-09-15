@@ -8393,6 +8393,12 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
+.calculator-workspace-control-bar {
+  column-gap: 1.5rem;
+  grid-template-columns: minmax(min(100%, 16rem), 1.35fr) minmax(min(100%, 13rem), 1fr);
+  row-gap: 1rem;
+}
+
 .calculator-presentation-mode-field {
   grid-column: 1 / -1;
   max-width: 22rem;
@@ -8708,7 +8714,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .calculator-reference-section .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
-  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 0.65fr);
+  grid-template-columns: minmax(7.5rem, 10.5rem) minmax(7.5rem, 1fr);
 }
 
 .calculator-reference-section .calculator-outcome-scenario-row > strong:first-child {
@@ -8725,6 +8731,41 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .calculator-reference-tone-custom .calculator-result-card-heading {
   border-top: 0.25rem solid var(--success);
+}
+
+.calculator-reference-heading-content {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+  justify-content: center;
+  min-width: 0;
+}
+
+.calculator-reference-heading-content .context-help-action {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-color: currentColor;
+  color: inherit;
+}
+
+.calculator-custom-input-row {
+  align-items: end;
+  display: grid;
+  gap: var(--action-group-gap);
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.calculator-custom-input-row > .field-control {
+  min-width: 0;
+}
+
+.calculator-reference-card-grid {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  min-width: 0;
 }
 
 .calculator-custom-reference-group .custom-slider-card-controls {
@@ -8957,8 +8998,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   );
   border-color: transparent !important;
   box-shadow: none;
-  margin-inline: auto;
-  width: calc(100% - 2rem);
+  margin-inline: 0;
+  width: 100%;
 }
 
 .calculator-panel-card-multilay {
@@ -8985,8 +9026,26 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
+.multi-lay-global-controls {
+  grid-template-columns: repeat(3, minmax(min(100%, 12rem), 1fr));
+}
+
+.calculator-segment-offer {
+  background: var(--surface-container);
+  border-color: var(--outline-variant);
+}
+
+.calculator-segment-grid-offer {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+[data-pd-id="calculators.multi-lay.back"] .calculator-segment-grid-back {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 720px) {
-  .multi-lay-planner-toolbar {
+  .multi-lay-planner-toolbar,
+  .multi-lay-global-controls {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -12012,6 +12071,52 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .extra-place-outcome-row > strong:last-child::before { display: block; color: var(--on-surface-variant); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
   .calculator-outcome-scenario-row > span::before,
   .calculator-outcome-scenario-row > strong:last-child::before { content: attr(data-label); }
+}
+
+/* Reference cards reuse the Outcomes row primitive but are deliberately compact: one fixed
+   chevron label track and one value/copy track, with no Outcomes-only Total heading. */
+.calculator-outcomes-reference .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
+  gap: 0.65rem;
+  grid-template-columns: minmax(7.5rem, 10.5rem) minmax(7.5rem, 1fr);
+}
+
+.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:first-child {
+  padding-right: 1.25rem;
+}
+
+.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:last-child {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:last-child::before {
+  content: none;
+}
+
+.calculator-reference-tone-standard { --calculator-reference-accent: var(--primary); }
+.calculator-reference-tone-underlay { --calculator-reference-accent: var(--warning); }
+.calculator-reference-tone-overlay { --calculator-reference-accent: var(--primary); }
+.calculator-reference-tone-custom { --calculator-reference-accent: var(--success); }
+
+.calculator-outcomes-reference .calculator-outcome-scenario-row > strong:first-child {
+  background: color-mix(in srgb, var(--calculator-reference-accent) 18%, var(--surface-container-high));
+  border-color: var(--calculator-reference-accent);
+}
+
+@container calculator-outcomes (max-width: 22rem) {
+  .calculator-outcomes-reference .calculator-outcome-scenario-row.calculator-outcome-columns-0 {
+    grid-template-columns: minmax(6.75rem, 8.5rem) minmax(6.5rem, 1fr);
+    padding-inline: 0.65rem;
+  }
+}
+
+@media (max-width: 780px) {
+  .calculator-workspace-control-bar,
+  .multi-lay-global-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sportsbook-tabbed-editor-modal > form.form-grid {

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { CalculatorOutcomes } from "@/components/calculator-outcomes";
+import { ContextHelp } from "@/components/context-help";
 import { useFinancialMotionPreference } from "@/components/financial-motion-preference";
 
 export type CalculatorReferenceRow = {
@@ -32,11 +33,13 @@ export function CalculatorReferenceSection({
 }) {
   const motion = useFinancialMotionPreference();
 
-  return <CalculatorOutcomes busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} description={description} inspectionId={inspectionId}
-    title={live ? <><span className={`table-chip table-chip-danger calculator-live-chip${motion.ready && motion.enabled ? " is-motion-enabled" : ""}`}>LIVE</span><span>{title}</span></> : title}
+  const heading = <>{live ? <span className={`table-chip table-chip-danger calculator-live-chip${motion.ready && motion.enabled ? " is-motion-enabled" : ""}`}>LIVE</span> : null}{title}</>;
+
+  return <CalculatorOutcomes busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} inspectionId={inspectionId}
+    headingAction={<ContextHelp label={`About ${title}`} text={description} />} title={heading} variant="reference"
     rows={rows.map((row) => ({
       key: row.label.toLowerCase().replaceAll(" ", "-"), label: row.label, total: row.value,
-      copyableTotal: row.copyable || row.label === "Back wins" || row.label === "Back loses",
+      copyableTotal: row.copyable,
       tone: row.label === "Back wins" ? "positive" : row.label === "Back loses" ? "exchange" : row.label === "Liability" ? "warning" : "primary",
     }))} summary={action} />;
 }

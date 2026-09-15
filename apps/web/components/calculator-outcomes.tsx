@@ -38,22 +38,27 @@ export function CalculatorOutcomes({
   columns = [],
   busy = false,
   description,
+  headingAction,
   inspectionId,
   rows,
   summary,
   title = "Outcomes",
+  variant = "outcomes",
 }: {
   className?: string;
   busy?: boolean;
   columns?: string[];
   description?: ReactNode;
+  headingAction?: ReactNode;
   inspectionId: string;
   rows: CalculatorOutcomeScenario[];
   summary?: ReactNode;
   title?: ReactNode;
+  variant?: "outcomes" | "reference";
 }) {
-  return <section aria-busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card${className ? ` ${className}` : ""}`} data-pd-id={inspectionId}>
-    <div className="calculator-result-card-heading"><h3>{title}</h3></div>
+  const reference = variant === "reference";
+  return <section aria-busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card calculator-outcomes-${variant}${className ? ` ${className}` : ""}`} data-pd-id={inspectionId}>
+    <div className="calculator-result-card-heading"><div className="calculator-reference-heading-content"><h3>{title}</h3>{headingAction}</div></div>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
       {columns.length > 0 ? <div className={`extra-place-outcome-row extra-place-outcome-row-heading calculator-outcome-columns-${Math.min(columns.length, 3)}`} role="row">
@@ -64,9 +69,12 @@ export function CalculatorOutcomes({
       {rows.map((row) => {
         const components = row.components ?? [];
         const accessibleComponents = components.map((values, index) => `${columns[index] ?? `component ${index + 1}`} ${values.map(accessibleValue).join(" and ")}`).join("; ");
+        const accessibleLabel = reference
+          ? `${row.label}: ${accessibleValue(row.total)}`
+          : `${row.label}${accessibleComponents ? `: ${accessibleComponents};` : ":"} total ${accessibleValue(row.total)}`;
         return <FinancialValueReplayGroup key={row.key}>
           <div
-            aria-label={`${row.label}${accessibleComponents ? `: ${accessibleComponents};` : ":"} total ${accessibleValue(row.total)}`}
+            aria-label={accessibleLabel}
             className={`calculator-outcome-scenario-row extra-place-outcome-row calculator-outcome-columns-${Math.min(columns.length, 3)} calculator-outcome-tone-${row.tone ?? "neutral"}${row.selected ? " is-selected" : ""}`}
             role="row"
           >
@@ -77,9 +85,9 @@ export function CalculatorOutcomes({
                 <CalculatorOutcomeValueDisplay label={`${row.label} ${columns[componentIndex] ?? "component"} ${valueIndex + 1}`} value={value} />
               </span>)}
             </span>)}
-            <strong data-label="Total">{row.copyableTotal
-              ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.key}.copyable`} label={`${row.label} total`} value={row.total} />
-              : <CalculatorOutcomeValueDisplay label={`${row.label} total`} value={row.total} />}</strong>
+            <strong {...(!reference ? { "data-label": "Total" } : {})}>{row.copyableTotal
+              ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.key}.copyable`} label={reference ? row.label : `${row.label} total`} value={row.total} />
+              : <CalculatorOutcomeValueDisplay label={reference ? row.label : `${row.label} total`} value={row.total} />}</strong>
           </div>
         </FinancialValueReplayGroup>;
       })}

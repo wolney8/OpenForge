@@ -36,13 +36,13 @@ try {
       const a=await reference(name).boundingBox(),b=await outcomes.boundingBox();
       assert(Math.abs(a.x-b.x)<=1 && Math.abs(a.width-b.width)<=1,'Reference and Outcomes full-width edges');
     }
-    await page.getByRole('button',{name:'Apply Underlay',exact:true}).click();
+    await page.getByRole('button',{name:'Use Underlay plan',exact:true}).click();
     await expect(selected.getByRole('button')).toBeEnabled();
     await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/6\.25/);
     await selected.getByRole('button').click();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'6.25');
     assert.equal(requests.at(-1).strategy,'Underlay');
-    await page.getByRole('button',{name:'Apply Overlay',exact:true}).click();
+    await page.getByRole('button',{name:'Use Overlay plan',exact:true}).click();
     await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/10\.20/);
     await expect(selected.getByRole('button')).toBeEnabled();
     const negative=reference('Overlay').locator('[data-pd-id$=".back-wins.copyable"]');
@@ -83,7 +83,7 @@ try {
       await page.locator('#calculator-back-odds').fill('5');
       await held;
       await expect(selected.getByRole('button')).toBeDisabled();
-      await expect(page.getByRole('button',{name:'Apply Underlay',exact:true})).toBeDisabled();
+      await expect(page.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeDisabled();
       await expect(outcomes).toHaveAttribute('data-identity','persistent');
       await page.locator('#calculator-back-odds').fill('6');
       await expect(selected.getByRole('button')).toHaveAttribute('aria-label',/11\.96/);

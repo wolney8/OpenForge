@@ -59,13 +59,29 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   const topControlRows = await page.locator('.calculator-band-primary .ledger-calculator-mode-bar').first().evaluate((root) => ({
     selectorTop: root.querySelector<HTMLElement>('#calculator-calculator-offer')!.getBoundingClientRect().top,
     modeTop: root.querySelector<HTMLElement>('[data-pd-id="calculators.matched-betting.mode"]')!.getBoundingClientRect().top,
+    firstRight: root.children[0].getBoundingClientRect().right,
+    secondLeft: root.children[1].getBoundingClientRect().left,
+    labelsFit: [...root.querySelectorAll<HTMLElement>(":scope > .field-control > span")].every((label) => label.scrollWidth <= label.clientWidth + 1),
   }));
   expect(topControlRows.modeTop).toBeGreaterThan(topControlRows.selectorTop);
+  expect(topControlRows.secondLeft - topControlRows.firstRight).toBeGreaterThanOrEqual(20);
+  expect(topControlRows.labelsFit).toBe(true);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.overlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom"]')).toBeVisible();
   await expect(page.getByRole("slider", { name: "Custom lay stake slider" })).toBeVisible();
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"]')).toContainText("Custom Lay reference");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"]')).toContainText("Custom Lay");
+  await expect(page.getByText("Lower lay reference; penny placement can leave a small residual.", { exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "About Underlay" })).toBeVisible();
+  await page.getByRole("button", { name: "About Underlay" }).click();
+  await expect(page.getByRole("tooltip")).toContainText("Lower lay reference");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "About Underlay" })).toHaveAttribute("aria-expanded", "false");
+  for (const id of ["underlay", "overlay", "custom"]) {
+    await expect(page.locator(`[data-pd-id="calculators.matched-betting.${id}"] h3`)).toHaveText(id === "custom" ? "Custom Lay" : `${id[0].toUpperCase()}${id.slice(1)}`);
+  }
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"] [data-label="Total"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-input-copy"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"] [data-pd-id="calculator.custom-slider"]')).toBeVisible();
   await expect(page.getByLabel("Actual selected strategy")).toHaveCount(0);
   await expect(page.getByText("Decimal rate, for example 0.02", { exact: true })).toHaveCount(0);
@@ -88,13 +104,21 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
       const value = row.querySelector<HTMLElement>('strong:last-child')!.getBoundingClientRect();
       return { labelRight: Math.round(label.right), valueLeft: Math.round(value.left) };
     }));
-    return { outer: outer.map((box) => [Math.round(box.x), Math.round(box.width)]), pair: pair.map((box) => Math.round(box.width)), rowGeometry };
+    const compactLabels = [...root.querySelectorAll<HTMLElement>('.calculator-reference-section .calculator-outcome-scenario-row')].every((row) => {
+      const label = row.querySelector<HTMLElement>('strong:first-child')!.getBoundingClientRect();
+      return label.width < row.getBoundingClientRect().width * 0.55;
+    });
+    return { outer: outer.map((box) => [Math.round(box.x), Math.round(box.width)]), pair: pair.map((box) => Math.round(box.width)), rowGeometry, compactLabels };
   });
   expect(alignedReferences.outer[0]).toEqual(alignedReferences.outer[1]);
   expect(Math.abs(alignedReferences.pair[0] - alignedReferences.pair[1])).toBeLessThanOrEqual(1);
   for (const rows of alignedReferences.rowGeometry) {
     expect(new Set(rows.map((row) => row.labelRight)).size).toBe(1);
     expect(new Set(rows.map((row) => row.valueLeft)).size).toBe(1);
+  }
+  expect(alignedReferences.compactLabels).toBe(true);
+  if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
+    await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/standard-advanced-desktop.png`, fullPage: true });
   }
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
   expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
@@ -107,7 +131,27 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(0);
 
   await page.goto("/fund-manager/calculators?family=multi-lay");
-  await expect(page.locator('[data-pd-id="calculators.multi-lay.presentation"] .calculator-segment-back .eyebrow')).toHaveText("Back bet");
+  const multiLay = page.locator('[data-pd-id="calculators.multi-lay.presentation"]');
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.back"] .eyebrow')).toHaveText("Back bet");
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.back"]')).toContainText("Back stake");
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.back"]')).toContainText("Back odds");
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.back"]')).not.toContainText("Bet Type");
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.global-controls"]')).toContainText("Bet Type");
+  await multiLay.getByLabel("Back stake", { exact: true }).fill("10");
+  await multiLay.getByLabel("Back odds", { exact: true }).fill("4");
+  await multiLay.getByLabel("Outcome 1 lay odds", { exact: true }).fill("4");
+  await multiLay.getByLabel("Outcome 2 lay odds", { exact: true }).fill("5");
+  await multiLay.getByRole("button", { name: "Advanced" }).click();
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.advanced"]')).toBeVisible();
+  await expect(multiLay.locator(".calculator-reference-rows")).toHaveCount(0);
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.underlay"]')).toBeVisible();
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.standard"]')).toBeVisible();
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.overlay"]')).toBeVisible();
+  await expect(multiLay.locator('.calculator-reference-section [data-label="Total"]')).toHaveCount(0);
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.custom"]')).toContainText("Custom Lay");
+  if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
+    await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/multi-lay-advanced-desktop.png`, fullPage: true });
+  }
   await page.goto("/fund-manager/calculators?family=sequential-lay");
   await expect(page.locator('[data-pd-id="calculators.sequential-lay.presentation"] .calculator-segment-back .eyebrow')).toHaveText("Back bet");
 
@@ -286,4 +330,11 @@ test("keeps the exact Standard controls contained across themes and calculator w
   ].map((element) => [...root.querySelectorAll("*")].indexOf(element!)));
   expect(popoutOrder[0]).toBeLessThan(popoutOrder[1]);
   expect(popoutOrder[1]).toBeLessThan(popoutOrder[2]);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/fund-manager/calculators");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+  const enlarged = await page.locator('[data-pd-id="calculators.workspace"]').evaluate((workspace) => ({ client: workspace.clientWidth, scroll: workspace.scrollWidth, right: workspace.getBoundingClientRect().right, viewport: innerWidth }));
+  expect(enlarged.scroll).toBeLessThanOrEqual(enlarged.client + 1);
+  expect(enlarged.right).toBeLessThanOrEqual(enlarged.viewport + 1);
 });

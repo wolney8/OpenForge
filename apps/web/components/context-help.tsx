@@ -15,6 +15,12 @@ export function ContextHelp({ label, text }: { label: string; text: string }) {
         className="icon-action context-help-action"
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setOpen(false);
+          }
+        }}
         type="button"
       >
         <span aria-hidden="true" className="material-symbols-outlined">help</span>

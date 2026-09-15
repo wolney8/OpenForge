@@ -34,7 +34,7 @@ try {
   if(textScale===200)await page.evaluate(()=>document.documentElement.style.fontSize='200%');
   await dialog.getByRole('tab',{name:/Matching/}).first().click();const core=dialog.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   await core.getByRole('button',{name:'Advanced',exact:true}).click();
-  await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();
+  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toBeEnabled();
   await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
   const geometry=await dialog.evaluate(el=>{const b=el.querySelector('.workflow-editor-body'),r=el.getBoundingClientRect();return{dialog:r.toJSON(),bodyWidth:b.clientWidth,bodyScroll:b.scrollWidth,pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,inputs:[...el.querySelectorAll('.calculator-paired-segment input,.calculator-paired-segment select')].filter(e=>e.getClientRects().length).map(e=>({box:e.getBoundingClientRect().toJSON(),parent:e.closest('.field-control').getBoundingClientRect().toJSON()}))};});
   assert(geometry.bodyScroll<=geometry.bodyWidth+1,JSON.stringify(geometry));assert(geometry.pageWidth<=width+1,JSON.stringify(geometry));
