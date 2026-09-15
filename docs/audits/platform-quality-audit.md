@@ -1,6 +1,41 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current useful delivery bundle — 2026-09-15 / LOCAL ONLY
+## Current calculator experience reconciliation — 2026-09-15 / LOCAL ONLY
+
+The separate test version now includes the previously isolated Multi-Lay v2 planning work without
+replacing the newer Account, Free Bet, Sportsbook, award, modal, Profit Boost or Cashback repairs.
+Native Sportsbook Add Row has an ordinary **Hedge calculator** choice, so Multi-Lay is no longer
+reachable only through a prepared row or hidden branch. Its shared standalone/ledger planner keeps
+two to twenty named outcomes, percentage commission per leg, Standard/Underlay references, copy,
+liability and every outcome through save/reopen. Copy remains planning only.
+
+| Family / agreed scope | Standalone and pop-out | Ledger entry / reopen | Current result and exact gap |
+|---|---|---|---|
+| Standard Normal / Free Bet SNR | Shared Simple/Advanced, simultaneous Underlay/Overlay/Custom, percentage commission | Native and converted versioned plans; actual placement remains separate | PROVEN for bounded core workflow; historical SR remains readable but is not an everyday option |
+| Bonus Lock-In, Normal/SNR back-loses | Offer-aware standalone references | Existing ledger calculator is not backed by a reward-aware editable plan | PARTIAL: standalone numbers/controls proven; plan/save parity needs a versioned reward basis, amount, retention and trigger contract |
+| Conditional Cashback | Shared qualifying hedge plus conditional cash/credit outcomes | Native/conversion metadata, receipt and report preserved | PROVEN for one cash or one linked-credit receipt; split award-group receipt remains unsupported |
+| Profit Boost, four sources | Source breakdown and accepted-odds precedence | Native/conversion plan, reopen, placement and report | PROVEN on the current assembled source |
+| Multi-Lay | v2 Normal/SNR/refund, boost, 2–20 legs, per-leg commission and advanced allocation | Native/conversion Normal, no reward/boost, Standard/Underlay planning now visible and saveable | PARTIAL: actual per-leg placement/settlement and richer configurations lack a faithful destination contract |
+| Extra Place / Each Way | Family-specific calculator | Existing Extra Place destination | CODE-VERIFIED; full current-build populated browser rerun remains outstanding |
+| Sequential Lay | Family-specific live leg calculator | No faithful destination | UTILITY / BLOCKED destination; no state is flattened into Sportsbook |
+| Early Payout / 2UP | Family-specific initial/live and part-back calculator | Existing Sportsbook offer workflow differs from the full standalone planner | PARTIAL; complete source-state save/reopen parity remains outstanding |
+| Multiples / Accumulator | Standalone utility proven | No faithful destination | UTILITY / BLOCKED destination |
+| Dutching | Standalone utility proven | No faithful destination | UTILITY / BLOCKED destination |
+| Odds / Probability | Standalone utility proven | No intended financial destination | UTILITY ONLY |
+| Blackjack | Strategy/session UI and existing Casino conversion | Completed Live/Free session only; Simulation excluded | Existing bounded bridge evidence retained; no strategy maths changed |
+
+Current product commits: API **1199af0af7cb51978794ac576755a0fe65460468**; frontend
+**bab34939d0542a7cc320e5ed1da320e38ac5ad8b**. Browser checks on the assembled checkout prove
+native Multi-Lay selection/save/reopen plus mixed 5%/2%/0% commissions at 1440/760/390 in both
+themes and reduced motion; shared calculator geometry/carousel 3/3 PASS; seven representative
+family calculations 7/7 PASS after correcting old tests that entered decimal ratios into visible
+percentage fields. The four-source Profit Boost/Cashback browser-to-report harness passes again on
+checkout **40a5958a35ffff6f1f39674ef3b90952a9377479**. TypeScript and 39 focused API/reference/
+conversion cases pass. Repository-wide mypy and Ruff still contain pre-existing errors outside this
+assembly; they are not relabelled as passes. Coverage denominators remain unchanged because this is
+implementation/evidence against existing checks, not new audit scope.
+
+## Historical useful Profit Boost / Cashback bundle — 2026-09-15 / LOCAL ONLY
 
 The separate test version now provides the complete bounded Profit Boost and conditional Cashback
 workflow through Sportsbook native entry and calculator conversion. Product commit

@@ -377,3 +377,17 @@ cell track, not via local widths/clipping; prevention and representative tests r
 Ordinary unstamped Add Row remains v1; v2 new creation is through the existing conversion bridge
 or explicit API stamp. Native Add Row opt-in, full actual per-leg reconciliation and richer v2
 save modes remain follow-up scope. Mathematical/external/manual acceptance remain separate.
+
+## PD-FIX-111 to PD-FIX-114 — Calculator experience assembly (2026-09-15)
+
+| ID | Requested outcome / signed-off equivalent | Status |
+|---|---|---|
+| PD-FIX-111 | Inspect the real standalone, pop-out and ledger routes; retain a truthful family matrix | COMPLETE / CODE-VERIFIED — current report names each utility and destination gap |
+| PD-FIX-112 | Native Sportsbook Add Row can deliberately select the shared v2 Multi-Lay planner | COMPLETE / PROVEN — existing mode field geometry; 1440/760/390, both themes, keyboard, reduced motion |
+| PD-FIX-113 | Percentage commission uses the shared CommissionInput in standalone and ledger Multi-Lay | COMPLETE / PROVEN — visible 5/2/0 round-trip to canonical .05/.02/0; saved plan reopens unchanged |
+| PD-FIX-114 | Same supported calculator meaning in every corresponding ledger | PARTIAL — reward-aware Bonus plan, actual Multi-Lay per-leg placement/richer save modes and full Early Payout source persistence need destination contracts |
+
+Shared checks: existing calculator segment/eyebrow, dense-grid containment, copy icon, carousel,
+theme and FinancialValue primitives were reused. No family CSS offset, hidden overflow, formula,
+historical record or actual-placement field was changed. Outdated browser assertions which treated
+0.05 as 5% or expected removed everyday SR/Part-Lay controls were corrected to the current contract.

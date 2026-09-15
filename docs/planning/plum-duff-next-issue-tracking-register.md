@@ -2,6 +2,20 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
+Current assembled calculator slice adds PD-FIX-111–114 on the local-only
+`repair/calculator-corrections-113` branch:
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-FIX-111 | Inventory the controls actually rendered by standalone, pop-out, native, converted and existing row paths | COMPLETE / CODE-VERIFIED; family matrix and precise destination gaps are in the current #114 report section |
+| PD-FIX-112 | Reuse the richer Multi-Lay planner instead of serving the old restricted native Add Row path | COMPLETE / PROVEN for Normal no-boost/reward Standard/Underlay planning, percentage commissions and save/reopen |
+| PD-FIX-113 | Keep Commission (%) semantics consistent across Multi-Lay and neighbouring calculator browser evidence | COMPLETE / PROVEN; old tests using 0.05 as 5% were corrected to enter 5 |
+| PD-FIX-114 | Complete every family’s standalone-to-ledger meaning | PARTIAL: Bonus reward-aware plan, Multi-Lay actual per-leg placement/richer persistence and Early Payout full source-state parity remain named contract gaps |
+
+This work does not turn utilities into ledger records, does not alter actual/historical stakes, and
+does not change calculator formulae. GitHub #35/#36/#37/#38/#92/#113/#114 sync remains pending
+because `gh` is unavailable. No push, main merge, operational migration or deployment is authorised.
+
 Current useful bundle product **85eb33cf790e54b44414d009bbc9b5a836d6f2df**, browser evidence
 **be5a013b2d7e6171f69dc412c9733a196cbfa663**,
 PostgreSQL harness **4c07d319fb02f0326d2c538df21ddc0b154aa68e**, local only. The approved existing-row metadata

@@ -9,7 +9,11 @@ Original JSON95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac
 remains private/unchanged; observed3010 revision UNKNOWN. Definitions, blanks and inconsistent
 sub-status annotations are retained, not converted into fabricated zeros or discarded results.
 
-[Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
+[Current corrective evidence and family-by-family limits](platform-quality-audit.md#current-calculator-experience-reconciliation--2026-09-15--local-only).
+The assembled local branch now also exposes the shared Multi-Lay v2 planner from native Sportsbook
+Add Row and preserves named outcomes plus per-leg percentage commission through save/reopen.
+This proves the bounded Normal planning slice only: actual per-leg placement/settlement and richer
+SNR/refund/boost persistence remain blocked by the destination contract, not counted as parity.
 Current separate test product 85eb33cf790e54b44414d009bbc9b5a836d6f2df preserves all four
 Profit Boost sources and conditional Cashback through native/conversion planning, reopen, explicit
 placement and report. Browser harness be5a013b2d7e6171f69dc412c9733a196cbfa663 verifies all four

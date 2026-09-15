@@ -1,6 +1,30 @@
 # Project Status
 
-## Current useful delivery bundle — LOCAL ONLY
+## Current calculator experience — LOCAL ONLY
+
+The separate test version now serves the assembled calculator work at
+`http://localhost:3040/fund-manager/calculators`. Standard Normal/SNR, Profit Boost and conditional
+Cashback retain their shared planning, save/reopen and explicit-placement behaviour. Native
+Sportsbook Add Row now exposes a real Single lay / Multi-Lay choice and the current Multi-Lay v2
+planner; named legs and 5%/2%/0% commissions survive save/reopen. Sequential Lay, Multiples,
+Dutching and Odds remain utilities because no faithful ledger destination exists.
+
+The result is not whole-suite parity. Bonus Lock-In still lacks a reward-aware editable ledger-plan
+contract. Multi-Lay actual per-leg placement/settlement and richer reward/boost plans are blocked by
+the destination contract. Early Payout full planner state and a current-build populated Extra Place
+rerun remain outstanding. The normal application and Vercel are unchanged. Current application
+sources: API `1199af0af7cb51978794ac576755a0fe65460468`, frontend
+`bab34939d0542a7cc320e5ed1da320e38ac5ad8b`.
+
+[Current family matrix](docs/audits/platform-quality-audit.md#current-calculator-experience-reconciliation--2026-09-15--local-only).
+Audit coverage remains 46/87 reviewed, 8/24 full tasks exercised/passing, 15/27 competitor cells
+and 24/133 requests. These figures describe audit coverage, not the percentage of the application
+finished. Next: define the smallest Bonus/Multi-Lay actual-planning contracts, then finish Early
+Payout/Extra Place evidence and return to the wider populated-ledger audit.
+
+Launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
+
+## Historical useful Profit Boost / Cashback bundle — LOCAL ONLY
 
 The separate test version now carries four-source Profit Boost and conditional Cashback through
 native entry and conversion, saved planning, reopen, explicit placement and settlement/report.
