@@ -3,6 +3,7 @@
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
+import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 
@@ -35,6 +36,7 @@ import {
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutcomeScenario } from "@/components/calculator-outcomes";
+import { CommissionInput } from "@/components/commission-input";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
 import {
@@ -1156,11 +1158,12 @@ function parseJsonObject<T>(raw: string | null | undefined): Partial<T> {
 
 function getProfitBoostSourceDraft(form: SportsbookFormState): ProfitBoostSourceDraft {
   const saved = parseJsonObject<ProfitBoostSourceDraft>(form.profit_boost_source_json);
+  const mode = form.profit_boost_mode || saved.mode || "displayed_odds";
   return {
     schema_version: "profit-boost-source-v1",
     revision: Number(saved.revision ?? 0),
-    mode: form.profit_boost_mode || saved.mode || "displayed_odds",
-    boosted_back_odds: form.back_odds || saved.boosted_back_odds || "",
+    mode,
+    boosted_back_odds: saved.boosted_back_odds || (mode === "displayed_odds" ? form.back_odds : ""),
     total_potential_return: saved.total_potential_return || "",
     potential_profit: saved.potential_profit || "",
     base_back_odds: form.base_back_odds || saved.base_back_odds || "",
@@ -3595,6 +3598,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ""
     );
   }, [exchangeSettings, formState.exchange_name]);
+  const activeLayPlan = useMemo(() => readLayPlan(formState.lay_plan_json), [formState.lay_plan_json]);
+  const offerPlanningCommission = activeLayPlan?.commission ?? resolvedCommission;
 
   const resultOptions = useMemo(() => {
     const options = getSportsbookResultOptions(
@@ -3691,6 +3696,25 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [oddsIssues]
   );
   const financialInputErrors = getMoneyInputErrors(formState, ["back_stake", "lay_actual", "lay_matched_stake_1", "maximum_bonus", "maximum_boost_winnings", "manual_override_value"]);
+  Object.assign(financialInputErrors, getMoneyInputErrors({
+    total_potential_return: profitBoostSourceDraft.total_potential_return,
+    potential_profit: profitBoostSourceDraft.potential_profit,
+    eligible_amount: conditionalBenefitDraft.eligible_amount,
+    refund_cap: conditionalBenefitDraft.refund_cap,
+    actual_receipt_amount: conditionalBenefitDraft.actual_receipt_amount,
+  }, ["total_potential_return", "potential_profit", "eligible_amount", "refund_cap", "actual_receipt_amount"]));
+  if (conditionalBenefitDraft.actual_receipt_amount && !conditionalBenefitDraft.receipt_identity.trim())
+    financialInputErrors.receipt_identity = "Enter the receipt reference for a confirmed amount.";
+  if (conditionalBenefitDraft.actual_receipt_amount && !conditionalBenefitDraft.receipt_date)
+    financialInputErrors.receipt_date = "Enter the date the benefit was received.";
+  if (conditionalBenefitDraft.refund_kind === "free_bet" && conditionalBenefitDraft.actual_receipt_amount && !conditionalBenefitDraft.linked_awarded_credit_id)
+    financialInputErrors.linked_awarded_credit_id = "Select the awarded Free Bet for this receipt.";
+  const receiptLimit = Math.min(
+    Number(conditionalBenefitDraft.eligible_amount || Infinity),
+    Number(conditionalBenefitDraft.refund_cap || Infinity),
+  );
+  if (conditionalBenefitDraft.actual_receipt_amount && Number(conditionalBenefitDraft.actual_receipt_amount) > receiptLimit)
+    financialInputErrors.actual_receipt_amount = "Actual receipt cannot exceed the eligible amount or offer cap.";
   for (const field of ["bonus_retention_rate", "profit_boost_percent"] as const) {
     const value = formState[field];
     if (value !== "" && (!hasCompleteDecimalInputSyntax(value) || !Number.isFinite(Number(value)) || (field === "bonus_retention_rate" && Number(value) > 100)))
@@ -4487,6 +4511,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   ) {
     setFormState((current) => {
       const benefit = { ...getConditionalBenefitDraft(current), [field]: value };
+      if (field === "refund_kind") {
+        benefit.actual_receipt_amount = "";
+        benefit.receipt_identity = "";
+        benefit.receipt_date = "";
+        benefit.linked_awarded_credit_id = "";
+      }
       return {
         ...current,
         conditional_benefit_json: JSON.stringify(benefit),
@@ -4596,7 +4626,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       activePreviewCalculation?.effective_back_odds ?? formState.back_odds
     );
     const layOdds = parseSportsbookOddsInput(formState.lay_odds_1);
-    const commission = parseNumericInput(resolvedCommission) ?? 0;
+    const commission = parseNumericInput(offerPlanningCommission) ?? 0;
     const stakeByMode: Record<SingleLayResultMode, string | null | undefined> = {
       Underlay:
         activePreviewCalculation?.reference_lay_stake_underlay ??
@@ -4638,7 +4668,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     formState.back_odds,
     formState.back_stake,
     formState.lay_odds_1,
-    resolvedCommission,
+    offerPlanningCommission,
     selectedSportsbookRow,
     customSliderCurrentFloat,
     singleLayCalculatorMode,
@@ -4740,7 +4770,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         signal: controller.signal,
         body: JSON.stringify({
           ...previewFormState,
-          lay_commission_1: formState.lay_plan_json ? formState.lay_commission_1 : "",
+          lay_commission_1: formState.lay_plan_json ? offerPlanningCommission : "",
           date_settled: fromDateTimeLocalValue(previewFormState.date_settled),
         }),
       })
@@ -4768,7 +4798,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId, formState.lay_commission_1, formState.lay_plan_json]);
+  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId, offerPlanningCommission, formState.lay_plan_json]);
 
   const reviewRows = useMemo(() => {
     const nextRows =
@@ -6006,6 +6036,45 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
   }
 
+  function buildOfferLayPlan(
+    strategy: LayPlan["selected_strategy"],
+    reviewedStake: string,
+    commissionOverride?: string,
+    customStake = "",
+  ): LayPlan | null {
+    if (!isProfitBoostOffer && !isConditionalCashbackOffer) return null;
+    const effectiveBackOdds = activePreviewCalculation?.effective_back_odds ?? formState.back_odds;
+    const previous = readLayPlan(formState.lay_plan_json);
+    const matchingAccounts = accountAuthorities.filter((account) =>
+      account.type === "Exchange" && account.account === formState.exchange_name &&
+      account.status !== "Archived" && account.lifecycle_status !== "Archived");
+    const exchange = matchingAccounts.find((account) => account.account_id === previous?.exchange_account_id)
+      ?? (matchingAccounts.length === 1 ? matchingAccounts[0] : null);
+    const commission = commissionOverride ?? previous?.commission ?? resolvedCommission;
+    if (!exchange || !formState.back_stake || !effectiveBackOdds || !formState.lay_odds_1 || commission === "") return null;
+    return {
+      schema_version: "lay-plan-v1",
+      revision: previous?.revision ?? 0,
+      calculation_contract_version: "workbook-reference-v1",
+      backing_basis: "Normal",
+      back_stake: formState.back_stake,
+      back_odds: effectiveBackOdds,
+      lay_odds: formState.lay_odds_1,
+      selected_strategy: strategy,
+      custom_lay_stake: strategy === "Custom" ? customStake : "",
+      exchange_name: exchange.account,
+      exchange_account_id: exchange.account_id,
+      commission_units: "ratio",
+      commission,
+      commission_origin: commissionOverride === undefined
+        ? previous?.commission_origin ?? "default"
+        : "override",
+      reviewed_planned_lay_stake: reviewedStake,
+      source_identity: previous?.source_identity ?? "",
+      source_checksum: previous?.source_checksum ?? "",
+    };
+  }
+
   async function applySuggestedLayValue(mode: "Standard" | "Underlay" | "Overlay") {
     const nextSuggestedLay =
       mode === "Underlay"
@@ -6022,6 +6091,25 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     if (!nextSuggestedLay || nextSuggestedLay === "—") {
       return false;
+    }
+
+    if (isProfitBoostOffer || isConditionalCashbackOffer) {
+      const nextPlan = buildOfferLayPlan(mode, nextSuggestedLay);
+      if (!nextPlan) {
+        setCalculatorCopyFeedback("Complete valid source odds, Exchange and Commission (%) before applying this plan.");
+        return false;
+      }
+      setFormState((current) => ({
+        ...current,
+        back_odds: nextPlan.back_odds,
+        lay_plan_json: JSON.stringify(nextPlan),
+        match_strategy: mode,
+      }));
+      const copied = await copyToClipboard(nextSuggestedLay);
+      setCalculatorCopyFeedback(copied
+        ? `${mode} planned lay copied. Confirm any actual exchange fill separately.`
+        : `${mode} planned lay applied. Confirm any actual exchange fill separately.`);
+      return copied;
     }
 
     const matchedLayLeg: PartialLayLegInput = {
@@ -6077,6 +6165,25 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return false;
     }
 
+    if (isProfitBoostOffer || isConditionalCashbackOffer) {
+      const nextPlan = buildOfferLayPlan("Custom", value, undefined, value);
+      if (!nextPlan) {
+        setCalculatorCopyFeedback("Complete valid source odds, Exchange and Commission (%) before applying this plan.");
+        return false;
+      }
+      setFormState((current) => ({
+        ...current,
+        back_odds: nextPlan.back_odds,
+        lay_plan_json: JSON.stringify(nextPlan),
+        match_strategy: "Custom",
+      }));
+      const copied = await copyToClipboard(value);
+      setCalculatorCopyFeedback(copied
+        ? "Custom planned lay copied. Confirm any actual exchange fill separately."
+        : "Custom planned lay applied. Confirm any actual exchange fill separately.");
+      return copied;
+    }
+
     const matchedLayLeg: PartialLayLegInput = {
       id: createPartialLayLegId(1),
       exchangeName: formState.exchange_name,
@@ -6112,6 +6219,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       parseNumericInput(value ?? customSliderDraftValue) ?? customSliderCurrentFloat
     );
     setCustomSliderDraftValue("");
+    if (isProfitBoostOffer || isConditionalCashbackOffer) {
+      const nextPlan = buildOfferLayPlan("Custom", nextValue, undefined, nextValue);
+      if (!nextPlan) return;
+      setFormState((current) => ({...current, back_odds:nextPlan.back_odds,
+        lay_plan_json:JSON.stringify(nextPlan), match_strategy:"Custom"}));
+      return;
+    }
     setFormState((current) => {
       if (current.lay_actual === nextValue) {
         return current;
@@ -8046,7 +8160,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                          />
 	                        </label>
 	                        <label className="field-control ledger-calculator-mode-field">
-	                          <span>Lay mode</span>
+	                          <span>{isProfitBoostOffer || isConditionalCashbackOffer ? "Presentation Mode" : "Lay mode"}</span>
 	                          <select
 	                            aria-label="Sportsbook lay workflow mode"
 	                            onChange={(event) =>
@@ -8054,9 +8168,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                            }
 	                            value={layWorkflowMode}
 	                          >
-                              {sportsbookLayWorkflowModeOptions.map((option) => (
+                              {sportsbookLayWorkflowModeOptions.filter((option) =>
+                                !(isProfitBoostOffer || isConditionalCashbackOffer) || ["Standard", "Advanced"].includes(option)
+                              ).map((option) => (
                                 <option key={option} value={option}>
-                                  {option === "Multilay" ? "Multi Lay" : option}
+                                  {option === "Multilay" ? "Multi Lay" : option === "Standard" && (isProfitBoostOffer || isConditionalCashbackOffer) ? "Simple" : option}
                                 </option>
                               ))}
 	                          </select>
@@ -8161,7 +8277,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                  onChange={(event) => isProfitBoostOffer
                                       ? updateProfitBoostSourceField("boosted_back_odds", event.target.value)
                                       : updateOddsFormField("back_odds", event.target.value)}
-	                                  value={formState.back_odds}
+	                                  value={isProfitBoostOffer ? profitBoostSourceDraft.boosted_back_odds : formState.back_odds}
 	                                />
 	                                {oddsIssueMap.has("back_odds") ? (
 	                                  <span className="field-validation-text" id="sportsbook-back-odds-error" role="alert">
@@ -8230,20 +8346,26 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                 <span>Total potential return, including stake</span>
                                 <input
                                   aria-label="Total potential return, including stake"
+                                  aria-describedby={financialInputErrors.total_potential_return ? "sportsbook-money-total_potential_return-error" : undefined}
+                                  aria-invalid={Boolean(financialInputErrors.total_potential_return)}
                                   inputMode="decimal"
                                   onChange={(event) => updateProfitBoostSourceField("total_potential_return", event.target.value)}
                                   value={profitBoostSourceDraft.total_potential_return}
                                 />
+                                {financialInputError("total_potential_return")}
                               </label>
                             ) : (
                               <label className="field-control">
                                 <span>Potential profit, excluding stake</span>
                                 <input
                                   aria-label="Potential profit, excluding stake"
+                                  aria-describedby={financialInputErrors.potential_profit ? "sportsbook-money-potential_profit-error" : undefined}
+                                  aria-invalid={Boolean(financialInputErrors.potential_profit)}
                                   inputMode="decimal"
                                   onChange={(event) => updateProfitBoostSourceField("potential_profit", event.target.value)}
                                   value={profitBoostSourceDraft.potential_profit}
                                 />
+                                {financialInputError("potential_profit")}
                               </label>
                             )}
                             {isProfitBoostOffer ? (
@@ -8387,7 +8509,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         {!isNoLayStrategy && !usesMultiLayStrategy ? (
                         <div className="field-span-2 calculator-segment calculator-segment-lay">
                           <div className="calculator-segment-heading">
-                            <span className="eyebrow">Lay / exchange</span>
+                            <span className="eyebrow">Lay bet</span>
                             <span
                               className={`table-chip${
                                 editorLayStatus === "Fully Laid"
@@ -8429,6 +8551,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                     </option>
                                   ))}
                                 </select>
+                              </label>
+                            ) : null}
+                            {(isProfitBoostOffer || isConditionalCashbackOffer) && !usesMultiLayStrategy ? (
+                              <label className="field-control">
+                                <span>Commission (%)</span>
+                                <CommissionInput
+                                  aria-label="Commission (%)"
+                                  onRatioChange={(value) => {
+                                    const strategy = (["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy)
+                                      ? formState.match_strategy : "Standard") as LayPlan["selected_strategy"];
+                                    const nextPlan = buildOfferLayPlan(strategy, "", value,
+                                      strategy === "Custom" ? formatPreviewMoney(customSliderCurrentFloat) : "");
+                                    if (nextPlan) setFormState((current) => ({...current, back_odds:nextPlan.back_odds,
+                                      lay_plan_json:JSON.stringify(nextPlan), match_strategy:strategy}));
+                                  }}
+                                  value={offerPlanningCommission}
+                                />
                               </label>
                             ) : null}
                             {!isNoLayStrategy && !usesMultiLayStrategy ? (
@@ -8531,19 +8670,25 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                   <span>Eligible refund amount</span>
                                   <input
                                     aria-label="Eligible refund amount"
+                                    aria-describedby={financialInputErrors.eligible_amount ? "sportsbook-money-eligible_amount-error" : undefined}
+                                    aria-invalid={Boolean(financialInputErrors.eligible_amount)}
                                     inputMode="decimal"
                                     onChange={(event) => updateConditionalBenefitField("eligible_amount", event.target.value)}
                                     value={conditionalBenefitDraft.eligible_amount}
                                   />
+                                  {financialInputError("eligible_amount")}
                                 </label>
                                 <label className="field-control">
                                   <span>Offer cap</span>
                                   <input
                                     aria-label="Offer cap"
+                                    aria-describedby={financialInputErrors.refund_cap ? "sportsbook-money-refund_cap-error" : undefined}
+                                    aria-invalid={Boolean(financialInputErrors.refund_cap)}
                                     inputMode="decimal"
                                     onChange={(event) => updateConditionalBenefitField("refund_cap", event.target.value)}
                                     value={conditionalBenefitDraft.refund_cap}
                                   />
+                                  {financialInputError("refund_cap")}
                                 </label>
                                 <label className="field-control">
                                   <span>Eligibility</span>
@@ -8839,7 +8984,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                                    <dl className="calculator-result-card-values">
 	                                      <div>
 	                                        <dt>Lay Stake</dt>
-	                                        <dd><CopyableFinancialValue actionLabel={`Copy ${card.mode} lay stake and mark placed`} disabled={!card.canCopy || layFullyConfirmed} label={`${card.mode} lay stake`} onCopy={() => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode)} value={card.layStake} /></dd>
+	                                        <dd><CopyableFinancialValue actionLabel={(isProfitBoostOffer || isConditionalCashbackOffer) ? `Copy and apply ${card.mode} planned lay stake` : `Copy ${card.mode} lay stake and mark placed`} disabled={!card.canCopy || layFullyConfirmed} label={`${card.mode} lay stake`} onCopy={() => card.mode === "Custom" ? applyCustomLayValue() : applySuggestedLayValue(card.mode)} value={card.layStake} /></dd>
 	                                      </div>
 	                                      <div>
 	                                        <dt>Liability</dt>
@@ -9745,10 +9890,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         <span>Actual receipt amount</span>
                         <input
                           aria-label="Actual cashback receipt amount"
+                          aria-describedby={financialInputErrors.actual_receipt_amount ? "sportsbook-money-actual_receipt_amount-error" : undefined}
+                          aria-invalid={Boolean(financialInputErrors.actual_receipt_amount)}
                           inputMode="decimal"
                           onChange={(event) => updateConditionalBenefitField("actual_receipt_amount", event.target.value)}
                           value={conditionalBenefitDraft.actual_receipt_amount}
                         />
+                        {financialInputError("actual_receipt_amount")}
                         <small>
                           {conditionalBenefitDraft.refund_kind === "cash"
                             ? "Confirmed cash only; this is added once when the cashback result is selected."
@@ -9759,24 +9907,32 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         <span>Receipt reference</span>
                         <input
                           aria-label="Cashback receipt reference"
+                          aria-describedby={financialInputErrors.receipt_identity ? "sportsbook-money-receipt_identity-error" : undefined}
+                          aria-invalid={Boolean(financialInputErrors.receipt_identity)}
                           onChange={(event) => updateConditionalBenefitField("receipt_identity", event.target.value)}
                           value={conditionalBenefitDraft.receipt_identity}
                         />
+                        {financialInputError("receipt_identity")}
                       </label>
                       <label className="field-control">
                         <span>Receipt date</span>
                         <input
                           aria-label="Cashback receipt date"
+                          aria-describedby={financialInputErrors.receipt_date ? "sportsbook-money-receipt_date-error" : undefined}
+                          aria-invalid={Boolean(financialInputErrors.receipt_date)}
                           onChange={(event) => updateConditionalBenefitField("receipt_date", event.target.value)}
                           type="date"
                           value={conditionalBenefitDraft.receipt_date}
                         />
+                        {financialInputError("receipt_date")}
                       </label>
                       {conditionalBenefitDraft.refund_kind === "free_bet" ? (
                         <label className="field-control">
                           <span>Linked awarded Free Bet</span>
                           <select
                             aria-label="Linked awarded Free Bet"
+                            aria-describedby={financialInputErrors.linked_awarded_credit_id ? "sportsbook-money-linked_awarded_credit_id-error" : undefined}
+                            aria-invalid={Boolean(financialInputErrors.linked_awarded_credit_id)}
                             onChange={(event) => updateConditionalBenefitField("linked_awarded_credit_id", event.target.value)}
                             value={conditionalBenefitDraft.linked_awarded_credit_id}
                           >
@@ -9787,6 +9943,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                               </option>
                             ))}
                           </select>
+                          {financialInputError("linked_awarded_credit_id")}
                         </label>
                       ) : null}
                     </>

@@ -291,6 +291,7 @@ def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[
             "actual_accepted_back_odds": "",
         }
     from openforge_api.sportsbook_offer_metadata import ProfitBoostSource
+
     source = ProfitBoostSource(
         mode=calculator.profit_boost_mode,
         boosted_back_odds=calculator.boosted_back_odds,
@@ -317,6 +318,7 @@ def _conditional_benefit_destination_fields(calculator: MatchedBettingPayload) -
     if not is_cashback:
         return {"conditional_benefit_json": None}
     from openforge_api.sportsbook_offer_metadata import ConditionalBenefit
+
     benefit = ConditionalBenefit(
         refund_kind=calculator.cashback_reward_kind,
         eligibility="pending",
@@ -433,28 +435,60 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
         try:
             source_note = f"Calculator source: {source_id} ({checksum})"
             from openforge_api.lay_plan import encode_plan
+
             core_plan = None
-            if ((payload.calculator.bet_type == "free_bet" and payload.calculator.free_bet_mode == "SNR") or
-                (payload.calculator.bet_type == "qualifying" and payload.calculator.promotion_mode == "standard")) and payload.calculator.strategy in {"Standard", "Underlay", "Overlay", "Custom"}:
+            supports_core_plan = (
+                (
+                    payload.calculator.bet_type == "free_bet"
+                    and payload.calculator.free_bet_mode == "SNR"
+                )
+                or (
+                    payload.calculator.bet_type == "qualifying"
+                    and payload.calculator.promotion_mode == "standard"
+                )
+                or (
+                    destination_kind == "sportsbook"
+                    and payload.calculator.bet_type in {"profit_boost", "cashback"}
+                )
+            )
+            if supports_core_plan and payload.calculator.strategy in {
+                "Standard",
+                "Underlay",
+                "Overlay",
+                "Custom",
+            }:
                 core_plan = encode_plan(
-                    schema_version="lay-plan-v1", calculation_contract_version=preview.reference_contract_version,
+                    schema_version="lay-plan-v1",
+                    calculation_contract_version=preview.reference_contract_version,
                     backing_basis="SNR" if destination_kind == "free_bet" else "Normal",
-                    back_stake=payload.calculator.back_stake, back_odds=preview.canonical_back_odds,
-                    lay_odds=preview.canonical_lay_odds, selected_strategy=payload.calculator.strategy,
-                    custom_lay_stake=payload.calculator.manual_lay_stake if payload.calculator.strategy == "Custom" else "",
-                    exchange_name=exchange_name, commission_units="ratio", commission=payload.calculator.exchange_commission,
-                    commission_origin=payload.source.canonical_inputs.get("commission_origin", "override"),
+                    back_stake=payload.calculator.back_stake,
+                    back_odds=preview.canonical_back_odds,
+                    lay_odds=preview.canonical_lay_odds,
+                    selected_strategy=payload.calculator.strategy,
+                    custom_lay_stake=payload.calculator.manual_lay_stake
+                    if payload.calculator.strategy == "Custom"
+                    else "",
+                    exchange_name=exchange_name,
+                    commission_units="ratio",
+                    commission=payload.calculator.exchange_commission,
+                    commission_origin=payload.source.canonical_inputs.get(
+                        "commission_origin", "override"
+                    ),
                     reviewed_planned_lay_stake=preview.selected_lay_stake,
-                    source_identity=source_id, source_checksum=checksum,
+                    source_identity=source_id,
+                    source_checksum=checksum,
                 )
             explicit_lay = (
-                preview.selected_lay_stake
+                ""
+                if core_plan
+                else preview.selected_lay_stake
                 if payload.calculator.bet_type in {"bonus_lock_in", "money_back"}
                 else payload.calculator.manual_lay_stake
                 if payload.calculator.strategy in {"Custom", "Partial Lay"}
                 else ""
             )
             if destination_kind == "free_bet":
+
                 def prepare_free_bet_destination(row: Any, settings: Any, commissions: Any) -> None:
                     destination = prepare_write_response(row, settings, commissions)
                     if destination.calculation_state != "resolved":
@@ -1104,16 +1138,26 @@ def save_blackjack(payload: BlackjackConversionPayload, request: Request) -> Con
         )
         body = f"Saved Blackjack session to {profile.display_name} · {account_name}."
         complete_calculator_conversion_target(
-            attempt["attempt_id"], destination_record_id=created.casino_offer_id,
-            notification_title="Blackjack session saved", notification_body=body,
-            notification_link=href, connection=connection,
+            attempt["attempt_id"],
+            destination_record_id=created.casino_offer_id,
+            notification_title="Blackjack session saved",
+            notification_body=body,
+            notification_link=href,
+            connection=connection,
         )
         prepared = ConversionResponse(
-            source_id=source_id, source_checksum=checksum,
-            results=[ConversionTargetResult(
-                profile_id=payload.profile_id, account=account_name, state="succeeded",
-                record_id=created.casino_offer_id, href=href,
-            )], notification=body,
+            source_id=source_id,
+            source_checksum=checksum,
+            results=[
+                ConversionTargetResult(
+                    profile_id=payload.profile_id,
+                    account=account_name,
+                    state="succeeded",
+                    record_id=created.casino_offer_id,
+                    href=href,
+                )
+            ],
+            notification=body,
         )
         prepared.model_dump_json()
 
