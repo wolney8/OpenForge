@@ -464,7 +464,7 @@ export function CalculatorWorkspace({ popout = false }: { popout?: boolean }) {
             {showManualLay ? <Field error={touched.manualLayStake ? errors.manualLayStake : null} id="manual-lay-stake" label="Actual lay stake" onChange={(value) => update("manualLayStake", value)} value={inputs.manualLayStake} /> : null}
           </div><div className="calculator-segment-grid calculator-segment-auxiliary-fields">
             <SelectField id="exchange" label="Exchange" value={inputs.exchange} onChange={(value) => { const selected = exchanges.find((option) => option.name === value); commissionWasEdited.current = false; updatePatch({ exchange: value, exchangeCommission: selected?.default_commission_rate ?? "" }); }} options={(exchanges.length ? exchanges : [{ name: "Smarkets" }]).map((option) => [option.name, option.name] as const)} />
-            <Field error={touched.exchangeCommission ? errors.exchangeCommission : null} id="commission" label="Exchange commission" onChange={(value) => { commissionWasEdited.current = true; update("exchangeCommission", value); }} supportingText="Decimal rate, for example 0.02" value={inputs.exchangeCommission} />
+            <Field error={touched.exchangeCommission ? errors.exchangeCommission : null} id="commission" label="Commission" onChange={(value) => { commissionWasEdited.current = true; update("exchangeCommission", value); }} value={inputs.exchangeCommission} />
           </div></section>
         </div>
         {(showPromotion || inputs.betType === "profit_boost" || inputs.strategy === "Underlay" || inputs.strategy === "Overlay") ? <div className="form-grid">

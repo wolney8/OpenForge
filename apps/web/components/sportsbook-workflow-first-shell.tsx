@@ -2903,6 +2903,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const corePlanPendingRef = useRef(false);
   const [corePlanPending, setCorePlanPending] = useState(false);
   const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
+  useEffect(() => {
+    if (["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type)) {
+      corePlanPendingRef.current = false;
+      setCorePlanPending(false);
+    }
+  }, [formState.offer_type]);
   const [pristineFormState, setPristineFormState] = useState<SportsbookFormState>(() =>
     createBlankForm()
   );
@@ -5390,15 +5396,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           )
         : [saved, ...current];
     });
-    const newerCoreEdits = Boolean(persistableFormState.lay_plan_json) && hasNewerFormEdits(nextFormState, formStateRef.current);
-    const returnToLedger = !newerCoreEdits && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel);
+    const newerEdits = hasNewerFormEdits(nextFormState, formStateRef.current);
+    const returnToLedger = !newerEdits && (options?.returnToLedgerOnSuccess ?? !options?.autosaveLabel);
     if (returnToLedger) {
       ignoreInitialRecordIdRef.current = true;
     }
     setSelectedId(returnToLedger ? null : saved.sportsbook_bet_id);
     selectedIdRef.current = returnToLedger ? null : saved.sportsbook_bet_id;
     loadRowsRequestIdRef.current += 1;
-    setFormState(newerCoreEdits ? reconcileSavedForm(nextFormState, savedFormState, formStateRef.current) : savedFormState);
+    setFormState(newerEdits ? reconcileSavedForm(nextFormState, savedFormState, formStateRef.current) : savedFormState);
     setPristineFormState(savedFormState);
     setMultiLayOutcome1Label(getMultiLayOutcomeLabel(saved.multi_lay_outcome_1_name));
     setMultiLayOutcomes(savedMultiLay.extraOutcomes);
@@ -5411,7 +5417,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       })
     );
     setShowBetSetupValidation(false);
-    if (!newerCoreEdits) setSettledEditEnabled(false);
+    if (!newerEdits) setSettledEditEnabled(false);
     if (!options?.autosaveLabel) {
       setRevertSnapshot(null);
     }
@@ -5451,7 +5457,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await persistForm(formState);
+    await persistForm(formStateRef.current);
   }
 
   async function applyDropdownChange(
@@ -5475,6 +5481,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     await persistForm(nextFormState, {
       autosaveLabel,
       suppressMissingRequiredMessage: true,
+      returnToLedgerOnSuccess: false,
     });
   }
 

@@ -25,8 +25,19 @@ def configure_temp_database(tmp_path: Path) -> None:
     # Each test owns its synthetic Profiles; local startup no longer seeds demo rows.
     with connect() as connection:
         for suffix in ("001", "002"):
-            connection.execute("INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (f"profile-demo-{suffix}", f"Synthetic Profile {suffix}", f"DEMO-{suffix}", "Active", "2026-09-14", "0", "0", "0"))
+            connection.execute(
+                "INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    f"profile-demo-{suffix}",
+                    f"Synthetic Profile {suffix}",
+                    f"DEMO-{suffix}",
+                    "Active",
+                    "2026-09-14",
+                    "0",
+                    "0",
+                    "0",
+                ),
+            )
         connection.commit()
 
 

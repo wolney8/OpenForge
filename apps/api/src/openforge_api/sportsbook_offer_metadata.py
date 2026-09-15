@@ -119,7 +119,9 @@ def validate_offer_metadata(profile_id: str, values: dict[str, Any]) -> dict[str
                 if values.get("profit_boost_mode") != source.mode:
                     raise ValueError("profit_boost_mode conflicts with profit_boost_source_json")
                 result = calculate_profit_boost(ProfitBoostInput(
-                    profile_id=profile_id, mode=source.mode, back_stake=values.get("back_stake", ""),
+                    profile_id=profile_id,
+                    mode=source.mode,
+                    back_stake=values.get("back_stake", ""),
                     boosted_back_odds=source.boosted_back_odds,
                     total_potential_return=source.total_potential_return,
                     potential_profit=source.potential_profit, base_back_odds=source.base_back_odds,
@@ -144,7 +146,11 @@ def validate_offer_metadata(profile_id: str, values: dict[str, Any]) -> dict[str
         if values.get("offer_type") == "Cashback":
             benefit = parse_conditional_benefit(benefit_raw)
             if benefit:
-                if benefit.eligible_amount and values.get("maximum_bonus") and Decimal(benefit.eligible_amount) != Decimal(values["maximum_bonus"]):
+                if (
+                    benefit.eligible_amount
+                    and values.get("maximum_bonus")
+                    and Decimal(benefit.eligible_amount) != Decimal(values["maximum_bonus"])
+                ):
                     raise ValueError("maximum_bonus conflicts with conditional_benefit_json")
                 permitted = min(
                     Decimal(benefit.eligible_amount or "0"),
@@ -153,18 +159,30 @@ def validate_offer_metadata(profile_id: str, values: dict[str, Any]) -> dict[str
                 values = {**values, "maximum_bonus": str(permitted),
                           "conditional_benefit_json": benefit.model_dump_json()}
                 if values.get("result") in {"Back Won + Cashback", "Lay Won + Cashback"}:
-                    if benefit.refund_kind != "cash" or Decimal(benefit.actual_receipt_amount or "0") <= 0:
-                        raise ValueError("cashback settlement requires an explicitly recorded cash receipt")
+                    if (
+                        benefit.refund_kind != "cash"
+                        or Decimal(benefit.actual_receipt_amount or "0") <= 0
+                    ):
+                        raise ValueError(
+                            "cashback settlement requires an explicitly recorded cash receipt"
+                        )
                 if benefit.linked_awarded_credit_id:
                     from openforge_api.db import get_free_bet
                     child = get_free_bet(profile_id, benefit.linked_awarded_credit_id)
-                    if child is None or child.origin_qual_bet_id != values.get("sportsbook_bet_id", ""):
-                        raise ValueError("linked awarded credit must belong to this Cashback row and Profile")
+                    if (
+                        child is None
+                        or child.origin_qual_bet_id != values.get("sportsbook_bet_id", "")
+                    ):
+                        raise ValueError(
+                            "linked awarded credit must belong to this Cashback row and Profile"
+                        )
         elif benefit_raw:
             raise ValueError("conditional_benefit_json requires a Cashback offer")
         return values
     except (ValueError, ArithmeticError, ValidationError) as error:
-        raise HTTPException(status_code=422, detail=f"Sportsbook offer metadata: {error}") from error
+        raise HTTPException(
+            status_code=422, detail=f"Sportsbook offer metadata: {error}"
+        ) from error
 
 
 def advance_metadata_revision(

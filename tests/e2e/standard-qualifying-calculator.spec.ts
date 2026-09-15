@@ -48,7 +48,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
   await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
 
-  const boxes = await Promise.all(["Back stake", "Back odds", "Lay odds", "Exchange commission"].map((label) => page.getByLabel(label).boundingBox()));
+  const boxes = await Promise.all(["Back stake", "Back odds", "Lay odds", "Commission (%)"].map((label) => page.getByLabel(label).boundingBox()));
   expect(boxes.every(Boolean)).toBe(true);
   expect(boxes[0]!.height).toBeCloseTo(boxes[2]!.height, 0);
   expect(boxes[1]!.height).toBeCloseTo(boxes[3]!.height, 0);
@@ -64,18 +64,18 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByLabel("Back stake").fill("10.00");
   await page.getByLabel("Back odds").fill("11/4");
   await page.getByLabel("Lay odds").fill("3,8");
-  await page.getByLabel("Exchange commission").focus();
+  await page.getByLabel("Commission (%)").focus();
   await expect(page.getByLabel("Back odds")).toHaveValue("3.75");
   await expect(page.getByLabel("Lay odds")).toHaveValue("3.8");
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.exchange"]')).toHaveValue("Smarkets");
-  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await expect(page.getByLabel("Commission (%)")).toHaveValue("0");
   await page.locator('[data-pd-id="calculators.matched-betting.exchange"]').selectOption("Matchbook");
-  await page.getByLabel("Exchange commission").fill("0.02");
+  await page.getByLabel("Commission (%)").fill("2");
   await page.getByLabel("Lay odds").fill("3.81");
-  await expect(page.getByLabel("Exchange commission")).toHaveValue("0.02");
+  await expect(page.getByLabel("Commission (%)")).toHaveValue("2");
   await page.locator('[data-pd-id="calculators.matched-betting.exchange"]').selectOption("Smarkets");
-  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await expect(page.getByLabel("Commission (%)")).toHaveValue("0");
   const headerActions = page.locator('[data-pd-id="calculators.header-actions"]');
   const openAction = page.locator('[data-pd-id="calculators.open-new-tab"]');
   const openBox = await openAction.boundingBox();
@@ -138,7 +138,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
   await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Back stake")).toHaveValue("");
-  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await expect(page.getByLabel("Commission (%)")).toHaveValue("0");
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
   await page.waitForTimeout(250);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
@@ -200,7 +200,7 @@ test("routes the governed Bonus controls to the displayed and copied strategy", 
   await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
   await expect(page.getByLabel("Bonus Applied If Bet")).toHaveValue("Lay Wins");
   await expect(page.getByLabel("Bonus retention (%)")).toHaveValue("70");
-  await expect(page.getByLabel("Exchange commission")).toHaveValue("0");
+  await expect(page.getByLabel("Commission (%)")).toHaveValue("0");
   await page.getByLabel("Back stake").fill("5");
   await page.getByLabel("Back odds").fill("9.24");
   await page.getByLabel("Lay odds").fill("10.5");
