@@ -1,6 +1,6 @@
 # Issue #113 independent calculator verification audit
 
-## Current engineering handoff — 2026-09-14
+## Current engineering handoff — 2026-09-15
 
 Partial user observations received; no further bulk owner entry required; engineering reference
 verification and fixes active; final acceptance pending. Clarifications5662334267/5662339238
@@ -9,8 +9,12 @@ Original JSON95112328fe4e9b61ad5dfe0c90b45ff70b35beaefca5d082692a9de76dffa6ac
 remains private/unchanged; observed3010 revision UNKNOWN. Definitions, blanks and inconsistent
 sub-status annotations are retained, not converted into fabricated zeros or discarded results.
 
-[Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-calculator-correction-checkpoint--2026-09-14--local-only).
-Current candidate66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 corrects SNR presets at the versioned
+[Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
+Current separate test product ed338a1b1d9e8d4072066da2e310eb2be2ba26fd preserves all four
+Profit Boost sources and conditional Cashback through native/conversion planning, reopen, explicit
+placement and report. Copy/Custom slider remain planning-only. Seventy focused tests, actual browser
+and disposable PostgreSQL evidence pass; detailed limits remain in the current platform audit.
+Earlier candidate66fc5ddb34900e6c11f3d87c71c4370eee24cbf4 corrected SNR presets at the versioned
 calculator reference boundary: Standard7.18, Underlay6.25, Overlay10.20, Custom9.00 for the
 complete10/4/4.2/2% fixture.113 focused mathematical/bridge cases and12 percentage cases pass;
 real half-width controls and Normal negative accounting accessibility pass. This is not fresh

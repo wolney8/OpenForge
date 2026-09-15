@@ -3,18 +3,18 @@
 ## Current useful delivery bundle — LOCAL ONLY
 
 The separate test version now carries four-source Profit Boost and conditional Cashback through
-the Sportsbook editor, calculator conversion, save/reopen, explicit placement and settlement/report.
-It preserves bookmaker return separately from conservative hedge odds and does not treat eligible
-Cashback or Free Bet credit as received cash. Linked credit identity survives portable restore.
-The normal app and Vercel do not contain these changes; no operational database was migrated.
+native entry and conversion, saved planning, reopen, explicit placement and settlement/report.
+Copying and moving the Custom slider cannot pretend an exchange fill occurred. Original bookmaker
+return, conservative hedge odds and accepted odds remain distinct. Eligible Cashback and Free Bet
+credit are not treated as received cash; changing receipt kind clears incompatible values.
 
-Product evidence source is **865a0c3f4fc00cd99e3969bb8f721704fdf17c97**; current local review
-checkpoint follows it. Real browser/API/SQLite checks pass at desktop light and half-width dark,
-including all four boost sources, cash and credit conversion, £8 confirmed Cashback receipt,
-settlement/report/reload, error recovery and genuine award retry/removal. Production build,
-typecheck, 33 focused API/portable tests and disposable PostgreSQL 18.6 fresh/repeat/old-schema
-upgrade pass. A bounded populated Casino lifecycle also passes, but fee allocation and full change
-history remain untested.
+Tested product **ed338a1b1d9e8d4072066da2e310eb2be2ba26fd**; harness checkpoint
+**4c07d319fb02f0326d2c538df21ddc0b154aa68e**. Browser/API/SQLite checks pass at desktop light and
+half-width dark, including all four sources, conversion, £8 confirmed Cashback receipt, settlement,
+report/reload and genuine award retry/removal. Seventy focused tests, TypeScript, production build
+and disposable PostgreSQL 18.6 migration/persistence pass. Populated Casino entry-to-report also
+passes, but fees/full change history remain untested. Split Cashback award groups still need a
+group-capable receipt link. The normal app and Vercel do not contain these changes.
 
 [Current checklist and evidence](docs/audits/platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
 Audit coverage remains 46/87 reviewed (53%), 8/24 full tasks exercised/passing (33%), 15/27

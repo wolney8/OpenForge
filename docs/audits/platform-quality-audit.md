@@ -2,33 +2,36 @@
 
 ## Current useful delivery bundle — 2026-09-15 / LOCAL ONLY
 
-Separate test version product **865a0c3f4fc00cd99e3969bb8f721704fdf17c97** (application
-changes through **930a4a0b3d61a3fdb21b26322d46359814883642**) implements the approved
-Profit Boost and conditional Cashback metadata on existing Sportsbook rows. It is not in main or
-Vercel. No operational database was migrated. PostgreSQL 18.6 disposable fresh/repeat/old-schema
-upgrade passes at port 51645 and the cluster was stopped; SQLite create/reopen/portable-ID-remap
-passes. Rollback keeps the nullable columns/data and reverts application commits—columns must not be
-dropped.
+The separate test version now provides the complete bounded Profit Boost and conditional Cashback
+workflow through Sportsbook native entry and calculator conversion. Product commit
+**ed338a1b1d9e8d4072066da2e310eb2be2ba26fd** sits inside the current harness checkpoint
+**4c07d319fb02f0326d2c538df21ddc0b154aa68e**. It is not in main or Vercel; no operational
+database was migrated. The approved nullable metadata migrations were exercised only on disposable
+SQLite and PostgreSQL 18.6 databases. Rollback must revert the application while retaining the
+nullable columns/data; dropping them would discard new planning provenance.
 
-Real browser/API/SQLite evidence passes at 1440 light and 760 dark. Native rows retain all four
-Profit Boost sources, raw 2.786 versus conservative 2.78 odds, accepted 2.79 precedence and £27.86
-bookmaker return. Explicit actual lay £9.00 settles at −£0.10. Cashback retains £10 eligibility,
-£8 cap and a separately confirmed £8 cash receipt; settlement is £6.82. Cash and Free Bet
-conversion both remain pending until receipt, and Free Bet credit is not added to cash. Conversion
-also retains source provenance and blank actual stake. Portable restore remaps the linked Free Bet
-identity. Production build, typecheck, 33 API/portable tests, focused calculator browser tests and
-the genuine four-variant award regression pass. Evidence remains synthetic/private in the owned
-runtime; screenshots are not committed.
+Actual browser→API→SQLite→reopen→placement→settlement/report evidence passes at 1440 light and
+760 dark. All four Profit Boost sources reopen with their original inputs and a versioned plan;
+£27.86/£10 retains raw odds 2.786, conservative hedge odds 2.78 and accepted odds 2.79 separately.
+Copy and Custom-slider actions update the plan only. Explicit actual lay £9.00 then settles at
+−£0.10. Cashback retains £10 eligibility, £8 cap and a separately confirmed £8 cash receipt;
+settlement is £6.82. Switching receipt kind clears incompatible receipt fields. Pending Free Bet
+credit remains promotional credit, not cash, and its linked identity survives portable restore.
+Native and converted plans preserve blank actual stake until placement.
 
-PQA-J08 received a bounded populated Casino check: create/reopen, calculated £2.40, confirmed
-£2.10, settlement, report/reload and containment pass at the same two width/theme variants. The
-full journey remains PARTIAL because fee allocation and a complete change-history consumer were not
-tested. Coverage remains **46/87 assessments (53%), 8/24 full tasks exercised (33%), 8/24 passing
-(33%), 15/27 competitor cells (56%), 24/133 requests (18%)**. These are audit coverage measures,
-not percentages of the application finished.
+Evidence: **70 focused API/portable/calculation tests PASS**, direct TypeScript and the Next 16.3.2
+webpack production build PASS, real browser bundle PASS, genuine four-variant award regression PASS,
+and disposable PostgreSQL offer-plan/metadata fresh/repeat/old-schema checks PASS on port 53460
+(cluster stopped). A populated Casino check (PQA-J08) also passes create/reopen, calculated £2.40,
+confirmed £2.10, settlement and report/reload in both width/theme variants. J08 remains PARTIAL:
+fee allocation and a complete change-history consumer are untested. Cashback split-award receipts
+still have only one linked-credit identity; creating/linking a whole split group in one editor action
+is outside this approved storage slice.
 
-GitHub summary sync for #35/#36/#83/#114 is pending: `gh` was not installed in this worktree on
-2026-09-15. The intended summary is this section; no repeated authentication attempt was made.
+Coverage remains **46/87 assessments (53%), 8/24 full tasks exercised (33%), 8/24 passing (33%),
+15/27 competitor cells (56%), 24/133 requests (18%)**. These measure audit coverage, not how much of
+the application is finished. GitHub summary sync for #35/#36/#83/#114 remains pending because `gh`
+is unavailable; this section is the exact queued summary.
 
 ## Historical calculator engineering continuation — 2026-09-14 / LOCAL ONLY
 
@@ -175,9 +178,9 @@ prevent actual settlement; edited inputs still invalidate stale Copy/Apply/Save.
 | C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | Fresh bounded public Outplayed four-reference black-box match recorded above; MBB penny difference explicit, not parity PASS; unsupported rare configurations remain tracked |
 | C05 | Core plan/actual controls PASS / PROVEN; same-odds operational remainder PASS / PROVEN on 4bb0109 | Changed-odds hedge, persisted unmatched order and multi-fill accounting remain unsupported; Copy never records a fill |
 | C06 | Core percentage/override save-reopen PASS retained; actual PostgreSQL actual-commission/default-change PASS | Actual6/4.2/2% retains19.20/10.80/5.88 when default changes5%; full default-change browser variants still required |
-| C07 | Four Profit Boost sources now save/reopen in native and converted Sportsbook rows; breakdown, accepted-odds precedence, editor recovery and responsive browser evidence PASS / PROVEN on 865a0c3 | Historical rows remain unchanged; a full screen-reader check is NOT TESTED |
-| C08 | Conditional Cashback kind/eligibility/cap and confirmed cash or linked-credit receipt persist; cash-only settlement and portable linked-ID remap PASS / PROVEN on 865a0c3 | Split-award linkage is still represented by one linked credit ID; full receipt-to-award creation in one editor action and complete history UI remain outside this bounded bundle |
-| C09 | Native and conversion browser→API→database→reopen→placement→settlement/report PASS for Profit Boost and cash Cashback; pending credit conversion and genuine award regression PASS | Portable round-trip is API/persistence-proven, not a browser file-import journey; broader recovery, assistive technology and remaining ledger tasks continue under #114 |
+| C07 | Four Profit Boost sources save/reopen in native and converted Sportsbook rows; accepted/source/hedge odds remain distinct; planned Copy/Custom slider never marks placement. PASS / PROVEN on ed338a1 | Historical rows remain unchanged; a full screen-reader check is NOT TESTED |
+| C08 | Conditional Cashback kind/eligibility/cap and confirmed cash or linked-credit receipt persist; kind switches clear incompatible receipt state; cash settlement and portable linked-ID remap PASS / PROVEN on ed338a1 | Split-award linkage is still one linked credit ID; whole-group receipt creation/linking and complete history UI remain outside this bounded bundle |
+| C09 | Native and conversion browser→API→database→reopen→explicit placement→settlement/report PASS for Profit Boost and cash Cashback on frozen 4c07d31; pending credit conversion and genuine award regression PASS | Portable round-trip is API/persistence-proven, not a browser file-import journey; broader recovery, assistive technology and remaining ledger tasks continue under #114 |
 
 ### Current outgoing evidence receipt — source d3a6b5d
 
