@@ -877,13 +877,15 @@ def test_native_normal_v2_create_preview_save_reopen(
 ) -> None:
     configure_temp_database(tmp_path)
     client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
     entries = [
         {"id": "outcome1", "label": "Home", "layOdds": "2.50", "commission": "0.05",
          "calculationVersion": "multi-lay-v2", "backingType": "normal"},
         {"id": "outcome2", "label": "Away", "layOdds": "3.00", "commission": "0.02"},
     ]
     payload = dict(
-        event_name="Synthetic native plan", bookmaker="Bookmaker A", offer_type="Bet & Get",
+        event_name="Synthetic native plan", bookmaker="Bet365", offer_type="Bet & Get",
         bet_type="Single", fixture_type="Football", match_strategy=strategy,
         status="Prospecting", result="Pending", back_stake="10.00", back_odds="4.00",
         lay_odds_1="2.50", exchange_name="Smarkets", multi_lay_outcome_1_name="Home",
