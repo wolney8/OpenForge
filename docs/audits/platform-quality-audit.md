@@ -2,11 +2,12 @@
 
 ## Current calculator engineering continuation — 2026-09-14 / LOCAL ONLY
 
-Current frozen application source **d3a6b5de3007c0f53cf33231a888c9af631707f4**:
-frontend product **d3a6b5d** (original focus target captured before cleanup; JSX escape only), API product
+Current separate test version checkpoint **3f7a71104ed07682aed256baea1a0dc71ce035f8**:
+frontend product **4bb0109598115b9bbd317e94e12b493502310633**, API product
 **eb86c6045e5b6f4db939c733d20e5e8e67b526d4** unchanged. New product commits9577566,
 26aa070,534c978,71c5c41,9625b16,9c8994e are separately scoped UI/recovery repairs;9483edf
-and25744bb are test harness checkpoints. No financial engine, operational database or historical
+and25744bb are earlier test harness checkpoints;4bb0109 adds the same-odds operational Copy boundary.
+No financial engine, operational database or historical
 result changed. Main/frozen candidate remainf7a3b35073ecc87cdf8f8f881129f221ec44d395;
 unmerged Multi-Lay215193b remains untouched. No publication, integration or deployment.
 
@@ -56,12 +57,31 @@ credit linkage), explicitly versioned, no backfill. That additional schema is NO
 lay-plan-column approval and is not implemented. Cash-cap legacy behaviour remains readable;
 credit-refund conversion stays422 before writes. Do not claim embedded actual-receipt/credit parity.
 
-C05 current versioned UI retains actual first-fill amount/odds/commission separately from the plan.
-Existing legacy partial-lay controls use target-minus-matched; they do not establish changed-odds
-remaining hedge correctness. Still unfinished: adapt the governed operational partial workflow to
-versioned Normal/SNR without strategy Part Lay, using faithful actual/unmatched-order representation
-and independent changed-odds fixtures. Do not substitute Multi-Lay's mutually exclusive outcomes for
-same-market fills or infer a copied/planned order was filled. This is engineering work, not a worksheet.
+C05 now has a bounded same-odds operational slice on product
+**4bb0109598115b9bbd317e94e12b493502310633**. Versioned Normal/SNR rows visibly separate the
+reviewed plan, matched amount, unknown unmatched order and same-odds remainder. Copying the remainder
+is clipboard-only. The legacy partial-lay Copy action also no longer creates or changes a matched leg.
+Real native browser/API/SQLite runs on 1440/760, light/dark prove planned6.25 with actual6.00 leaves
+0.25, and planned9.57 with actual6.00 leaves3.57; database actuals remain6.00 after Copy. The complete
+8-path native/conversion/placement/settlement/report gate remains PASS on the unchanged calculation
+source. Changed-odds remaining hedge, persisted known unmatched orders and multiple fills remain
+unsupported because no approved contract/storage represents them; no fill is fabricated.
+
+C07 embedded four-source Profit Boost remains a contract/storage blocker rather than a UI-only task.
+The row stores only `displayed_odds`/`percentage` and cannot restore bookmaker total-return or
+profit-only source values; conversion keeps the immutable source envelope, but native rows and the
+editor have no editable source record. Recommended smallest proposal: add nullable, versioned,
+server-validated Profit Boost source metadata to the existing Sportsbook row and its native portable
+export/restore path, without backfill or settlement rewrite. This affects NEW Profit Boost planning
+rows, editor/bridge/API validation and saving/restoring exported data. Exact permission required:
+approve that additive typed persistence/contract change on disposable SQLite/PostgreSQL databases.
+Until then the two richer modes remain standalone only and must not be presented as save/reopen parity.
+
+C01 lost-save-acknowledgement/reload is now bounded PASS on the current checkpoint. A real Free Bet
+PUT committed7.60, the intercepted browser response was deliberately lost, the active editor retained
+7.60 and showed its existing error, and a reload recovered7.60 from persistence. The four existing
+1440/760 light/dark delayed-old-response and footer-containment cases also pass. This is not evidence
+for simultaneous edits in two browser windows; that case remains untested.
 
 ### Current external interaction / coverage
 
@@ -119,13 +139,13 @@ prevent actual settlement; edited inputs still invalidate stale Copy/Apply/Save.
 
 | ID | Current result / evidence | Exact remaining work |
 |---|---|---|
-| C01 | Bounded prior latest-edit PASS retained; new input-key/network/pending-planner repairs implemented | Outgoing fixed-source rerun below governs PASS; lost acknowledgement across reload and cross-editor simultaneous edits are separate next tests, not universal autosave acceptance |
+| C01 | Delayed old response and lost save acknowledgement/reload PASS / PROVEN on 3f7a711 | Simultaneous edits in two browser windows remain NOT TESTED; no universal autosave claim |
 | C02 | Active/pending/nested focus and selected-footer repairs implemented; new six-variant checks | Outgoing gate below; interrupted close/reopen intermediate motion and pending destructive-confirm error remain specific untested variants |
 | C03 | PARTIAL / DOCUMENTED | Exact workbook SR discrepancy retained; no historical calculation rewrite; Cashback provenance remains |
 | C04 | Core numerical/display/copy/conversion/reopen/actual/report PASS / PROVEN | Fresh bounded public Outplayed four-reference black-box match recorded above; MBB penny difference explicit, not parity PASS; unsupported rare configurations remain tracked |
-| C05 | Core native/versioned Normal/SNR plan/actual controls PASS / PROVEN; operational parity PARTIAL | Existing partial workflow not yet adapted to new plans; changed-odds/unmatched-order/multi-fill support remains unfinished, no fabricated fills or strategy Part Lay |
+| C05 | Core plan/actual controls PASS / PROVEN; same-odds operational remainder PASS / PROVEN on 4bb0109 | Changed-odds hedge, persisted unmatched order and multi-fill accounting remain unsupported; Copy never records a fill |
 | C06 | Core percentage/override save-reopen PASS retained; actual PostgreSQL actual-commission/default-change PASS | Actual6/4.2/2% retains19.20/10.80/5.88 when default changes5%; full default-change browser variants still required |
-| C07 | Core Simple/Advanced/full-width references/live slider and rendered geometry PASS / PROVEN; Profit Boost embedded PARTIAL | Embedded Profit Boost still exposes only displayed odds/percentage plus its separate payout helper, not the four-source standalone breakdown; shared adapter remains engineering work. Broader motion interruption/state variants remain |
+| C07 | Core Simple/Advanced/full-width references/live slider and rendered geometry PASS / PROVEN; Profit Boost embedded BLOCKED | Four-source UI cannot faithfully save/reopen total-return or profit-only provenance without the precisely scoped typed metadata approval above; displayed-odds/percentage behaviour retained |
 | C08 | Standalone/pop-out conditional cash/credit/cap/switch/reset PASS / PROVEN; embedded PARTIAL/BLOCKED | Actual receipt/refund-kind/award-link storage requires additional explicit approval; no credit-to-cash conversion or actual-receipt claim |
 | C09 | Prior core/award evidence retained; current outgoing gate below; overall PARTIAL | C05 operational/C07 embedded boost/C08 receipt and portable full browser round-trip remain; populated old-schema PostgreSQL upgrade now PASS, not full workbook recovery |
 

@@ -2,14 +2,19 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
-Current engineering continuation: no owner-review gate/bulk campaign. Local source
-d3a6b5de3007c0f53cf33231a888c9af631707f4 inherits all repairs, adds latest-reference/save recovery,
+Current engineering continuation: no owner-review gate/bulk campaign. Local checkpoint
+3f7a71104ed07682aed256baea1a0dc71ce035f8 (frontend product4bb0109, unchanged APIeb86c60)
+inherits all repairs and adds latest-reference/save recovery,
 pending settlement queue, nested focus and selected-footer containment. Detailed C01–C09 and
 revision-linked evidence remain in the existing platform audit. No normal-app integration/push.
-C05 operational versioned partial matching and C07 embedded four-source Profit Boost adapter are
-next executable engineering work. C08 standalone/pop-out cap/credit/reset is verified; embedded
+C05 same-odds operational partial matching is now bounded/proven on 4bb0109; changed-odds,
+persisted unmatched-order and multi-fill accounting remain unsupported. C07 embedded four-source
+Profit Boost is blocked by missing typed source metadata rather than an unimplemented visual adapter.
+Remaining network/modal cases and wider audit checks are the next authorised engineering work.
+C08 standalone/pop-out cap/credit/reset is verified; embedded
 actual receipt/kind/award linkage is blocked by unapproved additional storage beyond lay-plan-v1.
-C01 lost acknowledgement/reload/cross-editor and C02 interrupted/pending confirmation cases remain.
+C01 lost acknowledgement/reload now passes; cross-editor simultaneous edits and C02
+interrupted/pending confirmation cases remain.
 Coverage46/87,8/24 exercised/passing,15/27 competitor (+1),24/133; no test-count inflation.
 
 The immediately following eb86c60 checkpoint is historical, not current reporting authority.

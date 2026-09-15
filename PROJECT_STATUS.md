@@ -7,22 +7,30 @@ are invalidated immediately, failed saves show an error inside the active editor
 responses no longer lose a settlement edit, nested dialog keyboard focus stays contained, and narrow
 selected-record footer actions stack without overlap. Cashback starts with ordinary qualifying loss;
 cash cap and promotional credit are labelled separately, and changing offers clears incompatible drafts.
+The separate test version now also keeps copying a suggested partial hedge strictly separate from
+recording an exchange fill. It shows the reviewed plan, matched amount, unknown unmatched order and
+same-odds remainder. Changed-odds and multiple-fill accounting still need an approved financial contract.
 
 The [current C01–C09 checklist and evidence](docs/audits/platform-quality-audit.md#current-calculator-engineering-continuation--2026-09-14--local-only)
-is authoritative. Final source d3a6b5de3007c0f53cf33231a888c9af631707f4 passes the eight-path core
+is authoritative. Separate test version checkpoint3f7a71104ed07682aed256baea1a0dc71ce035f8,
+with frontend product4bb0109598115b9bbd317e94e12b493502310633, passes the eight-path core
 gate, six selected-editor geometry/recovery cases, Profit Boost/Cashback2+2 and multi-Profile retry
 journey. Production build/typecheck/changed-code lint and four genuine award outgoing variants pass.
 API financial source eb86c6045e5b6f4db939c733d20e5e8e67b526d4 is unchanged.
 The previous fixed25744bb gate passed eight core paths, six selected-editor cases, eighteen native
 footer cases and four genuine award variants. Fresh public Outplayed SNR observations match the
 four core references; MBB differs by one penny in liability/outcomes, explicitly documented.
+The browser also proves that a Free Bet value which reached the server before the browser lost its
+save response remains recoverable after reload. Simultaneous edits in two browser windows are still untested.
 
 Coverage:46/87 reviewed (53%),8/24 journeys exercised/passing (33%),15/27 competitor cells (56%),
 24/133 requests reconciled (18%). Competitor change:+1 cell/+4 percentage points; no other count increase.
 Main/normal, frozen manual, Multi-Lay and3034 builds/data remain unchanged. No publication/integration.
-No action needed from Will; the owner79-case campaign is not a requirement. Next executable work:
-versioned operational partial matching and embedded Profit Boost parity; C08 embedded actual receipt/
-award linkage needs precisely scoped additional storage approval. Remaining network/modal cases,
+No bulk owner comparison is required. Embedded four-source Profit Boost cannot faithfully reopen
+bookmaker return/profit inputs with today's row fields; the audit records the smallest recommended
+typed metadata change and exact permission boundary. Next authorised work is the remaining
+network/modal and wider audit checks. C08 embedded actual receipt/award linkage also needs precisely
+scoped additional storage approval. Remaining
 portable browser recovery and wider audit coverage remain named in the same report.
 
 Existing current-candidate launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
