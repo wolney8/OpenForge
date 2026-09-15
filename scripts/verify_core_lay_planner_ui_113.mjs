@@ -27,6 +27,10 @@ function stored(ledger,id) {
  const table=ledger==='free-bets'?'free_bets':'sportsbook_bets',key=ledger==='free-bets'?'free_bet_id':'sportsbook_bet_id';
  return database.prepare(`SELECT * FROM ${table} WHERE profile_id=? AND ${key}=?`).get(pid,id);
 }
+async function dismissStorageNotice(page) {
+ const button=page.getByRole('button',{name:'Understood',exact:true});
+ try { await button.waitFor({state:'visible',timeout:2000});await button.click(); } catch {/* already accepted or not rendered */}
+}
 try {
  for(const [basis,width,theme] of (process.argv.includes('--normal-only')?[['Normal',760,'dark']]:[['SNR',1440,'light'],['Normal',760,'dark'],['SNR',760,'dark'],['Normal',1440,'light']])) {
  const ledger=basis==='SNR'?'free-bets':'sportsbook-bets',prefix=basis==='SNR'?'free-bets':'sportsbook';
@@ -41,6 +45,7 @@ try {
  page.on('pageerror',e=>console.log('PAGEERROR',e.message));
  page.on('response',async r=>{if(r.url().endsWith('/matched-betting/preview')&&r.status()!==200)console.log('REFERENCE ERROR',r.status(),await r.text());});
  await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/'+ledger);
+ await dismissStorageNotice(page);
  await page.locator('[data-pd-id="ledger.toolbar.add-row"]').click();
  const dialog=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await dialog.waitFor();
  if(basis==='Normal')await dialog.getByLabel('Offer',{exact:true}).fill('Synthetic core planning');
@@ -69,7 +74,11 @@ try {
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),planned);
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
- await page.screenshot({path:`${runtime}/core-native-${basis}-${width}-${theme}.png`,fullPage:true});
+ await page.screenshot({path:`${runtime}/core-native-controls-${basis}-${width}-${theme}.png`});
+ await core.locator('[data-pd-id$=".custom-group"]').scrollIntoViewIfNeeded();
+ await page.screenshot({path:`${runtime}/core-native-custom-${basis}-${width}-${theme}.png`});
+ await core.locator('[data-pd-id$=".outcomes"]').scrollIntoViewIfNeeded();
+ await page.screenshot({path:`${runtime}/core-native-outcomes-${basis}-${width}-${theme}.png`});
  const save=dialog.getByRole('button',{name:'Save',exact:true});await expect(save).toBeEnabled();
  await save.click();await expect(dialog).toBeHidden();
  const rows=await(await api.get('/profiles/'+pid+'/'+ledger)).json();
@@ -84,6 +93,13 @@ try {
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
  await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();
  await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
+ await expect(core.getByLabel('Actual selected strategy')).toHaveCount(0);
+ await expect(core.getByText('Decimal rate, for example 0.02',{exact:true})).toHaveCount(0);
+ const embeddedOrder=await core.evaluate(root=>{
+  const custom=root.querySelector('[data-pd-id$=".custom"]'),slider=root.querySelector('[data-pd-id="calculator.custom-slider"]'),outcomes=root.querySelector('[data-pd-id$=".outcomes"]');
+  return {sliderInsideCustom:Boolean(slider?.closest('[data-pd-id$=".custom-group"]')),customBeforeSlider:Boolean(custom?.compareDocumentPosition(slider)&Node.DOCUMENT_POSITION_FOLLOWING),sliderBeforeOutcomes:Boolean(slider?.compareDocumentPosition(outcomes)&Node.DOCUMENT_POSITION_FOLLOWING)};
+ });
+ assert.deepEqual(embeddedOrder,{sliderInsideCustom:true,customBeforeSlider:true,sliderBeforeOutcomes:true});
  selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
@@ -201,13 +217,20 @@ try {
   const params=new URLSearchParams({family:'matched-betting',betType:basis==='SNR'?'free_bet':'qualifying',freeBetMode:'SNR',backStake:'10.00',backOdds:'4.00',layOdds:'4.20',exchangeCommission:'0.02',commissionUnits:'ratio',presentationMode:'Advanced',strategy,manualLayStake:strategy==='Custom'?'9.00':'',customLayDraft:'9.00',exchange:'Smarkets'});
   const path=width===760?'/calculator':'/fund-manager/calculators';
   await page.goto('http://localhost:3040'+path+'?'+params);
+  await dismissStorageNotice(page);
   if(strategy==='Standard')await page.getByRole('button',{name:'Simple',exact:true}).click();
   const sourceCopy=strategy==='Standard'
     ? page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button')
     : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).getByRole('row').first().getByRole('button');
   await expect(sourceCopy).toBeEnabled();await expect(sourceCopy).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
   await sourceCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
-  await page.screenshot({path:`${runtime}/core-standalone-${basis}-${strategy}-${width}-${theme}.png`,fullPage:true});
+  if(strategy==='Standard')await page.getByRole('button',{name:'Advanced',exact:true}).click();
+  await page.locator('[data-pd-id="calculators.matched-betting.results"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${runtime}/core-standalone-references-${basis}-${strategy}-${width}-${theme}.png`});
+  await page.locator('[data-pd-id="calculators.matched-betting.custom-group"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${runtime}/core-standalone-custom-${basis}-${strategy}-${width}-${theme}.png`});
+  await page.locator('[data-pd-id="calculators.outcomes"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${runtime}/core-standalone-outcomes-${basis}-${strategy}-${width}-${theme}.png`});
   const convert=page.getByRole('button',{name:'Convert to opportunity',exact:true});await convert.click();
   const dialog=page.locator('[data-pd-id="calculator-conversion.dialog"]');await dialog.waitFor();
   await dialog.getByLabel('Event / fixture',{exact:true}).fill(`Synthetic converted ${basis} ${strategy}`);
@@ -232,7 +255,7 @@ try {
   const table=ledger==='free-bets'?'free_bets':'sportsbook_bets';
   assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE profile_id=? AND lay_plan_json LIKE ?`).get(pid,'%'+plan.source_checksum+'%').n,1);
   const readUrl='http://localhost:3040'+target.href;
-  await page.goto(readUrl);const editor=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await editor.waitFor();
+  await page.goto(readUrl);await dismissStorageNotice(page);const editor=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await editor.waitFor();
   await editor.getByRole('tab',{name:/Matching/}).first().click();const core=editor.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   if(strategy==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
   const selected=strategy==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : core.locator(`[data-pd-id$=".${strategy.toLowerCase()}"]`);
@@ -242,7 +265,13 @@ try {
   await selected.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   assert.equal((await(await api.get(recordUrl)).json()).lay_actual,'','Copy must not place');
   await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
-  await page.screenshot({path:`${runtime}/core-embedded-${basis}-${strategy}-${width}-${theme}.png`,fullPage:true});
+  await page.screenshot({path:`${runtime}/core-embedded-controls-${basis}-${strategy}-${width}-${theme}.png`});
+  if(strategy!=='Standard') {
+   await core.locator('[data-pd-id$=".custom-group"]').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`${runtime}/core-embedded-custom-${basis}-${strategy}-${width}-${theme}.png`});
+   await core.locator('[data-pd-id$=".outcomes"]').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`${runtime}/core-embedded-outcomes-${basis}-${strategy}-${width}-${theme}.png`});
+  }
   const geometry=await core.locator('[data-pd-id$=".paired-segments"]').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth,headings:[...el.querySelectorAll('.calculator-segment-heading')].map(e=>e.getBoundingClientRect().toJSON())}));
   assert(geometry.scroll<=geometry.width+1,JSON.stringify(geometry));
   if(width===1440)assert(Math.abs(geometry.headings[0].top-geometry.headings[1].top)<=1,JSON.stringify(geometry));
