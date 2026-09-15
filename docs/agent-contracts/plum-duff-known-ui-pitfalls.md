@@ -3,13 +3,13 @@
 ## 2026-09-15: Calculator reference cards drifted into miniature Outcomes tables
 
 Standard and Multi-Lay had family-local reference markup with repeated guidance, stretched chevrons,
-moving copy columns and unnecessary `Total` labels. Multi-Lay also placed global Bet Type controls
-inside its Back section. Use `CalculatorReferenceSection` with the shared reference variant: global
-controls first, short stable label tracks, separate value/copy tracks and optional explanation in
-`ContextHelp`. Main Outcomes alone owns Bookmaker/Exchange/reward/Total columns. Keep a Custom input,
-its direct copy action and slider together. Retain a plan-selection action only where it is required
-to identify what will be saved. Regression: `calculator-ui-parity-pass.spec.ts` covers structure,
-compact geometry, help, copy, ordering, themes and responsive containment.
+moving copy columns and unnecessary `Total` labels. The attempted shortened-chevron variant was also
+rejected: a reference summary is not an Outcomes table. `CalculatorReferenceSection` is a plain
+label/value summary with contextual help. Advanced Standard order is Underlay/Standard/Overlay,
+full-width Custom/input/Copy/slider, then Outcomes. Only Outcomes owns chevrons and rich columns.
+Retain an action in Multi-Lay only when it genuinely recalculates all legs. Regression:
+`calculator-ui-parity-pass.spec.ts` and `verify_core_planner_geometry_113.mjs` cover order, equal
+geometry, help, copy, themes, narrow widths and 200% text.
 
 ## 2026-09-14: Shared reference matrices and sliders exceeded their embedded container
 

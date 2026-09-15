@@ -1,19 +1,17 @@
 # Project Status
 
-## Current calculator UI consistency repair — 2026-09-15 / LOCAL ONLY
+## Current calculator visual-contract repair — 2026-09-15 / LOCAL ONLY
 
-A separate test branch now gives Standard and Multi-Lay one compact reference-card presentation.
-Multi-Lay places Bet Type, Mode and Exchange before its content, with Back Stake/Odds in a clean
-stack. Standard's top controls have readable spacing. Standard, Underlay, Overlay and Custom Lay
-use short headings, contextual help, shorter fixed chevrons and separate value/copy columns; only
-the main Outcomes section retains full tabular headings. Custom includes direct Copy and its slider.
-
-Product **c7d923eb3e381abead2b7482d704c6db47418cd7** passes focused rendering at desktop,
-half-width, narrow and enlarged-text sizes, both themes, keyboard and reduced motion. Native
-Multi-Lay and real Standard Normal/SNR conversion, reopen, placement and settlement checks pass.
-No calculation or historical data changed. This local-only branch is not merged into the normal
-3010 application, main or Vercel; the existing normal service remains untouched. Richer Multi-Lay
-placement/reward modes and other previously recorded calculator feature gaps remain queued.
+The earlier chevron-card design was rejected and is now historical. Product
+**8f5dc5876a2830947fbfb79a88a89b4da171858d** uses the required information order: Bet Type/Mode,
+Back/Lay, Underlay/Standard/Overlay, full-width Custom with direct Copy and slider, then Outcomes.
+Comparison cards are plain aligned summaries; only Outcomes keeps chevrons and rich columns.
+Repeated preambles, `Total`, strategy and Apply/Use-plan controls are absent from Standard-style
+cards. Multi-Lay uses the same surfaces but retains allocation controls because they recalculate all
+legs. Standalone, pop-out and Sportsbook/Free Bet editors pass focused rendering and modal checks at
+desktop, half-width, narrow and 200% text, both themes, keyboard and reduced motion. No maths or
+historical data changed. This repair is not in normal 3010, main or Vercel; GitHub #35/#92 sync is
+pending because publication is forbidden.
 
 ## Current normal local Plum Duff — 2026-09-15
 

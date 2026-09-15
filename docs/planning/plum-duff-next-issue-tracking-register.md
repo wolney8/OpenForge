@@ -15,6 +15,20 @@ The explicit `Use Underlay/Overlay plan` controls remain as the necessary saved-
 that there is no strategy dropdown. They do not copy or confirm an actual exchange fill. GitHub
 synchronisation is pending because repository publication is forbidden for this tranche.
 
+PD-FIX-234 and the paragraph above describe the rejected intermediate design; they are retained as
+history and superseded by this visual contract:
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-FIX-237 | Advanced order is Underlay, Standard, Overlay, Custom/slider, Outcomes | COMPLETE / PROVEN standalone, pop-out and ledger editor |
+| PD-FIX-238 | Replace reference chevrons with equal plain four-row summaries | COMPLETE / PROVEN; Outcomes alone retains chevrons/Total |
+| PD-FIX-239 | Remove permanent guidance, reference suffixes and Standard-style Apply/Use-plan actions | COMPLETE / PROVEN; help is keyboard-accessible |
+| PD-FIX-240 | Put editable Custom stake and direct Copy beside each other above the slider | COMPLETE / PROVEN with stale-copy protection retained |
+| PD-FIX-241 | Reflow the shared calculator at half-width, narrow and 200% text | COMPLETE / PROVEN by zero internal overflow on six ledger-editor variants |
+| PD-FIX-242 | Preserve Multi-Lay hierarchy without flattening its all-leg allocation semantics | COMPLETE for presentation; allocation actions remain necessary and explicit |
+
+Current product is `8f5dc5876a2830947fbfb79a88a89b4da171858d`; GitHub #35/#92 synchronisation remains pending.
+
 ## PD-LOCAL-INTEGRATION-20260915 — one usable normal local application
 
 | ID | Requested outcome | Current state |

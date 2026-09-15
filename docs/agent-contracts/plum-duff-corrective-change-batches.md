@@ -1,5 +1,12 @@
 # Plum Duff Corrective Change Batches
 
+## PD-CALC-VISUAL-CONTRACT-20260915
+
+PD-FIX-237–242 replace the rejected shortened-chevron reference design. The shared Standard-style
+screen now orders Underlay/Standard/Overlay, Custom with direct Copy and slider, then Outcomes.
+Focused browser 7/7 and real ledger-editor geometry 6/6 pass on frozen product `8f5dc587`; normal
+3010/main/Vercel are unchanged. Multi-Lay's all-leg allocation actions are retained as necessary.
+
 ## PD-COMMS-20260915 — purpose-first owner updates
 
 | Item | Required outcome | Status |

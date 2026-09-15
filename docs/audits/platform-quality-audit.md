@@ -1,21 +1,20 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current calculator UI parity tranche — 2026-09-15 / LOCAL ONLY
+## Current calculator visual-contract tranche — 2026-09-15 / LOCAL ONLY
 
-Product **c7d923eb3e381abead2b7482d704c6db47418cd7** removes the remaining presentation drift
-without changing calculator maths. Multi-Lay now places Bet Type/Mode/Exchange before Back/Lay,
-stacks Back Stake/Odds and consumes the shared compact reference component. Standard's Calculator
-and Bet Type controls have deliberate spacing. Across standalone, pop-out and Sportsbook/Free Bet
-consumers, Standard/Underlay/Overlay/Custom Lay use short headings, contextual help, fixed compact
-chevrons and independent value/copy columns. Repeated preambles and reference-card `Total` labels
-are gone; Custom contains direct Copy and its slider.
+The shortened-chevron reference-card checkpoint was an acceptance failure and is historical.
+Frozen product **8f5dc5876a2830947fbfb79a88a89b4da171858d** now renders Underlay, Standard and Overlay as
+three equal plain summary cards, followed by full-width Custom/input/Copy/slider and then detailed
+Outcomes. The cards have no chevrons, `Total`, permanent guidance or Apply/Use-plan actions. Offer
+replaces the ambiguous inner Calculator label. Multi-Lay keeps only its necessary all-leg allocation
+actions and otherwise shares the hierarchy and card primitive.
 
-Evidence on the frozen product: rendered parity 3/3 at 1280/720/390, light/dark, enlarged text,
-keyboard and reduced motion; native Multi-Lay save/reopen 3/3; real Normal/SNR conversion,
-embedded reopen, copy, explicit placement, settlement/report and retry 4/4. The initial combined
-runner used the wrong synthetic API/auth pair; the affected test was rerun against the verified
-8052 API and passed, so this is retained as a harness setup failure, not a product result. The
-normal 3010 application, main and Vercel do not contain this local-only repair.
+Evidence: focused browser suite 7/7; embedded Sportsbook/Free Bet modal geometry 6/6 at 1440, 760,
+390 and 200% text, light/dark, keyboard/focus, failed-save recovery and real retry; production build,
+typecheck and changed-component lint pass. A first enlarged-text run exposed real internal overflow;
+the rem-aware calculator container reflow fixed it and the frozen rerun passed. Three broader
+Multi-Lay ledger tests remain harness-blocked by absent seeded routes in this disposable runtime;
+the focused Multi-Lay interaction test passed. Normal 3010, main and Vercel remain unchanged.
 
 ## Current local integration gate — 2026-09-15
 

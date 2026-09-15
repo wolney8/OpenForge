@@ -2,6 +2,13 @@
 
 ## PD-CALC-UI-PARITY-20260915 — compact shared calculator references
 
+Acceptance correction: product `8f5dc5876a2830947fbfb79a88a89b4da171858d` supersedes the
+shortened-chevron design below. Standard-style reference cards are now plain equal summaries in
+Underlay/Standard/Overlay order; Custom/input/Copy/slider and then Outcomes follow. Reference cards
+have no chevrons, Total, preamble or Apply/Use-plan action. Multi-Lay retains only necessary all-leg
+allocation actions. The rule is proven on standalone, pop-out and Sportsbook/Free Bet editors,
+including 200% text reflow.
+
 PD-FIX-231–236 replace two drifting result presentations with one shared reference-card rule.
 Standard, pop-out and the Sportsbook/Free Bet calculators use short Standard/Underlay/Overlay/
 Custom Lay headings, contextual keyboard help, a compact fixed chevron-label track and independent
