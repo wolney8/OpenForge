@@ -1,5 +1,18 @@
 # Plum Duff UI Change Register
 
+## PD-CALC-UI-PARITY-20260915 — compact shared calculator references
+
+PD-FIX-231–236 replace two drifting result presentations with one shared reference-card rule.
+Standard, pop-out and the Sportsbook/Free Bet calculators use short Standard/Underlay/Overlay/
+Custom Lay headings, contextual keyboard help, a compact fixed chevron-label track and independent
+value/copy columns. Reference cards have no `Total` heading; the full Exchange/Bookmaker/Total grid
+remains exclusive to Outcomes. Custom keeps its editable stake, direct Copy and slider together.
+
+Multi-Lay now puts Bet Type, Mode and Exchange before its Back/Lay content, keeps Back Stake/Odds
+as a stack, and uses the same reference rows. Product `c7d923e` passes 1280/720/390, light/dark,
+enlarged-text, keyboard and reduced-motion checks plus native and converted save/reopen flows. No
+calculator formula, actual placement, historical record or global Outcomes semantics changed.
+
 ## PD-CALC-20260914 — visible core planner C04–C07 / core C09
 
 2026-09-15 useful-bundle addendum: the same Sportsbook editor now exposes all four Profit Boost

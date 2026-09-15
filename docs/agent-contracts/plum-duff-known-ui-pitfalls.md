@@ -1,5 +1,16 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-15: Calculator reference cards drifted into miniature Outcomes tables
+
+Standard and Multi-Lay had family-local reference markup with repeated guidance, stretched chevrons,
+moving copy columns and unnecessary `Total` labels. Multi-Lay also placed global Bet Type controls
+inside its Back section. Use `CalculatorReferenceSection` with the shared reference variant: global
+controls first, short stable label tracks, separate value/copy tracks and optional explanation in
+`ContextHelp`. Main Outcomes alone owns Bookmaker/Exchange/reward/Total columns. Keep a Custom input,
+its direct copy action and slider together. Retain a plan-selection action only where it is required
+to identify what will be saved. Regression: `calculator-ui-parity-pass.spec.ts` covers structure,
+compact geometry, help, copy, ordering, themes and responsive containment.
+
 ## 2026-09-14: Shared reference matrices and sliders exceeded their embedded container
 
 C07: a legacy42rem Outcomes minimum, implicit auto grid tracks and fixed slider side tracks

@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-CALC-UI-PARITY-20260915 — shared calculator reference presentation
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-FIX-231 | Put Multi-Lay global controls before Back/Lay content and stack Back Stake/Odds | COMPLETE / PROVEN on desktop, half-width and narrow rendering |
+| PD-FIX-232 | Give Multi-Lay the same compact reference-card language as Standard | COMPLETE / PROVEN; native three-leg save/reopen retained |
+| PD-FIX-233 | Make Standard Calculator and Bet Type controls readable and properly spaced | COMPLETE / PROVEN without normal-width truncation |
+| PD-FIX-234 | Use short headings, contextual help, shorter chevrons and no reference-card `Total` labels | COMPLETE / PROVEN in light/dark, enlarged text and keyboard use |
+| PD-FIX-235 | Put direct Copy and the slider inside Custom Lay | COMPLETE / PROVEN; current valid value is copied and plan/actual separation remains |
+| PD-FIX-236 | Reuse the rule in standalone, pop-out and Sportsbook/Free Bet calculators | COMPLETE / PROVEN on product `c7d923e`; no formula change |
+
+The explicit `Use Underlay/Overlay plan` controls remain as the necessary saved-plan selector now
+that there is no strategy dropdown. They do not copy or confirm an actual exchange fill. GitHub
+synchronisation is pending because repository publication is forbidden for this tranche.
+
 ## PD-LOCAL-INTEGRATION-20260915 — one usable normal local application
 
 | ID | Requested outcome | Current state |

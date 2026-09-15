@@ -127,6 +127,11 @@ use the canonical primitive and computed styling.
 - Text, stat cards and helper copy must earn their space. Remove duplicated or non-actionable noise.
   High-frequency calculator fields use the shared label hierarchy and put optional routine guidance
   in the contextual accessible help primitive; validation and essential safety meaning stay inline.
+- Calculator reference choices use the shared compact reference variant: a short stable chevron-label
+  track followed by separate value/copy tracks, no `Total` heading and no repeated inline preamble.
+  Standard, Underlay, Overlay and Custom share this language across standalone, pop-out and ledger
+  consumers. Main Outcomes alone owns Bookmaker/Exchange/reward/Total columns. Global calculator
+  controls precede Back/Lay sections; the Custom input, direct copy action and slider stay together.
 - Equivalent top-level Settings tabs use `content-panel stack`. Use `content-subpanel stack` only
   for a genuinely nested card, inset section or secondary surface; do not use it to create a
   visually smaller peer tab.

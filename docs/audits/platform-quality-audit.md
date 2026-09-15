@@ -1,5 +1,22 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current calculator UI parity tranche — 2026-09-15 / LOCAL ONLY
+
+Product **c7d923eb3e381abead2b7482d704c6db47418cd7** removes the remaining presentation drift
+without changing calculator maths. Multi-Lay now places Bet Type/Mode/Exchange before Back/Lay,
+stacks Back Stake/Odds and consumes the shared compact reference component. Standard's Calculator
+and Bet Type controls have deliberate spacing. Across standalone, pop-out and Sportsbook/Free Bet
+consumers, Standard/Underlay/Overlay/Custom Lay use short headings, contextual help, fixed compact
+chevrons and independent value/copy columns. Repeated preambles and reference-card `Total` labels
+are gone; Custom contains direct Copy and its slider.
+
+Evidence on the frozen product: rendered parity 3/3 at 1280/720/390, light/dark, enlarged text,
+keyboard and reduced motion; native Multi-Lay save/reopen 3/3; real Normal/SNR conversion,
+embedded reopen, copy, explicit placement, settlement/report and retry 4/4. The initial combined
+runner used the wrong synthetic API/auth pair; the affected test was rerun against the verified
+8052 API and passed, so this is retained as a harness setup failure, not a product result. The
+normal 3010 application, main and Vercel do not contain this local-only repair.
+
 ## Current local integration gate — 2026-09-15
 
 Will's normal application is now `http://localhost:3010`; it serves the reviewed integration stack

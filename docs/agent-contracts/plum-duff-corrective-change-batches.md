@@ -391,3 +391,24 @@ Shared checks: existing calculator segment/eyebrow, dense-grid containment, copy
 theme and FinancialValue primitives were reused. No family CSS offset, hidden overflow, formula,
 historical record or actual-placement field was changed. Outdated browser assertions which treated
 0.05 as 5% or expected removed everyday SR/Part-Lay controls were corrected to the current contract.
+
+## PD-FIX-231 to PD-FIX-236 — Calculator UI parity and consistency (2026-09-15)
+
+Baseline: `a7c720a499e69c6044d501b213fd4200efc3c1af`. Canonical equivalents are the
+shared calculator control row, segment eyebrow, contextual help, compact reference rows,
+`CopyableFinancialValue`, Custom slider and `CalculatorOutcomes` composition.
+
+| ID | Surface / supplied evidence | Requested outcome | Status |
+|---|---|---|---|
+| PD-FIX-231 | Multi-Lay top controls and Back section | Put Bet Type/Mode/Exchange before Back/Lay content; keep Back Stake/Odds as a clean stack | COMPLETE / PROVEN — shared global-control grid and stacked Back fields at 1280/720/390 |
+| PD-FIX-232 | Multi-Lay reference presentation | Replace its local definition-list rows with the shared compact reference-card language | COMPLETE / PROVEN — shared reference rows, help and Custom composition; three-leg save/reopen passes |
+| PD-FIX-233 | Standard top controls | Give Calculator and Bet Type readable grid allocation and spacing at desktop/reflow widths | COMPLETE / PROVEN — readable labels/values without overlap or layout jump |
+| PD-FIX-234 | Standard/Underlay/Overlay/Custom cards | Short titles, anchored help, compact fixed label track, no repeated preamble or `Total` heading | COMPLETE / PROVEN — rendered geometry, keyboard help and theme checks pass |
+| PD-FIX-235 | Custom Lay control | Keep editable planned stake, direct Copy and slider together; retain stale-result and plan/actual safety | COMPLETE / PROVEN — direct current-value copy and slider DOM/rendered order pass |
+| PD-FIX-236 | Standalone/pop-out/Sportsbook/Free Bet parity | Propagate shared structure and prove geometry, theme, keyboard, reduced-motion and responsive behaviour | COMPLETE / PROVEN — shared components and real conversion/reopen/settlement checks on `c7d923e` |
+
+Evidence: product `c7d923eb3e381abead2b7482d704c6db47418cd7`; focused rendered parity 3/3,
+Multi-Lay native save/reopen 3/3, and Standard Normal/SNR conversion/reopen/settlement 4/4.
+The Underlay/Overlay plan actions remain because, after removal of the strategy dropdown, they are
+the explicit non-placement action that selects which reviewed plan will be saved. Their labels are
+`Use … plan`, their pressed state is exposed, and Copy remains clipboard-only.

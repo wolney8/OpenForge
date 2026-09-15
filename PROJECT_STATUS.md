@@ -1,5 +1,20 @@
 # Project Status
 
+## Current calculator UI consistency repair — 2026-09-15 / LOCAL ONLY
+
+A separate test branch now gives Standard and Multi-Lay one compact reference-card presentation.
+Multi-Lay places Bet Type, Mode and Exchange before its content, with Back Stake/Odds in a clean
+stack. Standard's top controls have readable spacing. Standard, Underlay, Overlay and Custom Lay
+use short headings, contextual help, shorter fixed chevrons and separate value/copy columns; only
+the main Outcomes section retains full tabular headings. Custom includes direct Copy and its slider.
+
+Product **c7d923eb3e381abead2b7482d704c6db47418cd7** passes focused rendering at desktop,
+half-width, narrow and enlarged-text sizes, both themes, keyboard and reduced motion. Native
+Multi-Lay and real Standard Normal/SNR conversion, reopen, placement and settlement checks pass.
+No calculation or historical data changed. This local-only branch is not merged into the normal
+3010 application, main or Vercel; the existing normal service remains untouched. Richer Multi-Lay
+placement/reward modes and other previously recorded calculator feature gaps remain queued.
+
 ## Current normal local Plum Duff — 2026-09-15
 
 `http://localhost:3010` now serves the assembled application from
