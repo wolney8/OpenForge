@@ -209,6 +209,13 @@ try {
       const cbMeta=JSON.parse(cbRow.conditional_benefit_json);
       assert.equal(cbMeta.eligibility,'pending');assert.equal(cbMeta.actual_receipt_amount,'');assert.equal(cbRow.lay_actual,'');
       converted.cashback={id:cbRow.sportsbook_bet_id,eligibility:'pending',receiptNotAssumed:true};
+      await page.getByLabel('Refund received as').selectOption('free_bet');
+      await expect(page.locator('[data-pd-id="calculators.cashback.credit"]')).toBeVisible();
+      const creditTarget=await convertCurrent(page,'Synthetic converted Cashback credit');
+      const creditRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${creditTarget.record_id}`)).json();
+      const creditMeta=JSON.parse(creditRow.conditional_benefit_json);
+      assert.equal(creditMeta.refund_kind,'free_bet');assert.equal(creditMeta.actual_receipt_amount,'');
+      converted.cashbackCredit={id:creditRow.sportsbook_bet_id,creditSeparateFromCash:true};
     }
     evidence.cases.push({width,theme,profitBoost:{id:profit.sportsbook_bet_id,source:'total_return',raw:'2.786',reference:'2.7800',accepted:'2.7900',bookmakerReturn:'27.86',actualLay:'9.00',final:'-0.10'},nativeModes,cashback:{id:cashback.sportsbook_bet_id,eligible:'10.00',cap:'8.00',receipt:'8.00',final:'6.82'},converted,reportReload:true,noPageOverflow:true});
     await context.close();

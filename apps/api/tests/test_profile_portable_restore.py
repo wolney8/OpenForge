@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from test_profile_portable_export import configure_database, seed_representative_profile
 
 from openforge_api.config import settings
-from openforge_api.db import connect
+from openforge_api.db import connect, create_free_bet, create_sportsbook_bet
 from openforge_api.main import app
 from openforge_api.profile_portable_export import build_profile_portable_export
 from openforge_api.profile_portable_restore import (
@@ -104,6 +104,63 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
     configure_database(tmp_path)
     seed_representative_profile()
     seed_operational_tracker_settings()
+    create_sportsbook_bet(
+        "profile-portable-test",
+        {
+            "sportsbook_bet_id": "SPORTSBOOK-CASHBACK",
+            "event_name": "Synthetic conditional cashback",
+            "offer_text": "Synthetic conditional cashback",
+            "bookmaker": "Bookmaker A",
+            "offer_type": "Cashback",
+            "status": "Prospecting",
+            "result": "Pending",
+            "back_stake": "10.00",
+            "back_odds": "3.00",
+            "match_strategy": "Standard",
+            "lay_odds_1": "3.10",
+            "exchange_name": "Exchange A",
+            "maximum_bonus": "10.00",
+        },
+    )
+    create_free_bet(
+        "profile-portable-test",
+        {
+            "free_bet_id": "FREE-BET-CASHBACK",
+            "event_name": "Synthetic cashback credit",
+            "offer_text": "Synthetic cashback credit",
+            "bookmaker": "Bookmaker A",
+            "status": "Available",
+            "result": "Pending",
+            "retention_mode": "SNR",
+            "free_bet_value": "10.00",
+        },
+    )
+    with connect() as connection:
+        connection.execute(
+            "UPDATE free_bets SET origin_qual_bet_id = 'SPORTSBOOK-CASHBACK' "
+            "WHERE free_bet_id = 'FREE-BET-CASHBACK'"
+        )
+        connection.execute(
+            "UPDATE sportsbook_bets SET conditional_benefit_json = ? "
+            "WHERE sportsbook_bet_id = 'SPORTSBOOK-CASHBACK'",
+            (
+                json.dumps(
+                    {
+                        "schema_version": "conditional-benefit-v1",
+                        "revision": 1,
+                        "refund_kind": "free_bet",
+                        "eligibility": "eligible",
+                        "eligible_amount": "10.00",
+                        "refund_cap": "10.00",
+                        "actual_receipt_amount": "10.00",
+                        "receipt_identity": "SYNTHETIC-CREDIT-001",
+                        "receipt_date": "2026-09-05",
+                        "linked_awarded_credit_id": "FREE-BET-CASHBACK",
+                    }
+                ),
+            ),
+        )
+        connection.commit()
     source_export = build_profile_portable_export(
         "profile-portable-test", exported_at="2026-09-05T08:00:00Z"
     )
@@ -172,6 +229,23 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
     assert identity["runtime_id"] == restored_account["account_id"]
     assert dict(checkpoint) == {"pre_restore_state": "ABSENT", "status": "AVAILABLE"}
     assert audit_count > 0
+
+    with connect() as connection:
+        restored_cashback = connection.execute(
+            "SELECT conditional_benefit_json FROM sportsbook_bets "
+            "WHERE profile_id = ? AND event_name = 'Synthetic conditional cashback'",
+            (completed["target_profile_id"],),
+        ).fetchone()
+        restored_credit = connection.execute(
+            "SELECT free_bet_id FROM free_bets WHERE profile_id = ? "
+            "AND event_name = 'Synthetic cashback credit'",
+            (completed["target_profile_id"],),
+        ).fetchone()
+    assert restored_cashback is not None
+    assert restored_credit is not None
+    restored_benefit = json.loads(restored_cashback["conditional_benefit_json"])
+    assert restored_benefit["linked_awarded_credit_id"] == restored_credit["free_bet_id"]
+    assert restored_benefit["linked_awarded_credit_id"] != "FREE-BET-CASHBACK"
 
     re_export = build_profile_portable_export(
         completed["target_profile_id"], exported_at="2026-09-05T09:00:00Z"
