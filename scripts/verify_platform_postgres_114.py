@@ -375,12 +375,128 @@ def core_plan_cases(dsn, runtime):
         "Second populated disposable old-column schema upgrades twice; legacy row/audits unchanged and10.60 retained"]}
 
 
+def offer_metadata_cases(dsn, runtime):
+    """Focused real-PostgreSQL proof for the two approved Sportsbook metadata fields."""
+    import psycopg
+    from openforge_api import db
+    from openforge_api.accounts import AccountPayload
+    from openforge_api.postgres_migrations import apply_postgres_migrations
+    from test_calculator_conversions import standard_payload
+
+    apply_postgres_migrations(dsn)
+    client = client_for(dsn, runtime)
+    profile_id = "pqa114-offer-metadata"
+    db.create_profile_with_onboarding({
+        "profile_id": profile_id,
+        "display_name": "Synthetic offer metadata",
+        "profile_code": "SYNTH-OFFER",
+        "tracking_start_date": "2026-09-15",
+        "current_cash_snapshot": "0.00",
+        "enabled_modules": ["sportsbook-bets", "free-bets"],
+        "accounts": [],
+        "quick_actions": [],
+        "exchange_commissions": [],
+    })
+    db.link_fund_manager_profile(email=OWNER, profile_id=profile_id)
+    with db.connect() as connection:
+        connection.execute("UPDATE profiles SET status='Active' WHERE profile_id=?", (profile_id,))
+    for name, kind in (("Bet365", "Bookie"), ("Smarkets", "Exchange")):
+        values = AccountPayload(
+            account=name,
+            type=kind,
+            status="Active",
+            lifecycle_status="Active",
+            current_balance="0.00",
+        ).model_dump()
+        values["restrictions_json"] = "[]"
+        db.create_account(profile_id, values)
+    db.upsert_profile_exchange_commission(profile_id, "Smarkets", "0.02")
+
+    profit = standard_payload([profile_id])
+    profit["calculator"].update(
+        bet_type="profit_boost",
+        back_odds="",
+        profit_boost_mode="total_return",
+        total_potential_return="27.86",
+        actual_accepted_back_odds="2.79",
+    )
+    profit["source"]["calculator_mode"] = "profit_boost"
+    profit["offer_type"] = "Profit Boost"
+    profit_response = client.post(
+        "/fund-manager/calculator-conversions/standard", json=profit
+    )
+    assert profit_response.status_code == 200, profit_response.text
+    profit_id = profit_response.json()["results"][0]["record_id"]
+
+    cashback = standard_payload([profile_id])
+    cashback["calculator"].update(
+        bet_type="cashback", cashback_reward_kind="cash", promotion_value="10.00"
+    )
+    cashback["source"]["calculator_mode"] = "cashback"
+    cashback["offer_type"] = "Cashback"
+    cashback_response = client.post(
+        "/fund-manager/calculator-conversions/standard", json=cashback
+    )
+    assert cashback_response.status_code == 200, cashback_response.text
+    cashback_id = cashback_response.json()["results"][0]["record_id"]
+
+    with psycopg.connect(dsn) as connection:
+        stored_profit = connection.execute(
+            "SELECT profit_boost_mode,profit_boost_source_json FROM sportsbook_bets "
+            "WHERE sportsbook_bet_id=%s",
+            (profit_id,),
+        ).fetchone()
+        stored_cashback = connection.execute(
+            "SELECT conditional_benefit_json FROM sportsbook_bets WHERE sportsbook_bet_id=%s",
+            (cashback_id,),
+        ).fetchone()
+    assert stored_profit[0] == "total_return"
+    assert json.loads(stored_profit[1])["total_potential_return"] == "27.86"
+    assert json.loads(stored_cashback[0])["eligible_amount"] == "10.00"
+    reopened = client.get(f"/profiles/{profile_id}/sportsbook-bets/{profit_id}").json()
+    assert reopened["reference_boosted_odds"] == "2.7800"
+    assert reopened["effective_back_odds"] == "2.7900"
+    assert reopened["profit_boost_bookmaker_total_return"] == "27.86"
+    apply_postgres_migrations(dsn)
+
+    old_dsn = dsn.replace("/pqa114_primary", "/pqa114_restored")
+    apply_postgres_migrations(old_dsn)
+    with psycopg.connect(old_dsn) as connection:
+        connection.execute("ALTER TABLE sportsbook_bets DROP COLUMN profit_boost_source_json")
+        connection.execute("ALTER TABLE sportsbook_bets DROP COLUMN conditional_benefit_json")
+    apply_postgres_migrations(old_dsn)
+    apply_postgres_migrations(old_dsn)
+    with psycopg.connect(old_dsn) as connection:
+        columns = {
+            row[0]
+            for row in connection.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='sportsbook_bets' AND column_name IN "
+                "('profit_boost_source_json','conditional_benefit_json')"
+            ).fetchall()
+        }
+    assert columns == {"profit_boost_source_json", "conditional_benefit_json"}
+    return {
+        "status": "PASS",
+        "passed": [
+            "Four-source metadata and accepted-odds precedence persist on real PostgreSQL",
+            "Conditional benefit eligibility persists without recognising an unconfirmed receipt",
+            "Repeat migration and synthetic old-schema additive upgrade pass",
+        ],
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
     parser.add_argument("--sportsbook-only", action="store_true", help="PD-QA-020 targeted transactions; does not repeat recovery suite")
     parser.add_argument("--awards-only", action="store_true", help="PD-QA-017 transactions/process races only")
     parser.add_argument("--core-plans-only", action="store_true", help="Approved additive core lay-plan storage only")
+    parser.add_argument(
+        "--offer-metadata-only",
+        action="store_true",
+        help="Approved additive Profit Boost/Cashback metadata only",
+    )
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -418,6 +534,9 @@ def main():
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
         if args.core_plans_only:
             record.update(core_plan_cases(primary, root))
+            return
+        if args.offer_metadata_only:
+            record.update(offer_metadata_cases(primary, root))
             return
         if args.awards_only:
             from verify_award_integrity_91 import award_cases

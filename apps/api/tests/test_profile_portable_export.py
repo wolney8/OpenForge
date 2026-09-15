@@ -174,6 +174,29 @@ def seed_representative_profile() -> None:
                 timestamp,
             ),
             (
+                "ACCOUNT-EXCHANGE",
+                "profile-portable-test",
+                None,
+                None,
+                "Exchange A",
+                "Exchange",
+                1,
+                "web",
+                "Active",
+                "Active",
+                "Unknown",
+                "[]",
+                "0.00",
+                "0.00",
+                timestamp,
+                "Synthetic Group",
+                "Synthetic Platform",
+                "",
+                "",
+                timestamp,
+                timestamp,
+            ),
+            (
                 "ACCOUNT-OTHER",
                 "profile-unrelated",
                 None,
@@ -524,17 +547,31 @@ def seed_representative_profile() -> None:
             "event_name": "Synthetic Event",
             "offer_text": "Synthetic qualifying offer",
             "bookmaker": "Bookmaker A",
-            "offer_type": "Signup",
+            "offer_type": "Profit Boost",
             "status": "Settled",
-            "result": "Won",
-            "back_stake": "10.0000",
+            "result": "Back Won",
+            "back_stake": "10.00",
             "back_odds": "2.50",
+            "profit_boost_mode": "total_return",
+            "profit_boost_source_json": json.dumps(
+                {
+                    "schema_version": "profit-boost-source-v1",
+                    "revision": 0,
+                    "mode": "total_return",
+                    "boosted_back_odds": "",
+                    "total_potential_return": "25.00",
+                    "potential_profit": "",
+                    "base_back_odds": "",
+                    "profit_boost_percent": "",
+                    "maximum_boost_winnings": "",
+                }
+            ),
             "source_combo_preset_id": "PRESET-001",
             "source_combo_preset_version": 4,
             "match_strategy": "Standard",
             "lay_odds_1": "2.60",
-            "lay_actual": "9.6000",
-            "lay_matched_stake_1": "9.6000",
+            "lay_actual": "9.60",
+            "lay_matched_stake_1": "9.60",
             "exchange_name": "Exchange A",
             "date_settled": "2026-09-02",
             "user_notes": "",
@@ -691,7 +728,7 @@ def test_representative_portable_export_is_profile_scoped_and_read_only(
     assert [row["profile_id"] for row in profile_rows] == ["profile-portable-test"]
     assert profile_rows[0]["current_cash_snapshot"] == "1234567890.1234"
     account_ids = [row["account_id"] for row in workbook_rows(response.content, "Accounts")]
-    assert account_ids == ["ACCOUNT-A", "ACCOUNT-Z"]
+    assert account_ids == ["ACCOUNT-A", "ACCOUNT-EXCHANGE", "ACCOUNT-Z"]
     with ZipFile(BytesIO(response.content)) as workbook:
         worksheet_names = [
             name for name in workbook.namelist() if name.startswith("xl/worksheets/")
@@ -717,7 +754,11 @@ def test_portable_export_preserves_values_ordering_and_reference_only_authoritie
     assert manifest["aggregate_logical_checksum"]["value"] == export.logical_checksum
 
     accounts = workbook_rows(export.content, "Accounts")
-    assert [row["account_id"] for row in accounts] == ["ACCOUNT-A", "ACCOUNT-Z"]
+    assert [row["account_id"] for row in accounts] == [
+        "ACCOUNT-A",
+        "ACCOUNT-EXCHANGE",
+        "ACCOUNT-Z",
+    ]
     assert accounts[0]["lifecycle_status"] == "Active"
     assert accounts[0]["status"] == "Bonus Restricted"
     assert accounts[0]["restrictions_json"] == '["Stake Restricted","Bonus Restricted"]'
@@ -726,8 +767,8 @@ def test_portable_export_preserves_values_ordering_and_reference_only_authoritie
     assert accounts[0]["catalogue_reference_version"] == "1.0"
     assert len(accounts[0]["catalogue_reference_fingerprint"]) == 64
     assert "brand_name" not in accounts[0]
-    assert accounts[1]["catalogue_id"] == ""
-    account_z_nulls = json.loads(accounts[1]["null_fields_json"])
+    assert accounts[2]["catalogue_id"] == ""
+    account_z_nulls = json.loads(accounts[2]["null_fields_json"])
     assert account_z_nulls == [
         "catalogue_id",
         "catalogue_reference_fingerprint",
@@ -761,7 +802,8 @@ def test_portable_export_preserves_values_ordering_and_reference_only_authoritie
 
     sportsbook = workbook_rows(export.content, "Sportsbook")[0]
     assert sportsbook["sportsbook_bet_id"] == "SPORTSBOOK-001"
-    assert sportsbook["back_stake"] == "10.0000"
+    assert sportsbook["back_stake"] == "10.00"
+    assert json.loads(sportsbook["profit_boost_source_json"])["total_potential_return"] == "25.00"
     assert sportsbook["preset_reference_version"] == "4"
     free_bet = workbook_rows(export.content, "Free Bets")[0]
     assert free_bet["status"] == "Void"

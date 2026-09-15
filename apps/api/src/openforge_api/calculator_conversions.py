@@ -280,41 +280,55 @@ def _validate_sportsbook_classification(
         )
 
 
-def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[str, str]:
+def _profit_boost_destination_fields(calculator: MatchedBettingPayload) -> dict[str, Any]:
     if calculator.bet_type != "profit_boost":
         return {
             "profit_boost_mode": "",
+            "profit_boost_source_json": None,
             "base_back_odds": "",
             "profit_boost_percent": "",
             "maximum_boost_winnings": "",
             "actual_accepted_back_odds": "",
         }
-    if calculator.profit_boost_mode == "percentage":
-        return {
-            "profit_boost_mode": "percentage",
-            "base_back_odds": calculator.base_back_odds,
-            "profit_boost_percent": calculator.profit_boost_percent,
-            "maximum_boost_winnings": calculator.maximum_boost_winnings,
-            "actual_accepted_back_odds": calculator.actual_accepted_back_odds,
-        }
-    # Total-return and profit-only inputs are temporary by contract. Their audited
-    # effective odds enter the destination's explicit displayed-odds path while the
-    # immutable source envelope retains the original derivation.
+    from openforge_api.sportsbook_offer_metadata import ProfitBoostSource
+    source = ProfitBoostSource(
+        mode=calculator.profit_boost_mode,
+        boosted_back_odds=calculator.boosted_back_odds,
+        total_potential_return=calculator.total_potential_return,
+        potential_profit=calculator.potential_profit,
+        base_back_odds=calculator.base_back_odds,
+        profit_boost_percent=calculator.profit_boost_percent,
+        maximum_boost_winnings=calculator.maximum_boost_winnings,
+    )
     return {
-        "profit_boost_mode": "displayed_odds",
-        "base_back_odds": "",
-        "profit_boost_percent": "",
-        "maximum_boost_winnings": "",
+        "profit_boost_mode": calculator.profit_boost_mode,
+        "profit_boost_source_json": source.model_dump_json(),
+        "base_back_odds": calculator.base_back_odds,
+        "profit_boost_percent": calculator.profit_boost_percent,
+        "maximum_boost_winnings": calculator.maximum_boost_winnings,
         "actual_accepted_back_odds": calculator.actual_accepted_back_odds,
     }
+
+
+def _conditional_benefit_destination_fields(calculator: MatchedBettingPayload) -> dict[str, Any]:
+    is_cashback = calculator.bet_type == "cashback" or (
+        calculator.bet_type == "qualifying" and calculator.promotion_mode == "cashback"
+    )
+    if not is_cashback:
+        return {"conditional_benefit_json": None}
+    from openforge_api.sportsbook_offer_metadata import ConditionalBenefit
+    benefit = ConditionalBenefit(
+        refund_kind=calculator.cashback_reward_kind,
+        eligibility="pending",
+        eligible_amount=calculator.promotion_value,
+    )
+    return {"conditional_benefit_json": benefit.model_dump_json()}
 
 
 @router.post("/standard", response_model=ConversionResponse)
 def convert_standard(payload: StandardConversionPayload, request: Request) -> ConversionResponse:
     _require_fund_manager(request)
     _validate_destination_classification(payload)
-    if (payload.calculator.bet_type == "cashback" or (payload.calculator.bet_type == "qualifying" and payload.calculator.promotion_mode == "cashback")) and payload.calculator.cashback_reward_kind != "cash":
-        raise HTTPException(status_code=422, detail="Free Bet cashback reference cannot be saved as cash cashback; destination award/credit contract is required.")
     if payload.source.calculator_family != "matched-betting":
         raise HTTPException(
             status_code=422, detail="Standard conversion requires matched-betting source"
@@ -505,6 +519,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                 )
                 continue
             profit_boost_fields = _profit_boost_destination_fields(payload.calculator)
+            conditional_benefit_fields = _conditional_benefit_destination_fields(payload.calculator)
             created = create_sportsbook_bet(
                 target.profile_id,
                 {
@@ -521,6 +536,7 @@ def convert_standard(payload: StandardConversionPayload, request: Request) -> Co
                     "back_stake": payload.calculator.back_stake,
                     "back_odds": preview.canonical_back_odds,
                     **profit_boost_fields,
+                    **conditional_benefit_fields,
                     "bonus_trigger": payload.calculator.bonus_trigger,
                     "maximum_bonus": payload.calculator.promotion_value,
                     "bonus_retention_rate": payload.calculator.retention_percent,

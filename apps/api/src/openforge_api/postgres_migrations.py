@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20260914_003_core_lay_plans"
+MIGRATION_ID = "20260915_004_sportsbook_offer_metadata"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """

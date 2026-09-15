@@ -104,6 +104,8 @@ MatchStrategyValue = Literal[
 
 class SportsbookBetFields(BaseModel):
     lay_plan_json: str | None = Field(default=None, max_length=12000)
+    profit_boost_source_json: str | None = Field(default=None, max_length=4000)
+    conditional_benefit_json: str | None = Field(default=None, max_length=4000)
     sportsbook_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(min_length=1, max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -117,7 +119,7 @@ class SportsbookBetFields(BaseModel):
     result: ResultValue
     back_stake: str = Field(default="", max_length=40)
     back_odds: str = Field(default="", max_length=40)
-    profit_boost_mode: Literal["", "displayed_odds", "percentage"] = ""
+    profit_boost_mode: Literal["", "displayed_odds", "total_return", "profit_only", "percentage"] = ""
     base_back_odds: str = Field(default="", max_length=40)
     profit_boost_percent: str = Field(default="", max_length=40)
     maximum_boost_winnings: str = Field(default="", max_length=40)
@@ -256,6 +258,11 @@ class SportsbookBetResponse(SportsbookBetFields):
     reference_boosted_odds: str | None
     effective_back_odds: str | None
     profit_boost_source: str | None
+    profit_boost_raw_derived_odds: str | None
+    profit_boost_bookmaker_total_return: str | None
+    profit_boost_effective_odds_return: str | None
+    profit_boost_potential_profit: str | None
+    profit_boost_equation: str | None
 
 
 class SportsbookCalculationPreviewResponse(BaseModel):
@@ -281,6 +288,11 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     reference_boosted_odds: str | None
     effective_back_odds: str | None
     profit_boost_source: str | None
+    profit_boost_raw_derived_odds: str | None
+    profit_boost_bookmaker_total_return: str | None
+    profit_boost_effective_odds_return: str | None
+    profit_boost_potential_profit: str | None
+    profit_boost_equation: str | None
 
 
 PAYOUT_AMOUNT_FORMAT_MESSAGE = "Enter a decimal amount using a full stop, for example 10.50."
@@ -499,20 +511,24 @@ def format_decimal(value: Decimal | None, *, decimals: int) -> str | None:
 def resolve_profit_boost(values: dict[str, Any]) -> ProfitBoostResult | None:
     if values.get("offer_type") != "Profit Boost":
         return None
+    from openforge_api.sportsbook_offer_metadata import parse_profit_boost_source
+    source = parse_profit_boost_source(values.get("profit_boost_source_json"))
     mode = cast(
-        Literal["displayed_odds", "percentage"],
-        values.get("profit_boost_mode") or "displayed_odds",
+        Literal["displayed_odds", "total_return", "profit_only", "percentage"],
+        source.mode if source else values.get("profit_boost_mode") or "displayed_odds",
     )
     return calculate_profit_boost(
         ProfitBoostInput(
             profile_id=str(values["profile_id"]),
             mode=mode,
             back_stake=str(values.get("back_stake", "")),
-            base_back_odds=str(values.get("base_back_odds", "")),
-            profit_boost_percent=str(values.get("profit_boost_percent", "")),
-            boosted_back_odds=str(values.get("back_odds", "")),
+            base_back_odds=source.base_back_odds if source else str(values.get("base_back_odds", "")),
+            profit_boost_percent=source.profit_boost_percent if source else str(values.get("profit_boost_percent", "")),
+            boosted_back_odds=source.boosted_back_odds if source else str(values.get("back_odds", "")),
+            total_potential_return=source.total_potential_return if source else "",
+            potential_profit=source.potential_profit if source else "",
             actual_accepted_back_odds=str(values.get("actual_accepted_back_odds", "")),
-            maximum_boost_winnings=str(values.get("maximum_boost_winnings", "")),
+            maximum_boost_winnings=source.maximum_boost_winnings if source else str(values.get("maximum_boost_winnings", "")),
         )
     )
 
@@ -523,11 +539,21 @@ def serialize_profit_boost(result: ProfitBoostResult | None) -> dict[str, str | 
             "reference_boosted_odds": None,
             "effective_back_odds": None,
             "profit_boost_source": None,
+            "profit_boost_raw_derived_odds": None,
+            "profit_boost_bookmaker_total_return": None,
+            "profit_boost_effective_odds_return": None,
+            "profit_boost_potential_profit": None,
+            "profit_boost_equation": None,
         }
     return {
         "reference_boosted_odds": format_decimal(result.reference_boosted_odds, decimals=4),
         "effective_back_odds": format_decimal(result.effective_back_odds, decimals=4),
         "profit_boost_source": result.boost_source,
+        "profit_boost_raw_derived_odds": result.raw_derived_odds,
+        "profit_boost_bookmaker_total_return": format_decimal(result.bookmaker_total_return, decimals=2),
+        "profit_boost_effective_odds_return": format_decimal(result.effective_odds_return, decimals=2),
+        "profit_boost_potential_profit": format_decimal(result.potential_profit, decimals=2),
+        "profit_boost_equation": result.equation,
     }
 
 
@@ -562,6 +588,12 @@ def _build_response(
     percentage(record["bonus_retention_rate"], "bonus_retention_rate")
     percentage(record["profit_boost_percent"], "profit_boost_percent")
     validate_free_bet_commission(resolved_commission)
+    cashback_amount = record["maximum_bonus"]
+    if record["offer_type"] == "Cashback" and record.get("conditional_benefit_json"):
+        from openforge_api.sportsbook_offer_metadata import parse_conditional_benefit
+        benefit = parse_conditional_benefit(record["conditional_benefit_json"])
+        if record["result"] in {"Back Won + Cashback", "Lay Won + Cashback"}:
+            cashback_amount = benefit.actual_receipt_amount if benefit and benefit.refund_kind == "cash" else ""
     calculation = calculate_sportsbook_current_value(
         SportsbookCalculationInput(
             profile_id=record["profile_id"],
@@ -572,7 +604,7 @@ def _build_response(
             back_stake=record["back_stake"],
             back_odds=effective_back_odds or "",
             bonus_trigger=record["bonus_trigger"],
-            maximum_bonus=record["maximum_bonus"],
+            maximum_bonus=cashback_amount,
             bonus_retention_rate=record["bonus_retention_rate"],
             match_strategy=record["match_strategy"],
             lay_odds_1=record["lay_odds_1"],
@@ -666,7 +698,10 @@ def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
     from openforge_api.lay_plan import validate_plan_write
-    return validate_plan_write(profile_id, parsed.model_dump(), basis="Normal")
+    from openforge_api.sportsbook_offer_metadata import validate_offer_metadata
+    return validate_offer_metadata(
+        profile_id, validate_plan_write(profile_id, parsed.model_dump(), basis="Normal")
+    )
 
 
 def prepare_write_response(row: object, commissions: dict[str, str]) -> SportsbookBetResponse:
@@ -852,11 +887,14 @@ def preview_profile_sportsbook_bet(
     resolved_commission = get_profile_exchange_commission(profile_id, payload.exchange_name)
     values = {**payload.model_dump(), "profile_id": profile_id}
     from openforge_api.lay_plan import parse_plan, validate_plan_write
-    validated = validate_plan_write(profile_id, payload.model_dump(), basis="Normal")
+    from openforge_api.sportsbook_offer_metadata import validate_offer_metadata
+    validated = validate_offer_metadata(
+        profile_id, validate_plan_write(profile_id, payload.model_dump(), basis="Normal")
+    )
     plan = parse_plan(validated["lay_plan_json"]) if validated.get("lay_plan_json") else None
     if plan:
         resolved_commission = payload.lay_commission_1 or plan.commission
-    profit_boost = resolve_profit_boost(values)
+    profit_boost = resolve_profit_boost({**values, **validated})
     effective_back_odds = (
         format_decimal(profit_boost.effective_back_odds, decimals=4)
         if profit_boost and profit_boost.effective_back_odds is not None

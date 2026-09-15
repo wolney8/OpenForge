@@ -1472,6 +1472,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           back_stake TEXT NOT NULL,
           back_odds TEXT NOT NULL,
           profit_boost_mode TEXT NOT NULL DEFAULT '',
+          profit_boost_source_json TEXT,
+          conditional_benefit_json TEXT,
           base_back_odds TEXT NOT NULL DEFAULT '',
           profit_boost_percent TEXT NOT NULL DEFAULT '',
           maximum_boost_winnings TEXT NOT NULL DEFAULT '',
@@ -2007,6 +2009,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "sportsbook_bets", "market", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "lay_actual", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "profit_boost_mode", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "profit_boost_source_json", "TEXT")
+    ensure_column(connection, "sportsbook_bets", "conditional_benefit_json", "TEXT")
     ensure_column(connection, "sportsbook_bets", "base_back_odds", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "profit_boost_percent", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -3378,6 +3382,8 @@ class SportsbookBetRecord:
     back_stake: str
     back_odds: str
     profit_boost_mode: str
+    profit_boost_source_json: str | None
+    conditional_benefit_json: str | None
     base_back_odds: str
     profit_boost_percent: str
     maximum_boost_winnings: str
@@ -3778,6 +3784,8 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
         "back_stake": payload["back_stake"],
         "back_odds": payload["back_odds"],
         "profit_boost_mode": payload.get("profit_boost_mode", ""),
+        "profit_boost_source_json": payload.get("profit_boost_source_json"),
+        "conditional_benefit_json": payload.get("conditional_benefit_json"),
         "base_back_odds": payload.get("base_back_odds", ""),
         "profit_boost_percent": payload.get("profit_boost_percent", ""),
         "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
@@ -3829,6 +3837,8 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
               back_stake,
               back_odds,
               profit_boost_mode,
+              profit_boost_source_json,
+              conditional_benefit_json,
               base_back_odds,
               profit_boost_percent,
               maximum_boost_winnings,
@@ -3859,7 +3869,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
               created_at,
               updated_at
             ) VALUES (
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?
@@ -3915,6 +3925,8 @@ def update_sportsbook_bet(
         "back_stake": payload["back_stake"],
         "back_odds": payload["back_odds"],
         "profit_boost_mode": payload.get("profit_boost_mode", ""),
+        "profit_boost_source_json": payload.get("profit_boost_source_json"),
+        "conditional_benefit_json": payload.get("conditional_benefit_json"),
         "base_back_odds": payload.get("base_back_odds", ""),
         "profit_boost_percent": payload.get("profit_boost_percent", ""),
         "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
@@ -3946,6 +3958,17 @@ def update_sportsbook_bet(
             raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
         from openforge_api.lay_plan import store_plan
         updated["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, sportsbook_bet_id, payload.get("lay_plan_json"), updating=True)
+        from openforge_api.sportsbook_offer_metadata import advance_metadata_revision
+        updated["profit_boost_source_json"] = advance_metadata_revision(
+            current["profit_boost_source_json"],
+            updated["profit_boost_source_json"],
+            kind="profit_boost",
+        )
+        updated["conditional_benefit_json"] = advance_metadata_revision(
+            current["conditional_benefit_json"],
+            updated["conditional_benefit_json"],
+            kind="conditional_benefit",
+        )
         linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         operation = connection.execute("SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         qualifying_activity = current["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current["status"] in {"Placed", "Settled", "Free Bet Awarded"}
@@ -3969,6 +3992,8 @@ def update_sportsbook_bet(
               back_stake = ?,
               back_odds = ?,
               profit_boost_mode = ?,
+              profit_boost_source_json = ?,
+              conditional_benefit_json = ?,
               base_back_odds = ?,
               profit_boost_percent = ?,
               maximum_boost_winnings = ?,
@@ -4007,6 +4032,8 @@ def update_sportsbook_bet(
                 updated["back_stake"],
                 updated["back_odds"],
                 updated["profit_boost_mode"],
+                updated["profit_boost_source_json"],
+                updated["conditional_benefit_json"],
                 updated["base_back_odds"],
                 updated["profit_boost_percent"],
                 updated["maximum_boost_winnings"],

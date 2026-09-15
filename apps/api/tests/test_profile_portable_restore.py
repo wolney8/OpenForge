@@ -48,6 +48,11 @@ def seed_operational_tracker_settings() -> None:
               profile_id, active_date_preset, custom_start_date, custom_end_date,
               created_at, updated_at
             ) VALUES (?, 'This Year', '', '', ?, ?)
+            ON CONFLICT(profile_id) DO UPDATE SET
+              active_date_preset = excluded.active_date_preset,
+              custom_start_date = excluded.custom_start_date,
+              custom_end_date = excluded.custom_end_date,
+              updated_at = excluded.updated_at
             """,
             ("profile-portable-test", timestamp, timestamp),
         )
@@ -58,7 +63,8 @@ def seed_operational_tracker_settings() -> None:
         )
         connection.execute(
             "UPDATE accounts SET channel = 'Online' "
-            "WHERE profile_id = 'profile-portable-test' AND account_id = 'ACCOUNT-Z'"
+            "WHERE profile_id = 'profile-portable-test' "
+            "AND account_id IN ('ACCOUNT-Z', 'ACCOUNT-EXCHANGE')"
         )
         connection.execute(
             "UPDATE sportsbook_bets SET result = 'Win' WHERE profile_id = 'profile-portable-test'"

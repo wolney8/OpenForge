@@ -197,7 +197,8 @@ SHEET_SPECS = (
             "partial_lay_reminder_due_at partial_lay_reminder_reason "
             "partial_lay_reminder_resolution_note partial_lay_reminder_resolved_at "
             "partial_lay_reminder_resolved_by user_notes manual_override_value "
-            "manual_override_reason created_at updated_at lay_plan_json"
+            "manual_override_reason created_at updated_at lay_plan_json "
+            "profit_boost_source_json conditional_benefit_json"
         ),
         ("sportsbook_bet_id",),
         decimal_fields=frozenset(
@@ -217,7 +218,7 @@ SHEET_SPECS = (
                 "manual_override_value",
             }
         ),
-        json_fields=frozenset({"multi_lay_outcomes_json", "lay_plan_json"}),
+        json_fields=frozenset({"multi_lay_outcomes_json", "lay_plan_json", "profit_boost_source_json", "conditional_benefit_json"}),
         timestamp_fields=COMMON_TIMESTAMPS,
     ),
     SheetSpec(
@@ -560,6 +561,18 @@ def _canonical_value(spec: SheetSpec, field: str, value: Any) -> str:
                 parse_plan(value if isinstance(value, str) else json.dumps(value))
             except ValueError as error:
                 raise PortableExportError(f"{spec.name}.lay_plan_json requires correction: {error}") from error
+        if field == "profit_boost_source_json" and value:
+            from openforge_api.sportsbook_offer_metadata import parse_profit_boost_source
+            try:
+                parse_profit_boost_source(value if isinstance(value, str) else json.dumps(value))
+            except ValueError as error:
+                raise PortableExportError(f"{spec.name}.profit_boost_source_json requires correction: {error}") from error
+        if field == "conditional_benefit_json" and value:
+            from openforge_api.sportsbook_offer_metadata import parse_conditional_benefit
+            try:
+                parse_conditional_benefit(value if isinstance(value, str) else json.dumps(value))
+            except ValueError as error:
+                raise PortableExportError(f"{spec.name}.conditional_benefit_json requires correction: {error}") from error
         if isinstance(value, str):
             try:
                 value = json.loads(value)

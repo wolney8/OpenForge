@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import time
 from pathlib import Path
 
@@ -29,17 +30,36 @@ def configure_temp_database(tmp_path: Path) -> None:
         connection.commit()
 
 
-def test_unsupported_cashback_credit_remains_fail_closed(tmp_path: Path) -> None:
+def test_cashback_credit_conversion_preserves_pending_credit_provenance(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
     payload = standard_payload(["profile-demo-001"])
-    payload["calculator"].update(bet_type="cashback", cashback_reward_kind="free_bet")
+    payload["calculator"].update(
+        bet_type="cashback", cashback_reward_kind="free_bet", promotion_value="10.00"
+    )
     payload["source"]["calculator_mode"] = "cashback"
+    payload["offer_type"] = "Cashback"
     response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
-    assert response.status_code == 422
-    with connect() as connection:
-        assert connection.execute("SELECT COUNT(*) AS count FROM sportsbook_bets").fetchone()["count"] == 0
-        assert connection.execute("SELECT COUNT(*) AS count FROM free_bets").fetchone()["count"] == 0
+    assert response.status_code == 200, response.text
+    result = response.json()["results"][0]
+    row = client.get(
+        f"/profiles/profile-demo-001/sportsbook-bets/{result['record_id']}"
+    ).json()
+    benefit = json.loads(row["conditional_benefit_json"])
+    assert benefit == {
+        "schema_version": "conditional-benefit-v1",
+        "revision": 0,
+        "refund_kind": "free_bet",
+        "eligibility": "pending",
+        "eligible_amount": "10.00",
+        "refund_cap": "",
+        "actual_receipt_amount": "",
+        "receipt_identity": "",
+        "receipt_date": "",
+        "linked_awarded_credit_id": "",
+    }
 
 
 def add_account(
@@ -392,13 +412,13 @@ def test_standard_governed_offer_modes_map_to_authoritative_sportsbook_fields(
                 "profit_boost_mode": "total_return",
                 "total_potential_return": "32.00",
             },
-            "displayed_odds",
+            "total_return",
         ),
         (
             "profit_boost",
             "Profit Boost",
             {"back_odds": "", "profit_boost_mode": "profit_only", "potential_profit": "22.00"},
-            "displayed_odds",
+            "profit_only",
         ),
         (
             "profit_boost",
@@ -430,6 +450,9 @@ def test_standard_governed_offer_modes_map_to_authoritative_sportsbook_fields(
         assert row["offer_type"] == offer_type
         assert row["profit_boost_mode"] == destination_boost_mode
         assert row["calculation_state"] == "resolved"
+        if source_mode == "profit_boost":
+            metadata = json.loads(row["profit_boost_source_json"])
+            assert metadata["mode"] == overrides["profit_boost_mode"]
 
 
 def test_standard_custom_and_part_lay_preserve_explicit_stake(tmp_path: Path) -> None:
@@ -552,6 +575,95 @@ def test_conversion_envelope_retains_audited_reference_result(tmp_path: Path) ->
     envelope = json.loads(row["source_envelope_json"])
     assert envelope["canonical_inputs"]["calculator"]["profit_boost_mode"] == "total_return"
     assert envelope["canonical_inputs"]["reference_result"]["effective_back_odds"] == "3.2000"
+
+
+def test_cashback_counts_only_confirmed_cash_receipt_and_retains_cap(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = standard_payload(["profile-demo-001"])
+    payload["calculator"].update(
+        bet_type="cashback",
+        cashback_reward_kind="cash",
+        promotion_value="10.00",
+    )
+    payload["source"]["calculator_mode"] = "cashback"
+    payload["offer_type"] = "Cashback"
+    response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    assert response.status_code == 200, response.text
+    record_id = response.json()["results"][0]["record_id"]
+    row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{record_id}").json()
+    benefit = json.loads(row["conditional_benefit_json"])
+    benefit.update(
+        eligibility="eligible",
+        refund_cap="8.00",
+        actual_receipt_amount="8.00",
+        receipt_identity="SYNTHETIC-RECEIPT-001",
+        receipt_date="2026-09-15",
+    )
+    update = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{record_id}",
+        json={
+            **row,
+            "status": "Settled",
+            "result": "Lay Won + Cashback",
+            "lay_actual": "9.00",
+            "lay_matched_stake_1": "9.00",
+            "date_settled": "2026-09-15T12:00:00+00:00",
+            "conditional_benefit_json": json.dumps(benefit),
+        },
+    )
+    assert update.status_code == 200, update.text
+    settled = update.json()
+    assert settled["final_net_pnl"] == "6.82"
+    assert json.loads(settled["conditional_benefit_json"])["revision"] == 1
+
+
+def test_profit_boost_keeps_bookmaker_return_distinct_from_accepted_odds(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = authenticated_client()
+    add_account(client, "profile-demo-001", "Bet365", "Bookie")
+    add_account(client, "profile-demo-001", "Smarkets", "Exchange")
+    payload = standard_payload(["profile-demo-001"])
+    payload["calculator"].update(
+        bet_type="profit_boost",
+        back_odds="",
+        profit_boost_mode="total_return",
+        total_potential_return="27.86",
+        actual_accepted_back_odds="2.79",
+    )
+    payload["source"]["calculator_mode"] = "profit_boost"
+    payload["offer_type"] = "Profit Boost"
+    response = client.post("/fund-manager/calculator-conversions/standard", json=payload)
+    assert response.status_code == 200, response.text
+    record_id = response.json()["results"][0]["record_id"]
+    row = client.get(f"/profiles/profile-demo-001/sportsbook-bets/{record_id}").json()
+    assert row["profit_boost_mode"] == "total_return"
+    assert row["reference_boosted_odds"] == "2.7800"
+    assert row["effective_back_odds"] == "2.7900"
+    assert row["profit_boost_bookmaker_total_return"] == "27.86"
+    assert row["profit_boost_effective_odds_return"] == "27.90"
+
+
+def test_sportsbook_offer_metadata_sqlite_upgrade_is_additive_and_repeatable(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    database_path = tmp_path / "calculator-conversions.sqlite3"
+    with connect():
+        pass
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("ALTER TABLE sportsbook_bets DROP COLUMN profit_boost_source_json")
+        connection.execute("ALTER TABLE sportsbook_bets DROP COLUMN conditional_benefit_json")
+    for _ in range(2):
+        with connect() as connection:
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(sportsbook_bets)").fetchall()
+            }
+            assert "profit_boost_source_json" in columns
+            assert "conditional_benefit_json" in columns
 
 
 def test_standard_source_mode_and_unsupported_bonus_trigger_fail_before_writes(

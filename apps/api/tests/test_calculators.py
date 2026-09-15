@@ -195,7 +195,8 @@ def test_standard_offer_modes_return_contract_backed_outcomes_without_writes(
         json={**base, "bet_type": "cashback", "promotion_value": "5"},
     )
     assert cashback.status_code == 200
-    assert cashback.json()["outcomes"][1]["promotion_component"] == "5.00"
+    assert cashback.json()["outcomes"][1]["promotion_component"] is None
+    assert cashback.json()["outcomes"][2]["promotion_component"] == "5.00"
 
     profit_modes = [
         ({"profit_boost_mode": "displayed_odds", "boosted_back_odds": "3.20"}, "3.2000"),

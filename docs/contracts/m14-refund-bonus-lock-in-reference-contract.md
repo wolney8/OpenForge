@@ -26,14 +26,11 @@ remain unchanged. Fresh Cashback seeds its editable eligible cap from stake, Cas
 estimated credit retention; opening an explicit saved/pop-out state preserves its values.
 Changing Simple/Advanced within an offer does not use this reset. Reset clears drafts.
 
-**C08 destination blocker (not standalone calculation):** `maximum_bonus` stores an eligible
-cap, not proof of a receipt. `lay-plan-v1` only governs Normal/SNR hedge planning and forbids
-extra fields. Neither can faithfully store conditional refund kind, actual received amount,
-receipt identity/date or linked awarded-credit identity. Full embedded receipt/credit delivery
-needs an explicitly approved typed conditional-benefit field/contract on the existing ledger
-(no backfill), plus the existing award lineage consumer. No new field or migration is implemented
-under the two lay-plan-column approval. Existing cash-cap settlement is legacy authority, not
-evidence that actual receipt provenance is implemented; credit conversion remains fail closed.
+**C08 destination contract:** new Sportsbook rows may store `conditional-benefit-v1` separately
+from `lay-plan-v1`. It records cash/free-bet kind, eligibility, eligible amount, cap and confirmed
+receipt identity/date/amount. Cash enters settlement once only after explicit receipt. Free Bet
+credit remains non-cash and links to an existing Profile-owned award row; its later realised profit
+continues to come from that Free Bet row. Historical rows are not backfilled or reinterpreted.
 
 - Status: Approved for Normal and Free Bet (SNR) backing bets with Back Loses/Back Wins
   rewards across Standard, Underlay, Overlay, Custom and explicit Part Lay

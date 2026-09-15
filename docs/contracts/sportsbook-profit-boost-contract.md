@@ -1,12 +1,13 @@
 # Contract: Sportsbook Profit Boost Workflow
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-15_
 
 ## Purpose
 
 Define the approved Profit Boost sportsbook workflow so Plum Duff can support:
 
 - bookmaker-displayed boosted odds
+- bookmaker total-return and profit-only displays
 - percentage-only boosts where the bookmaker shows the uplift but not the final odds
 
 This contract is workflow-facing. The formula source remains:
@@ -42,15 +43,19 @@ The compatibility value `displayed_odds` now means the explicit final boosted-od
 UI label is `Entered boosted odds`: a user may type bookmaker-provided odds or explicitly apply the
 temporary payout helper. The persisted identifier is unchanged.
 
-### Payout-to-odds helper
+### Bookmaker total return
 
-- Uses the existing cash back stake and a temporary total-potential-return input.
+- Stores the bookmaker's total-potential-return input in `profit-boost-source-v1`.
 - Supports cash-stake returns including returned stake only; profit-only winnings and
   stake-not-returned free-bet payouts are invalid.
-- Shows raw implied odds and the conservative two-decimal floored odds, then requires an explicit
-  `Use calculated odds` action.
-- Never overwrites actual accepted odds, never reapplies boost percentage/cap, and never persists
-  payout inputs or helper provenance.
+- Shows raw implied odds and the conservative two-decimal floored hedge odds.
+- Preserves the bookmaker return separately from the odds-based conservative return.
+
+### Bookmaker profit
+
+- Stores potential profit excluding returned stake in `profit-boost-source-v1`.
+- Uses `1 + profit / stake` before the ordinary four-decimal odds rule.
+- Does not apply the total-return flooring rule.
 
 ### Percentage-only boost
 
@@ -70,13 +75,9 @@ Optional:
 - maximum boost winnings cap
 - actual accepted back odds
 
-### Standalone derived-price sources
-
-The standalone Standard calculator additionally accepts either total return (including returned
-cash stake) or profit/winnings (excluding returned stake). Total return retains the existing
-two-decimal conservative payout-helper floor; profit-only uses exact `1 + profit / stake` before
-the ordinary four-decimal odds rule. These temporary inputs are not written to Sportsbook rows.
-The ledger's existing payout helper remains total-return-only and still requires explicit apply.
+All four sources are available in standalone, conversion and native Sportsbook planning. The
+nullable source document is versioned and server validated. Historical rows without it retain
+their existing behaviour and are not backfilled.
 
 ## Required UX behaviour
 

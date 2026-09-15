@@ -330,7 +330,7 @@ def _restore_row(spec: SheetSpec, source: Mapping[str, str]) -> dict[str, Any]:
         raise PortableRestoreError(f"{spec.name} null metadata names an unknown field")
     row: dict[str, Any] = {}
     for field in spec.columns:
-        if field == "lay_plan_json" and field not in source:
+        if field in {"lay_plan_json", "profit_boost_source_json", "conditional_benefit_json"} and field not in source:
             row[field] = None
             continue
         value = source[field]
@@ -407,10 +407,16 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
     parsed: dict[str, tuple[dict[str, Any], ...]] = {}
     for spec in PORTABLE_PAYLOAD_SPECS:
         columns = _expected_columns(spec)
-        # Older v1 backups predate the optional additive planning column. Validate
-        # their original headers/checksums before representing absent plans as null.
-        if spec.name in {"Sportsbook", "Free Bets"} and sheets[spec.name][0] == [c for c in columns if c != "lay_plan_json"]:
-            columns = tuple(c for c in columns if c != "lay_plan_json")
+        # Older backups predate additive, nullable planning/source metadata. Validate
+        # their original headers/checksums before representing absent fields as null.
+        optional = {"lay_plan_json"} if spec.name == "Free Bets" else (
+            {"lay_plan_json", "profit_boost_source_json", "conditional_benefit_json"}
+            if spec.name == "Sportsbook" else set()
+        )
+        header = sheets[spec.name][0]
+        missing_optional = {field for field in optional if field not in header}
+        if missing_optional and header == [c for c in columns if c not in missing_optional]:
+            columns = tuple(c for c in columns if c not in missing_optional)
         rows = _tabular_rows(sheets, spec.name, columns)
         declared = by_name[spec.name]
         if declared["authority_role"] != spec.authority_role:
@@ -953,6 +959,14 @@ def _resolved_rows(
                 if not account_id:
                     raise PortableRestoreError("lay_plan_json Exchange Account identity cannot be resolved")
                 row["lay_plan_json"] = plan.model_copy(update={"exchange_account_id": account_id}).model_dump_json()
+            if spec.name == "Sportsbook" and row.get("conditional_benefit_json"):
+                from openforge_api.sportsbook_offer_metadata import parse_conditional_benefit
+                benefit = parse_conditional_benefit(str(row["conditional_benefit_json"]))
+                if benefit and benefit.linked_awarded_credit_id:
+                    child_id = identity_maps.get("free_bet", {}).get(benefit.linked_awarded_credit_id)
+                    if not child_id:
+                        raise PortableRestoreError("conditional benefit awarded-credit identity cannot be resolved")
+                    row["conditional_benefit_json"] = benefit.model_copy(update={"linked_awarded_credit_id": child_id}).model_dump_json()
             if spec.name == "Profile":
                 row["profile_id"] = target_profile_id
                 row["display_name"] = target_display_name
@@ -1162,6 +1176,11 @@ def _normalized_projection(
                 from openforge_api.lay_plan import parse_plan
                 plan = parse_plan(str(row["lay_plan_json"]))
                 row["lay_plan_json"] = plan.model_copy(update={"exchange_account_id": inverse.get("account", {}).get(plan.exchange_account_id, plan.exchange_account_id)}).model_dump_json()
+            if spec.name == "Sportsbook" and row.get("conditional_benefit_json"):
+                from openforge_api.sportsbook_offer_metadata import parse_conditional_benefit
+                benefit = parse_conditional_benefit(str(row["conditional_benefit_json"]))
+                if benefit and benefit.linked_awarded_credit_id:
+                    row["conditional_benefit_json"] = benefit.model_copy(update={"linked_awarded_credit_id": inverse.get("free_bet", {}).get(benefit.linked_awarded_credit_id, benefit.linked_awarded_credit_id)}).model_dump_json()
             if spec.name == "Source Identities" and row.get("entity_id"):
                 domain = str(row.get("entity_type") or "")
                 identity_domain = ENTITY_IDENTITY_DOMAINS.get(domain, domain)
