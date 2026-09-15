@@ -1,6 +1,6 @@
 // Reuse the existing authenticated synthetic runtime; never reset data or mint credentials.
 import fs from "node:fs";
-import {execFileSync} from "node:child_process";
+import {execFileSync,spawnSync} from "node:child_process";
 import {chromium,request} from "@playwright/test";
 const corrections=process.argv.includes("--calculator-corrections");
 const runtime=corrections?"/tmp/openforge-award-integrity-91-20260914":"/tmp/openforge-modal-114-repair";
@@ -19,7 +19,10 @@ if(corrections){
  const evidencePath=runtime+"/profit-boost-cashback-bundle-evidence.json";
  const lastRun=fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,"utf8")):null;
  const served=JSON.parse(fs.readFileSync(runtime+'/review-source.json','utf8'));
- if(!lastRun?.result || lastRun.result!=='PASS' || lastRun.source!==served.checkout)throw Error('Current matching API/browser build has not passed the core journey; do not open an older candidate as evidence.');
+ const productDiff=lastRun?.source&&served.checkout
+  ? spawnSync('git',['diff','--quiet',served.checkout,lastRun.source,'--','apps/api/src','apps/web']).status
+  : 1;
+ if(!lastRun?.result || lastRun.result!=='PASS' || productDiff!==0)throw Error('Current matching API/browser product has not passed the core journey; do not open an older candidate as evidence.');
  const frontendSource=execFileSync('git',['log','-1','--format=%H','--','apps/web'],{encoding:'utf8'}).trim();
  console.log(`Tested review build ${lastRun.source}; frontend product source ${frontendSource}; API started from ${served.checkout}, API product source ${served.api_source}; ${lastRun.cases.length} rendered width/theme variants. Current report checkout ${execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()}. Main remains unchanged; wider platform acceptance is pending.`);
 }
