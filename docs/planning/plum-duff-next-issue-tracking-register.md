@@ -2,8 +2,8 @@
 
 ## PD-CALC-20260914 — active owner corrections
 
-Current useful bundle product **ed338a1b1d9e8d4072066da2e310eb2be2ba26fd**, harness
-**4c07d319fb02f0326d2c538df21ddc0b154aa68e**, local only. The approved existing-row metadata
+Current useful bundle product/browser harness **85eb33cf790e54b44414d009bbc9b5a836d6f2df**,
+PostgreSQL harness **4c07d319fb02f0326d2c538df21ddc0b154aa68e**, local only. The approved existing-row metadata
 preserves all four Profit Boost sources and conditional Cashback eligibility/cap/confirmed cash or
 linked Free Bet receipt across native entry, conversion, save/reopen and portable restore. Copy and
 Custom-slider actions update planning only; explicit actual placement controls financial results.
@@ -15,6 +15,8 @@ C05 changed-odds, persisted unmatched-order and multi-fill accounting remain uns
 C01 simultaneous cross-window edits and C02 interrupted/pending-confirm variants remain.
 Coverage stays46/87,8/24 exercised/passing,15/27 competitors,24/133 requirements.
 No normal-app integration, push, operational migration or deployment.
+Authenticated review-launch identity guard **e5e75f6552cd53d50817240bce22e5da1490ca08** checks the
+separately running frontend and API against the product paths each service actually serves.
 GitHub #35/#36/#83/#114 summary sync is pending because `gh` is unavailable locally; the current
 audit section is the exact handoff source.
 
@@ -22,7 +24,7 @@ audit section is the exact handoff source.
 
 | Item | User outcome and affected surfaces | Result / evidence / remaining issue |
 |---|---|---|
-| PB-01 | All four Profit Boost source methods work in native Sportsbook entry and calculator conversion, then save/reopen with source, hedge and accepted odds distinct. | COMPLETE / PROVEN: browser bundle, 70 focused tests and PostgreSQL evidence on 4c07d31 |
+| PB-01 | All four Profit Boost source methods work in native Sportsbook entry and calculator conversion, then save/reopen with source, hedge and accepted odds distinct. | COMPLETE / PROVEN: browser bundle on 85eb33c, 70 focused tests and PostgreSQL evidence on 4c07d31 |
 | PB-02 | Simple/Advanced planned references, Custom slider and Copy cannot record a placement; real stake/odds/commission require explicit placement. | COMPLETE / PROVEN: rendered desktop/half-width light/dark plus independent database assertions |
 | CB-01 | Conditional cash refund keeps eligibility/cap separate from a dated, identified receipt and counts it once at settlement/report. | COMPLETE / PROVEN: £10 eligible, £8 cap/receipt, £6.82 final result |
 | CB-02 | Free Bet refund remains linked promotional credit rather than cash, survives supported portable restore and uses award duplicate protection. | COMPLETE for one linked credit / PROVEN API and genuine award regression; split-group link remains UNSUPPORTED |

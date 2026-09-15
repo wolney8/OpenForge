@@ -10,7 +10,7 @@ remains private/unchanged; observed3010 revision UNKNOWN. Definitions, blanks an
 sub-status annotations are retained, not converted into fabricated zeros or discarded results.
 
 [Current corrective evidence and remaining C01–C09](platform-quality-audit.md#current-useful-delivery-bundle--2026-09-15--local-only).
-Current separate test product ed338a1b1d9e8d4072066da2e310eb2be2ba26fd preserves all four
+Current separate test product 85eb33cf790e54b44414d009bbc9b5a836d6f2df preserves all four
 Profit Boost sources and conditional Cashback through native/conversion planning, reopen, explicit
 placement and report. Copy/Custom slider remain planning-only. Seventy focused tests, actual browser
 and disposable PostgreSQL evidence pass; detailed limits remain in the current platform audit.
@@ -19,7 +19,8 @@ calculator reference boundary: Standard7.18, Underlay6.25, Overlay10.20, Custom9
 complete10/4/4.2/2% fixture.113 focused mathematical/bridge cases and12 percentage cases pass;
 real half-width controls and Normal negative accounting accessibility pass. This is not fresh
 external black-box parity or all-configuration acceptance. Corrected SNR Underlay/Overlay
-conversion fails closed until the destination planning contract preserves those semantics.
+conversion was blocked at that earlier revision; the current versioned planning contract now
+preserves those semantics through conversion and reopen.
 Historical source8276e2a reproduced6.66/9.33 using old workbook factors. Remaining C04 scope:
 embedded preset parity and negative-value clipboard verification. Historical placed/settled engines
 are unchanged. Normal10.20 Overlay API and rendered accessible accounting value are correctly
