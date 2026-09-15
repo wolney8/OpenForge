@@ -13,6 +13,8 @@ C05 changed-odds, persisted unmatched-order and multi-fill accounting remain uns
 C01 simultaneous cross-window edits and C02 interrupted/pending-confirm variants remain.
 Coverage stays46/87,8/24 exercised/passing,15/27 competitors,24/133 requirements.
 No normal-app integration, push, operational migration or deployment.
+GitHub #35/#36/#83/#114 summary sync is pending because `gh` is unavailable locally; the current
+audit section is the exact handoff source.
 
 The immediately following eb86c60 checkpoint is historical, not current reporting authority.
 

@@ -27,6 +27,9 @@ tested. Coverage remains **46/87 assessments (53%), 8/24 full tasks exercised (3
 (33%), 15/27 competitor cells (56%), 24/133 requests (18%)**. These are audit coverage measures,
 not percentages of the application finished.
 
+GitHub summary sync for #35/#36/#83/#114 is pending: `gh` was not installed in this worktree on
+2026-09-15. The intended summary is this section; no repeated authentication attempt was made.
+
 ## Historical calculator engineering continuation — 2026-09-14 / LOCAL ONLY
 
 Current separate test version checkpoint **3f7a71104ed07682aed256baea1a0dc71ce035f8**:
