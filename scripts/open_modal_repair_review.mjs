@@ -19,11 +19,14 @@ if(corrections){
  const evidencePath=runtime+"/profit-boost-cashback-bundle-evidence.json";
  const lastRun=fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,"utf8")):null;
  const served=JSON.parse(fs.readFileSync(runtime+'/review-source.json','utf8'));
- const productDiff=lastRun?.source&&served.checkout
-  ? spawnSync('git',['diff','--quiet',served.checkout,lastRun.source,'--','apps/api/src','apps/web']).status
+ const apiDiff=lastRun?.source&&served.checkout
+  ? spawnSync('git',['diff','--quiet',served.checkout,lastRun.source,'--','apps/api/src']).status
   : 1;
- if(!lastRun?.result || lastRun.result!=='PASS' || productDiff!==0)throw Error('Current matching API/browser product has not passed the core journey; do not open an older candidate as evidence.');
  const frontendSource=execFileSync('git',['log','-1','--format=%H','--','apps/web'],{encoding:'utf8'}).trim();
+ const frontendDiff=lastRun?.source
+  ? spawnSync('git',['diff','--quiet',frontendSource,lastRun.source,'--','apps/web']).status
+  : 1;
+ if(!lastRun?.result || lastRun.result!=='PASS' || apiDiff!==0 || frontendDiff!==0)throw Error('The running API or frontend does not match the product code that passed the core journey; do not open an older candidate as evidence.');
  console.log(`Tested review build ${lastRun.source}; frontend product source ${frontendSource}; API started from ${served.checkout}, API product source ${served.api_source}; ${lastRun.cases.length} rendered width/theme variants. Current report checkout ${execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()}. Main remains unchanged; wider platform acceptance is pending.`);
 }
 if(process.argv.includes("--check")){console.log(`Ready: authenticated synthetic ${url}`);process.exit(0);}
