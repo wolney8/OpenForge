@@ -196,6 +196,11 @@ accepted evidence for unchanged code; then reproduce, make the smallest correct 
 regressions, and commit/push the isolated change. Expand investigation or testing only when a
 changed dependency or observed failure justifies it.
 
+When an approved request spans storage, user interface and a saved workflow, deliver it as one useful,
+tested bundle. Small commits may remain separately reviewable, but do not stop at a backend-only
+checkpoint. Stop early only for a genuine blocker or execution limit, and record the exact remaining
+items and next executable step.
+
 Short version:
 
 1. Restate the objective.

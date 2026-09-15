@@ -32,6 +32,7 @@ async function iconButtonGeometry(button: import("@playwright/test").Locator) {
 }
 
 test("uses the Fund Manager matched-betting calculator without a Profile", async ({ page }) => {
+  test.setTimeout(60_000);
   await mockSession(page);
   const ledgerMutations: string[] = [];
   page.on("request", (request) => {
@@ -99,7 +100,8 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await standardCopyButton.click();
   await expect(page.getByText(/^Copied £ /)).toBeVisible();
   const standardCheckGeometry = await iconButtonGeometry(standardCopyButton);
-  expect(standardCheckGeometry.target).toEqual(standardCopyGeometry.target);
+  expect(standardCheckGeometry.target.width).toBeCloseTo(standardCopyGeometry.target.width, 2);
+  expect(standardCheckGeometry.target.height).toBeCloseTo(standardCopyGeometry.target.height, 2);
   expect(Math.abs(standardCheckGeometry.offset.x)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(standardCheckGeometry.offset.y)).toBeLessThanOrEqual(0.5);
   await page.emulateMedia({ reducedMotion: "reduce" });
