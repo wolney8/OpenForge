@@ -150,17 +150,16 @@ test("Bonus Lock-In advanced references drive selected, copied, and converted st
   await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
   await page.getByLabel("Back stake").fill("5"); await page.getByLabel("Back odds").fill("9.24"); await page.getByLabel("Lay odds").fill("10.5");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("5");
+  await page.getByRole("button", { name: "Advanced", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
-  await page.getByLabel("Actual selected strategy").selectOption("Underlay");
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]')).toContainText("£ 1.50");
-  await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]').getByRole("button").click();
+  await page.getByRole("button", { name: "Apply Underlay" }).click();
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
+  await page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("1.50");
   expect(previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Underlay", retention_percent: "70", exchange_commission: "0" });
-  await page.getByLabel("Bet Type").selectOption("SNR");
-  await page.getByLabel("Bonus Applied If Bet").selectOption("Back Wins");
-  await page.getByLabel("Actual selected strategy").selectOption("Overlay");
-  await expect.poll(() => previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "SNR", bonus_trigger: "Back Wins", strategy: "Overlay" });
+  await page.getByRole("button", { name: "Apply Overlay" }).click();
+  await expect.poll(() => previewRequests.at(-1)).toMatchObject({ bonus_backing_bet: "Normal", bonus_trigger: "Lay Wins", strategy: "Overlay" });
 });
 
 test("Profit Boost explains payout-derived odds before lay inputs are complete", async ({ page }) => {

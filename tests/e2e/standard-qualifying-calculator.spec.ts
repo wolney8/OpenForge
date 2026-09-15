@@ -216,8 +216,8 @@ test("routes the governed Bonus controls to the displayed and copied strategy", 
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ (0.03)");
   await page.getByRole("button", { name: "Apply Overlay" }).click();
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]')).toContainText("£ 4.34");
-  await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button').click();
+  await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
+  await page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]').getByRole("button", { name: /Copy Lay stake/ }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("4.34");
   expect(previewBodies.at(-1)).toMatchObject({
     bet_type: "bonus_lock_in",

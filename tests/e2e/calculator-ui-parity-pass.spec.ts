@@ -54,12 +54,48 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   await page.getByLabel("Back stake").fill("10");
   await page.getByLabel("Back odds").fill("4");
   await page.getByLabel("Lay odds").fill("4.2");
-  await page.getByLabel("Commission (%)").fill("2");
+  await page.getByLabel("Exchange commission (%)", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Advanced" }).click();
+  const topControlRows = await page.locator('.calculator-band-primary .ledger-calculator-mode-bar').first().evaluate((root) => ({
+    selectorTop: root.querySelector<HTMLElement>('#calculator-calculator-offer')!.getBoundingClientRect().top,
+    modeTop: root.querySelector<HTMLElement>('[data-pd-id="calculators.matched-betting.mode"]')!.getBoundingClientRect().top,
+  }));
+  expect(topControlRows.modeTop).toBeGreaterThan(topControlRows.selectorTop);
   await expect(page.locator('[data-pd-id="calculators.matched-betting.underlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.overlay"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.custom"]')).toBeVisible();
   await expect(page.getByRole("slider", { name: "Custom lay stake slider" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"]')).toContainText("Custom Lay reference");
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.custom-group"] [data-pd-id="calculator.custom-slider"]')).toBeVisible();
+  await expect(page.getByLabel("Actual selected strategy")).toHaveCount(0);
+  await expect(page.getByText("Decimal rate, for example 0.02", { exact: true })).toHaveCount(0);
+  const advancedOrder = await page.locator('[data-pd-id="calculators.matched-betting.results"]').evaluate((root) => {
+    const custom = root.querySelector('[data-pd-id="calculators.matched-betting.custom"]')!;
+    const slider = root.querySelector('[data-pd-id="calculator.custom-slider"]')!;
+    const outcomes = root.querySelector('[data-pd-id="calculators.outcomes"]')!;
+    return {
+      customBeforeSlider: Boolean(custom.compareDocumentPosition(slider) & Node.DOCUMENT_POSITION_FOLLOWING),
+      sliderBeforeOutcomes: Boolean(slider.compareDocumentPosition(outcomes) & Node.DOCUMENT_POSITION_FOLLOWING),
+    };
+  });
+  expect(advancedOrder).toEqual({ customBeforeSlider: true, sliderBeforeOutcomes: true });
+  const alignedReferences = await page.locator('[data-pd-id="calculators.matched-betting.results"]').evaluate((root) => {
+    const ids = ["calculators.matched-betting.custom-group", "calculators.outcomes"];
+    const outer = ids.map((id) => root.querySelector<HTMLElement>(`[data-pd-id="${id}"]`)!.getBoundingClientRect());
+    const pair = [...root.querySelectorAll<HTMLElement>('.calculator-advanced-reference-pair > .calculator-reference-section')].map((item) => item.getBoundingClientRect());
+    const rowGeometry = [...root.querySelectorAll<HTMLElement>('.calculator-reference-section')].map((section) => [...section.querySelectorAll<HTMLElement>('.calculator-outcome-scenario-row')].map((row) => {
+      const label = row.querySelector<HTMLElement>('strong:first-child')!.getBoundingClientRect();
+      const value = row.querySelector<HTMLElement>('strong:last-child')!.getBoundingClientRect();
+      return { labelRight: Math.round(label.right), valueLeft: Math.round(value.left) };
+    }));
+    return { outer: outer.map((box) => [Math.round(box.x), Math.round(box.width)]), pair: pair.map((box) => Math.round(box.width)), rowGeometry };
+  });
+  expect(alignedReferences.outer[0]).toEqual(alignedReferences.outer[1]);
+  expect(Math.abs(alignedReferences.pair[0] - alignedReferences.pair[1])).toBeLessThanOrEqual(1);
+  for (const rows of alignedReferences.rowGeometry) {
+    expect(new Set(rows.map((row) => row.labelRight)).size).toBe(1);
+    expect(new Set(rows.map((row) => row.valueLeft)).size).toBe(1);
+  }
   geometry = await pairedGeometry(page, "calculators.matched-betting.paired-segments");
   expect(geometry[0].fields[0]).toEqual(geometry[1].fields[0]);
   await page.getByLabel("Back stake").fill("invalid");
@@ -207,7 +243,7 @@ test("keeps the exact Standard controls contained across themes and calculator w
     await page.getByLabel("Back stake").fill("10");
     await page.getByLabel("Back odds").fill("4");
     await page.getByLabel("Lay odds").fill("4.2");
-    await page.getByLabel("Commission (%)").fill("2");
+    await page.getByLabel("Exchange commission (%)", { exact: true }).fill("2");
     await page.getByRole("button", { name: "Advanced" }).click();
     await page.getByRole("textbox", { name: "Custom Lay" }).focus();
     await expect(page.getByRole("textbox", { name: "Custom Lay" })).toBeFocused();
@@ -238,4 +274,16 @@ test("keeps the exact Standard controls contained across themes and calculator w
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   await expect.poll(() => page.locator("html").getAttribute("data-theme")).not.toBe(themeBefore);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+
+  await page.goto("/calculator?family=matched-betting&betType=free_bet&freeBetMode=SNR&backStake=10.00&backOdds=4.00&layOdds=4.20&exchangeCommission=0.02&commissionUnits=ratio&presentationMode=Advanced&strategy=Standard&customLayDraft=9.00");
+  await expect(page.getByLabel("Exchange commission (%)", { exact: true })).toHaveValue("2");
+  await expect(page.getByLabel("Actual selected strategy")).toHaveCount(0);
+  await expect(page.getByText("Decimal rate, for example 0.02", { exact: true })).toHaveCount(0);
+  const popoutOrder = await page.locator('[data-pd-id="calculators.matched-betting.results"]').evaluate((root) => [
+    root.querySelector('[data-pd-id="calculators.matched-betting.custom"]'),
+    root.querySelector('[data-pd-id="calculator.custom-slider"]'),
+    root.querySelector('[data-pd-id="calculators.outcomes"]'),
+  ].map((element) => [...root.querySelectorAll("*")].indexOf(element!)));
+  expect(popoutOrder[0]).toBeLessThan(popoutOrder[1]);
+  expect(popoutOrder[1]).toBeLessThan(popoutOrder[2]);
 });

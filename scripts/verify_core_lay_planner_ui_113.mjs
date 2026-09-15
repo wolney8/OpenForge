@@ -56,15 +56,18 @@ try {
  await core.getByLabel('Back odds',{exact:true}).fill('4.00');
  await core.getByLabel('Lay odds',{exact:true}).fill('4.20');
  await core.locator('label').filter({hasText:/^Exchange/}).locator('select').selectOption(accounts.Exchange.account_id);
- await expect(core.getByLabel('Planning Commission (%)',{exact:true})).toHaveValue('2');
+ await expect(core.getByLabel('Planning exchange commission (%)',{exact:true})).toHaveValue('2');
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
  try {await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();}
  catch(e) {console.log('CORE FAILED STATE',await core.innerText());throw e;}
  await core.getByRole('button',{name:'Apply '+chosen,exact:true}).click();
- const selected=core.locator('[data-pd-id$=".selected-reference"]');
+ const referenceFor=name=>core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
+ let selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
+ if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
  await selected.getByRole('row').first().getByRole('button').click();
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),planned);
+ if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  await core.locator('[data-pd-id$=".paired-segments"]').scrollIntoViewIfNeeded();
  await page.screenshot({path:`${runtime}/core-native-${basis}-${width}-${theme}.png`,fullPage:true});
  const save=dialog.getByRole('button',{name:'Save',exact:true});await expect(save).toBeEnabled();
@@ -80,28 +83,41 @@ try {
  await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
  await expect(core.getByRole('button',{name:'Apply Underlay',exact:true})).toBeEnabled();
- await expect(core.getByLabel('Planning Commission (%)')).toHaveValue('2');
+ await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
+ selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
+ if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
+ if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['9.00','28.80','1.20','8.82']};
  await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');
- await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
+ await expect(referenceFor('Custom').getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
  for(const name of (basis==='SNR'?['Underlay','Overlay','Custom']:[])) {
   const reference=core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
   for(const [i,value] of expected[name].entries())await expect(reference.getByRole('row').nth(i)).toHaveAttribute('aria-label',new RegExp(value.replace('-','').replace('.','\\.')));
-  const a=await reference.boundingBox(),b=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();assert(Math.abs(a.x-b.x)<=1&&Math.abs(a.width-b.width)<=1);
+ }
+ if(basis==='SNR') {
+  const pair=await core.locator('.calculator-advanced-reference-pair').boundingBox();
+  const customGroup=await core.locator('[data-pd-id$=".custom-group"]').boundingBox();
+  const outcomes=await core.locator('[data-pd-id$=".outcomes"]').boundingBox();
+  assert(Math.abs(pair.x-outcomes.x)<=1&&Math.abs(pair.width-outcomes.width)<=1);
+  assert(Math.abs(customGroup.x-outcomes.x)<=1&&Math.abs(customGroup.width-outcomes.width)<=1);
+  const underlay=await referenceFor('Underlay').boundingBox(),overlay=await referenceFor('Overlay').boundingBox();
+  assert(Math.abs(underlay.width-overlay.width)<=1);
  }
  await core.getByRole('button',{name:'Apply '+chosen,exact:true}).click();
+ if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
+ selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
  await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(planned.replace('.','\\.')));
  if(basis==='SNR'&&width===1440) {
   for(const [percentage,ratio] of [['0','0'],['5','0.05'],['2.125','0.02125'],['2','0.02']]) {
-   await core.getByLabel('Planning Commission (%)').fill(percentage);
+   await core.getByLabel('Planning exchange commission (%)').fill(percentage);
    await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
    await expect(save).toBeEnabled();await save.click();await expect(dialog).toBeHidden();
    const savedRow=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
    assert.equal(JSON.parse(savedRow.lay_plan_json).commission,ratio);assert.equal(JSON.parse(savedRow.lay_plan_json).commission_origin,'override');
    assert.equal(savedRow.lay_actual,'');
    await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
-   await expect(core.getByLabel('Planning Commission (%)')).toHaveValue(percentage);
+   await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue(percentage);
    await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
   }
   const result=core.locator('[data-pd-id$=".outcomes"]');await result.evaluate(el=>el.dataset.testIdentity='persistent');
@@ -117,19 +133,19 @@ try {
   await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();release();await page.unroute('**/matched-betting/preview',intercept);
   await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/12\.50/);
   await core.getByLabel('Back odds',{exact:true}).fill('4.00');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
-  await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
+  await core.getByLabel('Custom Lay',{exact:true}).fill('9.00');const customReference=referenceFor('Custom');await expect(customReference.getByRole('row').first()).toHaveAttribute('aria-label',/9\.00/);
   const slider=core.getByRole('slider',{name:'Custom lay stake slider'});await slider.focus();await page.keyboard.press('ArrowRight');
-  await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
+  await expect(customReference.getByRole('row').first().getByRole('button')).toBeEnabled();
   const current=await core.getByLabel('Custom Lay',{exact:true}).inputValue();
-  assert.notEqual(current,'9.00');await selected.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
+  assert.notEqual(current,'9.00');await customReference.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
   await expect(result).toHaveAttribute('data-test-identity','persistent');
-  await core.getByRole('button',{name:'Simple',exact:true}).click();await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/7\.18/);
-  await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/7\.18/);
-  await core.getByRole('button',{name:'Apply Underlay',exact:true}).click();await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
+  await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.getByRole('row').first()).toHaveAttribute('aria-label',/7\.18/);
+  await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
+  await core.getByRole('button',{name:'Apply Underlay',exact:true}).click();selected=referenceFor('Underlay');await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',/6\.25/);
  }
  await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
  await core.getByLabel('Actual lay odds',{exact:true}).fill('4.20');
- await core.getByLabel('Actual Commission (%)',{exact:true}).fill('2');
+ await core.getByLabel('Actual exchange commission (%)',{exact:true}).fill('2');
  await core.getByRole('button',{name:'Confirm actual placement',exact:true}).click();
  await expect(save).toBeEnabled();await save.click();await expect(dialog).toBeHidden();
  row=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
@@ -148,14 +164,14 @@ try {
  assert.equal(unchangedAfterCopy.lay_matched_stake_1,'6.00','Copying the remaining plan must not change the matched amount');
  await core.locator('[data-pd-id$=".partial-summary"]').scrollIntoViewIfNeeded();
  await page.screenshot({path:`${runtime}/core-partial-${basis}-${width}-${theme}.png`,fullPage:true});
- await expect(core.getByLabel('Planning Commission (%)',{exact:true})).toBeVisible();
+ await expect(core.getByLabel('Planning exchange commission (%)',{exact:true})).toBeVisible();
  let releasePlan,enteredPlan;
  const heldPlan=new Promise(resolve=>releasePlan=resolve),preparedPlan=new Promise(resolve=>enteredPlan=resolve);
  await page.route('**/matched-betting/preview',async route=>{
    if(route.request().postDataJSON().exchange_commission!=='0.05')return route.continue();
    const response=await route.fetch();enteredPlan();await heldPlan;await route.fulfill({response});
  });
- await core.getByLabel('Planning Commission (%)',{exact:true}).fill('5');
+ await core.getByLabel('Planning exchange commission (%)',{exact:true}).fill('5');
  await Promise.race([preparedPlan,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Plan response did not enter gate')),20000))]);
  await dialog.getByRole('tab',{name:/Settlement/}).first().click();
  const settlement=page.waitForResponse(r=>r.url().endsWith('/'+ledger+'/'+id)&&r.request().method()==='PUT');
@@ -185,7 +201,10 @@ try {
   const params=new URLSearchParams({family:'matched-betting',betType:basis==='SNR'?'free_bet':'qualifying',freeBetMode:'SNR',backStake:'10.00',backOdds:'4.00',layOdds:'4.20',exchangeCommission:'0.02',commissionUnits:'ratio',presentationMode:'Advanced',strategy,manualLayStake:strategy==='Custom'?'9.00':'',customLayDraft:'9.00',exchange:'Smarkets'});
   const path=width===760?'/calculator':'/fund-manager/calculators';
   await page.goto('http://localhost:3040'+path+'?'+params);
-  const sourceCopy=page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button');
+  if(strategy==='Standard')await page.getByRole('button',{name:'Simple',exact:true}).click();
+  const sourceCopy=strategy==='Standard'
+    ? page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button')
+    : page.locator(`[data-pd-id="calculators.matched-betting.${strategy.toLowerCase()}"]`).getByRole('row').first().getByRole('button');
   await expect(sourceCopy).toBeEnabled();await expect(sourceCopy).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
   await sourceCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   await page.screenshot({path:`${runtime}/core-standalone-${basis}-${strategy}-${width}-${theme}.png`,fullPage:true});
@@ -215,10 +234,10 @@ try {
   const readUrl='http://localhost:3040'+target.href;
   await page.goto(readUrl);const editor=page.locator(`[data-pd-id="${prefix}.editor.dialog"]`);await editor.waitFor();
   await editor.getByRole('tab',{name:/Matching/}).first().click();const core=editor.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
-  if(strategy==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
-  const selected=core.locator('[data-pd-id$=".selected-reference"]');
+  if(strategy==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
+  const selected=strategy==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : core.locator(`[data-pd-id$=".${strategy.toLowerCase()}"]`);
   await expect(selected.getByRole('row').first()).toHaveAttribute('aria-label',new RegExp(stake.replace('.','\\.')));
-  await expect(core.getByLabel('Planning Commission (%)')).toHaveValue('2');
+  await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
   await expect(selected.getByRole('row').first().getByRole('button')).toBeEnabled();
   await selected.getByRole('row').first().getByRole('button').click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
   assert.equal((await(await api.get(recordUrl)).json()).lay_actual,'','Copy must not place');
@@ -228,7 +247,7 @@ try {
   assert(geometry.scroll<=geometry.width+1,JSON.stringify(geometry));
   if(width===1440)assert(Math.abs(geometry.headings[0].top-geometry.headings[1].top)<=1,JSON.stringify(geometry));
   await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
-  await core.getByLabel('Actual Commission (%)').fill('2');await core.getByRole('button',{name:'Confirm actual placement',exact:true}).click();
+  await core.getByLabel('Actual exchange commission (%)').fill('2');await core.getByRole('button',{name:'Confirm actual placement',exact:true}).click();
   const save=editor.getByRole('button',{name:'Save',exact:true});await expect(save).toBeEnabled();await save.click();await expect(editor).toBeHidden();
   row=await(await api.get(recordUrl)).json();assert.equal(row.calculated_liability_1,'19.20');assert.equal(row.lay_commission_1,'0.02');
   assert.equal(JSON.parse(row.lay_plan_json).reviewed_planned_lay_stake,stake);

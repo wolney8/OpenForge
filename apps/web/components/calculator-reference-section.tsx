@@ -19,6 +19,7 @@ export function CalculatorReferenceSection({
   live = false,
   rows,
   title,
+  tone = "standard",
 }: {
   action?: ReactNode;
   busy?: boolean;
@@ -27,10 +28,11 @@ export function CalculatorReferenceSection({
   live?: boolean;
   rows: CalculatorReferenceRow[];
   title: string;
+  tone?: "standard" | "underlay" | "overlay" | "custom";
 }) {
   const motion = useFinancialMotionPreference();
 
-  return <CalculatorOutcomes busy={busy} description={description} inspectionId={inspectionId}
+  return <CalculatorOutcomes busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} description={description} inspectionId={inspectionId}
     title={live ? <><span className={`table-chip table-chip-danger calculator-live-chip${motion.ready && motion.enabled ? " is-motion-enabled" : ""}`}>LIVE</span><span>{title}</span></> : title}
     rows={rows.map((row) => ({
       key: row.label.toLowerCase().replaceAll(" ", "-"), label: row.label, total: row.value,

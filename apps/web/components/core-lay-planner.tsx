@@ -209,29 +209,29 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
               invalidate(); setExchangeId(a.account_id); onPatch({exchange_name:a.account});
               if (origin === "default") { setCommission(rate); if (!hasActual) setActualCommission(rate); } }} value={exchange?.account_id ?? ""}>
               <option value="">Select Exchange</option>{exchanges.map(a => <option key={a.account_id} value={a.account_id}>{a.account}</option>)}</select></label>
-            <label className="field-control"><span>Commission (%)</span><CommissionInput aria-label="Planning Commission (%)" onRatioChange={value => { if (value === commission && origin === "override") return; invalidate(); setCommission(value); if (!hasActual) setActualCommission(value); setOrigin("override"); }} readOnly={readOnly} value={commission} /></label>
+            <label className="field-control"><span>Exchange commission (%)</span><CommissionInput aria-label="Planning exchange commission (%)" onRatioChange={value => { if (value === commission && origin === "override") return; invalidate(); setCommission(value); if (!hasActual) setActualCommission(value); setOrigin("override"); }} readOnly={readOnly} value={commission} /></label>
           </div></section>
       </div>
       <p className="field-hint" data-pd-id={`${inspectionId}.selected`}>Selected plan: {strategy}. Applying and copying do not record an exchange fill.</p>
       {busy ? <p role="status">Updating reference…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}
     </div>
     <div className="calculator-band calculator-band-secondary" aria-busy={busy}>
-      {mode === "Advanced" ? <section className="stack" data-pd-id={`${inspectionId}.advanced`}>
-        {(["Underlay","Overlay"] as const).map(name => { const r = references.find(r => r.strategy === name); return <CalculatorReferenceSection key={name}
+      {mode === "Advanced" ? <section className="calculator-advanced-reference-group" data-pd-id={`${inspectionId}.advanced`}>
+        <div className="calculator-advanced-reference-pair">{(["Underlay","Overlay"] as const).map(name => { const r = references.find(r => r.strategy === name); return <CalculatorReferenceSection key={name}
           busy={disabled} description={r ? "Planned reference after penny placement; not an actual fill." : "No valid non-negative endpoint for these inputs."}
           inspectionId={`${inspectionId}.${name.toLowerCase()}`} title={`${name} reference`} rows={r ? rowsFor(r) : []}
-          action={<button aria-pressed={strategy === name} className="button-link" disabled={disabled || !r} onClick={() => selectStrategy(name)} type="button">Apply {name}</button>} />; })}
-        <CalculatorReferenceSection busy={disabled} description="Editable planned lay; actual placement is confirmed separately."
-          inspectionId={`${inspectionId}.custom`} title="Custom Lay reference" rows={custom ? rowsFor(custom) : []}
+          tone={name === "Underlay" ? "underlay" : "overlay"} action={<button aria-pressed={strategy === name} className="button-link" disabled={disabled || !r} onClick={() => selectStrategy(name)} type="button">Apply {name}</button>} />; })}</div>
+        <section className="calculator-custom-reference-group" data-pd-id={`${inspectionId}.custom-group`}><CalculatorReferenceSection busy={disabled} description="Editable planned lay; actual placement is confirmed separately."
+          inspectionId={`${inspectionId}.custom`} title="Custom Lay reference" rows={custom ? rowsFor(custom) : []} tone="custom"
           action={<PlannerField id={`${inspectionId}.custom-lay`} label="Custom Lay" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} />} />
         {Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? <SingleLayCustomSlider
           current={Math.min(maximum,Math.max(minimum,Number(customDraft || custom?.lay_stake || standard?.lay_stake || minimum)))}
           centre={Number(standard?.lay_stake)} minimum={minimum} maximum={maximum} minimumText={minimumText || String(minimum)} maximumText={maximumText || String(maximum)}
-          onDraft={editCustom} onCommit={editCustom} onMinimumChange={setMinimumText} onMaximumChange={setMaximumText} /> : <p className="field-hint">Enter valid minimum and maximum bounds to use the slider.</p>}
+          onDraft={editCustom} onCommit={editCustom} onMinimumChange={setMinimumText} onMaximumChange={setMaximumText} /> : <p className="field-hint">Enter valid minimum and maximum bounds to use the slider.</p>}</section>
       </section> : null}
-      <CalculatorReferenceSection busy={disabled} description="Reviewed target hedge, separate from actual recorded placement."
+      {mode === "Simple" ? <CalculatorReferenceSection busy={disabled} description="Reviewed target hedge, separate from actual recorded placement."
         inspectionId={`${inspectionId}.selected-reference`} title={`${strategy} reference`} rows={references.find(r => r.strategy === strategy) ? rowsFor(references.find(r => r.strategy === strategy)!) : []}
-        action={mode === "Advanced" ? <button className="button-link" disabled={disabled || !standard} onClick={() => selectStrategy("Standard")} type="button">Apply Standard</button> : undefined} />
+        action={undefined} /> : <button className="button-link calculator-apply-standard" disabled={disabled || !standard} onClick={() => selectStrategy("Standard")} type="button">Apply Standard</button>}
       <CalculatorOutcomes busy={disabled} inspectionId={`${inspectionId}.outcomes`} columns={["Bookmaker","Exchange","Bonus / cashback"]}
         rows={(preview?.outcomes ?? []).map((o,index) => ({key:o.key,label:o.label,tone:index === 0 ? "positive" : "exchange",copyableTotal:true,
           components:[[o.bookmaker_component],[o.exchange_component],[o.promotion_component]],total:o.total}))} />
@@ -249,7 +249,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
             ? "The remaining amount is a planning reference only. Copying it does not record another fill."
             : "The actual odds or commission differ from the plan. An additional hedge needs a reviewed changed-odds calculation; no unmatched order is assumed filled."}</p></> : <>
           <div className="form-grid"><PlannerField id={`${inspectionId}.actual-stake`} label="Actual matched stake" value={actualDraft} onChange={setActualDraft} readOnly={readOnly} /><PlannerField id={`${inspectionId}.actual-odds`} label="Actual lay odds" value={actualOdds || planningOdds} onChange={setActualOdds} readOnly={readOnly} />
-            <label className="field-control"><span>Commission (%)</span><CommissionInput aria-label="Actual Commission (%)" onRatioChange={setActualCommission} readOnly={readOnly} value={actualCommission} /></label></div>
+            <label className="field-control"><span>Actual exchange commission (%)</span><CommissionInput aria-label="Actual exchange commission (%)" onRatioChange={setActualCommission} readOnly={readOnly} value={actualCommission} /></label></div>
           <button className="button-link icon-text-action" disabled={disabled || !actualValid} onClick={() => onPatch({lay_actual:actualDraft,lay_matched_stake_1:actualDraft,
             lay_odds_1:actualOdds || planningOdds,lay_commission_1:actualCommission,status:"Placed",
             date_settled:form.date_settled || toDateTimeLocalValue(new Date().toISOString())})} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span><span>Confirm actual placement</span></button>

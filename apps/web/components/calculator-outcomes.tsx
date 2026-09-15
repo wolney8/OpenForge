@@ -34,6 +34,7 @@ export function CalculatorOutcomeValueDisplay({ label, value }: { label: string;
 }
 
 export function CalculatorOutcomes({
+  className,
   columns = [],
   busy = false,
   description,
@@ -42,6 +43,7 @@ export function CalculatorOutcomes({
   summary,
   title = "Outcomes",
 }: {
+  className?: string;
   busy?: boolean;
   columns?: string[];
   description?: ReactNode;
@@ -50,7 +52,7 @@ export function CalculatorOutcomes({
   summary?: ReactNode;
   title?: ReactNode;
 }) {
-  return <section aria-busy={busy} className="calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card" data-pd-id={inspectionId}>
+  return <section aria-busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card${className ? ` ${className}` : ""}`} data-pd-id={inspectionId}>
     <div className="calculator-result-card-heading"><h3>{title}</h3></div>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
