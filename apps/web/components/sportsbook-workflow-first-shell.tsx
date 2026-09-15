@@ -4645,6 +4645,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     Math.max(
       customSliderEffectiveMin,
       customSliderDraftFloat ??
+        parseNumericInput(activeLayPlan?.custom_lay_stake ?? "") ??
         parseNumericInput(formState.lay_actual) ??
         customSliderSuggestedLayStake
     )

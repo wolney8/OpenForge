@@ -79,15 +79,22 @@ async function convertCurrent(page,eventName) {
   assert.equal(response.status(),200,await response.text());
   const payload=await response.json();assert.equal(payload.results[0].state,'succeeded',JSON.stringify(payload));
   await expect(dialog).toBeHidden();await expect(convert).toBeFocused();
-  return payload.results[0];
+  const result=payload.results[0];
+  const receipt=page.locator('.calculator-conversion-receipt');
+  await expect(receipt).toContainText('Sportsbook');
+  await expect(receipt.getByRole('link',{name:'Open row'})).toHaveAttribute('href',result.href);
+  const notices=await(await api.get('/fund-manager/notifications')).json();
+  assert(notices.some(item=>item.notification_type==='calculator_conversion_complete'&&item.href===result.href));
+  return result;
 }
 
 try {
-  for(const [width,theme] of [[1440,'light'],[760,'dark']]) {
+  for(const [width,theme] of [[1440,'light'],[760,'dark'],[390,'light']]) {
     const context=await browser.newContext({viewport:{width,height:1050},permissions:['clipboard-read','clipboard-write'],reducedMotion:theme==='dark'?'reduce':'no-preference'});
     await context.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
     await context.addInitScript(value=>localStorage.setItem('openforge-theme',value),theme);
     const page=await context.newPage(); page.setDefaultTimeout(25000);
+    assert.equal(await page.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches),theme==='dark');
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
 
     const profitName=`Synthetic Profit Boost ${width}`;
@@ -114,6 +121,19 @@ try {
     await customSlider.focus();
     await customSlider.press('ArrowRight');
     await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
+    const customPlanCopy=dialog.getByRole('button',{name:/Copy and apply Custom planned lay stake/});
+    await customPlanCopy.click();
+    const customCopied=await page.evaluate(()=>navigator.clipboard.readText());
+    assert.match(customCopied,/^\d+\.\d{2}$/);
+    let profit=await saveAndFind(page,dialog,profitName);
+    assert.equal(JSON.parse(profit.lay_plan_json).selected_strategy,'Custom');
+    assert.equal(JSON.parse(profit.lay_plan_json).reviewed_planned_lay_stake,customCopied);
+    assert.equal(profit.lay_actual,'');
+    await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${profit.sportsbook_bet_id}`);
+    dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
+    await dialog.getByRole('tab',{name:/Matching/}).first().click();
+    await expect(dialog.getByRole('slider',{name:'Custom lay stake slider'})).toHaveAttribute('aria-valuenow',String(Number(customCopied)));
+    await expect(dialog.getByLabel('Lay actual')).toHaveValue('');
     const plannedCopy=dialog.getByRole('button',{name:/Copy and apply Standard planned lay stake/});
     await expect(plannedCopy).toBeEnabled();
     await plannedCopy.click();
@@ -132,7 +152,7 @@ try {
     assert(breakdownGeometry.lines.every((top,index,lines)=>index===0||top>lines[index-1]));
     await page.screenshot({path:`${runtime}/bundle-profit-${width}-${theme}.png`,fullPage:true});
     evidence.screenshots.push(`bundle-profit-${width}-${theme}.png`);
-    let profit=await saveAndFind(page,dialog,profitName);
+    profit=await saveAndFind(page,dialog,profitName);
     assert.equal(profit.profit_boost_mode,'total_return');
     assert.equal(profit.reference_boosted_odds,'2.7800');
     assert.equal(profit.effective_back_odds,'2.7900');
@@ -239,6 +259,7 @@ try {
         dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
         await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
         await expect(dialog.getByLabel(source.label)).toHaveValue(source.reopenedValue??source.value);
+        if(source.mode==='percentage')await expect(dialog.getByLabel('Profit boost %')).toHaveValue('10');
         await expect(dialog.getByLabel('Commission (%)')).toHaveValue('2');
         nativeModes.push({mode:source.mode,id:saved.sportsbook_bet_id});
         await dialog.getByRole('button',{name:/Close/}).first().click();
@@ -263,12 +284,26 @@ try {
       const pbRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${pbTarget.record_id}`)).json();
       assert.equal(JSON.parse(pbRow.profit_boost_source_json).mode,'total_return');assert.equal(pbRow.lay_actual,'');
       assert.equal(JSON.parse(pbRow.lay_plan_json).reviewed_planned_lay_stake,pbRow.reference_lay_stake_standard);
-      converted.profitBoost={id:pbRow.sportsbook_bet_id,mode:'total_return',plannedOnly:true};
+      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${pbRow.sportsbook_bet_id}`);
+      dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
+      await dialog.getByRole('tab',{name:/Matching/}).first().click();
+      await expect(dialog.getByLabel('Total potential return, including stake')).toHaveValue('27.86');
+      await dialog.getByLabel('Lay actual').fill('9.00');
+      await dialog.getByRole('button',{name:'Back Bet Placed'}).click();
+      await dialog.getByRole('button',{name:'Lay Fully Placed'}).click();
+      await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+      await dialog.locator('label:visible').filter({hasText:/^Result/}).locator('select').selectOption('Back Won');
+      await dialog.locator('input[type="datetime-local"]:visible').fill('2026-09-15T13:00');
+      const settledPb=await saveAndFind(page,dialog,'Synthetic converted Profit Boost');
+      assert.equal(settledPb.lay_actual,'9.00');assert.equal(settledPb.final_net_pnl,'-0.20');
+      converted.profitBoost={id:pbRow.sportsbook_bet_id,mode:'total_return',plannedOnly:false,final:'-0.20'};
 
+      await page.goto('http://localhost:3040/fund-manager/calculators');
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
       await page.getByLabel('Back stake',{exact:true}).fill('10.00');
       await page.getByLabel('Back odds',{exact:true}).fill('3.00');
       await page.getByLabel('Lay odds',{exact:true}).fill('3.10');
+      await page.getByLabel('Commission (%)').fill('2');
       await page.getByLabel('Eligible refund amount / cap').fill('10.00');
       await expect(page.getByLabel('Actual lay stake')).toHaveCount(0);
       const cbTarget=await convertCurrent(page,'Synthetic converted Cashback');
@@ -276,7 +311,29 @@ try {
       const cbMeta=JSON.parse(cbRow.conditional_benefit_json);
       assert.equal(cbMeta.eligibility,'pending');assert.equal(cbMeta.actual_receipt_amount,'');assert.equal(cbRow.lay_actual,'');
       assert.equal(JSON.parse(cbRow.lay_plan_json).selected_strategy,'Standard');
-      converted.cashback={id:cbRow.sportsbook_bet_id,eligibility:'pending',receiptNotAssumed:true};
+      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${cbRow.sportsbook_bet_id}`);
+      dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
+      await dialog.getByRole('tab',{name:/Matching/}).first().click();
+      await dialog.getByLabel('Eligibility').selectOption('eligible');
+      await dialog.getByLabel('Lay actual').fill('9.00');
+      await dialog.getByRole('button',{name:'Back Bet Placed'}).click();
+      await dialog.getByRole('button',{name:'Lay Fully Placed'}).click();
+      await dialog.getByRole('tab',{name:/Settlement/}).first().click();
+      await dialog.locator('label').filter({hasText:/^Result/}).locator('select').selectOption('Lay Won + Cashback');
+      await dialog.locator('input[type="datetime-local"]:visible').fill('2026-09-15T14:00');
+      await dialog.getByLabel('Actual cashback receipt amount').fill('10.00');
+      await dialog.getByLabel('Cashback receipt reference').fill('SYNTHETIC-CONVERTED-RECEIPT');
+      await dialog.getByLabel('Cashback receipt date').fill('2026-09-15');
+      const settledCb=await saveAndFind(page,dialog,'Synthetic converted Cashback');
+      assert.equal(settledCb.lay_actual,'9.00');assert.equal(settledCb.final_net_pnl,'8.82');
+      converted.cashback={id:cbRow.sportsbook_bet_id,eligibility:'eligible',receiptNotAssumed:false,final:'8.82'};
+      await page.goto('http://localhost:3040/fund-manager/calculators');
+      await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
+      await page.getByLabel('Back stake',{exact:true}).fill('10.00');
+      await page.getByLabel('Back odds',{exact:true}).fill('3.00');
+      await page.getByLabel('Lay odds',{exact:true}).fill('3.10');
+      await page.getByLabel('Commission (%)').fill('2');
+      await page.getByLabel('Eligible refund amount / cap').fill('10.00');
       await page.getByLabel('Refund received as').selectOption('free_bet');
       await expect(page.locator('[data-pd-id="calculators.cashback.credit"]')).toBeVisible();
       const creditTarget=await convertCurrent(page,'Synthetic converted Cashback credit');
@@ -288,6 +345,18 @@ try {
     evidence.cases.push({width,theme,profitBoost:{id:profit.sportsbook_bet_id,source:'total_return',raw:'2.786',reference:'2.7800',accepted:'2.7900',bookmakerReturn:'27.86',actualLay:'9.00',final:'-0.10'},nativeModes,cashback:{id:cashback.sportsbook_bet_id,eligible:'10.00',cap:'8.00',receipt:'8.00',final:'6.82'},converted,reportReload:true,noPageOverflow:true});
     await context.close();
   }
+  const enlargedContext=await browser.newContext({viewport:{width:1440,height:1050}});
+  await enlargedContext.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
+  const enlargedPage=await enlargedContext.newPage();
+  const enlargedRow=evidence.cases[0].profitBoost.id;
+  await enlargedPage.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${enlargedRow}`);
+  const enlargedDialog=enlargedPage.locator('[data-pd-id="sportsbook.editor.dialog"]');await enlargedDialog.waitFor();
+  await enlargedPage.addStyleTag({content:'html { font-size: 200% !important; }'});
+  await enlargedDialog.getByRole('tab',{name:/Matching/}).first().click();
+  await expect(enlargedDialog.getByLabel('Profit Boost entry')).toBeVisible();
+  assert.equal(await enlargedPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  evidence.textEnlargement={width:1440,rootFontSize:'200%',noPageOverflow:true};
+  await enlargedContext.close();
   evidence.result='PASS';
   console.log(JSON.stringify(evidence));
 } finally {
