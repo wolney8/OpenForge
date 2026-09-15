@@ -1,5 +1,26 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current exact Standard screen correction — 2026-09-15 / LOCAL ONLY
+
+The earlier broad UI status did not establish the screen shown in Will's latest screenshot. Git
+history and served-bundle inspection show that the screenshot used an older reachable frontend;
+the current source had removed the old selector strings but still retained a generic commission
+label, a stacked Advanced layout, a detached Custom slider and a duplicated selected-result card.
+
+Product **a8d5c72167c454c9937f24cc58f630294c4cd71f** removes those remaining defects through the
+shared reference/Outcomes composition. Advanced is Underlay/Overlay as an equal pair, followed by
+one bordered Custom section containing the editable stake and slider, then Outcomes. Simple shows
+only Standard and Outcomes. Mode occupies its deliberate row. No strategy dropdown or Part Lay
+choice remains in this calculator; operational matched/remaining handling is unchanged.
+
+Evidence: exact DOM/rendered-order and geometry checks pass at 1280/720/390 with enlarged text and
+both theme states; pop-out state restores 2% from canonical 0.02. A real synthetic 3040/8039 run
+passes native Normal/SNR and converted Standard/Underlay/Overlay/Custom creation, copy, save/reopen,
+explicit actual 6.00 placement, settlement/report and idempotent conversion. Independent SNR values
+remain Standard 7.18, Underlay 6.25, Overlay 10.20 and Custom 9.00. TypeScript and the webpack
+production build pass. This replaces only contradictory current UI claims; prior numerical evidence
+and wider audit counts are unchanged. Main, normal services and Vercel do not contain the repair.
+
 ## Current calculator experience reconciliation — 2026-09-15 / LOCAL ONLY
 
 The separate test version now includes the previously isolated Multi-Lay v2 planning work without

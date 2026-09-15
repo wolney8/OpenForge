@@ -1,5 +1,21 @@
 # Project Status
 
+## Current exact Standard calculator screen — LOCAL ONLY
+
+The separate test version at `http://localhost:3040/fund-manager/calculators` now shows the requested
+order: Calculator and Bet Type, Mode, aligned Back/Lay inputs, paired Underlay/Overlay, one full-width
+Custom Lay section containing its slider, then full-width Outcomes. The obsolete selected-strategy/
+Part Lay control and decimal-rate guidance are absent. Exchange commission is entered as a percentage.
+
+Product **a8d5c72167c454c9937f24cc58f630294c4cd71f** passed the exact-screen check in standalone,
+pop-out, native Sportsbook and native/converted Free Bet editors at desktop, half-width and narrow
+sizes, both themes and enlarged text. The full synthetic workflow also passed copy, save/reopen,
+explicit placement, settlement and report with SNR 6.25/10.20/9.00 references and canonical 2% =
+0.02 persistence. The production build succeeds. Main/normal local and Vercel remain unchanged.
+Bonus planning, Multi-Lay placement and Early Payout persistence remain queued.
+
+Launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
+
 ## Current calculator experience — LOCAL ONLY
 
 The separate test version now serves the assembled calculator work at

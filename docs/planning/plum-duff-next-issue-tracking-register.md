@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-CALC-SCREEN-20260915 — exact Standard screen repair
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-FIX-115 | Remove the reachable `Actual selected strategy`/Part Lay selector and decimal-rate commission guidance | COMPLETE / PROVEN on current standalone, pop-out, native and converted Normal/SNR paths |
+| PD-FIX-116 | Advanced immediately shows Underlay and Overlay, then full-width Custom with its slider, then Outcomes | COMPLETE / PROVEN by DOM order, real rendering and saved-row reopen checks |
+| PD-FIX-117 | Match shared chevron endpoints, value/copy columns and full-width outer edges without narrow-screen clipping | COMPLETE / PROVEN at 1280/1440, 720/760 and 390 widths, light/dark and enlarged text |
+| PD-FIX-118 | Enter commission as a percentage and preserve canonical ratio once through save/reopen | COMPLETE / PROVEN: visible 2% persists as canonical 0.02; 0%, 5% and 2.125% also pass |
+
+Current product **a8d5c72167c454c9937f24cc58f630294c4cd71f** is local only. The original screenshot came
+from an older reachable build; the current source also needed the Custom/slider composition and
+standalone label correction. Exact-screen and full native/conversion/placement/settlement/report
+browser runs now pass on 3040/8039. Bonus planning, richer Multi-Lay placement and Early Payout
+persistence remain queued and were not changed.
+
 ## PD-CALC-20260914 — active owner corrections
 
 Current assembled calculator slice adds PD-FIX-111–114 on the local-only
