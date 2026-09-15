@@ -4,6 +4,10 @@ const webBaseUrl = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010"
 const apiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
 
 async function mockSession(page: import("@playwright/test").Page) {
+  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (sessionToken) {
+    await page.context().addCookies([{ name: "pd_session", value: sessionToken, url: webBaseUrl }]);
+  }
   await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
     authenticated: true, email: "calculator-test@example.invalid", name: "Synthetic Fund Manager",
     role: "fund_manager", expires_at: Math.floor(Date.now() / 1000) + 3600, linked_profile_ids: [],
@@ -102,10 +106,9 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"] .financial-value').first()).toHaveAttribute("data-money-motion", "none");
   await page.emulateMedia({ reducedMotion: "no-preference" });
 
-  await page.getByLabel("Bet Type").selectOption("SR");
+  await page.getByLabel("Bet Type").selectOption("SNR");
   await page.getByRole("button", { name: "Advanced" }).click();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
-  await page.getByLabel("Actual selected strategy").selectOption("Custom");
   const customSlider = page.getByRole("slider", { name: "Custom lay stake slider" });
   await expect(customSlider).toBeVisible();
   expect(Number(await customSlider.getAttribute("aria-valuemin"))).toBeLessThan(Number(await customSlider.getAttribute("aria-valuenow")));
@@ -117,7 +120,6 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await expect(page.getByText("Simple mode uses the equalised Standard strategy.")).toBeVisible();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toContainText("Standard reference");
   await page.getByRole("button", { name: "Advanced" }).click();
-  await page.getByLabel("Actual selected strategy").selectOption("Custom");
   await expect(customSlider).toHaveAttribute("aria-valuenow", preservedAdvancedStake ?? "");
   await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption("bonus_lock_in");
   await expect(page.getByLabel("Bet Type")).toHaveValue("Normal");
@@ -130,7 +132,7 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await page.getByLabel("Back stake").fill("15.00");
   await expect(page.getByLabel("Bonus / refund value")).toHaveValue("7.00");
   await expect(page.locator('[data-pd-id="calculators.outcomes"]')).toContainText("bonus triggers");
-  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(1);
+  await expect(page.getByLabel("Bonus Applied If Bet").locator('option[value="Back Wins"]')).toHaveCount(0);
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.locator('[data-pd-id="calculators.matched-betting.results"]').screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-standard-outcomes.png") });
   }
@@ -167,7 +169,8 @@ test("uses the Fund Manager matched-betting calculator without a Profile", async
   await popup.close();
 
   await page.getByLabel("Original / base odds").fill("1,000");
-  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.results"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button')).toBeDisabled();
   if (process.env.CALCULATOR_E2E_SCREENSHOT_PATH) {
     await page.screenshot({ path: process.env.CALCULATOR_E2E_SCREENSHOT_PATH.replace(/\.png$/, "-light-desktop.png"), fullPage: true });
   }
@@ -204,12 +207,13 @@ test("routes the governed Bonus controls to the displayed and copied strategy", 
   await page.getByLabel("Back stake").fill("5");
   await page.getByLabel("Back odds").fill("9.24");
   await page.getByLabel("Lay odds").fill("10.5");
+  await page.getByRole("button", { name: "Advanced" }).click();
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.standard"]')).toContainText("£ 4.07");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.standard"]')).toContainText("£ 38.67");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.underlay"]')).toContainText("£ 1.50");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ 4.34");
   await expect(page.locator('[data-pd-id="calculators.bonus-lock-in.overlay"]')).toContainText("£ (0.03)");
-  await page.getByLabel("Actual selected strategy").selectOption("Overlay");
+  await page.getByRole("button", { name: "Apply Overlay" }).click();
   await expect(page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"]')).toContainText("£ 4.34");
   await page.locator('[data-pd-id="calculators.matched-betting.copy-lay-stake"] button').click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("4.34");

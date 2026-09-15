@@ -156,7 +156,7 @@ try {
     const nativeModes=[];
     if(width===1440){
       for(const source of [
-        {mode:'displayed_odds',label:'Boosted back odds',value:'3.20'},
+        {mode:'displayed_odds',label:'Entered boosted odds',value:'3.20',reopenedValue:'3.2000'},
         {mode:'profit_only',label:'Potential profit, excluding stake',value:'22.00'},
         {mode:'percentage',label:'Base back odds',value:'3.00',extra:['Profit boost %','10']},
       ]){
@@ -173,7 +173,7 @@ try {
         await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${saved.sportsbook_bet_id}`);
         dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
         await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
-        await expect(dialog.getByLabel(source.label)).toHaveValue(source.value);
+        await expect(dialog.getByLabel(source.label)).toHaveValue(source.reopenedValue??source.value);
         nativeModes.push({mode:source.mode,id:saved.sportsbook_bet_id});
         await dialog.getByRole('button',{name:/Close/}).first().click();
       }
