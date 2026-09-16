@@ -576,7 +576,9 @@ def multi_lay_planning_reference(values: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(entries, list):
         return {}
     entries = [entry for entry in entries if isinstance(entry, dict)]
-    primary = next((entry for entry in entries if entry.get("id") == "outcome1"), {})
+    primary: dict[str, Any] = next(
+        (entry for entry in entries if entry.get("id") == "outcome1"), {}
+    )
     version = primary.get("calculationVersion")
     if not version:
         return {}
@@ -731,7 +733,7 @@ def _build_response(
     )
     serialized = serialize_calculation(calculation)
     if plan_note:
-        serialized["calculation_notes"].append(plan_note)
+        cast(list[str], serialized["calculation_notes"]).append(plan_note)
     return SportsbookBetResponse.model_validate(
         {
             **record,
@@ -761,7 +763,7 @@ def build_response(
                 status_code=422, detail=f"Sportsbook calculation requires correction: {error}"
             ) from error
         record = row.__dict__
-        unavailable = {
+        unavailable: dict[str, Any] = {
             key: None
             for key in SportsbookCalculationPreviewResponse.model_fields
             if key != "lay_commission_1"
@@ -814,7 +816,7 @@ def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str
     )
 
 
-def prepare_write_response(row: object, commissions: dict[str, str]) -> SportsbookBetResponse:
+def prepare_write_response(row: Any, commissions: dict[str, str]) -> SportsbookBetResponse:
     response = build_response(
         row.profile_id,
         row,

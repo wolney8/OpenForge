@@ -472,8 +472,13 @@ def calculate_sportsbook_current_value(
             back_stake, back_odds, lay_odds_1, commission_1
         )
     if calculation_input.reference_lay_stakes is not None:
-        ref_standard, ref_underlay, ref_overlay = (
+        parsed_references = tuple(
             parse_decimal(value) for value in calculation_input.reference_lay_stakes
+        )
+        if any(value is None for value in parsed_references):
+            raise ValueError("Reference lay stakes must be complete decimal values.")
+        ref_standard, ref_underlay, ref_overlay = (
+            value for value in parsed_references if value is not None
         )
     reference_by_strategy = {
         "Standard": ref_standard,

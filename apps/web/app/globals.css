@@ -4407,7 +4407,7 @@ html[data-theme="dark"] .notification-count-badge {
   bottom: 1rem;
   left: 50%;
   display: grid;
-  width: min(46rem, calc(100vw - 2rem));
+  width: min(46rem, calc(100% - 2rem));
   gap: 1rem;
   padding: 1rem;
   transform: translateX(-50%);
@@ -4520,7 +4520,7 @@ html[data-theme="dark"] .notification-count-badge {
 @media (max-width: 640px) {
   .cookie-notice {
     bottom: 0.75rem;
-    width: calc(100vw - 1.5rem);
+    width: calc(100% - 1.5rem);
   }
 }
 

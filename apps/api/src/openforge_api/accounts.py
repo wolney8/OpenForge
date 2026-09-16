@@ -339,6 +339,7 @@ def set_profile_catalogue_account_selection(
     if not payload.selected and existing is None:
         raise HTTPException(status_code=404, detail="Profile account selection not found")
     if not payload.selected and provider.account_type == "Exchange":
+        assert existing is not None
         other_exchanges = [
             row
             for row in list_accounts(profile_id)
@@ -358,7 +359,7 @@ def set_profile_catalogue_account_selection(
             detail="An Exchange commission rate is required",
         )
 
-    type_value: AccountTypeValue = expected_type
+    type_value = cast(AccountTypeValue, expected_type)
     status: StatusValue = payload.status if payload.selected else "Archived"
     lifecycle: LifecycleValue = (
         LEGACY_ACCOUNT_STATES.get(status.casefold(), ("Active", []))[0]
@@ -385,7 +386,9 @@ def set_profile_catalogue_account_selection(
         ),
         restrictions=[] if existing is None else json.loads(existing.restrictions_json),
         current_balance=(
-            payload.current_balance if payload.selected else existing.current_balance
+            payload.current_balance
+            if payload.selected
+            else existing.current_balance if existing is not None else "0.00"
         ),
         pending_withdrawal_amount=(
             existing.pending_withdrawal_amount if existing else "0.00"

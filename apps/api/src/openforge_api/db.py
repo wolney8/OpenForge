@@ -5021,7 +5021,13 @@ def create_free_bet(
         )
         created_free_bet_id = cast(str, record["free_bet_id"])
         from openforge_api.lay_plan import store_plan
-        record["lay_plan_json"] = store_plan(connection, "free_bets", profile_id, created_free_bet_id, payload.get("lay_plan_json"))
+        record["lay_plan_json"] = store_plan(
+            connection,
+            "free_bets",
+            profile_id,
+            created_free_bet_id,
+            cast(str | None, payload.get("lay_plan_json")),
+        )
         write_free_bet_audit_entry(
             connection=connection,
             free_bet_id=created_free_bet_id,
@@ -5110,7 +5116,14 @@ def update_free_bet(
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Free bet no longer exists.")
         from openforge_api.lay_plan import store_plan
-        updated["lay_plan_json"] = store_plan(connection, "free_bets", profile_id, free_bet_id, payload.get("lay_plan_json"), updating=True)
+        updated["lay_plan_json"] = store_plan(
+            connection,
+            "free_bets",
+            profile_id,
+            free_bet_id,
+            cast(str | None, payload.get("lay_plan_json")),
+            updating=True,
+        )
         if current["origin_qual_bet_id"]:
             identity_fields = ("origin_qual_bet_id","source_award_group_id","offer_group_id","source_award_split_index","source_award_split_total")
             if any(payload.get(field) != current[field] for field in identity_fields):
@@ -5871,12 +5884,12 @@ def create_casino_offer(
             payload=record,
         )
         if prepare_response is not None:
-            created = CasinoOfferRecord(**record)
-            prepare_response(created, connection)
-            return created
-    created = get_casino_offer(profile_id, record["casino_offer_id"])
-    assert created is not None
-    return created
+            prepared_created = CasinoOfferRecord(**record)
+            prepare_response(prepared_created, connection)
+            return prepared_created
+    persisted_created = get_casino_offer(profile_id, record["casino_offer_id"])
+    assert persisted_created is not None
+    return persisted_created
 
 
 def update_casino_offer(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal, DecimalException
-from typing import Callable, Literal
+from typing import Callable, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import (
@@ -353,7 +353,7 @@ def build_response(
             from openforge_api.lay_plan import readable_plan
             _, note = readable_plan(record)
             if note:
-                serialized["calculation_notes"].append(note)
+                cast(list[str], serialized["calculation_notes"]).append(note)
         for field, value in serialized.items():
             if (
                 isinstance(value, str)

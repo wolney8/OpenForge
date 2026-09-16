@@ -65,7 +65,10 @@ test.describe("pre-auth privacy and session controls", () => {
     await expect(notice).toBeVisible();
     const noticeBox = await notice.boundingBox();
     expect(noticeBox).not.toBeNull();
-    expect(Math.abs((noticeBox?.x ?? 0) + (noticeBox?.width ?? 0) / 2 - 195)).toBeLessThanOrEqual(2);
+    const layoutViewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(
+      Math.abs((noticeBox?.x ?? 0) + (noticeBox?.width ?? 0) / 2 - layoutViewportWidth / 2),
+    ).toBeLessThanOrEqual(2);
     expect(Math.abs((noticeBox?.y ?? 0) + (noticeBox?.height ?? 0) - 832)).toBeLessThanOrEqual(2);
     await expect(notice).toHaveCSS("text-align", "center");
     await expect(notice.getByRole("button", { name: "Accept All" })).toHaveCount(0);

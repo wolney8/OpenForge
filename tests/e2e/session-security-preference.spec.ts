@@ -124,7 +124,10 @@ test("focus validates the session without recording meaningful activity", async 
   await page.goto("/account");
   await expect(page.getByRole("heading", { name: "My Account" })).toBeVisible();
   const checksBeforeFocus = sessionChecks;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+  });
   await expect.poll(() => sessionChecks).toBeGreaterThan(checksBeforeFocus);
   expect(activityTouches).toBe(0);
 

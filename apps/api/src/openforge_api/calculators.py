@@ -1023,10 +1023,10 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
                 "Overlay": quantize_money(face / (1 - commission)) if commission < 1 else None,
             }
             if not selected_reference and calculation_strategy in snr_references:
-                selected = snr_references[calculation_strategy]
-                if selected is None:
+                selected_snr_reference = snr_references[calculation_strategy]
+                if selected_snr_reference is None:
                     raise HTTPException(status_code=422, detail=f"{calculation_strategy} has no valid non-negative SNR endpoint for these inputs.")
-                selected_reference = _money(selected)
+                selected_reference = _money(selected_snr_reference)
         free_result = calculate_free_bet_current_value(
             FreeBetCalculationInput(
                 profile_id="standalone",
@@ -1251,9 +1251,9 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
         promotion=component_values[4],
     )
     if bonus_result is not None:
-        selected = bonus_result.selected
-        outcomes[0].total = _money(selected.back_wins_total)
-        outcomes[1].total = _money(selected.back_loses_total)
+        selected_bonus_reference = bonus_result.selected
+        outcomes[0].total = _money(selected_bonus_reference.back_wins_total)
+        outcomes[1].total = _money(selected_bonus_reference.back_loses_total)
     is_cashback_reference = payload.bet_type == "cashback" or (payload.bet_type == "qualifying" and payload.promotion_mode == "cashback")
     is_credit_cashback = is_cashback_reference and payload.cashback_reward_kind == "free_bet"
     cashback_credit = quantize_money(min(Decimal(payload.back_stake), Decimal(payload.promotion_value))) if is_credit_cashback else None
