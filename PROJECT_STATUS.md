@@ -1,19 +1,19 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-16 14:27 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-16 14:54 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Continue #114 with screen-reader/accessibility, settings recovery and remaining requirement/competitor evidence.
-- **Next:** Prepare a bounded implementation decision for durable notification/financial history and imported-parent identity without blocking independent audit work.
-- **Blocked on:** none
+- **Working on:** Continue #114 with the next executable recovery, accessibility and requirement package after the CP-009 settings/session boundary.
+- **Next:** If approved, implement the exact imported-parent and durable financial-history schemas first in isolated SQLite/PostgreSQL data.
+- **Blocked on:** none; the two schema repairs require owner approval before implementation
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-006 reporting/notification evidence and worktree type-check runner added; two schema designs remain proposals only |
-| Normal `localhost:3010` | Healthy with normal local sign-in; CP-006 synthetic Profiles were removed after testing |
+| Local integrated build | CP-009 settings/session evidence added; integrated-path mypy findings repaired; two schema designs remain proposals only |
+| Normal `localhost:3010` | Healthy with normal local sign-in and unchanged normal data |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
 | Owner smoke test | Available when convenient; not run and not a work blocker |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 55 / 87 (63%) |
+| Assessments reviewed | 56 / 87 (64%) |
 | Complete tasks exercised and passing | 10 / 24 (42%) |
 | Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 26 / 133 (20%) |
+| Requirements reconciled | 32 / 133 (24%) |
 
 ## Next 3 steps
 
-1. Run the remaining executable accessibility and settings/recovery checks.
-2. Continue competitor evidence and original requirement reconciliation without inflating coverage.
-3. If separately approved, implement the exact imported-parent and durable-history schemas in isolated databases.
+1. Continue crash/network-loss, recovery and remaining accessibility evidence without treating automation as a screen reader.
+2. Reconcile the next coherent request/competitor group and close the remaining fixture-based evidence gaps.
+3. If separately approved, implement PD-QA-018 and PD-QA-021 in isolated databases before normal data.
 
 ## Checkpoint log
 
@@ -47,6 +47,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-006 | 2026-09-16 14:02 BST | Proved report and notification-history boundaries, refreshed dependency exposure and restored worktree mypy execution | [#90](https://github.com/wolney8/OpenForge/issues/90), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-006-reporting-notification-and-securityreliability-package--2026-09-16) |
 | CP-007 | 2026-09-16 14:10 BST | Added London date-and-time metadata rules for owner-facing documents | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
 | CP-008 | 2026-09-16 14:27 BST | Extended precise London timestamps to project logs and backfilled verified recent events | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
+| CP-009 | 2026-09-16 14:54 BST | Assessed settings/session recovery, reduced integrated-path mypy debt and completed two schema decisions without migrating data | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-009-accessibility-persistence-and-recovery-package--2026-09-16) |
 
 ## Reference index
 

@@ -26,6 +26,35 @@ must be present in the Plum Duff owner allowlist.
 
 ## Local Environment
 
+### Configurable local runtime contract
+
+The normal local arrangement is web `http://localhost:3010`, API
+`http://127.0.0.1:8010` and SQLite selected by `OPENFORGE_DATABASE_PATH` (or the
+repository's existing database-provider configuration). Those are defaults, not
+business-logic constants. Disposable tests must choose different ports and a new
+database path or PostgreSQL URL; they must never inherit the normal database.
+
+The non-secret configuration boundary is:
+
+- `PORT` for the web listener;
+- `NEXT_PUBLIC_OPENFORGE_API_BASE_URL` for browser API requests;
+- `OPENFORGE_INTERNAL_API_BASE_URL` for server-side web/API requests;
+- `OPENFORGE_DATABASE_PATH`, `OPENFORGE_DATABASE_PROVIDER` and
+  `OPENFORGE_POSTGRES_URL` for the selected persistence target;
+- `OPENFORGE_AUTH_REQUIRED` and `OPENFORGE_AUTH_PUBLIC_BASE_URL` for the
+  authentication mode and exact public origin;
+- `OPENFORGE_AUTH_OWNER_EMAILS`, `OPENFORGE_AUTH_SESSION_SECRET`,
+  `OPENFORGE_GOOGLE_OAUTH_CLIENT_ID` and `OPENFORGE_GOOGLE_OAUTH_CLIENT_SECRET`
+  for the established authentication boundary. Values remain outside Git.
+
+Start the normal services with `pnpm dev:api` and `pnpm dev:web`. Verify the API
+at `/healthz` and the web application at `/login`; a response from one does not
+prove the other is using the intended endpoint or database. SQLite is the normal
+local authority. PostgreSQL is supported only through an explicitly configured
+isolated runtime/test target until a separately approved cutover. The Python entry
+point is `scripts/run-python.sh`; its shared-environment fallback and the current
+fixed-port helper scripts remain machine-specific portability concerns.
+
 Put API values in the repository-root `.env`:
 
 ```dotenv

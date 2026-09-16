@@ -1,5 +1,102 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-009 accessibility, persistence and recovery package — 2026-09-16
+
+**Checkpoint timestamp:** 2026-09-16 14:54 BST
+
+The integrated local application remained healthy at `localhost:3010`; its normal web/API
+processes and database were not changed by the isolated probes. VoiceOver is installed and macOS
+accessibility scripting is enabled, but this environment could not capture or verify the reader's
+spoken output through a complete application flow. Actual screen-reader behaviour therefore remains
+**UNVERIFIED**. It is not replaced by DOM or automated accessibility assertions.
+
+### Accessibility, settings and session recovery
+
+All **12/12** isolated browser checks passed against a live temporary web/API pair: light/dark
+ledger and toast contrast, protected-shell settlement, expired-session denial, neutral public error
+states, inactivity warning, cross-tab logout, stale logout/401 recovery and optimistic Auto Logout
+failure rollback. The required-storage notice mixed viewport-width sizing with the narrower document
+content box; its shared CSS now uses the same containing-block boundary and the rendered 390 px
+screen is centred without clipping. The session-resume regression now models the real blur→focus
+transition rather than dispatching focus while the page was never inactive. Existing
+CP-004 keyboard, modal, 200% text, narrow reflow, target, error and reduced-motion evidence remains
+valid for unchanged code. PQA-F20 is now an evidence-complete **PARTIAL** assessment; PQA-J23 stays
+PARTIAL rather than entering the passing numerator.
+
+| Setting | Scope | Storage owner | Reload / new session | Missing, stale or malformed state |
+|---|---|---|---|---|
+| Theme | Browser-global | `openforge-theme` local storage | Survives navigation/restart in that browser | Only `light`/`dark`; otherwise dark |
+| Back/lay colour treatment | Browser-global | `openforge-back-lay-theme` local storage | Survives navigation/restart | Only Smarkets/Betfair choices; otherwise Smarkets |
+| Each Way presentation | Browser-global | `plum-duff-each-way-presentation` local storage | Survives navigation/restart | Only supported modes; otherwise Extra Place |
+| Financial motion | Fund Manager account | API/database preference | Survives reload/login; optimistic failure rolls back | Server supplies bounded defaults |
+| Auto Logout | Fund Manager account; local fallback only when server use is unavailable | API/database, or email-keyed local storage fallback | Survives reload/login in configured mode | Normalised to off/30 minutes; session lifetime remains server-owned |
+| Ledger collapse/filter/view | Profile + ledger + browser | Profile-keyed local storage | Survives route/restart for that Profile | Booleans are validated; JSON state parses safely but consumer shape validation varies |
+| Guided entry | Profile + browser | Profile-keyed local storage | Survives route/restart for that Profile | Unsupported value becomes `on` |
+| Blackjack draft hand | Authenticated browser session | session storage | Survives navigation, not a new browser session/logout | Invalid snapshot is ignored; it is not business settlement state |
+
+The distinction is intentional: presentation belongs to the browser, Profile workflow views are
+Profile-keyed, financial motion and Auto Logout belong to the signed-in Fund Manager, and the
+server session lifetime is not a UI preference. The historical report of “Auto Logout off but
+session expired quickly” was not reproduced and remains historical/unreproduced, not disproved.
+
+### Static analysis and regression boundary
+
+API mypy reduced from **39 errors in seven files to 22 errors in one file**. Clear narrowing/type
+errors in Account, Sportsbook, Free Bet, Casino and calculator integration paths were corrected
+without changing their contracts. All 22 remaining errors are the pre-existing Early Payout typing
+cluster and remain tracked debt. The selected API run produced 244 passes and 32 failures caused by
+the already-recorded removed-demo-Profile fixture dependency; focused atomic/current-value paths in
+that run passed. Web unit evidence remains 419/420 with the existing blank payout-input expectation.
+No assertion was weakened.
+
+### Decision-ready storage boundaries — PROPOSED / NOT IMPLEMENTED
+
+**PD-QA-018 — Profile-scoped imported parent identity.** Rebuild the existing
+`import_source_records` key as `(profile_id, source_namespace, external_source_id)` and retain the
+existing source hash/entity mapping plus nullable `import_run_id`. Add to an imported Free Bet the
+nullable resolved native Sportsbook ID, a constrained state
+`resolved|missing|ambiguous|legacy_unresolved|not_applicable`, and versioned provenance containing
+candidate IDs and the import/retry operation. One same-Profile match resolves; the same external ID
+in another Profile is a different key; zero or multiple matches remain explicit review states.
+Portable export carries both external identity and resolution evidence and remaps only a resolved
+native ID. Existing rows receive no guessed backfill. A code rollback must preserve the added data;
+dropping columns or the rebuilt key is not an acceptable rollback.
+
+**PD-QA-021 — durable financial activity history.** Existing ledger audit rows cannot safely own
+this because their foreign keys cascade and Cash/Casino deletion removes them. Add the previously
+specified append-only `financial_activity_history` record: Profile, ledger/type, record/source
+identity, `create|settle|correct|archive|remove|reverse` operation, event timestamp, actor/source,
+reason, schema version, immutable before/after snapshots, reporting values and unique Profile-scoped
+operation ID. It deliberately has no foreign key to the deletable row. Current ledger screens show
+current state; history shows the immutable sequence; reports use the governed current/reversal
+treatment and do not count the history snapshot as a second financial event. No backfill is
+invented. Code rollback disables new writes but retains stored history.
+
+Both designs are **PROPOSED — NOT IMPLEMENTED — OWNER APPROVAL REQUIRED**. No schema was changed.
+
+### Requirements, competitors and portability
+
+Six further requests are reconciled from their original issue text and current evidence: #60
+shared ledger/modal WCAG review (implemented/scoped evidence, not blanket compliance), #61 guided
+entry (implemented core preference; several named paths remain), #62 optional Google OIDC (normal
+local flow exists; provider callback and hosted path unverified), #63 verified local backup (local
+SQLite and disposable PostgreSQL recovery proven; encrypted cloud recovery unverified), #75 Neon
+cutover (planning and isolated PostgreSQL evidence only; runtime cutover deliberately absent), and
+#101 local service handoff (3010/8010 healthy; process lifetime still operational evidence, not a
+guarantee). Public competitor material added useful evidence but no new matrix cell: Outplayed
+documents browser/account tracking and a separate balance sheet; OddsMonkey documents destructive
+Profit Tracker reset, not restoration; MBB member history/settings remain unverified.
+
+The existing OAuth deployment guide now contains one non-secret configurable local runtime
+contract covering web/API endpoints, database selection, OAuth origin, environment-variable names,
+startup, health and test isolation. Fixed helper ports, macOS/Rosetta Python discovery and provider
+coupling remain portability concerns.
+
+Current coverage is **56/87 assessments (64%), 10/24 complete journeys exercised/passing (42%),
+15/27 competitor cells (56%) and 32/133 requirements reconciled (24%)**. Newly completed assessment
+row: PQA-F20. PQA-U08 and the actual screen-reader pass remain UNVERIFIED. No hosted, owner or whole-
+platform acceptance is inferred.
+
 ## Current CP-006 reporting, notification and security/reliability package — 2026-09-16
 
 **Checkpoint timestamp:** 2026-09-16 14:02 BST
@@ -2900,7 +2997,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F17 | Award lineage/removal lifecycle | ASSESSED; FAIL / PROVEN scoped | Genuine single/split SNR/SR; child503/retry duplicate, removal UI blocker/API orphan; J11 remains PARTIAL |
 | PQA-F18 | Combined report reconciliation | ASSESSED; PASS / PROVEN scoped | CP-005 Profile £41.90/£37.90, Void £11.50/£7.50 and authorised two-Profile £14.60/£10.60; #111 interaction remains planned |
 | PQA-F19 | Search/filter/loadout/Quick Actions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-F20 | Settings persistence/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F20 | Settings persistence/error recovery | ASSESSED; PARTIAL / PROVEN boundary | CP-009 inventory and 12/12 isolated browser checks; ownership/defaults, mutation rollback and focus revalidation evidenced, while full new-session/browser restart remains partial |
 | PQA-F21 | Notification clear/history lifecycle | ASSESSED; FAIL / PROVEN scoped | CP-006 real source→clear/reload→resolve: tombstone persists but prior event disappears; #90 durable history absent, J17 partial |
 | PQA-F22 | Synthetic portable restore validation | ASSESSED; PASS scoped | B portable-restore/security named fixtures |
 | PQA-F23 | Actual SQLite backup recovery | ASSESSED; PASS / PROVEN scoped | Verified backup→separate copy restore, repeated additive migration, unchanged six-ledger row hashes and representative reopen; current backup checksum/integrity reverified at CP-003 |
@@ -2999,7 +3096,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
 |PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|PARTIAL: CP-006 £11.50/£7.50 Profile and £14.60 combined totals, range/reload, module/bookmaker breakdown and text chart summary pass; point focus/inspection/drilldown, module filter and saved presets remain #111 gaps |
-|PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |
+|PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|PARTIAL: CP-009 ownership/default inventory, Auto Logout failure rollback, inactivity/cross-tab/stale-session/focus-resume paths and display persistence evidence; actual reader and complete fresh-browser restart path remain |
 |PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|PARTIAL: CP-005 200-record authenticated Profile passes page/filter/search, module navigation and half-width containment; chart interaction, larger scale and stale-request recovery remain |
 
 ### Competitor workflow slice — public evidence, accessed2026-09-13

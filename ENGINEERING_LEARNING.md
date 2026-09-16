@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 14:27 BST
+**Last updated:** 2026-09-16 14:54 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Separating a current projection from an enduring event history.
-- Using observability evidence to distinguish an affected dependency from a reachable exposure.
+- Giving browser, Profile, account and server state explicit owners.
+- Using static analysis to find uncertain shapes that runtime happy paths may miss.
 
 ## Concepts worth remembering
 
@@ -68,6 +68,27 @@ are still unknown.
 
 **Remember:** “Affected” is not “exploited”, and “unknown” is not “safe”.
 
+### Persistence boundary and state ownership
+
+**What it means:** Every preference or saved value needs one deliberate owner and lifetime rather
+than being stored wherever it is easiest.
+
+**Why it mattered in Plum Duff:** Theme can belong to one browser, ledger views need a Profile key,
+Auto Logout belongs to the signed-in Fund Manager, and the server—not the toggle—owns session expiry.
+
+**Remember:** Decide who owns state before deciding where to store it.
+
+### Static analysis
+
+**What it means:** A type checker traces possible values and shapes without waiting for a particular
+runtime path to fail.
+
+**Why it mattered in Plum Duff:** Mypy exposed optional values and reused variable shapes across
+financial write paths; narrowing those paths reduced 39 findings to the 22-file-local Early Payout
+cluster without changing money rules.
+
+**Remember:** Tests show exercised behaviour; static analysis challenges unexercised possibilities.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -123,6 +144,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | --- | --- | --- | --- |
 | CP-005 | 2026-09-16 12:52 BST | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
 | CP-006 | 2026-09-16 14:02 BST | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
+| CP-009 | 2026-09-16 14:54 BST | Persistence boundary/state ownership; static analysis | Settings, sessions and financial responses need explicit owners and safe shapes beyond happy-path runtime evidence |
 
 ## Where detailed evidence lives
 

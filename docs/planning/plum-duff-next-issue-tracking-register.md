@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP009-20260916 — accessibility, persistence and recovery
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-AUDIT-SETTINGS-001 | Preserve each setting at its correct browser, Profile or Fund Manager boundary and recover safely from bad state | PARTIAL / PROVEN boundary: ownership/default matrix and failure rollback evidenced; complete fresh-browser restart remains partial |
+| PD-AUDIT-A11Y-001 | Establish the strongest truthful accessibility evidence | PARTIAL: keyboard/theme/contrast/session checks advanced; VoiceOver output could not be captured reliably, so actual screen-reader behaviour remains UNVERIFIED |
+| PD-AUDIT-TYPING-001 | Keep static analysis executable and triage real correctness risk | PARTIAL / IMPROVED: API mypy 39 errors/7 files → 22 errors/1 pre-existing Early Payout file; no broad unrelated refactor |
+| PD-QA-018 | Resolve imported Free Bet parents within a Profile without guessed links | DECISION READY / NOT IMPLEMENTED: exact Profile-scoped key, resolution states, provenance, export/restore, no-backfill and rollback semantics recorded; owner schema approval required |
+| PD-QA-021 | Retain correction/deletion evidence independently of deletable financial rows | DECISION READY / NOT IMPLEMENTED: exact append-only event fields, idempotency, reporting boundary, no-backfill and rollback semantics recorded; owner schema approval required |
+| PD-AUDIT-PORTABILITY-001 | Make the supported local runtime boundary reproducible without secrets | PARTIAL: existing OAuth deployment guide now owns configurable endpoints, database selector, env names, startup/health and test separation; fixed helper ports/macOS assumptions remain |
+
+Reconciled in this package: #60 shared ledger/WCAG review, #61 guided entry, #62 optional Google OIDC,
+#63 verified backup, #75 safe PostgreSQL/Neon cutover and #101 local runtime handoff. Their implemented,
+local, hosted and accepted states remain distinct.
+
 ## PD-AUDIT-CP006-20260916 — reporting, notification history and reliability
 
 | ID | Requested outcome | Current state |
