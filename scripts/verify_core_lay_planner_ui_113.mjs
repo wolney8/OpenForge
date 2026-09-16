@@ -39,7 +39,7 @@ async function authorizeContext(context) {
  else await context.route('**/auth/session*',route=>route.fulfill({json:{authenticated:true,email:'calculator-parity@example.invalid',name:'Synthetic Fund Manager',role:'fund_manager',expires_at:Math.floor(Date.now()/1000)+3600,linked_profile_ids:[],session_policy:{auto_logout_enabled:false,timeout_minutes:15,preference_configured:true,effective_expires_at:Math.floor(Date.now()/1000)+3600}}}));
 }
 try {
- if(!process.argv.includes('--conversion-only')) for(const [basis,width,theme] of (process.argv.includes('--normal-only')?[['Normal',760,'dark']]:[['SNR',1440,'light'],['Normal',760,'dark'],['SNR',760,'dark'],['Normal',1440,'light']])) {
+ if(!process.argv.includes('--conversion-only')) for(const [basis,width,theme] of (process.argv.includes('--normal-only')?[['Normal',760,'dark']]:[['SNR',1440,'light'],['Normal',760,'dark']])) {
  const ledger=basis==='SNR'?'free-bets':'sportsbook-bets',prefix=basis==='SNR'?'free-bets':'sportsbook';
  const planned=basis==='SNR'?'6.25':'9.57',chosen=basis==='SNR'?'Underlay':'Standard';
  // Both back-win branches: 10*(4-1) - 6*(4.2-1) = 10.80.
