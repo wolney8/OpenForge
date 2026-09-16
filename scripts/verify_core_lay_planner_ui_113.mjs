@@ -161,10 +161,11 @@ let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chose
   const current=await core.getByLabel('Lay stake',{exact:true}).inputValue();
   assert.notEqual(current,'9.00');await customCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
   await expect(result).toHaveAttribute('data-test-identity','persistent');
-  await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.locator('dd').first()).toContainText('7.18');
-  await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
-  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);selected=referenceFor('Underlay');await expect(selected.locator('dd').first()).toContainText('6.25');
+ await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.locator('dd').first()).toContainText('7.18');
+ await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
+ await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);selected=referenceFor('Underlay');await expect(selected.locator('dd').first()).toContainText('6.25');
  }
+ const confirmedPlan=basis==='SNR'?'7.18':planned;
  await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
  await core.getByLabel('Actual lay odds',{exact:true}).fill('4.20');
  await core.getByLabel('Actual exchange commission (%)',{exact:true}).fill('2');
@@ -172,12 +173,12 @@ let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chose
  await expect(save).toBeEnabled();await save.click();await expect(dialog).toBeHidden();
  row=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();
  assert.equal(row.lay_actual,'6.00');assert.equal(row.lay_commission_1,'0.02');assert.equal(row.calculated_liability_1,'19.20');
- assert.equal(JSON.parse(row.lay_plan_json).reviewed_planned_lay_stake,planned);
+ assert.equal(JSON.parse(row.lay_plan_json).reviewed_planned_lay_stake,confirmedPlan);
  await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await expect(core.getByText('Reviewed planned stake',{exact:true})).toBeVisible();
  await expect(core.getByText('Matched so far',{exact:true})).toBeVisible();
  await expect(core.getByText('Known unmatched order',{exact:true})).toBeVisible();
- const remaining=(Number(planned)-6).toFixed(2);
+ const remaining=(Number(confirmedPlan)-6).toFixed(2);
  const remainingCopy=core.getByRole('button',{name:new RegExp(`^Copy Remaining to match at the same odds .*${remaining.replace('.','\\.')}`)});
  await expect(remainingCopy).toBeEnabled();await remainingCopy.click();
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),remaining);
@@ -210,7 +211,7 @@ let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chose
  await expect(page.locator('.financial-value').filter({hasText:total}).first()).toBeVisible();
  await page.reload();await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
- evidence.cases.push({kind:'native '+basis,width,theme,id,plan:planned,actual:'6.00',remainingCopy:remaining,copyDidNotPlace:true,commission:'0.02',liability:'19.20',backWon,layWon,references:basis==='SNR'?expected:undefined,copy:planned,report:total});
+ evidence.cases.push({kind:'native '+basis,width,theme,id,initialCopiedPlan:planned,plan:confirmedPlan,actual:'6.00',remainingCopy:remaining,copyDidNotPlace:true,commission:'0.02',liability:'19.20',backWon,layWon,references:basis==='SNR'?expected:undefined,copy:planned,report:total});
  await context.close();
  }
  if(!process.argv.includes('--normal-only')) for(const [basis,strategy,width,theme] of [['SNR','Underlay',1440,'light'],['SNR','Overlay',760,'dark'],['Normal','Standard',760,'dark'],['SNR','Custom',1440,'light']]) {
