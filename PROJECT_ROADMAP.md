@@ -8,17 +8,18 @@ reporting and recovery clearer and safer.
 
 ## Current milestone
 
-Finish the engineering gate for the integrated local application, then continue the evidence-led
-platform audit so the next implementation batches are prioritised by financial, security and user
-impact rather than by isolated visual polish.
+Continue the evidence-led platform audit from the completed local integration gate so the next
+implementation batches are prioritised by financial, security and user impact rather than by
+isolated visual polish.
 
 ## Now
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
-- Repair the two remaining synthetic Account fixture gaps.
-- Rerun authenticated calculator conversion on the integrated build.
+- Complete the full synthetic Profile workbook browser import and imported-parent checks.
+- Exercise populated Extra Place, Cash Adjustment and remaining native Casino workflows.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
-- Resume the #114 audit without waiting for deferred calculator-owner comparison.
+- Continue #114 accessibility, recovery, competitor, requirements and security evidence without
+  waiting for deferred calculator-owner comparison.
 
 ## Next
 

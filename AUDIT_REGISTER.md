@@ -9,9 +9,9 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 46 / 87 (53%) | A documented defect can complete an assessment |
-| Complete tasks exercised | 8 / 24 (33%) | All required steps must be exercised |
-| Complete tasks passing | 8 / 24 (33%) | Blocked or partial tasks are excluded |
+| Assessments reviewed | 48 / 87 (55%) | A documented defect can complete an assessment |
+| Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
+| Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
 | Requirements reconciled | 24 / 133 (18%) | Original scope and clarifications both required |
 
@@ -19,7 +19,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
-| PD-QA-006 | Some broad browser tests still depend on missing synthetic Accounts | Open | Two fixture gaps remain in the local engineering gate | [#113](https://github.com/wolney8/OpenForge/issues/113), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The two calculator Account gaps are closed; the wider 20-test legacy fixture debt remains | [#113](https://github.com/wolney8/OpenForge/issues/113), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records do not always resolve their native parent | Open | Identity is retained; safe parent resolution remains missing | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
@@ -31,13 +31,15 @@ These are coverage measures, not percentages of the product finished.
 | Workflow | State | Main gap |
 | --- | --- | --- |
 | Account correction to truthful cash total | Passed locally | Main/origin and hosted builds are unchanged |
-| Native Normal/SNR planning to settlement/report | Passed locally | Fresh authenticated conversion tail still needs rerunning |
+| Native and converted Normal/SNR planning to settlement/report | Passed locally | Main/origin and hosted builds are unchanged |
 | Native Sportsbook save, placement, correction and report | Passed locally | Full row-change history remains absent |
 | Generated Free Bet awards | Partial | Transaction integrity is repaired; complete visible lineage/history remains open |
-| Profit Boost and conditional Cashback | Passed for the approved local scope | Split award-group receipt linkage remains limited |
+| Profit Boost and conditional Cashback | Passed on the integrated local application | Split award-group receipt linkage remains limited |
 | Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
-| Workbook import and portable restore | Partial | Full multi-ledger browser recovery and imported-parent resolution remain |
+| Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
+| Workbook import and imported lineage | Partial | Full multi-sheet browser import, #109 fields and PD-QA-018 parent resolution remain |
+| SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
 
 ## Competitor review

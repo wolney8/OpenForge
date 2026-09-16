@@ -12,17 +12,33 @@ calculator autosave afterwards.
 
 Data evidence: fresh backup `openforge-pre-integration-switch-20260916-100108.sqlite3` passes SQLite
 integrity with SHA-256 `efb197e0fcbede68a32eeb3b3a136f0be07ffe3ab2ac31088c4bdb0238d7f51c`.
-The prior clone/repeat/restore gate retained identical schema and row hashes for the six representative
-ledgers; the normal database still has 3/76/508/231/62/15 rows respectively and passes integrity.
+The clone/repeat/restore gate retained identical schema and row hashes for six representative ledgers.
+After the authenticated synthetic runs and API-owned cleanup, the normal database is back to its
+unchanged 3/76/508/231/62/15 Profile/Account/Sportsbook/Free Bet/Casino/Cash Adjustment counts and
+passes integrity.
 
-Frozen evidence: Multi-Lay ledger route/setup 3/3 PASS; calculator visual/family checks 11/13 PASS,
-with two setup failures caused by missing synthetic Account fixtures; native SNR desktop/light and
-Normal half-width/dark run through plan, save/reopen, explicit placement, settlement and report. The
-separate conversion tail was NOT TESTED on that fresh run because the disposable API lacked a Fund
-Manager session; existing unchanged conversion/API evidence is retained. Production web build and
-web TypeScript pass. Real PostgreSQL persistence evidence remains applicable because this milestone
-changed no backend persistence. Review totals remain 46/87, journeys 8/24 exercised and passing,
-competitors 15/27, requirements 24/133.
+Current gate evidence on application source `f3b92b7e000dfc2644d9717b2a98eda9a7afa958` and reusable
+harness checkpoint `a0645f072accc4518681c758b485d9fbc3a23d7f`: the two missing-Account calculator fixtures now
+use canonical synthetic Account/catalogue creation and pass 2/2. Authenticated 3010 conversion passes
+for Normal and SNR Underlay/Overlay/Standard/Custom through receipt, destination reopen, copy-only
+planning, explicit actual 6.00 placement, 19.20 liability, 10.80 Back Won settlement, report reload
+and retry identity. Profit Boost all four sources and conditional Cashback pass the same browser/API/
+database/report boundary at 1440/760/390, both themes and 200% text. This closes the local integration
+engineering gate; main/origin, Vercel and owner acceptance remain separate.
+
+The next #114 package also ran: 38 isolated Profile import/cutover/portable-restore cases pass; one
+private-workbook oracle is intentionally skipped because that workbook is not committed. A real
+authenticated browser portable restore copied 2 Accounts, 1 Sportsbook and 3 Free Bets, preserved
+financial inputs/plans, passed financial/operational/logical reconciliation, reopened Reports,
+re-exported, then archived/deleted only the restored synthetic Profile. PQA-J19 is now complete.
+The earlier verified SQLite backup→separate-copy restore/reopen evidence is reconciled as PQA-F23,
+PQA-D02 and PQA-J20 PASS. Full multi-sheet workbook browser import, cross-Profile source collisions,
+#109 access fields and imported parent resolution PD-QA-018 remain untested/open. Current totals are
+48/87 assessments, 10/24 journeys exercised and passing, 15/27 competitor cells and 24/133 requests.
+Redacted local evidence checksums: core conversion
+`f68b249f0fb511cfaf1a194a6328b2a42f1f95ba3c5ff2b69ed31977023204f5`, Profit Boost/Cashback
+`5679abf939fcd81200718b6cac968dbe07ea46f2bd410d69dea186b3201e4c47`, portable recovery
+`9a7a70edd5ef561e8b09022105de751541b3d0f514bf1ce1ad1193e5d5942b3f`.
 GitHub #114 synchronisation is pending because `gh` is unavailable in this checkout; no repeated
 authentication attempt was made and this section is the exact local handoff.
 
@@ -2658,7 +2674,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F20 | Settings persistence/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F21 | Notification clear/history lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F22 | Synthetic portable restore validation | ASSESSED; PASS scoped | B portable-restore/security named fixtures |
-| PQA-F23 | Actual SQLite backup recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F23 | Actual SQLite backup recovery | ASSESSED; PASS / PROVEN scoped | Verified backup→separate copy restore, repeated additive migration, unchanged six-ledger row hashes and representative reopen; current backup checksum/integrity reverified at CP-003 |
 | PQA-F24 | Subscriber/billing/advisory-AI plan boundary | ASSESSED; PASS scoped | C future-scope contracts; plan only |
 | PQA-U01 | Free Bet modal keyboard/dirty recovery | ASSESSED; PASS scoped | free-bet-browser.json six width/theme cases |
 | PQA-U02 | Sportsbook/conversion modal focus/close | ASSESSED; PASS scoped | modal-conversion-browser.json six cases |
@@ -2685,7 +2701,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-S11 | Future subscriber isolation design | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-S12 | AI/billing/data-provider threat/cost boundary | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D01 | Synthetic portable restore invariants | ASSESSED; PASS scoped | B portable-restore fixtures |
-| PQA-D02 | Actual backup→restore→reopen | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-D02 | Actual backup→restore→reopen | ASSESSED; PASS / PROVEN scoped | Local integration backup restored to separate verification copy; schema/row hashes and representative ledger/report reads retained; not hosted recovery proof |
 | PQA-D03 | SQLite write/claim fault rollback | ASSESSED; PASS scoped | PD-QA-014/015 fault rollback |
 | PQA-D04 | Legacy-invalid source preservation | ASSESSED; PASS scoped | Account/Free Bet legacy fixtures remain raw |
 | PQA-D05 | Valid/invalid export diagnostics | ASSESSED; PASS scoped | Account browser export409/200 |
@@ -2749,9 +2765,9 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT TESTED; actual keyboard/stale-response journey next |
 |PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL; durable clear tests not source-independent history;#90 retained |
-|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: actual native single-ledger XLSX files for2 Accounts/1 Sportsbook/1 linked Free Bet→review/approval/verified backup/import→real UI reopen/report→browser Accounts export; invalid zero writes, repeats no_op. Full multi-sheet Profile migration, cross-Profile source collisions and #109 access fields NOT TESTED; parent alias does not resolve native ID (PD-QA-018) |
-|PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|PARTIAL; API restore invariants not full browser restore |
-|PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|BLOCKED harness/fixture setup; existing named backup tests not whole recovery |
+|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: actual native single-ledger XLSX files for2 Accounts/1 Sportsbook/1 linked Free Bet→review/approval/verified backup/import→real UI reopen/report→browser Accounts export; invalid zero writes, repeats no_op. CP-003 adds 38 PASS isolated cutover/failure/retry/portable cases, but full multi-sheet Profile browser migration, cross-Profile source collisions and #109 access fields remain NOT TESTED; parent alias does not resolve native ID (PD-QA-018) |
+|PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|FULLY EXERCISED; PASS / PROVEN on 3010: authenticated file analyse/restore, 2 Accounts+1 Sportsbook+3 Free Bets, independent SQLite values/counts, three reconciliation gates, report reload, re-export and API-owned archive/delete cleanup |
+|PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
 |PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|NOT TESTED;#111 interaction/requested analytics retained |
 |PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |

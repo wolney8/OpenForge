@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-16
 
+- **CP-003:** Closed the scoped local integration engineering gate on normal `localhost:3010` and
+  completed authenticated portable Profile restore, report, re-export and synthetic cleanup evidence.
 - **CP-002:** Added concise owner-facing status, audit and roadmap navigation; moved unique detailed
   status history to `docs/history/project-status-history.md`.
 - **CP-001:** Established the persistent Project Status checkpoint workflow.

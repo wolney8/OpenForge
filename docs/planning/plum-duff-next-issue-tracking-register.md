@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-LOCAL-GATE-20260916 — authenticated integration and recovery return
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-LOCAL-007 | Replace the two private-seed Account assumptions with canonical synthetic Account/catalogue setup | COMPLETE / PROVEN: the two previously blocked calculator tests pass 2/2 |
+| PD-LOCAL-008 | Run Normal/SNR calculator conversion through destination reopen, actual placement, settlement and report on normal 3010 authentication | COMPLETE / PROVEN for Standard, Underlay, Overlay and Custom; receipt, notification and retry identity retained |
+| PD-LOCAL-009 | Re-run Profit Boost and conditional Cashback on the integrated normal application | COMPLETE / PROVEN across native/conversion, save/reopen, confirmed activity and report at desktop/half-width/narrow |
+| PD-AUDIT-IMPORT-001 | Exercise Profile import/cutover/recovery without private operational data | PARTIAL: 38 isolated contract/transaction cases pass and real browser portable restore/re-export/cleanup passes; full multi-sheet browser import and PD-QA-018 parent resolution remain open |
+
+Integration evidence is local only at harness checkpoint `a0645f072accc4518681c758b485d9fbc3a23d7f`.
+The normal database returned to its pre-test record counts after API-owned synthetic cleanup. Main,
+Vercel and owner acceptance remain unchanged; GitHub #114 synchronisation is pending locally.
+
 ## PD-CALC-UI-PARITY-20260915 — shared calculator reference presentation
 
 | ID | Requested outcome | Current state |
