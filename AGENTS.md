@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-08-16
+Last updated: 2026-09-16
 
 ## Project purpose
 
@@ -227,6 +227,43 @@ implementation tranche must finish with all of the following:
 - **Hosted state:** when a tranche affects Vercel, verify and report whether the new commit is
   deployed. Never describe hosted behavior as verified when only local tests have run; keep hosted
   smoke verification as an explicit gate when it still requires the user.
+
+### Project Status checkpoint rule
+
+At the end of every completed task or substantive checkpoint, before finishing:
+
+1. Append exactly one new row to `PROJECT_STATUS.md` → `Checkpoint log`.
+2. Use the next sequential checkpoint ID: `CP-XXX`.
+3. Record:
+   - today's date;
+   - one-line description of what changed;
+   - linked GitHub issue/PR if applicable, otherwise `—`;
+   - relevant changelog/document link if applicable, otherwise `—`.
+4. Update `Right now`:
+   - `Working on`
+   - `Next`
+   - `Blocked on`
+     so they reflect the actual repository state after the task.
+5. Never rewrite or renumber previous checkpoint rows during normal operation.
+6. Begin the final chat reply with:
+   `CP-XXX — <short status>`
+   so the conversation ID matches `PROJECT_STATUS.md`.
+
+When the Checkpoint Log exceeds 20 rows:
+
+- preserve the CP IDs;
+- move the oldest completed checkpoint rows into the existing `CHANGELOG.md`
+  under an appropriate dated/project-status section;
+- leave the newest 20 rows in `PROJECT_STATUS.md`;
+- this rollover is the only exception to the normal append-only checkpoint-log rule;
+- never discard checkpoint history.
+
+`PROJECT_STATUS.md` is an owner-facing current-state summary, not the detailed source of truth for
+requirements, test evidence, architecture or audit history. Link those authorities rather than
+copying them.
+
+A checkpoint row is NOT proof that a feature is complete, tested, deployed or accepted. Continue
+using the repository's existing evidence labels and issue status rules.
 
 ## Response style
 

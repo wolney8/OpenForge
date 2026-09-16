@@ -1,4 +1,40 @@
-# Project Status
+# Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
+
+**Last updated:** 2026-09-16 · **Status:** 🟡 At risk
+
+## Right now
+
+- **Working on:** Finish the local integration engineering gate by repairing two synthetic Account fixtures and rerunning the authenticated calculator conversion flow against the integrated Plum Duff build.
+- **Next:** Resume the #114 audit with saving and restoring exported data, remaining populated ledgers, accessibility, competitor review, requirement reconciliation, recovery and security checks.
+- **Blocked on:** none
+
+## Checkpoint log
+
+| ID | Date | What changed | Linked issue | Linked doc |
+| --- | --- | --- | --- | --- |
+| CP-001 | 2026-09-16 | Consolidated project status and persistent checkpoint workflow | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Agent instructions](AGENTS.md#project-status-checkpoint-rule) |
+
+## Goals & alignment
+
+- Current milestone: Local integration and platform quality audit — [#114](https://github.com/wolney8/OpenForge/issues/114)
+- Relevant to the other project?: n/a — this status covers Plum Duff / OpenForge only.
+
+## Reference index (links only — nothing duplicated here)
+
+- Changelog: [repository commit history](https://github.com/wolney8/OpenForge/commits/main/)
+- Architecture / contracts: [profile-scoped architecture](docs/planning/openforge-phase-2-profile-scoped-architecture-draft.md) · [workflow contracts](docs/workflows/) · [calculation contracts](docs/calculation-contracts/)
+- Test fixtures: [fixture specification index](docs/fixture-specs/README.md) · [executable fixture index](tests/fixtures/README.md)
+- Walkthrough: [application overview and local walkthrough](README.md#how-it-works)
+- Issues & milestones: [GitHub Issues](https://github.com/wolney8/OpenForge/issues) · [GitHub Milestones](https://github.com/wolney8/OpenForge/milestones)
+
+## Historical and detailed status reference
+
+The material below is preserved for traceability. The compact sections above are the current
+owner-facing status; the linked audit and registers remain the detailed evidence and backlog authorities.
+
+<details>
+<summary>Show preserved status history and earlier handoffs</summary>
+
 
 ## Current normal local Plum Duff — 2026-09-16
 
@@ -628,3 +664,5 @@ commit. Manual status: `NOT RUN`.
 
 Record each manual result as `PASS`, `FAIL`, or `BLOCKED`; automated results never replace Will's
 result.
+
+</details>
