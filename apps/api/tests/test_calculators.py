@@ -16,7 +16,11 @@ from openforge_api.calculations.sportsbook_current_value import (
     calculate_sportsbook_current_value,
 )
 from openforge_api.config import settings
-from openforge_api.db import list_each_way_extra_places, list_sportsbook_bets
+from openforge_api.db import (
+    create_profile_with_onboarding,
+    list_each_way_extra_places,
+    list_sportsbook_bets,
+)
 from openforge_api.main import app
 
 
@@ -25,6 +29,17 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.backup_directory = str(tmp_path / "backups")
     settings.environment = "local"
     settings.auth_required = False
+    create_profile_with_onboarding(
+        {
+            "profile_id": "profile-demo-001",
+            "display_name": "Synthetic Calculator Profile",
+            "profile_code": "CALCULATOR-001",
+            "tracking_start_date": "2026-01-01",
+            "current_cash_snapshot": "0.00",
+            "enabled_modules": ["sportsbook-bets", "free-bets", "each-way-extra-places"],
+            "accounts": [],
+        }
+    )
 
 
 def test_standard_qualifying_matches_sportsbook_preview_without_writes(tmp_path: Path) -> None:

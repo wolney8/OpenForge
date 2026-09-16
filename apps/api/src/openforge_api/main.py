@@ -9,8 +9,8 @@ from openforge_api.auth_middleware import OwnerAuthenticationMiddleware
 from openforge_api.backups import router as backups_router
 from openforge_api.balance_snapshots import router as balance_snapshots_router
 from openforge_api.bookmaker_catalogue import router as bookmaker_catalogue_router
-from openforge_api.calculators import router as calculators_router
 from openforge_api.calculator_conversions import router as calculator_conversions_router
+from openforge_api.calculators import router as calculators_router
 from openforge_api.cash_adjustments import router as cash_adjustments_router
 from openforge_api.casino_offers import router as casino_offers_router
 from openforge_api.common_bet_combos import router as common_bet_combos_router
@@ -94,12 +94,11 @@ app.include_router(lookup_values_router)
 def healthcheck() -> dict[str, str] | JSONResponse:
     if not settings.hosted_persistence_ready:
         return JSONResponse({"status": "unavailable"}, status_code=503)
-    if settings.hosted_environment:
-        try:
-            with connect() as connection:
-                connection.execute("SELECT 1").fetchone()
-        except Exception:
-            return JSONResponse({"status": "unavailable"}, status_code=503)
+    try:
+        with connect() as connection:
+            connection.execute("SELECT 1").fetchone()
+    except Exception:
+        return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok"}
 
 

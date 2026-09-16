@@ -94,44 +94,50 @@ def calculate_early_payout(value: EarlyPayoutInput) -> EarlyPayoutResult:
 
     if value.cover_mode == "exchange_lay":
         assert value.lay_odds is not None
-        recommended_initial = money(back_return / (value.lay_odds - value.lay_commission))
+        lay_odds = value.lay_odds
+        recommended_initial = money(back_return / (lay_odds - value.lay_commission))
         initial_stake = value.actual_lay_stake or recommended_initial
-        liability = money(initial_stake * (value.lay_odds - Decimal("1")))
+        liability = money(initial_stake * (lay_odds - Decimal("1")))
         initial_win = money(initial_stake * (Decimal("1") - value.lay_commission))
-        initial_loss = money(-initial_stake * (value.lay_odds - Decimal("1")))
-        columns = (bookie_win, initial_loss)
-        other_columns = (bookie_other, initial_win)
+        initial_loss = money(-initial_stake * (lay_odds - Decimal("1")))
+        columns: tuple[Decimal, ...] = (bookie_win, initial_loss)
+        other_columns: tuple[Decimal, ...] = (bookie_other, initial_win)
     else:
         assert value.second_back_odds is not None
-        recommended_initial = money(back_return / value.second_back_odds)
+        second_back_odds = value.second_back_odds
+        recommended_initial = money(back_return / second_back_odds)
         initial_stake = value.actual_second_back_stake or recommended_initial
         liability = None
-        initial_win = money(initial_stake * (value.second_back_odds - Decimal("1")))
+        initial_win = money(initial_stake * (second_back_odds - Decimal("1")))
         initial_loss = money(-initial_stake)
         columns = (bookie_win, initial_loss, ZERO)
         other_columns = (bookie_other, initial_win, ZERO)
 
+    outcomes: tuple[EarlyPayoutOutcome, ...]
     if not value.triggered:
         if value.cover_mode == "exchange_lay":
             outcomes = (
                 EarlyPayoutOutcome(
-                    "selection-wins", "Team / selection wins", columns, money(sum(columns))
+                    "selection-wins", "Team / selection wins", columns, money(sum(columns, ZERO))
                 ),
-                EarlyPayoutOutcome("draw", "Draw", other_columns, money(sum(other_columns))),
+                EarlyPayoutOutcome("draw", "Draw", other_columns, money(sum(other_columns, ZERO))),
                 EarlyPayoutOutcome(
                     "selection-loses",
                     "Team / selection loses",
                     other_columns,
-                    money(sum(other_columns)),
+                    money(sum(other_columns, ZERO)),
                 ),
             )
         else:
             outcomes = (
                 EarlyPayoutOutcome(
-                    "selection-wins", "Selection wins", columns, money(sum(columns))
+                    "selection-wins", "Selection wins", columns, money(sum(columns, ZERO))
                 ),
                 EarlyPayoutOutcome(
-                    "selection-loses", "Selection loses", other_columns, money(sum(other_columns))
+                    "selection-loses",
+                    "Selection loses",
+                    other_columns,
+                    money(sum(other_columns, ZERO)),
                 ),
             )
         return EarlyPayoutResult(
@@ -144,6 +150,7 @@ def calculate_early_payout(value: EarlyPayoutInput) -> EarlyPayoutResult:
         )
 
     assert value.in_play_back_odds is not None
+    in_play_back_odds = value.in_play_back_odds
     bookie_other = bookie_win
     payout_return = back_return
     if value.maximum_payout is not None and value.maximum_payout < back_return:
@@ -165,16 +172,18 @@ def calculate_early_payout(value: EarlyPayoutInput) -> EarlyPayoutResult:
             + initial_stake * initial_odds
             - part_profit
         )
-        / value.in_play_back_odds
+        / in_play_back_odds
         * value.lock_adjustment
     )
     additional = max(ZERO, additional)
 
     if value.cover_mode == "exchange_lay":
+        assert value.lay_odds is not None
+        lay_odds = value.lay_odds
         exchange_if_win = money(
-            -initial_stake * (value.lay_odds - Decimal("1"))
+            -initial_stake * (lay_odds - Decimal("1"))
             + part_profit
-            + money(additional * (value.in_play_back_odds - Decimal("1")))
+            + money(additional * (in_play_back_odds - Decimal("1")))
         )
         exchange_if_other = money(initial_stake - part_stake - additional)
         if exchange_if_win > 0 or exchange_if_other > 0:
@@ -184,17 +193,17 @@ def calculate_early_payout(value: EarlyPayoutInput) -> EarlyPayoutResult:
                     - initial_stake * value.lay_commission
                     - part_stake * (Decimal("1") - value.lay_commission)
                     - value.back_stake * value.back_odds
-                    + initial_stake * value.lay_odds
+                    + initial_stake * lay_odds
                     - part_profit
                 )
-                / (value.in_play_back_odds - value.lay_commission)
+                / (in_play_back_odds - value.lay_commission)
                 * value.lock_adjustment
             )
             additional = max(ZERO, additional)
             exchange_if_win = money(
-                -initial_stake * (value.lay_odds - Decimal("1"))
+                -initial_stake * (lay_odds - Decimal("1"))
                 + part_profit
-                + money(additional * (value.in_play_back_odds - Decimal("1")))
+                + money(additional * (in_play_back_odds - Decimal("1")))
             )
             exchange_if_other = money(initial_stake - part_stake - additional)
         if exchange_if_win > 0:
@@ -207,56 +216,61 @@ def calculate_early_payout(value: EarlyPayoutInput) -> EarlyPayoutResult:
                     + part_stake * value.lay_commission
                     - value.back_stake * value.back_odds
                     - (
-                        -initial_stake * value.lay_odds
-                        + initial_stake * value.lay_commission * value.lay_odds
+                        -initial_stake * lay_odds
+                        + initial_stake * value.lay_commission * lay_odds
                         + initial_stake
                         - initial_stake * value.lay_commission
                         + part_profit
                         - part_profit * value.lay_commission
                     )
                 )
-                / (value.in_play_back_odds * (Decimal("1") - value.lay_commission))
+                / (in_play_back_odds * (Decimal("1") - value.lay_commission))
                 * value.lock_adjustment
             )
             additional = max(ZERO, additional)
             exchange_if_win = money(
-                -initial_stake * (value.lay_odds - Decimal("1"))
+                -initial_stake * (lay_odds - Decimal("1"))
                 + part_profit
-                + money(additional * (value.in_play_back_odds - Decimal("1")))
+                + money(additional * (in_play_back_odds - Decimal("1")))
             )
             exchange_if_other = money(initial_stake - part_stake - additional)
         if exchange_if_win > 0:
             exchange_if_win = money(exchange_if_win * (Decimal("1") - value.lay_commission))
         if exchange_if_other > 0:
             exchange_if_other = money(exchange_if_other * (Decimal("1") - value.lay_commission))
-        win_components = (bookie_win, exchange_if_win)
-        other_components = (bookie_other, exchange_if_other)
+        win_components: tuple[Decimal, ...] = (bookie_win, exchange_if_win)
+        other_components: tuple[Decimal, ...] = (bookie_other, exchange_if_other)
         outcomes = (
             EarlyPayoutOutcome(
                 "selection-wins",
                 "Team / selection wins",
                 win_components,
-                money(sum(win_components)),
+                money(sum(win_components, ZERO)),
             ),
-            EarlyPayoutOutcome("draw", "Draw", other_components, money(sum(other_components))),
+            EarlyPayoutOutcome(
+                "draw", "Draw", other_components, money(sum(other_components, ZERO))
+            ),
             EarlyPayoutOutcome(
                 "selection-loses",
                 "Team / selection loses",
                 other_components,
-                money(sum(other_components)),
+                money(sum(other_components, ZERO)),
             ),
         )
     else:
-        third_win = money(additional * (value.in_play_back_odds - Decimal("1")) + part_profit)
+        third_win = money(additional * (in_play_back_odds - Decimal("1")) + part_profit)
         third_loss = money(-additional - part_stake)
         win_components = (bookie_win, money(-initial_stake), third_win)
         other_components = (bookie_other, initial_win, third_loss)
         outcomes = (
             EarlyPayoutOutcome(
-                "selection-wins", "Selection wins", win_components, money(sum(win_components))
+                "selection-wins", "Selection wins", win_components, money(sum(win_components, ZERO))
             ),
             EarlyPayoutOutcome(
-                "selection-loses", "Selection loses", other_components, money(sum(other_components))
+                "selection-loses",
+                "Selection loses",
+                other_components,
+                money(sum(other_components, ZERO)),
             ),
         )
 

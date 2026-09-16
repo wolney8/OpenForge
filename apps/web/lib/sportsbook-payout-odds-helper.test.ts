@@ -19,6 +19,11 @@ describe("Sportsbook payout odds helper inputs", () => {
     expect(getPayoutReturnInputError(value, "10")).toBe(PAYOUT_AMOUNT_FORMAT_MESSAGE);
   });
 
+  it("keeps blank required fields distinct from malformed decimal syntax", () => {
+    expect(getPayoutStakeInputError("")).toBe("Enter a cash back stake.");
+    expect(getPayoutReturnInputError("", "10")).toBe("Enter a total potential return.");
+  });
+
   it("keeps positive and return-at-least-stake rules field specific", () => {
     expect(getPayoutStakeInputError("0")).toContain("stake greater than zero");
     expect(getPayoutReturnInputError("0", "10")).toContain("return greater than zero");
