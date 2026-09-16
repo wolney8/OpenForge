@@ -277,6 +277,50 @@ When the task involves:
   planning documents required;
 - individual requirements: use the canonical request register and relevant GitHub issue;
 - implementation detail: use the relevant contract, fixture and source.
+- transferable engineering teaching: read or update `ENGINEERING_LEARNING.md` only when useful;
+  it is not required context for ordinary implementation.
+
+Update these documents at their own boundary:
+
+- `PROJECT_STATUS.md`: every substantive completed task or checkpoint;
+- `AUDIT_REGISTER.md`: only when audit coverage, evidence, findings or complete-workflow state changes;
+- `PROJECT_ROADMAP.md`: only when milestones, priorities, dependencies or deliberate deferrals change;
+- `ENGINEERING_LEARNING.md`: only when a transferable project lesson is added or materially refined;
+- `CHANGELOG.md`: meaningful completed/integrated milestones and checkpoint rollover.
+
+Detailed audits, contracts and the canonical request register remain authoritative. Do not copy
+their detail into the owner-facing navigation files.
+
+### Portability review rule
+
+When a task materially affects architecture, runtime setup, storage, external services, test
+infrastructure or AI/tooling, assess portability. Check machine paths, OS/runtime assumptions,
+fixed ports/endpoints, credentials, undocumented dependencies, provider coupling, reproducible
+setup, configurable boundaries, data/runtime coupling, test isolation and recovery instructions.
+For Plum Duff, include SQLite/PostgreSQL, Vercel/Neon, Google OAuth, local worktrees, workbook
+round trips, private-data-free fixtures and separation of UI, business logic and persistence.
+
+When relevant, final replies include:
+
+**Portability status:** On track / Concern / Blocked
+**Reason:** concise evidence
+**Smallest improvement:** one bounded next step
+
+Do not add this block for trivial presentation-only changes.
+
+### Human inspection point
+
+For substantive code changes, include exactly one useful `**One thing for Will to inspect:**`
+point in the final reply. Choose a migration, financial equation, state-precedence rule,
+retry/idempotency boundary, shared component or accessibility interaction. This is educational
+guidance, not a request for Will to run the regression suite.
+
+### Engineering coaching
+
+When a substantive checkpoint contains a transferable lesson, teach at most one or two concepts in
+plain English after the delivery summary. Use `Concept`, `What it means`, `Why it matters here` and
+`Remember` labels. Keep teaching short, grounded in the completed work and independent of approval;
+never turn it into a progression gate. Update `ENGINEERING_LEARNING.md` only for durable lessons.
 
 Update rules:
 

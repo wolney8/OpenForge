@@ -72,6 +72,21 @@ boundary as the other issue #12 ledgers.
   explicit-update workflow is approved.
 - Cross-profile source or native account identity collisions block.
 
+## Proposed #109 access vocabulary — decision required
+
+Read-only inspection of the approved 3 September workbook found these source values:
+
+- `Stake Access`: `Normal`, `Soft Limited`, `Heavily Limited`, `Minimum Only`, `Not Checked`,
+  `Unknown`.
+- `Promo Access`: `Full`, `Some Promos`, `Boosts Only`, `No Promos`, `Unknown`.
+
+The smallest recommended contract is to preserve those values as two separate controlled fields,
+plus source and observation date, without deriving lifecycle or catalogue authority from them.
+`Not Checked` means no stake-access observation has been made; `Unknown` means the imported source
+does not establish a supported value. Unknown text must stop review rather than coerce to either.
+`LastPromoUsed` remains ledger-derived and is not part of this proposal. This vocabulary is a
+proposal, not implementation approval; those two workbook columns remain blocked until accepted.
+
 ## Profile Snapshot Reconciliation
 
 Before approval, the dry run compares every workbook Account against the selected Profile and

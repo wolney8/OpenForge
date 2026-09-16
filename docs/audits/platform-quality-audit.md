@@ -1,6 +1,62 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current CP-004 import, populated-ledger and accessibility package — 2026-09-16
+## Current CP-005 reporting, larger-data and evidence-boundary package — 2026-09-16
+
+Application and reusable audit-harness checkpoint:
+**943583d9de0a149d311a81c020b03cc697b479ab** on the local integration branch. The final report
+checkpoint is documentation-only and is recorded in the CP-005 handoff.
+
+A fresh authenticated synthetic Profile combined settled Sportsbook £2.20, Free Bet £7.40, Extra
+Place £30.40 and Casino £1.90 with a −£4.00 Subscription. Independent arithmetic and the rendered
+Profile report agreed at **£41.90 gross / £37.90 retained**. Voiding the Extra Place row changed the
+same reloaded report to **£11.50 / £7.50**. Selecting exactly that corrected Profile and a separate
+£3.10 Casino Profile in the authorised Fund Manager view produced **£14.60 gross / £10.60 retained**.
+Account cash, cash adjustments, projected/current values and settled/final P&L remained separately
+labelled; promotional face value was not counted as realised profit. This completes PQA-F18 as a
+scoped assessment, not the requested #111 interactive analytics feature.
+
+A second synthetic Profile contained 200 records: 30 Sportsbook, 30 Free Bet, 30 Extra Place, 50
+Casino and 60 Cash Adjustment rows. The combined source API returned in 169 ms. Authenticated local
+route readiness ranged from 0.93–2.12 seconds on the first measured pass and 1.00–2.28 seconds on a
+same-browser pass; Cash pagination, Direction filtering and search passed at half width/dark/reduced
+motion. No repeated combined-source read was observed on the warm navigation pass. These are local
+development timings, not Core Web Vitals or production capacity evidence. PQA-M08 is assessed for
+this boundary; PQA-J24 stays PARTIAL because chart interaction, very large volumes, stale-request
+stress and hosted performance remain untested.
+
+The report tables had implicit but not explicit column-header relationships. The shared report shell
+now emits `scope="col"` on direct and generated headers. Browser checks pass explicit scopes,
+accessible financial-value names, reduced motion and contained half-width layout. An actual screen
+reader remains **UNVERIFIED**; PQA-U08 is not promoted.
+
+PD-QA-021 cannot be repaired with the current per-ledger audit rows: Cash Adjustment and Casino
+deletion explicitly remove their audits, while Extra Place deletion loses them by cascading foreign
+key. The smallest recommended change is one Profile-scoped deletion-history table containing ledger
+type, native ID, source/provenance IDs, immutable pre-delete snapshot, reason, actor and timestamp,
+written in the same transaction but without a foreign key to the deleted row. That additive schema
+and deletion policy are not authorised here, so removal/history remains blocked rather than hidden.
+
+PD-QA-018 also needs persistence authority. Full Profile import has run/write audits but does not
+populate the older `import_source_records`; that table's key omits Profile. The smallest proposal is
+to make external identity Profile-scoped and populate external→native mappings during the atomic full
+import, resolving only a unique same-Profile Sportsbook parent. Missing or multiple candidates stay
+review items, and original IDs survive export/restore. This requires an approved SQLite/PostgreSQL
+migration; no historical identifier was guessed or rewritten.
+
+For #109, the approved workbook vocabulary is now bounded by read-only inspection. Stake Access is
+`Normal`, `Soft Limited`, `Heavily Limited`, `Minimum Only`, `Not Checked` or `Unknown`; Promo Access
+is `Full`, `Some Promos`, `Boosts Only`, `No Promos` or `Unknown`. The recommended contract preserves
+the two controls separately with source/observation provenance and blocks unrecognised text.
+`LastPromoUsed` remains ledger-derived. This is a decision proposal, not an implemented import map.
+
+Current coverage is **51/87 assessments (59%), 10/24 complete journeys exercised/passing (42%),
+15/27 competitor cells (56%) and 24/133 requirements reconciled (18%)**. New assessment IDs are
+PQA-F18 and PQA-M08; no journey or requirement numerator was increased. No new qualifying competitor
+evidence was available. Redacted evidence checksum:
+`5eeeefca60b1ff136df5c4adf0cb666c4893702bef67948c294fdad06ac32e0a` for the final CP-005 JSON.
+GitHub synchronisation remains pending because `gh` is unavailable; no push or hosted change occurred.
+
+## Historical CP-004 import, populated-ledger and accessibility package — 2026-09-16
 
 Application, fixture and reusable audit-harness checkpoint:
 **14ab674cec912ced8420f83790219f67d59ed844** on the local integration branch. The final report
@@ -2723,7 +2779,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F15 | Extra Places placement/settlement | ASSESSED; PASS scoped | CP-004 actual browser create, win/place actuals26.00/4.40, four independent outcomes, settle30.40, Void0.00 and report/reload; durable deletion history remains PD-QA-021 |
 | PQA-F16 | Cash movements and matching | OPEN; PARTIAL / FAIL safety repaired | CP-004 browser + API: +25 then correction−10/report; malformed money write fixed. Account reconciliation/fee matching and durable deletion history remain |
 | PQA-F17 | Award lineage/removal lifecycle | ASSESSED; FAIL / PROVEN scoped | Genuine single/split SNR/SR; child503/retry duplicate, removal UI blocker/API orphan; J11 remains PARTIAL |
-| PQA-F18 | Combined report reconciliation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F18 | Combined report reconciliation | ASSESSED; PASS / PROVEN scoped | CP-005 Profile £41.90/£37.90, Void £11.50/£7.50 and authorised two-Profile £14.60/£10.60; #111 interaction remains planned |
 | PQA-F19 | Search/filter/loadout/Quick Actions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F20 | Settings persistence/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F21 | Notification clear/history lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -2737,8 +2793,8 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-U05 | Desktop text enlargement and320px separately | ASSESSED; PASS / PROVEN scoped | Current addendum: separate root-text200%,320 and combined stress artifacts; PD-QA-005 |
 | PQA-U06 | Nested confirmation/pending/error recovery | ASSESSED; PASS / PROVEN scoped | Current addendum: dirty nested Keep Editing, Tab, conversion pending/503 retry and focus return |
 | PQA-U07 | Interrupted/intermediate modal motion | ASSESSED; PASS / PROVEN scoped | Current addendum: RAF frames, controlled60ms close/reopen and static reduced-motion assertion |
-| PQA-U08 | Screen-reader announcements/navigation | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-U09 | Contrast/targets/charts audit | OPEN; PARTIAL | CP-004 browser: 3 ledgers, both themes, visible names and 24px target geometry pass; chart contrast and measured colour contrast remain |
+| PQA-U08 | Screen-reader announcements/navigation | OPEN; NOT TESTED / PARTIAL | CP-005 report header scopes, financial names and reduced motion pass; actual supported reader remains UNVERIFIED |
+| PQA-U09 | Contrast/targets/charts audit | OPEN; PARTIAL | CP-004 three-ledger theme/target evidence plus CP-005 report table semantics pass; chart and measured colour contrast remain |
 | PQA-U10 | Drag alternatives and tooltip association | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-U11 | Chart keyboard/drilldown usability | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-U12 | All other ledger modal equivalence | OPEN; PARTIAL | CP-004 Cash/Extra Place/Casino focus entry, containment, Escape and return pass; remaining ledgers and dirty/pending variants remain |
@@ -2773,7 +2829,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; REVIEWED | B harness blockers + explicit synthetic factories |
 | PQA-M07 | Typing/lint/flakiness census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-M08 | Large-table/chart performance | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-M08 | Large-table/chart performance | ASSESSED; PASS scoped local boundary | CP-005 200 records, source API169ms, routes0.93–2.28s, pagination/filter/search; not production CWV/capacity |
 | PQA-M09 | Request storms/stale-response census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M10 | Routed docs/instruction contradictions | ASSESSED; REVIEWED | A stale docs/orphan IDs; no bulk cleanup |
 | PQA-M11 | Dependency/provider maintenance disposition | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -2823,9 +2879,9 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|FULLY EXERCISED; PASS / PROVEN on 3010: authenticated file analyse/restore, 2 Accounts+1 Sportsbook+3 Free Bets, independent SQLite values/counts, three reconciliation gates, report reload, re-export and API-owned archive/delete cleanup |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
-|PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|NOT TESTED;#111 interaction/requested analytics retained |
+|PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|PARTIAL: authorised selected-Profile totals/correction/reload pass independently; chart point/filter/drilldown and saved presets remain #111 gaps |
 |PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |
-|PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|NOT TESTED;30row fixture is not large-data/performance evidence |
+|PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|PARTIAL: CP-005 200-record authenticated Profile passes page/filter/search, module navigation and half-width containment; chart interaction, larger scale and stale-request recovery remain |
 
 ### Competitor workflow slice — public evidence, accessed2026-09-13
 

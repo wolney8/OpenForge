@@ -1,5 +1,16 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP005-20260916 — reporting, scale and retained history
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-AUDIT-REPORTING-001 | Reconcile module, Profile and authorised combined reporting without double counting | COMPLETE / PROVEN scoped locally: independent £41.90/£37.90, corrected £11.50/£7.50 and selected two-Profile £14.60/£10.60 agree through browser/API/reload |
+| PD-AUDIT-PERFORMANCE-001 | Exercise a realistic larger Profile through navigation, pagination, filtering and search | PARTIAL / PROVEN: 200 synthetic rows pass locally; chart interaction, stale-request stress, hosted performance and larger capacity remain |
+| PD-QA-021 | Retain understandable financial history after permitted deletion | BLOCKED on an approved additive deletion-history schema/policy; existing correction audits pass but current deletes cascade/remove ledger audits |
+| PD-QA-018 | Resolve imported Free Bet parents safely inside the same Profile | BLOCKED on an approved Profile-scoped external→native identity migration; missing/ambiguous candidates must remain review items |
+| ACCOUNTS-IMPORT-ACCESS-001 | Preserve Stake Access and Promo Access separately | DECISION READY: exact source vocabularies and smallest provenance-aware proposal recorded; no import coercion or implementation yet |
+| PD-AUDIT-A11Y-001 | Make reporting semantics assistive-technology ready | PARTIAL: explicit table-header scopes, financial names and reduced motion pass; actual screen-reader use remains UNVERIFIED |
+
 ## PD-AUDIT-CP004-20260916 — import, remaining ledgers and accessibility
 
 | ID | Requested outcome | Current state |

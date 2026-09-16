@@ -15,17 +15,17 @@ isolated visual polish.
 ## Now
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
-- Complete the full synthetic Profile workbook browser import and imported-parent checks.
-- Exercise populated Extra Place, Cash Adjustment and remaining native Casino workflows.
+- Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
+- Keep imported-parent and durable deletion-history proposals explicit pending schema authority.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
 - Continue #114 accessibility, recovery, competitor, requirements and security evidence without
   waiting for deferred calculator-owner comparison.
 
 ## Next
 
-- Complete populated import, restore and source-relationship checks.
-- Exercise the remaining ledgers, combined reports and failure/retry paths.
-- Complete accessibility, larger-data and expensive-request evidence.
+- Complete source-relationship, durable history and remaining report-drilldown checks.
+- Exercise remaining notification, failure/retry and recovery paths.
+- Complete actual screen-reader, larger-scale and expensive-request evidence.
 - Resolve or disposition dependency exposure and release prerequisites.
 - Reconcile the next request groups and select bounded implementation batches.
 
