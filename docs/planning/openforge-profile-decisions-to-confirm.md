@@ -144,9 +144,51 @@ Before implementation or final schema locking, the following need your explicit 
 - first-release profile-level settings scope
 - exact non-action wording for account-health states beneath the mug-bet threshold
 
-## CP-011 owner schema decisions
+## CP-012 isolated implementation result
 
-These are decision-ready proposals only. Neither migration is implemented.
+The CP-011 designs were approved with refinements and are now implemented on the isolated
+`repair/import-history-012` branch. They have **not** been applied to Will's normal local database,
+main/origin, Neon or Vercel.
+
+### Imported identity
+
+The existing `import_source_records` store now uses the stable key **Profile + logical source
+namespace + external record ID**. `source_sheet` remains optional physical provenance and is not
+part of identity. Identical retries reuse the original mapping; changed content under the same key
+is rejected. Imported Free Bets retain the supplied parent identity, an optional same-Profile
+native Sportsbook ID, the states `resolved`, `missing`, `ambiguous`, `legacy_unresolved` or
+`not_applicable`, and versioned evidence. A later parent import does not silently relink the child;
+the explicit re-resolution operation is idempotent. Portable restore remaps native IDs while
+preserving logical identity and unresolved meaning.
+
+### Financial history
+
+The new bounded `financial_activity_history` store is append-only in ordinary SQLite and
+PostgreSQL operation. It records UTC `recorded_at`, versioned full row snapshots, source/provenance,
+actor where known, and a Profile-scoped operation identity. Reasons are required for correction,
+void, reversal, archive and removal, but not routine creation/edit/placement/settlement. There are
+no separate reporting-effect copies: each governed row snapshot already contains its financial
+fields and calculation provenance. Reports continue to read current ledger state and never sum
+history rows.
+
+Cash Adjustments cannot be physically deleted. Sportsbook, Free Bet, Extra Place and Casino rows
+with placement, settlement or other financial meaning are denied normal deletion; only eligible
+non-financial drafts retain their existing physical-removal path, with the removal event preserved.
+Archive is a visibility/lifecycle action and does not reverse a settled result. Existing live rows
+receive a truthful `baseline_observed` only on their first governed mutation; no earlier events or
+timestamps are invented.
+
+Disposable SQLite, actual PostgreSQL 18.6, fresh old-schema upgrade, repeat migration, portable
+export/restore and a clone of the normal local database pass. The clone retained all old IDs, row
+counts and financial results. An upgraded database deliberately rejects writes from older code;
+rollback therefore means restoring the pre-migration database together with the older application,
+not dropping evidence columns or history.
+
+**State:** IMPLEMENTED AND TESTED ON ISOLATED CANDIDATE — NORMAL LOCAL MIGRATION NOT AUTHORISED.
+
+## CP-011 owner schema decisions (historical proposal)
+
+These were the decision-ready proposals. CP-012 above records the approved, refined implementation.
 
 ### PD-QA-018 — Profile-scoped imported parent identity
 

@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 15:37 BST
+**Last updated:** 2026-09-16 21:04 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -133,6 +133,26 @@ amount for reports to sum.
 
 **Remember:** History explains current truth; it is not a second financial ledger.
 
+### Logical identity versus physical representation
+
+**What it means:** A durable identity uses business meaning, while filenames, worksheet labels and
+database row numbers are replaceable ways of representing it.
+
+**Why it mattered in Plum Duff:** A workbook tab may be renamed and native IDs change during
+portable restore. Profile + logical source namespace + external ID remains stable across both.
+
+**Remember:** Name the thing by what it is, not by where one import happened to store it.
+
+### Archiving versus reversing a financial event
+
+**What it means:** Archiving changes whether a record appears in normal active work; reversal or
+void changes its financial meaning.
+
+**Why it mattered in Plum Duff:** A settled £5 result must not disappear from reports merely because
+the row is archived. Only a governed correction, void or reversal may alter the report contribution.
+
+**Remember:** Hidden is not financially undone.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -175,9 +195,10 @@ amount for reports to sum.
 **Portability status:** Concern
 
 **Reason:** Business calculations and synthetic fixtures are largely portable across SQLite and
-PostgreSQL, and portable Profile export/restore is proven locally. Normal development still assumes
-macOS paths, fixed local ports and Google authentication; hosted database, authentication and
-recovery boundaries remain unverified.
+PostgreSQL, and portable Profile export/restore is proven locally. A worktree-relative database
+default briefly pointed a candidate process at the normal file during CP-012; recovery proved the
+data unchanged, but launchers still need stronger explicit source/database binding. Fixed ports,
+macOS paths, Google authentication and hosted recovery also remain environment-specific.
 
 **Smallest improvement:** Make the normal local launcher paths and endpoints configurable through
 one documented, non-secret environment contract while retaining SQLite/PostgreSQL test parity.
@@ -191,6 +212,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | CP-009 | 2026-09-16 14:54 BST | Persistence boundary/state ownership; static analysis | Settings, sessions and financial responses need explicit owners and safe shapes beyond happy-path runtime evidence |
 | CP-010 | 2026-09-16 15:22 BST | Schema evolution; identity versus history | Two separate integrity gaps needed exact additive designs without guessed links, double-counted history or destructive rollback |
 | CP-011 | 2026-09-16 15:37 BST | Composite identity; append-only history | Owner decisions need scoped uniqueness and immutable evidence with an explicit no-double-counting rule |
+| CP-012 | 2026-09-16 21:04 BST | Logical identity versus physical representation; archive versus reversal | The implemented source key survives workbook/restore changes, while lifecycle visibility stays separate from report meaning |
 
 ## Where detailed evidence lives
 

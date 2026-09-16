@@ -16,14 +16,16 @@ isolated visual polish.
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
 - Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
-- Keep imported-parent and durable deletion-history proposals explicit pending schema authority.
+- Keep the tested import-identity and durable-history candidate isolated until normal-local
+  migration is separately authorised and the browser integration gate passes.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
 - Continue #114 accessibility, recovery, competitor, requirements and security evidence without
   waiting for deferred calculator-owner comparison.
 
 ## Next
 
-- Complete source-relationship, durable history and remaining report-drilldown checks.
+- If authorised, migrate a newly backed-up normal-local database and complete source-relationship,
+  durable-history and browser integration checks.
 - Exercise remaining notification, failure/retry and recovery paths.
 - Complete actual screen-reader, larger-scale and expensive-request evidence.
 - Resolve or disposition dependency exposure and release prerequisites.
@@ -42,6 +44,8 @@ isolated visual polish.
 ## Deferred / decision required
 
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
+- CP-012 normal-local migration remains deliberately deferred pending separate owner approval; main,
+  Neon and Vercel migration remain outside that approval.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
 - Vercel Preview or release requires isolated data, genuine authentication, PostgreSQL evidence,
   dependency disposition and credential prerequisites.

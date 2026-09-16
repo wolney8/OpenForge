@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-16
 
+- **2026-09-16 21:04 BST — CP-012:** Implemented Profile-scoped logical import identity and bounded
+  append-only financial history on an isolated candidate; SQLite, PostgreSQL and cloned-normal
+  migration/recovery pass, while the normal local database remains unmigrated.
 - **2026-09-16 12:19 BST — CP-004:** Exercised full synthetic Profile import/recovery and populated Extra Place, Cash
   Adjustment and native Casino flows; repaired mixed-import validation, Cash money validation and
   shared ledger-dialog accessibility defects.

@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-16 15:37 BST
+**Last updated:** 2026-09-16 21:04 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -11,7 +11,7 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 58 / 87 (67%) | A documented defect can complete an assessment |
+| Assessments reviewed | 59 / 87 (68%) | A documented defect can complete an assessment |
 | Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
 | Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
@@ -23,8 +23,8 @@ These are coverage measures, not percentages of the product finished.
 | --- | --- | --- | --- | --- |
 | PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The calculator Account gaps are closed; this checkpoint identified 37 selected ledger setup failures that still assume removed demo/catalogue rows | [#107](https://github.com/wolney8/OpenForge/issues/107), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PD-QA-018 | Imported child records do not always resolve their native parent | Open; migration decision required | Profile-scoped external→native mapping is specified; no link is guessed | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
-| PD-QA-021 | Deleting some ledger rows also removes their audit history | Open; migration/policy decision required | The exact append-only model now covers Sportsbook, standalone Free Bet, Cash Adjustment, Extra Place and Casino; it is not implemented | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-018 | Imported child records do not always resolve their native parent | Repaired on isolated candidate; normal migration pending | Stable logical identities, explicit resolution and portable remapping pass SQLite/PostgreSQL/clone tests; 3010 remains on CP-011 | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
+| PD-QA-021 | Deleting some ledger rows also removes their audit history | Repaired on isolated candidate; normal migration pending | Append-only history covers five ledgers, reports ignore evidence rows and financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-011 | Notification History loses the earlier event when its live source changes | Open; migration decision required | Clear/reload is reliable; durable event history is proposed, not implemented | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
 | #111 | The financial chart cannot be inspected or drilled into | Open feature gap | Totals, ranges, breakdowns and text summary pass; point interaction/filter/drilldown remain planned | [#111](https://github.com/wolney8/OpenForge/issues/111) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
@@ -45,10 +45,10 @@ These are coverage measures, not percentages of the product finished.
 | Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
 | Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
-| Full Profile workbook import and recovery | Partial | Six-sheet browser import/recovery passes; PD-QA-018 parent resolution and #109 access vocabulary remain |
-| Extra Place actual placement and correction | Partial | Financial create/settle/Void/report passes; durable deletion history remains |
-| Cash Adjustment correction and reporting | Partial | Valid/invalid writes and correction/report pass; Account reconciliation and durable deletion history remain |
-| Native Casino activity | Partial | Actual/settle/correct/report passes; fee allocation and durable deletion history remain |
+| Full Profile workbook import and recovery | Partial | Six-sheet browser import/recovery passes; isolated candidate repairs PD-QA-018, but normal integration/browser rerun and #109 access vocabulary remain |
+| Extra Place actual placement and correction | Partial | Financial create/settle/Void/report and candidate history protection pass; normal integration remains |
+| Cash Adjustment correction and reporting | Partial | Valid/invalid writes, correction/report and candidate append-only history pass; Account reconciliation remains |
+| Native Casino activity | Partial | Actual/settle/correct/report and candidate history protection pass; fee allocation remains |
 | Profile and combined financial reporting | Partial | Arithmetic/range/breakdowns pass; point inspection, drilldown and module filter remain absent |
 | Notification clear and history | Partial | Clear/reload and safe source denial pass; prior event disappears when source state changes |
 | Settings and session recovery | Partial | Ownership/defaults, mutation rollback, inactivity and stale-session paths pass; frontend/API restart and unavailable-database recovery now pass, while genuine VoiceOver remains unverified |
@@ -66,8 +66,10 @@ These are coverage measures, not percentages of the product finished.
 
 ## Outstanding audit areas
 
-- Remaining ledger deletion history, Account reconciliation and interactive report drilldown.
-- Imported-parent resolution, #109 access vocabulary and Google bound-script runtime.
+- Normal integration and browser evidence for the isolated import-identity/history repair; complete
+  change-history presentation remains PD-QA-016.
+- Account reconciliation, interactive report drilldown, #109 access vocabulary and Google
+  bound-script runtime.
 - Actual screen-reader testing, larger-than-200 datasets, chart interaction and hosted performance.
 - Security exposure, credential rotation and Vercel publication prerequisites.
 - Competitor member workflows and the unreconciled request backlog.

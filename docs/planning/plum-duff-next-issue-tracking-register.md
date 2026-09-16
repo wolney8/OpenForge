@@ -1,5 +1,19 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP012-20260916 — isolated import identity and financial history
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-018 | Resolve imported Free Bet parents only inside the correct Profile | IMPLEMENTED / TESTED ON ISOLATED CANDIDATE: existing source mapping now uses Profile + logical namespace + external ID; explicit resolution, governed re-resolution and portable native-ID remapping pass SQLite/PostgreSQL/clone tests; normal migration is not authorised |
+| PD-QA-021 | Preserve financial lifecycle evidence after correction or permitted removal | IMPLEMENTED / TESTED ON ISOLATED CANDIDATE: append-only history covers five ledgers, is Profile/idempotency scoped, is excluded from report sums and survives eligible draft removal; normal migration and full visual history remain open |
+| PD-QA-021-FB-DELETE | Prevent deletion of financially meaningful standalone Free Bets | COMPLETE ON ISOLATED CANDIDATE: the previously reachable settled-unlinked delete now returns controlled 409 and leaves the row, report meaning and history intact |
+| PD-AUDIT-MIGRATION-003 | Prove the approved schemas on both databases and cloned normal data | COMPLETE / ISOLATED: fresh/repeat SQLite, actual PostgreSQL 18.6, portable restore, normal-data clone and restore rollback pass; older code is deliberately write-blocked after upgrade |
+| PD-QA-006 | Remove private demo Profile/catalogue dependence from older ledger tests | OPEN / PRECISE: the CP-012 focused synthetic suite passes; a broader selection has 340 passes and four setup failures caused by missing demo Profile fixtures |
+
+No request is marked normally integrated, hosted or owner-accepted. Requirements reconciliation
+remains 45/133 because this repair changes implementation evidence, not the number of original
+requests reconciled.
+
 ## PD-AUDIT-CP011-20260916 — schema decisions and independent audit
 
 | ID | Requested outcome | Current state |

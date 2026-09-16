@@ -1,5 +1,73 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-012 isolated identity and financial-history implementation — 2026-09-16
+
+**Checkpoint timestamp:** 2026-09-16 16:50 BST
+
+PD-QA-018 and PD-QA-021 are implemented and tested on the isolated
+`repair/import-history-012` application commit
+`a4739301434a25e881ed168ae25982114c75b8ad`. They are **not migrated into the normal 3010
+database**, main, Neon or Vercel.
+
+### Import identity and recovery
+
+The existing source map now keys logical records by **Profile + stable source namespace + external
+ID**. Physical workbook sheet names remain provenance only. Identical retries and lost responses
+reuse the existing mapping; changed contents under the same identity are rejected, including under
+separate-process PostgreSQL concurrency. The same external ID in two Profiles creates two isolated
+identities.
+
+Imported Free Bets retain external parent identity, optional same-Profile native parent, explicit
+`resolved`/`missing`/`ambiguous`/`legacy_unresolved`/`not_applicable` state and versioned evidence.
+A later parent import does not silently relink a child; explicit re-resolution is required. Portable
+export/restore remaps native IDs while preserving logical identity and unresolved evidence. Existing
+unknown rows become `legacy_unresolved`; no historical link is inferred.
+
+### Append-only financial history
+
+One bounded history contract now covers Cash Adjustments, Extra Places, Casino, Sportsbook and Free
+Bets. SQLite and PostgreSQL reject ordinary history UPDATE/DELETE. Profile-scoped operation identity
+deduplicates the same event and rejects changed reuse. Versioned before/after snapshots retain the
+governed row's calculation and financial fields; reports continue to read current ledger state and
+do not sum history rows. The independent correction fixture proves current £5, not £15 or a movement
+of -£5, while the prior £10 state remains evidence.
+
+Cash Adjustments are not physically deletable. The other four ledgers allow physical removal only
+for eligible non-financial drafts and retain a removal event; placed, settled or otherwise financial
+records receive a controlled 409. This also repairs a real gap where an unlinked settled Free Bet
+could previously be deleted. The shared contract prevents an `archived` event from implying a
+financial reversal; these five ledger APIs do not currently expose a general archive operation, so
+no unsupported archive UI is claimed. Existing rows receive a truthful `baseline_observed` only on
+their first governed mutation; no fake past events or timestamps are created.
+
+### Database and regression evidence
+
+- SQLite/portable identity-history suite: **18/18 passed**; scoped safety/financial selection:
+  **340 passed**, with four separate missing-demo-Profile fixture failures retained as PD-QA-006.
+- Actual disposable PostgreSQL 18.6: logical identity, same-operation concurrency, changed retry,
+  one-current-result reporting, append-only enforcement and repeat migration **PASS**; cluster stopped.
+- Fresh clone of the normal SQLite database: all 65 old tables, three Profiles, IDs, row counts and
+  financial projections unchanged; 131 existing parent references became `legacy_unresolved`, zero
+  history events were fabricated, repeat migration and restore-based rollback passed.
+- A brief normal-runtime path mistake applied the candidate migration to the normal file. The API was
+  stopped immediately; the additive objects were reversed transactionally and every old-table data
+  projection matched the safety backup. Normal 3010 now runs the CP-011 API with integrity `ok`; no
+  CP-012 table remains. This exposes a portability risk in worktree-relative database selection.
+- Changed source passes focused mypy (8 files), F/E9 lint and PostgreSQL harness checks. Older broad
+  seed-dependent failures remain test-infrastructure debt and are not weakened or called product
+  failures.
+
+PQA-M04 is now **ASSESSED; PASS for isolated SQLite/PostgreSQL/clone migration and rollback, PARTIAL
+for operational/hosted deployment**. PQA-D08 and PQA-D11 move from proven gaps to **repaired on the
+isolated candidate**, but their full browser journey and normal integration evidence remain partial;
+no journey numerator changes. Current coverage is **59/87 assessments (68%), 10/24 complete journeys
+exercised/passing (42%), 15/27 competitor cells (56%) and 45/133 requirements reconciled (34%)**.
+
+The detailed contract and rollback boundary are in the existing
+[Profile decisions record](../planning/openforge-profile-decisions-to-confirm.md#cp-012-isolated-implementation-result).
+Live issue synchronisation remains pending because publication is forbidden and authenticated GitHub
+CLI access is unavailable.
+
 ## Current CP-011 schema-decision and independent audit package — 2026-09-16
 
 **Checkpoint timestamp:** 2026-09-16 15:37 BST
@@ -3263,15 +3331,15 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D05 | Valid/invalid export diagnostics | ASSESSED; PASS scoped | Account browser export409/200 |
 | PQA-D06 | Actual isolated PostgreSQL transactions | ASSESSED; PASS / PROVEN scoped | Real PostgreSQL18.6 Account/Free Bet preflight/rollback, independent persisted values and separate-process Blackjack retry/races; current A–D evidence |
 | PQA-D07 | PostgreSQL disaster recovery | ASSESSED; PASS / PROVEN scoped local database recovery | Actual dump/second-database restore, exact counts/financial/source claims, restart, post-restore read/rollback/duplicate protection; cloud/deployment/import recovery separate |
-| PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; FAIL / PROVEN | CP-004 genuine six-sheet browser import→reopen/report/export→portable restore/re-export passes; invalid mixed workbook rejects atomically/idempotently and cross-Profile IDs do not cross-link. Parent alias remains unresolved (PD-QA-018); #109 access vocabulary remains blocked |
+| PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; REPAIRED ON ISOLATED CANDIDATE / PARTIAL | CP-004 browser import/recovery remains valid; CP-012 adds Profile-scoped parent resolution and portable native-ID remapping. Normal integration/full browser rerun and #109 access vocabulary remain open |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
-| PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; FAIL / PROVEN source boundary | CP-011 Profiles/Accounts archive and fee revisions retain evidence; Sportsbook, standalone Free Bet, Cash, Extra Place and Casino deletion can erase row-bound audits. PD-QA-021 remains unimplemented |
+| PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; REPAIRED ON ISOLATED CANDIDATE / PARTIAL | CP-012 append-only history survives eligible draft removal, denies financial deletion and stays outside report sums across five ledgers. Normal integration and complete UI history remain open |
 | PQA-D12 | Crash/network-loss/concurrent browser recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M01 | Calculation/reference/actual single authority | ASSESSED; REVIEWED | C money authority source review |
 | PQA-M02 | Schema/version/legacy compatibility boundary | ASSESSED; REVIEWED | C v1/v2 and migration inspection |
 | PQA-M03 | SQLite connection/initialisation architecture | ASSESSED; REVIEWED | C RLock/schema-init inspection; measured cost unknown |
-| PQA-M04 | PostgreSQL deployment/rollback assumptions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-M04 | PostgreSQL deployment/rollback assumptions | ASSESSED; PASS ISOLATED / PARTIAL | CP-012 actual PostgreSQL 18.6, SQLite, repeat migration, old-schema upgrade, cloned-normal compatibility and restore rollback pass. Normal/Neon migration and hosted rollback remain untested and unauthorised |
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; REVIEWED | B harness blockers + explicit synthetic factories |
 | PQA-M07 | Typing/lint/flakiness census | ASSESSED; PASS / PROVEN scoped | CP-010 mypy reports 0 errors/78 files; final relevant API 147/147 and web 420/420 pass. This does not infer every legacy broad fixture is modernised |
