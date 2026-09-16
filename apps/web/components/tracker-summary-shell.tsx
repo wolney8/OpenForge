@@ -153,15 +153,15 @@ function renderReportTable({
         <table>
           <thead>
             <tr>
-              <th>Period</th>
-              <th className="align-end">Sportsbook</th>
-              <th className="align-end">Free Bets</th>
-              <th className="align-end">Casino</th>
-              <th className="align-end">Extra Place</th>
-              <th className="align-end">Total P&amp;L</th>
-              <th className="align-end">Withdrawals</th>
-              <th className="align-end">Costs</th>
-              <th className="align-end">Retained Profit</th>
+              <th scope="col">Period</th>
+              <th className="align-end" scope="col">Sportsbook</th>
+              <th className="align-end" scope="col">Free Bets</th>
+              <th className="align-end" scope="col">Casino</th>
+              <th className="align-end" scope="col">Extra Place</th>
+              <th className="align-end" scope="col">Total P&amp;L</th>
+              <th className="align-end" scope="col">Withdrawals</th>
+              <th className="align-end" scope="col">Costs</th>
+              <th className="align-end" scope="col">Retained Profit</th>
             </tr>
           </thead>
           <tbody>
@@ -217,6 +217,7 @@ function renderBreakdownTable({
                     /p&l|value|rows|open/i.test(header) ? "align-end" : undefined
                   }
                   key={header}
+                  scope="col"
                 >
                   {header}
                 </th>
@@ -1005,11 +1006,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   <table>
                     <thead>
                       <tr>
-                        <th>Free Bet ID</th>
-                        <th>Bookmaker</th>
-                        <th>Status</th>
-                        <th>Expiry</th>
-                        <th className="align-end">Current value</th>
+                        <th scope="col">Free Bet ID</th>
+                        <th scope="col">Bookmaker</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Expiry</th>
+                        <th className="align-end" scope="col">Current value</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1069,14 +1070,14 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <table>
                   <thead>
                     <tr>
-                      <th>Account</th>
-                      <th>Status</th>
-                      <th>Last offer</th>
-                      <th>Last mug bet</th>
-                      <th>Days since mug</th>
-                      <th>Suggested action</th>
-                      <th>Last offer type</th>
-                      <th>Last offer result</th>
+                      <th scope="col">Account</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Last offer</th>
+                      <th scope="col">Last mug bet</th>
+                      <th scope="col">Days since mug</th>
+                      <th scope="col">Suggested action</th>
+                      <th scope="col">Last offer type</th>
+                      <th scope="col">Last offer result</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1113,12 +1114,12 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                 <table>
                   <thead>
                     <tr>
-                      <th>Module</th>
-                      <th>Reference</th>
-                      <th>Bookmaker / Account</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                      <th className="align-end">Value</th>
+                      <th scope="col">Module</th>
+                      <th scope="col">Reference</th>
+                      <th scope="col">Bookmaker / Account</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Date</th>
+                      <th className="align-end" scope="col">Value</th>
                     </tr>
                   </thead>
                   <tbody>
