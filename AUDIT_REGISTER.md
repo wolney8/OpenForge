@@ -9,7 +9,7 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 48 / 87 (55%) | A documented defect can complete an assessment |
+| Assessments reviewed | 49 / 87 (56%) | A documented defect can complete an assessment |
 | Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
 | Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
@@ -22,6 +22,7 @@ These are coverage measures, not percentages of the product finished.
 | PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The two calculator Account gaps are closed; the wider 20-test legacy fixture debt remains | [#113](https://github.com/wolney8/OpenForge/issues/113), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records do not always resolve their native parent | Open | Identity is retained; safe parent resolution remains missing | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
+| PD-QA-021 | Deleting some ledger rows also removes their audit history | Open; policy/schema decision required | Current create, correction and report paths are safe; deletion-history acceptance remains blocked | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
 | PD-QA-001 | Dependency advisory exposure is not fully dispositioned | Open / exposure unverified | Keep separate from feature work; no hosted clearance inferred | [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | #96 | Provider credentials still require owner/provider rotation | Owner action pending | No secret values are recorded in the audit | [#96](https://github.com/wolney8/OpenForge/issues/96) |
@@ -38,7 +39,10 @@ These are coverage measures, not percentages of the product finished.
 | Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
 | Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
-| Workbook import and imported lineage | Partial | Full multi-sheet browser import, #109 fields and PD-QA-018 parent resolution remain |
+| Full Profile workbook import and recovery | Partial | Six-sheet browser import/recovery passes; PD-QA-018 parent resolution and #109 access vocabulary remain |
+| Extra Place actual placement and correction | Partial | Financial create/settle/Void/report passes; durable deletion history remains |
+| Cash Adjustment correction and reporting | Partial | Valid/invalid writes and correction/report pass; Account reconciliation and durable deletion history remain |
+| Native Casino activity | Partial | Actual/settle/correct/report passes; fee allocation and durable deletion history remain |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
 
@@ -52,8 +56,8 @@ These are coverage measures, not percentages of the product finished.
 
 ## Outstanding audit areas
 
-- Remaining populated ledgers, reports and cross-Profile recovery.
-- Full workbook import, source relationships and browser restore.
+- Remaining ledger history/removal, Account reconciliation and combined reports.
+- Imported-parent resolution, #109 access vocabulary and Google bound-script runtime.
 - Screen-reader testing, larger datasets, 200% text combinations and performance.
 - Security exposure, credential rotation and Vercel publication prerequisites.
 - Competitor member workflows and the unreconciled request backlog.

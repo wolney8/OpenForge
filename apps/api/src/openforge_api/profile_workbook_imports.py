@@ -885,7 +885,17 @@ def _analyse_workbook_job(
                         now,
                     ),
                 )
-        status = "REVIEW_REQUIRED" if items else "DRY_RUN_READY"
+        summary = _summary(result)
+        validation_blocked_count = int(
+            summary.get("readiness", {}).get("validation_blocked_rows", 0)
+        )
+        status = (
+            "FAILED"
+            if validation_blocked_count
+            else "REVIEW_REQUIRED"
+            if items
+            else "DRY_RUN_READY"
+        )
         events = [
             started,
             _event(
@@ -894,7 +904,18 @@ def _analyse_workbook_job(
                 f"{total_rows} source rows were analysed.",
             ),
         ]
-        if items:
+        if validation_blocked_count:
+            events.append(
+                _event(
+                    "analysis_failed",
+                    "Workbook validation failed",
+                    (
+                        f"{validation_blocked_count} Account row(s) failed field "
+                        "validation. No Profile data was imported."
+                    ),
+                )
+            )
+        elif items:
             events.append(
                 _event(
                     "review_required",
@@ -902,18 +923,29 @@ def _analyse_workbook_job(
                     f"{len(items)} review items are ready for a decision.",
                 )
             )
-        summary = _summary(result)
         _update_run_job(
             import_run_id,
             status=status,
             summary=summary,
             reconciliation=result["reconciliation"],
             job=_analysis_job_state(
-                stage="Review ready" if items else "Analysis complete",
+                stage=(
+                    "Validation failed"
+                    if validation_blocked_count
+                    else "Review ready"
+                    if items
+                    else "Analysis complete"
+                ),
                 work_units_completed=FOUNDER_ANALYSIS_WORK_UNIT_TOTAL,
                 rows_analysed=total_rows,
                 total_rows=total_rows,
                 events=events,
+                error=(
+                    f"{validation_blocked_count} Account row(s) failed field validation. "
+                    "No Profile data was imported."
+                    if validation_blocked_count
+                    else ""
+                ),
             ),
         )
     except Exception:

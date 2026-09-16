@@ -22,6 +22,7 @@ import {
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ModalBoundary } from "@/components/modal-boundary";
 import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
 import {
   LedgerEditorTabPanel,
@@ -75,6 +76,7 @@ import {
 } from "@/lib/tracker-summary";
 import { getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import { resolveVisibleQuickActions } from "@/lib/quick-actions";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 type Row = Record<string, string | null> & {
   each_way_extra_place_id: string;
@@ -372,6 +374,11 @@ export function EachWayExtraPlaceWorkflowShell({
   const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
   useBodyScrollLock(isAnyDialogOpen);
   useDialogFocusLifecycle(open, editorRef);
+  const isDirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(pristine),
+    [form, pristine],
+  );
+  const confirmDiscardChanges = useUnsavedChangesGuard(open && isDirty);
   const load = useCallback(async () => {
     // Draft and issue rows must appear immediately after a write, even when the
     // active tracker range would normally hide their dates.
@@ -610,8 +617,9 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     resetEditor(next, row);
   };
-  const close = () => {
-    if (!saving) setOpen(false);
+  const close = async () => {
+    if (saving || (isDirty && !(await confirmDiscardChanges()))) return;
+    setOpen(false);
   };
   const save = async () => {
     setSaving(true);
@@ -1204,9 +1212,10 @@ export function EachWayExtraPlaceWorkflowShell({
       />
       {typeof document !== "undefined" && open
         ? createPortal(
+            <ModalBoundary onDismiss={() => void close()}>
             <div
               className="modal-backdrop modal-backdrop-extra-place"
-              onClick={close}
+              onClick={() => void close()}
             >
               <section
                 aria-label={
@@ -1250,7 +1259,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   </section>
                   <HeaderActions
                     index={stepIndex}
-                    onClose={close}
+                    onClose={() => void close()}
                     onStep={setStep}
                     steps={stepIds}
                   />
@@ -1366,7 +1375,7 @@ export function EachWayExtraPlaceWorkflowShell({
                     <button
                       className="review-chip"
                       disabled={saving}
-                      onClick={close}
+                      onClick={() => void close()}
                       type="button"
                     >
                       Close
@@ -1392,7 +1401,8 @@ export function EachWayExtraPlaceWorkflowShell({
                   </div>
                 </footer>
               </section>
-            </div>,
+            </div>
+            </ModalBoundary>,
             document.body,
           )
         : null}
@@ -2417,6 +2427,7 @@ function Calculate({
           />
       </EachWayBackBetSection>
       <LaySegment
+        actualStake="actual_win_lay_stake"
         exchange="win_exchange"
         exchangeOptions={exchangeOptions}
         exchangeQuickOptions={exchangeQuickOptions}
@@ -2429,6 +2440,7 @@ function Calculate({
         liability={preview?.win_liability}
       />
       <LaySegment
+        actualStake="actual_place_lay_stake"
         exchange="place_exchange"
         exchangeOptions={exchangeOptions}
         exchangeQuickOptions={exchangeQuickOptions}
@@ -2447,6 +2459,7 @@ function Calculate({
 function LaySegment({
   label,
   kind,
+  actualStake,
   exchange,
   exchangeOptions,
   exchangeQuickOptions,
@@ -2458,6 +2471,7 @@ function LaySegment({
 }: {
   label: string;
   kind: "win" | "place";
+  actualStake: keyof Form;
   exchange: keyof Form;
   exchangeOptions: string[];
   exchangeQuickOptions: string[];
@@ -2486,6 +2500,12 @@ function LaySegment({
           onChange={(next) => onUpdate(odds, next)}
           type="number"
           value={form[odds] as string}
+        />
+        <Field
+          label="Actual matched stake"
+          onChange={(next) => onUpdate(actualStake, next)}
+          type="number"
+          value={form[actualStake] as string}
         />
     </EachWayLaySection>
   );

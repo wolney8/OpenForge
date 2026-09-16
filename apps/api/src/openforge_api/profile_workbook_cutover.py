@@ -385,6 +385,8 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
             for key in (
                 "source_row",
                 "import_key",
+                "action",
+                "errors",
                 "catalogue_id",
                 "canonical_brand",
                 "source_provider_name",
@@ -543,6 +545,18 @@ def final_import_summary(
         for item in provider_items
         if item["review_status"] not in {"EXCLUDED", "DEFERRED"} and not _resolved_provider(item)
     ]
+    account_validation_blockers = [
+        row
+        for row in (plan or {}).get("accounts", [])
+        if row.get("action") == "blocked" or row.get("errors")
+    ]
+    # Plans persisted before account validation metadata was added still carry the
+    # dry-run readiness count. Treat that count as authoritative rather than
+    # silently allowing an invalid Account to disappear from a mixed workbook.
+    validation_blocked_count = max(
+        len(account_validation_blockers),
+        int(run.get("summary", {}).get("readiness", {}).get("validation_blocked_rows", 0)),
+    )
     account_changes = run["summary"].get("accounts", {}).get("change_reconciliation", {})
     ledger_summaries = run["summary"].get("ledgers", {})
     financial = run.get("reconciliation", {})
@@ -585,7 +599,12 @@ def final_import_summary(
             (run["profile_id"],),
         ).fetchone()
     return {
-        "ready": not blocking and not importable_provider_blockers and plan is not None,
+        "ready": (
+            not blocking
+            and not importable_provider_blockers
+            and validation_blocked_count == 0
+            and plan is not None
+        ),
         "plan_available": plan is not None,
         "blockers": [
             *[
@@ -596,6 +615,15 @@ def final_import_summary(
                 f"{item['source_sheet']} row {item['source_row']} requires a global provider"
                 for item in importable_provider_blockers
             ],
+            *[
+                f"Accounts row {row.get('source_row', 'unknown')} failed field validation"
+                for row in account_validation_blockers
+            ],
+            *(
+                [f"{validation_blocked_count} Account row(s) failed field validation"]
+                if validation_blocked_count and not account_validation_blockers
+                else []
+            ),
             *(
                 []
                 if plan is not None
@@ -2322,7 +2350,8 @@ def validate_import_preflight(
     """Exercise the exact planned writes and force a rollback before approval/import."""
     summary = final_import_summary(run=run, workspace=workspace, plan=plan)
     if not summary["ready"]:
-        raise ImportCutoverError("The import write plan is not ready for persistence preflight")
+        detail = "; ".join(summary["blockers"]) or "The import write plan is not ready"
+        raise ImportCutoverError(f"{detail}. Persistence preflight was not started")
     decisions = _decision_map(workspace)
     result: dict[str, Any] = {}
     try:
@@ -2374,7 +2403,8 @@ def validate_import_approval_preflight(
 
     summary = final_import_summary(run=run, workspace=workspace, plan=plan)
     if not summary["ready"]:
-        raise ImportCutoverError("The import write plan is not ready for approval")
+        detail = "; ".join(summary["blockers"]) or "The import write plan is not ready"
+        raise ImportCutoverError(f"{detail}. Approval was not granted")
     decisions = _decision_map(workspace)
     catalogue = _catalogue_records()
     account_rows_validated = 0

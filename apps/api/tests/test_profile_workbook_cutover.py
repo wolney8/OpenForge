@@ -30,6 +30,7 @@ from openforge_api.profile_workbook_cutover import (
     completed_import_rollback_safety,
     execute_import,
     failed_import_safety,
+    final_import_summary,
     rollback_import,
     save_base_write_plan,
     validate_import_approval_preflight,
@@ -212,12 +213,50 @@ def test_write_plan_keeps_canonical_fields_and_required_source_provenance() -> N
     assert plan["accounts"][0]["source_provider_name"] == "Legacy Bookmaker A"
     assert plan["accounts"][0]["provider_resolution_classification"] == "ALIAS"
     assert plan["accounts"][0]["provider_match_method"] == "approved alias"
+    assert plan["accounts"][0]["action"] is None
+    assert plan["accounts"][0]["errors"] is None
     assert plan["ledgers"]["sportsbook"][0]["source_fields"] == {
         "Bookmaker": "Bookmaker A",
         "Selection": "Synthetic runner",
         "Offer": "Synthetic full legacy offer terms retained for audit",
     }
     assert plan["ledgers"]["sportsbook"][0]["normalizations"][0]["source_preserved"]
+
+
+def test_invalid_account_row_blocks_the_complete_workbook_write_plan(
+    tmp_path: Path,
+) -> None:
+    configure_cutover_database(tmp_path)
+    run, workspace = run_and_workspace()
+    run["summary"]["readiness"] = {"validation_blocked_rows": 1}
+    plan = synthetic_plan()
+    plan["accounts"][0].update(
+        {
+            "action": "blocked",
+            "errors": [
+                {
+                    "field": "current_balance",
+                    "message": "Enter a valid money amount",
+                }
+            ],
+        }
+    )
+
+    summary = final_import_summary(run=run, workspace=workspace, plan=plan)
+
+    assert summary["ready"] is False
+    assert summary["blockers"] == ["Accounts row 2 failed field validation"]
+    with pytest.raises(
+        ImportCutoverError,
+        match="Accounts row 2 failed field validation. Approval was not granted",
+    ):
+        validate_import_approval_preflight(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+        )
 
 
 def ledger_row(

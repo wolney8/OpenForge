@@ -4,12 +4,13 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openforge_api.calculations.cash_adjustment_values import (
     CashAdjustmentCalculationInput,
     CashAdjustmentCalculationResult,
     calculate_cash_adjustment_values,
+    parse_adjustment_datetime,
 )
 from openforge_api.db import (
     create_cash_adjustment,
@@ -18,6 +19,7 @@ from openforge_api.db import (
     list_cash_adjustments,
     update_cash_adjustment,
 )
+from openforge_api.money_input import AccountMoneyError, normalize_money_input
 
 router = APIRouter(prefix="/profiles/{profile_id}/cash-adjustments", tags=["cash-adjustments"])
 
@@ -44,6 +46,26 @@ class CashAdjustmentPayload(BaseModel):
     affects_cash_snapshot: bool = False
     linked_account: str = Field(default="", max_length=120)
     description: str = Field(default="", max_length=2000)
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, value: str) -> str:
+        try:
+            normalized = normalize_money_input(value, "amount")
+        except AccountMoneyError as error:
+            raise ValueError(str(error)) from error
+        if not normalized:
+            raise ValueError("amount: enter a money amount")
+        if Decimal(normalized) < 0:
+            raise ValueError("amount: enter an unsigned money amount; Direction sets the sign")
+        return normalized
+
+    @field_validator("adjustment_date")
+    @classmethod
+    def validate_adjustment_date(cls, value: str) -> str:
+        if parse_adjustment_datetime(value) is None:
+            raise ValueError("adjustment_date: enter a valid date and time")
+        return value.strip()
 
     @model_validator(mode="after")
     def validate_direction_type_combination(self) -> "CashAdjustmentPayload":

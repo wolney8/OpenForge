@@ -33,8 +33,9 @@ inline margins plus expanded width create a horizontal scroll extent; native foc
 the body sideways and crops labels/actions. Assert scrollWidth/clientWidth, scrollLeft and all
 action rectangles after keyboard focus, not only before interaction. Reuse the shared footer.
 Regression: verify_shared_footer_geometry_113.mjs covers Sportsbook/Free Bet/Casino in both themes
-at desktop/half-width/narrow. It retains independent Escape failures; geometry success is not full
-modal acceptance. Casino Escape remains an explicit PD-QA-004 consumer gap until repaired/tested.
+at desktop/half-width/narrow. It retained independent Escape failures; geometry success was not full
+modal acceptance. CP-004 now closes the pristine Casino Escape/focus-return case; dirty/pending
+variants still require their own evidence.
 
 ## PD-QA-004 — modal boundary ownership
 
@@ -44,6 +45,11 @@ ref. Pending Escape must not discard a running save; dirty Escape retains confir
 Regression: verify_modal_boundary_repair.mjs and verify_free_bet_atomic_repair.mjs use real pointer
 hit-testing, nested confirmation, Tab containment and connected-trigger restoration. Desktop 200%
 background reflow belongs to PD-QA-005; PD-QA-003 is missing-Profile handling.
+
+CP-004 correction: a focus lifecycle may initially focus the inner element with `role="dialog"`,
+not the native boundary itself. Shared Shift-Tab containment must treat that focused container as the
+start of the cycle. Cash, Extra Place and Casino now pass the scoped pristine Escape/focus-return
+check; dirty and pending Casino variants remain separate evidence rather than being inferred.
 
 ## PD-QA-005 — typography-aware intrinsic actions
 

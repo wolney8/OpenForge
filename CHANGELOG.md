@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-16
 
+- **CP-004:** Exercised full synthetic Profile import/recovery and populated Extra Place, Cash
+  Adjustment and native Casino flows; repaired mixed-import validation, Cash money validation and
+  shared ledger-dialog accessibility defects.
 - **CP-003:** Closed the scoped local integration engineering gate on normal `localhost:3010` and
   completed authenticated portable Profile restore, report, re-export and synthetic cleanup evidence.
 - **CP-002:** Added concise owner-facing status, audit and roadmap navigation; moved unique detailed

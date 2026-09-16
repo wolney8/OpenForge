@@ -349,11 +349,13 @@ test.describe("Extra Place ledger parity", () => {
     );
     await dialog.getByLabel("Runner / Horse").fill("Synthetic Runner");
     await dialog.getByLabel("Race").fill("Synthetic Race 14:10");
-    await dialog.getByLabel("Date / Time").fill("2026-09-07T14:10");
+    await dialog.getByLabel("Date / Time").fill("2026-09-16T14:10");
     await dialog.getByLabel("E/W Stake (each way)").fill("5");
     await dialog.getByLabel("Back Odds").fill("6");
     await dialog.getByLabel("Lay Odds").first().fill("2.3");
     await dialog.getByLabel("Lay Odds").nth(1).fill("4.5");
+    await dialog.getByLabel("Actual matched stake").first().fill("26.00");
+    await dialog.getByLabel("Actual matched stake").nth(1).fill("4.40");
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
       origin: new URL(page.url()).origin,
     });
@@ -408,10 +410,14 @@ test.describe("Extra Place ledger parity", () => {
       bookmaker_account: "Synthetic Extra Place Bookmaker",
       win_exchange: "Synthetic Preferred Exchange",
       place_exchange: "Synthetic Preferred Exchange",
+      actual_win_lay_stake: "26.00",
+      actual_place_lay_stake: "4.40",
       status: "Settled",
       result: "Extra Place",
       finishing_position: "5th",
     });
+
+    await page.getByLabel("Change tracker date range").selectOption({ label: "All Dates" });
 
     const resolvedValue = page.locator('[data-pd-id="extra-place.ledger"] .stat-card .financial-value').first();
     await expect(resolvedValue).toHaveAttribute("aria-label", "£ 37.02");

@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP004-20260916 — import, remaining ledgers and accessibility
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-AUDIT-IMPORT-002 | Run a genuine multi-sheet Profile workbook through browser import, report, export and portable recovery | PARTIAL / PROVEN through all executable stages; invalid batches now reject atomically and same external IDs do not cross-link Profiles. Native parent resolution remains PD-QA-018 |
+| ACCOUNTS-IMPORT-ACCESS-001 | Preserve Status, Stake Access, Promo Access and LastPromoUsed semantics without taking catalogue authority | PARTIAL: Status imports; Stake/Promo Access need the retained vocabulary/provenance decision; LastPromoUsed remains deliberately derived/ignored; Group/Platform/RiskTeam stay catalogue-owned |
+| PD-AUDIT-LEDGERS-001 | Exercise populated Extra Place, Cash Adjustment and native Casino workflows | PARTIAL: create/actual/settle/correct/report slices pass; durable deletion history is missing under PD-QA-021, with Cash Account reconciliation and Casino fee allocation still open |
+| PD-AUDIT-A11Y-001 | Exercise remaining keyboard/reflow/target/error/reduced-motion boundaries | PARTIAL: three ledgers pass scoped browser checks at desktop/half-width/narrow/200% text and both themes; an actual screen-reader pass and chart/contrast assessment remain unverified |
+
+Local application fixes in this batch reject malformed Cash Adjustment money, retain invalid-workbook
+row diagnostics through confirmation, associate Cash errors inside the active dialog, and give Extra
+Place the shared focus boundary. No formula, operational record or hosted state changed.
+
 ## PD-LOCAL-GATE-20260916 — authenticated integration and recovery return
 
 | ID | Requested outcome | Current state |
@@ -7,7 +20,7 @@
 | PD-LOCAL-007 | Replace the two private-seed Account assumptions with canonical synthetic Account/catalogue setup | COMPLETE / PROVEN: the two previously blocked calculator tests pass 2/2 |
 | PD-LOCAL-008 | Run Normal/SNR calculator conversion through destination reopen, actual placement, settlement and report on normal 3010 authentication | COMPLETE / PROVEN for Standard, Underlay, Overlay and Custom; receipt, notification and retry identity retained |
 | PD-LOCAL-009 | Re-run Profit Boost and conditional Cashback on the integrated normal application | COMPLETE / PROVEN across native/conversion, save/reopen, confirmed activity and report at desktop/half-width/narrow |
-| PD-AUDIT-IMPORT-001 | Exercise Profile import/cutover/recovery without private operational data | PARTIAL: 38 isolated contract/transaction cases pass and real browser portable restore/re-export/cleanup passes; full multi-sheet browser import and PD-QA-018 parent resolution remain open |
+| PD-AUDIT-IMPORT-001 | Exercise Profile import/cutover/recovery without private operational data | PARTIAL: full six-sheet browser import plus portable restore/re-export now pass; invalid mixed batches reject with zero writes. PD-QA-018 parent resolution and #109 access vocabulary remain open |
 
 Integration evidence is local only at harness checkpoint `a0645f072accc4518681c758b485d9fbc3a23d7f`.
 The normal database returned to its pre-test record counts after API-owned synthetic cleanup. Main,

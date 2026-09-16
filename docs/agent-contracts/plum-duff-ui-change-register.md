@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## 2026-09-16 CP-004 ledger-dialog evidence
+
+PD-FIX-243 is COMPLETE locally: Cash Adjustment and Extra Place use the shared native
+`ModalBoundary`; the boundary wraps Shift-Tab correctly when the ledger dialog container initially
+owns focus. Cash API errors remain inside the active dialog, are associated with Amount, and preserve
+the entered text. Shared sortable table headers retain a 24px minimum target. Actual browser evidence
+passes Cash/Extra Place/Casino focus entry, containment, pristine Escape and focus return at desktop,
+half-width, narrow and 200% text in both themes. Dirty/pending variants outside these exercised paths
+and an actual screen-reader pass remain explicitly unverified.
+
 ## 2026-09-16 local integration evidence
 
 The accepted plain reference-card contract is now served by the normal local application at

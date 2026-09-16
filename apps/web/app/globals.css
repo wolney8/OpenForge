@@ -7024,6 +7024,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
+  min-height: 1.5rem;
   width: 100%;
   border: none;
   padding: 0;

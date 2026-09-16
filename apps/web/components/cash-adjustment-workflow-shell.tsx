@@ -3,6 +3,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { formatApiErrorBody } from "@/lib/api-error";
 import {
   fetchJsonAndCache,
   invalidateCachedJson,
@@ -22,6 +23,7 @@ import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
+import { ModalBoundary } from "@/components/modal-boundary";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import {
   scrollToElementTopAfterRender,
@@ -1093,6 +1095,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     [formState]
   );
   const adjustmentValidationActive = showAdjustmentValidation;
+  const amountServerError = errorMessage.toLowerCase().includes("amount:");
+  const amountInvalid =
+    (adjustmentValidationActive && !formState.amount.trim()) || amountServerError;
   const hasInvalidAdjustmentCombination = useMemo(
     () => hasInvalidDirectionTypeCombination(formState),
     [formState]
@@ -1506,7 +1511,9 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       });
 
       if (!response.ok) {
-        setErrorMessage(await response.text());
+        setErrorMessage(
+          formatApiErrorBody(await response.text(), "Unable to save the cash adjustment.")
+        );
         return false;
       }
 
@@ -1821,11 +1828,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         />
         {!tableCollapsed ? (
           <>
-            {errorMessage ? (
-              <p className="error-text" role="alert">
-                {errorMessage}
-              </p>
-            ) : null}
             <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}
@@ -2167,6 +2169,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       ) : null}
 
       {workflowVisible ? (
+        <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section
         aria-label={selectedId ? "Edit cash adjustment" : "Create cash adjustment"}
@@ -2309,6 +2312,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           </button>
         ) : null}
           <div className="workflow-editor-body">
+            {errorMessage ? (
+              <p className="editor-validation-banner" id="cash-adjustment.editor-save-error" role="alert">
+                {errorMessage}
+              </p>
+            ) : null}
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="details">
           <EditorSection
@@ -2360,14 +2368,17 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               </label>
               <label
                 className={`${getGuidedFieldClass("amount")}${
-                  adjustmentValidationActive && !formState.amount.trim() ? " is-invalid" : ""
+                  amountInvalid ? " is-invalid" : ""
                 }`}
                 {...getGuidedFieldData("amount")}
               >
                 <span>Amount</span>
                 <input
-                  aria-describedby={getGuidedDescribedBy("amount")}
-                  aria-invalid={adjustmentValidationActive && !formState.amount.trim()}
+                  aria-describedby={[
+                    getGuidedDescribedBy("amount"),
+                    amountServerError ? "cash-adjustment.editor-save-error" : "",
+                  ].filter(Boolean).join(" ") || undefined}
+                  aria-invalid={amountInvalid}
                   inputMode="decimal"
                   onChange={(event) =>
                     setFormState((current) => ({ ...current, amount: event.target.value }))
@@ -2641,6 +2652,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           </div>
       </section>
       </div>
+      </ModalBoundary>
       ) : null}
     </section>
   );

@@ -39,7 +39,13 @@ export function ModalBoundary({ children, onDismiss, returnFocusRef }: {
         )].filter(element => element.getClientRects().length > 0 && !element.closest("[inert]"));
         const first = controls[0], last = controls.at(-1);
         if (!first || !last) { event.preventDefault(); dialog.focus(); return; }
-        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        const activeElement = document.activeElement;
+        const activeIsDialogContainer =
+          activeElement instanceof HTMLElement &&
+          activeElement !== dialog &&
+          activeElement.getAttribute("role") === "dialog" &&
+          dialog.contains(activeElement);
+        if (event.shiftKey && (activeElement === first || activeElement === dialog || activeIsDialogContainer)) {
           event.preventDefault(); last.focus({ preventScroll: true });
         } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
           event.preventDefault(); first.focus({ preventScroll: true });
