@@ -18,6 +18,8 @@ focused conversion suite. Two broad geometry tests still need self-contained Acc
 
 Audit coverage remains 46/87 reviewed, 8/24 full tasks exercised/passing, 15/27 competitor cells and
 24/133 requests. These are review-coverage figures, not percentages of the application finished.
+The matching #114 online summary is pending because `gh` is unavailable locally; the exact update is
+preserved in the audit report and this status entry.
 
 ## Historical local integration checkpoint — 2026-09-15
 

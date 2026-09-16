@@ -23,6 +23,8 @@ Manager session; existing unchanged conversion/API evidence is retained. Product
 web TypeScript pass. Real PostgreSQL persistence evidence remains applicable because this milestone
 changed no backend persistence. Review totals remain 46/87, journeys 8/24 exercised and passing,
 competitors 15/27, requirements 24/133.
+GitHub #114 synchronisation is pending because `gh` is unavailable in this checkout; no repeated
+authentication attempt was made and this section is the exact local handoff.
 
 ## Historical calculator visual-contract tranche — 2026-09-15 / LOCAL ONLY
 
