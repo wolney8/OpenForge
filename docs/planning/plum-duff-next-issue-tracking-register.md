@@ -1,5 +1,17 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP006-20260916 — reporting, notification history and reliability
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-AUDIT-REPORT-DRILLDOWN-001 | Make Profile/combined reporting arithmetically trustworthy and interactively inspectable | PARTIAL / PROVEN boundary: Profile £11.50/£7.50 and combined £14.60, range/reload/breakdowns/text summary pass; chart points, drilldown, module filter and saved presets are absent under #111 |
+| NOTIFICATION-FIX-001 | A cleared notification remains cleared through reload and stale consumers | COMPLETE locally / PROVEN again: real source clear/reload plus monotonic state tests pass; hosted/owner acceptance remains separate #99 |
+| NOTIFICATION-HISTORY-001 | Preserve the historical event after the live source changes or disappears | NOT IMPLEMENTED / FAIL PROVEN: resolving the source replaces the earlier cleared event while its viewer tombstone remains; exact durable-event schema boundary is recorded under #90 |
+| PD-QA-018 | Resolve imported Free Bet parents only within the correct Profile | PROPOSED / NOT IMPLEMENTED: Profile-scoped source key plus explicit resolved/missing/ambiguous child fields; no historical backfill or guessed link |
+| PD-QA-021 | Preserve financial correction/deletion history independently of a deletable row | PROPOSED / NOT IMPLEMENTED: append-only Profile-scoped financial activity history with immutable snapshots and idempotent operation identity |
+| PD-QA-001 | Disposition affected dependencies by reachability and deployment evidence | PARTIAL / RISK: image optimiser is locally reachable on affected Next/sharp; Windows condition is not local; no Vitest server observed; hosted exposure and authorised upgrade remain #115 |
+| PD-AUDIT-TOOLING-001 | Make API type checking work from Git worktrees | COMPLETE: runner discovers an explicit/local/shared virtual environment; mypy now reports 39 real source errors instead of failing before execution |
+
 ## PD-AUDIT-CP005-20260916 — reporting, scale and retained history
 
 | ID | Requested outcome | Current state |

@@ -7,8 +7,8 @@ roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Keeping reviewed plans separate from confirmed financial activity.
-- Designing writes and retries so interruptions cannot create partial or duplicate records.
+- Separating a current projection from an enduring event history.
+- Using observability evidence to distinguish an affected dependency from a reachable exposure.
 
 ## Concepts worth remembering
 
@@ -45,6 +45,28 @@ The current imported-parent and deletion-history gaps show why atomic writes alo
 when identity or evidence is later discarded.
 
 **Remember:** Preserve both the transaction and the story of the data.
+
+### Current state versus event history
+
+**What it means:** Current state answers what is true now; event history records what happened and
+must survive later edits, clearing or removal.
+
+**Why it mattered in Plum Duff:** Notification clear tombstones are reliable, but Notification
+History is rebuilt from live source rows. Resolving a reminder therefore replaced the earlier event
+instead of retaining both facts.
+
+**Remember:** A durable view needs durable events, not just durable display preferences.
+
+### Exposure-based dependency review
+
+**What it means:** A vulnerable version is a necessary warning, while runtime, configuration,
+reachable input and deployment conditions determine the application's actual exposure.
+
+**Why it mattered in Plum Duff:** The affected Next image optimiser is locally reachable, the
+Windows-only condition is not locally applicable, and no Vitest server was observed; hosted facts
+are still unknown.
+
+**Remember:** “Affected” is not “exploited”, and “unknown” is not “safe”.
 
 ## Things I should personally inspect when AI changes code
 
@@ -100,6 +122,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | CP | Date | Concept(s) | Why it mattered |
 | --- | --- | --- | --- |
 | CP-005 | 2026-09-16 | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
+| CP-006 | 2026-09-16 | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
 
 ## Where detailed evidence lives
 

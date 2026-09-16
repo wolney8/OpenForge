@@ -1,5 +1,116 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-006 reporting, notification and security/reliability package — 2026-09-16
+
+Application and reusable audit-harness checkpoint:
+**87d5e103b0c283d269ebd6cc78987433963433eb** on the local integration branch. The normal local
+application remained available at `localhost:3010`; synthetic CP-006 Profiles were removed by the
+harness. Main/origin, Vercel and owner acceptance are unchanged.
+
+### Reporting and #111
+
+An authenticated synthetic Profile contained independently expected settled values of Sportsbook
+£2.20, Free Bet £7.40 and Casino £1.90, plus a −£4.00 Cash Adjustment. The Profile report agreed at
+**£11.50 gross / £7.50 retained** through Today/All Dates and reload. Module and bookmaker breakdowns,
+keyboard access to the range control and a two-Profile selected total of **£14.60** passed. The
+selected-range chart exposes an accessible textual point summary (`2026 Q3: £11.50`) and its
+no-points fallback is implemented, but it is a single `role=img` SVG: there are no focusable points,
+inspection/pinning, record drilldown, metric/granularity control or module filter. PQA-U11 is now an
+evidence-complete FAIL assessment and PQA-J22 remains PARTIAL. The smallest #111 slice remains one
+point-aware P&L series with pointer/keyboard detail and a link to the contributing period/records;
+it should reuse the existing range source before adding more metrics.
+
+### Notifications — current display, clearing and history are different states
+
+A genuine part-laid Sportsbook row produced exactly one Profile-scoped notification and the correct
+row link. Repeating the active reminder returned 409, a foreign-Profile update returned 404 and a
+placed source deletion returned 409 without removing financial activity. Clearing passed browser
+reload and left its durable viewer tombstone. Resolving the source then replaced the generated event
+with a new current-state notification: the earlier cleared row disappeared from Notification
+History while its tombstone remained. This proves #99 clearing reliability and the #90 failure
+boundary independently: current source projection plus clear tombstones is not durable event
+history. PQA-F21 is assessed FAIL/PARTIAL; PQA-J17 stays PARTIAL. #100's layout implementation and
+existing focused visual evidence are unaffected, but owner/hosted acceptance is not inferred.
+
+### Security and reliability
+
+`pnpm audit --json` still reports 3 critical, 13 high and 4 moderate entries. Installed versions are
+Next 16.3.2, sharp 0.35.3 and Vitest 4.0.4. The official-maintainer minima retained by #115 are Next
+16.3.3 for the AVIF/Windows advisories, sharp 0.35.4 for its bundled HEIF advisories, and **at least
+Vitest 4.1.11**, because the newer mocker/path advisory supersedes the earlier 4.1.0-only minimum.
+The local optimiser remains anonymously reachable: a benign local PNG request to `/_next/image`
+returned 200 and 28,073 bytes. Local macOS does not meet the Windows-hosted Next condition. No
+Vitest UI/API server or browser mode is configured/observed. Hosted OS, image-input trust and
+deployment exposure remain UNVERIFIED, not cleared. The smallest remediation is a separately
+authorised lockfile update to those supported minima or later compatible versions, followed by
+auth/proxy, image, calculator/FinancialValue, modal and import/restore regressions. #96 remains the
+separate owner/provider credential rotation.
+
+Authentication/owner guards and safe database-error classification passed 17 focused API tests;
+web session and notification state passed 19 focused tests. A broader 65-test API selection yielded
+55 passes and 10 **fixture/setup failures** caused by older tests expecting removed demo Profiles,
+not security assertions. The full web unit run yielded 419 passes and one existing blank-input
+expectation failure. These are retained as fixture/source failures, not weakened or called PASS.
+
+The worktree Python runner was the mypy infrastructure blocker: ignored `.venv` state is not copied
+into Git worktrees. It now resolves an explicit `OPENFORGE_PYTHON`, a worktree-local environment or
+the primary checkout's shared environment without a hard-coded user path. Mypy now executes and
+reports 39 genuine existing errors across seven files (principally Early Payout plus shared ledger
+typing). PQA-M07 is assessed FAIL rather than “tool unavailable”. PQA-M11 is assessed RISK with an
+exact dependency disposition; no dependency changed.
+
+### Schema proposals — PROPOSED / NOT IMPLEMENTED
+
+**PD-QA-018 imported parent identity.** Rebuild `import_source_records` through the existing
+SQLite/PostgreSQL migration mechanism so its primary key is
+`(profile_id, source_sheet, source_record_id)` rather than the current global
+`(source_sheet, source_record_id)`; retain `source_hash`, `entity_type`, `entity_id`, `imported_at`
+and add nullable `import_run_id` while keeping legacy `import_batch_id` nullable for the old path.
+Use existing `free_bets.origin_qual_bet_id` as the immutable external parent ID. Add to `free_bets`:
+`origin_qual_bet_native_id TEXT NOT NULL DEFAULT ''`,
+`origin_qual_bet_resolution_state TEXT NOT NULL DEFAULT 'legacy_unresolved'` constrained to
+`not_applicable|resolved|missing|ambiguous|legacy_unresolved`, and
+`origin_qual_bet_resolution_json TEXT NOT NULL DEFAULT '{}'` for same-Profile candidate IDs/review
+reason. Atomic import writes the Sportsbook mapping first and resolves only one same-Profile match;
+zero/multiple matches retain the external ID and explicit state with no native link. Portable
+export/restore carries the mapping and remaps only resolved native IDs. No backfill: old rows stay
+`legacy_unresolved`. Rollback must revert application code while retaining unknown columns/data;
+dropping the replacement key/columns would be destructive and is not the rollback.
+
+**PD-QA-021 durable deletion/correction history.** Existing per-ledger audits cannot simply be
+extended because their row foreign keys cascade, and Cash/Casino deletes explicitly erase them.
+Add one append-only `financial_activity_history` table with
+`history_id`, `profile_id`, `ledger_type`, `record_id`, `event_type`, `operation_id`, `occurred_at`,
+`actor_id`, `reason`, `schema_version`, `source_identity_json`, `before_snapshot_json`,
+`after_snapshot_json`, `prior_audit_json`, `reporting_value_before` and `reporting_value_after`.
+It has a Profile foreign key but deliberately no foreign key to the deletable business row, plus a
+unique `(profile_id, operation_id)` retry boundary. Existing per-ledger audits continue to own live
+edits; a permitted delete/reversal writes this immutable snapshot and prior correction trail in the
+same transaction before removing the row. Current reports exclude deleted activity but link/label
+the retained historical contribution and reversal; they do not silently present it as current P&L.
+No historical backfill: existing deletions remain unknowable, and live rows gain history only on a
+future governed action. Code rollback must keep writing disabled while preserving the new table;
+dropping it would erase the evidence the change exists to protect.
+
+### Reconciliation and coverage
+
+| Request | Original/later intent → current evidence → remaining gap |
+|---|---|
+| #90 | Source-independent read/cleared/completed history → source-change failure proven → exact durable event boundary above remains unimplemented |
+| #99 | Clear survives refetch/reload/stale consumers → real browser reload and monotonic tests pass → normal local evidence only; hosted/owner acceptance remains |
+| #100 | Notification controls must not overlap or obscure focus → existing focused geometry evidence retained → no behaviour/history claim and owner acceptance open |
+| #111 | Inspectable reusable time series and report explorer → arithmetic/range/breakdowns/text summary pass → point interaction, drilldown, filters and later metrics remain planned |
+| #115 | Affected packages plus reachability/exposure disposition → current lock/audit and reachable image optimiser proven → authorised upgrade and hosted metadata remain |
+
+Current coverage is **55/87 assessments (63%), 10/24 complete journeys exercised/passing (42%),
+15/27 competitor cells (56%) and 26/133 requirements reconciled (20%)**. Newly completed assessment
+rows are PQA-F21, PQA-U11, PQA-M07 and PQA-M11. #100 and #115 are the two newly reconciled requests;
+#90/#99/#111 update existing rows and are not counted twice. No qualifying new competitor evidence
+was added. Evidence checksum:
+`b1e55f4310b97ae2f0320fc1acfbf05d704509d8518876604264ba01f083ed1e`.
+GitHub issue mutation remains pending because no authenticated GitHub integration or `gh` is
+available; direct public issue bodies were read on 2026-09-16. No push or hosted change occurred.
+
 ## Current CP-005 reporting, larger-data and evidence-boundary package — 2026-09-16
 
 Application and reusable audit-harness checkpoint:
@@ -2782,7 +2893,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F18 | Combined report reconciliation | ASSESSED; PASS / PROVEN scoped | CP-005 Profile £41.90/£37.90, Void £11.50/£7.50 and authorised two-Profile £14.60/£10.60; #111 interaction remains planned |
 | PQA-F19 | Search/filter/loadout/Quick Actions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F20 | Settings persistence/error recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-F21 | Notification clear/history lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F21 | Notification clear/history lifecycle | ASSESSED; FAIL / PROVEN scoped | CP-006 real source→clear/reload→resolve: tombstone persists but prior event disappears; #90 durable history absent, J17 partial |
 | PQA-F22 | Synthetic portable restore validation | ASSESSED; PASS scoped | B portable-restore/security named fixtures |
 | PQA-F23 | Actual SQLite backup recovery | ASSESSED; PASS / PROVEN scoped | Verified backup→separate copy restore, repeated additive migration, unchanged six-ledger row hashes and representative reopen; current backup checksum/integrity reverified at CP-003 |
 | PQA-F24 | Subscriber/billing/advisory-AI plan boundary | ASSESSED; PASS scoped | C future-scope contracts; plan only |
@@ -2796,7 +2907,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-U08 | Screen-reader announcements/navigation | OPEN; NOT TESTED / PARTIAL | CP-005 report header scopes, financial names and reduced motion pass; actual supported reader remains UNVERIFIED |
 | PQA-U09 | Contrast/targets/charts audit | OPEN; PARTIAL | CP-004 three-ledger theme/target evidence plus CP-005 report table semantics pass; chart and measured colour contrast remain |
 | PQA-U10 | Drag alternatives and tooltip association | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-U11 | Chart keyboard/drilldown usability | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-U11 | Chart keyboard/drilldown usability | ASSESSED; FAIL / PROVEN scoped | CP-006 static `role=img` has readable point summary but no focusable points, inspection, pin or drilldown; #111 slice specified |
 | PQA-U12 | All other ledger modal equivalence | OPEN; PARTIAL | CP-004 Cash/Extra Place/Casino focus entry, containment, Escape and return pass; remaining ledgers and dirty/pending variants remain |
 | PQA-S01 | Protected API anonymous denials | ASSESSED; PASS scoped | B protected401 probes |
 | PQA-S02 | Owner role vs signed authentication | ASSESSED; PASS scoped | B security policy/owner guard |
@@ -2828,11 +2939,11 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M04 | PostgreSQL deployment/rollback assumptions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; REVIEWED | B harness blockers + explicit synthetic factories |
-| PQA-M07 | Typing/lint/flakiness census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-M07 | Typing/lint/flakiness census | ASSESSED; FAIL / PROVEN | CP-006 runner fixed; mypy executes and reports 39 source errors/7 files. Broader API 55/65 and web 419/420 expose separate seed/blank-input failures |
 | PQA-M08 | Large-table/chart performance | ASSESSED; PASS scoped local boundary | CP-005 200 records, source API169ms, routes0.93–2.28s, pagination/filter/search; not production CWV/capacity |
 | PQA-M09 | Request storms/stale-response census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M10 | Routed docs/instruction contradictions | ASSESSED; REVIEWED | A stale docs/orphan IDs; no bulk cleanup |
-| PQA-M11 | Dependency/provider maintenance disposition | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-M11 | Dependency/provider maintenance disposition | ASSESSED; RISK / PROVEN lock and local reachability | CP-006 current audit: Next16.3.2/sharp0.35.3/Vitest4.0.4 affected; optimiser200, no Vitest server; hosted exposure unknown; exact minima retained |
 | PQA-M12 | Subscriber/hosting/AI sustainability decision | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-R01 | Notification original+clarified scope | ASSESSED; REVIEWED | #90 original;#99 original+5567517442/5567729491 |
 | PQA-R02 | Account restriction/balance clarification set | ASSESSED; DOCUMENTED review, not runtime PASS | Current addendum#70/#82/#85/#106 original+all available clarifications, source/contracts/gaps retained |
@@ -2874,12 +2985,12 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL; sampled security/restore tests; full browser lifecycle next |
 |PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT TESTED; actual keyboard/stale-response journey next |
-|PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL; durable clear tests not source-independent history;#90 retained |
+|PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL: CP-006 real source creation/link, duplicate409, foreign Profile404, clear/reload and placed-delete denial pass; source resolve replaces the event and erases prior cleared history while tombstone survives (#90 FAIL boundary) |
 |PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: CP-004 actual six-sheet Profile workbook passes browser review/import, Accounts+Sportsbook+linked Free Bet+Casino+Cash reopen, report, export, portable restore/reload/re-export; invalid mixed batch rejects atomically and repeat is idempotent; same external source ID in two Profiles does not cross-link. Native parent resolution remains absent (PD-QA-018) and #109 Stake/Promo Access vocabulary remains undecided |
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|FULLY EXERCISED; PASS / PROVEN on 3010: authenticated file analyse/restore, 2 Accounts+1 Sportsbook+3 Free Bets, independent SQLite values/counts, three reconciliation gates, report reload, re-export and API-owned archive/delete cleanup |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
-|PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|PARTIAL: authorised selected-Profile totals/correction/reload pass independently; chart point/filter/drilldown and saved presets remain #111 gaps |
+|PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|PARTIAL: CP-006 £11.50/£7.50 Profile and £14.60 combined totals, range/reload, module/bookmaker breakdown and text chart summary pass; point focus/inspection/drilldown, module filter and saved presets remain #111 gaps |
 |PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|NOT TESTED; peer settings fixture and failure injection next |
 |PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|PARTIAL: CP-005 200-record authenticated Profile passes page/filter/search, module navigation and half-width containment; chart interaction, larger scale and stale-request recovery remain |
 

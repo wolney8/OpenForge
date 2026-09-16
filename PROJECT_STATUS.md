@@ -4,16 +4,16 @@
 
 ## Right now
 
-- **Working on:** Continue #114 with interactive report gaps, notification/source history, security and reliability evidence.
-- **Next:** Advance accessible screen-reader evidence where executable, competitor review and the unreconciled request groups.
+- **Working on:** Continue #114 with screen-reader/accessibility, settings recovery and remaining requirement/competitor evidence.
+- **Next:** Prepare a bounded implementation decision for durable notification/financial history and imported-parent identity without blocking independent audit work.
 - **Blocked on:** none
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Calculator/import gates plus CP-005 combined-report, 200-record and report-table accessibility evidence complete |
-| Normal `localhost:3010` | Serving the integrated build with normal local sign-in; CP-005 synthetic Profiles were removed after testing |
+| Local integrated build | CP-006 reporting/notification evidence and worktree type-check runner added; two schema designs remain proposals only |
+| Normal `localhost:3010` | Healthy with normal local sign-in; CP-006 synthetic Profiles were removed after testing |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
 | Owner smoke test | Available when convenient; not run and not a work blocker |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 51 / 87 (59%) |
+| Assessments reviewed | 55 / 87 (63%) |
 | Complete tasks exercised and passing | 10 / 24 (42%) |
 | Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 24 / 133 (18%) |
+| Requirements reconciled | 26 / 133 (20%) |
 
 ## Next 3 steps
 
-1. Exercise the remaining interactive report drilldown and notification/source-history boundaries.
-2. Continue security, recovery and reliability checks that do not need hosted access.
-3. Advance competitor evidence and original requirement reconciliation without inflating coverage.
+1. Run the remaining executable accessibility and settings/recovery checks.
+2. Continue competitor evidence and original requirement reconciliation without inflating coverage.
+3. If separately approved, implement the exact imported-parent and durable-history schemas in isolated databases.
 
 ## Checkpoint log
 
@@ -44,6 +44,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-003 | 2026-09-16 | Closed the local integration gate and completed browser portable-Profile recovery evidence | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-local-integration-milestone--2026-09-16) |
 | CP-004 | 2026-09-16 | Exercised full Profile import/recovery and populated ledgers; repaired import, Cash validation and shared dialog defects | [#12](https://github.com/wolney8/OpenForge/issues/12), [#91](https://github.com/wolney8/OpenForge/issues/91), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-004-import-populated-ledger-and-accessibility-package--2026-09-16) |
 | CP-005 | 2026-09-16 | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |
+| CP-006 | 2026-09-16 | Proved report and notification-history boundaries, refreshed dependency exposure and restored worktree mypy execution | [#90](https://github.com/wolney8/OpenForge/issues/90), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-006-reporting-notification-and-securityreliability-package--2026-09-16) |
 
 ## Reference index
 
