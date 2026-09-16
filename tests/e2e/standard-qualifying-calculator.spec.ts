@@ -15,6 +15,61 @@ async function mockSession(page: import("@playwright/test").Page) {
   }}));
 }
 
+async function createSyntheticCalculatorAuthorities(
+  request: import("@playwright/test").APIRequestContext,
+  label: string,
+) {
+  const unique = `${process.pid}-${Date.now()}`;
+  const onboardingResponse = await request.post(`${apiBaseUrl}/profiles/onboarding`, {
+    data: {
+      setup_path: "import",
+      display_name: `Synthetic ${label}`,
+      profile_code: `CALC-${unique}`,
+      tracking_start_date: "2026-09-01",
+      enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments", "each-way-extra-places"],
+      accounts: [],
+      quick_actions: [],
+    },
+  });
+  expect(onboardingResponse.status()).toBe(201);
+  const profileId = ((await onboardingResponse.json()) as { profile: { profile_id: string } }).profile.profile_id;
+  expect((await request.patch(`${apiBaseUrl}/profiles/${profileId}`, { data: { status: "Active" } })).ok()).toBeTruthy();
+
+  const accountBase = {
+    counts_in_cash_total: true,
+    channel: "Online",
+    status: "Active",
+    lifecycle_status: "Active",
+    current_balance: "0.00",
+    pending_withdrawal_amount: "0.00",
+    last_balance_update: "",
+    group_name: "Synthetic Calculator",
+    platform: "Synthetic",
+  };
+  const bookmakerResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
+    data: {
+      ...accountBase,
+      catalogue_id: "BOOKMAKER-BET365",
+      account: "Bet365",
+      type: "Bookie",
+    },
+  });
+  expect(bookmakerResponse.status()).toBe(201);
+  const bookmaker = await bookmakerResponse.json() as { account: string; account_id: string };
+  const exchangeResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
+    data: {
+      ...accountBase,
+      catalogue_id: "EXCHANGE-SMARKETS",
+      account: "Smarkets",
+      type: "Exchange",
+      commission_rate: "0.02",
+    },
+  });
+  expect(exchangeResponse.status()).toBe(201);
+  const exchange = await exchangeResponse.json() as { account: string; account_id: string };
+  return { profileId, bookmaker, exchange };
+}
+
 async function iconButtonGeometry(button: import("@playwright/test").Locator) {
   return button.evaluate((element) => {
     const icon = element.querySelector<HTMLElement>(".material-symbols-outlined");
@@ -718,19 +773,11 @@ test("converts odds and probability exactly without ledger writes", async ({ pag
 test("matches the signed-off Sportsbook calculator geometry", async ({ page, request }) => {
   test.setTimeout(60_000);
   await mockSession(page);
-  const profileId = "profile-demo-001";
-  const commissionsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`);
-  expect(commissionsResponse.ok()).toBeTruthy();
-  const originalCommission = ((await commissionsResponse.json()) as Array<{ exchange_name: string; commission_rate: string }>)
-    .find((row) => row.exchange_name === "Exchange A")?.commission_rate ?? "";
-  const commissionUpdate = await request.put(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
-    data: { exchange_name: "Exchange A", commission_rate: "0.02" },
-  });
-  expect(commissionUpdate.ok()).toBeTruthy();
+  const { profileId, bookmaker, exchange } = await createSyntheticCalculatorAuthorities(request, "Sportsbook geometry");
   const created = await request.post(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`, { data: {
     event_name: "Synthetic calculator parity event",
     offer_text: "Synthetic calculator parity offer",
-    bookmaker: "Bookmaker A",
+    bookmaker: bookmaker.account,
     offer_type: "Bet & Get",
     bet_type: "Single",
     offer_name: "Calculator parity",
@@ -745,7 +792,7 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
     lay_actual: "9.91",
     lay_matched_stake_1: "9.91",
     lay_commission_1: "0.02",
-    exchange_name: "Exchange A",
+    exchange_name: exchange.account,
     date_settled: "2026-09-08T12:00",
     user_notes: "",
     manual_override_value: "",
@@ -841,7 +888,7 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
         band: pick(".calculator-band-multilay"),
         panel: pick(".calculator-panel-card-multilay"),
         heading: pick(".multi-lay-calculator-title-row"),
-        toolbar: pick(".multi-lay-planner-toolbar"),
+        tableHeading: pick(".multi-lay-table-heading"),
         grid: pick(".multi-lay-planner-grid, .multi-lay-reference-grid"),
         field: { height: field.getBoundingClientRect().height, radius: getComputedStyle(field).borderRadius, padding: getComputedStyle(field).padding },
       };
@@ -853,33 +900,19 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
     expect(await readMultiLayGeometry(standaloneMultiLay)).toEqual(ledgerMultiLayGeometry);
   } finally {
     await request.delete(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${recordId}`);
-    await request.put(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
-      data: { exchange_name: "Exchange A", commission_rate: originalCommission },
-    });
   }
 });
 
 test("matches the Extra Places calculator presentation for the same family", async ({ page, request }) => {
   test.setTimeout(60_000);
   await mockSession(page);
-  const profileId = "profile-demo-001";
-  const accountsResponse = await request.get(`${apiBaseUrl}/profiles/${profileId}/accounts`);
-  const accounts = await accountsResponse.json() as Array<{ account: string; bookmaker_id: string; type: string }>;
-  const bookmaker = accounts.find((account) => account.type === "Bookie");
-  expect(bookmaker).toBeTruthy();
-  const accountBase = { counts_in_cash_total: true, channel: "Online", status: "Active", current_balance: "25.00", pending_withdrawal_amount: "", last_balance_update: "", group_name: "Synthetic Group", platform: "Synthetic Platform" };
-  let exchange = accounts.find((account) => account.type === "Exchange");
-  if (!exchange) {
-    const exchangeResponse = await request.post(`${apiBaseUrl}/profiles/${profileId}/accounts`, { data: { ...accountBase, catalogue_id: "EXCHANGE-BETCONNECT", account: "BetConnect", type: "Exchange", commission_rate: "0" } });
-    expect(exchangeResponse.ok()).toBeTruthy();
-    exchange = await exchangeResponse.json() as { account: string; bookmaker_id: string; type: string };
-  }
+  const { profileId, bookmaker, exchange } = await createSyntheticCalculatorAuthorities(request, "Extra Place geometry");
   const created = await request.post(`${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`, { data: {
     placed_at: "2026-09-08T12:00:00Z",
     runner: "Synthetic family parity runner",
     race: "Synthetic 14:30",
-    bookmaker: bookmaker!.account,
-    bookmaker_account: bookmaker!.account,
+    bookmaker: bookmaker.account,
+    bookmaker_account: bookmaker.account,
     mode: "Extra Place",
     each_way_stake: "10.00",
     back_odds: "6.00",
@@ -887,10 +920,10 @@ test("matches the Extra Places calculator presentation for the same family", asy
     place_term_denominator: "5",
     bookmaker_places: "5",
     exchange_places: "4",
-    win_exchange: exchange!.account,
+    win_exchange: exchange.account,
     win_lay_odds: "2.30",
     win_commission: "0",
-    place_exchange: exchange!.account,
+    place_exchange: exchange.account,
     place_lay_odds: "4.50",
     place_commission: "0",
     status: "Placed",
