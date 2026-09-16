@@ -110,7 +110,7 @@ let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chose
  if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
  await expect(selected.locator('dd').first()).toContainText(planned);
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
- const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['9.00','28.80','1.20','8.82']};
+ const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['28.80','1.20','8.82']};
  await core.getByLabel('Lay stake',{exact:true}).fill('9.00');
  await expect(core.locator('[data-pd-id$=".custom-input-copy"]')).toContainText('9.00');
  for(const name of (basis==='SNR'?['Underlay','Overlay','Custom']:[])) {
