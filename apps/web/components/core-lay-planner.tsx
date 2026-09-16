@@ -182,8 +182,8 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     legs: recordedStake ? [{matchedStake:recordedStake}] : [],
   });
   async function copyPlannedReference(value: string, selectedStrategy: LayPlan["selected_strategy"]) {
-    await navigator.clipboard.writeText(value);
     selectStrategy(selectedStrategy);
+    await navigator.clipboard.writeText(value);
     return true;
   }
   const rowsFor = (r: Reference) => [
