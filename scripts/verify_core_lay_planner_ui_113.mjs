@@ -72,9 +72,9 @@ try {
  await core.getByRole('button',{name:'Advanced',exact:true}).click();
  try {await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);}
  catch(e) {console.log('CORE FAILED STATE',await core.innerText());throw e;}
- const referenceFor=name=>core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
-let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
- if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
+	 const referenceFor=name=>core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
+	let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
+	 if(chosen==='Standard'){await core.getByRole('button',{name:'Simple',exact:true}).click();selected=core.locator('[data-pd-id$=".selected-reference"]');}
  await expect(selected.locator('dd').first()).toContainText(planned);
  await selected.locator('dd').first().getByRole('button').click();
  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),planned);
@@ -106,8 +106,8 @@ let selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chose
   return {sliderInsideCustom:Boolean(slider?.closest('[data-pd-id$=".custom-group"]')),customBeforeSlider:Boolean(custom?.compareDocumentPosition(slider)&Node.DOCUMENT_POSITION_FOLLOWING),sliderBeforeOutcomes:Boolean(slider?.compareDocumentPosition(outcomes)&Node.DOCUMENT_POSITION_FOLLOWING)};
  });
  assert.deepEqual(embeddedOrder,{sliderInsideCustom:true,customBeforeSlider:true,sliderBeforeOutcomes:true});
- selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
- if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
+	 selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
+	 if(chosen==='Standard'){await core.getByRole('button',{name:'Simple',exact:true}).click();selected=core.locator('[data-pd-id$=".selected-reference"]');}
  await expect(selected.locator('dd').first()).toContainText(planned);
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['28.80','1.20','8.82']};
